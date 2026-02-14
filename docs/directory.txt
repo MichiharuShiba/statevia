@@ -1,4 +1,4 @@
-workflow-engine/
+statevia-engine/
 ├─ README.md
 ├─ LICENSE
 ├─ .gitignore
@@ -19,11 +19,11 @@ workflow-engine/
 │  └─ execution-graph-spec.md
 │
 ├─ src/
-│  ├─ WorkflowEngine.Core/
-│  │  ├─ WorkflowEngine.Core.csproj
+│  ├─ Statevia.Core/
+│  │  ├─ Statevia.Core.csproj
 │  │  ├─ Engine/
 │  │  │  ├─ WorkflowEngine.cs
-│  │  │  ├─ EngineOptions.cs
+│  │  │  ├─ WorkflowEngineOptions.cs
 │  │  │  └─ WorkflowSnapshot.cs
 │  │  │
 │  │  ├─ FSM/
@@ -63,26 +63,40 @@ workflow-engine/
 │  │     ├─ StateContext.cs
 │  │     └─ IReadOnlyStateStore.cs
 │  │
-│  └─ WorkflowEngine.Cli/
-│     ├─ WorkflowEngine.Cli.csproj
+│  └─ Statevia.Cli/
+│     ├─ Statevia.Cli.csproj
 │     └─ Program.cs
 │
 ├─ samples/
-│  └─ hello-workflow/
+│  └─ hello-statevia/
 │     ├─ hello.yaml
 │     ├─ Program.cs
 │     └─ README.md
 │
 └─ tests/
-   ├─ WorkflowEngine.Core.Tests/
-   │  ├─ WorkflowEngine.Core.Tests.csproj
-   │  ├─ FsmTests.cs
-   │  ├─ ForkJoinTests.cs
-   │  ├─ WaitResumeTests.cs
-   │  ├─ CancelTests.cs
-   │  └─ ExecutionGraphTests.cs
+   ├─ Statevia.Core.Tests/
+   │  ├─ Statevia.Core.Tests.csproj
+   │  ├─ Engine/
+   │  │  ├─ CancelTests.cs
+   │  │  ├─ WaitResumeTests.cs
+   │  │  └─ WorkflowEngineTests.cs
+   │  ├─ Definition/
+   │  │  ├─ DefinitionLoaderTests.cs
+   │  │  ├─ DefinitionCompilerTests.cs
+   │  │  ├─ DictionaryStateExecutorFactoryTests.cs
+   │  │  ├─ Level1ValidationTests.cs
+   │  │  └─ Level2ValidationTests.cs
+   │  ├─ Execution/
+   │  │  └─ DefaultStateExecutorTests.cs
+   │  ├─ FSM/
+   │  │  └─ FsmTests.cs
+   │  ├─ Join/
+   │  │  └─ ForkJoinTests.cs
+   │  ├─ Scheduler/
+   │  │  └─ SchedulerTests.cs
+   │  └─ ExecutionGraph/
+   │     └─ ExecutionGraphTests.cs
    │
-   └─ WorkflowEngine.Definition.Tests/
-      ├─ WorkflowEngine.Definition.Tests.csproj
-      ├─ Level1ValidationTests.cs
-      └─ Level2ValidationTests.cs
+   └─ Statevia.Cli.Tests/
+      ├─ Statevia.Cli.Tests.csproj
+      └─ ProgramTests.cs
