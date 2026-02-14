@@ -30,7 +30,7 @@ This separation allows reproducible execution, deterministic state transitions, 
 
 ## 2. Architecture Overview
 
-```
+```text
 Definition (YAML / JSON)
    ↓
 AST
@@ -284,7 +284,7 @@ Breaking changes may occur before the first stable release.
 
 ## 2. アーキテクチャ概要
 
-```
+```text
 定義 (YAML / JSON)
    ↓
 AST
@@ -379,7 +379,7 @@ Fork と Join は状態ではありません。実行フローに影響を与え
 * 自己遷移の禁止（A -> A）
 * Join 参照が存在すること
 
-### LEVEL 2
+### レベル 2
 
 * Fork から Join への到達可能性
 * 循環 Join の禁止
