@@ -42,7 +42,11 @@ ScaffoldingReadMe.txt
 # Others
 ~$*
 *~
-CodeCoverage/
+coverage/
+.sonarqube/
+.sonarlint/
+.cursor/
+.vscode/
 
 # MSBuild Binary and Structured Log
 *.binlog
