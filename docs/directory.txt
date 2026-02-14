@@ -1,0 +1,88 @@
+workflow-engine/
+├─ README.md
+├─ LICENSE
+├─ .gitignore
+├─ .editorconfig
+├─ .github/
+│  ├─ ISSUE_TEMPLATE.md
+│  ├─ PULL_REQUEST_TEMPLATE.md
+│  └─ workflows/
+│     └─ ci.yml
+│
+├─ docs/
+│  ├─ architecture.md
+│  ├─ design-philosophy.md
+│  ├─ definition-spec.md
+│  ├─ fsm-spec.md
+│  ├─ fork-join-spec.md
+│  ├─ wait-cancel-spec.md
+│  └─ execution-graph-spec.md
+│
+├─ src/
+│  ├─ WorkflowEngine.Core/
+│  │  ├─ WorkflowEngine.Core.csproj
+│  │  ├─ Engine/
+│  │  │  ├─ WorkflowEngine.cs
+│  │  │  ├─ EngineOptions.cs
+│  │  │  └─ WorkflowSnapshot.cs
+│  │  │
+│  │  ├─ FSM/
+│  │  │  ├─ IFsm.cs
+│  │  │  ├─ TransitionTable.cs
+│  │  │  └─ TransitionResult.cs
+│  │  │
+│  │  ├─ Scheduler/
+│  │  │  ├─ IScheduler.cs
+│  │  │  ├─ DefaultScheduler.cs
+│  │  │  └─ ExecutionLimiter.cs
+│  │  │
+│  │  ├─ Execution/
+│  │  │  ├─ StateExecution.cs
+│  │  │  ├─ IStateExecutor.cs
+│  │  │  └─ DefaultStateExecutor.cs
+│  │  │
+│  │  ├─ Join/
+│  │  │  ├─ IJoinTracker.cs
+│  │  │  └─ JoinTracker.cs
+│  │  │
+│  │  ├─ Definition/
+│  │  │  ├─ DefinitionLoader.cs
+│  │  │  ├─ DefinitionCompiler.cs
+│  │  │  └─ Validation/
+│  │  │     ├─ Level1Validator.cs
+│  │  │     └─ Level2Validator.cs
+│  │  │
+│  │  ├─ ExecutionGraph/
+│  │  │  ├─ ExecutionGraph.cs
+│  │  │  ├─ ExecutionNode.cs
+│  │  │  └─ ExecutionEdge.cs
+│  │  │
+│  │  └─ Abstractions/
+│  │     ├─ IWorkflowEngine.cs
+│  │     ├─ IState.cs
+│  │     ├─ StateContext.cs
+│  │     └─ IReadOnlyStateStore.cs
+│  │
+│  └─ WorkflowEngine.Cli/
+│     ├─ WorkflowEngine.Cli.csproj
+│     └─ Program.cs
+│
+├─ samples/
+│  └─ hello-workflow/
+│     ├─ hello.yaml
+│     ├─ Program.cs
+│     └─ README.md
+│
+└─ tests/
+   ├─ WorkflowEngine.Core.Tests/
+   │  ├─ WorkflowEngine.Core.Tests.csproj
+   │  ├─ FsmTests.cs
+   │  ├─ ForkJoinTests.cs
+   │  ├─ WaitResumeTests.cs
+   │  ├─ CancelTests.cs
+   │  └─ ExecutionGraphTests.cs
+   │
+   └─ WorkflowEngine.Definition.Tests/
+      ├─ WorkflowEngine.Definition.Tests.csproj
+      ├─ Level1ValidationTests.cs
+      └─ Level2ValidationTests.cs
