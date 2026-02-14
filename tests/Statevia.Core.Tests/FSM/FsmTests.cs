@@ -80,4 +80,58 @@ public class FsmTests
         Assert.True(result.HasTransition);
         Assert.True(result.End);
     }
+
+    /// <summary>存在しない状態名で Evaluate を呼ぶと None が返ることを検証する。</summary>
+    [Fact]
+    public void Evaluate_ReturnsNone_WhenStateNotInTable()
+    {
+        // Arrange
+        var transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+        {
+            ["A"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { Next = "B" } }
+        };
+        var fsm = new TransitionTable(transitions);
+
+        // Act
+        var result = fsm.Evaluate("NonExistent", "Completed");
+
+        // Assert
+        Assert.False(result.HasTransition);
+    }
+
+    /// <summary>状態は存在するが fact が遷移に存在しない場合は None が返ることを検証する。</summary>
+    [Fact]
+    public void Evaluate_ReturnsNone_WhenFactNotInStateTransitions()
+    {
+        // Arrange
+        var transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+        {
+            ["A"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { Next = "B" } }
+        };
+        var fsm = new TransitionTable(transitions);
+
+        // Act
+        var result = fsm.Evaluate("A", "UnknownFact");
+
+        // Assert
+        Assert.False(result.HasTransition);
+    }
+
+    /// <summary>遷移先が Next/End/Fork のいずれでもない場合は None が返ることを検証する。</summary>
+    [Fact]
+    public void Evaluate_ReturnsNone_WhenTargetHasNoNextEndOrFork()
+    {
+        // Arrange
+        var transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+        {
+            ["A"] = new Dictionary<string, TransitionTarget> { ["Done"] = new TransitionTarget { Next = null, End = false, Fork = null } }
+        };
+        var fsm = new TransitionTable(transitions);
+
+        // Act
+        var result = fsm.Evaluate("A", "Done");
+
+        // Assert
+        Assert.False(result.HasTransition);
+    }
 }

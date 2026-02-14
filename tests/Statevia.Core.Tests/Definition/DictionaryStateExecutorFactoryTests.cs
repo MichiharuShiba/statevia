@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using Statevia.Core.Abstractions;
 using Statevia.Core.Definition;
+using Statevia.Core.Engine;
 using Statevia.Core.Execution;
 using Xunit;
 
@@ -49,6 +51,37 @@ public class DictionaryStateExecutorFactoryTests
 
         // Assert: 同一インスタンスが返ること
         Assert.Same(executor, result);
+    }
+
+    /// <summary>取得したエグゼキューターで DummyState.ExecuteAsync が実行されることを検証する。</summary>
+    [Fact]
+    public async Task GetExecutor_ReturnedExecutorRunsDummyState()
+    {
+        // Arrange
+        var state = new DummyState();
+        var def = new CompiledWorkflowDefinition
+        {
+            Name = "Test",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+            {
+                ["Start"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } }
+            },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
+            JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+            WaitTable = new Dictionary<string, string>(),
+            InitialState = "Start",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["Start"] = DefaultStateExecutor.Create(state) })
+        };
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var id = engine.Start(def);
+
+        // Act
+        await Task.Delay(150);
+        var snapshot = engine.GetSnapshot(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
     }
 
     private sealed class DummyState : IState<Unit, Unit>

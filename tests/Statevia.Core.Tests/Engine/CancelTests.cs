@@ -45,6 +45,24 @@ public class CancelTests
         })
     };
 
+    /// <summary>キャンセルせずに待つと長時間状態が完了し IsCompleted になることを検証する。</summary>
+    [Fact]
+    public async Task Start_Completes_WhenLongRunningStateFinishes()
+    {
+        // Arrange
+        var def = CreateDefinitionWithLongRunningState();
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var id = engine.Start(def);
+
+        // Act
+        await Task.Delay(5100);
+        var snapshot = engine.GetSnapshot(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+    }
+
     private sealed class LongRunningState : IState<Unit, Unit>
     {
         public async Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)

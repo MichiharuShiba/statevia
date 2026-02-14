@@ -38,6 +38,38 @@ public class DefaultStateExecutorTests
         Assert.Equal(42, result);
     }
 
+    /// <summary>状態が IEventProvider.WaitAsync を呼ぶ経路を検証する。</summary>
+    [Fact]
+    public async Task ExecuteAsync_StateCanCallWaitAsync()
+    {
+        // Arrange
+        var state = new StateThatWaits();
+        var executor = DefaultStateExecutor.Create(state);
+        var ctx = CreateContext();
+
+        // Act
+        var result = await executor.ExecuteAsync(ctx, Unit.Value, CancellationToken.None);
+
+        // Assert
+        Assert.Equal("waited", result);
+    }
+
+    /// <summary>状態が IReadOnlyStateStore.TryGetOutput を呼ぶ経路を検証する。</summary>
+    [Fact]
+    public async Task ExecuteAsync_StateCanCallTryGetOutput()
+    {
+        // Arrange
+        var state = new StateThatReadsStore();
+        var executor = DefaultStateExecutor.Create(state);
+        var ctx = CreateContext();
+
+        // Act
+        var result = await executor.ExecuteAsync(ctx, Unit.Value, CancellationToken.None);
+
+        // Assert
+        Assert.False((bool)result);
+    }
+
     private static StateContext CreateContext() => new()
     {
         Events = new NullEventProvider(),
@@ -64,5 +96,23 @@ public class DefaultStateExecutorTests
     private sealed class NullStateStore : IReadOnlyStateStore
     {
         public bool TryGetOutput(string stateName, out object? output) { output = null; return false; }
+    }
+
+    private sealed class StateThatWaits : IState<Unit, string>
+    {
+        public async Task<string> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
+        {
+            await ctx.Events.WaitAsync("ev", ct);
+            return "waited";
+        }
+    }
+
+    private sealed class StateThatReadsStore : IState<Unit, bool>
+    {
+        public Task<bool> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
+        {
+            var found = ctx.Store.TryGetOutput("Other", out var _);
+            return Task.FromResult(found);
+        }
     }
 }

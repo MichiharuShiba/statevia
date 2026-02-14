@@ -89,6 +89,161 @@ public class WorkflowEngineTests
         Assert.True(snapshot.IsCompleted);
     }
 
+    /// <summary>PublishEvent を呼んでも例外が発生しないことを検証する。</summary>
+    [Fact]
+    public void PublishEvent_DoesNotThrow()
+    {
+        // Arrange
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        engine.Start(CreateMinimalDefinition());
+
+        // Act
+        engine.PublishEvent("SomeEvent");
+
+        // Assert: 例外が発生しないこと
+    }
+
+    /// <summary>Dispose を呼んでも例外が発生しないことを検証する。</summary>
+    [Fact]
+    public void Dispose_DoesNotThrow()
+    {
+        // Arrange
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        engine.Start(CreateMinimalDefinition());
+
+        // Act
+        engine.Dispose();
+
+        // Assert: 例外が発生しないこと
+    }
+
+    /// <summary>状態が例外を投げるとワークフローが IsFailed になることを検証する。</summary>
+    [Fact]
+    public async Task Start_WorkflowMarksFailed_WhenStateThrows()
+    {
+        // Arrange
+        var def = CreateDefinitionWithFailingState();
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var id = engine.Start(def);
+
+        // Act
+        await Task.Delay(200);
+        var snapshot = engine.GetSnapshot(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsFailed);
+    }
+
+    /// <summary>Fork 遷移で複数状態が並列実行され、Join 後に完了することを検証する。</summary>
+    [Fact]
+    public async Task Start_WorkflowCompletes_WithForkAndJoin()
+    {
+        // Arrange
+        var def = CreateDefinitionWithForkJoin();
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 2 });
+        var id = engine.Start(def);
+
+        // Act
+        await Task.Delay(500);
+        var snapshot = engine.GetSnapshot(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+    }
+
+    /// <summary>Store.TryGetOutput が状態実行中に利用される経路を検証する。</summary>
+    [Fact]
+    public async Task Start_StateCanReadOtherStateOutputViaStore()
+    {
+        // Arrange
+        var def = CreateDefinitionWithStoreReader();
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var id = engine.Start(def);
+
+        // Act
+        await Task.Delay(300);
+        var snapshot = engine.GetSnapshot(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+    }
+
+    private static CompiledWorkflowDefinition CreateDefinitionWithFailingState() => new()
+    {
+        Name = "Fail",
+        Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+        {
+            ["Start"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } }
+        },
+        ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
+        JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+        WaitTable = new Dictionary<string, string>(),
+        InitialState = "Start",
+        StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
+        {
+            ["Start"] = DefaultStateExecutor.Create(new ThrowingState())
+        })
+    };
+
+    private static CompiledWorkflowDefinition CreateDefinitionWithForkJoin() => new()
+    {
+        Name = "ForkJoin",
+        Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+        {
+            ["Start"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { Fork = new[] { "A", "B" } } },
+            ["A"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { Next = "Join1" } },
+            ["B"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { Next = "Join1" } },
+            ["Join1"] = new Dictionary<string, TransitionTarget> { ["Joined"] = new TransitionTarget { End = true } }
+        },
+        ForkTable = new Dictionary<string, IReadOnlyList<string>> { ["Start"] = new[] { "A", "B" } },
+        JoinTable = new Dictionary<string, IReadOnlyList<string>> { ["Join1"] = new[] { "A", "B" } },
+        WaitTable = new Dictionary<string, string>(),
+        InitialState = "Start",
+        StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
+        {
+            ["Start"] = DefaultStateExecutor.Create(new ImmediateState()),
+            ["A"] = DefaultStateExecutor.Create(new ImmediateState()),
+            ["B"] = DefaultStateExecutor.Create(new ImmediateState())
+        })
+    };
+
+    private static CompiledWorkflowDefinition CreateDefinitionWithStoreReader() => new()
+    {
+        Name = "StoreReader",
+        Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+        {
+            ["A"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { Next = "B" } },
+            ["B"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } }
+        },
+        ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
+        JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+        WaitTable = new Dictionary<string, string>(),
+        InitialState = "A",
+        StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
+        {
+            ["A"] = DefaultStateExecutor.Create(new ImmediateState()),
+            ["B"] = DefaultStateExecutor.Create(new StoreReaderState())
+        })
+    };
+
+    private sealed class ThrowingState : IState<Unit, Unit>
+    {
+        public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct) => throw new InvalidOperationException("state failed");
+    }
+
+    private sealed class StoreReaderState : IState<Unit, Unit>
+    {
+        public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
+        {
+            if (ctx.Store.TryGetOutput("A", out var output))
+                _ = (Unit)output;
+            return Task.FromResult(Unit.Value);
+        }
+    }
+
     private static CompiledWorkflowDefinition CreateMinimalDefinition() => new()
     {
         Name = "Minimal",

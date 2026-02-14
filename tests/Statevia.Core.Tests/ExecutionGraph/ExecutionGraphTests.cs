@@ -1,3 +1,4 @@
+using System.Linq;
 using Statevia.Core.ExecutionGraphs;
 using Xunit;
 
@@ -54,5 +55,23 @@ public class ExecutionGraphTests
         // Assert
         Assert.Contains("nodes", json, StringComparison.Ordinal);
         Assert.Contains("edges", json, StringComparison.Ordinal);
+    }
+
+    /// <summary>Nodes プロパティが追加したノードのスナップショットを返すことを検証する。</summary>
+    [Fact]
+    public void Nodes_ReturnsSnapshotOfAddedNodes()
+    {
+        // Arrange
+        var graph = new ExecutionGraph();
+        var id1 = graph.AddNode("A");
+        var id2 = graph.AddNode("B");
+
+        // Act
+        var nodes = graph.Nodes;
+
+        // Assert
+        Assert.Equal(2, nodes.Count);
+        Assert.True(nodes.Any(n => n.NodeId == id1 && n.StateName == "A"));
+        Assert.True(nodes.Any(n => n.NodeId == id2 && n.StateName == "B"));
     }
 }

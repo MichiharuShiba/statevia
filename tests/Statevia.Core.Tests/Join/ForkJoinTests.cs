@@ -1,5 +1,6 @@
 using Statevia.Core.Abstractions;
 using Statevia.Core.Definition;
+using Statevia.Core.FSM;
 using Statevia.Core.Join;
 using Xunit;
 
@@ -39,6 +40,57 @@ public class ForkJoinTests
         Assert.Equal(2, inputs.Count);
         Assert.Equal("prepared", inputs["Prepare"]);
         Assert.True((bool)(inputs["AskUser"] ?? false));
+    }
+
+    /// <summary>存在しない Join 状態で GetJoinInputs を呼ぶと空の辞書が返ることを検証する。</summary>
+    [Fact]
+    public void GetJoinInputs_ReturnsEmpty_WhenJoinStateNotFound()
+    {
+        // Arrange
+        var def = CreateDefinitionWithJoin();
+        var tracker = new JoinTracker(def);
+
+        // Act
+        var inputs = tracker.GetJoinInputs("UnknownJoin");
+
+        // Assert
+        Assert.NotNull(inputs);
+        Assert.Empty(inputs);
+    }
+
+    /// <summary>RecordFact で Failed/Cancelled を記録しても Join 状態は返さず、続行することを検証する。</summary>
+    [Fact]
+    public void RecordFact_ReturnsNull_WhenFactIsFailedOrCancelled()
+    {
+        // Arrange
+        var def = CreateDefinitionWithJoin();
+        var tracker = new JoinTracker(def);
+
+        // Act
+        var result1 = tracker.RecordFact("Prepare", Fact.Failed, null);
+        var result2 = tracker.RecordFact("AskUser", Fact.Cancelled, null);
+
+        // Assert
+        Assert.Null(result1);
+        Assert.Null(result2);
+    }
+
+    /// <summary>GetJoinInputs は Fact が Completed のものだけを返すことを検証する。</summary>
+    [Fact]
+    public void GetJoinInputs_FiltersNonCompleted()
+    {
+        // Arrange
+        var def = CreateDefinitionWithJoin();
+        var tracker = new JoinTracker(def);
+        tracker.RecordFact("Prepare", "Completed", "prepared");
+        tracker.RecordFact("AskUser", Fact.Failed, null);
+
+        // Act
+        var inputs = tracker.GetJoinInputs("Join1");
+
+        // Assert
+        Assert.Single(inputs);
+        Assert.Equal("prepared", inputs["Prepare"]);
     }
 
     private static CompiledWorkflowDefinition CreateDefinitionWithJoin() => new()
