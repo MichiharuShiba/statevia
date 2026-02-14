@@ -8,6 +8,7 @@ namespace Statevia.Core.ExecutionGraphs;
 /// </summary>
 public sealed class ExecutionGraph
 {
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
     private readonly List<ExecutionNode> _nodes = new();
     private readonly List<ExecutionEdge> _edges = new();
     private readonly object _lock = new();
@@ -45,7 +46,7 @@ public sealed class ExecutionGraph
     {
         lock (_lock)
         {
-            return JsonSerializer.Serialize(new { nodes = _nodes, edges = _edges }, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(new { nodes = _nodes, edges = _edges }, s_jsonOptions);
         }
     }
 }

@@ -15,6 +15,7 @@ public sealed class DefinitionCompiler
     /// <summary>ワークフロー定義をコンパイルし、実行可能なコンパイル済み定義を返します。</summary>
     public CompiledWorkflowDefinition Compile(WorkflowDefinition definition)
     {
+        ArgumentNullException.ThrowIfNull(definition);
         return new CompiledWorkflowDefinition
         {
             Name = definition.Workflow.Name,

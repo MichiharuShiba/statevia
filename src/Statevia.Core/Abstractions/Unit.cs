@@ -5,7 +5,7 @@ namespace Statevia.Core.Abstractions;
 /// </summary>
 public readonly struct Unit : IEquatable<Unit>
 {
-    public static readonly Unit Value = default;
+    public static readonly Unit Value = new();
 
     public bool Equals(Unit other) => true;
     public override bool Equals(object? obj) => obj is Unit;

@@ -52,7 +52,7 @@ public class ExecutionGraphTests
         var json = graph.ExportJson();
 
         // Assert
-        Assert.Contains("nodes", json);
-        Assert.Contains("edges", json);
+        Assert.Contains("nodes", json, StringComparison.Ordinal);
+        Assert.Contains("edges", json, StringComparison.Ordinal);
     }
 }

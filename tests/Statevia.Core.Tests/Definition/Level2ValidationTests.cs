@@ -23,7 +23,7 @@ public class Level2ValidationTests
         };
 
         // Act
-        var result = new Level2Validator().Validate(def);
+        var result = Level2Validator.Validate(def);
 
         // Assert
         Assert.False(result.IsValid);
@@ -46,7 +46,7 @@ public class Level2ValidationTests
         };
 
         // Act
-        var result = new Level2Validator().Validate(def);
+        var result = Level2Validator.Validate(def);
 
         // Assert
         Assert.True(result.IsValid);

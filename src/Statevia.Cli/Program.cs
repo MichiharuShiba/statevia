@@ -35,8 +35,10 @@ try
 
     return 0;
 }
+#pragma warning disable CA1031 // Catch specific exceptions in entry point for user-facing error message
 catch (Exception ex)
 {
     Console.WriteLine($"Error: {ex.Message}");
     return 1;
 }
+#pragma warning restore CA1031

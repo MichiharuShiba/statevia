@@ -26,12 +26,12 @@ public class WaitResumeTests
     public async Task WaitAsync_Cancels_WhenTokenCancelled()
     {
         // Arrange
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
         var provider = new EventProvider("wf1");
         var waitTask = provider.WaitAsync("TestEvent", cts.Token);
 
         // Act: トークンをキャンセル
-        cts.Cancel();
+        await cts.CancelAsync();
 
         // Assert: TaskCanceledException がスローされること
         await Assert.ThrowsAsync<TaskCanceledException>(async () => await waitTask);

@@ -8,13 +8,17 @@ namespace Statevia.Core.Engine;
 public static class WorkflowSnapshotExtensions
 {
     /// <summary>ワークフローインスタンスのスナップショットを取得します。</summary>
-    public static WorkflowSnapshot ToSnapshot(this WorkflowInstance instance) => new()
+    public static WorkflowSnapshot ToSnapshot(this WorkflowInstance instance)
     {
-        WorkflowId = instance.WorkflowId,
-        WorkflowName = instance.Definition.Name,
-        ActiveStates = instance.GetActiveStates(),
-        IsCompleted = instance.IsCompleted,
-        IsCancelled = instance.IsCancelled,
-        IsFailed = instance.IsFailed
-    };
+        ArgumentNullException.ThrowIfNull(instance);
+        return new WorkflowSnapshot
+        {
+            WorkflowId = instance.WorkflowId,
+            WorkflowName = instance.Definition.Name,
+            ActiveStates = instance.GetActiveStates(),
+            IsCompleted = instance.IsCompleted,
+            IsCancelled = instance.IsCancelled,
+            IsFailed = instance.IsFailed
+        };
+    }
 }

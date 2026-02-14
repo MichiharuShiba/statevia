@@ -16,7 +16,7 @@ public sealed class DefaultStateExecutor : IStateExecutor
         new(async (ctx, input, ct) =>
         {
             var typedInput = input is TIn t ? t : default!;
-            return await state.ExecuteAsync(ctx, typedInput, ct);
+            return await state.ExecuteAsync(ctx, typedInput, ct).ConfigureAwait(false);
         });
 
     /// <inheritdoc />

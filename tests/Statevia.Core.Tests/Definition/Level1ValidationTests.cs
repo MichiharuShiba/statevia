@@ -18,7 +18,7 @@ public class Level1ValidationTests
         };
 
         // Act
-        var result = new Level1Validator().Validate(def);
+        var result = Level1Validator.Validate(def);
 
         // Assert
         Assert.False(result.IsValid);
@@ -40,7 +40,7 @@ public class Level1ValidationTests
         };
 
         // Act
-        var result = new Level1Validator().Validate(def);
+        var result = Level1Validator.Validate(def);
 
         // Assert
         Assert.False(result.IsValid);
@@ -62,7 +62,7 @@ public class Level1ValidationTests
         };
 
         // Act
-        var result = new Level1Validator().Validate(def);
+        var result = Level1Validator.Validate(def);
 
         // Assert
         Assert.False(result.IsValid);
@@ -85,7 +85,7 @@ public class Level1ValidationTests
         };
 
         // Act
-        var result = new Level1Validator().Validate(def);
+        var result = Level1Validator.Validate(def);
 
         // Assert
         Assert.True(result.IsValid);

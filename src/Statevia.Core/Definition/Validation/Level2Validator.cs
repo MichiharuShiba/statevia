@@ -6,8 +6,9 @@ namespace Statevia.Core.Definition.Validation;
 public sealed class Level2Validator
 {
     /// <summary>ワークフロー定義を検証し、エラー一覧を返します。</summary>
-    public ValidationResult Validate(WorkflowDefinition definition)
+    public static ValidationResult Validate(WorkflowDefinition definition)
     {
+        ArgumentNullException.ThrowIfNull(definition);
         var errors = new List<string>();
         var stateNames = new HashSet<string>(definition.States.Keys, StringComparer.OrdinalIgnoreCase);
         var initialState = FindInitialState(definition);

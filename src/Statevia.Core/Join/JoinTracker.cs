@@ -13,7 +13,11 @@ public sealed class JoinTracker : IJoinTracker
     private readonly Dictionary<string, Dictionary<string, StateResult>> _joinStateResults = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
 
-    public JoinTracker(CompiledWorkflowDefinition definition) => _joinTable = definition.JoinTable;
+    public JoinTracker(CompiledWorkflowDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        _joinTable = definition.JoinTable;
+    }
 
     /// <inheritdoc />
     public string? RecordFact(string stateName, string fact, object? output)
@@ -47,5 +51,5 @@ public sealed class JoinTracker : IJoinTracker
         }
     }
 
-    private record StateResult(string Fact, object? Output);
+    private sealed record StateResult(string Fact, object? Output);
 }

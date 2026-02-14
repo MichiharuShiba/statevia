@@ -6,8 +6,9 @@ namespace Statevia.Core.Definition.Validation;
 public sealed class Level1Validator
 {
     /// <summary>ワークフロー定義を検証し、エラー一覧を返します。</summary>
-    public ValidationResult Validate(WorkflowDefinition definition)
+    public static ValidationResult Validate(WorkflowDefinition definition)
     {
+        ArgumentNullException.ThrowIfNull(definition);
         var errors = new List<string>();
         if (definition.States.Count == 0) { errors.Add("At least one state is required."); return new ValidationResult(errors); }
         var stateNames = new HashSet<string>(definition.States.Keys, StringComparer.OrdinalIgnoreCase);

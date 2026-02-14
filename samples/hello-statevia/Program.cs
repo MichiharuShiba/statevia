@@ -5,9 +5,10 @@ using Statevia.Core.Engine;
 using Statevia.Core.Execution;
 
 var loader = new DefinitionLoader();
-var def = loader.Load(File.ReadAllText("hello.yaml"));
+var content = await File.ReadAllTextAsync("hello.yaml");
+var def = loader.Load(content);
 
-var level1 = new Level1Validator().Validate(def);
+var level1 = Level1Validator.Validate(def);
 if (!level1.IsValid)
 {
     Console.WriteLine("Level 1 validation failed:");
@@ -15,7 +16,7 @@ if (!level1.IsValid)
     return 1;
 }
 
-var level2 = new Level2Validator().Validate(def);
+var level2 = Level2Validator.Validate(def);
 if (!level2.IsValid)
 {
     Console.WriteLine("Level 2 validation failed:");
@@ -37,16 +38,16 @@ var compiler = new DefinitionCompiler(factory);
 var compiled = compiler.Compile(def);
 
 // README 3.3 に準拠
-var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 2 });
+using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 2 });
 var id = engine.Start(compiled);
 
 Console.WriteLine($"Workflow started: {id}");
 
 // 待機状態の再開（README 参照: engine.PublishEvent("UserApproved")）
-await Task.Delay(100);
+await Task.Delay(100).ConfigureAwait(false);
 engine.PublishEvent("UserApproved");
 
-await Task.Delay(1500);
+await Task.Delay(1500).ConfigureAwait(false);
 var snapshot = engine.GetSnapshot(id);
 Console.WriteLine($"Active: [{string.Join(", ", snapshot?.ActiveStates ?? Array.Empty<string>())}]");
 Console.WriteLine($"Completed: {snapshot?.IsCompleted}");
@@ -63,7 +64,7 @@ sealed class PrepareState : IState<Unit, string>
 {
     public async Task<string> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
     {
-        await Task.Delay(500, ct);
+        await Task.Delay(500, ct).ConfigureAwait(false);
         return "prepared";
     }
 }
@@ -72,7 +73,7 @@ sealed class AskUserState : IState<Unit, bool>
 {
     public async Task<bool> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
     {
-        await ctx.Events.WaitAsync("UserApproved", ct);
+        await ctx.Events.WaitAsync("UserApproved", ct).ConfigureAwait(false);
         return true;
     }
 }

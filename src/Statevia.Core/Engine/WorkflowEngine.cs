@@ -12,7 +12,7 @@ namespace Statevia.Core.Engine;
 /// IWorkflowEngine の実装。定義駆動型ワークフローエンジンの中核クラスです。
 /// 事実駆動型 FSM、Fork/Join、Wait/Resume、協調的キャンセルをサポートします。
 /// </summary>
-public sealed class WorkflowEngine : IWorkflowEngine
+public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
 {
     private readonly IScheduler _scheduler;
     private readonly ConcurrentDictionary<string, WorkflowInstance> _instances = new();
@@ -27,6 +27,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
     /// <inheritdoc />
     public string Start(CompiledWorkflowDefinition definition)
     {
+        ArgumentNullException.ThrowIfNull(definition);
         var workflowId = Guid.NewGuid().ToString("N")[..12];
         var eventProvider = new EventProvider(workflowId);
         var instance = new WorkflowInstance
@@ -53,7 +54,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
     public async Task CancelAsync(string workflowId)
     {
         if (_instances.TryGetValue(workflowId, out var instance)) instance.MarkCancelled();
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     public WorkflowSnapshot? GetSnapshot(string workflowId) =>
@@ -65,8 +66,10 @@ public sealed class WorkflowEngine : IWorkflowEngine
 
     private async Task RunWorkflowAsync(WorkflowInstance instance, EventProvider eventProvider)
     {
-        try { await ScheduleStateAsync(instance, eventProvider, instance.Definition.InitialState, null, null, null); }
-        catch { instance.MarkFailed(); }
+        try { await ScheduleStateAsync(instance, eventProvider, instance.Definition.InitialState, null, null, null).ConfigureAwait(false); }
+#pragma warning disable CA1031 // Do not catch general exception types - workflow failure is observed via MarkFailed()
+        catch (Exception) { instance.MarkFailed(); }
+#pragma warning restore CA1031
     }
 
     private async Task ScheduleStateAsync(WorkflowInstance instance, EventProvider eventProvider, string stateName, string? fromNodeId, EdgeType? edgeType, object? input)
@@ -74,7 +77,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
         var def = instance.Definition;
         if (def.JoinTable.ContainsKey(stateName))
         {
-            await RunJoinStateAsync(instance, eventProvider, stateName, fromNodeId, edgeType);
+            await RunJoinStateAsync(instance, eventProvider, stateName, fromNodeId, edgeType).ConfigureAwait(false);
             return;
         }
 
@@ -97,7 +100,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
         {
             try
             {
-                var o = await executor.ExecuteAsync(ctx, input, ct);
+                var o = await executor.ExecuteAsync(ctx, input, ct).ConfigureAwait(false);
                 instance.SetOutput(stateName, o);
                 instance.Graph.CompleteNode(nodeId, Fact.Completed, o);
                 return (Fact.Completed, o);
@@ -107,13 +110,15 @@ public sealed class WorkflowEngine : IWorkflowEngine
                 instance.Graph.CompleteNode(nodeId, Fact.Cancelled, null);
                 return (Fact.Cancelled, (object?)null);
             }
-            catch
+#pragma warning disable CA1031 // Do not catch general exception types - state failure is recorded in graph
+            catch (Exception)
             {
                 instance.Graph.CompleteNode(nodeId, Fact.Failed, null);
                 return (Fact.Failed, (object?)null);
             }
+#pragma warning restore CA1031
             finally { instance.RemoveActiveState(stateName); }
-        });
+        }).ConfigureAwait(false);
 
         ProcessFact(instance, eventProvider, stateName, fact, output, nodeId);
     }
@@ -128,7 +133,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
 
         var transition = instance.Fsm.Evaluate(joinStateName, Fact.Joined);
         if (transition.HasTransition && transition.Next != null)
-            await ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, joinInputs);
+            await ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, joinInputs).ConfigureAwait(false);
         else if (transition.End) instance.MarkCompleted();
     }
 
@@ -148,4 +153,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
         else if (transition.Next != null)
             _ = ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, null);
     }
+
+    /// <inheritdoc />
+    public void Dispose() => (_scheduler as IDisposable)?.Dispose();
 }

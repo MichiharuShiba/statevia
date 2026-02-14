@@ -10,7 +10,7 @@ public class SchedulerTests
     public async Task ExecutionLimiter_LimitsConcurrency()
     {
         // Arrange: 最大 2 並列のリミッターと、同時実行数を計測する変数
-        var limiter = new ExecutionLimiter(2);
+        using var limiter = new ExecutionLimiter(2);
         var concurrent = 0;
         var maxConcurrent = 0;
         var lockObj = new object();
@@ -35,7 +35,7 @@ public class SchedulerTests
     public async Task DefaultScheduler_RunsWork()
     {
         // Arrange
-        var scheduler = new DefaultScheduler(2);
+        using var scheduler = new DefaultScheduler(2);
 
         // Act
         var result = await scheduler.RunAsync(ct => Task.FromResult(42));
