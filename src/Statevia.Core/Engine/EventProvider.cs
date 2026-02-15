@@ -21,7 +21,10 @@ public sealed class EventProvider : IEventProvider
             if (!_waiters.TryGetValue(eventName, out var list)) { list = new List<TaskCompletionSource<bool>>(); _waiters[eventName] = list; }
             list.Add(tcs);
         }
-        if (ct.CanBeCanceled) ct.Register(() => tcs.TrySetCanceled(ct));
+        if (ct.CanBeCanceled)
+        {
+            ct.Register(() => tcs.TrySetCanceled(ct));
+        }
         return tcs.Task;
     }
 
@@ -32,7 +35,10 @@ public sealed class EventProvider : IEventProvider
         {
             if (_waiters.TryGetValue(eventName, out var list))
             {
-                foreach (var tcs in list) tcs.TrySetResult(true);
+                foreach (var tcs in list)
+                {
+                    tcs.TrySetResult(true);
+                }
                 _waiters.Remove(eventName);
             }
         }

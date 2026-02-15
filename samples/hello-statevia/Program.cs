@@ -12,7 +12,10 @@ var level1 = Level1Validator.Validate(def);
 if (!level1.IsValid)
 {
     Console.WriteLine("Level 1 validation failed:");
-    foreach (var e in level1.Errors) Console.WriteLine("  - " + e);
+    foreach (var e in level1.Errors)
+    {
+        Console.WriteLine("  - " + e);
+    }
     return 1;
 }
 
@@ -20,7 +23,10 @@ var level2 = Level2Validator.Validate(def);
 if (!level2.IsValid)
 {
     Console.WriteLine("Level 2 validation failed:");
-    foreach (var e in level2.Errors) Console.WriteLine("  - " + e);
+    foreach (var e in level2.Errors)
+    {
+        Console.WriteLine("  - " + e);
+    }
     return 1;
 }
 

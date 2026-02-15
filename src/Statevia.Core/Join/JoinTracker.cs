@@ -26,16 +26,24 @@ public sealed class JoinTracker : IJoinTracker
         {
             foreach (var (joinState, allOf) in _joinTable)
             {
-                if (!allOf.Contains(stateName, StringComparer.OrdinalIgnoreCase)) continue;
+                if (!allOf.Contains(stateName, StringComparer.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
                 if (!_joinStateResults.TryGetValue(joinState, out var results))
                 {
                     results = new Dictionary<string, StateResult>(StringComparer.OrdinalIgnoreCase);
                     _joinStateResults[joinState] = results;
                 }
                 results[stateName] = new StateResult(fact, output);
-                if (fact == Fact.Failed || fact == Fact.Cancelled) continue;
+                if (fact == Fact.Failed || fact == Fact.Cancelled)
+                {
+                    continue;
+                }
                 if (results.Count == allOf.Count && results.Values.All(r => r.Fact == Fact.Completed))
+                {
                     return joinState;
+                }
             }
         }
         return null;
@@ -46,7 +54,10 @@ public sealed class JoinTracker : IJoinTracker
     {
         lock (_lock)
         {
-            if (!_joinStateResults.TryGetValue(joinStateName, out var results)) return new Dictionary<string, object?>();
+            if (!_joinStateResults.TryGetValue(joinStateName, out var results))
+            {
+                return new Dictionary<string, object?>();
+            }
             return results.Where(r => r.Value.Fact == Fact.Completed).ToDictionary(k => k.Key, v => v.Value.Output, StringComparer.OrdinalIgnoreCase);
         }
     }

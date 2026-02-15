@@ -16,7 +16,9 @@ internal sealed class ScalarPreservingNodeTypeResolver : INodeTypeResolver
     public bool Resolve(NodeEvent? nodeEvent, ref Type currentType)
     {
         if (currentType != typeof(object) || nodeEvent is not Scalar scalar)
+        {
             return false;
+        }
 
         var tag = nodeEvent.Tag;
 

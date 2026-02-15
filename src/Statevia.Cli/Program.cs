@@ -28,7 +28,10 @@ try
     if (!result.IsValid)
     {
         Console.WriteLine("Validation failed:");
-        foreach (var e in result.Errors) Console.WriteLine("  - " + e);
+        foreach (var e in result.Errors)
+        {
+            Console.WriteLine("  - " + e);
+        }
         return 1;
     }
     Console.WriteLine("Validation: OK");

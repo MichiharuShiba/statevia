@@ -11,11 +11,15 @@ public sealed class DefinitionValidator
     {
         var level1Result = Level1Validator.Validate(definition);
         if (!level1Result.IsValid)
+        {
             return level1Result;
+        }
 
         var level2Result = Level2Validator.Validate(definition);
         if (!level2Result.IsValid)
+        {
             return level2Result;
+        }
 
         return level1Result;
     }

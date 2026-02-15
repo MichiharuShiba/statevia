@@ -17,21 +17,42 @@ public sealed class Level1Validator
         {
             if (string.IsNullOrWhiteSpace(stateName)) { errors.Add("State name cannot be empty."); continue; }
             if (stateDef.On != null)
+            {
                 foreach (var (fact, trans) in stateDef.On)
                 {
                     if (trans.Next != null)
                     {
                         if (trans.Next.Equals(stateName, StringComparison.OrdinalIgnoreCase))
+                        {
                             errors.Add($"Self-transition not allowed: {stateName} -> {stateName}");
-                        if (!stateNames.Contains(trans.Next)) errors.Add($"Reference to unknown state: {trans.Next}");
+                        }
+                        if (!stateNames.Contains(trans.Next))
+                        {
+                            errors.Add($"Reference to unknown state: {trans.Next}");
+                        }
                     }
                     if (trans.Fork != null)
+                    {
                         foreach (var forkState in trans.Fork)
-                            if (!stateNames.Contains(forkState)) errors.Add($"Fork references unknown state: {forkState}");
+                        {
+                            if (!stateNames.Contains(forkState))
+                            {
+                                errors.Add($"Fork references unknown state: {forkState}");
+                            }
+                        }
+                    }
                 }
+            }
             if (stateDef.Join != null)
+            {
                 foreach (var joinState in stateDef.Join.AllOf)
-                    if (!stateNames.Contains(joinState)) errors.Add($"Join references unknown state: {joinState}");
+                {
+                    if (!stateNames.Contains(joinState))
+                    {
+                        errors.Add($"Join references unknown state: {joinState}");
+                    }
+                }
+            }
         }
         return new ValidationResult(errors);
     }

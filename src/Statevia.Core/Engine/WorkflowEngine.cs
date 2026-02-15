@@ -47,13 +47,19 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
     /// <inheritdoc />
     public void PublishEvent(string eventName)
     {
-        foreach (var ep in _eventProviders.Values) ep.Publish(eventName);
+        foreach (var ep in _eventProviders.Values)
+        {
+            ep.Publish(eventName);
+        }
     }
 
     /// <inheritdoc />
     public async Task CancelAsync(string workflowId)
     {
-        if (_instances.TryGetValue(workflowId, out var instance)) instance.MarkCancelled();
+        if (_instances.TryGetValue(workflowId, out var instance))
+        {
+            instance.MarkCancelled();
+        }
         await Task.CompletedTask.ConfigureAwait(false);
     }
 
@@ -82,10 +88,16 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
         }
 
         var executor = def.StateExecutorFactory.GetExecutor(stateName);
-        if (executor == null) return;
+        if (executor == null)
+        {
+            return;
+        }
 
         var nodeId = instance.Graph.AddNode(stateName);
-        if (fromNodeId != null && edgeType != null) instance.Graph.AddEdge(fromNodeId, nodeId, edgeType.Value);
+        if (fromNodeId != null && edgeType != null)
+        {
+            instance.Graph.AddEdge(fromNodeId, nodeId, edgeType.Value);
+        }
         instance.AddActiveState(stateName);
 
         var ctx = new StateContext
@@ -128,30 +140,60 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
         var def = instance.Definition;
         var joinInputs = instance.JoinTracker.GetJoinInputs(joinStateName);
         var nodeId = instance.Graph.AddNode(joinStateName);
-        if (fromNodeId != null && edgeType != null) instance.Graph.AddEdge(fromNodeId, nodeId, edgeType.Value);
+        if (fromNodeId != null && edgeType != null)
+        {
+            instance.Graph.AddEdge(fromNodeId, nodeId, edgeType.Value);
+        }
         instance.Graph.CompleteNode(nodeId, Fact.Joined, null);
 
         var transition = instance.Fsm.Evaluate(joinStateName, Fact.Joined);
         if (transition.HasTransition && transition.Next != null)
+        {
             await ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, joinInputs).ConfigureAwait(false);
-        else if (transition.End) instance.MarkCompleted();
+        }
+        else if (transition.End)
+        {
+            instance.MarkCompleted();
+        }
     }
 
     private void ProcessFact(WorkflowInstance instance, EventProvider eventProvider, string stateName, string fact, object? output, string nodeId)
     {
         var def = instance.Definition;
         var readyJoin = instance.JoinTracker.RecordFact(stateName, fact, output);
-        if (readyJoin != null) { _ = RunJoinStateAsync(instance, eventProvider, readyJoin, nodeId, EdgeType.Join); return; }
-        if (fact == Fact.Failed || fact == Fact.Cancelled) { instance.MarkFailed(); instance.MarkCancelled(); return; }
+        if (readyJoin != null)
+        {
+            _ = RunJoinStateAsync(instance, eventProvider, readyJoin, nodeId, EdgeType.Join);
+            return;
+        }
+        if (fact == Fact.Failed || fact == Fact.Cancelled)
+        {
+            instance.MarkFailed();
+            instance.MarkCancelled();
+            return;
+        }
 
         var transition = instance.Fsm.Evaluate(stateName, fact);
-        if (!transition.HasTransition) return;
-        if (transition.End) { instance.MarkCompleted(); return; }
+        if (!transition.HasTransition)
+        {
+            return;
+        }
+        if (transition.End)
+        {
+            instance.MarkCompleted();
+            return;
+        }
         if (transition.Fork != null)
+        {
             foreach (var nextState in transition.Fork)
+            {
                 _ = ScheduleStateAsync(instance, eventProvider, nextState, nodeId, EdgeType.Fork, null);
+            }
+        }
         else if (transition.Next != null)
+        {
             _ = ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, null);
+        }
     }
 
     /// <inheritdoc />

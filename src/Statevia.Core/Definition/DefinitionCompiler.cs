@@ -33,16 +33,27 @@ public sealed class DefinitionCompiler
         var result = new Dictionary<string, Dictionary<string, TransitionTarget>>(StringComparer.OrdinalIgnoreCase);
         foreach (var (stateName, stateDef) in definition.States)
         {
-            if (stateDef.On == null) continue;
+            if (stateDef.On == null)
+            {
+                continue;
+            }
             var stateTransitions = new Dictionary<string, TransitionTarget>(StringComparer.OrdinalIgnoreCase);
             foreach (var (fact, trans) in stateDef.On)
             {
-                if (stateName.Equals(trans.Next, StringComparison.OrdinalIgnoreCase)) continue;
+                if (stateName.Equals(trans.Next, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
                 var target = new TransitionTarget { Next = trans.Next, Fork = trans.Fork, End = trans.End };
                 if (target.Next != null || target.Fork != null || target.End)
+                {
                     stateTransitions[fact] = target;
+                }
             }
-            if (stateTransitions.Count > 0) result[stateName] = stateTransitions;
+            if (stateTransitions.Count > 0)
+            {
+                result[stateName] = stateTransitions;
+            }
         }
         return result.ToDictionary(k => k.Key, v => (IReadOnlyDictionary<string, TransitionTarget>)v.Value, StringComparer.OrdinalIgnoreCase);
     }
@@ -52,10 +63,17 @@ public sealed class DefinitionCompiler
         var result = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
         foreach (var (stateName, stateDef) in definition.States)
         {
-            if (stateDef.On == null) continue;
+            if (stateDef.On == null)
+            {
+                continue;
+            }
             foreach (var (_, trans) in stateDef.On)
             {
-                if (trans.Fork != null && trans.Fork.Count > 0) { result[stateName] = trans.Fork; break; }
+                if (trans.Fork != null && trans.Fork.Count > 0)
+                {
+                    result[stateName] = trans.Fork;
+                    break;
+                }
             }
         }
         return result;
@@ -67,7 +85,9 @@ public sealed class DefinitionCompiler
         foreach (var (stateName, stateDef) in definition.States)
         {
             if (stateDef.Join != null && stateDef.Join.AllOf.Count > 0)
+            {
                 result[stateName] = stateDef.Join.AllOf;
+            }
         }
         return result;
     }
@@ -77,7 +97,10 @@ public sealed class DefinitionCompiler
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (stateName, stateDef) in definition.States)
         {
-            if (stateDef.Wait != null) result[stateName] = stateDef.Wait.Event;
+            if (stateDef.Wait != null)
+            {
+                result[stateName] = stateDef.Wait.Event;
+            }
         }
         return result;
     }
@@ -88,13 +111,29 @@ public sealed class DefinitionCompiler
         foreach (var (_, stateDef) in definition.States)
         {
             if (stateDef.On != null)
+            {
                 foreach (var (_, trans) in stateDef.On)
                 {
-                    if (trans.Next != null) allReferenced.Add(trans.Next);
-                    if (trans.Fork != null) foreach (var s in trans.Fork) allReferenced.Add(s);
+                    if (trans.Next != null)
+                    {
+                        allReferenced.Add(trans.Next);
+                    }
+                    if (trans.Fork != null)
+                    {
+                        foreach (var s in trans.Fork)
+                        {
+                            allReferenced.Add(s);
+                        }
+                    }
                 }
+            }
             if (stateDef.Join?.AllOf != null)
-                foreach (var s in stateDef.Join.AllOf) allReferenced.Add(s);
+            {
+                foreach (var s in stateDef.Join.AllOf)
+                {
+                    allReferenced.Add(s);
+                }
+            }
         }
         return definition.States.Keys.FirstOrDefault(s => !allReferenced.Contains(s))
             ?? definition.States.Keys.First()

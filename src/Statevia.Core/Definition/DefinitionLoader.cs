@@ -55,7 +55,9 @@ public sealed class DefinitionLoader
             {
                 var stateDict = ToStringDict(value);
                 if (stateDict.Count > 0)
+                {
                     result[key] = ParseState(stateDict);
+                }
             }
         }
         return result;
@@ -70,19 +72,28 @@ public sealed class DefinitionLoader
         if (dict.TryGetValue("on", out var onVal) && onVal != null)
         {
             var onDict = ToStringDict(onVal);
-            if (onDict.Count > 0) on = ParseOn(onDict);
+            if (onDict.Count > 0)
+            {
+                on = ParseOn(onDict);
+            }
         }
         if (dict.TryGetValue("wait", out var waitVal) && waitVal != null)
         {
             var waitDict = ToStringDict(waitVal);
             var ev = GetStr(waitDict, "event");
-            if (ev != null) wait = new WaitDefinition { Event = ev };
+            if (ev != null)
+            {
+                wait = new WaitDefinition { Event = ev };
+            }
         }
         if (dict.TryGetValue("join", out var joinVal) && joinVal != null)
         {
             var joinDict = ToStringDict(joinVal);
             var allOf = GetStrList(joinDict, "allOf");
-            if (allOf != null) join = new JoinDefinition { AllOf = allOf };
+            if (allOf != null)
+            {
+                join = new JoinDefinition { AllOf = allOf };
+            }
         }
 
         return new StateDefinition { On = on, Wait = wait, Join = join };
@@ -96,7 +107,10 @@ public sealed class DefinitionLoader
             if (value != null)
             {
                 var transDict = ToStringDict(value);
-                if (transDict.Count > 0) result[key] = ParseTransition(transDict);
+                if (transDict.Count > 0)
+                {
+                    result[key] = ParseTransition(transDict);
+                }
             }
         }
         return result;
@@ -112,19 +126,29 @@ public sealed class DefinitionLoader
     private static Dictionary<string, object?> GetChildDict(Dictionary<string, object?> dict, string key)
     {
         if (!dict.TryGetValue(key, out var val) || val == null)
+        {
             return new Dictionary<string, object?>();
+        }
         return ToStringDict(val);
     }
 
     private static Dictionary<string, object?> ToStringDict(object? val)
     {
         var result = new Dictionary<string, object?>();
-        if (val == null) return result;
-        if (val is Dictionary<string, object?> strDict) return strDict;
+        if (val == null)
+        {
+            return result;
+        }
+        if (val is Dictionary<string, object?> strDict)
+        {
+            return strDict;
+        }
         if (val is IDictionary dict)
         {
             foreach (DictionaryEntry kv in dict)
+            {
                 result[kv.Key?.ToString() ?? ""] = kv.Value;
+            }
         }
         return result;
     }
@@ -134,16 +158,27 @@ public sealed class DefinitionLoader
 
     private static bool GetBool(Dictionary<string, object?> dict, string key)
     {
-        if (!dict.TryGetValue(key, out var v) || v == null) return false;
-        if (v is bool b) return b;
+        if (!dict.TryGetValue(key, out var v) || v == null)
+        {
+            return false;
+        }
+        if (v is bool b)
+        {
+            return b;
+        }
         return string.Equals(v.ToString(), "true", StringComparison.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyList<string>? GetStrList(Dictionary<string, object?> dict, string key)
     {
-        if (!dict.TryGetValue(key, out var v) || v == null) return null;
+        if (!dict.TryGetValue(key, out var v) || v == null)
+        {
+            return null;
+        }
         if (v is IEnumerable enumerable)
+        {
             return enumerable.Cast<object?>().Select(x => x?.ToString() ?? "").ToList();
+        }
         return null;
     }
 }
