@@ -116,4 +116,5 @@ dotnet_diagnostic.CA1303.severity = none
 [**/tests/**/*.cs]
 dotnet_diagnostic.CA1303.severity = none
 dotnet_diagnostic.CA1307.severity = none
+dotnet_diagnostic.CA1707.severity = none
 dotnet_diagnostic.CA1861.severity = none
