@@ -47,6 +47,7 @@ coverage/
 .sonarlint/
 .cursor/
 .vscode/
+sonar/
 
 # MSBuild Binary and Structured Log
 *.binlog
