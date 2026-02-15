@@ -249,4 +249,34 @@ public class DefinitionLoaderTests
         Assert.NotNull(state.On);
         Assert.Null(state.On!["Completed"].Fork);
     }
+
+    /// <summary>YAML に数値スカラー（整数・小数）が含まれる場合も NodeTypeResolver により long/double としてデシリアライズされ Load が成功することを検証する。</summary>
+    [Fact]
+    public void Load_WithNumericScalars_DeserializesSuccessfully()
+    {
+        // Arrange: ルートに数値キーを置き、スカラーが long/double として解決される経路をカバーする（未使用キーでもデシリアライズ時に Resolver が呼ばれる）
+        var yaml = """
+            workflow:
+              name: W
+            _int: 42
+            _float: 1.5
+            states:
+              S:
+                on:
+                  Done:
+                    next: End
+              End:
+                on:
+                  Done:
+                    end: true
+            """;
+        var loader = new DefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        Assert.Equal("W", def.Workflow.Name);
+        Assert.Equal(2, def.States.Count);
+    }
 }

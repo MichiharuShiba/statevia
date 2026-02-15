@@ -55,6 +55,21 @@ public class WorkflowEngineTests
         Assert.NotNull(snapshot);
         Assert.Equal(id, snapshot.WorkflowId);
         Assert.Equal("Minimal", snapshot.WorkflowName);
+        Assert.NotNull(snapshot.ActiveStates);
+    }
+
+    /// <summary>存在するワークフロー ID で ExportExecutionGraph を呼ぶと JSON が返ることを検証する。</summary>
+    [Fact]
+    public void ExportExecutionGraph_ReturnsJson_WhenWorkflowExists()
+    {
+        var def = CreateMinimalDefinition();
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var id = engine.Start(def);
+
+        var json = engine.ExportExecutionGraph(id);
+
+        Assert.NotNull(json);
+        Assert.NotEqual("{}", json);
     }
 
     /// <summary>存在しないワークフロー ID で ExportExecutionGraph を呼ぶと "{}" が返ることを検証する。</summary>

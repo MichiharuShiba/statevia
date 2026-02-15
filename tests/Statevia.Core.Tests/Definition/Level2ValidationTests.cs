@@ -98,4 +98,26 @@ public class Level2ValidationTests
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, e => e.Contains("Circular join", StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>Join の allOf に存在しない状態名が含まれる場合でも HasCircularJoin は continue し、他に循環がなければ検証は通過することを検証する。</summary>
+    [Fact]
+    public void Validate_JoinAllOfContainsNonExistentState_DoesNotReportCircularJoin()
+    {
+        // Arrange: A join allOf [Missing]（Missing は States に存在しない）
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },
+                ["A"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "Missing" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+            }
+        };
+
+        // Act
+        var result = Level2Validator.Validate(def);
+
+        // Assert: 循環は検出されない（Missing は TryGetValue でスキップ）。到達不能等のエラーはあり得る
+        Assert.DoesNotContain(result.Errors, e => e.Contains("Circular join", StringComparison.OrdinalIgnoreCase));
+    }
 }

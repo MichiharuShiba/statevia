@@ -157,4 +157,44 @@ public class DefinitionCompilerTests
         Assert.True(compiled.InitialState == "A" || compiled.InitialState == "B");
         Assert.Contains(compiled.InitialState, def.States.Keys);
     }
+
+    /// <summary>next が自状態名の遷移（自己ループ）は遷移テーブルに含めないことを検証する。</summary>
+    [Fact]
+    public void Compile_SkipsSelfLoopTransition()
+    {
+        // Arrange: A の on.Completed.next が A 自身
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },
+                ["B"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } }
+            }
+        };
+        var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
+        var compiler = new DefinitionCompiler(factory);
+
+        // Act
+        var compiled = compiler.Compile(def);
+
+        // Assert: A は自己ループのみなので遷移テーブルにエントリが追加されない
+        Assert.False(compiled.Transitions.ContainsKey("A"));
+        Assert.True(compiled.Transitions.ContainsKey("B"));
+    }
+
+    /// <summary>状態が 0 件の定義で Compile すると InvalidOperationException が発生することを検証する。</summary>
+    [Fact]
+    public void Compile_Throws_WhenStatesEmpty()
+    {
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>()
+        };
+        var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
+        var compiler = new DefinitionCompiler(factory);
+
+        Assert.Throws<InvalidOperationException>(() => compiler.Compile(def));
+    }
 }
