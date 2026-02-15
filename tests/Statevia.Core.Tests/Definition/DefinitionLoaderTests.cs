@@ -148,4 +148,105 @@ public class DefinitionLoaderTests
         Assert.NotNull(def.States);
         Assert.Empty(def.States);
     }
+
+    /// <summary>states キーが存在しない YAML では GetChildDict が空辞書を返し、空の States になることを検証する。</summary>
+    [Fact]
+    public void Load_WithNoStatesKey_ReturnsEmptyStates()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: NoStates
+            """;
+        var loader = new DefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        Assert.NotNull(def.States);
+        Assert.Empty(def.States);
+        Assert.Equal("NoStates", def.Workflow.Name);
+    }
+
+    /// <summary>end が文字列 "true" のとき GetBool が true を返すことを検証する。</summary>
+    [Fact]
+    public void Load_TransitionEndAsStringTrue_ParsesAsTrue()
+    {
+        // Arrange: YAML で end が文字列 "true" になる場合（クォートで明示）
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              EndState:
+                on:
+                  Completed:
+                    end: "true"
+            """;
+        var loader = new DefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+        var state = def.States["EndState"];
+
+        // Assert
+        Assert.NotNull(state.On);
+        Assert.True(state.On!["Completed"].End);
+    }
+
+    /// <summary>end: false の遷移で GetBool が false を返すことを検証する。</summary>
+    [Fact]
+    public void Load_TransitionEndFalse_ParsesAsFalse()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              MidState:
+                on:
+                  Completed:
+                    next: Other
+                    end: false
+              Other:
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new DefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+        var state = def.States["MidState"];
+
+        // Assert
+        Assert.NotNull(state.On);
+        Assert.False(state.On!["Completed"].End);
+        Assert.Equal("Other", state.On!["Completed"].Next);
+    }
+
+    /// <summary>fork にスカラー（true）を指定した場合、スカラーは bool としてデシリアライズされ GetStrList は null を返すため Fork は null になる。</summary>
+    [Fact]
+    public void Load_ForkAsScalar_ResultsInNullFork()
+    {
+        // Arrange: fork: true は NodeTypeResolver により bool としてデシリアライズされ、GetStrList は IEnumerable でないので null を返す
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              Start:
+                on:
+                  Completed:
+                    fork: true
+            """;
+        var loader = new DefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+        var state = def.States["Start"];
+
+        // Assert
+        Assert.NotNull(state.On);
+        Assert.Null(state.On!["Completed"].Fork);
+    }
 }

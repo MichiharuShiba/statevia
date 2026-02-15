@@ -51,4 +51,51 @@ public class Level2ValidationTests
         // Assert
         Assert.True(result.IsValid);
     }
+
+    /// <summary>循環 Join（A が B を待ち、B が A を待つ等）がある定義は Level2 検証で失敗することを検証する。</summary>
+    [Fact]
+    public void Validate_CircularJoin_Fails()
+    {
+        // Arrange: A join allOf [B], B join allOf [A]
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },
+                ["A"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "B" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } },
+                ["B"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+            }
+        };
+
+        // Act
+        var result = Level2Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("Circular join", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Join が自分自身を allOf に含む場合も循環として検出することを検証する。</summary>
+    [Fact]
+    public void Validate_SelfJoinCircular_Fails()
+    {
+        // Arrange: A join allOf [A]
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },
+                ["A"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+            }
+        };
+
+        // Act
+        var result = Level2Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("Circular join", StringComparison.OrdinalIgnoreCase));
+    }
 }

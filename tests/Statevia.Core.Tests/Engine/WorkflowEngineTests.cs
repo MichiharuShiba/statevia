@@ -171,6 +171,61 @@ public class WorkflowEngineTests
         Assert.True(snapshot.IsCompleted);
     }
 
+    /// <summary>状態に遷移が定義されていない場合、ProcessFact で HasTransition が false となり早期 return することを検証する。</summary>
+    [Fact]
+    public async Task Start_StateWithNoTransition_ProcessFactReturnsEarly()
+    {
+        // Arrange: Start は実行されるが遷移テーブルに Completed がない（空の遷移）
+        var def = new CompiledWorkflowDefinition
+        {
+            Name = "NoTransition",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>> { ["Start"] = new Dictionary<string, TransitionTarget>() },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
+            JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+            WaitTable = new Dictionary<string, string>(),
+            InitialState = "Start",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["Start"] = DefaultStateExecutor.Create(new ImmediateState()) })
+        };
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var id = engine.Start(def);
+
+        // Act
+        await Task.Delay(200);
+        var snapshot = engine.GetSnapshot(id);
+
+        // Assert: 完了にも失敗にもせず、遷移がないのでそのまま止まる
+        Assert.NotNull(snapshot);
+        Assert.False(snapshot.IsCompleted);
+        Assert.False(snapshot.IsFailed);
+    }
+
+    /// <summary>状態実行中に StateContext の WorkflowId と StateName が参照される経路を検証する。</summary>
+    [Fact]
+    public async Task Start_StateCanReadWorkflowIdAndStateName()
+    {
+        // Arrange
+        var def = new CompiledWorkflowDefinition
+        {
+            Name = "Ctx",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>> { ["A"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } } },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
+            JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+            WaitTable = new Dictionary<string, string>(),
+            InitialState = "A",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["A"] = DefaultStateExecutor.Create(new ContextReaderState()) })
+        };
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var id = engine.Start(def);
+
+        // Act
+        await Task.Delay(200);
+        var snapshot = engine.GetSnapshot(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+    }
+
     private static CompiledWorkflowDefinition CreateDefinitionWithFailingState() => new()
     {
         Name = "Fail",
@@ -236,10 +291,22 @@ public class WorkflowEngineTests
 
     private sealed class StoreReaderState : IState<Unit, Unit>
     {
-        public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
+        public Task<Unit> ExecuteAsync(StateContext ctx, Unit input, CancellationToken ct)
         {
             if (ctx.Store.TryGetOutput("A", out var output))
-                _ = (Unit)output;
+            {
+                _ = output; // 参照してカバレッジを通す（input は未使用のため破棄）
+            }
+            return Task.FromResult(Unit.Value);
+        }
+    }
+
+    private sealed class ContextReaderState : IState<Unit, Unit>
+    {
+        public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
+        {
+            var w = ctx.WorkflowId;
+            var s = ctx.StateName;
             return Task.FromResult(Unit.Value);
         }
     }

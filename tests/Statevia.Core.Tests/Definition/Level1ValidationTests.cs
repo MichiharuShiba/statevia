@@ -90,4 +90,67 @@ public class Level1ValidationTests
         // Assert
         Assert.True(result.IsValid);
     }
+
+    /// <summary>空または空白の状態名は Level1 検証で失敗することを検証する。</summary>
+    [Fact]
+    public void Validate_EmptyStateName_Fails()
+    {
+        // Arrange
+        var states = new Dictionary<string, StateDefinition> { ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } } };
+        states[""] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } };
+        var def = new WorkflowDefinition { Workflow = new WorkflowMetadata { Name = "Test" }, States = states };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("State name cannot be empty", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Fork が存在しない状態を参照している定義は Level1 検証で失敗することを検証する。</summary>
+    [Fact]
+    public void Validate_ForkReferencesUnknownState_Fails()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Fork = new[] { "A", "MissingState" } } } },
+                ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("Fork references unknown", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Join の allOf が存在しない状態を参照している定義は Level1 検証で失敗することを検証する。</summary>
+    [Fact]
+    public void Validate_JoinReferencesUnknownState_Fails()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join1" } } },
+                ["Join1"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A", "NotExist" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("Join references unknown", StringComparison.OrdinalIgnoreCase));
+    }
 }

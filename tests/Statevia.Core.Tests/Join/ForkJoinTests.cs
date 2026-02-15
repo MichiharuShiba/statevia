@@ -93,6 +93,24 @@ public class ForkJoinTests
         Assert.Equal("prepared", inputs["Prepare"]);
     }
 
+    /// <summary>Join 状態に Completed が 1 件もない場合、GetJoinInputs は空の辞書を返すことを検証する。</summary>
+    [Fact]
+    public void GetJoinInputs_ReturnsEmpty_WhenJoinStateHasNoCompletedFacts()
+    {
+        // Arrange
+        var def = CreateDefinitionWithJoin();
+        var tracker = new JoinTracker(def);
+        tracker.RecordFact("Prepare", Fact.Failed, null);
+        tracker.RecordFact("AskUser", Fact.Cancelled, null);
+
+        // Act
+        var inputs = tracker.GetJoinInputs("Join1");
+
+        // Assert
+        Assert.NotNull(inputs);
+        Assert.Empty(inputs);
+    }
+
     private static CompiledWorkflowDefinition CreateDefinitionWithJoin() => new()
     {
         Name = "Test",

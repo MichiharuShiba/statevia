@@ -15,6 +15,7 @@ public sealed class DefinitionLoader
     {
         _deserializer = new DeserializerBuilder()
             .WithNamingConvention(CamelCaseNamingConvention.Instance)
+            .WithNodeTypeResolver(new ScalarPreservingNodeTypeResolver())
             .IgnoreUnmatchedProperties()
             .Build();
     }
