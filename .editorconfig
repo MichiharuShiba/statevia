@@ -118,3 +118,9 @@ dotnet_diagnostic.CA1303.severity = none
 dotnet_diagnostic.CA1307.severity = none
 dotnet_diagnostic.CA1707.severity = none
 dotnet_diagnostic.CA1861.severity = none
+
+#### Suppress GC.SuppressFinalize rules for IDisposable pattern ####
+# S3971: Do not call 'GC.SuppressFinalize' - IDisposable パターンでは一般的な実装
+dotnet_diagnostic.S3971.severity = none
+# CA1816: GC.SuppressFinalize は Dispose 内でのみ呼ぶ - IDisposable パターンでは一般的な実装
+dotnet_diagnostic.CA1816.severity = none
