@@ -31,7 +31,7 @@ public sealed class TransitionTable : IFsm
         {
             return TransitionResult.ToNext(target.Next);
         }
-        if (target.Fork != null && target.Fork.Count > 0)
+        if (target.Fork?.Count > 0)
         {
             return TransitionResult.ToFork(target.Fork);
         }
