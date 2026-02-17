@@ -166,7 +166,7 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
             _ = RunJoinStateAsync(instance, eventProvider, readyJoin, nodeId, EdgeType.Join);
             return;
         }
-        if (fact == Fact.Failed || fact == Fact.Cancelled)
+        if (fact is Fact.Failed or Fact.Cancelled)
         {
             instance.MarkFailed();
             instance.MarkCancelled();

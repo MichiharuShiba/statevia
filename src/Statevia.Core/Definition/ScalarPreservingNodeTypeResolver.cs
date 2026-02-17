@@ -33,7 +33,7 @@ internal sealed class ScalarPreservingNodeTypeResolver : INodeTypeResolver
 
         // プレーンスカラー: 値から bool / int / float を推定
         var value = scalar.Value;
-        if (value == "true" || value == "false")
+        if (value is "true" or "false")
         {
             currentType = typeof(bool);
             return true;

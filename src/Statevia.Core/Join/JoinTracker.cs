@@ -36,7 +36,7 @@ public sealed class JoinTracker : IJoinTracker
                     _joinStateResults[joinState] = results;
                 }
                 results[stateName] = new StateResult(fact, output);
-                if (fact == Fact.Failed || fact == Fact.Cancelled)
+                if (fact is Fact.Failed or Fact.Cancelled)
                 {
                     continue;
                 }
