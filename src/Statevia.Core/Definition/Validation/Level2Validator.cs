@@ -3,7 +3,7 @@ namespace Statevia.Core.Definition.Validation;
 /// <summary>
 /// レベル 2 検証：到達可能性チェック、循環 Join 検出。
 /// </summary>
-public sealed class Level2Validator
+public static class Level2Validator
 {
     /// <summary>ワークフロー定義を検証し、エラー一覧を返します。</summary>
     public static ValidationResult Validate(WorkflowDefinition definition)

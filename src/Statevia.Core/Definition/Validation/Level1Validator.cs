@@ -3,7 +3,7 @@ namespace Statevia.Core.Definition.Validation;
 /// <summary>
 /// レベル 1 検証：状態名・参照の整合性、自己遷移禁止、未定義状態参照の検出。
 /// </summary>
-public sealed class Level1Validator
+public static class Level1Validator
 {
     /// <summary>ワークフロー定義を検証し、エラー一覧を返します。</summary>
     public static ValidationResult Validate(WorkflowDefinition definition)
