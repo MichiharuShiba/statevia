@@ -124,3 +124,7 @@ dotnet_diagnostic.CA1861.severity = none
 dotnet_diagnostic.S3971.severity = none
 # CA1816: GC.SuppressFinalize は Dispose 内でのみ呼ぶ - IDisposable パターンでは一般的な実装
 dotnet_diagnostic.CA1816.severity = none
+
+#### Suppress CA1859: Use concrete types for better performance ####
+# CA1859: 戻り値の型を具象型に変更 - API 互換性を優先するため除外
+dotnet_diagnostic.CA1859.severity = none
