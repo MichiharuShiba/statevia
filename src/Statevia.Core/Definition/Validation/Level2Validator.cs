@@ -70,6 +70,7 @@ public static class Level2Validator
         var queue = new Queue<string>();
         queue.Enqueue(start);
         reachable.Add(start);
+
         while (queue.Count > 0)
         {
             var current = queue.Dequeue();
@@ -77,29 +78,55 @@ public static class Level2Validator
             {
                 continue;
             }
-            if (stateDef.On != null)
-            {
-                foreach (var (_, trans) in stateDef.On)
-                {
-                    if (trans.Next != null && reachable.Add(trans.Next))
-                    {
-                        queue.Enqueue(trans.Next);
-                    }
-                    if (trans.Fork != null)
-                    {
-                        foreach (var s in trans.Fork.Where(reachable.Add))
-                        {
-                            queue.Enqueue(s);
-                        }
-                    }
-                }
-            }
-            if (stateDef.Join != null && reachable.Add(current))
-            {
-                queue.Enqueue(current);
-            }
+
+            ProcessTransitions(stateDef, reachable, queue);
+            ProcessJoin(stateDef, current, reachable, queue);
         }
+
         return reachable;
+    }
+
+    private static void ProcessTransitions(StateDefinition stateDef, HashSet<string> reachable, Queue<string> queue)
+    {
+        if (stateDef.On == null)
+        {
+            return;
+        }
+
+        foreach (var (_, trans) in stateDef.On)
+        {
+            ProcessNextTransition(trans, reachable, queue);
+            ProcessForkTransition(trans, reachable, queue);
+        }
+    }
+
+    private static void ProcessNextTransition(TransitionDefinition trans, HashSet<string> reachable, Queue<string> queue)
+    {
+        if (trans.Next != null && reachable.Add(trans.Next))
+        {
+            queue.Enqueue(trans.Next);
+        }
+    }
+
+    private static void ProcessForkTransition(TransitionDefinition trans, HashSet<string> reachable, Queue<string> queue)
+    {
+        if (trans.Fork == null)
+        {
+            return;
+        }
+
+        foreach (var s in trans.Fork.Where(reachable.Add))
+        {
+            queue.Enqueue(s);
+        }
+    }
+
+    private static void ProcessJoin(StateDefinition stateDef, string current, HashSet<string> reachable, Queue<string> queue)
+    {
+        if (stateDef.Join != null && reachable.Add(current))
+        {
+            queue.Enqueue(current);
+        }
     }
 
     private static bool HasCircularJoin(WorkflowDefinition definition, string joinState, IReadOnlyList<string> allOf, HashSet<string> visited)

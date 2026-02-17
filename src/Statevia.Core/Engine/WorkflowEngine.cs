@@ -137,7 +137,6 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
 
     private async Task RunJoinStateAsync(WorkflowInstance instance, EventProvider eventProvider, string joinStateName, string? fromNodeId, EdgeType? edgeType)
     {
-        var def = instance.Definition;
         var joinInputs = instance.JoinTracker.GetJoinInputs(joinStateName);
         var nodeId = instance.Graph.AddNode(joinStateName);
         if (fromNodeId != null && edgeType != null)
@@ -159,7 +158,6 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
 
     private void ProcessFact(WorkflowInstance instance, EventProvider eventProvider, string stateName, string fact, object? output, string nodeId)
     {
-        var def = instance.Definition;
         var readyJoin = instance.JoinTracker.RecordFact(stateName, fact, output);
         if (readyJoin != null)
         {
