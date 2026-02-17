@@ -33,24 +33,18 @@ public sealed class Level1Validator
                     }
                     if (trans.Fork != null)
                     {
-                        foreach (var forkState in trans.Fork)
+                        foreach (var forkState in trans.Fork.Where(fs => !stateNames.Contains(fs)))
                         {
-                            if (!stateNames.Contains(forkState))
-                            {
-                                errors.Add($"Fork references unknown state: {forkState}");
-                            }
+                            errors.Add($"Fork references unknown state: {forkState}");
                         }
                     }
                 }
             }
             if (stateDef.Join != null)
             {
-                foreach (var joinState in stateDef.Join.AllOf)
+                foreach (var joinState in stateDef.Join.AllOf.Where(js => !stateNames.Contains(js)))
                 {
-                    if (!stateNames.Contains(joinState))
-                    {
-                        errors.Add($"Join references unknown state: {joinState}");
-                    }
+                    errors.Add($"Join references unknown state: {joinState}");
                 }
             }
         }

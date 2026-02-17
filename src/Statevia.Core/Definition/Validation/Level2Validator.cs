@@ -87,12 +87,9 @@ public sealed class Level2Validator
                     }
                     if (trans.Fork != null)
                     {
-                        foreach (var s in trans.Fork)
+                        foreach (var s in trans.Fork.Where(reachable.Add))
                         {
-                            if (reachable.Add(s))
-                            {
-                                queue.Enqueue(s);
-                            }
+                            queue.Enqueue(s);
                         }
                     }
                 }
