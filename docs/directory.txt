@@ -1,0 +1,102 @@
+statevia-engine/
+├─ README.md
+├─ LICENSE
+├─ .gitignore
+├─ .editorconfig
+├─ .github/
+│  ├─ ISSUE_TEMPLATE.md
+│  ├─ PULL_REQUEST_TEMPLATE.md
+│  └─ workflows/
+│     └─ ci.yml
+│
+├─ docs/
+│  ├─ architecture.md
+│  ├─ design-philosophy.md
+│  ├─ definition-spec.md
+│  ├─ fsm-spec.md
+│  ├─ fork-join-spec.md
+│  ├─ wait-cancel-spec.md
+│  └─ execution-graph-spec.md
+│
+├─ src/
+│  ├─ Statevia.Core/
+│  │  ├─ Statevia.Core.csproj
+│  │  ├─ Engine/
+│  │  │  ├─ WorkflowEngine.cs
+│  │  │  ├─ WorkflowEngineOptions.cs
+│  │  │  └─ WorkflowSnapshot.cs
+│  │  │
+│  │  ├─ FSM/
+│  │  │  ├─ IFsm.cs
+│  │  │  ├─ TransitionTable.cs
+│  │  │  └─ TransitionResult.cs
+│  │  │
+│  │  ├─ Scheduler/
+│  │  │  ├─ IScheduler.cs
+│  │  │  ├─ DefaultScheduler.cs
+│  │  │  └─ ExecutionLimiter.cs
+│  │  │
+│  │  ├─ Execution/
+│  │  │  ├─ StateExecution.cs
+│  │  │  ├─ IStateExecutor.cs
+│  │  │  └─ DefaultStateExecutor.cs
+│  │  │
+│  │  ├─ Join/
+│  │  │  ├─ IJoinTracker.cs
+│  │  │  └─ JoinTracker.cs
+│  │  │
+│  │  ├─ Definition/
+│  │  │  ├─ DefinitionLoader.cs
+│  │  │  ├─ DefinitionCompiler.cs
+│  │  │  └─ Validation/
+│  │  │     ├─ Level1Validator.cs
+│  │  │     └─ Level2Validator.cs
+│  │  │
+│  │  ├─ ExecutionGraph/
+│  │  │  ├─ ExecutionGraph.cs
+│  │  │  ├─ ExecutionNode.cs
+│  │  │  └─ ExecutionEdge.cs
+│  │  │
+│  │  └─ Abstractions/
+│  │     ├─ IWorkflowEngine.cs
+│  │     ├─ IState.cs
+│  │     ├─ StateContext.cs
+│  │     └─ IReadOnlyStateStore.cs
+│  │
+│  └─ Statevia.Cli/
+│     ├─ Statevia.Cli.csproj
+│     └─ Program.cs
+│
+├─ samples/
+│  └─ hello-statevia/
+│     ├─ hello.yaml
+│     ├─ Program.cs
+│     └─ README.md
+│
+└─ tests/
+   ├─ Statevia.Core.Tests/
+   │  ├─ Statevia.Core.Tests.csproj
+   │  ├─ Engine/
+   │  │  ├─ CancelTests.cs
+   │  │  ├─ WaitResumeTests.cs
+   │  │  └─ WorkflowEngineTests.cs
+   │  ├─ Definition/
+   │  │  ├─ DefinitionLoaderTests.cs
+   │  │  ├─ DefinitionCompilerTests.cs
+   │  │  ├─ DictionaryStateExecutorFactoryTests.cs
+   │  │  ├─ Level1ValidationTests.cs
+   │  │  └─ Level2ValidationTests.cs
+   │  ├─ Execution/
+   │  │  └─ DefaultStateExecutorTests.cs
+   │  ├─ FSM/
+   │  │  └─ FsmTests.cs
+   │  ├─ Join/
+   │  │  └─ ForkJoinTests.cs
+   │  ├─ Scheduler/
+   │  │  └─ SchedulerTests.cs
+   │  └─ ExecutionGraph/
+   │     └─ ExecutionGraphTests.cs
+   │
+   └─ Statevia.Cli.Tests/
+      ├─ Statevia.Cli.Tests.csproj
+      └─ ProgramTests.cs

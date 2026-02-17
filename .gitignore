@@ -36,10 +36,18 @@ ScaffoldingReadMe.txt
 # NuGet Symbol Packages
 *.snupkg
 
+# Visual Studio
+.vs/
+
 # Others
 ~$*
 *~
-CodeCoverage/
+coverage/
+.sonarqube/
+.sonarlint/
+.cursor/
+.vscode/
+sonar/
 
 # MSBuild Binary and Structured Log
 *.binlog
