@@ -279,4 +279,34 @@ public class DefinitionLoaderTests
         Assert.Equal("W", def.Workflow.Name);
         Assert.Equal(2, def.States.Count);
     }
+
+    /// <summary>end が数値（0/1）の場合、GetBool が false を返すことを検証する。</summary>
+    [Fact]
+    public void Load_TransitionEndAsNumber_ReturnsFalse()
+    {
+        // Arrange: YAML で end が数値になる場合（通常は発生しないが、カバレッジ向上のため）
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              MidState:
+                on:
+                  Completed:
+                    next: End
+                    end: 0
+              End:
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new DefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+        var state = def.States["MidState"];
+
+        // Assert: 数値は bool として解釈されないため false になる
+        Assert.NotNull(state.On);
+        Assert.False(state.On!["Completed"].End);
+    }
 }

@@ -197,4 +197,63 @@ public class DefinitionCompilerTests
 
         Assert.Throws<InvalidOperationException>(() => compiler.Compile(def));
     }
+
+    /// <summary>DefinitionCompiler が正しい Join テーブルを生成することを検証する。</summary>
+    [Fact]
+    public void Compile_ProducesCorrectJoinTable()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Fork = new[] { "A", "B" } } } },
+                ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join" } } },
+                ["B"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join" } } },
+                ["Join"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A", "B" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+            }
+        };
+        var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
+        var compiler = new DefinitionCompiler(factory);
+
+        // Act
+        var compiled = compiler.Compile(def);
+
+        // Assert
+        Assert.Single(compiled.JoinTable);
+        Assert.True(compiled.JoinTable.ContainsKey("Join"));
+        Assert.Equal(new[] { "A", "B" }, compiled.JoinTable["Join"]);
+    }
+
+    /// <summary>複数の Join 状態がある場合、すべてが Join テーブルに含まれることを検証する。</summary>
+    [Fact]
+    public void Compile_MultipleJoinStates_AllIncludedInJoinTable()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Fork = new[] { "A", "B" } } } },
+                ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join1" } } },
+                ["B"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join2" } } },
+                ["Join1"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } },
+                ["Join2"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "B" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+            }
+        };
+        var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
+        var compiler = new DefinitionCompiler(factory);
+
+        // Act
+        var compiled = compiler.Compile(def);
+
+        // Assert
+        Assert.Equal(2, compiled.JoinTable.Count);
+        Assert.True(compiled.JoinTable.ContainsKey("Join1"));
+        Assert.True(compiled.JoinTable.ContainsKey("Join2"));
+        Assert.Equal(new[] { "A" }, compiled.JoinTable["Join1"]);
+        Assert.Equal(new[] { "B" }, compiled.JoinTable["Join2"]);
+    }
 }

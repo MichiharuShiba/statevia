@@ -120,4 +120,53 @@ public class Level2ValidationTests
         // Assert: 循環は検出されない（Missing は TryGetValue でスキップ）。到達不能等のエラーはあり得る
         Assert.DoesNotContain(result.Errors, e => e.Contains("Circular join", StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>Fork 遷移を含むワークフローで到達可能性が正しく計算されることを検証する。</summary>
+    [Fact]
+    public void Validate_ForkTransition_ComputesReachabilityCorrectly()
+    {
+        // Arrange: Start → fork [A, B] → Join → End
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Fork = new[] { "A", "B" } } } },
+                ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join" } } },
+                ["B"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join" } } },
+                ["Join"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A", "B" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { Next = "End" } } },
+                ["End"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } }
+            }
+        };
+
+        // Act
+        var result = Level2Validator.Validate(def);
+
+        // Assert: Fork 遷移により A, B, Join, End が到達可能になる
+        Assert.True(result.IsValid);
+    }
+
+    /// <summary>Join 状態が到達可能性計算に含まれることを検証する。</summary>
+    [Fact]
+    public void Validate_JoinState_IsIncludedInReachability()
+    {
+        // Arrange: Start → A → Join (allOf [A]) → End
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },
+                ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join" } } },
+                ["Join"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { Next = "End" } } },
+                ["End"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } }
+            }
+        };
+
+        // Act
+        var result = Level2Validator.Validate(def);
+
+        // Assert: Join 状態が到達可能性に含まれる
+        Assert.True(result.IsValid);
+    }
 }
