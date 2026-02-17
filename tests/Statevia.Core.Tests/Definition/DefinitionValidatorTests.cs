@@ -16,9 +16,10 @@ public class DefinitionValidatorTests
             Workflow = new WorkflowMetadata { Name = "Test" },
             States = new Dictionary<string, StateDefinition>()
         };
+        var validator = new DefinitionValidator();
 
         // Act
-        var result = DefinitionValidator.Validate(def);
+        var result = validator.Validate(def);
 
         // Assert
         Assert.False(result.IsValid);
@@ -41,9 +42,10 @@ public class DefinitionValidatorTests
                 ["Orphan"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } }
             }
         };
+        var validator = new DefinitionValidator();
 
         // Act
-        var result = DefinitionValidator.Validate(def);
+        var result = validator.Validate(def);
 
         // Assert
         Assert.False(result.IsValid);
@@ -64,9 +66,10 @@ public class DefinitionValidatorTests
                 ["B"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } }
             }
         };
+        var validator = new DefinitionValidator();
 
         // Act
-        var result = DefinitionValidator.Validate(def);
+        var result = validator.Validate(def);
 
         // Assert
         Assert.True(result.IsValid);
@@ -77,7 +80,10 @@ public class DefinitionValidatorTests
     [Fact]
     public void Validate_WhenDefinitionIsNull_ThrowsArgumentNullException()
     {
+        // Arrange
+        var validator = new DefinitionValidator();
+
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => DefinitionValidator.Validate(null!));
+        Assert.Throws<ArgumentNullException>(() => validator.Validate(null!));
     }
 }

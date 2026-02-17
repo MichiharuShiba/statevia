@@ -13,17 +13,10 @@ public sealed class ExecutionGraph
     private readonly List<ExecutionEdge> _edges = [];
     private readonly object _lock = new();
 
-    /// <summary>ノード一覧のスナップショットを取得します。</summary>
-    public IReadOnlyList<ExecutionNode> GetNodes()
-    {
-        lock (_lock) { return _nodes.ToList(); }
-    }
-
-    /// <summary>辺一覧のスナップショットを取得します。</summary>
-    public IReadOnlyList<ExecutionEdge> GetEdges()
-    {
-        lock (_lock) { return _edges.ToList(); }
-    }
+    /// <summary>ノード一覧のスナップショット。</summary>
+    public IReadOnlyList<ExecutionNode> Nodes { get { lock (_lock) { return _nodes.ToList(); } } }
+    /// <summary>辺一覧のスナップショット。</summary>
+    public IReadOnlyList<ExecutionEdge> Edges { get { lock (_lock) { return _edges.ToList(); } } }
 
     /// <summary>ノードを追加し、ノード ID を返します。</summary>
     public string AddNode(string stateName)

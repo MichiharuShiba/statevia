@@ -23,7 +23,8 @@ try
     Console.WriteLine($"Loaded workflow: {def.Workflow.Name}");
     Console.WriteLine($"States: {string.Join(", ", def.States.Keys)}");
 
-    var result = DefinitionValidator.Validate(def);
+    var validator = new DefinitionValidator();
+    var result = validator.Validate(def);
     if (!result.IsValid)
     {
         Console.WriteLine("Validation failed:");
