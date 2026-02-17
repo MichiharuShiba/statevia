@@ -9,8 +9,8 @@ namespace Statevia.Core.ExecutionGraphs;
 public sealed class ExecutionGraph
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
-    private readonly List<ExecutionNode> _nodes = new();
-    private readonly List<ExecutionEdge> _edges = new();
+    private readonly List<ExecutionNode> _nodes = [];
+    private readonly List<ExecutionEdge> _edges = [];
     private readonly object _lock = new();
 
     /// <summary>ノード一覧のスナップショットを取得します。</summary>

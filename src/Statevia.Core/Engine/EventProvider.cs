@@ -18,7 +18,7 @@ public sealed class EventProvider : IEventProvider
         var tcs = new TaskCompletionSource<bool>();
         lock (_lock)
         {
-            if (!_waiters.TryGetValue(eventName, out var list)) { list = new List<TaskCompletionSource<bool>>(); _waiters[eventName] = list; }
+            if (!_waiters.TryGetValue(eventName, out var list)) { list = []; _waiters[eventName] = list; }
             list.Add(tcs);
         }
         if (ct.CanBeCanceled)

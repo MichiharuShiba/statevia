@@ -127,7 +127,7 @@ public sealed class DefinitionLoader
     {
         if (!dict.TryGetValue(key, out var val) || val == null)
         {
-            return new Dictionary<string, object?>();
+            return [];
         }
         return ToStringDict(val);
     }
