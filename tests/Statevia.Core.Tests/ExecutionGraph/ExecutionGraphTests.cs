@@ -32,7 +32,7 @@ public class ExecutionGraphTests
 
         // Act
         graph.AddEdge(id1, id2, EdgeType.Next);
-        var edges = graph.Edges;
+        var edges = graph.GetEdges();
 
         // Assert
         Assert.Single(edges);
@@ -67,7 +67,7 @@ public class ExecutionGraphTests
         var id2 = graph.AddNode("B");
 
         // Act
-        var nodes = graph.Nodes;
+        var nodes = graph.GetNodes();
 
         // Assert
         Assert.Equal(2, nodes.Count);
