@@ -1,416 +1,244 @@
-
 # statevia
 
-A definition-driven workflow engine based on fact-driven FSM.
+**statevia** は、
+State / FSM / Fork-Join / Wait / Resume / Cancel を統合した
+**型安全・非同期・イベント駆動ワークフローエンジンの中核ライブラリ**です。
+
+- 実装はシンプル
+- 設計は厳密
+- 可視化と監査に強い ExecutionGraph
+- Definition から自動構築される FSM / Fork / Join
 
 ---
 
-## 1. Concept
+## 特徴
 
-This engine is designed around the following principles:
-
-* Definition-driven workflow (JSON/YAML)
-* Fact-driven finite state machine (FSM)
-* Fork / Join as control nodes (not states)
-* Explicit dependency declaration
-* Asynchronous execution with cooperative cancellation
-* Execution graph as an observation layer
-* Engine does not interfere with user logic
-* Safety-first design
-
-The engine separates:
-
-* Definition (what should happen)
-* Execution (how it runs)
-* Observation (what happened)
-
-This separation allows reproducible execution, deterministic state transitions, and debuggable workflows.
+- 明示的 FSM（(State, Fact) → TransitionResult）
+- Fork / Join による並列実行
+- Wait / Resume（イベント駆動 or 明示再開）
+- Cancel 伝播と安全なキャンセル設計
+- ExecutionGraph による完全な実行可視化
+- Payload Snapshot + redactionPolicy による情報統制
+- State 単体はジェネリック / Engine 全体は非ジェネリック
 
 ---
 
-## 2. Architecture Overview
+## 設計思想
 
-```text
-Definition (YAML / JSON)
-   ↓
-AST
-   ↓
-Compiler
-   ↓
-FSM / Fork / Join / JoinTracker
-   ↓
-Scheduler (parallelism control)
-   ↓
-State Executor (async execution)
-   ↓
-Execution Graph (observation)
+statevia は以下の思想をベースに設計されています。
+
+- State は処理に集中する
+- Engine は実行制御に集中する
+- Definition は実行構造のみを表す
+- ExecutionGraph は「事実ログ」でありロジックではない
+- Fork / Join / Wait / Cancel は FSM の拡張構文である
+- 非同期 Task ベースでブロッキングしない
+
+設計思想の詳細:
+
+- docs/design-philosophy.md
+
+---
+
+## アーキテクチャ概要
+
+```txt
+Definition (JSON/YAML)
+        ↓
+  FSM / Fork / Join 自動構築
+        ↓
+     Execution Engine
+        ↓
+ StateExecution (async Task)
+        ↓
+   ExecutionGraph（事実ログ）
 ```
 
-Layered responsibilities:
+詳細:
 
-* FSM: deterministic transitions based on facts
-* Scheduler: parallelism and execution order
-* Executor: actual state execution
-* Execution Graph: history and visualization
+- docs/architecture.md
 
 ---
 
-## 3. Hello Workflow (Minimal Example)
+## Hello Workflow
 
-### 3.1 Definition
+最小構成サンプル:
+
+- samples/hello-statevia
+
+```csharp
+var engine = new WorkflowEngine(definition);
+
+await engine.StartAsync();
+
+engine.EmitEvent("resume-event");
+
+var graph = engine.ExecutionGraph;
+```
+
+---
+
+## 仕様ドキュメント
+
+- Definition
+
+  - docs/definition-spec.md
+
+- FSM
+
+  - docs/fsm-spec.md
+
+- Fork / Join
+
+  - docs/fork-join-spec.md
+
+- Wait / Cancel
+
+  - docs/wait-cancel-spec.md
+
+- ExecutionGraph
+
+  - docs/execution-graph-spec.md
+
+---
+
+## 実行イメージ（Definition × 実行フロー × ExecutionGraph）
+
+### サンプル定義
 
 ```yaml
 workflow:
-  name: HelloWorkflow
+  start: A
+  states:
+    A:
+      onCompleted: Fork1
 
-states:
-  Start:
-    on:
-      Completed:
-        fork: [Prepare, AskUser]
+    Fork1:
+      fork:
+        - B
+        - C
 
-  Prepare:
-    on:
-      Completed:
-        next: Join1
+    B:
+      onCompleted: WaitB
 
-  AskUser:
-    wait:
-      event: UserApproved
-    on:
-      Completed:
-        next: Join1
+    WaitB:
+      wait:
+        event: resumeB
+      onResume: Join1
 
-  Join1:
-    join:
-      allOf: [Prepare, AskUser]
-    on:
-      Joined:
-        next: Work
+    C:
+      onCompleted: D
 
-  Work:
-    on:
-      Completed:
-        next: End
+    D:
+      onCompleted: Join1
 
-  End:
-    on:
-      Completed:
-        end: true
+    Join1:
+      join:
+        requires: [WaitB, D]
+      onCompleted: E
+
+    E:
+      end: true
 ```
 
 ---
 
-### 3.2 State Implementation (C#)
-
-```csharp
-public sealed class StartState : IState<Unit, Unit>
-{
-    public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
-        => Task.FromResult(Unit.Value);
-}
-
-public sealed class PrepareState : IState<Unit, string>
-{
-    public async Task<string> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
-    {
-        await Task.Delay(500, ct);
-        return "prepared";
-    }
-}
-
-public sealed class AskUserState : IState<Unit, bool>
-{
-    public async Task<bool> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
-    {
-        await ctx.Events.WaitAsync("UserApproved", ct);
-        return true;
-    }
-}
-
-public sealed class WorkState : IState<(string prepared, bool approved), Unit>
-{
-    public Task<Unit> ExecuteAsync(StateContext ctx, (string, bool) input, CancellationToken ct)
-        => Task.FromResult(Unit.Value);
-}
-```
-
----
-
-### 3.3 Execution
-
-```csharp
-var engine = new WorkflowEngine(new WorkflowEngineOptions
-{
-    MaxParallelism = 2
-});
-
-var def = loader.Load(File.ReadAllText("hello.yaml"));
-var id = engine.Start(def);
-
-// Resume wait state
-engine.PublishEvent("UserApproved");
-
-// Optional cancel
-// await engine.CancelAsync(id);
-```
-
----
-
-## 4. Execution Graph
-
-The engine provides an execution graph that records:
-
-* State execution nodes
-* Fork / Join relationships
-* Wait / Resume transitions
-* Cancel propagation
-* Time-based execution history
-
-The execution graph can be exported as JSON and visualized by external tools.
-
----
-
-## 5. Design Decisions
-
-### 5.1 Fact-driven FSM
-
-State transitions are triggered only by facts:
-
-* Completed
-* Failed
-* Cancelled
-* Joined
-
-Requests (e.g., Cancel request) are not facts.
-
----
-
-### 5.2 Fork / Join as Control Nodes
-
-Fork and Join are not states.
-They are control constructs that affect execution flow but do not execute user logic.
-
----
-
-### 5.3 Cancellation
-
-* Cancellation is cooperative.
-* The engine does not forcefully abort running states.
-* Cancelled is a fact emitted only when execution actually stops.
-
----
-
-### 5.4 Parallelism Control
-
-* Parallel execution is limited by the scheduler.
-* Deadlock risks are detected but not automatically resolved.
-* Users are responsible for execution policies.
-
----
-
-## 6. Validation Levels
-
-### LEVEL 1
-
-* Syntax validation
-* State reference integrity
-* No self-transition (A -> A)
-* Join references must exist
-
-### LEVEL 2
-
-* Join must be reachable from fork
-* No circular joins
-* No unreachable states
-* Explicit dependency enforcement
-
----
-
-## 7. Roadmap
-
-* Expression engine for conditional transitions
-* Retry / Timeout policies
-* Sub-workflows
-* Web UI for DAG visualization
-* AI agent integration layer
-* Multi-language SDK (NuGet / Maven / npm / pip)
-
----
-
-## 8. License
-
-TBD
-
----
-
-## 9. Contribution
-
-TBD
-
----
-
-## 10. Status
-
-This project is under active design and development.
-Breaking changes may occur before the first stable release.
-
----
-
-# 日本語
-
-## 1. コンセプト
-
-このエンジンは以下の原則に基づいて設計されています：
-
-* 定義駆動型ワークフロー（JSON/YAML）
-* 事実駆動型有限状態機械（FSM）
-* Fork / Join を制御ノードとして（状態ではない）
-* 明示的な依存関係宣言
-* 協調的キャンセルによる非同期実行
-* 実行グラフを観測レイヤーとして
-* エンジンはユーザーロジックに干渉しない
-* セーフティファースト設計
-
-エンジンは以下を分離します：
-
-* 定義（何が起こるべきか）
-* 実行（どのように実行されるか）
-* 観測（何が起こったか）
-
-この分離により、再現可能な実行、決定論的な状態遷移、デバッグ可能なワークフローが実現されます。
-
----
-
-## 2. アーキテクチャ概要
+### 実行フロー（論理構造図）
 
 ```text
-定義 (YAML / JSON)
-   ↓
-AST
-   ↓
-コンパイラ
-   ↓
-FSM / Fork / Join / JoinTracker
-   ↓
-スケジューラ（並列度制御）
-   ↓
-状態エグゼキューター（非同期実行）
-   ↓
-実行グラフ（観測）
+A
+│
+▼
+Fork1
+├─▶ B ─▶ WaitB ──(resumeB)──┐
+│                           ├─▶ Join1 ─▶ E
+└─▶ C ─▶ D ─────────────────┘
 ```
 
-レイヤーごとの責務：
+---
 
-* FSM: 事実に基づく決定論的遷移
-* スケジューラ: 並列度と実行順序
-* エグゼキューター: 実際の状態実行
-* 実行グラフ: 履歴と可視化
+### 時系列実行イメージ
+
+```text
+t0: A Running → Completed
+t1: Fork1 発火 → B / C 並列実行
+
+t2: B Completed → WaitB (Waiting)
+t3: C Completed → D Running → Completed
+
+t4: Join1 は WaitB 未完了のため待機
+
+t5: Event: resumeB
+t6: WaitB Resumed → Completed
+
+t7: Join1 条件成立 → E 実行
+t8: E Completed → Workflow Completed
+```
 
 ---
 
-## 3. Hello Workflow（最小例）
+### ExecutionGraph（スナップショット例）
 
-### 3.1 定義
+```json
+{
+  "status": "Completed",
+  "nodes": [
+    { "id": "A", "status": "Completed", "type": "Task" },
+    { "id": "B", "status": "Completed", "type": "Task" },
+    { "id": "WaitB", "status": "Completed", "type": "Wait" },
+    { "id": "C", "status": "Completed", "type": "Task" },
+    { "id": "D", "status": "Completed", "type": "Task" },
+    { "id": "Join1", "status": "Completed", "type": "Join" },
+    { "id": "E", "status": "Completed", "type": "Task" }
+  ],
+  "edges": [
+    { "from": "A", "to": "B", "type": "Fork" },
+    { "from": "A", "to": "C", "type": "Fork" },
+    { "from": "B", "to": "WaitB", "type": "Normal" },
+    { "from": "WaitB", "to": "Join1", "type": "Resume", "event": "resumeB" },
+    { "from": "C", "to": "D", "type": "Normal" },
+    { "from": "D", "to": "Join1", "type": "Join" },
+    { "from": "Join1", "to": "E", "type": "Normal" }
+  ]
+}
+```
 
-（上記 YAML 定義を参照）
+## 使いどころ
 
-### 3.2 状態実装（C#）
-
-（上記 C# コードを参照）
-
-### 3.3 実行
-
-（上記 C# 実行コードを参照）
-
----
-
-## 4. 実行グラフ
-
-エンジンは以下を記録する実行グラフを提供します：
-
-* 状態実行ノード
-* Fork / Join の関係
-* Wait / Resume 遷移
-* キャンセル伝播
-* 時間ベースの実行履歴
-
-実行グラフは JSON としてエクスポートでき、外部ツールで可視化できます。
-
----
-
-## 5. 設計上の決定
-
-### 5.1 事実駆動型 FSM
-
-状態遷移は事実によってのみトリガーされます：
-
-* Completed（完了）
-* Failed（失敗）
-* Cancelled（キャンセル済み）
-* Joined（結合済み）
-
-リクエスト（例：キャンセルリクエスト）は事実ではありません。
-
-### 5.2 Fork / Join を制御ノードとして
-
-Fork と Join は状態ではありません。実行フローに影響を与える制御構造であり、ユーザーロジックは実行しません。
-
-### 5.3 キャンセル
-
-* キャンセルは協調的です。
-* エンジンは実行中の状態を強制終了しません。
-* Cancelled は実行が実際に停止したときにのみ発行される事実です。
-
-### 5.4 並列度制御
-
-* 並列実行はスケジューラによって制限されます。
-* デッドロックリスクは検出されますが、自動解決はされません。
-* 実行ポリシーはユーザーの責任です。
+- 非同期ジョブオーケストレーション
+- ワークフローエンジン
+- 複雑な状態遷移を持つ業務処理
+- イベント駆動処理
+- 並列タスクの制御と可視化
 
 ---
 
-## 6. 検証レベル
+## 実装ポリシー
 
-### LEVEL 1
-
-* 構文検証
-* 状態参照の整合性
-* 自己遷移の禁止（A -> A）
-* Join 参照が存在すること
-
-### レベル 2
-
-* Fork から Join への到達可能性
-* 循環 Join の禁止
-* 到達不能状態の禁止
-* 明示的依存関係の強制
+- Engine Core はライブラリ配布前提
+- ユーザーは State 実装のみ担当
+- 並列数制御・キャンセルポリシーはユーザー責務
+- 危険な状態の検知機構はエンジン側で提供
 
 ---
 
-## 7. ロードマップ
+## Repository Structure
 
-* 条件付き遷移のための式エンジン
-* リトライ / タイムアウトポリシー
-* サブワークフロー
-* DAG 可視化のための Web UI
-* AI エージェント統合レイヤー
-* マルチ言語 SDK（NuGet / Maven / npm / pip）
-
----
-
-## 8. ライセンス
-
-TBD
+```txt
+src/
+docs/
+samples/
+tests/
+```
 
 ---
 
-## 9. 貢献
+## License
 
-TBD
+MIT
 
 ---
 
-## 10. ステータス
+## ステータス
 
 本プロジェクトは設計・開発中です。初回安定版リリース前に破壊的変更が発生する可能性があります。
