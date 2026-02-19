@@ -148,6 +148,7 @@ statevia-engine/
       │     ├─ db.ts
       │     ├─ eventStore.ts
       │     └─ projections.ts
+      │     └─ load.ts
       └─ sql/
          └─ 001_init.sql
 ```
