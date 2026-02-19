@@ -134,21 +134,53 @@ statevia-engine/
       ├─ tsconfig.json
       ├─ src/
       │  ├─ server.ts
-      │  ├─ http/
-      │  │  ├─ routes.ts
-      │  │  ├─ errors.ts
-      │  │  └─ idempotency.ts
-      │  ├─ core/
-      │  │  ├─ types.ts
-      │  │  ├─ events.ts
-      │  │  ├─ reducer.ts
-      │  │  ├─ commands.ts
-      │  │  └─ guards.ts
-      │  └─ store/
-      │     ├─ db.ts
-      │     ├─ eventStore.ts
-      │     └─ projections.ts
-      │     └─ load.ts
+      │  │
+      │  ├─ domain/                    # Domain Layer (DDD)
+      │  │  ├─ entities/               # エンティティ
+      │  │  │  ├─ execution.ts
+      │  │  │  └─ node.ts
+      │  │  ├─ value-objects/          # 値オブジェクト
+      │  │  │  ├─ actor.ts
+      │  │  │  ├─ event-envelope.ts
+      │  │  │  └─ execution-state.ts
+      │  │  ├─ domain-services/        # ドメインサービス
+      │  │  │  ├─ reducer.ts
+      │  │  │  └─ guards.ts
+      │  │  ├─ events/                 # ドメインイベント
+      │  │  │  └─ event-types.ts
+      │  │  └─ errors.ts              # ドメインエラー
+      │  │
+      │  ├─ application/              # Application Layer
+      │  │  ├─ commands/               # コマンドハンドラー
+      │  │  │  └─ command-handlers.ts
+      │  │  ├─ use-cases/              # ユースケース
+      │  │  │  ├─ create-execution-use-case.ts
+      │  │  │  └─ execute-command-use-case.ts
+      │  │  └─ services/               # アプリケーションサービス
+      │  │     └─ orchestrator.ts
+      │  │
+      │  ├─ infrastructure/            # Infrastructure Layer
+      │  │  ├─ persistence/            # 永続化
+      │  │  │  ├─ db.ts
+      │  │  │  └─ repositories/
+      │  │  │     ├─ event-store.ts
+      │  │  │     └─ execution-repository.ts
+      │  │  └─ idempotency/            # 冪等性管理
+      │  │     └─ idempotency-service.ts
+      │  │
+      │  └─ presentation/               # Presentation Layer
+      │     ├─ http/                    # HTTP層
+      │     │  ├─ routes.ts
+      │     │  ├─ routes/
+      │     │  │  ├─ executions.ts
+      │     │  │  └─ nodes.ts
+      │     │  ├─ errors.ts
+      │     │  ├─ error-handler.ts
+      │     │  ├─ middleware.ts
+      │     │  └─ idempotent-handler.ts
+      │     └─ dto/                     # DTO
+      │        └─ validators.ts
+      │
       └─ sql/
          └─ 001_init.sql
 ```
