@@ -21,9 +21,9 @@ export function endpointKey(req: express.Request): string {
   // 簡易実装: 実際のパスからパターンを推測
   // より正確には、Express の route 定義から取得するのが理想だが、
   // ここでは UUID や数値のようなパスパラメータを :id に正規化
-  pattern = pattern.replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '/:id');
-  pattern = pattern.replace(/\/[0-9a-f]{32}/gi, '/:id'); // 32文字のhex（UUID形式なし）
-  pattern = pattern.replace(/\/\d+/g, '/:id'); // 数値ID
+  pattern = pattern.replaceAll(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '/:id');
+  pattern = pattern.replaceAll(/\/[0-9a-f]{32}/gi, '/:id'); // 32文字のhex（UUID形式なし）
+  pattern = pattern.replaceAll(/\/\d+/g, '/:id'); // 数値ID
   
   return `${req.method} ${req.baseUrl}${pattern}`;
 }

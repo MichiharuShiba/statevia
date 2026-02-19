@@ -2,7 +2,6 @@
  * Executions HTTP Routes
  */
 import express from "express";
-import { pool } from "../../../infrastructure/persistence/db.js";
 import { ExecutionRepository } from "../../../infrastructure/persistence/repositories/execution-repository.js";
 import { idempotentHandler } from "../idempotent-handler.js";
 import { actorFromReq } from "../middleware.js";

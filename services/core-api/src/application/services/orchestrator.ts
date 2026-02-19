@@ -2,11 +2,9 @@
  * Orchestrator アプリケーションサービス
  * Cancel 収束を非同期で処理する
  */
-import { PoolClient } from "pg";
 import { pool } from "../../infrastructure/persistence/db.js";
 import { ExecutionRepository } from "../../infrastructure/persistence/repositories/execution-repository.js";
 import { EventStore } from "../../infrastructure/persistence/repositories/event-store.js";
-import { ExecutionState } from "../../domain/value-objects/execution-state.js";
 import { EventEnvelope } from "../../domain/value-objects/event-envelope.js";
 import { Actor } from "../../domain/value-objects/actor.js";
 import { reduce } from "../../domain/domain-services/reducer.js";
