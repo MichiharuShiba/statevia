@@ -47,11 +47,11 @@ export function cmdCancelExecution(s: ExecutionState, actor: Actor, reason?: str
   if (["COMPLETED", "FAILED", "CANCELED"].includes(s.status)) return { events: [] as EventEnvelope[] };
 
   const events: EventEnvelope[] = [];
+  // Cancel リクエストのみを発行（確定は Orchestrator が非同期で処理）
   if (!s.cancelRequestedAt) {
     events.push(mkEvent(s.executionId, "EXECUTION_CANCEL_REQUESTED", actor, { reason: reason ?? null }, correlationId));
   }
-  // 最小実装では「即確定」
-  events.push(mkEvent(s.executionId, "EXECUTION_CANCELED", actor, { reason: reason ?? null }, correlationId));
+  // EXECUTION_CANCELED は Orchestrator が非同期で発行する
   return { events };
 }
 

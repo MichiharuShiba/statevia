@@ -1,5 +1,4 @@
 import express from "express";
-import { loadExecutionState } from "../../store/load.js";
 import { executeCommandTx } from "../transaction.js";
 import { idempotentHandler } from "../idempotent-handler.js";
 import { actorFromReq } from "../middleware.js";
@@ -25,9 +24,8 @@ nodesRouter.post("/executions/:executionId/nodes/:nodeId/create", async (req, re
     const body = createNodeSchema.parse(req.body);
 
     const result = await idempotentHandler(req, async () => {
-      const s0 = await loadExecutionState(executionId);
       const s1 = await executeCommandTx({
-        initialState: s0,
+        executionId,
         commandFn: (state) => cmdCreateNode(state, actorFromReq(req), nodeId, body.nodeType, req.header("X-Correlation-Id") ?? undefined)
       });
 
@@ -56,9 +54,8 @@ nodesRouter.post("/executions/:executionId/nodes/:nodeId/start", async (req, res
     const body = startNodeSchema.parse(req.body);
 
     const result = await idempotentHandler(req, async () => {
-      const s0 = await loadExecutionState(executionId);
       const s1 = await executeCommandTx({
-        initialState: s0,
+        executionId,
         commandFn: (state) => cmdStartNode(state, actorFromReq(req), nodeId, body.attempt, body.workerId, req.header("X-Correlation-Id") ?? undefined)
       });
 
@@ -87,9 +84,8 @@ nodesRouter.post("/executions/:executionId/nodes/:nodeId/wait", async (req, res,
     const body = putNodeWaitingSchema.parse(req.body);
 
     const result = await idempotentHandler(req, async () => {
-      const s0 = await loadExecutionState(executionId);
       const s1 = await executeCommandTx({
-        initialState: s0,
+        executionId,
         commandFn: (state) => cmdPutNodeWaiting(state, actorFromReq(req), nodeId, body.waitKey, body.prompt, req.header("X-Correlation-Id") ?? undefined)
       });
 
@@ -118,9 +114,8 @@ nodesRouter.post("/executions/:executionId/nodes/:nodeId/resume", async (req, re
     const body = resumeNodeSchema.parse(req.body);
 
     const result = await idempotentHandler(req, async () => {
-      const s0 = await loadExecutionState(executionId);
       const s1 = await executeCommandTx({
-        initialState: s0,
+        executionId,
         commandFn: (state) => cmdResumeNode(state, actorFromReq(req), nodeId, body.resumeKey, req.header("X-Correlation-Id") ?? undefined)
       });
 

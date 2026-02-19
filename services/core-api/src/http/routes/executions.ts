@@ -13,6 +13,7 @@ import {
   cmdCancelExecution,
   applyEvents
 } from "../../core/commands.js";
+import { convergeCancelAsync } from "../../core/orchestrator.js";
 import { ExecutionState } from "../../core/types.js";
 
 export const executionsRouter = express.Router();
@@ -91,9 +92,8 @@ executionsRouter.post("/:executionId/start", async (req, res, next) => {
     const { executionId } = req.params;
 
     const result = await idempotentHandler(req, async () => {
-      const s0 = await loadExecutionState(executionId);
       const s1 = await executeCommandTx({
-        initialState: s0,
+        executionId,
         commandFn: (state) => cmdStartExecution(state, actorFromReq(req), req.header("X-Correlation-Id") ?? undefined)
       });
 
@@ -122,10 +122,19 @@ executionsRouter.post("/:executionId/cancel", async (req, res, next) => {
     const body = cancelExecutionSchema.parse(req.body);
 
     const result = await idempotentHandler(req, async () => {
-      const s0 = await loadExecutionState(executionId);
+      const actor = actorFromReq(req);
+      const correlationId = req.header("X-Correlation-Id") ?? undefined;
+      
+      // Cancel リクエストを発行（即座に確定）
       const s1 = await executeCommandTx({
-        initialState: s0,
-        commandFn: (state) => cmdCancelExecution(state, actorFromReq(req), body?.reason, req.header("X-Correlation-Id") ?? undefined)
+        executionId,
+        commandFn: (state) => cmdCancelExecution(state, actor, body?.reason, correlationId)
+      });
+
+      // Cancel 収束を非同期で処理（レスポンスは即座に返す）
+      convergeCancelAsync(executionId, actor, body?.reason, correlationId).catch((err) => {
+        // エラーログを出力（本番環境では適切なロギングシステムを使用）
+        console.error(`Failed to converge cancel for execution ${executionId}:`, err);
       });
 
       return {
@@ -134,7 +143,7 @@ executionsRouter.post("/:executionId/cancel", async (req, res, next) => {
           executionId,
           command: "CancelExecution",
           accepted: true,
-          correlationId: req.header("X-Correlation-Id") ?? null,
+          correlationId: correlationId ?? null,
           idempotencyKey: req.header("X-Idempotency-Key")!
         }
       };
