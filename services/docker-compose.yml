@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: core
+      POSTGRES_PASSWORD: core
+      POSTGRES_DB: core
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./core-api/sql:/docker-entrypoint-initdb.d:ro
+
+  core-api:
+    build:
+      context: ./core-api
+    environment:
+      PORT: "8080"
+      DATABASE_URL: "postgres://core:core@postgres:5432/core"
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata: {}
