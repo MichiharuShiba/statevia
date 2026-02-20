@@ -1,0 +1,37 @@
+## .NET / C# (core 配下用)
+## リポジトリルートの .gitignore と重複するが、core 単体で clone した場合に備える
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# Visual Studio
+.vs/
+
+# Sonar / IDE
+.sonarqube/
+.sonarlint/
+sonar/
+.vscode/
+
+# MSBuild / Test
+*.binlog
+[Tt]est[Rr]esult*/
+TestResult.xml
+nunit-*.xml
+coverage/
