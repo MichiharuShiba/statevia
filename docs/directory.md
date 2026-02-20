@@ -1,11 +1,10 @@
 # ディレクトリ構成
 
 ```txt
-statevia-engine/
+statevia/
 ├─ README.md
 ├─ LICENSE
-├─ statevia.sln
-├─ .gitignore
+├─ .gitignore                    # リポジトリルート（.NET / 共通）
 ├─ .editorconfig
 ├─ .github/ (未作成)
 │  ├─ ISSUE_TEMPLATE.md
@@ -24,8 +23,13 @@ statevia-engine/
 │  ├─ ui-visual-spec.md
 │  └─ directory.md
 │
-├─ src/
-│  ├─ Statevia.Core/
+├─ core/                         # C# ワークフローエンジン（.NET）
+│  ├─ statevia.sln              # .NET ソリューション
+│  ├─ .gitignore                # core 配下用 .NET
+│  ├─ .editorconfig
+│  ├─ Directory.Build.props
+│  │
+│  ├─ Statevia.Core/            # エンジンコア
 │  │  ├─ Statevia.Core.csproj
 │  │  ├─ Engine/
 │  │  │  ├─ WorkflowEngine.cs
@@ -47,8 +51,6 @@ statevia-engine/
 │  │  │  └─ ExecutionLimiter.cs
 │  │  │
 │  │  ├─ Execution/
-│  │  │  ├─ StateExecution.cs
-│  │  │  ├─ IStateExecutor.cs
 │  │  │  └─ DefaultStateExecutor.cs
 │  │  │
 │  │  ├─ Join/
@@ -83,19 +85,11 @@ statevia-engine/
 │  │     ├─ WorkflowSnapshot.cs
 │  │     └─ Unit.cs
 │  │
-│  └─ Statevia.Cli/
-│     ├─ Statevia.Cli.csproj
-│     └─ Program.cs
-│
-├─ samples/
-│  └─ hello-statevia/
-│     ├─ hello-statevia.csproj
-│     ├─ hello.yaml
-│     ├─ Program.cs
-│     └─ README.md
-│
-└─ tests/
-│  ├─ Statevia.Core.Tests/
+│  ├─ Statevia.Cli/             # CLI
+│  │  ├─ Statevia.Cli.csproj
+│  │  └─ Program.cs
+│  │
+│  ├─ Statevia.Core.Tests/       # コア単体テスト
 │  │  ├─ Statevia.Core.Tests.csproj
 │  │  ├─ Abstractions/
 │  │  │  └─ UnitTests.cs
@@ -121,14 +115,23 @@ statevia-engine/
 │  │  └─ ExecutionGraph/
 │  │     └─ ExecutionGraphTests.cs
 │  │
-│  └─ Statevia.Cli.Tests/
-│     ├─ Statevia.Cli.Tests.csproj
-│     └─ ProgramTests.cs
+│  ├─ Statevia.Cli.Tests/        # CLI 単体テスト
+│  │  ├─ Statevia.Cli.Tests.csproj
+│  │  └─ ProgramTests.cs
+│  │
+│  └─ samples/                   # サンプル
+│     └─ hello-statevia/
+│        ├─ hello-statevia.csproj
+│        ├─ hello.yaml
+│        ├─ Program.cs
+│        └─ README.md
 │
-├─ docker-compose.yml
-├─ .env.example
-└─ services/
-   └─ core-api/
+└─ services/                     # Node/TypeScript スタック（独立）
+   ├─ .gitignore                 # services 共通（Node 用）
+   ├─ docker-compose.yml         # postgres + core-api
+   └─ core-api/                  # Express API（Execution/Node の HTTP API、DDD 構成）
+      ├─ .gitignore              # core-api 配下用 Node
+      ├─ .env.example
       ├─ Dockerfile
       ├─ package.json
       ├─ tsconfig.json
