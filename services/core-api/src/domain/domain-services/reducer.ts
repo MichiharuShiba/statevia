@@ -27,6 +27,8 @@ function chooseExecStatus(current: ExecutionStatus, candidate: ExecutionStatus):
 }
 
 function chooseNodeStatus(current: NodeStatus, candidate: NodeStatus): NodeStatus {
+  // WAITING <-> RUNNING is a valid cycle; allow resume to move back to RUNNING.
+  if (current === "WAITING" && candidate === "RUNNING") return "RUNNING";
   return nodeRank[candidate] > nodeRank[current] ? candidate : current;
 }
 
