@@ -38,7 +38,11 @@ statevia は以下の思想をベースに設計されています。
 
 - docs/design-philosophy.md
 
----
+## 📸 UI スクリーンショット
+
+### Graph View（Fork / Join / WAIT / Resume）
+
+## ![Graph View](docs/images/execution-graph-example.png)
 
 ## アーキテクチャ概要
 
@@ -81,23 +85,18 @@ var graph = engine.ExecutionGraph;
 ## 仕様ドキュメント
 
 - Definition
-
   - docs/definition-spec.md
 
 - FSM
-
   - docs/fsm-spec.md
 
 - Fork / Join
-
   - docs/fork-join-spec.md
 
 - Wait / Cancel
-
   - docs/wait-cancel-spec.md
 
 - ExecutionGraph
-
   - docs/execution-graph-spec.md
 
 ---
