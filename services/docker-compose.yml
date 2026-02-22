@@ -22,5 +22,17 @@ services:
     ports:
       - "8080:8080"
 
+  ui:
+    build:
+      context: ./ui
+    environment:
+      # Nextサーバが core-api にサーバー側で接続するURL（Docker内部DNS）
+      CORE_API_INTERNAL_BASE: "http://core-api:8080"
+      # ブラウザ側に露出する値は使わない（CORS回避でプロキシするため）
+    ports:
+      - "3000:3000"
+    depends_on:
+      - core-api
+
 volumes:
   pgdata: {}
