@@ -43,13 +43,15 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
   const appearance = getNodeAppearance(data.nodeType);
   const isRunning = data.status === "RUNNING";
   const isFork = appearance.label === "FORK";
+  const isJoin = appearance.label === "JOIN";
   const wrapClass = `${appearance.shapeClass} relative border-2 p-3 shadow-sm ${style.borderClass} ${style.bgClass} ${isRunning ? "opacity-80 text-zinc-600" : ""} ${data.selected ? "outline outline-2 outline-zinc-400" : ""}`;
 
-  const content = (
+  return (
     <div className={wrapClass} onClick={() => data.onSelect(data.nodeId)}>
-      {isFork && <div className="absolute inset-x-0 top-0 h-6 rounded-t-2xl bg-zinc-900/10" />}
+      {isFork && <div className="absolute inset-x-0 top-0 h-3 rounded-t-2xl bg-zinc-900/10" />}
+      {isJoin && <div className="absolute inset-x-0 bottom-0 h-3 rounded-b-2xl bg-zinc-900/10" />}
       <Handle type="target" position={Position.Left} className="h-2 w-2 border-zinc-300 bg-zinc-200" />
-      <div className={`flex items-center justify-between gap-2 text-xs ${isFork ? "pt-1.5" : ""}`}>
+      <div className={`flex items-center justify-between gap-2 text-xs ${isFork ? "pt-1.5" : ""} ${isJoin ? "pb-1.5" : ""}`}>
         <span>{appearance.icon}</span>
         <span className="font-semibold">{appearance.label}</span>
         <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${style.badgeClass}`}>{data.status}</span>
@@ -76,14 +78,6 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
         </div>
       )}
       <Handle type="source" position={Position.Right} className="h-2 w-2 border-zinc-300 bg-zinc-200" />
-    </div>
-  );
-
-  if (!appearance.diamond) return content;
-  return (
-    <div className="relative h-full w-full p-3" onClick={() => data.onSelect(data.nodeId)}>
-      <div className="absolute inset-2 -z-10 rotate-45 rounded-xl border border-zinc-300 bg-white" />
-      <div className="-rotate-0">{content}</div>
     </div>
   );
 }

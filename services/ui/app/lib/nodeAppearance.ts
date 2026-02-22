@@ -13,11 +13,11 @@ export function getNodeAppearance(nodeType: string): NodeAppearance {
   const normalized = normalizeNodeType(nodeType);
   switch (normalized) {
     case "START":
-      return { label: "START", icon: "▶", shapeClass: "rounded-full", diamond: false };
+      return { label: "START", icon: "▶", shapeClass: "rounded-none", diamond: false };
     case "SUCCESS":
     case "SUCCEEDED":
     case "COMPLETED":
-      return { label: "SUCCESS", icon: "✓", shapeClass: "rounded-full", diamond: false };
+      return { label: "SUCCESS", icon: "✓", shapeClass: "rounded-none", diamond: false };
     case "FAILED":
       return { label: "FAILED", icon: "⚠", shapeClass: "rounded-2xl", diamond: false };
     case "CANCELED":
