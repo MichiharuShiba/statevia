@@ -9,6 +9,7 @@ import { Toast, type ToastState } from "./components/Toast";
 import type { ViewMode } from "./components/ViewToggle";
 import { getGraphDefinition } from "./graphs/registry";
 import { apiGet, apiPost } from "./lib/api";
+import { applyExecutionStreamEvent, parseExecutionStreamEvent } from "./lib/executionStream";
 import { resolveGroupBounds } from "./lib/grouping";
 import { layoutGraph } from "./lib/graphLayout";
 import { mergeGraph } from "./lib/mergeGraph";
@@ -123,6 +124,31 @@ export default function Page() {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [graphFullscreen]);
+
+  useEffect(() => {
+    if (!execution?.executionId) return;
+
+    const stream = new EventSource(`/api/core/executions/${encodeURIComponent(execution.executionId)}/stream`);
+    const applyRawEvent = (raw: string) => {
+      const parsed = parseExecutionStreamEvent(raw);
+      if (!parsed) return;
+      setExecution((current) => (current ? applyExecutionStreamEvent(current, parsed) : current));
+    };
+
+    const onMessage = (event: MessageEvent<string>) => {
+      applyRawEvent(event.data);
+    };
+
+    stream.onmessage = onMessage;
+    stream.addEventListener("GraphUpdated", (event) => applyRawEvent((event as MessageEvent<string>).data));
+    stream.addEventListener("ExecutionStatusChanged", (event) => applyRawEvent((event as MessageEvent<string>).data));
+    stream.addEventListener("NodeCancelled", (event) => applyRawEvent((event as MessageEvent<string>).data));
+    stream.addEventListener("NodeFailed", (event) => applyRawEvent((event as MessageEvent<string>).data));
+
+    return () => {
+      stream.close();
+    };
+  }, [execution?.executionId]);
 
   async function loadExecution() {
     setLoading(true);
