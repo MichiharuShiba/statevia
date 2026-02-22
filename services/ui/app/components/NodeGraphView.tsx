@@ -42,14 +42,12 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
   const style = getStatusStyle(data.status);
   const appearance = getNodeAppearance(data.nodeType);
   const isRunning = data.status === "RUNNING";
-  const isFork = appearance.label === "FORK";
   const wrapClass = `${appearance.shapeClass} relative border-2 p-3 shadow-sm ${style.borderClass} ${style.bgClass} ${isRunning ? "opacity-80 text-zinc-600" : ""} ${data.selected ? "outline outline-2 outline-zinc-400" : ""}`;
 
   const content = (
     <div className={wrapClass} onClick={() => data.onSelect(data.nodeId)}>
-      {isFork && <div className="absolute inset-x-0 top-0 h-6 rounded-t-2xl bg-zinc-900/10" />}
       <Handle type="target" position={Position.Left} className="h-2 w-2 border-zinc-300 bg-zinc-200" />
-      <div className={`flex items-center justify-between gap-2 text-xs ${isFork ? "pt-1.5" : ""}`}>
+      <div className="flex items-center justify-between gap-2 text-xs">
         <span>{appearance.icon}</span>
         <span className="font-semibold">{appearance.label}</span>
         <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${style.badgeClass}`}>{data.status}</span>
