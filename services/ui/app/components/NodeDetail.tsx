@@ -9,12 +9,16 @@ type NodeDetailProps = {
   loading: boolean;
   onResume: () => void;
   resumeDisabledReason: string | null;
+  className?: string;
 };
 
-export function NodeDetail({ execution, node, loading, onResume, resumeDisabledReason }: NodeDetailProps) {
+export function NodeDetail({ execution, node, loading, onResume, resumeDisabledReason, className }: NodeDetailProps) {
+  const baseClassName = "rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm";
+  const asideClassName = className ? `${baseClassName} ${className}` : baseClassName;
+
   if (!execution) {
     return (
-      <aside className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <aside className={asideClassName}>
         <p className="text-sm text-zinc-600">Execution を読み込んでください。</p>
       </aside>
     );
@@ -22,7 +26,7 @@ export function NodeDetail({ execution, node, loading, onResume, resumeDisabledR
 
   if (!node) {
     return (
-      <aside className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <aside className={asideClassName}>
         <p className="text-sm text-zinc-600">Node を選択してください。</p>
       </aside>
     );
@@ -32,7 +36,7 @@ export function NodeDetail({ execution, node, loading, onResume, resumeDisabledR
   const canResume = !resumeDisabledReason;
 
   return (
-    <aside className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <aside className={asideClassName}>
       <h2 className="text-sm font-semibold">Node Detail</h2>
       <div className={`mt-3 rounded-xl border p-3 ${style.borderClass} ${style.bgClass}`}>
         <div className="flex items-center justify-between">

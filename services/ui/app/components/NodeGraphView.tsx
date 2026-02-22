@@ -103,6 +103,7 @@ type NodeGraphViewProps = {
   onSelectNode: (nodeId: string | null) => void;
   onResumeNode: (nodeId: string) => void;
   getResumeDisabledReason: (nodeId: string) => string | null;
+  heightClassName?: string;
 };
 
 export function NodeGraphView({
@@ -112,7 +113,8 @@ export function NodeGraphView({
   selectedNodeId,
   onSelectNode,
   onResumeNode,
-  getResumeDisabledReason
+  getResumeDisabledReason,
+  heightClassName
 }: NodeGraphViewProps) {
   const graphNodes = useMemo<Array<Node<ExecutionNodeData | GroupNodeData>>>(() => {
     const groupNodes: Array<Node<GroupNodeData>> = groups.map((group) => ({
@@ -160,8 +162,10 @@ export function NodeGraphView({
     [edges]
   );
 
+  const graphHeightClass = heightClassName ?? "h-[620px]";
+
   return (
-    <div className="h-[620px] rounded-2xl border border-zinc-200 bg-white shadow-sm">
+    <div className={`${graphHeightClass} overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm`}>
       <ReactFlow
         nodes={graphNodes}
         edges={graphEdges}

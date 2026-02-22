@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ExecutionHeader } from "./components/ExecutionHeader";
 import { NodeDetail } from "./components/NodeDetail";
 import { NodeGraphView } from "./components/NodeGraphView";
@@ -52,6 +52,7 @@ export default function Page() {
   const [execution, setExecution] = useState<ExecutionDTO | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [graphFullscreen, setGraphFullscreen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
 
@@ -97,6 +98,31 @@ export default function Page() {
     if (!selectedNodeId) return null;
     return getNodeWithFallback(selectedNodeId);
   }, [selectedNodeId, execution, graphData]);
+
+  useEffect(() => {
+    if (viewMode !== "graph" || !execution) {
+      setGraphFullscreen(false);
+    }
+  }, [viewMode, execution]);
+
+  useEffect(() => {
+    if (!graphFullscreen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setGraphFullscreen(false);
+      }
+    };
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [graphFullscreen]);
 
   async function loadExecution() {
     setLoading(true);
@@ -149,82 +175,107 @@ export default function Page() {
   }
 
   const selectedResumeDisabledReason = getResumeDisabledReason(execution, selectedNode);
+  const showExecutionPanels = !!execution;
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Execution UI</h1>
-        <a className="text-xs text-zinc-600 hover:underline" href="/health">
-          health
-        </a>
-      </header>
+    <div className={graphFullscreen ? "" : "space-y-4"}>
+      {!graphFullscreen && (
+        <>
+          <header className="flex items-center justify-between">
+            <h1 className="text-xl font-bold">Execution UI</h1>
+            <a className="text-xs text-zinc-600 hover:underline" href="/health">
+              health
+            </a>
+          </header>
 
-      <Toast toast={toast} onClose={() => setToast(null)} />
+          <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <ExecutionHeader
-        executionId={executionId}
-        onExecutionIdChange={setExecutionId}
-        onLoad={loadExecution}
-        onCancel={cancelExecution}
-        loading={loading}
-        canCancel={canCancel}
-        execution={execution}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-      />
-
-      {execution?.cancelRequestedAt && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
-          Cancel要求済みのため、Resumeなど進行系操作はできません
-        </div>
-      )}
-
-      {terminal && (
-        <div className="rounded-xl border border-zinc-300 bg-zinc-100 px-3 py-2 text-xs text-zinc-800">Executionは終了しています</div>
-      )}
-
-      {execution && (
-        <main className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-          <section>
-            {viewMode === "list" ? (
-              <NodeListView
-                nodes={execution.nodes}
-                selectedNodeId={selectedNodeId}
-                onSelectNode={(nodeId) => setSelectedNodeId(nodeId)}
-              />
-            ) : (
-              <div className="space-y-2">
-                {graphData && !graphData.definitionBased && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                    graphId: {graphData.graphId} の定義が未登録のため、仮エッジ表示です。
-                  </div>
-                )}
-                {graphData && (
-                  <NodeGraphView
-                    nodes={graphData.nodes}
-                    edges={graphData.edges}
-                    groups={graphData.groups}
-                    selectedNodeId={selectedNodeId}
-                    onSelectNode={setSelectedNodeId}
-                    onResumeNode={(nodeId) => resumeSelectedNode(nodeId)}
-                    getResumeDisabledReason={(nodeId) => {
-                      const node = getNodeWithFallback(nodeId);
-                      return getResumeDisabledReason(execution, node);
-                    }}
-                  />
-                )}
-              </div>
-            )}
-          </section>
-
-          <NodeDetail
-            execution={execution}
-            node={selectedNode}
+          <ExecutionHeader
+            executionId={executionId}
+            onExecutionIdChange={setExecutionId}
+            onLoad={loadExecution}
+            onCancel={cancelExecution}
             loading={loading}
-            onResume={() => resumeSelectedNode()}
-            resumeDisabledReason={selectedResumeDisabledReason}
+            canCancel={canCancel}
+            execution={execution}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
           />
-        </main>
+
+          {execution?.cancelRequestedAt && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
+              Cancel要求済みのため、Resumeなど進行系操作はできません
+            </div>
+          )}
+
+          {terminal && (
+            <div className="rounded-xl border border-zinc-300 bg-zinc-100 px-3 py-2 text-xs text-zinc-800">
+              Executionは終了しています
+            </div>
+          )}
+        </>
+      )}
+
+      {showExecutionPanels && (
+        <div className={graphFullscreen ? "fixed inset-0 z-50 bg-zinc-50 p-4" : ""}>
+          <main
+            className={
+              graphFullscreen
+                ? "mx-auto grid h-full max-w-[1600px] gap-4 lg:grid-cols-[minmax(0,1.8fr)_380px]"
+                : "grid gap-4 lg:grid-cols-[1.6fr_1fr]"
+            }
+          >
+            <section className={graphFullscreen ? "min-h-0" : ""}>
+              {viewMode === "list" ? (
+                <NodeListView
+                  nodes={execution.nodes}
+                  selectedNodeId={selectedNodeId}
+                  onSelectNode={(nodeId) => setSelectedNodeId(nodeId)}
+                />
+              ) : (
+                <div className={`space-y-2 ${graphFullscreen ? "flex h-full min-h-0 flex-col" : ""}`}>
+                  <div className="flex justify-end">
+                    <button
+                      className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
+                      onClick={() => setGraphFullscreen((current) => !current)}
+                    >
+                      {graphFullscreen ? "全画面終了 (Esc)" : "全画面表示"}
+                    </button>
+                  </div>
+                  {graphData && !graphData.definitionBased && !graphFullscreen && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                      graphId: {graphData.graphId} の定義が未登録のため、仮エッジ表示です。
+                    </div>
+                  )}
+                  {graphData && (
+                    <NodeGraphView
+                      nodes={graphData.nodes}
+                      edges={graphData.edges}
+                      groups={graphData.groups}
+                      selectedNodeId={selectedNodeId}
+                      onSelectNode={setSelectedNodeId}
+                      onResumeNode={(nodeId) => resumeSelectedNode(nodeId)}
+                      getResumeDisabledReason={(nodeId) => {
+                        const node = getNodeWithFallback(nodeId);
+                        return getResumeDisabledReason(execution, node);
+                      }}
+                      heightClassName={graphFullscreen ? "h-full min-h-[360px]" : undefined}
+                    />
+                  )}
+                </div>
+              )}
+            </section>
+
+            <NodeDetail
+              execution={execution}
+              node={selectedNode}
+              loading={loading}
+              onResume={() => resumeSelectedNode()}
+              resumeDisabledReason={selectedResumeDisabledReason}
+              className={graphFullscreen ? "h-full min-h-0 overflow-auto" : undefined}
+            />
+          </main>
+        </div>
       )}
     </div>
   );
