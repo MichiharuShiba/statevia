@@ -58,45 +58,26 @@ export default function Page() {
   const terminal = execution ? isTerminalExecution(execution.status) : false;
   const canCancel = !!execution && !terminal;
 
+  const selectedNode = useMemo(() => {
+    if (!execution || !selectedNodeId) return null;
+    return execution.nodes.find((node) => node.nodeId === selectedNodeId) ?? null;
+  }, [execution, selectedNodeId]);
+
   const graphDefinition = execution ? getGraphDefinition(execution.graphId) : null;
 
   const graphData = useMemo(() => {
     if (!execution) return null;
     const merged = mergeGraph(execution, graphDefinition);
     const positioned = layoutGraph(merged.nodes, merged.edges.map((edge) => ({ ...edge })), merged.layoutHints);
-    const groups = resolveGroupBounds(positioned.nodes, positioned.edges, merged.groups, merged.layoutHints);
+    const groups = resolveGroupBounds(positioned.nodes, merged.groups, merged.layoutHints);
     return {
       graphId: execution.graphId,
       definitionBased: merged.isDefinitionBased,
-      mergedNodes: merged.nodes,
       nodes: positioned.nodes,
       edges: positioned.edges,
       groups
     };
   }, [execution, graphDefinition]);
-
-  const getNodeWithFallback = (nodeId: string): ExecutionNodeDTO | null => {
-    if (!execution) return null;
-    const runtimeNode = execution.nodes.find((node) => node.nodeId === nodeId);
-    if (runtimeNode) return runtimeNode;
-
-    const mergedNode = graphData?.mergedNodes.find((node) => node.nodeId === nodeId);
-    if (!mergedNode) return null;
-    return {
-      nodeId: mergedNode.nodeId,
-      nodeType: mergedNode.nodeType,
-      status: mergedNode.status,
-      attempt: mergedNode.attempt,
-      workerId: null,
-      waitKey: mergedNode.waitKey,
-      canceledByExecution: mergedNode.canceledByExecution
-    };
-  };
-
-  const selectedNode = useMemo(() => {
-    if (!selectedNodeId) return null;
-    return getNodeWithFallback(selectedNodeId);
-  }, [selectedNodeId, execution, graphData]);
 
   async function loadExecution() {
     setLoading(true);
@@ -208,7 +189,7 @@ export default function Page() {
                     onSelectNode={setSelectedNodeId}
                     onResumeNode={(nodeId) => resumeSelectedNode(nodeId)}
                     getResumeDisabledReason={(nodeId) => {
-                      const node = getNodeWithFallback(nodeId);
+                      const node = execution.nodes.find((item) => item.nodeId === nodeId) ?? null;
                       return getResumeDisabledReason(execution, node);
                     }}
                   />
