@@ -5,29 +5,9 @@
 import { pool } from "../../infrastructure/persistence/db.js";
 import { ExecutionRepository } from "../../infrastructure/persistence/repositories/execution-repository.js";
 import { EventStore } from "../../infrastructure/persistence/repositories/event-store.js";
-import { EventEnvelope } from "../../domain/value-objects/event-envelope.js";
 import { Actor } from "../../domain/value-objects/actor.js";
 import { reduce } from "../../domain/domain-services/reducer.js";
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function mkEvent(executionId: string, type: string, actor: Actor, payload: any, correlationId?: string): EventEnvelope {
-  return {
-    eventId: crypto.randomUUID(),
-    executionId,
-    type,
-    occurredAt: nowIso(),
-    actor,
-    correlationId,
-    schemaVersion: 1,
-    payload
-  };
-}
-
-// Node 20+ なら global crypto がある
-declare const crypto: { randomUUID(): string };
+import { mkEvent } from "../commands/event-factory.js";
 
 /**
  * Cancel 収束を非同期で処理する Orchestrator

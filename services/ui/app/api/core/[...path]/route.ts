@@ -14,7 +14,7 @@ function joinUrl(parts: string[]) {
 async function forward(req: NextRequest, method: string, pathParts: string[]) {
   const url = joinUrl(pathParts);
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    Accept: req.headers.get("accept") ?? "application/json",
     "X-Idempotency-Key": req.headers.get("x-idempotency-key") ?? crypto.randomUUID(),
     "X-Correlation-Id": req.headers.get("x-correlation-id") ?? crypto.randomUUID(),
     "X-Actor-Kind": req.headers.get("x-actor-kind") ?? "user",
@@ -23,12 +23,25 @@ async function forward(req: NextRequest, method: string, pathParts: string[]) {
 
   let body: string | undefined = undefined;
   if (method !== "GET") {
+    headers["Content-Type"] = "application/json";
     const text = await req.text();
     body = text && text.length > 0 ? text : "{}";
   }
 
   const r = await fetch(url, { method, headers, body, cache: "no-store" });
   const contentType = r.headers.get("content-type") ?? "application/json";
+
+  if (contentType.includes("text/event-stream") && r.body) {
+    return new NextResponse(r.body, {
+      status: r.status,
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive"
+      }
+    });
+  }
+
   const outText = await r.text();
 
   return new NextResponse(outText, {

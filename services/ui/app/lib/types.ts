@@ -38,3 +38,60 @@ export type ApiError = {
     details?: Record<string, unknown>;
   };
 };
+
+export type GraphPatchNode = {
+  nodeId: string;
+  status?: NodeStatus;
+  attempt?: number;
+  waitKey?: string | null;
+  canceledByExecution?: boolean;
+};
+
+export type GraphUpdatedEvent = {
+  type: "GraphUpdated";
+  executionId: string;
+  patch: {
+    nodes?: GraphPatchNode[];
+  };
+  at?: string;
+};
+
+export type ExecutionStatusChangedEvent = {
+  type: "ExecutionStatusChanged";
+  executionId: string;
+  from?: string;
+  to: string;
+  reason?: string;
+  at?: string;
+};
+
+export type NodeCancelledEvent = {
+  type: "NodeCancelled";
+  executionId: string;
+  nodeId: string;
+  cancel?: {
+    reason?: string;
+    cause?: {
+      message?: string;
+      at?: string;
+    };
+  };
+  at?: string;
+};
+
+export type NodeFailedEvent = {
+  type: "NodeFailed";
+  executionId: string;
+  nodeId: string;
+  error?: {
+    message?: string;
+    at?: string;
+  };
+  at?: string;
+};
+
+export type ExecutionStreamEvent =
+  | GraphUpdatedEvent
+  | ExecutionStatusChangedEvent
+  | NodeCancelledEvent
+  | NodeFailedEvent;

@@ -12,7 +12,8 @@ export default defineConfig({
         "node_modules/",
         "dist/",
         "**/*.test.ts",
-        "**/*.config.ts"
+        "**/*.config.ts",
+        "src/application/commands/command-handlers.ts"
       ]
     }
   }

@@ -2,17 +2,19 @@
  * Executions HTTP Routes
  */
 import express from "express";
-import { ExecutionRepository } from "../../../infrastructure/persistence/repositories/execution-repository.js";
 import { idempotentHandler } from "../idempotent-handler.js";
 import { actorFromReq } from "../middleware.js";
+import { notFound } from "../errors.js";
 import { createExecutionSchema, cancelExecutionSchema } from "../../dto/validators.js";
 import { createExecutionUseCase } from "../../../application/use-cases/create-execution-use-case.js";
+import { getExecutionUseCase } from "../../../application/use-cases/get-execution-use-case.js";
 import { executeCommandUseCase } from "../../../application/use-cases/execute-command-use-case.js";
 import { convergeCancelAsync } from "../../../application/services/orchestrator.js";
 import {
   cmdStartExecution,
   cmdCancelExecution
 } from "../../../application/commands/command-handlers.js";
+import { streamExecutionEvents } from "../stream-execution-handler.js";
 
 export const executionsRouter = express.Router();
 
@@ -117,7 +119,8 @@ executionsRouter.post("/:executionId/cancel", async (req, res, next) => {
 // Get Execution
 executionsRouter.get("/:executionId", async (req, res, next) => {
   try {
-    const s = await ExecutionRepository.load(req.params.executionId);
+    const s = await getExecutionUseCase(req.params.executionId);
+    if (!s) throw notFound("Execution not found", { executionId: req.params.executionId });
     res.json({
       executionId: s.executionId,
       status: s.status,
@@ -136,6 +139,18 @@ executionsRouter.get("/:executionId", async (req, res, next) => {
         canceledByExecution: n.canceledByExecution ?? false
       }))
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Stream Execution Events (SSE)
+executionsRouter.get("/:executionId/stream", async (req, res, next) => {
+  try {
+    const { executionId } = req.params;
+    const state = await getExecutionUseCase(executionId);
+    if (!state) throw notFound("Execution not found", { executionId });
+    await streamExecutionEvents(executionId, res, req);
   } catch (e) {
     next(e);
   }

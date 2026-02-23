@@ -6,32 +6,44 @@ import { PoolClient } from "pg";
 import { pool } from "../db.js";
 import { ExecutionState } from "../../../domain/value-objects/execution-state.js";
 import { Node as NodeEntity } from "../../../domain/entities/node.js";
-import { notFound } from "../../../presentation/http/errors.js";
+import { DomainError } from "../../../domain/errors.js";
 
 export class ExecutionRepository {
   /**
-   * ExecutionState をロード（通常）
+   * ExecutionState をロード（参照用・ロックなし）。存在しなければ null。
    */
-  static async load(executionId: string): Promise<ExecutionState> {
+  static async loadOptional(executionId: string): Promise<ExecutionState | null> {
     const client = await pool.connect();
     try {
-      return await this.loadWithLock(client, executionId);
+      const state = await this.loadInternal(client, executionId, false);
+      return state;
     } finally {
       client.release();
     }
   }
 
   /**
-   * ExecutionState をロード（FOR UPDATE ロック付き）
+   * ExecutionState をロード（FOR UPDATE ロック付き）。存在しなければ DomainError NOT_FOUND。
    */
   static async loadWithLock(client: PoolClient, executionId: string): Promise<ExecutionState> {
+    const state = await this.loadInternal(client, executionId, true);
+    if (!state) throw new DomainError("NOT_FOUND", "Execution not found", { executionId });
+    return state;
+  }
+
+  private static async loadInternal(
+    client: PoolClient,
+    executionId: string,
+    forUpdate: boolean
+  ): Promise<ExecutionState | null> {
+    const forUpdateClause = forUpdate ? " FOR UPDATE" : "";
     const ex = await client.query(
       `select execution_id, graph_id, status,
               cancel_requested_at, canceled_at, failed_at, completed_at, version
-         from executions where execution_id = $1 FOR UPDATE`,
+         from executions where execution_id = $1${forUpdateClause}`,
       [executionId]
     );
-    if (ex.rowCount === 0) throw notFound("Execution not found", { executionId });
+    if (ex.rowCount === 0) return null;
 
     const nodes = await client.query(
       `select node_id, node_type, status, attempt, worker_id, wait_key, output, error, canceled_by_execution
