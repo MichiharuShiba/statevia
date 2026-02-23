@@ -1,7 +1,7 @@
 "use client";
 
-import type { ExecutionNodeDTO } from "../lib/types";
-import { getNodeSortWeight, getStatusStyle } from "../lib/statusStyle";
+import type { ExecutionNodeDTO } from "../../lib/types";
+import { getNodeSortWeight, getStatusStyle } from "../../lib/statusStyle";
 
 type NodeListViewProps = {
   nodes: ExecutionNodeDTO[];
@@ -54,4 +54,3 @@ export function NodeListView({ nodes, selectedNodeId, onSelectNode }: NodeListVi
     </div>
   );
 }
-

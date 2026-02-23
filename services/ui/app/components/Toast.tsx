@@ -1,9 +1,6 @@
 "use client";
 
-export type ToastState = {
-  tone: "error" | "info" | "success";
-  message: string;
-};
+import type { ToastState } from "../lib/errors";
 
 type ToastProps = {
   toast: ToastState | null;

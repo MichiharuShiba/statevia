@@ -1,7 +1,7 @@
 "use client";
 
-import type { ExecutionDTO, ExecutionNodeDTO } from "../lib/types";
-import { getStatusStyle } from "../lib/statusStyle";
+import type { ExecutionDTO, ExecutionNodeDTO } from "../../lib/types";
+import { getStatusStyle } from "../../lib/statusStyle";
 
 type NodeDetailProps = {
   execution: ExecutionDTO | null;
@@ -66,4 +66,3 @@ export function NodeDetail({ execution, node, loading, onResume, resumeDisabledR
     </aside>
   );
 }
-

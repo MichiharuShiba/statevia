@@ -1,9 +1,9 @@
 "use client";
 
-import type { ExecutionDTO } from "../lib/types";
-import { getStatusStyle } from "../lib/statusStyle";
-import type { ViewMode } from "./ViewToggle";
-import { ViewToggle } from "./ViewToggle";
+import type { ExecutionDTO } from "../../lib/types";
+import { getStatusStyle } from "../../lib/statusStyle";
+import type { ViewMode } from "../ViewToggle";
+import { ViewToggle } from "../ViewToggle";
 
 type ExecutionHeaderProps = {
   executionId: string;
@@ -85,4 +85,3 @@ export function ExecutionHeader({
     </section>
   );
 }
-

@@ -14,12 +14,12 @@ import ReactFlow, {
   type NodeTypes
 } from "reactflow";
 import "reactflow/dist/style.css";
-import type { GroupBounds } from "../lib/grouping";
-import type { PositionedEdge, PositionedNode } from "../lib/graphLayout";
-import type { MergedGraphNode } from "../lib/mergeGraph";
-import { getNodeAppearance } from "../lib/nodeAppearance";
-import { getStatusStyle } from "../lib/statusStyle";
-import type { NodeStatus } from "../lib/types";
+import type { GroupBounds } from "../../lib/grouping";
+import type { PositionedEdge, PositionedNode } from "../../lib/graphLayout";
+import type { MergedGraphNode } from "../../lib/mergeGraph";
+import { getNodeAppearance } from "../../lib/nodeAppearance";
+import { getStatusStyle } from "../../lib/statusStyle";
+import type { NodeStatus } from "../../lib/types";
 
 type ExecutionNodeData = {
   nodeId: string;
