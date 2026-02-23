@@ -9,7 +9,7 @@ type NodeListViewProps = {
   onSelectNode: (nodeId: string) => void;
 };
 
-export function NodeListView({ nodes, selectedNodeId, onSelectNode }: NodeListViewProps) {
+export function NodeListView({ nodes, selectedNodeId, onSelectNode }: Readonly<NodeListViewProps>) {
   const sorted = [...nodes].sort((a, b) => getNodeSortWeight(a.status) - getNodeSortWeight(b.status));
 
   return (

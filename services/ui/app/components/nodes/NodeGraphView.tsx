@@ -47,7 +47,11 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
   const wrapClass = `${appearance.shapeClass} relative border-2 p-3 shadow-sm ${style.borderClass} ${style.bgClass} ${isRunning ? "opacity-80 text-zinc-600" : ""} ${data.selected ? "outline outline-2 outline-zinc-400" : ""}`;
 
   return (
-    <div className={wrapClass} onClick={() => data.onSelect(data.nodeId)}>
+    <button
+      type="button"
+      className={`w-full text-left ${wrapClass}`}
+      onClick={() => data.onSelect(data.nodeId)}
+    >
       {isFork && <div className="absolute inset-x-0 top-0 h-3 rounded-t-2xl bg-zinc-900/10" />}
       {isJoin && <div className="absolute inset-x-0 bottom-0 h-3 rounded-b-2xl bg-zinc-900/10" />}
       <Handle type="target" position={Position.Left} className="h-2 w-2 border-zinc-300 bg-zinc-200" />
@@ -78,7 +82,7 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
         </div>
       )}
       <Handle type="source" position={Position.Right} className="h-2 w-2 border-zinc-300 bg-zinc-200" />
-    </div>
+    </button>
   );
 }
 
@@ -115,7 +119,7 @@ export function NodeGraphView({
   onResumeNode,
   getResumeDisabledReason,
   heightClassName
-}: NodeGraphViewProps) {
+}: Readonly<NodeGraphViewProps>) {
   const graphNodes = useMemo<Array<Node<ExecutionNodeData | GroupNodeData>>>(() => {
     const groupNodes: Array<Node<GroupNodeData>> = groups.map((group) => ({
       id: `group-${group.groupId}`,
@@ -135,7 +139,7 @@ export function NodeGraphView({
         nodeId: node.nodeId,
         label: node.nodeId,
         nodeType: node.nodeType,
-        status: node.status as NodeStatus,
+        status: node.status,
         attempt: node.attempt,
         waitKey: node.waitKey,
         selected: selectedNodeId === node.nodeId,
