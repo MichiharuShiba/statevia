@@ -48,6 +48,7 @@ coverage/
 .cursor/
 .vscode/
 sonar/
+docs/out
 
 # MSBuild Binary and Structured Log
 *.binlog
