@@ -1,9 +1,9 @@
 "use client";
 
-import type { ExecutionDTO } from "../lib/types";
-import { getStatusStyle } from "../lib/statusStyle";
-import type { ViewMode } from "./ViewToggle";
-import { ViewToggle } from "./ViewToggle";
+import type { ExecutionDTO } from "../../lib/types";
+import { getStatusStyle } from "../../lib/statusStyle";
+import type { ViewMode } from "../ViewToggle";
+import { ViewToggle } from "../ViewToggle";
 
 type ExecutionHeaderProps = {
   executionId: string;
@@ -27,7 +27,7 @@ export function ExecutionHeader({
   execution,
   viewMode,
   onViewModeChange
-}: ExecutionHeaderProps) {
+}: Readonly<ExecutionHeaderProps>) {
   const status = execution?.status;
   const style = status ? getStatusStyle(status) : null;
 
@@ -35,8 +35,11 @@ export function ExecutionHeader({
     <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex-1">
-          <label className="block text-xs font-semibold text-zinc-700">Execution ID</label>
+          <label htmlFor="execution-id-input" className="block text-xs font-semibold text-zinc-700">
+            Execution ID
+          </label>
           <input
+            id="execution-id-input"
             className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
             value={executionId}
             onChange={(event) => onExecutionIdChange(event.target.value)}
@@ -85,4 +88,3 @@ export function ExecutionHeader({
     </section>
   );
 }
-

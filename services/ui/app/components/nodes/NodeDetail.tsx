@@ -1,7 +1,7 @@
 "use client";
 
-import type { ExecutionDTO, ExecutionNodeDTO } from "../lib/types";
-import { getStatusStyle } from "../lib/statusStyle";
+import type { ExecutionDTO, ExecutionNodeDTO } from "../../lib/types";
+import { getStatusStyle } from "../../lib/statusStyle";
 
 type NodeDetailProps = {
   execution: ExecutionDTO | null;
@@ -12,7 +12,7 @@ type NodeDetailProps = {
   className?: string;
 };
 
-export function NodeDetail({ execution, node, loading, onResume, resumeDisabledReason, className }: NodeDetailProps) {
+export function NodeDetail({ execution, node, loading, onResume, resumeDisabledReason, className }: Readonly<NodeDetailProps>) {
   const baseClassName = "rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm";
   const asideClassName = className ? `${baseClassName} ${className}` : baseClassName;
 
@@ -66,4 +66,3 @@ export function NodeDetail({ execution, node, loading, onResume, resumeDisabledR
     </aside>
   );
 }
-

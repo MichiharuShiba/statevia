@@ -31,16 +31,19 @@ export class ExecutionRepository {
     return state;
   }
 
+  private static readonly SELECT_EXECUTION =
+    "select execution_id, graph_id, status, cancel_requested_at, canceled_at, failed_at, completed_at, version from executions where execution_id = $1";
+
+  private static readonly SELECT_EXECUTION_FOR_UPDATE =
+    "select execution_id, graph_id, status, cancel_requested_at, canceled_at, failed_at, completed_at, version from executions where execution_id = $1 FOR UPDATE";
+
   private static async loadInternal(
     client: PoolClient,
     executionId: string,
     forUpdate: boolean
   ): Promise<ExecutionState | null> {
-    const forUpdateClause = forUpdate ? " FOR UPDATE" : "";
     const ex = await client.query(
-      `select execution_id, graph_id, status,
-              cancel_requested_at, canceled_at, failed_at, completed_at, version
-         from executions where execution_id = $1${forUpdateClause}`,
+      forUpdate ? ExecutionRepository.SELECT_EXECUTION_FOR_UPDATE : ExecutionRepository.SELECT_EXECUTION,
       [executionId]
     );
     if (ex.rowCount === 0) return null;

@@ -1,24 +1,22 @@
 "use client";
 
-export type ToastState = {
-  tone: "error" | "info" | "success";
-  message: string;
-};
+import type { ToastState } from "../lib/errors";
 
 type ToastProps = {
   toast: ToastState | null;
   onClose: () => void;
 };
 
-export function Toast({ toast, onClose }: ToastProps) {
+function getToneClass(tone: ToastState["tone"]): string {
+  if (tone === "error") return "border-red-200 bg-red-50 text-red-900";
+  if (tone === "success") return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  return "border-zinc-200 bg-white text-zinc-900";
+}
+
+export function Toast({ toast, onClose }: Readonly<ToastProps>) {
   if (!toast) return null;
 
-  const toneClass =
-    toast.tone === "error"
-      ? "border-red-200 bg-red-50 text-red-900"
-      : toast.tone === "success"
-        ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-        : "border-zinc-200 bg-white text-zinc-900";
+  const toneClass = getToneClass(toast.tone);
 
   return (
     <div className={`rounded-2xl border px-4 py-3 text-sm ${toneClass}`}>

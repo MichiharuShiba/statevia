@@ -1,206 +1,77 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ExecutionHeader } from "./components/ExecutionHeader";
-import { NodeDetail } from "./components/NodeDetail";
-import { NodeGraphView } from "./components/NodeGraphView";
-import { NodeListView } from "./components/NodeListView";
-import { Toast, type ToastState } from "./components/Toast";
+import { ExecutionHeader } from "./components/execution/ExecutionHeader";
+import { ExecutionStatusBanner } from "./components/execution/ExecutionStatusBanner";
+import { NodeDetail } from "./components/nodes/NodeDetail";
+import { NodeGraphView } from "./components/nodes/NodeGraphView";
+import { NodeListView } from "./components/nodes/NodeListView";
+import { Toast } from "./components/Toast";
 import type { ViewMode } from "./components/ViewToggle";
 import { getGraphDefinition } from "./graphs/registry";
-import { apiGet, apiPost } from "./lib/api";
-import { applyExecutionStreamEvent, parseExecutionStreamEvent } from "./lib/executionStream";
-import { resolveGroupBounds } from "./lib/grouping";
-import { layoutGraph } from "./lib/graphLayout";
-import { mergeGraph } from "./lib/mergeGraph";
-import type { ApiError, CommandAccepted, ExecutionDTO, ExecutionNodeDTO } from "./lib/types";
-
-const TERMINAL_STATUSES = new Set(["COMPLETED", "FAILED", "CANCELED"]);
-
-function isTerminalExecution(status: ExecutionDTO["status"]): boolean {
-  return TERMINAL_STATUSES.has(status);
-}
-
-function toToastError(error: unknown): ToastState {
-  const apiError = error as ApiError;
-  const status = apiError?.status;
-  const code = apiError?.error?.code ?? "UNKNOWN";
-  const message = apiError?.error?.message ?? "Unknown error";
-
-  if (status === 409) {
-    return { tone: "error", message: `409 状態競合: ${code} - ${message}` };
-  }
-  if (status === 422) {
-    return { tone: "error", message: `422 入力不正: ${code} - ${message}` };
-  }
-  if (status === 500) {
-    return { tone: "error", message: `500 サーバーエラー: ${code} - ${message}` };
-  }
-  return { tone: "error", message: `${code}: ${message}` };
-}
-
-function getResumeDisabledReason(execution: ExecutionDTO | null, node: ExecutionNodeDTO | null): string | null {
-  if (!execution) return "Execution が未読込です";
-  if (!node) return "Node を選択してください";
-  if (isTerminalExecution(execution.status)) return "Executionは終了しています";
-  if (execution.cancelRequestedAt) return "Cancel要求済みのため、Resumeなど進行系操作はできません";
-  if (node.status !== "WAITING") return "WAITING 状態のノードのみ Resume できます";
-  return null;
-}
+import { useExecution } from "./features/execution/useExecution";
+import { getNodeWithFallback, useGraphData } from "./features/graph/useGraphData";
+import { getResumeDisabledReason, useNodeCommands } from "./features/nodes/useNodeCommands";
+import { toToastError, type ToastState } from "./lib/errors";
 
 export default function Page() {
   const [executionId, setExecutionId] = useState("ex-1");
-  const [execution, setExecution] = useState<ExecutionDTO | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [graphFullscreen, setGraphFullscreen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
 
-  const terminal = execution ? isTerminalExecution(execution.status) : false;
-  const canCancel = !!execution && !terminal;
+  const {
+    execution,
+    loading: executionLoading,
+    canCancel,
+    terminal,
+    loadExecution,
+    cancelExecution,
+    selectedNodeId,
+    setSelectedNodeId
+  } = useExecution(executionId, {
+    onError: (err) => setToast(toToastError(err)),
+    onCancelSuccess: () => setToast({ tone: "success", message: "CancelExecution accepted" })
+  });
 
   const graphDefinition = execution ? getGraphDefinition(execution.graphId) : null;
+  const graphData = useGraphData(execution, graphDefinition);
 
-  const graphData = useMemo(() => {
-    if (!execution) return null;
-    const merged = mergeGraph(execution, graphDefinition);
-    const positioned = layoutGraph(merged.nodes, merged.edges.map((edge) => ({ ...edge })), merged.layoutHints);
-    const groups = resolveGroupBounds(positioned.nodes, positioned.edges, merged.groups, merged.layoutHints);
-    return {
-      graphId: execution.graphId,
-      definitionBased: merged.isDefinitionBased,
-      mergedNodes: merged.nodes,
-      nodes: positioned.nodes,
-      edges: positioned.edges,
-      groups
-    };
-  }, [execution, graphDefinition]);
+  const { resumeNode, loading: nodeLoading } = useNodeCommands(execution, {
+    onSuccess: () => {
+      setToast({ tone: "success", message: "ResumeNode accepted" });
+      loadExecution();
+    },
+    onError: (err) => setToast(toToastError(err))
+  });
 
-  const getNodeWithFallback = (nodeId: string): ExecutionNodeDTO | null => {
-    if (!execution) return null;
-    const runtimeNode = execution.nodes.find((node) => node.nodeId === nodeId);
-    if (runtimeNode) return runtimeNode;
+  const loading = executionLoading || nodeLoading;
 
-    const mergedNode = graphData?.mergedNodes.find((node) => node.nodeId === nodeId);
-    if (!mergedNode) return null;
-    return {
-      nodeId: mergedNode.nodeId,
-      nodeType: mergedNode.nodeType,
-      status: mergedNode.status,
-      attempt: mergedNode.attempt,
-      workerId: null,
-      waitKey: mergedNode.waitKey,
-      canceledByExecution: mergedNode.canceledByExecution
-    };
-  };
+  const selectedNode = useMemo(
+    () => getNodeWithFallback(execution, graphData, selectedNodeId),
+    [execution, graphData, selectedNodeId]
+  );
 
-  const selectedNode = useMemo(() => {
-    if (!selectedNodeId) return null;
-    return getNodeWithFallback(selectedNodeId);
-  }, [selectedNodeId, execution, graphData]);
+  const selectedResumeDisabledReason = getResumeDisabledReason(execution, selectedNode);
 
   useEffect(() => {
-    if (viewMode !== "graph" || !execution) {
-      setGraphFullscreen(false);
-    }
+    if (viewMode !== "graph" || !execution) setGraphFullscreen(false);
   }, [viewMode, execution]);
 
   useEffect(() => {
     if (!graphFullscreen) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setGraphFullscreen(false);
-      }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setGraphFullscreen(false);
     };
-
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKeyDown);
-
+    globalThis.addEventListener("keydown", onKeyDown);
     return () => {
       document.body.style.overflow = originalOverflow;
-      window.removeEventListener("keydown", onKeyDown);
+      globalThis.removeEventListener("keydown", onKeyDown);
     };
   }, [graphFullscreen]);
 
-  useEffect(() => {
-    if (!execution?.executionId) return;
-
-    const stream = new EventSource(`/api/core/executions/${encodeURIComponent(execution.executionId)}/stream`);
-    const applyRawEvent = (raw: string) => {
-      const parsed = parseExecutionStreamEvent(raw);
-      if (!parsed) return;
-      setExecution((current) => (current ? applyExecutionStreamEvent(current, parsed) : current));
-    };
-
-    const onMessage = (event: MessageEvent<string>) => {
-      applyRawEvent(event.data);
-    };
-
-    stream.onmessage = onMessage;
-    stream.addEventListener("GraphUpdated", (event) => applyRawEvent((event as MessageEvent<string>).data));
-    stream.addEventListener("ExecutionStatusChanged", (event) => applyRawEvent((event as MessageEvent<string>).data));
-    stream.addEventListener("NodeCancelled", (event) => applyRawEvent((event as MessageEvent<string>).data));
-    stream.addEventListener("NodeFailed", (event) => applyRawEvent((event as MessageEvent<string>).data));
-
-    return () => {
-      stream.close();
-    };
-  }, [execution?.executionId]);
-
-  async function loadExecution() {
-    setLoading(true);
-    try {
-      const response = await apiGet<ExecutionDTO>(`/executions/${executionId}`);
-      setExecution(response);
-      if (!selectedNodeId || !response.nodes.some((n) => n.nodeId === selectedNodeId)) {
-        setSelectedNodeId(response.nodes[0]?.nodeId ?? null);
-      }
-    } catch (error) {
-      setExecution(null);
-      setSelectedNodeId(null);
-      setToast(toToastError(error));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function cancelExecution() {
-    if (!execution) return;
-    setLoading(true);
-    try {
-      const response = await apiPost<CommandAccepted>(`/executions/${execution.executionId}/cancel`, { reason: "ui" });
-      setToast({ tone: "success", message: `${response.command} accepted` });
-      await loadExecution();
-    } catch (error) {
-      setToast(toToastError(error));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function resumeSelectedNode(nodeId?: string) {
-    if (!execution) return;
-    const node = execution.nodes.find((item) => item.nodeId === (nodeId ?? selectedNode?.nodeId));
-    if (!node) return;
-    setLoading(true);
-    try {
-      const response = await apiPost<CommandAccepted>(
-        `/executions/${execution.executionId}/nodes/${node.nodeId}/resume`,
-        { resumeKey: node.waitKey ?? undefined }
-      );
-      setToast({ tone: "success", message: `${response.command} accepted` });
-      await loadExecution();
-    } catch (error) {
-      setToast(toToastError(error));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const selectedResumeDisabledReason = getResumeDisabledReason(execution, selectedNode);
   const showExecutionPanels = !!execution;
 
   return (
@@ -228,17 +99,7 @@ export default function Page() {
             onViewModeChange={setViewMode}
           />
 
-          {execution?.cancelRequestedAt && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
-              Cancel要求済みのため、Resumeなど進行系操作はできません
-            </div>
-          )}
-
-          {terminal && (
-            <div className="rounded-xl border border-zinc-300 bg-zinc-100 px-3 py-2 text-xs text-zinc-800">
-              Executionは終了しています
-            </div>
-          )}
+          <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequestedAt} terminal={terminal} />
         </>
       )}
 
@@ -256,14 +117,14 @@ export default function Page() {
                 <NodeListView
                   nodes={execution.nodes}
                   selectedNodeId={selectedNodeId}
-                  onSelectNode={(nodeId) => setSelectedNodeId(nodeId)}
+                  onSelectNode={(id) => setSelectedNodeId(id)}
                 />
               ) : (
                 <div className={`space-y-2 ${graphFullscreen ? "flex h-full min-h-0 flex-col" : ""}`}>
                   <div className="flex justify-end">
                     <button
                       className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
-                      onClick={() => setGraphFullscreen((current) => !current)}
+                      onClick={() => setGraphFullscreen((v) => !v)}
                     >
                       {graphFullscreen ? "全画面終了 (Esc)" : "全画面表示"}
                     </button>
@@ -280,9 +141,9 @@ export default function Page() {
                       groups={graphData.groups}
                       selectedNodeId={selectedNodeId}
                       onSelectNode={setSelectedNodeId}
-                      onResumeNode={(nodeId) => resumeSelectedNode(nodeId)}
+                      onResumeNode={(nodeId) => resumeNode(nodeId)}
                       getResumeDisabledReason={(nodeId) => {
-                        const node = getNodeWithFallback(nodeId);
+                        const node = getNodeWithFallback(execution, graphData, nodeId);
                         return getResumeDisabledReason(execution, node);
                       }}
                       heightClassName={graphFullscreen ? "h-full min-h-[360px]" : undefined}
@@ -296,7 +157,7 @@ export default function Page() {
               execution={execution}
               node={selectedNode}
               loading={loading}
-              onResume={() => resumeSelectedNode()}
+              onResume={() => selectedNodeId && resumeNode(selectedNodeId)}
               resumeDisabledReason={selectedResumeDisabledReason}
               className={graphFullscreen ? "h-full min-h-0 overflow-auto" : undefined}
             />

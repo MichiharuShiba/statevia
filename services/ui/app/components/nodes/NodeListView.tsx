@@ -1,7 +1,7 @@
 "use client";
 
-import type { ExecutionNodeDTO } from "../lib/types";
-import { getNodeSortWeight, getStatusStyle } from "../lib/statusStyle";
+import type { ExecutionNodeDTO } from "../../lib/types";
+import { getNodeSortWeight, getStatusStyle } from "../../lib/statusStyle";
 
 type NodeListViewProps = {
   nodes: ExecutionNodeDTO[];
@@ -9,7 +9,7 @@ type NodeListViewProps = {
   onSelectNode: (nodeId: string) => void;
 };
 
-export function NodeListView({ nodes, selectedNodeId, onSelectNode }: NodeListViewProps) {
+export function NodeListView({ nodes, selectedNodeId, onSelectNode }: Readonly<NodeListViewProps>) {
   const sorted = [...nodes].sort((a, b) => getNodeSortWeight(a.status) - getNodeSortWeight(b.status));
 
   return (
@@ -54,4 +54,3 @@ export function NodeListView({ nodes, selectedNodeId, onSelectNode }: NodeListVi
     </div>
   );
 }
-
