@@ -5,15 +5,14 @@ import ReactFlow, {
   Background,
   Controls,
   Handle,
-  MarkerType,
   MiniMap,
   Position,
-  type Edge,
   type Node,
   type NodeProps,
   type NodeTypes
 } from "reactflow";
 import "reactflow/dist/style.css";
+import { buildGraphEdges } from "../../lib/buildGraphEdges";
 import type { GroupBounds } from "../../lib/grouping";
 import type { PositionedEdge, PositionedNode } from "../../lib/graphLayout";
 import type { MergedGraphNode } from "../../lib/mergeGraph";
@@ -153,44 +152,7 @@ export function NodeGraphView({
     return [...groupNodes, ...executionNodes];
   }, [groups, nodes, onResumeNode, onSelectNode, getResumeDisabledReason, selectedNodeId]);
 
-  const graphEdges = useMemo<Array<Edge>>(() => {
-    return edges.map((edge) => {
-      const edgeType = edge.edgeType ?? "Next";
-      const base = {
-        id: edge.id,
-        source: edge.from,
-        target: edge.to,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
-        animated: false
-      };
-      if (edgeType === "Resume") {
-        return {
-          ...base,
-          style: { stroke: "#78716c", strokeWidth: 1.2, strokeDasharray: "8 4" },
-          label: edge.eventName ?? "Resume",
-          labelStyle: { fontSize: 10, fontWeight: 600 },
-          labelBgStyle: { fill: "#fafaf9" },
-          labelBgPadding: [4, 2] as [number, number],
-          labelBgBorderRadius: 4
-        };
-      }
-      if (edgeType === "Cancel") {
-        return {
-          ...base,
-          style: { stroke: "#b91c1c", strokeWidth: 2.5 },
-          label: "Cancel",
-          labelStyle: { fontSize: 10, fontWeight: 700, fill: "#b91c1c" },
-          labelBgStyle: { fill: "#fef2f2" },
-          labelBgPadding: [4, 2] as [number, number],
-          labelBgBorderRadius: 4
-        };
-      }
-      return {
-        ...base,
-        style: { stroke: "#d4d4d8", strokeWidth: 1.2 }
-      };
-    });
-  }, [edges]);
+  const graphEdges = useMemo(() => buildGraphEdges(edges), [edges]);
 
   const graphHeightClass = heightClassName ?? "h-[620px]";
 
