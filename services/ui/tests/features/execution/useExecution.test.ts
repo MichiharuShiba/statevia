@@ -29,6 +29,16 @@ describe("getReconnectDelayMs", () => {
     expect(getReconnectDelayMs(5, 1000, 30000)).toBe(30000);
     expect(getReconnectDelayMs(10, 1000, 30000)).toBe(30000);
   });
+
+  it("境界値: baseMs が 0 のとき 0 を返す", () => {
+    expect(getReconnectDelayMs(0, 0, 30000)).toBe(0);
+    expect(getReconnectDelayMs(3, 0, 30000)).toBe(0);
+  });
+
+  it("境界値: maxMs が 0 のとき常に 0 を返す", () => {
+    expect(getReconnectDelayMs(0, 1000, 0)).toBe(0);
+    expect(getReconnectDelayMs(2, 1000, 0)).toBe(0);
+  });
 });
 
 /** jsdom に EventSource がないため、全 useExecution テストでスタブする最小クラス */
@@ -131,6 +141,7 @@ describe("useExecution", () => {
       url: string;
       onopen: (() => void) | null;
       onerror: (() => void) | null;
+      onmessage: ((e: MessageEvent<string>) => void) | null;
       close: ReturnType<typeof vi.fn>;
     }> = [];
 
@@ -250,5 +261,216 @@ describe("useExecution", () => {
 
       vi.useRealTimers();
     });
+
+    it("ストリーム onmessage で有効な GraphUpdated を受信すると execution が更新される", async () => {
+      const { result } = renderHook(() => useExecution("ex-1"));
+
+      await act(async () => {
+        result.current.loadExecution();
+      });
+      await waitFor(() => expect(streamInstances.length).toBe(1));
+
+      const firstInstance = streamInstances[0];
+      const onmessage = firstInstance?.onmessage;
+      if (!onmessage) throw new Error("expected onmessage handler");
+      const graphUpdated = JSON.stringify({
+        type: "GraphUpdated",
+        executionId: "ex-1",
+        patch: { nodes: [{ nodeId: "n-1", status: "RUNNING" }] }
+      });
+
+      await act(async () => {
+        onmessage({ data: graphUpdated } as MessageEvent<string>);
+      });
+
+      expect(result.current.execution?.nodes[0]?.status).toBe("RUNNING");
+    });
+
+    it("ストリーム onmessage で無効な JSON のときは execution を更新しない", async () => {
+      const { result } = renderHook(() => useExecution("ex-1"));
+
+      await act(async () => {
+        result.current.loadExecution();
+      });
+      await waitFor(() => expect(streamInstances.length).toBe(1));
+
+      const firstInstance = streamInstances[0];
+      const onmessage = firstInstance?.onmessage;
+      if (!onmessage) throw new Error("expected onmessage handler");
+      const beforeStatus = result.current.execution?.nodes[0]?.status;
+
+      act(() => {
+        onmessage({ data: "" } as MessageEvent<string>);
+      });
+      act(() => {
+        onmessage({ data: "not json" } as MessageEvent<string>);
+      });
+
+      expect(result.current.execution?.nodes[0]?.status).toBe(beforeStatus);
+    });
+
+    it("再接続後の refreshExecutionSnapshot が失敗してもストリームは維持される", async () => {
+      const { result } = renderHook(() => useExecution("ex-1"));
+
+      await act(async () => {
+        result.current.loadExecution();
+      });
+      await waitFor(() => expect(streamInstances.length).toBe(1));
+
+      const firstInstance = streamInstances[0];
+      if (!firstInstance) throw new Error("expected one stream instance");
+      act(() => {
+        firstInstance.onopen?.();
+      });
+      vi.useFakeTimers();
+      act(() => {
+        firstInstance.onerror?.();
+      });
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(streamInstances.length).toBe(2);
+      vi.useRealTimers();
+
+      vi.mocked(api.apiGet).mockRejectedValueOnce(new Error("Refresh failed"));
+      const secondInstance = streamInstances[1];
+      if (!secondInstance) throw new Error("expected second stream instance");
+      await act(async () => {
+        secondInstance.onopen?.();
+      });
+      expect(result.current.execution).not.toBeNull();
+    });
+
+    it("アンマウント後に onerror が呼ばれても disposed のため何もしない", async () => {
+      const { result, unmount } = renderHook(() => useExecution("ex-1"));
+
+      await act(async () => {
+        result.current.loadExecution();
+      });
+      await waitFor(() => expect(streamInstances.length).toBe(1));
+
+      const firstInstance = streamInstances[0];
+      if (!firstInstance) throw new Error("expected one stream instance");
+      const onerror = firstInstance.onerror;
+
+      unmount();
+      act(() => {
+        onerror?.();
+      });
+      expect(streamInstances.length).toBe(1);
+    });
+
+    it("2回目以降の onerror でも scheduleReconnect と clearReconnectTimer が正しく動く", async () => {
+      const { result } = renderHook(() => useExecution("ex-1"));
+
+      await act(async () => {
+        result.current.loadExecution();
+      });
+      await waitFor(() => expect(streamInstances.length).toBe(1));
+
+      vi.useFakeTimers();
+      const firstInstance = streamInstances[0];
+      if (!firstInstance) throw new Error("expected one stream instance");
+      act(() => {
+        firstInstance.onerror?.();
+      });
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(streamInstances.length).toBe(2);
+
+      const secondInstance = streamInstances[1];
+      if (!secondInstance) throw new Error("expected second stream instance");
+      act(() => {
+        secondInstance.onerror?.();
+      });
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(streamInstances.length).toBe(3);
+
+      vi.useRealTimers();
+    });
+  });
+
+  it("大量ノードで loadExecution 時 selectedNodeId は先頭ノードになる", async () => {
+    const manyNodes: ExecutionNodeDTO[] = Array.from({ length: 200 }, (_, i) => ({
+      nodeId: `n-${i}`,
+      nodeType: "TASK",
+      status: "IDLE",
+      attempt: 0,
+      workerId: null,
+      waitKey: null,
+      canceledByExecution: false
+    }));
+    vi.mocked(api.apiGet).mockResolvedValueOnce(execution(manyNodes));
+
+    const { result } = renderHook(() => useExecution("ex-1"));
+
+    await act(async () => {
+      result.current.loadExecution();
+    });
+
+    expect(result.current.execution?.nodes).toHaveLength(200);
+    expect(result.current.selectedNodeId).toBe("n-0");
+  });
+
+  it("execution が null のとき cancelExecution は何もしない", async () => {
+    const { result } = renderHook(() => useExecution("ex-1"));
+
+    await act(async () => {
+      result.current.cancelExecution();
+    });
+
+    expect(api.apiPost).not.toHaveBeenCalled();
+  });
+
+  it("applyExecutionSnapshot: nodes が空のとき selectedNodeId は null", async () => {
+    vi.mocked(api.apiGet).mockResolvedValueOnce(execution([]));
+
+    const { result } = renderHook(() => useExecution("ex-1"));
+
+    await act(async () => {
+      result.current.loadExecution();
+    });
+
+    expect(result.current.execution?.nodes).toHaveLength(0);
+    expect(result.current.selectedNodeId).toBeNull();
+  });
+
+  it("applyExecutionSnapshot: 現在の selectedNodeId が response に無いとき先頭ノードに切り替わる", async () => {
+    const first = execution([
+      { nodeId: "n-1", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false }
+    ]);
+    const second = execution([
+      { nodeId: "n-2", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
+      { nodeId: "n-3", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false }
+    ]);
+    vi.mocked(api.apiGet).mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+
+    const { result } = renderHook(() => useExecution("ex-1"));
+
+    await act(async () => {
+      result.current.loadExecution();
+    });
+    expect(result.current.selectedNodeId).toBe("n-1");
+
+    act(() => {
+      result.current.setSelectedNodeId("n-1");
+    });
+
+    await act(async () => {
+      result.current.loadExecution();
+    });
+    expect(result.current.selectedNodeId).toBe("n-2");
+  });
+
+  it("アンマウント時は clearReconnectTimer が timer 未設定でも安全に実行される", async () => {
+    const { result, unmount } = renderHook(() => useExecution("ex-1"));
+
+    await act(async () => {
+      result.current.loadExecution();
+    });
+    unmount();
   });
 });
