@@ -11,6 +11,36 @@ function joinUrl(parts: string[]) {
   return `${base()}/${p}`;
 }
 
+function authAndTenantHeaders(req: NextRequest, pathParts: string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  const authFromReq = req.headers.get("authorization");
+  const tenantFromReq = req.headers.get("x-tenant-id");
+  const tenantFromEnv = process.env.CORE_API_TENANT_ID;
+  const authFromEnv = process.env.CORE_API_AUTH_TOKEN;
+
+  if (authFromReq) {
+    out["Authorization"] = authFromReq;
+  } else if (authFromEnv) {
+    out["Authorization"] = authFromEnv.startsWith("Bearer ") ? authFromEnv : `Bearer ${authFromEnv}`;
+  }
+
+  if (tenantFromReq) {
+    out["X-Tenant-Id"] = tenantFromReq;
+  } else if (tenantFromEnv) {
+    out["X-Tenant-Id"] = tenantFromEnv;
+  }
+
+  const isStream = pathParts.at(-1) === "stream";
+  if (isStream) {
+    const tenantFromQuery = req.nextUrl.searchParams.get("tenantId");
+    if (tenantFromQuery && !out["X-Tenant-Id"]) {
+      out["X-Tenant-Id"] = tenantFromQuery;
+    }
+  }
+
+  return out;
+}
+
 async function forward(req: NextRequest, method: string, pathParts: string[]) {
   const url = joinUrl(pathParts);
   const headers: Record<string, string> = {
@@ -20,6 +50,10 @@ async function forward(req: NextRequest, method: string, pathParts: string[]) {
     "X-Actor-Kind": req.headers.get("x-actor-kind") ?? "user",
     "X-Actor-Id": req.headers.get("x-actor-id") ?? "ui"
   };
+
+  for (const [k, v] of Object.entries(authAndTenantHeaders(req, pathParts))) {
+    headers[k] = v;
+  }
 
   let body: string | undefined = undefined;
   if (method !== "GET") {

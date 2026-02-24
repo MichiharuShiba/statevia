@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { apiGet, apiPost } from "../../app/lib/api";
+import { apiGet, apiPost, getApiConfig, getApiHeaders } from "../../app/lib/api";
 
 describe("apiGet", () => {
   beforeEach(() => {
@@ -214,5 +214,61 @@ describe("api (境界値)", () => {
       "/api/core/test",
       expect.objectContaining({ body: "{}" })
     );
+  });
+});
+
+describe("getApiConfig / getApiHeaders", () => {
+  const origEnv = process.env;
+
+  afterEach(() => {
+    process.env = origEnv;
+  });
+
+  it("getApiConfig は NEXT_PUBLIC_TENANT_ID と NEXT_PUBLIC_AUTH_TOKEN を返す", () => {
+    // Arrange
+    process.env = { ...origEnv, NEXT_PUBLIC_TENANT_ID: "t1", NEXT_PUBLIC_AUTH_TOKEN: "tok1" };
+
+    // Act
+    const result = getApiConfig();
+
+    // Assert
+    expect(result).toEqual({ tenantId: "t1", authToken: "tok1" });
+  });
+
+  it("getApiHeaders は tenantId のみのとき X-Tenant-Id だけ返す", () => {
+    // Arrange
+    process.env = { ...origEnv, NEXT_PUBLIC_TENANT_ID: "t2", NEXT_PUBLIC_AUTH_TOKEN: "" };
+
+    // Act
+    const result = getApiHeaders();
+
+    // Assert
+    expect(result).toEqual({ "X-Tenant-Id": "t2" });
+  });
+
+  it("getApiHeaders は authToken があるとき Authorization Bearer を返す", () => {
+    // Arrange
+    process.env = { ...origEnv, NEXT_PUBLIC_TENANT_ID: "", NEXT_PUBLIC_AUTH_TOKEN: "secret" };
+
+    // Act
+    const result = getApiHeaders();
+
+    // Assert
+    expect(result).toEqual({ Authorization: "Bearer secret" });
+  });
+
+  it("getApiConfig は process が無い環境で空の設定を返す", () => {
+    // Arrange
+    const origProcess = (globalThis as unknown as { process?: unknown }).process;
+    (globalThis as unknown as { process?: unknown }).process = undefined;
+
+    // Act
+    const result = getApiConfig();
+
+    // Assert
+    expect(result).toEqual({ tenantId: "", authToken: "" });
+
+    // Cleanup
+    (globalThis as unknown as { process?: unknown }).process = origProcess;
   });
 });

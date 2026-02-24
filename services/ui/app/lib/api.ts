@@ -1,5 +1,25 @@
 import type { ApiError } from "./types";
 
+/** クライアント側の API 用設定（認証・テナント）。NEXT_PUBLIC_* または runtime で注入。 */
+export function getApiConfig(): { tenantId: string; authToken: string } {
+  if (typeof process !== "undefined" && process.env) {
+    return {
+      tenantId: process.env.NEXT_PUBLIC_TENANT_ID ?? "",
+      authToken: process.env.NEXT_PUBLIC_AUTH_TOKEN ?? ""
+    };
+  }
+  return { tenantId: "", authToken: "" };
+}
+
+/** REST リクエストに付与する認証・テナントヘッダを返す。 */
+export function getApiHeaders(): Record<string, string> {
+  const { tenantId, authToken } = getApiConfig();
+  const headers: Record<string, string> = {};
+  if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+  if (tenantId) headers["X-Tenant-Id"] = tenantId;
+  return headers;
+}
+
 function idem(): string {
   return crypto.randomUUID();
 }
@@ -36,8 +56,22 @@ function buildApiError(res: Response, json: unknown): ApiError {
   };
 }
 
+function toRecord(h: Headers | Record<string, string> | undefined): Record<string, string> {
+  if (!h) return {};
+  if (h instanceof Headers) return Object.fromEntries(h.entries());
+  return { ...h };
+}
+
 async function fetchAndParse<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api/core${path}`, { cache: "no-store", ...init });
+  const mergedHeaders: Record<string, string> = {
+    ...getApiHeaders(),
+    ...toRecord(init?.headers as Headers | Record<string, string> | undefined)
+  };
+  const res = await fetch(`/api/core${path}`, {
+    cache: "no-store",
+    ...init,
+    headers: mergedHeaders
+  });
   const json = await parseJsonSafe(res);
   if (!res.ok) {
     throw buildApiError(res, json);
