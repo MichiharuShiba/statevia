@@ -9,6 +9,11 @@ const TERMINAL_STATUSES = new Set<string>(["COMPLETED", "FAILED", "CANCELED"]);
 const STREAM_RECONNECT_BASE_MS = 1000;
 const STREAM_RECONNECT_MAX_MS = 30000;
 
+/** 指数バックオフの遅延（ms）を計算する。テスト・再利用用に export。 */
+export function getReconnectDelayMs(attempt: number, baseMs: number, maxMs: number): number {
+  return Math.min(baseMs * 2 ** attempt, maxMs);
+}
+
 function isTerminalExecution(status: ExecutionDTO["status"]): boolean {
   return TERMINAL_STATUSES.has(status);
 }
@@ -52,12 +57,12 @@ export function useExecution(executionId: string, options: UseExecutionOptions =
     let disposed = false;
     let stream: EventSource | null = null;
     let reconnectAttempt = 0;
-    let reconnectTimer: number | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let hasConnectedOnce = false;
 
     const clearReconnectTimer = () => {
       if (reconnectTimer !== null) {
-        window.clearTimeout(reconnectTimer);
+        globalThis.clearTimeout(reconnectTimer);
         reconnectTimer = null;
       }
     };
@@ -65,9 +70,9 @@ export function useExecution(executionId: string, options: UseExecutionOptions =
     const scheduleReconnect = () => {
       if (disposed) return;
       clearReconnectTimer();
-      const delay = Math.min(STREAM_RECONNECT_BASE_MS * 2 ** reconnectAttempt, STREAM_RECONNECT_MAX_MS);
+      const delay = getReconnectDelayMs(reconnectAttempt, STREAM_RECONNECT_BASE_MS, STREAM_RECONNECT_MAX_MS);
       reconnectAttempt += 1;
-      reconnectTimer = window.setTimeout(() => {
+      reconnectTimer = globalThis.setTimeout(() => {
         if (!disposed) connectStream();
       }, delay);
     };
@@ -78,22 +83,23 @@ export function useExecution(executionId: string, options: UseExecutionOptions =
       setExecution((current) => (current ? applyExecutionStreamEvent(current, parsed) : current));
     };
 
+    const noop = () => {};
+    const onStreamOpen = () => {
+      reconnectAttempt = 0;
+      if (!hasConnectedOnce) {
+        hasConnectedOnce = true;
+        return;
+      }
+      void refreshExecutionSnapshot(currentExecutionId).catch(noop);
+    };
+
     const connectStream = () => {
       if (disposed) return;
 
       const next = new EventSource(`/api/core/executions/${encodeURIComponent(currentExecutionId)}/stream`);
       stream = next;
 
-      next.onopen = () => {
-        reconnectAttempt = 0;
-        if (!hasConnectedOnce) {
-          hasConnectedOnce = true;
-          return;
-        }
-        void refreshExecutionSnapshot(currentExecutionId).catch(() => {
-          // Keep stream alive; next events or reconnect attempts will converge state.
-        });
-      };
+      next.onopen = onStreamOpen;
 
       next.onmessage = (event: MessageEvent<string>) => applyRawEvent(event.data);
       next.addEventListener("GraphUpdated", (e) => applyRawEvent((e as MessageEvent<string>).data));
