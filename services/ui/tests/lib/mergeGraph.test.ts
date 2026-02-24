@@ -85,6 +85,10 @@ describe("mergeGraph", () => {
     const forkEdge = result.edges.find((e) => e.from === "fork-1" && e.to === "task-b");
     expect(forkEdge?.id).toContain("fork-1");
     expect(forkEdge?.kind).toBe("fork");
+
+    const resumeEdge = result.edges.find((e) => e.from === "task-c" && e.to === "join-1");
+    expect(resumeEdge?.edgeType).toBe("Resume");
+    expect(resumeEdge?.eventName).toBe("DoneC");
   });
 });
 

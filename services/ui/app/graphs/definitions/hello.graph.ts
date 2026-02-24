@@ -17,7 +17,7 @@ export const helloGraphDefinition: GraphDefinition = {
     { from: "fork-1", to: "task-b", kind: "fork" },
     { from: "fork-1", to: "task-c", kind: "fork" },
     { from: "task-b", to: "join-1", kind: "join" },
-    { from: "task-c", to: "join-1", kind: "join" },
+    { from: "task-c", to: "join-1", kind: "join", edgeType: "Resume", eventName: "DoneC" },
     { from: "join-1", to: "success" }
   ],
   groups: [

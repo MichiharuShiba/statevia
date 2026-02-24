@@ -12,11 +12,17 @@ export type MergedGraphNode = {
   canceledByExecution: boolean;
 };
 
+import type { EdgeType } from "../graphs/types";
+
 export type MergedGraphEdge = {
   id: string;
   from: string;
   to: string;
   kind?: "normal" | "fork" | "join";
+  edgeType?: "Next" | "Resume" | "Cancel";
+  eventName?: string;
+  cancelReason?: string;
+  cancelCause?: string;
 };
 
 export type MergedGraph = {
@@ -45,7 +51,11 @@ function toEdge(edge: GraphEdgeDef, index: number): MergedGraphEdge {
     id: `e-${edge.from}-${edge.to}-${index}`,
     from: edge.from,
     to: edge.to,
-    kind: edge.kind
+    kind: edge.kind,
+    edgeType: edge.edgeType,
+    eventName: edge.eventName,
+    cancelReason: edge.cancelReason,
+    cancelCause: edge.cancelCause
   };
 }
 

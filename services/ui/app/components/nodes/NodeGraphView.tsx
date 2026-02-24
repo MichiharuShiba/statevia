@@ -5,15 +5,14 @@ import ReactFlow, {
   Background,
   Controls,
   Handle,
-  MarkerType,
   MiniMap,
   Position,
-  type Edge,
   type Node,
   type NodeProps,
   type NodeTypes
 } from "reactflow";
 import "reactflow/dist/style.css";
+import { buildGraphEdges } from "../../lib/buildGraphEdges";
 import type { GroupBounds } from "../../lib/grouping";
 import type { PositionedEdge, PositionedNode } from "../../lib/graphLayout";
 import type { MergedGraphNode } from "../../lib/mergeGraph";
@@ -153,18 +152,7 @@ export function NodeGraphView({
     return [...groupNodes, ...executionNodes];
   }, [groups, nodes, onResumeNode, onSelectNode, getResumeDisabledReason, selectedNodeId]);
 
-  const graphEdges = useMemo<Array<Edge>>(
-    () =>
-      edges.map((edge) => ({
-        id: edge.id,
-        source: edge.from,
-        target: edge.to,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
-        animated: false,
-        style: { stroke: "#d4d4d8", strokeWidth: 1.2 }
-      })),
-    [edges]
-  );
+  const graphEdges = useMemo(() => buildGraphEdges(edges), [edges]);
 
   const graphHeightClass = heightClassName ?? "h-[620px]";
 

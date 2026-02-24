@@ -12,6 +12,10 @@ export type LayoutEdgeInput = {
   from: string;
   to: string;
   kind?: "normal" | "fork" | "join";
+  edgeType?: "Next" | "Resume" | "Cancel";
+  eventName?: string;
+  cancelReason?: string;
+  cancelCause?: string;
 };
 
 export type PositionedNode<T extends LayoutNodeInput = LayoutNodeInput> = T & {
