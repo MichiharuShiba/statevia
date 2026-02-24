@@ -20,7 +20,7 @@ describe("IdempotencyService", () => {
   });
 
   describe("hashRequest", () => {
-    it("should generate consistent hash for same input", () => {
+    it("同一入力で一貫したハッシュを生成する", () => {
       // Arrange
       const body = { key: "value" };
 
@@ -33,7 +33,7 @@ describe("IdempotencyService", () => {
       expect(hash1).toHaveLength(64); // SHA256 hex string
     });
 
-    it("should generate different hash for different input", () => {
+    it("異なる入力で異なるハッシュを生成する", () => {
       // Act
       const hash1 = IdempotencyService.hashRequest({ key: "value1" });
       const hash2 = IdempotencyService.hashRequest({ key: "value2" });
@@ -42,7 +42,7 @@ describe("IdempotencyService", () => {
       expect(hash1).not.toBe(hash2);
     });
 
-    it("should handle null input", () => {
+    it("null 入力を扱う", () => {
       // Act
       const hash = IdempotencyService.hashRequest(null);
 
@@ -52,7 +52,7 @@ describe("IdempotencyService", () => {
   });
 
   describe("load", () => {
-    it("should return null if idempotency key is not found", async () => {
+    it("冪等キーが無いとき null を返す", async () => {
       // Arrange
       (pool.query as any).mockResolvedValueOnce({ rowCount: 0 });
 
@@ -67,7 +67,7 @@ describe("IdempotencyService", () => {
       );
     });
 
-    it("should return stored result if idempotency key exists", async () => {
+    it("冪等キーが存在するとき保存結果を返す", async () => {
       // Arrange
       const storedData = {
         request_hash: "hash-123",
@@ -92,7 +92,7 @@ describe("IdempotencyService", () => {
   });
 
   describe("save", () => {
-    it("should save idempotency key", async () => {
+    it("冪等キーを保存する", async () => {
       // Arrange
       (pool.query as any).mockResolvedValueOnce({ rowCount: 1 });
 
@@ -108,7 +108,7 @@ describe("IdempotencyService", () => {
   });
 
   describe("enforceOrReplay", () => {
-    it("should return null if idempotency key is not found", async () => {
+    it("冪等キーが無いとき null を返す", async () => {
       // Arrange
       (pool.query as any).mockResolvedValueOnce({ rowCount: 0 });
 
@@ -123,7 +123,7 @@ describe("IdempotencyService", () => {
       expect(result).toBeNull();
     });
 
-    it("should replay response if request hash matches", async () => {
+    it("リクエストハッシュが一致するとき保存レスポンスを返す", async () => {
       // Arrange
       (pool.query as any).mockResolvedValueOnce({
         rowCount: 1,
@@ -148,7 +148,7 @@ describe("IdempotencyService", () => {
       });
     });
 
-    it("should throw conflict error if request hash does not match", async () => {
+    it("リクエストハッシュが一致しないとき conflict エラーをスローする", async () => {
       // Arrange
       (pool.query as any).mockResolvedValueOnce({
         rowCount: 1,

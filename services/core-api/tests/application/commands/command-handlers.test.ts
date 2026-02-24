@@ -31,9 +31,9 @@ function createExecutionState(overrides: Partial<ExecutionState> = {}): Executio
   };
 }
 
-describe("Command Handlers", () => {
+describe("コマンドハンドラ", () => {
   describe("cmdCreateExecution", () => {
-    it("should create EXECUTION_CREATED event", () => {
+    it("EXECUTION_CREATED イベントを発行する", () => {
       // Arrange
       const args = {
         executionId: "exec-1",
@@ -53,7 +53,7 @@ describe("Command Handlers", () => {
       expect(result.events[0].correlationId).toBe("corr-1");
     });
 
-    it("should include input in payload if provided", () => {
+    it("input が渡されたときペイロードに含める", () => {
       // Arrange
       const args = {
         executionId: "exec-1",
@@ -71,7 +71,7 @@ describe("Command Handlers", () => {
   });
 
   describe("cmdStartExecution", () => {
-    it("should create EXECUTION_STARTED event for active execution", () => {
+    it("ACTIVE な execution で EXECUTION_STARTED イベントを発行する", () => {
       // Arrange
       const state = createExecutionState({ status: "ACTIVE" });
 
@@ -84,7 +84,7 @@ describe("Command Handlers", () => {
       expect(result.events[0].executionId).toBe("exec-1");
     });
 
-    it("should throw for terminal execution", () => {
+    it("終端状態の execution では DomainError をスローする", () => {
       // Arrange
       const state = createExecutionState({ status: "COMPLETED" });
 
@@ -92,7 +92,7 @@ describe("Command Handlers", () => {
       expect(() => cmdStartExecution(state, systemActor)).toThrow(DomainError);
     });
 
-    it("should throw when cancel requested", () => {
+    it("cancel 要求済みのとき DomainError をスローする", () => {
       // Arrange
       const state = createExecutionState({
         status: "ACTIVE",
@@ -105,7 +105,7 @@ describe("Command Handlers", () => {
   });
 
   describe("cmdCancelExecution", () => {
-    it("should create EXECUTION_CANCEL_REQUESTED event", () => {
+    it("EXECUTION_CANCEL_REQUESTED イベントを発行する", () => {
       // Arrange
       const state = createExecutionState({ status: "ACTIVE" });
 
@@ -119,7 +119,7 @@ describe("Command Handlers", () => {
       expect(result.events[0].correlationId).toBe("corr-1");
     });
 
-    it("should handle missing reason", () => {
+    it("reason が無いときも扱う", () => {
       // Arrange
       const state = createExecutionState({ status: "ACTIVE" });
 
@@ -131,7 +131,7 @@ describe("Command Handlers", () => {
       expect(result.events[0].payload).toHaveProperty("reason", null);
     });
 
-    it("should be idempotent for terminal executions", () => {
+    it("終端状態では冪等（イベント0件）", () => {
       // Arrange
       const state = createExecutionState({ status: "COMPLETED" });
 
@@ -142,7 +142,7 @@ describe("Command Handlers", () => {
       expect(result.events).toHaveLength(0);
     });
 
-    it("should be idempotent for FAILED status", () => {
+    it("FAILED では冪等（イベント0件）", () => {
       // Arrange
       const state = createExecutionState({ status: "FAILED" });
 
@@ -153,7 +153,7 @@ describe("Command Handlers", () => {
       expect(result.events).toHaveLength(0);
     });
 
-    it("should be idempotent for CANCELED status", () => {
+    it("CANCELED では冪等（イベント0件）", () => {
       // Arrange
       const state = createExecutionState({ status: "CANCELED" });
 
@@ -164,7 +164,7 @@ describe("Command Handlers", () => {
       expect(result.events).toHaveLength(0);
     });
 
-    it("should not create duplicate cancel request", () => {
+    it("cancel 要求済みのときは重複イベントを発行しない", () => {
       // Arrange
       const state = createExecutionState({
         status: "ACTIVE",
@@ -180,7 +180,7 @@ describe("Command Handlers", () => {
   });
 
   describe("cmdPutNodeWaiting", () => {
-    it("should create NODE_WAITING event for running node", () => {
+    it("RUNNING ノードで NODE_WAITING イベントを発行する", () => {
       // Arrange
       const state: ExecutionState = {
         ...createExecutionState(),
@@ -200,7 +200,7 @@ describe("Command Handlers", () => {
       expect(result.events[0].payload).toHaveProperty("prompt", { prompt: "test" });
     });
 
-    it("should set prompt to null if prompt not provided", () => {
+    it("prompt が無いとき null をセットする", () => {
       // Arrange
       const state: ExecutionState = {
         ...createExecutionState(),
@@ -216,7 +216,7 @@ describe("Command Handlers", () => {
       expect(result.events[0].payload).toHaveProperty("prompt", null);
     });
 
-    it("should set waitKey to null if waitKey not provided", () => {
+    it("waitKey が無いとき null をセットする", () => {
       // Arrange
       const state: ExecutionState = {
         ...createExecutionState(),
@@ -233,7 +233,7 @@ describe("Command Handlers", () => {
       expect(result.events[0].payload).toHaveProperty("prompt", null);
     });
 
-    it("should include correlationId in event", () => {
+    it("イベントに correlationId を含める", () => {
       // Arrange
       const state: ExecutionState = {
         ...createExecutionState(),
@@ -249,7 +249,7 @@ describe("Command Handlers", () => {
       expect(result.events[0].correlationId).toBe("corr-1");
     });
 
-    it("should throw for non-running node", () => {
+    it("RUNNING でないノードでは DomainError をスローする", () => {
       // Arrange
       const state: ExecutionState = {
         ...createExecutionState(),
@@ -262,7 +262,7 @@ describe("Command Handlers", () => {
       expect(() => cmdPutNodeWaiting(state, systemActor, "node-1")).toThrow(DomainError);
     });
 
-    it("should throw when execution is terminal", () => {
+    it("execution が終端のとき DomainError をスローする", () => {
       // Arrange
       const state: ExecutionState = {
         ...createExecutionState({ status: "COMPLETED" }),
@@ -277,7 +277,7 @@ describe("Command Handlers", () => {
   });
 
   describe("cmdResumeNode", () => {
-    it("should create NODE_RESUMED event for waiting node", () => {
+    it("WAITING ノードで NODE_RESUMED イベントを発行する", () => {
       // Arrange
       const state: ExecutionState = {
         ...createExecutionState(),
@@ -296,54 +296,67 @@ describe("Command Handlers", () => {
       expect(result.events[0].payload).toHaveProperty("resumeKey", "resume-123");
     });
 
-    it("should include correlationId in event", () => {
+    it("イベントに correlationId を含める", () => {
+      // Arrange
       const state: ExecutionState = {
         ...createExecutionState(),
         nodes: {
           "node-1": { nodeId: "node-1", nodeType: "task", status: "WAITING", attempt: 1, waitKey: "wait-123" }
         }
       };
+
+      // Act
       const result = cmdResumeNode(state, systemActor, "node-1", "resume-123", "corr-1");
 
+      // Assert
       expect(result.events[0].correlationId).toBe("corr-1");
     });
 
-    it("should handle missing resumeKey", () => {
+    it("resumeKey が無いときも扱う", () => {
+      // Arrange
       const state: ExecutionState = {
         ...createExecutionState(),
         nodes: {
           "node-1": { nodeId: "node-1", nodeType: "task", status: "WAITING", attempt: 1, waitKey: "wait-123" }
         }
       };
+
+      // Act
       const result = cmdResumeNode(state, systemActor, "node-1");
 
+      // Assert
       expect(result.events).toHaveLength(1);
       expect(result.events[0].payload).toHaveProperty("resumeKey", null);
     });
 
-    it("should throw for non-waiting node", () => {
+    it("WAITING でないノードでは DomainError をスローする", () => {
+      // Arrange
       const state: ExecutionState = {
         ...createExecutionState(),
         nodes: {
           "node-1": { nodeId: "node-1", nodeType: "task", status: "RUNNING", attempt: 1 }
         }
       };
-      
+
+      // Act & Assert
       expect(() => cmdResumeNode(state, systemActor, "node-1")).toThrow(DomainError);
     });
 
-    it("should throw when execution is terminal", () => {
+    it("execution が終端のとき DomainError をスローする", () => {
+      // Arrange
       const state: ExecutionState = {
         ...createExecutionState({ status: "COMPLETED" }),
         nodes: {
           "node-1": { nodeId: "node-1", nodeType: "task", status: "WAITING", attempt: 1 }
         }
       };
-      
+
+      // Act & Assert
       expect(() => cmdResumeNode(state, systemActor, "node-1")).toThrow(DomainError);
     });
 
-    it("should throw when cancel requested", () => {
+    it("cancel 要求済みのとき DomainError をスローする", () => {
+      // Arrange
       const state: ExecutionState = {
         ...createExecutionState({
           status: "ACTIVE",
@@ -353,13 +366,14 @@ describe("Command Handlers", () => {
           "node-1": { nodeId: "node-1", nodeType: "task", status: "WAITING", attempt: 1 }
         }
       };
-      
+
+      // Act & Assert
       expect(() => cmdResumeNode(state, systemActor, "node-1")).toThrow(DomainError);
     });
   });
 
   describe("cmdCreateNode", () => {
-    it("should create NODE_CREATED event", () => {
+    it("NODE_CREATED イベントを発行する", () => {
       // Arrange
       const state = createExecutionState();
 
@@ -373,27 +387,33 @@ describe("Command Handlers", () => {
       expect(result.events[0].payload).toHaveProperty("nodeType", "task");
     });
 
-    it("should be idempotent if node already exists", () => {
+    it("ノードが既に存在するときは冪等（イベント0件）", () => {
+      // Arrange
       const state: ExecutionState = {
         ...createExecutionState(),
         nodes: {
           "node-1": { nodeId: "node-1", nodeType: "task", status: "READY", attempt: 0 }
         }
       };
+
+      // Act
       const result = cmdCreateNode(state, systemActor, "node-1", "task");
 
+      // Assert
       expect(result.events).toHaveLength(0);
     });
 
-    it("should throw when execution is terminal", () => {
+    it("execution が終端のとき DomainError をスローする", () => {
+      // Arrange
       const state = createExecutionState({ status: "COMPLETED" });
-      
+
+      // Act & Assert
       expect(() => cmdCreateNode(state, systemActor, "node-1", "task")).toThrow(DomainError);
     });
   });
 
   describe("cmdStartNode", () => {
-    it("should create NODE_STARTED event for ready node", () => {
+    it("READY ノードで NODE_STARTED イベントを発行する", () => {
       const state: ExecutionState = {
         ...createExecutionState(),
         nodes: {
@@ -409,7 +429,7 @@ describe("Command Handlers", () => {
       expect(result.events[0].payload).toHaveProperty("workerId", "worker-1");
     });
 
-    it("should work for IDLE node", () => {
+    it("IDLE ノードでも発行する", () => {
       const state: ExecutionState = {
         ...createExecutionState(),
         nodes: {
@@ -422,7 +442,7 @@ describe("Command Handlers", () => {
       expect(result.events[0].type).toBe("NODE_STARTED");
     });
 
-    it("should throw for invalid node status", () => {
+    it("無効なノード状態では DomainError をスローする", () => {
       const state: ExecutionState = {
         ...createExecutionState(),
         nodes: {
@@ -435,7 +455,7 @@ describe("Command Handlers", () => {
   });
 
   describe("applyEvents", () => {
-    it("should apply multiple events in order", () => {
+    it("複数イベントを順に適用する", () => {
       // Arrange
       const state = createExecutionState();
       const events = [
@@ -467,7 +487,7 @@ describe("Command Handlers", () => {
       expect(result.nodes["node-1"].status).toBe("READY");
     });
 
-    it("should return same state for empty events", () => {
+    it("イベントが空のときは同じ state を返す", () => {
       // Arrange
       const state = createExecutionState();
 

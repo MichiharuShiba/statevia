@@ -25,7 +25,7 @@ function createExecutionState(overrides: Partial<ExecutionState> = {}): Executio
 
 describe("Guards", () => {
   describe("ensureNotTerminalExecution", () => {
-    it("should not throw for ACTIVE status", () => {
+    it("ACTIVE のときスローしない", () => {
       // Arrange
       const state = createExecutionState({ status: "ACTIVE" });
 
@@ -33,7 +33,7 @@ describe("Guards", () => {
       expect(() => ensureNotTerminalExecution(state)).not.toThrow();
     });
 
-    it("should throw DomainError for COMPLETED status", () => {
+    it("COMPLETED のとき DomainError をスローする", () => {
       // Arrange
       const state = createExecutionState({ status: "COMPLETED" });
 
@@ -42,7 +42,7 @@ describe("Guards", () => {
       expect(() => ensureNotTerminalExecution(state)).toThrow("Execution is terminal");
     });
 
-    it("should throw DomainError for FAILED status", () => {
+    it("FAILED のとき DomainError をスローする", () => {
       // Arrange
       const state = createExecutionState({ status: "FAILED" });
 
@@ -51,7 +51,7 @@ describe("Guards", () => {
       expect(() => ensureNotTerminalExecution(state)).toThrow("Execution is terminal");
     });
 
-    it("should throw DomainError for CANCELED status", () => {
+    it("CANCELED のとき DomainError をスローする", () => {
       // Arrange
       const state = createExecutionState({ status: "CANCELED" });
 
@@ -62,7 +62,7 @@ describe("Guards", () => {
   });
 
   describe("ensureCancelNotRequested", () => {
-    it("should not throw when cancelRequestedAt is undefined", () => {
+    it("cancelRequestedAt が無いときスローしない", () => {
       // Arrange
       const state = createExecutionState();
 
@@ -70,7 +70,7 @@ describe("Guards", () => {
       expect(() => ensureCancelNotRequested(state)).not.toThrow();
     });
 
-    it("should throw DomainError when cancelRequestedAt is set", () => {
+    it("cancelRequestedAt が設定されているとき DomainError をスローする", () => {
       // Arrange
       const state = createExecutionState({ cancelRequestedAt: "2024-01-01T00:00:00Z" });
 
@@ -81,7 +81,7 @@ describe("Guards", () => {
   });
 
   describe("getNodeOrThrow", () => {
-    it("should return node when it exists", () => {
+    it("ノードが存在するときそのノードを返す", () => {
       // Arrange
       const state: ExecutionState = {
         ...createExecutionState(),
@@ -98,7 +98,7 @@ describe("Guards", () => {
       expect(node.nodeId).toBe("node-1");
     });
 
-    it("should throw DomainError when node does not exist", () => {
+    it("ノードが存在しないとき DomainError をスローする", () => {
       // Arrange
       const state = createExecutionState();
 
@@ -109,18 +109,18 @@ describe("Guards", () => {
   });
 
   describe("ensureNodeStatus", () => {
-    it("should not throw when status is in allowed list", () => {
+    it("許可リストに status があるときスローしない", () => {
       // Act & Assert
       expect(() => ensureNodeStatus("RUNNING", ["RUNNING", "WAITING"])).not.toThrow();
     });
 
-    it("should throw DomainError when status is not in allowed list", () => {
+    it("許可リストに status が無いとき DomainError をスローする", () => {
       // Act & Assert
       expect(() => ensureNodeStatus("IDLE", ["RUNNING", "WAITING"])).toThrow(DomainError);
       expect(() => ensureNodeStatus("IDLE", ["RUNNING", "WAITING"])).toThrow("Node status invalid");
     });
 
-    it("should work with multiple allowed statuses", () => {
+    it("複数許可 status で動作する", () => {
       // Act & Assert
       expect(() => ensureNodeStatus("READY", ["READY", "IDLE"])).not.toThrow();
       expect(() => ensureNodeStatus("IDLE", ["READY", "IDLE"])).not.toThrow();

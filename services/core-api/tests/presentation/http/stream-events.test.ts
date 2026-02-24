@@ -14,7 +14,7 @@ function eventOf(type: string, payload: unknown): PersistedEvent {
 }
 
 describe("mapPersistedEventToStreamEvent", () => {
-  it("maps EXECUTION_STARTED to ExecutionStatusChanged", () => {
+  it("EXECUTION_STARTED を ExecutionStatusChanged にマップする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("EXECUTION_STARTED", {}));
     expect(result).toEqual({
       type: "ExecutionStatusChanged",
@@ -24,7 +24,7 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("maps EXECUTION_COMPLETED to ExecutionStatusChanged", () => {
+  it("EXECUTION_COMPLETED を ExecutionStatusChanged にマップする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("EXECUTION_COMPLETED", {}));
     expect(result).toEqual({
       type: "ExecutionStatusChanged",
@@ -34,7 +34,7 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("maps EXECUTION_FAILED to ExecutionStatusChanged", () => {
+  it("EXECUTION_FAILED を ExecutionStatusChanged にマップする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("EXECUTION_FAILED", {}));
     expect(result).toEqual({
       type: "ExecutionStatusChanged",
@@ -44,7 +44,7 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("maps EXECUTION_CANCELED to ExecutionStatusChanged", () => {
+  it("EXECUTION_CANCELED を ExecutionStatusChanged にマップする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("EXECUTION_CANCELED", {}));
     expect(result).toEqual({
       type: "ExecutionStatusChanged",
@@ -54,7 +54,7 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("maps NODE_FAILED to NodeFailed", () => {
+  it("NODE_FAILED を NodeFailed にマップする", () => {
     const result = mapPersistedEventToStreamEvent(
       eventOf("NODE_FAILED", {
         nodeId: "n-2",
@@ -70,7 +70,7 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("maps NODE_FAILED to NodeFailed with null message when error.message is not string", () => {
+  it("NODE_FAILED で error.message が文字列でないとき message を null にする", () => {
     const result = mapPersistedEventToStreamEvent(
       eventOf("NODE_FAILED", { nodeId: "n-2", error: {} })
     );
@@ -83,12 +83,12 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("returns null for NODE_FAILED when nodeId is missing", () => {
+  it("NODE_FAILED で nodeId が無いとき null を返す", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_FAILED", { error: { message: "x" } }));
     expect(result).toBeNull();
   });
 
-  it("maps NODE_CANCELED to NodeCancelled", () => {
+  it("NODE_CANCELED を NodeCancelled にマップする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_CANCELED", { nodeId: "n-1", reason: "done" }));
     expect(result).toEqual({
       type: "NodeCancelled",
@@ -99,12 +99,12 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("returns null for NODE_CANCELED when nodeId is missing", () => {
+  it("NODE_CANCELED で nodeId が無いとき null を返す", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_CANCELED", { reason: "x" }));
     expect(result).toBeNull();
   });
 
-  it("maps NODE_CANCELED to NodeCancelled with null reason when reason is not string", () => {
+  it("NODE_CANCELED で reason が文字列でないとき reason を null にする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_CANCELED", { nodeId: "n-1" }));
     expect(result).toEqual({
       type: "NodeCancelled",
@@ -115,7 +115,7 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("maps NODE_CREATED to GraphUpdated", () => {
+  it("NODE_CREATED を GraphUpdated にマップする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_CREATED", { nodeId: "n-1" }));
     expect(result).toEqual({
       type: "GraphUpdated",
@@ -125,12 +125,12 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("returns null for NODE_CREATED when nodeId is missing", () => {
+  it("NODE_CREATED で nodeId が無いとき null を返す", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_CREATED", {}));
     expect(result).toBeNull();
   });
 
-  it("maps NODE_READY to GraphUpdated", () => {
+  it("NODE_READY を GraphUpdated にマップする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_READY", { nodeId: "n-1" }));
     expect(result).toEqual({
       type: "GraphUpdated",
@@ -140,7 +140,7 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("maps NODE_STARTED to GraphUpdated with attempt", () => {
+  it("NODE_STARTED を attempt 付き GraphUpdated にマップする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_STARTED", { nodeId: "n-1", attempt: 2 }));
     expect(result).toEqual({
       type: "GraphUpdated",
@@ -152,7 +152,7 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("maps NODE_STARTED to GraphUpdated without attempt when not number", () => {
+  it("NODE_STARTED で attempt が数でないときは attempt なしでマップする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_STARTED", { nodeId: "n-1" }));
     expect(result).toEqual({
       type: "GraphUpdated",
@@ -164,7 +164,7 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("maps NODE_WAITING to GraphUpdated with waitKey", () => {
+  it("NODE_WAITING を waitKey 付き GraphUpdated にマップする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_WAITING", { nodeId: "n-1", waitKey: "wk-1" }));
     expect(result).toEqual({
       type: "GraphUpdated",
@@ -176,7 +176,7 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("maps NODE_WAITING to GraphUpdated with null waitKey when not string", () => {
+  it("NODE_WAITING で waitKey が文字列でないとき null にする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_WAITING", { nodeId: "n-1" }));
     expect(result).toEqual({
       type: "GraphUpdated",
@@ -188,7 +188,7 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("maps NODE_RESUMED to GraphUpdated", () => {
+  it("NODE_RESUMED を GraphUpdated にマップする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_RESUMED", { nodeId: "n-1" }));
     expect(result).toEqual({
       type: "GraphUpdated",
@@ -198,7 +198,7 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("maps NODE_SUCCEEDED to GraphUpdated", () => {
+  it("NODE_SUCCEEDED を GraphUpdated にマップする", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_SUCCEEDED", { nodeId: "n-1" }));
     expect(result).toEqual({
       type: "GraphUpdated",
@@ -208,12 +208,12 @@ describe("mapPersistedEventToStreamEvent", () => {
     });
   });
 
-  it("ignores unsupported events", () => {
+  it("未対応イベントは無視する", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("EXECUTION_CREATED", { graphId: "hello" }));
     expect(result).toBeNull();
   });
 
-  it("handles non-object payload as empty object", () => {
+  it("ペイロードがオブジェクトでないときは null を返す", () => {
     const result = mapPersistedEventToStreamEvent(eventOf("NODE_FAILED", null));
     expect(result).toBeNull();
   });
