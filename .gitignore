@@ -46,6 +46,7 @@ coverage/
 .sonarqube/
 .sonarlint/
 .cursor/
+.cursorrules
 .vscode/
 sonar/
 docs/out
