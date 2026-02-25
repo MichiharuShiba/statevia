@@ -19,6 +19,7 @@ import type { MergedGraphNode } from "../../lib/mergeGraph";
 import { getNodeAppearance } from "../../lib/nodeAppearance";
 import { getStatusStyle } from "../../lib/statusStyle";
 import type { NodeStatus } from "../../lib/types";
+import { GraphLegend } from "./GraphLegend";
 
 type ExecutionNodeData = {
   nodeId: string;
@@ -157,7 +158,7 @@ export function NodeGraphView({
   const graphHeightClass = heightClassName ?? "h-[620px]";
 
   return (
-    <div className={`${graphHeightClass} overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm`}>
+    <div className={`relative ${graphHeightClass} overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm`}>
       <ReactFlow
         nodes={graphNodes}
         edges={graphEdges}
@@ -173,6 +174,7 @@ export function NodeGraphView({
         <Controls showInteractive />
         <Background gap={20} size={1} color="#e4e4e7" />
       </ReactFlow>
+      <GraphLegend />
     </div>
   );
 }
