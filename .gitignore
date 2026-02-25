@@ -39,16 +39,19 @@ ScaffoldingReadMe.txt
 # Visual Studio
 .vs/
 
+# sonar
+.sonarqube/
+.sonarlint/
+.scannerwork/
+sonar/
+coverage/
+
 # Others
 ~$*
 *~
-coverage/
-.sonarqube/
-.sonarlint/
 .cursor/
 .cursorrules
 .vscode/
-sonar/
 docs/out
 
 # MSBuild Binary and Structured Log
