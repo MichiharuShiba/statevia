@@ -7,7 +7,7 @@ import { HttpError, notFound, conflict, unprocessable } from "../../../src/prese
 
 describe("HTTP Errors", () => {
   describe("HttpError", () => {
-    it("should create error with status and message", () => {
+    it("status と message でエラーを生成する", () => {
       // Arrange & Act
       const error = new HttpError(404, "Not found");
 
@@ -18,7 +18,7 @@ describe("HTTP Errors", () => {
       expect(error.details).toBeUndefined();
     });
 
-    it("should create error with details", () => {
+    it("details 付きでエラーを生成する", () => {
       // Arrange
       const details = { resourceId: "123" };
 
@@ -31,7 +31,7 @@ describe("HTTP Errors", () => {
   });
 
   describe("notFound", () => {
-    it("should create 404 HttpError", () => {
+    it("404 の HttpError を生成する", () => {
       // Act
       const error = notFound("Resource not found");
 
@@ -41,7 +41,7 @@ describe("HTTP Errors", () => {
       expect(error.message).toBe("Resource not found");
     });
 
-    it("should include details if provided", () => {
+    it("details が渡されたとき含める", () => {
       // Arrange
       const details = { resourceId: "123" };
 
@@ -54,7 +54,7 @@ describe("HTTP Errors", () => {
   });
 
   describe("conflict", () => {
-    it("should create 409 HttpError", () => {
+    it("409 の HttpError を生成する", () => {
       // Act
       const error = conflict("Resource conflict");
 
@@ -64,7 +64,7 @@ describe("HTTP Errors", () => {
       expect(error.message).toBe("Resource conflict");
     });
 
-    it("should include details if provided", () => {
+    it("details が渡されたとき含める", () => {
       // Arrange
       const details = { resourceId: "123" };
 
@@ -77,7 +77,7 @@ describe("HTTP Errors", () => {
   });
 
   describe("unprocessable", () => {
-    it("should create 422 HttpError", () => {
+    it("422 の HttpError を生成する", () => {
       // Act
       const error = unprocessable("Validation failed");
 
@@ -87,7 +87,7 @@ describe("HTTP Errors", () => {
       expect(error.message).toBe("Validation failed");
     });
 
-    it("should include details if provided", () => {
+    it("details が渡されたとき含める", () => {
       // Arrange
       const details = { field: "email", reason: "invalid format" };
 

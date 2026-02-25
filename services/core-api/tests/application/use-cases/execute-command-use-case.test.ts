@@ -21,7 +21,7 @@ vi.mock("../../../src/infrastructure/persistence/db.js", () => ({
 vi.mock("../../../src/infrastructure/persistence/repositories/execution-repository.js");
 vi.mock("../../../src/infrastructure/persistence/repositories/event-store.js");
 
-describe("ExecuteCommandUseCase", () => {
+describe("ExecuteCommand ユースケース", () => {
   let mockClient: any;
   let initialState: ExecutionState;
 
@@ -55,7 +55,7 @@ describe("ExecuteCommandUseCase", () => {
     (ExecutionRepository.save as any) = vi.fn().mockResolvedValue(undefined);
   });
 
-  it("should execute command and return new state", async () => {
+  it("コマンドを実行し新しい state を返す", async () => {
     // Arrange
     const mockEvent: EventEnvelope = {
       eventId: "event-1",
@@ -89,7 +89,7 @@ describe("ExecuteCommandUseCase", () => {
     expect(result.executionId).toBe("exec-123");
   });
 
-  it("should handle empty events array", async () => {
+  it("空の events 配列を扱う", async () => {
     // Arrange
     const request: ExecuteCommandRequest = {
       executionId: "exec-123",
@@ -104,7 +104,7 @@ describe("ExecuteCommandUseCase", () => {
     expect(result).toBeDefined();
   });
 
-  it("should rollback on error", async () => {
+  it("エラー時にロールバックする", async () => {
     // Arrange
     const request: ExecuteCommandRequest = {
       executionId: "exec-123",
@@ -120,7 +120,7 @@ describe("ExecuteCommandUseCase", () => {
     expect(mockClient.release).toHaveBeenCalled();
   });
 
-  it("should rollback when repository throws", async () => {
+  it("リポジトリがスローしたときロールバックする", async () => {
     // Arrange
     (ExecutionRepository.loadWithLock as any).mockRejectedValue(new Error("DB error"));
     const request: ExecuteCommandRequest = {
@@ -135,7 +135,7 @@ describe("ExecuteCommandUseCase", () => {
     expect(mockClient.release).toHaveBeenCalled();
   });
 
-  it("should always release client connection", async () => {
+  it("常にクライアント接続を release する", async () => {
     // Arrange
     const request: ExecuteCommandRequest = {
       executionId: "exec-123",
@@ -149,7 +149,7 @@ describe("ExecuteCommandUseCase", () => {
     expect(mockClient.release).toHaveBeenCalled();
   });
 
-  it("should pass correct state to command function", async () => {
+  it("コマンド関数に正しい state を渡す", async () => {
     // Arrange
     let receivedState: ExecutionState | null = null;
     const request: ExecuteCommandRequest = {

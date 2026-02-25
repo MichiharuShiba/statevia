@@ -40,7 +40,7 @@ function createInitialState(executionId: string, graphId: string = "graph-1"): E
 
 describe("Reducer", () => {
   describe("EXECUTION_CREATED", () => {
-    it("should set graphId and status to ACTIVE", () => {
+    it("graphId と status を ACTIVE にセットする", () => {
       // Arrange
       const state = createInitialState("exec-1", "");
       const event = createEvent("EXECUTION_CREATED", "exec-1", { graphId: "graph-1" });
@@ -55,7 +55,7 @@ describe("Reducer", () => {
   });
 
   describe("EXECUTION_STARTED", () => {
-    it("should set status to ACTIVE", () => {
+    it("status を ACTIVE にセットする", () => {
       // Arrange
       const state: ExecutionState = { ...createInitialState("exec-1"), status: "ACTIVE" as const };
       const event = createEvent("EXECUTION_STARTED", "exec-1");
@@ -69,7 +69,7 @@ describe("Reducer", () => {
   });
 
   describe("EXECUTION_CANCEL_REQUESTED", () => {
-    it("should set cancelRequestedAt on first request", () => {
+    it("初回要求で cancelRequestedAt をセットする", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event = createEvent("EXECUTION_CANCEL_REQUESTED", "exec-1");
@@ -81,7 +81,7 @@ describe("Reducer", () => {
       expect(result.cancelRequestedAt).toBe(event.occurredAt);
     });
 
-    it("should not overwrite existing cancelRequestedAt", () => {
+    it("既存の cancelRequestedAt は上書きしない", () => {
       // Arrange
       const existingTime = "2024-01-01T00:00:00Z";
       const state = { ...createInitialState("exec-1"), cancelRequestedAt: existingTime };
@@ -96,7 +96,7 @@ describe("Reducer", () => {
   });
 
   describe("EXECUTION_CANCELED", () => {
-    it("should set canceledAt and status to CANCELED", () => {
+    it("canceledAt と status を CANCELED にセットする", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event = createEvent("EXECUTION_CANCELED", "exec-1");
@@ -109,7 +109,7 @@ describe("Reducer", () => {
       expect(result.status).toBe("CANCELED");
     });
 
-    it("should cancel all active nodes when execution is canceled", () => {
+    it("execution キャンセル時に全アクティブノードをキャンセルする", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -139,7 +139,7 @@ describe("Reducer", () => {
   });
 
   describe("EXECUTION_FAILED", () => {
-    it("should set failedAt and status to FAILED", () => {
+    it("failedAt と status を FAILED にセットする", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event = createEvent("EXECUTION_FAILED", "exec-1");
@@ -154,7 +154,7 @@ describe("Reducer", () => {
   });
 
   describe("EXECUTION_COMPLETED", () => {
-    it("should set completedAt and status to COMPLETED", () => {
+    it("completedAt と status を COMPLETED にセットする", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event = createEvent("EXECUTION_COMPLETED", "exec-1");
@@ -169,7 +169,7 @@ describe("Reducer", () => {
   });
 
   describe("NODE_CREATED", () => {
-    it("should create a new node with IDLE status", () => {
+    it("IDLE 状態の新規ノードを作成する", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event = createEvent("NODE_CREATED", "exec-1", { nodeId: "node-1", nodeType: "task" });
@@ -183,7 +183,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].attempt).toBe(0);
     });
 
-    it("should not create duplicate nodes", () => {
+    it("重複ノードは作成しない", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -202,7 +202,7 @@ describe("Reducer", () => {
   });
 
   describe("NODE_READY", () => {
-    it("should update node status to READY", () => {
+    it("ノード status を READY に更新する", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -219,7 +219,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].status).toBe("READY");
     });
 
-    it("should do nothing if node does not exist", () => {
+    it("ノードが存在しないときは何もしない", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event = createEvent("NODE_READY", "exec-1", { nodeId: "non-existent" });
@@ -234,7 +234,7 @@ describe("Reducer", () => {
   });
 
   describe("NODE_STARTED", () => {
-    it("should update node status to RUNNING and set attempt", () => {
+    it("ノード status を RUNNING にし attempt をセットする", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -253,7 +253,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].workerId).toBe("worker-1");
     });
 
-    it("should use max attempt if node already has higher attempt", () => {
+    it("ノードの attempt が大きいときは max を採用する", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -270,7 +270,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].attempt).toBe(3); // Max preserved
     });
 
-    it("should preserve existing workerId if workerId not provided", () => {
+    it("workerId が無いとき既存 workerId を維持する", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -285,7 +285,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].workerId).toBe("existing-worker");
     });
 
-    it("should handle attempt with default value when attempt is not provided", () => {
+    it("attempt が無いときデフォルト値で扱う", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -302,7 +302,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].attempt).toBe(1); // Default attempt value
     });
 
-    it("should do nothing if node does not exist", () => {
+    it("ノードが存在しないときは何もしない", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event = createEvent("NODE_STARTED", "exec-1", { nodeId: "non-existent", attempt: 1 });
@@ -317,7 +317,7 @@ describe("Reducer", () => {
   });
 
   describe("NODE_WAITING", () => {
-    it("should update node status to WAITING and set waitKey", () => {
+    it("ノード status を WAITING にし waitKey をセットする", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -333,7 +333,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].waitKey).toBe("wait-123");
     });
 
-    it("should preserve existing waitKey if waitKey not provided", () => {
+    it("waitKey が無いとき既存 waitKey を維持する", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -350,7 +350,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].waitKey).toBe("existing-wait");
     });
 
-    it("should do nothing if node does not exist", () => {
+    it("ノードが存在しないときは何もしない", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event = createEvent("NODE_WAITING", "exec-1", { nodeId: "non-existent", waitKey: "wait-123" });
@@ -365,7 +365,7 @@ describe("Reducer", () => {
   });
 
   describe("NODE_RESUMED", () => {
-    it("should update node status from WAITING to RUNNING", () => {
+    it("ノード status を WAITING から RUNNING に更新する", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -380,7 +380,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].status).toBe("RUNNING");
     });
 
-    it("should do nothing if node does not exist", () => {
+    it("ノードが存在しないときは何もしない", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event = createEvent("NODE_RESUMED", "exec-1", { nodeId: "non-existent" });
@@ -395,7 +395,7 @@ describe("Reducer", () => {
   });
 
   describe("NODE_SUCCEEDED", () => {
-    it("should update node status to SUCCEEDED and set output", () => {
+    it("ノード status を SUCCEEDED にし output をセットする", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -413,7 +413,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].output).toEqual({ result: "success" });
     });
 
-    it("should preserve existing output if output not provided", () => {
+    it("output が無いとき既存 output を維持する", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -428,7 +428,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].output).toEqual({ existing: "data" });
     });
 
-    it("should do nothing if node does not exist", () => {
+    it("ノードが存在しないときは何もしない", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event = createEvent("NODE_SUCCEEDED", "exec-1", { nodeId: "non-existent", output: { result: "success" } });
@@ -443,7 +443,7 @@ describe("Reducer", () => {
   });
 
   describe("NODE_FAILED", () => {
-    it("should update node status to FAILED and set error", () => {
+    it("ノード status を FAILED にし error をセットする", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -461,7 +461,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].error).toEqual({ message: "error" });
     });
 
-    it("should preserve existing error if error not provided", () => {
+    it("error が無いとき既存 error を維持する", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -476,7 +476,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].error).toEqual({ existing: "error" });
     });
 
-    it("should do nothing if node does not exist", () => {
+    it("ノードが存在しないときは何もしない", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event = createEvent("NODE_FAILED", "exec-1", { nodeId: "non-existent", error: { message: "error" } });
@@ -491,7 +491,7 @@ describe("Reducer", () => {
   });
 
   describe("NODE_CANCELED", () => {
-    it("should update node status to CANCELED", () => {
+    it("ノード status を CANCELED に更新する", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -508,7 +508,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].status).toBe("CANCELED");
     });
 
-    it("should do nothing if node does not exist", () => {
+    it("ノードが存在しないときは何もしない", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event = createEvent("NODE_CANCELED", "exec-1", { nodeId: "non-existent" });
@@ -523,7 +523,7 @@ describe("Reducer", () => {
   });
 
   describe("Status priority", () => {
-    it("should not downgrade execution status", () => {
+    it("execution status をダウングレードしない", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -538,7 +538,7 @@ describe("Reducer", () => {
       expect(result.status).toBe("FAILED"); // Should not downgrade
     });
 
-    it("should not downgrade node status", () => {
+    it("ノード status をダウングレードしない", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -557,7 +557,7 @@ describe("Reducer", () => {
   });
 
   describe("Cancel request handling", () => {
-    it("should ignore progress events after cancel requested", () => {
+    it("cancel 要求後は進行イベントを無視する", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -575,7 +575,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].status).toBe("RUNNING"); // Unchanged
     });
 
-    it("should allow terminal events after cancel requested", () => {
+    it("cancel 要求後も終端イベントは許可する", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -595,7 +595,7 @@ describe("Reducer", () => {
   });
 
   describe("NODE_FAIL_REPORTED", () => {
-    it("should update node error without changing status", () => {
+    it("ノードの error を更新し status は変えない", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -613,7 +613,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].status).toBe("RUNNING"); // Status unchanged
     });
 
-    it("should preserve existing error if error not provided", () => {
+    it("error が無いとき既存 error を維持する", () => {
       // Arrange
       const state: ExecutionState = {
         ...createInitialState("exec-1"),
@@ -630,7 +630,7 @@ describe("Reducer", () => {
       expect(result.nodes["node-1"].error).toEqual({ message: "existing error" });
     });
 
-    it("should do nothing if node does not exist", () => {
+    it("ノードが存在しないときは何もしない", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event = createEvent("NODE_FAIL_REPORTED", "exec-1", { nodeId: "non-existent" });
@@ -644,7 +644,7 @@ describe("Reducer", () => {
   });
 
   describe("Unknown event types", () => {
-    it("should ignore unknown event types (audit-only events)", () => {
+    it("未知のイベント種別は無視する（監査用のみ）", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event: EventEnvelope = {
@@ -661,7 +661,7 @@ describe("Reducer", () => {
   });
 
   describe("Schema version", () => {
-    it("should ignore events with wrong schema version", () => {
+    it("スキーマバージョンが異なるイベントは無視する", () => {
       // Arrange
       const state = createInitialState("exec-1");
       const event: EventEnvelope = {
@@ -679,7 +679,7 @@ describe("Reducer", () => {
 
   describe("Boundary values and edge cases", () => {
     describe("Large attempt values", () => {
-      it("should handle large attempt value (1000)", () => {
+      it("大きな attempt (1000) を扱う", () => {
         // Arrange
         const state: ExecutionState = {
           ...createInitialState("exec-1"),
@@ -697,7 +697,7 @@ describe("Reducer", () => {
         expect(result.nodes["node-1"].status).toBe("RUNNING");
       });
 
-      it("should handle very large attempt value (10000)", () => {
+      it("非常に大きな attempt (10000) を扱う", () => {
         // Arrange
         const state: ExecutionState = {
           ...createInitialState("exec-1"),
@@ -715,7 +715,7 @@ describe("Reducer", () => {
         expect(result.nodes["node-1"].status).toBe("RUNNING");
       });
 
-      it("should preserve max attempt when event has smaller value", () => {
+      it("イベントの attempt が小さいときは max を維持する", () => {
         // Arrange
         const state: ExecutionState = {
           ...createInitialState("exec-1"),
@@ -732,7 +732,7 @@ describe("Reducer", () => {
         expect(result.nodes["node-1"].attempt).toBe(10000); // Max preserved
       });
 
-      it("should handle attempt near Number.MAX_SAFE_INTEGER", () => {
+      it("Number.MAX_SAFE_INTEGER に近い attempt を扱う", () => {
         // Arrange
         const largeAttempt = Number.MAX_SAFE_INTEGER - 1;
         const state: ExecutionState = {
@@ -753,7 +753,7 @@ describe("Reducer", () => {
     });
 
     describe("Many nodes", () => {
-      it("should handle execution with 100 nodes", () => {
+      it("100 ノードの execution を扱う", () => {
         // Arrange
         const nodes: Record<string, any> = {};
         for (let i = 1; i <= 100; i++) {
@@ -779,7 +779,7 @@ describe("Reducer", () => {
         expect(result.nodes["node-50"].status).toBe("READY"); // Unchanged
       });
 
-      it("should handle execution with 1000 nodes", () => {
+      it("1000 ノードの execution を扱う", () => {
         // Arrange
         const nodes: Record<string, any> = {};
         for (let i = 1; i <= 1000; i++) {
@@ -805,7 +805,7 @@ describe("Reducer", () => {
         expect(result.nodes["node-1"].status).toBe("IDLE"); // Unchanged
       });
 
-      it("should cancel all active nodes when execution is canceled with many nodes", () => {
+      it("多数ノード時に execution キャンセルで全アクティブノードをキャンセルする", () => {
         // Arrange
         const nodes: Record<string, any> = {};
         for (let i = 1; i <= 100; i++) {
@@ -838,7 +838,7 @@ describe("Reducer", () => {
     });
 
     describe("Large version values", () => {
-      it("should handle large version value", () => {
+      it("大きな version を扱う", () => {
         // Arrange
         const state: ExecutionState = {
           ...createInitialState("exec-1"),
@@ -854,7 +854,7 @@ describe("Reducer", () => {
         expect(result.status).toBe("ACTIVE");
       });
 
-      it("should handle version near Number.MAX_SAFE_INTEGER", () => {
+      it("Number.MAX_SAFE_INTEGER に近い version を扱う", () => {
         // Arrange
         const largeVersion = Number.MAX_SAFE_INTEGER - 1;
         const state: ExecutionState = {
@@ -872,7 +872,7 @@ describe("Reducer", () => {
     });
 
     describe("Long string values", () => {
-      it("should handle very long executionId", () => {
+      it("非常に長い executionId を扱う", () => {
         // Arrange
         const longExecutionId = "exec-" + "a".repeat(1000);
         const state = createInitialState(longExecutionId);
@@ -886,7 +886,7 @@ describe("Reducer", () => {
         expect(result.status).toBe("ACTIVE");
       });
 
-      it("should handle very long nodeId", () => {
+      it("非常に長い nodeId を扱う", () => {
         // Arrange
         const longNodeId = "node-" + "b".repeat(1000);
         const state: ExecutionState = {
@@ -905,7 +905,7 @@ describe("Reducer", () => {
         expect(result.nodes[longNodeId].status).toBe("READY");
       });
 
-      it("should handle very long graphId", () => {
+      it("非常に長い graphId を扱う", () => {
         // Arrange
         const longGraphId = "graph-" + "c".repeat(1000);
         const state = createInitialState("exec-1", "");
@@ -918,7 +918,7 @@ describe("Reducer", () => {
         expect(result.graphId).toBe(longGraphId);
       });
 
-      it("should handle very long workerId", () => {
+      it("非常に長い workerId を扱う", () => {
         // Arrange
         const longWorkerId = "worker-" + "d".repeat(1000);
         const state: ExecutionState = {
@@ -936,7 +936,7 @@ describe("Reducer", () => {
         expect(result.nodes["node-1"].workerId).toBe(longWorkerId);
       });
 
-      it("should handle very long waitKey", () => {
+      it("非常に長い waitKey を扱う", () => {
         // Arrange
         const longWaitKey = "wait-" + "e".repeat(1000);
         const state: ExecutionState = {
@@ -956,7 +956,7 @@ describe("Reducer", () => {
     });
 
     describe("Many events", () => {
-      it("should handle applying 100 events sequentially", () => {
+      it("100 イベントを順に適用する", () => {
         // Arrange
         let state = createInitialState("exec-1");
         const events: EventEnvelope[] = [];
@@ -979,7 +979,7 @@ describe("Reducer", () => {
         }
       });
 
-      it("should handle applying 1000 events sequentially", () => {
+      it("1000 イベントを順に適用する", () => {
         // Arrange
         let state = createInitialState("exec-1");
         const events: EventEnvelope[] = [];
@@ -1001,7 +1001,7 @@ describe("Reducer", () => {
         expect(state.nodes["node-1000"]).toBeDefined();
       });
 
-      it("should handle complex event sequence with many nodes", () => {
+      it("多数ノードの複雑なイベント列を扱う", () => {
         // Arrange
         let state = createInitialState("exec-1");
         const events: EventEnvelope[] = [];
@@ -1033,7 +1033,7 @@ describe("Reducer", () => {
     });
 
     describe("Edge cases with Math.max", () => {
-      it("should handle attempt value of 0", () => {
+      it("attempt 0 を扱う", () => {
         // Arrange
         const state: ExecutionState = {
           ...createInitialState("exec-1"),
@@ -1053,7 +1053,7 @@ describe("Reducer", () => {
         expect(result.nodes["node-1"].status).toBe("RUNNING");
       });
 
-      it("should default attempt to 1 when attempt is not provided", () => {
+      it("attempt が無いときデフォルト 1 にする", () => {
         // Arrange
         const state: ExecutionState = {
           ...createInitialState("exec-1"),
@@ -1071,7 +1071,7 @@ describe("Reducer", () => {
         expect(result.nodes["node-1"].attempt).toBe(1);
       });
 
-      it("should handle negative attempt value", () => {
+      it("負の attempt を扱う（max で正になる）", () => {
         // Arrange
         const state: ExecutionState = {
           ...createInitialState("exec-1"),

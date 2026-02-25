@@ -35,6 +35,40 @@ describe("toToastError", () => {
     expect(result.message).toContain("INVALID_INPUT");
   });
 
+  it("status 401 のとき認証用メッセージを返す", () => {
+    // Arrange
+    const error = {
+      status: 401,
+      error: { code: "UNAUTHORIZED", message: "Token required" }
+    };
+
+    // Act
+    const result = toToastError(error);
+
+    // Assert
+    expect(result.tone).toBe("error");
+    expect(result.message).toContain("401");
+    expect(result.message).toContain("認証が必要です");
+    expect(result.message).toContain("Token required");
+  });
+
+  it("status 403 のとき権限・テナント用メッセージを返す", () => {
+    // Arrange
+    const error = {
+      status: 403,
+      error: { code: "FORBIDDEN", message: "Tenant not specified" }
+    };
+
+    // Act
+    const result = toToastError(error);
+
+    // Assert
+    expect(result.tone).toBe("error");
+    expect(result.message).toContain("403");
+    expect(result.message).toContain("権限不足またはテナント未指定");
+    expect(result.message).toContain("Tenant not specified");
+  });
+
   it("status 500 のとき 500 用メッセージを返す", () => {
     // Arrange
     const error = {

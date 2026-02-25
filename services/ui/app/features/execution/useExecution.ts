@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { apiGet, apiPost } from "../../lib/api";
+import { apiGet, apiPost, getApiConfig } from "../../lib/api";
 import { applyExecutionStreamEvent, parseExecutionStreamEvent } from "../../lib/executionStream";
 import type { CommandAccepted, ExecutionDTO } from "../../lib/types";
 
@@ -96,7 +96,12 @@ export function useExecution(executionId: string, options: UseExecutionOptions =
     const connectStream = () => {
       if (disposed) return;
 
-      const next = new EventSource(`/api/core/executions/${encodeURIComponent(currentExecutionId)}/stream`);
+      const { tenantId } = getApiConfig();
+      const streamPath = `/api/core/executions/${encodeURIComponent(currentExecutionId)}/stream`;
+      const streamUrl = tenantId
+        ? `${streamPath}?${new URLSearchParams({ tenantId }).toString()}`
+        : streamPath;
+      const next = new EventSource(streamUrl);
       stream = next;
 
       next.onopen = onStreamOpen;

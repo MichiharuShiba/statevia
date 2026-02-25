@@ -19,7 +19,7 @@ vi.mock("../../../src/infrastructure/persistence/db.js", () => ({
 vi.mock("../../../src/infrastructure/persistence/repositories/event-store.js");
 vi.mock("../../../src/infrastructure/persistence/repositories/execution-repository.js");
 
-describe("CreateExecutionUseCase", () => {
+describe("CreateExecution ユースケース", () => {
   let mockClient: any;
 
   beforeEach(() => {
@@ -35,7 +35,7 @@ describe("CreateExecutionUseCase", () => {
     (ExecutionRepository.save as any) = vi.fn().mockResolvedValue(undefined);
   });
 
-  it("should create execution with provided executionId", async () => {
+  it("指定した executionId で execution を作成する", async () => {
     // Arrange
     const request: CreateExecutionRequest = {
       executionId: "exec-123",
@@ -69,7 +69,7 @@ describe("CreateExecutionUseCase", () => {
     expect(ExecutionRepository.save).toHaveBeenCalled();
   });
 
-  it("should generate executionId if not provided", async () => {
+  it("executionId が無いとき生成する", async () => {
     // Arrange
     const request: CreateExecutionRequest = {
       graphId: "graph-1",
@@ -85,7 +85,7 @@ describe("CreateExecutionUseCase", () => {
     expect(response.body.executionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
   });
 
-  it("should handle input parameter", async () => {
+  it("input パラメータを扱う", async () => {
     // Arrange
     const request: CreateExecutionRequest = {
       executionId: "exec-123",
@@ -107,7 +107,7 @@ describe("CreateExecutionUseCase", () => {
     expect(events[0].payload).toHaveProperty("input", { key: "value" });
   });
 
-  it("should rollback on error", async () => {
+  it("エラー時にロールバックする", async () => {
     // Arrange
     const request: CreateExecutionRequest = {
       executionId: "exec-123",
@@ -123,7 +123,7 @@ describe("CreateExecutionUseCase", () => {
     expect(mockClient.release).toHaveBeenCalled();
   });
 
-  it("should always release client connection", async () => {
+  it("常にクライアント接続を release する", async () => {
     // Arrange
     const request: CreateExecutionRequest = {
       executionId: "exec-123",
@@ -138,7 +138,7 @@ describe("CreateExecutionUseCase", () => {
     expect(mockClient.release).toHaveBeenCalled();
   });
 
-  it("should handle missing correlationId", async () => {
+  it("correlationId が無いときも扱う", async () => {
     // Arrange
     const request: CreateExecutionRequest = {
       executionId: "exec-123",

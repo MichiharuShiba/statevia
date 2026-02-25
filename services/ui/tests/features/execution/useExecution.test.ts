@@ -70,14 +70,18 @@ describe("useExecution", () => {
   });
 
   it("初期状態で execution は null、loadExecution で取得できる", async () => {
+    // Arrange
     const { result } = renderHook(() => useExecution("ex-1"));
 
+    // Assert (初期)
     expect(result.current.execution).toBeNull();
 
+    // Act
     await act(async () => {
       result.current.loadExecution();
     });
 
+    // Assert
     expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1");
     expect(result.current.execution).not.toBeNull();
     expect(result.current.execution?.executionId).toBe("ex-1");
@@ -85,39 +89,45 @@ describe("useExecution", () => {
   });
 
   it("loadExecution 失敗時に onError を呼び、execution を null にする", async () => {
+    // Arrange
     vi.mocked(api.apiGet).mockRejectedValueOnce(new Error("Network error"));
     const onError = vi.fn();
     const { result } = renderHook(() => useExecution("ex-1", { onError }));
 
+    // Act
     await act(async () => {
       result.current.loadExecution();
     });
 
+    // Assert
     expect(onError).toHaveBeenCalledWith(expect.any(Error));
     expect(result.current.execution).toBeNull();
     expect(result.current.selectedNodeId).toBeNull();
   });
 
   it("cancelExecution 成功時に apiPost と onCancelSuccess を呼び、再取得する", async () => {
+    // Arrange
     const onCancelSuccess = vi.fn();
     const { result } = renderHook(() => useExecution("ex-1", { onCancelSuccess }));
-
     await act(async () => {
       result.current.loadExecution();
     });
     expect(result.current.execution).not.toBeNull();
     vi.mocked(api.apiGet).mockClear();
 
+    // Act
     await act(async () => {
       result.current.cancelExecution();
     });
 
+    // Assert
     expect(api.apiPost).toHaveBeenCalledWith("/executions/ex-1/cancel", { reason: "ui" });
     expect(onCancelSuccess).toHaveBeenCalled();
     expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1");
   });
 
   it("cancelExecution 失敗時に onError を呼ぶ", async () => {
+    // Arrange
     const { result } = renderHook(() => useExecution("ex-1", { onError: vi.fn() }));
     await act(async () => {
       result.current.loadExecution();
@@ -129,10 +139,12 @@ describe("useExecution", () => {
       result2.current.loadExecution();
     });
 
+    // Act
     await act(async () => {
       result2.current.cancelExecution();
     });
 
+    // Assert
     expect(onError).toHaveBeenCalledWith(expect.any(Error));
   });
 
@@ -162,38 +174,81 @@ describe("useExecution", () => {
     beforeEach(() => {
       streamInstances.length = 0;
       vi.stubGlobal("EventSource", MockEventSource);
+      vi.spyOn(api, "getApiConfig").mockReturnValue({ tenantId: "", authToken: "" });
     });
 
     it("execution 取得後に EventSource が正しい URL で作成される", async () => {
+      // Arrange (getApiConfig は beforeEach で空テナントにモック済み)
       const { result } = renderHook(() => useExecution("ex-1"));
 
+      // Act
       await act(async () => {
         result.current.loadExecution();
       });
 
+      // Assert
       await waitFor(() => {
         expect(streamInstances.length).toBe(1);
       });
       expect(streamInstances[0]?.url).toBe("/api/core/executions/ex-1/stream");
     });
 
-    it("ストリーム onerror で再接続がスケジュールされ、遅延後に再度 connect する", async () => {
+    it("getApiConfig で tenantId があるとき EventSource の URL に tenantId クエリが付く", async () => {
+      // Arrange
+      vi.mocked(api.getApiConfig).mockReturnValue({ tenantId: "tenant-a", authToken: "" });
       const { result } = renderHook(() => useExecution("ex-1"));
 
+      // Act
+      await act(async () => {
+        result.current.loadExecution();
+      });
+
+      // Assert
+      await waitFor(() => {
+        expect(streamInstances.length).toBe(1);
+      });
+      expect(streamInstances[0]?.url).toBe(
+        "/api/core/executions/ex-1/stream?tenantId=tenant-a"
+      );
+    });
+
+    it("onmessage でパースできないデータのとき applyRawEvent は早期 return する", async () => {
+      // Arrange
+      const { result } = renderHook(() => useExecution("ex-1"));
       await act(async () => {
         result.current.loadExecution();
       });
       await waitFor(() => expect(streamInstances.length).toBe(1));
+      const firstInstance = streamInstances[0];
+      if (!firstInstance?.onmessage) throw new Error("expected onmessage");
 
-      vi.useFakeTimers();
+      // Act: 不正な JSON を送っても例外にならない
+      act(() => {
+        firstInstance.onmessage?.({ data: "not valid json" } as MessageEvent<string>);
+      });
+
+      // Assert: execution は変わらない（applyRawEvent が early return した）
+      expect(result.current.execution?.executionId).toBe("ex-1");
+    });
+
+    it("ストリーム onerror で再接続がスケジュールされ、遅延後に再度 connect する", async () => {
+      // Arrange
+      const { result } = renderHook(() => useExecution("ex-1"));
+      await act(async () => {
+        result.current.loadExecution();
+      });
+      await waitFor(() => expect(streamInstances.length).toBe(1));
       const firstInstance = streamInstances[0];
       if (!firstInstance) throw new Error("expected one stream instance");
-      expect(firstInstance.onerror).toBeDefined();
+      vi.useFakeTimers();
+
+      // Act
       act(() => {
         firstInstance.onerror?.();
       });
-      expect(firstInstance.close).toHaveBeenCalled();
 
+      // Assert
+      expect(firstInstance.close).toHaveBeenCalled();
       act(() => {
         vi.advanceTimersByTime(1000);
       });
@@ -204,13 +259,12 @@ describe("useExecution", () => {
     });
 
     it("再接続後の onopen で refreshExecutionSnapshot が呼ばれる", async () => {
+      // Arrange
       const { result } = renderHook(() => useExecution("ex-1"));
-
       await act(async () => {
         result.current.loadExecution();
       });
       await waitFor(() => expect(streamInstances.length).toBe(1));
-
       const firstInstance = streamInstances[0];
       if (!firstInstance) throw new Error("expected one stream instance");
       vi.mocked(api.apiGet).mockClear();
@@ -229,11 +283,14 @@ describe("useExecution", () => {
       expect(streamInstances.length).toBe(2);
       vi.useRealTimers();
 
+      // Act: 再接続後の onopen
       const secondInstance = streamInstances[1];
       if (!secondInstance) throw new Error("expected second stream instance");
       await act(async () => {
         secondInstance.onopen?.();
       });
+
+      // Assert
       expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1");
     });
 

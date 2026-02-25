@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ExecutionHeader } from "./components/execution/ExecutionHeader";
 import { ExecutionStatusBanner } from "./components/execution/ExecutionStatusBanner";
+import { TenantMissingBanner } from "./components/execution/TenantMissingBanner";
 import { NodeDetail } from "./components/nodes/NodeDetail";
 import { NodeGraphView } from "./components/nodes/NodeGraphView";
 import { NodeListView } from "./components/nodes/NodeListView";
@@ -99,6 +100,7 @@ export default function Page() {
             onViewModeChange={setViewMode}
           />
 
+          <TenantMissingBanner />
           <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequestedAt} terminal={terminal} />
         </>
       )}
