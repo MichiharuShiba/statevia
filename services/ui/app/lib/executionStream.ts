@@ -34,7 +34,9 @@ function upsertNode(nodes: ExecutionNodeDTO[], incoming: Partial<ExecutionNodeDT
         attempt: incoming.attempt ?? 0,
         workerId: incoming.workerId ?? null,
         waitKey: incoming.waitKey ?? null,
-        canceledByExecution: incoming.canceledByExecution ?? false
+        canceledByExecution: incoming.canceledByExecution ?? false,
+        error: incoming.error ?? undefined,
+        cancelReason: incoming.cancelReason ?? undefined
       }
     ];
   }
@@ -58,7 +60,9 @@ function applyGraphUpdated(execution: ExecutionDTO, event: Extract<ExecutionStre
       status: normalizedStatus ?? undefined,
       attempt: patchNode.attempt,
       waitKey: patchNode.waitKey,
-      canceledByExecution: patchNode.canceledByExecution
+      canceledByExecution: patchNode.canceledByExecution,
+      error: patchNode.error,
+      cancelReason: patchNode.cancelReason
     });
   }, execution.nodes);
 
@@ -82,22 +86,27 @@ function applyStatusChanged(
 }
 
 function applyNodeCancelled(execution: ExecutionDTO, event: Extract<ExecutionStreamEvent, { type: "NodeCancelled" }>): ExecutionDTO {
+  const reason = event.cancel?.reason ?? undefined;
   return {
     ...execution,
     nodes: upsertNode(execution.nodes, {
       nodeId: event.nodeId,
       status: "CANCELED",
-      canceledByExecution: true
+      canceledByExecution: true,
+      cancelReason: reason
     })
   };
 }
 
 function applyNodeFailed(execution: ExecutionDTO, event: Extract<ExecutionStreamEvent, { type: "NodeFailed" }>): ExecutionDTO {
+  const error =
+    event.error == null ? undefined : { message: event.error.message ?? undefined };
   return {
     ...execution,
     nodes: upsertNode(execution.nodes, {
       nodeId: event.nodeId,
-      status: "FAILED"
+      status: "FAILED",
+      error
     })
   };
 }

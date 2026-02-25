@@ -136,7 +136,8 @@ executionsRouter.get("/:executionId", async (req, res, next) => {
         attempt: n.attempt,
         workerId: n.workerId ?? null,
         waitKey: n.waitKey ?? null,
-        canceledByExecution: n.canceledByExecution ?? false
+        canceledByExecution: n.canceledByExecution ?? false,
+        error: n.error ?? null
       }))
     });
   } catch (e) {

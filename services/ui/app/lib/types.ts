@@ -9,6 +9,10 @@ export type ExecutionNodeDTO = {
   workerId: string | null;
   waitKey: string | null;
   canceledByExecution: boolean;
+  /** 失敗時のみ。API/SSE から設定 */
+  error?: { message?: string } | null;
+  /** Cancel 時。SSE NodeCancelled から設定（API では未永続化） */
+  cancelReason?: string | null;
 };
 
 export type ExecutionDTO = {
@@ -45,6 +49,8 @@ export type GraphPatchNode = {
   attempt?: number;
   waitKey?: string | null;
   canceledByExecution?: boolean;
+  error?: { message?: string } | null;
+  cancelReason?: string | null;
 };
 
 export type GraphUpdatedEvent = {

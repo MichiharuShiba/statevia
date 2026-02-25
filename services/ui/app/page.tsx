@@ -55,6 +55,14 @@ export default function Page() {
 
   const selectedResumeDisabledReason = getResumeDisabledReason(execution, selectedNode);
 
+  const resumeEventName = useMemo(() => {
+    if (!selectedNodeId || !graphData?.edges) return null;
+    const resumeEdge = graphData.edges.find(
+      (e) => e.from === selectedNodeId && e.edgeType === "Resume"
+    );
+    return resumeEdge?.eventName ?? null;
+  }, [selectedNodeId, graphData?.edges]);
+
   useEffect(() => {
     if (viewMode !== "graph" || !execution) setGraphFullscreen(false);
   }, [viewMode, execution]);
@@ -161,6 +169,7 @@ export default function Page() {
               loading={loading}
               onResume={() => selectedNodeId && resumeNode(selectedNodeId)}
               resumeDisabledReason={selectedResumeDisabledReason}
+              resumeEventName={resumeEventName}
               className={graphFullscreen ? "h-full min-h-0 overflow-auto" : undefined}
             />
           </main>
