@@ -188,6 +188,34 @@ describe("applyExecutionStreamEvent", () => {
     expect(next.nodes[0].attempt).toBe(1);
   });
 
+  it("GraphUpdated を適用してノードの error と cancelReason をマージする", () => {
+    // Arrange
+    const event = parseExecutionStreamEvent(
+      JSON.stringify({
+        type: "GraphUpdated",
+        executionId: "ex-1",
+        patch: {
+          nodes: [
+            {
+              nodeId: "n-1",
+              status: "FAILED",
+              error: { message: "merged error" },
+              cancelReason: "merged reason"
+            }
+          ]
+        }
+      })
+    )!;
+
+    // Act
+    const next = applyExecutionStreamEvent(baseExecution, event);
+
+    // Assert
+    expect(next.nodes[0].status).toBe("FAILED");
+    expect(next.nodes[0].error).toEqual({ message: "merged error" });
+    expect(next.nodes[0].cancelReason).toBe("merged reason");
+  });
+
   it("ExecutionStatusChanged を COMPLETED に適用する", () => {
     // Arrange
     const event = parseExecutionStreamEvent(
@@ -240,6 +268,7 @@ describe("applyExecutionStreamEvent", () => {
 
     // Assert
     expect(next.nodes[0].status).toBe("FAILED");
+    expect(next.nodes[0].error).toEqual({ message: "boom" });
   });
 
   it("NodeCancelled を適用して canceledByExecution を立てる", () => {
@@ -259,6 +288,7 @@ describe("applyExecutionStreamEvent", () => {
     // Assert
     expect(next.nodes[0].status).toBe("CANCELED");
     expect(next.nodes[0].canceledByExecution).toBe(true);
+    expect(next.nodes[0].cancelReason).toBe("user");
   });
 
   it("ExecutionStatusChanged を FAILED に適用する", () => {
