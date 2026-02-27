@@ -15,6 +15,12 @@ import {
   cmdCancelExecution
 } from "../../../application/commands/command-handlers.js";
 import { streamExecutionEvents } from "../stream-execution-handler.js";
+import { EventStore } from "../../../infrastructure/persistence/repositories/event-store.js";
+import { mapPersistedEventToStreamEvent } from "../stream-events.js";
+import { getExecutionStateAtSeqUseCase } from "../../../application/use-cases/get-execution-state-at-seq-use-case.js";
+
+const DEFAULT_EVENTS_LIMIT = 500;
+const MAX_EVENTS_LIMIT = 2000;
 
 export const executionsRouter = express.Router();
 
@@ -111,6 +117,89 @@ executionsRouter.post("/:executionId/cancel", async (req, res, next) => {
     });
 
     res.status(result.status).json(result.body);
+  } catch (e) {
+    next(e);
+  }
+});
+
+// List Execution Events (timeline / replay)
+executionsRouter.get("/:executionId/events", async (req, res, next) => {
+  try {
+    const { executionId } = req.params;
+    const state = await getExecutionUseCase(executionId);
+    if (!state) throw notFound("Execution not found", { executionId });
+
+    const afterSeqParam = req.query.afterSeq;
+    const afterSeq =
+      afterSeqParam !== undefined && afterSeqParam !== null ? Number(afterSeqParam) : 0;
+    const effectiveAfterSeq = Number.isInteger(afterSeq) && afterSeq >= 0 ? afterSeq : 0;
+
+    const limitParam = req.query.limit;
+    const rawLimit =
+      limitParam !== undefined && limitParam !== null ? Number(limitParam) : DEFAULT_EVENTS_LIMIT;
+    const limit = Math.min(
+      Math.max(1, Number.isFinite(rawLimit) ? rawLimit : DEFAULT_EVENTS_LIMIT),
+      MAX_EVENTS_LIMIT
+    );
+
+    const persisted = await EventStore.listSince(executionId, effectiveAfterSeq, limit);
+    const events = persisted
+      .map((e) => {
+        const stream = mapPersistedEventToStreamEvent(e);
+        if (!stream) return null;
+        return { seq: e.seq, ...stream };
+      })
+      .filter((e): e is NonNullable<typeof e> => e !== null && e !== undefined);
+
+    const hasMore = events.length >= limit;
+
+    res.json({ events, hasMore });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Get Execution State at Seq (replay for timeline)
+executionsRouter.get("/:executionId/state", async (req, res, next) => {
+  try {
+    const { executionId } = req.params;
+    const atSeqParam = req.query.atSeq;
+    const atSeq =
+      atSeqParam !== undefined && atSeqParam !== null ? Number(atSeqParam) : undefined;
+    if (atSeq === undefined || !Number.isInteger(atSeq) || atSeq < 1) {
+      res.status(400).json({
+        error: { code: "BAD_REQUEST", message: "Query atSeq is required and must be a positive integer" }
+      });
+      return;
+    }
+
+    const s = await getExecutionStateAtSeqUseCase(executionId, atSeq);
+    if (!s) {
+      throw notFound("Execution not found or no events at seq", {
+        executionId,
+        atSeq
+      });
+    }
+
+    res.json({
+      executionId: s.executionId,
+      status: s.status,
+      graphId: s.graphId,
+      cancelRequestedAt: s.cancelRequestedAt ?? null,
+      canceledAt: s.canceledAt ?? null,
+      failedAt: s.failedAt ?? null,
+      completedAt: s.completedAt ?? null,
+      nodes: Object.values(s.nodes).map((n) => ({
+        nodeId: n.nodeId,
+        nodeType: n.nodeType,
+        status: n.status,
+        attempt: n.attempt,
+        workerId: n.workerId ?? null,
+        waitKey: n.waitKey ?? null,
+        canceledByExecution: n.canceledByExecution ?? false,
+        error: n.error ?? null
+      }))
+    });
   } catch (e) {
     next(e);
   }

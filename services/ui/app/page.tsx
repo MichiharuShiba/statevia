@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ExecutionHeader } from "./components/execution/ExecutionHeader";
 import { ExecutionStatusBanner } from "./components/execution/ExecutionStatusBanner";
+import { ExecutionTimeline } from "./components/execution/ExecutionTimeline";
+import { ReplayBanner } from "./components/execution/ReplayBanner";
 import { TenantMissingBanner } from "./components/execution/TenantMissingBanner";
 import { NodeDetail } from "./components/nodes/NodeDetail";
 import { NodeGraphView, type GraphViewport } from "./components/nodes/NodeGraphView";
@@ -11,6 +13,8 @@ import { Toast } from "./components/Toast";
 import type { ViewMode } from "./components/ViewToggle";
 import { getGraphDefinition } from "./graphs/registry";
 import { useExecution } from "./features/execution/useExecution";
+import { useExecutionEvents } from "./features/execution/useExecutionEvents";
+import { useExecutionStateAtSeq } from "./features/execution/useExecutionStateAtSeq";
 import { getNodeWithFallback, useGraphData } from "./features/graph/useGraphData";
 import { getResumeDisabledReason, useNodeCommands } from "./features/nodes/useNodeCommands";
 import { toToastError, type ToastState } from "./lib/errors";
@@ -30,6 +34,7 @@ export default function Page() {
   const [graphFullscreen, setGraphFullscreen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [graphViewportByExecutionId, setGraphViewportByExecutionId] = useState<GraphViewportByExecutionId>({});
+  const [replayAtSeq, setReplayAtSeq] = useState<number | null>(null);
 
   const {
     execution,
@@ -45,8 +50,25 @@ export default function Page() {
     onCancelSuccess: () => setToast({ tone: "success", message: "CancelExecution accepted" })
   });
 
+  const {
+    events: timelineEvents,
+    hasMore: timelineHasMore,
+    loading: timelineLoading,
+    loadingMore: timelineLoadingMore,
+    error: timelineError,
+    loadMore: timelineLoadMore
+  } = useExecutionEvents(execution?.executionId ?? null);
+  const { state: stateAtSeq, loading: stateAtSeqLoading } = useExecutionStateAtSeq(
+    execution?.executionId ?? null,
+    replayAtSeq
+  );
+
+  const displayExecution =
+    replayAtSeq != null && stateAtSeq != null ? stateAtSeq : execution;
+  const isReplaying = replayAtSeq != null && stateAtSeq != null;
+
   const graphDefinition = execution ? getGraphDefinition(execution.graphId) : null;
-  const graphData = useGraphData(execution, graphDefinition);
+  const graphData = useGraphData(displayExecution, graphDefinition);
 
   const { resumeNode, loading: nodeLoading } = useNodeCommands(execution, {
     onSuccess: () => {
@@ -56,14 +78,16 @@ export default function Page() {
     onError: (err) => setToast(toToastError(err))
   });
 
-  const loading = executionLoading || nodeLoading;
+  const loading = executionLoading || nodeLoading || stateAtSeqLoading;
 
   const selectedNode = useMemo(
-    () => getNodeWithFallback(execution, graphData, selectedNodeId),
-    [execution, graphData, selectedNodeId]
+    () => getNodeWithFallback(displayExecution, graphData, selectedNodeId),
+    [displayExecution, graphData, selectedNodeId]
   );
 
-  const selectedResumeDisabledReason = getResumeDisabledReason(execution, selectedNode);
+  const selectedResumeDisabledReason = isReplaying
+    ? "リプレイ表示中は実行できません"
+    : getResumeDisabledReason(execution, selectedNode);
 
   const resumeEventName = useMemo(() => {
     if (!selectedNodeId || !graphData?.edges) return null;
@@ -76,11 +100,14 @@ export default function Page() {
   const savedGraphViewport = execution ? graphViewportByExecutionId[execution.executionId] : undefined;
   const handleGraphViewportChange = useCallback(
     (viewport: GraphViewport) => {
-      if (execution) {
-        setGraphViewportByExecutionId((prev) => ({ ...prev, [execution.executionId]: viewport }));
+      if (displayExecution) {
+        setGraphViewportByExecutionId((prev) => ({
+          ...prev,
+          [displayExecution.executionId]: viewport
+        }));
       }
     },
-    [execution]
+    [displayExecution]
   );
 
   useEffect(() => {
@@ -130,6 +157,25 @@ export default function Page() {
 
           <TenantMissingBanner />
           <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequestedAt} terminal={terminal} />
+
+          {showExecutionPanels && isReplaying && (
+            <ReplayBanner onBackToCurrent={() => setReplayAtSeq(null)} />
+          )}
+
+          {showExecutionPanels && (
+            <ExecutionTimeline
+              events={timelineEvents}
+              loading={timelineLoading}
+              error={timelineError}
+              selectedSeq={replayAtSeq}
+              onSelectSeq={setReplayAtSeq}
+              onBackToCurrent={() => setReplayAtSeq(null)}
+              isReplaying={isReplaying}
+              hasMore={timelineHasMore}
+              loadingMore={timelineLoadingMore}
+              onLoadMore={timelineLoadMore}
+            />
+          )}
         </>
       )}
 
@@ -145,7 +191,7 @@ export default function Page() {
             <section className={graphFullscreen ? "min-h-0" : ""}>
               {viewMode === "list" ? (
                 <NodeListView
-                  nodes={execution.nodes}
+                  nodes={displayExecution?.nodes ?? []}
                   selectedNodeId={selectedNodeId}
                   onSelectNode={(id) => setSelectedNodeId(id)}
                 />
@@ -173,8 +219,10 @@ export default function Page() {
                       onSelectNode={setSelectedNodeId}
                       onResumeNode={(nodeId) => resumeNode(nodeId)}
                       getResumeDisabledReason={(nodeId) => {
-                        const node = getNodeWithFallback(execution, graphData, nodeId);
-                        return getResumeDisabledReason(execution, node);
+                        const node = getNodeWithFallback(displayExecution, graphData, nodeId);
+                        return isReplaying
+                          ? "リプレイ表示中は実行できません"
+                          : getResumeDisabledReason(execution, node);
                       }}
                       defaultViewport={savedGraphViewport}
                       onViewportChange={handleGraphViewportChange}
@@ -186,10 +234,10 @@ export default function Page() {
             </section>
 
             <NodeDetail
-              execution={execution}
+              execution={displayExecution ?? execution}
               node={selectedNode}
               loading={loading}
-              onResume={() => selectedNodeId && resumeNode(selectedNodeId)}
+              onResume={() => !isReplaying && selectedNodeId && resumeNode(selectedNodeId)}
               resumeDisabledReason={selectedResumeDisabledReason}
               resumeEventName={resumeEventName}
               className={graphFullscreen ? "h-full min-h-0 overflow-auto" : undefined}

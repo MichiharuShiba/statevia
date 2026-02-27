@@ -71,4 +71,33 @@ export class ExecutionPage {
     const timeout = options?.timeout ?? 3000;
     await this.fullscreenButton.waitFor({ state: "visible", timeout });
   }
+
+  /** 実行履歴タイムラインの見出し（クリックで開閉） */
+  get timelineHeading() {
+    return this.page.getByRole("heading", { name: "実行履歴タイムライン" });
+  }
+
+  /** タイムライン本体（開いたときのイベント一覧のコンテナ） */
+  get timelineBody() {
+    return this.page.locator("#execution-timeline-body");
+  }
+
+  /** タイムラインのイベント一覧 ul */
+  get timelineEventList() {
+    return this.timelineBody.locator("ul");
+  }
+
+  /** タイムラインを開く（閉じている場合のみ） */
+  async expandTimeline(): Promise<void> {
+    const body = this.timelineBody;
+    if (await body.getAttribute("hidden") !== null) {
+      await this.timelineHeading.click();
+    }
+    await this.timelineEventList.waitFor({ state: "visible", timeout: 5000 });
+  }
+
+  /** 続きを読み込むボタン */
+  get timelineLoadMoreButton() {
+    return this.timelineBody.getByRole("button", { name: "続きを読み込む" });
+  }
 }
