@@ -13,6 +13,13 @@ describe("apiGet", () => {
             text: () => Promise.resolve(JSON.stringify({ data: 1 }))
           } as Response);
         }
+        if (url.includes("/api/core/empty")) {
+          return Promise.resolve({
+            ok: true,
+            statusText: "OK",
+            text: () => Promise.resolve("")
+          } as Response);
+        }
         if (url.includes("/api/core/error-json")) {
           return Promise.resolve({
             ok: false,
@@ -69,6 +76,11 @@ describe("apiGet", () => {
     // Assert
     expect(result).toEqual({ data: 1 });
     expect(fetch).toHaveBeenCalledWith("/api/core/ok", expect.objectContaining({ cache: "no-store" }));
+  });
+
+  it("レスポンス body が空文字のとき null を返す（parseJsonSafe の t ? 偽）", async () => {
+    const result = await apiGet<unknown>("/empty");
+    expect(result).toBeNull();
   });
 
   it("JSON のエラー応答のとき status と error body で ApiError をスローする", async () => {

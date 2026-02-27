@@ -15,6 +15,9 @@ type ExecutionHeaderProps = {
   execution: ExecutionDTO | null;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
+  /** 比較モード（2実行差分表示） */
+  compareMode?: boolean;
+  onCompareModeChange?: (enabled: boolean) => void;
 };
 
 export function ExecutionHeader({
@@ -26,7 +29,9 @@ export function ExecutionHeader({
   canCancel,
   execution,
   viewMode,
-  onViewModeChange
+  onViewModeChange,
+  compareMode = false,
+  onCompareModeChange
 }: Readonly<ExecutionHeaderProps>) {
   const status = execution?.status;
   const style = status ? getStatusStyle(status) : null;
@@ -61,6 +66,17 @@ export function ExecutionHeader({
           >
             Cancel
           </button>
+          {onCompareModeChange && (
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
+              <input
+                type="checkbox"
+                checked={compareMode}
+                onChange={(e) => onCompareModeChange(e.target.checked)}
+                className="rounded border-zinc-300"
+              />
+              比較
+            </label>
+          )}
           <ViewToggle value={viewMode} onChange={onViewModeChange} />
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ExecutionComparisonBar } from "./components/execution/ExecutionComparisonBar";
 import { ExecutionHeader } from "./components/execution/ExecutionHeader";
 import { ExecutionStatusBanner } from "./components/execution/ExecutionStatusBanner";
 import { ExecutionTimeline } from "./components/execution/ExecutionTimeline";
@@ -12,11 +13,14 @@ import { NodeListView } from "./components/nodes/NodeListView";
 import { Toast } from "./components/Toast";
 import type { ViewMode } from "./components/ViewToggle";
 import { getGraphDefinition } from "./graphs/registry";
+import { computeExecutionDiff } from "./lib/executionDiff";
 import { useExecution } from "./features/execution/useExecution";
 import { useExecutionEvents } from "./features/execution/useExecutionEvents";
 import { useExecutionStateAtSeq } from "./features/execution/useExecutionStateAtSeq";
 import { getNodeWithFallback, useGraphData } from "./features/graph/useGraphData";
 import { getResumeDisabledReason, useNodeCommands } from "./features/nodes/useNodeCommands";
+import { apiGet } from "./lib/api";
+import type { ExecutionDTO } from "./lib/types";
 import { toToastError, type ToastState } from "./lib/errors";
 
 /** executionId ごとの Graph ビューポート（ズーム・パン位置） */
@@ -35,6 +39,10 @@ export default function Page() {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [graphViewportByExecutionId, setGraphViewportByExecutionId] = useState<GraphViewportByExecutionId>({});
   const [replayAtSeq, setReplayAtSeq] = useState<number | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [executionIdB, setExecutionIdB] = useState("");
+  const [executionB, setExecutionB] = useState<ExecutionDTO | null>(null);
+  const [loadingB, setLoadingB] = useState(false);
 
   const {
     execution,
@@ -79,6 +87,24 @@ export default function Page() {
   });
 
   const loading = executionLoading || nodeLoading || stateAtSeqLoading;
+
+  const loadExecutionB = useCallback(async () => {
+    if (!executionIdB.trim()) return;
+    setLoadingB(true);
+    try {
+      const res = await apiGet<ExecutionDTO>(`/executions/${executionIdB.trim()}`);
+      setExecutionB(res);
+    } catch {
+      setExecutionB(null);
+    } finally {
+      setLoadingB(false);
+    }
+  }, [executionIdB]);
+
+  const executionDiff = useMemo(
+    () => computeExecutionDiff(execution, executionB),
+    [execution, executionB]
+  );
 
   const selectedNode = useMemo(
     () => getNodeWithFallback(displayExecution, graphData, selectedNodeId),
@@ -153,7 +179,22 @@ export default function Page() {
             execution={execution}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
+            compareMode={compareMode}
+            onCompareModeChange={setCompareMode}
           />
+
+          {compareMode && showExecutionPanels && (
+            <ExecutionComparisonBar
+              executionLeft={execution}
+              executionRight={executionB}
+              executionIdRight={executionIdB}
+              onExecutionIdRightChange={setExecutionIdB}
+              onLoadRight={loadExecutionB}
+              loadingRight={loadingB}
+              diff={executionDiff}
+              onSelectDiffNode={setSelectedNodeId}
+            />
+          )}
 
           <TenantMissingBanner />
           <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequestedAt} terminal={terminal} />
@@ -227,6 +268,7 @@ export default function Page() {
                       defaultViewport={savedGraphViewport}
                       onViewportChange={handleGraphViewportChange}
                       heightClassName={graphFullscreen ? "h-full min-h-[360px]" : undefined}
+                      nodeDiffHighlight={compareMode ? executionDiff?.nodeHighlights : undefined}
                     />
                   )}
                 </div>
