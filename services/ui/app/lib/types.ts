@@ -101,3 +101,10 @@ export type ExecutionStreamEvent =
   | ExecutionStatusChangedEvent
   | NodeCancelledEvent
   | NodeFailedEvent;
+
+/** GET /executions/:id/events のレスポンス（seq 付きでタイムライン/リプレイ用） */
+export type ExecutionEventWithSeq = { seq: number } & ExecutionStreamEvent;
+
+export type ExecutionEventsResponse = {
+  events: ExecutionEventWithSeq[];
+};

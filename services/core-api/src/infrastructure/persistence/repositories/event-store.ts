@@ -12,6 +12,7 @@ export type PersistedEvent = {
   executionId: string;
   type: string;
   occurredAt: string;
+  schemaVersion: number;
   payload: unknown;
 };
 
@@ -57,9 +58,10 @@ export class EventStore {
       execution_id: string;
       type: string;
       occurred_at: string;
+      schema_version: number;
       payload: unknown;
     }>(
-      `select seq, event_id, execution_id, type, occurred_at, payload
+      `select seq, event_id, execution_id, type, occurred_at, schema_version, payload
          from events
         where execution_id = $1
           and seq > $2
@@ -74,6 +76,7 @@ export class EventStore {
       executionId: row.execution_id,
       type: row.type,
       occurredAt: row.occurred_at,
+      schemaVersion: row.schema_version,
       payload: row.payload
     }));
   }
