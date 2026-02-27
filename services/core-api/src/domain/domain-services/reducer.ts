@@ -172,9 +172,12 @@ export function reduce(state: ExecutionState, event: EventEnvelope): ExecutionSt
       break;
     }
 
-    case "NODE_RESUMED":
-      s = updateNodeStatus(s, (event.payload as any).nodeId, "RUNNING");
+    case "NODE_RESUMED": {
+      const nodeId = (event.payload as any).nodeId as string;
+      const node = s.nodes[nodeId];
+      if (node?.status === "WAITING") s = updateNodeStatus(s, nodeId, "RUNNING");
       break;
+    }
 
     case "NODE_SUCCEEDED": {
       const p = event.payload as any;
