@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { ExecutionEventWithSeq } from "../../lib/types";
 
 function formatAt(at: string | undefined): string {
@@ -54,21 +55,46 @@ export function ExecutionTimeline({
   onBackToCurrent,
   isReplaying
 }: Readonly<ExecutionTimelineProps>) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between gap-2 border-b border-zinc-100 pb-2">
-        <h2 className="text-sm font-semibold text-zinc-800">実行履歴タイムライン</h2>
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          className="flex flex-1 cursor-pointer items-center gap-1.5 rounded-t-lg -mx-1 px-1 py-0.5 text-left hover:bg-zinc-50/80"
+          aria-expanded={expanded}
+          aria-controls="execution-timeline-body"
+          id="execution-timeline-heading"
+        >
+          <span
+            className={`text-zinc-400 transition-transform ${expanded ? "rotate-90" : ""}`}
+            aria-hidden
+          >
+            ▶
+          </span>
+          <h2 id="execution-timeline-heading-text" className="text-sm font-semibold text-zinc-800">
+            実行履歴タイムライン
+          </h2>
+        </button>
         {isReplaying && (
           <button
             type="button"
             onClick={onBackToCurrent}
-            className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
+            className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 shrink-0"
           >
             現在に戻る
           </button>
         )}
       </div>
 
+      <div
+        id="execution-timeline-body"
+        aria-labelledby="execution-timeline-heading-text"
+        hidden={!expanded}
+        className="mt-2"
+      >
       {error ? (
         <p className="mt-2 text-xs text-red-600" role="alert">
           {error instanceof Error
@@ -111,6 +137,7 @@ export function ExecutionTimeline({
           })}
         </ul>
       )}
+      </div>
     </section>
   );
 }
