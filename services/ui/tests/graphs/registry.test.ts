@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getGraphDefinition } from "../../app/graphs/registry";
 
 describe("getGraphDefinition", () => {
-  it("登録済み graphId の定義を返す", () => {
+  it("登録済み graphId hello の定義を返す", () => {
     // Arrange
     const graphId = "hello";
 
@@ -14,6 +14,21 @@ describe("getGraphDefinition", () => {
     expect(result?.graphId).toBe("hello");
     expect(result?.nodes).toBeDefined();
     expect(Array.isArray(result?.nodes)).toBe(true);
+    expect(result?.edges).toBeDefined();
+  });
+
+  it("登録済み graphId graph-1 の定義を返す", () => {
+    // Arrange
+    const graphId = "graph-1";
+
+    // Act
+    const result = getGraphDefinition(graphId);
+
+    // Assert
+    expect(result).not.toBeNull();
+    expect(result?.graphId).toBe("graph-1");
+    expect(result?.nodes).toBeDefined();
+    expect(result?.nodes?.length).toBeGreaterThan(0);
     expect(result?.edges).toBeDefined();
   });
 
