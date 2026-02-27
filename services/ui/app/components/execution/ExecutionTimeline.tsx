@@ -44,6 +44,9 @@ type ExecutionTimelineProps = {
   onSelectSeq: (seq: number | null) => void;
   onBackToCurrent: () => void;
   isReplaying: boolean;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 };
 
 export function ExecutionTimeline({
@@ -53,7 +56,10 @@ export function ExecutionTimeline({
   selectedSeq,
   onSelectSeq,
   onBackToCurrent,
-  isReplaying
+  isReplaying,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore
 }: Readonly<ExecutionTimelineProps>) {
   const [expanded, setExpanded] = useState(false);
 
@@ -114,28 +120,42 @@ export function ExecutionTimeline({
       )}
 
       {!loading && events.length > 0 && (
-        <ul className="mt-2 max-h-[280px] overflow-y-auto space-y-1">
-          {events.map((ev) => {
-            const isSelected = selectedSeq === ev.seq;
-            return (
-              <li key={ev.seq}>
-                <button
-                  type="button"
-                  onClick={() => onSelectSeq(isSelected ? null : ev.seq)}
-                  className={`w-full rounded-lg border px-2 py-1.5 text-left text-xs transition-colors ${
-                    isSelected
-                      ? "border-zinc-400 bg-zinc-100 font-medium text-zinc-900"
-                      : "border-transparent text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800"
-                  }`}
-                >
-                  <span className="font-mono text-zinc-500">#{ev.seq}</span>
-                  <span className="ml-2">{formatAt(ev.at)}</span>
-                  <span className="ml-2">{eventLabel(ev)}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          <ul className="mt-2 max-h-[280px] overflow-y-auto space-y-1">
+            {events.map((ev) => {
+              const isSelected = selectedSeq === ev.seq;
+              return (
+                <li key={ev.seq}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectSeq(isSelected ? null : ev.seq)}
+                    className={`w-full rounded-lg border px-2 py-1.5 text-left text-xs transition-colors ${
+                      isSelected
+                        ? "border-zinc-400 bg-zinc-100 font-medium text-zinc-900"
+                        : "border-transparent text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800"
+                    }`}
+                  >
+                    <span className="font-mono text-zinc-500">#{ev.seq}</span>
+                    <span className="ml-2">{formatAt(ev.at)}</span>
+                    <span className="ml-2">{eventLabel(ev)}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {hasMore && onLoadMore && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={onLoadMore}
+                disabled={loadingMore}
+                className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-xs text-zinc-600 hover:bg-zinc-100 disabled:opacity-50"
+              >
+                {loadingMore ? "読み込み中…" : "続きを読み込む"}
+              </button>
+            </div>
+          )}
+        </>
       )}
       </div>
     </section>

@@ -12,6 +12,26 @@ test.describe("execution", () => {
           body: "",
         });
       }
+      if (url.includes("/events")) {
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            events: [
+              { seq: 1, type: "GraphUpdated", executionId: "ex-1", patch: { nodes: [] }, at: new Date().toISOString() },
+              { seq: 2, type: "ExecutionStatusChanged", executionId: "ex-1", to: "ACTIVE", at: new Date().toISOString() },
+            ],
+            hasMore: false,
+          }),
+        });
+      }
+      if (url.includes("/state?")) {
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(mockExecution),
+        });
+      }
       return route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -47,5 +67,36 @@ test.describe("execution", () => {
     await executionPage.switchToGraphView();
 
     await executionPage.waitForGraphView();
+  });
+
+  test("実行履歴タイムラインが表示される", async ({ executionPage, page }) => {
+    await executionPage.goto();
+
+    await executionPage.loadExecution();
+    await executionPage.waitForExecutionLoaded();
+
+    await expect(page.getByRole("heading", { name: "実行履歴タイムライン" })).toBeVisible();
+  });
+
+  test("タイムラインで時点を選ぶと「現在に戻る」が表示され、押すとリプレイが解除される", async ({ executionPage, page }) => {
+    await executionPage.goto();
+
+    await executionPage.loadExecution();
+    await executionPage.waitForExecutionLoaded();
+
+    const timelineHeading = page.getByRole("heading", { name: "実行履歴タイムライン" });
+    await timelineHeading.click();
+
+    const eventList = page.locator("#execution-timeline-body ul");
+    await eventList.waitFor({ state: "visible", timeout: 5000 });
+
+    const firstEventButton = eventList.getByRole("button", { name: /#1/ }).first();
+    await firstEventButton.click();
+
+    await expect(page.getByRole("button", { name: "現在に戻る" })).toHaveCount(1, { timeout: 10000 });
+
+    await page.getByRole("button", { name: "現在に戻る" }).click();
+
+    await expect(page.getByRole("button", { name: "現在に戻る" })).toHaveCount(0);
   });
 });

@@ -107,4 +107,6 @@ export type ExecutionEventWithSeq = { seq: number } & ExecutionStreamEvent;
 
 export type ExecutionEventsResponse = {
   events: ExecutionEventWithSeq[];
+  /** さらにイベントがある場合 true（ページング用） */
+  hasMore?: boolean;
 };

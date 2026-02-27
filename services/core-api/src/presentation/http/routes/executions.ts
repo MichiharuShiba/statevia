@@ -129,6 +129,11 @@ executionsRouter.get("/:executionId/events", async (req, res, next) => {
     const state = await getExecutionUseCase(executionId);
     if (!state) throw notFound("Execution not found", { executionId });
 
+    const afterSeqParam = req.query.afterSeq;
+    const afterSeq =
+      afterSeqParam !== undefined && afterSeqParam !== null ? Number(afterSeqParam) : 0;
+    const effectiveAfterSeq = Number.isInteger(afterSeq) && afterSeq >= 0 ? afterSeq : 0;
+
     const limitParam = req.query.limit;
     const rawLimit =
       limitParam !== undefined && limitParam !== null ? Number(limitParam) : DEFAULT_EVENTS_LIMIT;
@@ -137,7 +142,7 @@ executionsRouter.get("/:executionId/events", async (req, res, next) => {
       MAX_EVENTS_LIMIT
     );
 
-    const persisted = await EventStore.listSince(executionId, 0, limit);
+    const persisted = await EventStore.listSince(executionId, effectiveAfterSeq, limit);
     const events = persisted
       .map((e) => {
         const stream = mapPersistedEventToStreamEvent(e);
@@ -146,7 +151,9 @@ executionsRouter.get("/:executionId/events", async (req, res, next) => {
       })
       .filter((e): e is NonNullable<typeof e> => e !== null && e !== undefined);
 
-    res.json({ events });
+    const hasMore = events.length >= limit;
+
+    res.json({ events, hasMore });
   } catch (e) {
     next(e);
   }

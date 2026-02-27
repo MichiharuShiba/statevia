@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ExecutionHeader } from "./components/execution/ExecutionHeader";
 import { ExecutionStatusBanner } from "./components/execution/ExecutionStatusBanner";
 import { ExecutionTimeline } from "./components/execution/ExecutionTimeline";
+import { ReplayBanner } from "./components/execution/ReplayBanner";
 import { TenantMissingBanner } from "./components/execution/TenantMissingBanner";
 import { NodeDetail } from "./components/nodes/NodeDetail";
 import { NodeGraphView, type GraphViewport } from "./components/nodes/NodeGraphView";
@@ -49,9 +50,14 @@ export default function Page() {
     onCancelSuccess: () => setToast({ tone: "success", message: "CancelExecution accepted" })
   });
 
-  const { events: timelineEvents, loading: timelineLoading, error: timelineError } = useExecutionEvents(
-    execution?.executionId ?? null
-  );
+  const {
+    events: timelineEvents,
+    hasMore: timelineHasMore,
+    loading: timelineLoading,
+    loadingMore: timelineLoadingMore,
+    error: timelineError,
+    loadMore: timelineLoadMore
+  } = useExecutionEvents(execution?.executionId ?? null);
   const { state: stateAtSeq, loading: stateAtSeqLoading } = useExecutionStateAtSeq(
     execution?.executionId ?? null,
     replayAtSeq
@@ -152,6 +158,10 @@ export default function Page() {
           <TenantMissingBanner />
           <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequestedAt} terminal={terminal} />
 
+          {showExecutionPanels && isReplaying && (
+            <ReplayBanner onBackToCurrent={() => setReplayAtSeq(null)} />
+          )}
+
           {showExecutionPanels && (
             <ExecutionTimeline
               events={timelineEvents}
@@ -161,6 +171,9 @@ export default function Page() {
               onSelectSeq={setReplayAtSeq}
               onBackToCurrent={() => setReplayAtSeq(null)}
               isReplaying={isReplaying}
+              hasMore={timelineHasMore}
+              loadingMore={timelineLoadingMore}
+              onLoadMore={timelineLoadMore}
             />
           )}
         </>
