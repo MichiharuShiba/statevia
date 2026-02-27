@@ -22,6 +22,8 @@ import { getStatusStyle } from "../../lib/statusStyle";
 import type { NodeStatus } from "../../lib/types";
 import { GraphLegend } from "./GraphLegend";
 
+export type NodeDiffHighlight = Record<string, { isFailureOrCancel: boolean }>;
+
 type ExecutionNodeData = {
   nodeId: string;
   label: string;
@@ -33,6 +35,8 @@ type ExecutionNodeData = {
   onSelect: (nodeId: string) => void;
   onResume: (nodeId: string) => void;
   resumeDisabledReason: string | null;
+  /** 比較モード時の差分ハイライト（該当時のみ ring 表示） */
+  diffHighlight?: { isFailureOrCancel: boolean } | null;
 };
 
 type GroupNodeData = {
@@ -45,7 +49,14 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
   const isRunning = data.status === "RUNNING";
   const isFork = appearance.label === "FORK";
   const isJoin = appearance.label === "JOIN";
-  const wrapClass = `${appearance.shapeClass} relative border-2 p-3 shadow-sm ${style.borderClass} ${style.bgClass} ${isRunning ? "opacity-80 text-zinc-600" : ""} ${data.selected ? "outline outline-2 outline-zinc-400" : ""}`;
+  let diffRing = "";
+  if (data.diffHighlight != null) {
+    diffRing =
+      data.diffHighlight.isFailureOrCancel === true
+        ? "ring-2 ring-red-500 ring-offset-1"
+        : "ring-2 ring-amber-400 ring-offset-1";
+  }
+  const wrapClass = `${appearance.shapeClass} relative border-2 p-3 shadow-sm ${style.borderClass} ${style.bgClass} ${isRunning ? "opacity-80 text-zinc-600" : ""} ${data.selected ? "outline outline-2 outline-zinc-400" : ""} ${diffRing}`;
 
   return (
     <button
@@ -115,6 +126,8 @@ type NodeGraphViewProps = {
   defaultViewport?: GraphViewport;
   /** パン・ズーム終了時に呼ばれる（状態保持用） */
   onViewportChange?: (viewport: GraphViewport) => void;
+  /** 比較モード時のノード差分ハイライト（nodeId -> ハイライト情報） */
+  nodeDiffHighlight?: NodeDiffHighlight;
 };
 
 export function NodeGraphView({
@@ -127,7 +140,8 @@ export function NodeGraphView({
   getResumeDisabledReason,
   heightClassName,
   defaultViewport,
-  onViewportChange
+  onViewportChange,
+  nodeDiffHighlight
 }: Readonly<NodeGraphViewProps>) {
   const graphNodes = useMemo<Array<Node<ExecutionNodeData | GroupNodeData>>>(() => {
     const groupNodes: Array<Node<GroupNodeData>> = groups.map((group) => ({
@@ -154,13 +168,14 @@ export function NodeGraphView({
         selected: selectedNodeId === node.nodeId,
         onSelect: (nodeId: string) => onSelectNode(nodeId),
         onResume: (nodeId: string) => onResumeNode(nodeId),
-        resumeDisabledReason: getResumeDisabledReason(node.nodeId)
+        resumeDisabledReason: getResumeDisabledReason(node.nodeId),
+        diffHighlight: nodeDiffHighlight?.[node.nodeId] ?? null
       },
       style: { width: node.w, height: node.h }
     }));
 
     return [...groupNodes, ...executionNodes];
-  }, [groups, nodes, onResumeNode, onSelectNode, getResumeDisabledReason, selectedNodeId]);
+  }, [groups, nodes, onResumeNode, onSelectNode, getResumeDisabledReason, selectedNodeId, nodeDiffHighlight]);
 
   const graphEdges = useMemo(() => buildGraphEdges(edges), [edges]);
 

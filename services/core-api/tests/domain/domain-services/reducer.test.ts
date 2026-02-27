@@ -392,6 +392,24 @@ describe("Reducer", () => {
       expect(result).toEqual(state);
       expect(result.nodes["non-existent"]).toBeUndefined();
     });
+
+    it("ノードが WAITING でないときは No-op（仕様ガード）", () => {
+      // Arrange: RUNNING のノードに NODE_RESUMED を適用
+      const state: ExecutionState = {
+        ...createInitialState("exec-1"),
+        nodes: {
+          "node-1": { nodeId: "node-1", nodeType: "task", status: "RUNNING", attempt: 1 }
+        }
+      };
+      const event = createEvent("NODE_RESUMED", "exec-1", { nodeId: "node-1" });
+
+      // Act
+      const result = reduce(state, event);
+
+      // Assert: 状態は変化しない
+      expect(result.nodes["node-1"].status).toBe("RUNNING");
+      expect(result).toEqual(state);
+    });
   });
 
   describe("NODE_SUCCEEDED", () => {
