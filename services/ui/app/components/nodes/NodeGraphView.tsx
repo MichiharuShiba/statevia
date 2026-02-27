@@ -9,7 +9,8 @@ import ReactFlow, {
   Position,
   type Node,
   type NodeProps,
-  type NodeTypes
+  type NodeTypes,
+  type Viewport
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { buildGraphEdges } from "../../lib/buildGraphEdges";
@@ -99,6 +100,8 @@ const NODE_TYPES: NodeTypes = {
   groupNode: GroupNodeComponent
 };
 
+export type GraphViewport = Viewport;
+
 type NodeGraphViewProps = {
   nodes: Array<PositionedNode<MergedGraphNode>>;
   edges: PositionedEdge[];
@@ -108,6 +111,10 @@ type NodeGraphViewProps = {
   onResumeNode: (nodeId: string) => void;
   getResumeDisabledReason: (nodeId: string) => string | null;
   heightClassName?: string;
+  /** 復元する viewport（指定時は fitView を行わずこの位置・ズームで表示） */
+  defaultViewport?: GraphViewport;
+  /** パン・ズーム終了時に呼ばれる（状態保持用） */
+  onViewportChange?: (viewport: GraphViewport) => void;
 };
 
 export function NodeGraphView({
@@ -118,7 +125,9 @@ export function NodeGraphView({
   onSelectNode,
   onResumeNode,
   getResumeDisabledReason,
-  heightClassName
+  heightClassName,
+  defaultViewport,
+  onViewportChange
 }: Readonly<NodeGraphViewProps>) {
   const graphNodes = useMemo<Array<Node<ExecutionNodeData | GroupNodeData>>>(() => {
     const groupNodes: Array<Node<GroupNodeData>> = groups.map((group) => ({
@@ -163,11 +172,13 @@ export function NodeGraphView({
         nodes={graphNodes}
         edges={graphEdges}
         nodeTypes={NODE_TYPES}
+        defaultViewport={defaultViewport}
         onNodeClick={(_, node) => {
           if (!String(node.id).startsWith("group-")) onSelectNode(String(node.id));
         }}
         onPaneClick={() => onSelectNode(null)}
-        fitView
+        onMoveEnd={(_event, viewport) => onViewportChange?.(viewport)}
+        fitView={defaultViewport == null}
         fitViewOptions={{ padding: 0.2, minZoom: 0.2, maxZoom: 1.5 }}
       >
         <MiniMap pannable zoomable />
