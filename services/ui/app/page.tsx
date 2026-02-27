@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ExecutionHeader } from "./components/execution/ExecutionHeader";
 import { ExecutionStatusBanner } from "./components/execution/ExecutionStatusBanner";
 import { TenantMissingBanner } from "./components/execution/TenantMissingBanner";
 import { NodeDetail } from "./components/nodes/NodeDetail";
-import { NodeGraphView } from "./components/nodes/NodeGraphView";
+import { NodeGraphView, type GraphViewport } from "./components/nodes/NodeGraphView";
 import { NodeListView } from "./components/nodes/NodeListView";
 import { Toast } from "./components/Toast";
 import type { ViewMode } from "./components/ViewToggle";
@@ -15,11 +15,21 @@ import { getNodeWithFallback, useGraphData } from "./features/graph/useGraphData
 import { getResumeDisabledReason, useNodeCommands } from "./features/nodes/useNodeCommands";
 import { toToastError, type ToastState } from "./lib/errors";
 
+/** executionId ごとの Graph ビューポート（ズーム・パン位置） */
+type GraphViewportByExecutionId = Record<string, GraphViewport>;
+
+/**
+ * Graph 状態の復元ルール（#13）:
+ * - ズーム・パン: executionId ごとに保持。List⇔Graph 切替時は保存した defaultViewport で復元。未保存時は fitView。
+ * - 選択ノード: useExecution 内で保持。View 切替では変更しない。再ロード時のみ snapshot に応じて維持 or 先頭へ。
+ */
+
 export default function Page() {
   const [executionId, setExecutionId] = useState("ex-1");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [graphFullscreen, setGraphFullscreen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [graphViewportByExecutionId, setGraphViewportByExecutionId] = useState<GraphViewportByExecutionId>({});
 
   const {
     execution,
@@ -62,6 +72,16 @@ export default function Page() {
     );
     return resumeEdge?.eventName ?? null;
   }, [selectedNodeId, graphData?.edges]);
+
+  const savedGraphViewport = execution ? graphViewportByExecutionId[execution.executionId] : undefined;
+  const handleGraphViewportChange = useCallback(
+    (viewport: GraphViewport) => {
+      if (execution) {
+        setGraphViewportByExecutionId((prev) => ({ ...prev, [execution.executionId]: viewport }));
+      }
+    },
+    [execution]
+  );
 
   useEffect(() => {
     if (viewMode !== "graph" || !execution) setGraphFullscreen(false);
@@ -156,6 +176,8 @@ export default function Page() {
                         const node = getNodeWithFallback(execution, graphData, nodeId);
                         return getResumeDisabledReason(execution, node);
                       }}
+                      defaultViewport={savedGraphViewport}
+                      onViewportChange={handleGraphViewportChange}
                       heightClassName={graphFullscreen ? "h-full min-h-[360px]" : undefined}
                     />
                   )}
