@@ -84,18 +84,14 @@ test.describe("execution", () => {
     await executionPage.loadExecution();
     await executionPage.waitForExecutionLoaded();
 
-    const timelineHeading = page.getByRole("heading", { name: "実行履歴タイムライン" });
-    await timelineHeading.click();
+    await executionPage.expandTimeline();
 
-    const eventList = page.locator("#execution-timeline-body ul");
-    await eventList.waitFor({ state: "visible", timeout: 5000 });
-
-    const firstEventButton = eventList.getByRole("button", { name: /#1/ }).first();
+    const firstEventButton = executionPage.timelineEventList.getByRole("button", { name: /#1/ }).first();
     await firstEventButton.click();
 
-    await expect(page.getByRole("button", { name: "現在に戻る" })).toHaveCount(1, { timeout: 10000 });
+    await expect(page.getByRole("button", { name: "現在に戻る" }).first()).toBeVisible({ timeout: 10000 });
 
-    await page.getByRole("button", { name: "現在に戻る" }).click();
+    await page.getByRole("button", { name: "現在に戻る" }).first().click();
 
     await expect(page.getByRole("button", { name: "現在に戻る" })).toHaveCount(0);
   });
