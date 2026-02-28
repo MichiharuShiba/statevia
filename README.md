@@ -224,10 +224,13 @@ t8: E Completed → Workflow Completed
 ## Repository Structure
 
 ```txt
-src/
-docs/
-samples/
-tests/
+statevia/
+├─ core/
+├─ docs/
+└─ services/
+   ├─ core-api/
+   ├─ ui/
+   └─ docker-compose.yml
 ```
 
 ---

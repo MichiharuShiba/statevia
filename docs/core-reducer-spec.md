@@ -1,6 +1,6 @@
 # Core Reducer Specification (Pseudo Code)
 
-Version: 1.0
+Version: 1.1
 Project: 実行型ステートマシン
 Policy: Cancel wins
 
@@ -48,7 +48,7 @@ struct ExecutionState {
 
   version: int  // optimistic lock
 }
-````
+```
 
 ---
 
@@ -82,6 +82,9 @@ function nodeRank(s: NodeStatus): int =
     case IDLE:      100
 
 function chooseNodeStatus(current, candidate): NodeStatus =
+  // WAITING <-> RUNNING の往復だけは明示的に許可
+  if current == WAITING and candidate == RUNNING:
+    return RUNNING
   return (nodeRank(candidate) > nodeRank(current)) ? candidate : current
 ```
 
@@ -92,21 +95,14 @@ function chooseNodeStatus(current, candidate): NodeStatus =
 
 ## 4. ガード関数（共通）
 
-### 4.1 終端チェック
-
-```pseudo
-function isTerminalExec(s: ExecutionStatus): bool =
-  return s in { COMPLETED, FAILED, CANCELED }
-```
-
-### 4.2 Cancelが「要求済み」か
+### 4.1 Cancelが「要求済み」か
 
 ```pseudo
 function isCancelRequested(state: ExecutionState): bool =
   return state.cancelRequestedAt != null
 ```
 
-### 4.3 Cancel要求以降の “進行系イベント” を抑止
+### 4.2 Cancel要求以降の “進行系イベント” を抑止
 
 Cancel wins を UX と整合させるため、**要求以降は進行系を No-op 推奨**。
 （ただし監査のため Event 自体は残る運用でも reducer は安全に動く）
@@ -133,7 +129,7 @@ function shouldIgnoreProgressEvent(state, eventType): bool =
 ```pseudo
 function reduce(state: ExecutionState, event: EventEnvelope): ExecutionState =
   if event.schemaVersion != 1:
-    return state  // future: versioned reducer
+    return state
 
   // (A) Cancel要求以降の進行イベントはNo-op（推奨）
   if shouldIgnoreProgressEvent(state, event.type):
@@ -213,7 +209,7 @@ function applyEvent(state, event):
       state = updateNodeStatus(state, nodeId, RUNNING)
       return state.updateNode(nodeId, n =>
         n.with(
-          attempt = max(n.attempt, event.payload.attempt),
+          attempt = max(n.attempt, event.payload.attempt ?? 1),
           workerId = event.payload.workerId ?? n.workerId
         )
       )
@@ -230,7 +226,7 @@ function applyEvent(state, event):
       return state  // request自体は監査用。状態は変えない（推奨）
 
     case "NODE_RESUMED":
-      // WAITING -> RUNNING (優先順位で自然に決まる)
+      // WAITING -> RUNNING を許可（chooseNodeStatus の例外ルール）
       return updateNodeStatus(state, event.payload.nodeId, RUNNING)
 
     case "NODE_SUCCEEDED":
@@ -272,6 +268,7 @@ function applyEvent(state, event):
       return state  // join通過の事実。次のREADY化は NODE_READY で表現。
 
     default:
+      // audit-only events / 未ハンドルイベントは no-op
       return state
 ```
 
@@ -286,6 +283,11 @@ function updateNodeStatus(state, nodeId, candidateStatus):
     n.with(status = chooseNodeStatus(n.status, candidateStatus))
   )
 ```
+
+注:
+
+- `updateNodeStatus` は node が存在しない場合 no-op
+- `state.updateNode(...)` 相当の更新でも node 不在時は no-op
 
 ---
 
@@ -314,7 +316,7 @@ function normalize(state):
 ## 9. Reducer の不変条件（Invariants）
 
 * ExecutionStatus は rank によって単調に強くなる方向にしか変化しない
-* NodeStatus も同様
+* NodeStatus も同様（ただし WAITING -> RUNNING は例外的に許可）
 * EXECUTION_CANCELED 以降は ExecutionStatus は固定（chooseExecStatusで保証）
 * CancelRequested が一度入ったら消えない
 
