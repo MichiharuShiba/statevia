@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://statevia/contracts/execution-readmodel.schema.json",
+  "title": "ExecutionReadModel",
+  "description": "UI向け実行 Read Model。data-integration-contract §2.1",
+  "type": "object",
+  "required": ["executionId", "graphId", "status", "cancelRequestedAt", "canceledAt", "failedAt", "completedAt", "nodes"],
+  "properties": {
+    "executionId": { "type": "string" },
+    "graphId": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["ACTIVE", "COMPLETED", "FAILED", "CANCELED"]
+    },
+    "cancelRequestedAt": { "type": ["string", "null"], "format": "date-time" },
+    "canceledAt": { "type": ["string", "null"], "format": "date-time" },
+    "failedAt": { "type": ["string", "null"], "format": "date-time" },
+    "completedAt": { "type": ["string", "null"], "format": "date-time" },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Node" }
+    }
+  },
+  "$defs": {
+    "Node": {
+      "type": "object",
+      "required": ["nodeId", "nodeType", "status", "attempt", "workerId", "waitKey", "canceledByExecution"],
+      "properties": {
+        "nodeId": { "type": "string" },
+        "nodeType": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["IDLE", "READY", "RUNNING", "WAITING", "SUCCEEDED", "FAILED", "CANCELED"]
+        },
+        "attempt": { "type": "integer", "minimum": 0 },
+        "workerId": { "type": ["string", "null"] },
+        "waitKey": { "type": ["string", "null"] },
+        "canceledByExecution": { "type": "boolean" },
+        "error": {
+          "type": ["object", "null"],
+          "description": "契約外。後方互換用",
+          "properties": { "message": { "type": ["string", "null"] } }
+        }
+      }
+    }
+  }
+}

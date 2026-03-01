@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://statevia/contracts/decide-response.schema.json",
+  "title": "DecideResponse",
+  "description": "Core Engine → Core-API。POST /internal/v1/decide のレスポンス。architecture.v2 §4.1",
+  "oneOf": [
+    { "$ref": "#/$defs/Accepted" },
+    { "$ref": "#/$defs/Rejected" }
+  ],
+  "$defs": {
+    "Accepted": {
+      "type": "object",
+      "required": ["accepted", "executionId", "events"],
+      "properties": {
+        "accepted": { "type": "boolean", "const": true },
+        "executionId": { "type": "string" },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EventEnvelope" }
+        }
+      }
+    },
+    "Rejected": {
+      "type": "object",
+      "required": ["accepted", "error"],
+      "properties": {
+        "accepted": { "type": "boolean", "const": false },
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": {
+              "type": "string",
+              "enum": ["COMMAND_REJECTED", "INVALID_INPUT", "NOT_FOUND"]
+            },
+            "message": { "type": "string" },
+            "details": { "type": "object" }
+          }
+        }
+      }
+    },
+    "EventEnvelope": {
+      "type": "object",
+      "required": ["eventId", "executionId", "type", "occurredAt", "actor", "schemaVersion", "payload"],
+      "properties": {
+        "eventId": { "type": "string", "format": "uuid" },
+        "executionId": { "type": "string" },
+        "type": { "type": "string" },
+        "occurredAt": { "type": "string", "format": "date-time" },
+        "actor": {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "type": "string", "enum": ["user", "system", "scheduler", "external"] },
+            "id": { "type": "string" }
+          }
+        },
+        "correlationId": { "type": "string" },
+        "causationId": { "type": "string", "format": "uuid" },
+        "schemaVersion": { "type": "integer", "const": 1 },
+        "payload": { "type": "object" }
+      }
+    }
+  }
+}

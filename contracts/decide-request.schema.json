@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://statevia/contracts/decide-request.schema.json",
+  "title": "DecideRequest",
+  "description": "Core-API → Core Engine。POST /internal/v1/decide のリクエスト。architecture.v2 §4.1",
+  "type": "object",
+  "required": ["requestId", "tenantId", "idempotencyKey", "actor", "basis", "command"],
+  "properties": {
+    "requestId": { "type": "string", "format": "uuid" },
+    "tenantId": { "type": "string" },
+    "idempotencyKey": { "type": "string", "format": "uuid" },
+    "correlationId": { "type": "string" },
+    "actor": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["user", "system", "scheduler", "external"]
+        },
+        "id": { "type": "string" }
+      }
+    },
+    "basis": {
+      "type": "object",
+      "required": ["kind", "execution", "expectedVersion"],
+      "properties": {
+        "kind": { "type": "string", "const": "state" },
+        "execution": {
+          "type": "object",
+          "description": "ExecutionState スナップショット",
+          "required": ["executionId", "graphId", "status", "version", "nodes"],
+          "properties": {
+            "executionId": { "type": "string" },
+            "graphId": { "type": "string" },
+            "status": { "type": "string", "enum": ["ACTIVE", "COMPLETED", "FAILED", "CANCELED"] },
+            "cancelRequestedAt": { "type": ["string", "null"] },
+            "canceledAt": { "type": ["string", "null"] },
+            "failedAt": { "type": ["string", "null"] },
+            "completedAt": { "type": ["string", "null"] },
+            "version": { "type": "integer", "minimum": 0 },
+            "nodes": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/NodeState" }
+            }
+          }
+        },
+        "expectedVersion": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "command": {
+      "type": "object",
+      "required": ["type", "executionId"],
+      "properties": {
+        "type": { "type": "string", "description": "例: CancelExecution, StartExecution" },
+        "executionId": { "type": "string" },
+        "payload": { "type": "object" }
+      }
+    }
+  },
+  "$defs": {
+    "NodeState": {
+      "type": "object",
+      "required": ["nodeId", "nodeType", "status", "attempt", "canceledByExecution"],
+      "properties": {
+        "nodeId": { "type": "string" },
+        "nodeType": { "type": "string" },
+        "status": { "type": "string" },
+        "attempt": { "type": "integer" },
+        "workerId": { "type": ["string", "null"] },
+        "waitKey": { "type": ["string", "null"] },
+        "canceledByExecution": { "type": "boolean" }
+      }
+    }
+  }
+}
