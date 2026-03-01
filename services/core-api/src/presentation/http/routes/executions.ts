@@ -8,6 +8,7 @@ import { notFound } from "../errors.js";
 import { createExecutionSchema, cancelExecutionSchema } from "../../dto/validators.js";
 import { createExecutionUseCase } from "../../../application/use-cases/create-execution-use-case.js";
 import { getExecutionUseCase } from "../../../application/use-cases/get-execution-use-case.js";
+import { toExecutionReadModel } from "../../../domain/read-model/execution-read-model.js";
 import { executeCommandUseCase } from "../../../application/use-cases/execute-command-use-case.js";
 import { convergeCancelAsync } from "../../../application/services/orchestrator.js";
 import {
@@ -205,30 +206,12 @@ executionsRouter.get("/:executionId/state", async (req, res, next) => {
   }
 });
 
-// Get Execution
+// Get Execution（UI向け Read Model: data-integration-contract §2.1）
 executionsRouter.get("/:executionId", async (req, res, next) => {
   try {
     const s = await getExecutionUseCase(req.params.executionId);
     if (!s) throw notFound("Execution not found", { executionId: req.params.executionId });
-    res.json({
-      executionId: s.executionId,
-      status: s.status,
-      graphId: s.graphId,
-      cancelRequestedAt: s.cancelRequestedAt ?? null,
-      canceledAt: s.canceledAt ?? null,
-      failedAt: s.failedAt ?? null,
-      completedAt: s.completedAt ?? null,
-      nodes: Object.values(s.nodes).map((n) => ({
-        nodeId: n.nodeId,
-        nodeType: n.nodeType,
-        status: n.status,
-        attempt: n.attempt,
-        workerId: n.workerId ?? null,
-        waitKey: n.waitKey ?? null,
-        canceledByExecution: n.canceledByExecution ?? false,
-        error: n.error ?? null
-      }))
-    });
+    res.json(toExecutionReadModel(s));
   } catch (e) {
     next(e);
   }
