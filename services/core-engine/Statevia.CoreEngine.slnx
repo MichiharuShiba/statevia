@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Statevia.CoreEngine.Application/Statevia.CoreEngine.Application.csproj" />
+    <Project Path="src/Statevia.CoreEngine.Domain/Statevia.CoreEngine.Domain.csproj" />
+    <Project Path="src/Statevia.CoreEngine.Transport.Http/Statevia.CoreEngine.Transport.Http.csproj" />
+  </Folder>
+</Solution>

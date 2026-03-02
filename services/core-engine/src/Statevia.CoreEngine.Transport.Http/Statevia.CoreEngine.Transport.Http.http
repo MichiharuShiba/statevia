@@ -1,0 +1,6 @@
+@Statevia.CoreEngine.Transport.Http_HostAddress = http://localhost:5056
+
+GET {{Statevia.CoreEngine.Transport.Http_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
