@@ -18,8 +18,10 @@ V2 アーキテクチャにおける Decide 専用の C# 独立サービス。DB
   - `ExecutionStatus`, `ExecutionState`（実行集約の状態）
 - **Node/** → `Statevia.CoreEngine.Domain.Node`  
   - `NodeStatus`, `NodeState`（ノードの状態）
+- **Events/** → `Statevia.CoreEngine.Domain.Events`  
+  - `Actor`, `ActorKind`, `EventEnvelope`, `EventTypeConstants`（固定 24 種）。core-events-spec 準拠。
 - ルート → `Statevia.CoreEngine.Domain`  
-  - アセンブリマーカー等。Events（1.3）、Reducer（1.4）は別フォルダで追加予定。
+  - アセンブリマーカー等。Reducer（1.4）は別フォルダで追加予定。
 
 参照: `docs/architecture.v2.md`、改修タスク `.exclude/refactoring-tasks-v2.md` フェーズ1（1.1–1.9）。
 
