@@ -10,6 +10,17 @@ V2 アーキテクチャにおける Decide 専用の C# 独立サービス。DB
 | **Statevia.CoreEngine.Application** | Decide UseCase、Guards（terminal / cancelRequested 等） |
 | **Statevia.CoreEngine.Transport.Http** | HTTP Adapter（/internal/v1/decide の JSON 入出力） |
 
+### Domain のフォルダ・名前空間（core/ に準拠）
+
+フォルダ＝名前空間の対応で、責務ごとに分割している。
+
+- **Execution/** → `Statevia.CoreEngine.Domain.Execution`  
+  - `ExecutionStatus`, `ExecutionState`（実行集約の状態）
+- **Node/** → `Statevia.CoreEngine.Domain.Node`  
+  - `NodeStatus`, `NodeState`（ノードの状態）
+- ルート → `Statevia.CoreEngine.Domain`  
+  - アセンブリマーカー等。Events（1.3）、Reducer（1.4）は別フォルダで追加予定。
+
 参照: `docs/architecture.v2.md`、改修タスク `.exclude/refactoring-tasks-v2.md` フェーズ1（1.1–1.9）。
 
 ## ビルド・実行
