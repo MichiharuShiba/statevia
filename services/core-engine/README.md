@@ -20,8 +20,12 @@ V2 アーキテクチャにおける Decide 専用の C# 独立サービス。DB
   - `NodeStatus`, `NodeState`（ノードの状態）
 - **Events/** → `Statevia.CoreEngine.Domain.Events`  
   - `Actor`, `ActorKind`, `EventEnvelope`, `EventTypeConstants`（固定 24 種）。core-events-spec 準拠。
+- **Reducer/** → `Statevia.CoreEngine.Domain.Reducer`  
+  - `ExecutionReducer.Reduce`（Cancel wins + normalize）。core-reducer-spec 準拠。
+- **Extensions/** → `Statevia.CoreEngine.Domain.Extensions`  
+  - `PayloadDictionaryExtensions`（AsPayloadDictionary, GetString, GetInt, GetObject）、`ExecutionStateExtensions`（IsCancelRequested, WithNode, WithNodeUpdated）、`NodeStatusExtensions`（IsActive）。
 - ルート → `Statevia.CoreEngine.Domain`  
-  - アセンブリマーカー等。Reducer（1.4）は別フォルダで追加予定。
+  - アセンブリマーカー等。
 
 参照: `docs/architecture.v2.md`、改修タスク `.exclude/refactoring-tasks-v2.md` フェーズ1（1.1–1.9）。
 
