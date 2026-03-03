@@ -1,4 +1,4 @@
 namespace Statevia.CoreEngine.Domain;
 
-/// <summary>Domain layer assembly marker. Reducer will be added in task 1.4.</summary>
+/// <summary>Domain layer assembly marker.</summary>
 internal static class DomainAssembly { }

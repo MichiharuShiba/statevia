@@ -4,4 +4,7 @@
     <Project Path="src/Statevia.CoreEngine.Domain/Statevia.CoreEngine.Domain.csproj" />
     <Project Path="src/Statevia.CoreEngine.Transport.Http/Statevia.CoreEngine.Transport.Http.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Statevia.CoreEngine.Domain.Tests/Statevia.CoreEngine.Domain.Tests.csproj" />
+  </Folder>
 </Solution>
