@@ -6,10 +6,13 @@ namespace Statevia.Core.Engine.Abstractions;
 /// </summary>
 public interface IWorkflowEngine
 {
-    /// <summary>コンパイル済み定義からワークフローインスタンスを開始し、その ID を返します。</summary>
-    string Start(CompiledWorkflowDefinition definition);
+    /// <summary>コンパイル済み定義からワークフローインスタンスを開始し、その ID を返します。workflowId を指定した場合はその ID を使用し、null の場合はエンジンが生成します。</summary>
+    string Start(CompiledWorkflowDefinition definition, string? workflowId = null);
 
-    /// <summary>イベントを発行し、待機中の状態を再開します（Wait / Resume 仕様）。</summary>
+    /// <summary>指定ワークフローにのみイベントを発行し、待機中の状態を再開します（Wait / Resume 仕様）。</summary>
+    void PublishEvent(string workflowId, string eventName);
+
+    /// <summary>全ワークフローにイベントをブロードキャストし、待機中の状態を再開します。</summary>
     void PublishEvent(string eventName);
 
     /// <summary>ワークフローに協調的キャンセルをリクエストします。エンジンは強制終了しません。</summary>

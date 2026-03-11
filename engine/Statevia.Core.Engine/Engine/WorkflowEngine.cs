@@ -25,10 +25,10 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
     }
 
     /// <inheritdoc />
-    public string Start(CompiledWorkflowDefinition definition)
+    public string Start(CompiledWorkflowDefinition definition, string? workflowId = null)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        var workflowId = Guid.NewGuid().ToString("N")[..12];
+        workflowId ??= Guid.NewGuid().ToString("N")[..12];
         var eventProvider = new EventProvider(workflowId);
         var instance = new WorkflowInstance
         {
@@ -42,6 +42,15 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
         _eventProviders[workflowId] = eventProvider;
         _ = RunWorkflowAsync(instance, eventProvider);
         return workflowId;
+    }
+
+    /// <inheritdoc />
+    public void PublishEvent(string workflowId, string eventName)
+    {
+        if (_eventProviders.TryGetValue(workflowId, out var ep))
+        {
+            ep.Publish(eventName);
+        }
     }
 
     /// <inheritdoc />
