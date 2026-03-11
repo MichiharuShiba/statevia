@@ -8,7 +8,7 @@ Statevia is a definition-driven, event-sourced workflow engine with three compon
 
 | Component | Stack | Location |
 |---|---|---|
-| **core** (C# library + CLI) | .NET 8 | `core/` |
+| **engine** (C# library + CLI) | .NET 8 | `engine/` |
 | **core-api** (REST API) | Node.js / Express / TypeScript | `services/core-api/` |
 | **ui** (Web dashboard) | Next.js / React / ReactFlow | `services/ui/` |
 
@@ -40,7 +40,7 @@ The Cloud VM runs inside a container. Docker needs `fuse-overlayfs` storage driv
 
 ### Tests
 
-- **core (C#):** `dotnet test` from `core/` — 91 tests (xunit). **v2 改修時**: `engine/` を使用。`cd engine && dotnet test statevia-engine.sln` — 91 tests。
+- **engine (C#):** `cd engine && dotnet test statevia-engine.sln` — 91 tests (xunit)。
 - **core-api:** `npm test` from `services/core-api/` — 151 tests (vitest, no DB needed)
 - **ui:** `npm run test:run` from `services/ui/` — 178 tests (vitest)
 
