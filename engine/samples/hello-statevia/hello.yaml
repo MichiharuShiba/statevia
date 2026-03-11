@@ -1,0 +1,37 @@
+workflow:
+  name: HelloWorkflow
+
+states:
+  Start:
+    on:
+      Completed:
+        fork: [Prepare, AskUser]
+
+  Prepare:
+    on:
+      Completed:
+        next: Join1
+
+  AskUser:
+    wait:
+      event: UserApproved
+    on:
+      Completed:
+        next: Join1
+
+  Join1:
+    join:
+      allOf: [Prepare, AskUser]
+    on:
+      Joined:
+        next: Work
+
+  Work:
+    on:
+      Completed:
+        next: End
+
+  End:
+    on:
+      Completed:
+        end: true

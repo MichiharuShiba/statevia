@@ -40,7 +40,7 @@ The Cloud VM runs inside a container. Docker needs `fuse-overlayfs` storage driv
 
 ### Tests
 
-- **core (C#):** `dotnet test` from `core/` — 91 tests (xunit)
+- **core (C#):** `dotnet test` from `core/` — 91 tests (xunit). **v2 改修時**: `engine/` を使用。`cd engine && dotnet test statevia-engine.sln` — 91 tests。
 - **core-api:** `npm test` from `services/core-api/` — 151 tests (vitest, no DB needed)
 - **ui:** `npm run test:run` from `services/ui/` — 178 tests (vitest)
 
