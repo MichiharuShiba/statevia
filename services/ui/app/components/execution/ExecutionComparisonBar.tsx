@@ -1,12 +1,12 @@
 "use client";
 
-import type { ExecutionDTO } from "../../lib/types";
+import type { WorkflowView } from "../../lib/types";
 import type { ExecutionDiffResult, NodeDiffItem } from "../../lib/executionDiff";
 import { getStatusStyle } from "../../lib/statusStyle";
 
 type ExecutionComparisonBarProps = {
-  executionLeft: ExecutionDTO | null;
-  executionRight: ExecutionDTO | null;
+  executionLeft: WorkflowView | null;
+  executionRight: WorkflowView | null;
   executionIdRight: string;
   onExecutionIdRightChange: (id: string) => void;
   onLoadRight: () => void;
@@ -84,7 +84,7 @@ export function ExecutionComparisonBar({
           <div className="text-xs font-semibold text-zinc-500">Execution A（基準）</div>
           {executionLeft ? (
             <div className="mt-1 rounded-lg bg-zinc-50 px-2 py-1.5 font-mono text-xs text-zinc-700">
-              {executionLeft.executionId}
+              {executionLeft.displayId}
               <span className="ml-2 text-zinc-500">({executionLeft.status})</span>
             </div>
           ) : (
@@ -114,7 +114,7 @@ export function ExecutionComparisonBar({
           </div>
           {executionRight && (
             <div className="mt-1 text-xs text-zinc-600">
-              {executionRight.executionId} ({executionRight.status})
+              {executionRight.displayId} ({executionRight.status})
             </div>
           )}
         </div>

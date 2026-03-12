@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { apiGet, apiPost, getApiConfig } from "../../lib/api";
 import { applyExecutionStreamEvent, parseExecutionStreamEvent } from "../../lib/executionStream";
-import type { CommandAccepted, ExecutionDTO } from "../../lib/types";
+import { buildWorkflowView } from "../../lib/workflowView";
+import type { CommandAccepted, WorkflowDTO, WorkflowGraphDTO, WorkflowView } from "../../lib/types";
 
-const TERMINAL_STATUSES = new Set<string>(["COMPLETED", "FAILED", "CANCELED"]);
+const TERMINAL_STATUSES = new Set<string>(["Completed", "Cancelled", "Failed"]);
 const STREAM_RECONNECT_BASE_MS = 1000;
 const STREAM_RECONNECT_MAX_MS = 30000;
 
@@ -14,7 +15,7 @@ export function getReconnectDelayMs(attempt: number, baseMs: number, maxMs: numb
   return Math.min(baseMs * 2 ** attempt, maxMs);
 }
 
-function isTerminalExecution(status: ExecutionDTO["status"]): boolean {
+function isTerminalExecution(status: WorkflowView["status"]): boolean {
   return TERMINAL_STATUSES.has(status);
 }
 
@@ -23,9 +24,9 @@ export type UseExecutionOptions = {
   onCancelSuccess?: () => void;
 };
 
-export function useExecution(executionId: string, options: UseExecutionOptions = {}) {
+export function useExecution(workflowDisplayId: string, options: UseExecutionOptions = {}) {
   const { onError, onCancelSuccess } = options;
-  const [execution, setExecution] = useState<ExecutionDTO | null>(null);
+  const [execution, setExecution] = useState<WorkflowView | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const onErrorRef = useRef(onError);
@@ -37,23 +38,30 @@ export function useExecution(executionId: string, options: UseExecutionOptions =
   const terminal = execution ? isTerminalExecution(execution.status) : false;
   const canCancel = !!execution && !terminal;
 
-  const applyExecutionSnapshot = (response: ExecutionDTO) => {
-    setExecution(response);
+  const applyExecutionSnapshot = (view: WorkflowView) => {
+    setExecution(view);
     setSelectedNodeId((current) => {
-      if (current && response.nodes.some((node) => node.nodeId === current)) return current;
-      return response.nodes[0]?.nodeId ?? null;
+      if (current && view.nodes.some((node) => node.nodeId === current)) return current;
+      return view.nodes[0]?.nodeId ?? null;
     });
   };
 
-  const refreshExecutionSnapshot = async (id: string) => {
-    const response = await apiGet<ExecutionDTO>(`/executions/${id}`);
-    applyExecutionSnapshot(response);
+  const refreshExecutionSnapshot = async (displayId: string) => {
+    const workflow = await apiGet<WorkflowDTO>(`/executions/${displayId}`);
+    let graph: WorkflowGraphDTO | null = null;
+    try {
+      graph = await apiGet<WorkflowGraphDTO>(`/executions/${displayId}/graph`);
+    } catch {
+      // graph 未取得時は nodes 空で表示
+    }
+    const view = buildWorkflowView(workflow, graph);
+    applyExecutionSnapshot(view);
   };
 
   useEffect(() => {
-    if (!execution?.executionId) return;
+    if (!execution?.displayId) return;
 
-    const currentExecutionId = execution.executionId;
+    const currentDisplayId = execution.displayId;
     let disposed = false;
     let stream: EventSource | null = null;
     let reconnectAttempt = 0;
@@ -90,14 +98,14 @@ export function useExecution(executionId: string, options: UseExecutionOptions =
         hasConnectedOnce = true;
         return;
       }
-      void refreshExecutionSnapshot(currentExecutionId).catch(noop);
+      void refreshExecutionSnapshot(currentDisplayId).catch(noop);
     };
 
     const connectStream = () => {
       if (disposed) return;
 
       const { tenantId } = getApiConfig();
-      const streamPath = `/api/core/executions/${encodeURIComponent(currentExecutionId)}/stream`;
+      const streamPath = `/api/core/executions/${encodeURIComponent(currentDisplayId)}/stream`;
       const streamUrl = tenantId
         ? `${streamPath}?${new URLSearchParams({ tenantId }).toString()}`
         : streamPath;
@@ -129,13 +137,12 @@ export function useExecution(executionId: string, options: UseExecutionOptions =
       clearReconnectTimer();
       stream?.close();
     };
-  }, [execution?.executionId]);
+  }, [execution?.displayId]);
 
   async function loadExecution() {
     setLoading(true);
     try {
-      const response = await apiGet<ExecutionDTO>(`/executions/${executionId}`);
-      applyExecutionSnapshot(response);
+      await refreshExecutionSnapshot(workflowDisplayId);
     } catch (error) {
       setExecution(null);
       setSelectedNodeId(null);
@@ -149,7 +156,7 @@ export function useExecution(executionId: string, options: UseExecutionOptions =
     if (!execution) return;
     setLoading(true);
     try {
-      await apiPost<CommandAccepted>(`/executions/${execution.executionId}/cancel`, { reason: "ui" });
+      await apiPost<CommandAccepted>(`/executions/${execution.displayId}/cancel`, { reason: "ui" });
       onCancelSuccess?.();
       await loadExecution();
     } catch (error) {

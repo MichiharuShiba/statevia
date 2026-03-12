@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Statevia.Core.Api": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:62427;http://localhost:62428"
+    }
+  }
+}

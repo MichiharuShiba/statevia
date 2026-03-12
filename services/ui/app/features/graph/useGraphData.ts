@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { resolveGroupBounds } from "../../lib/grouping";
 import { layoutGraph } from "../../lib/graphLayout";
 import { mergeGraph, type MergedGraphEdge, type MergedGraphNode } from "../../lib/mergeGraph";
-import type { ExecutionDTO, ExecutionNodeDTO } from "../../lib/types";
+import type { ExecutionNodeDTO, WorkflowView } from "../../lib/types";
 import type { GroupBounds } from "../../lib/grouping";
 import type { PositionedEdge, PositionedNode } from "../../lib/graphLayout";
 import type { GraphDefinition } from "../../graphs/types";
@@ -19,7 +19,7 @@ export type GraphData = {
 };
 
 export function useGraphData(
-  execution: ExecutionDTO | null,
+  execution: WorkflowView | null,
   graphDefinition: GraphDefinition | null
 ): GraphData | null {
   return useMemo(() => {
@@ -48,7 +48,7 @@ export function useGraphData(
 }
 
 export function getNodeWithFallback(
-  execution: ExecutionDTO | null,
+  execution: WorkflowView | null,
   graphData: GraphData | null,
   nodeId: string | null
 ): ExecutionNodeDTO | null {

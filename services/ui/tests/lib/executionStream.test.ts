@@ -3,16 +3,16 @@ import {
   parseExecutionStreamEvent,
   applyExecutionStreamEvent
 } from "../../app/lib/executionStream";
-import type { ExecutionDTO } from "../../app/lib/types";
+import type { WorkflowView } from "../../app/lib/types";
 
-const baseExecution: ExecutionDTO = {
-  executionId: "ex-1",
-  status: "ACTIVE",
+const baseExecution: WorkflowView = {
+  displayId: "ex-1",
+  resourceId: "r-1",
+  status: "Running",
+  startedAt: "2026-01-01T00:00:00Z",
+  cancelRequested: false,
+  restartLost: false,
   graphId: "g-1",
-  cancelRequestedAt: null,
-  canceledAt: null,
-  failedAt: null,
-  completedAt: null,
   nodes: [
     {
       nodeId: "n-1",
@@ -231,8 +231,7 @@ describe("applyExecutionStreamEvent", () => {
     const next = applyExecutionStreamEvent(baseExecution, event);
 
     // Assert
-    expect(next.status).toBe("COMPLETED");
-    expect(next.completedAt).toBe("2026-01-01T00:00:00Z");
+    expect(next.status).toBe("Completed");
   });
 
   it("event の executionId が一致しないとき現在状態をそのまま返す", () => {
@@ -306,8 +305,7 @@ describe("applyExecutionStreamEvent", () => {
     const next = applyExecutionStreamEvent(baseExecution, event);
 
     // Assert
-    expect(next.status).toBe("FAILED");
-    expect(next.failedAt).toBe("2026-01-01T12:00:00Z");
+    expect(next.status).toBe("Failed");
   });
 
   it("ExecutionStatusChanged を CANCELED に適用する", () => {
@@ -325,11 +323,10 @@ describe("applyExecutionStreamEvent", () => {
     const next = applyExecutionStreamEvent(baseExecution, event);
 
     // Assert
-    expect(next.status).toBe("CANCELED");
-    expect(next.canceledAt).toBe("2026-01-01T12:00:00Z");
+    expect(next.status).toBe("Cancelled");
   });
 
-  it("to が未知の status のとき ACTIVE に正規化する", () => {
+  it("to が未知の status のとき Running に正規化する", () => {
     // Arrange
     const event = parseExecutionStreamEvent(
       JSON.stringify({
@@ -344,10 +341,10 @@ describe("applyExecutionStreamEvent", () => {
     const next = applyExecutionStreamEvent(baseExecution, event);
 
     // Assert
-    expect(next.status).toBe("ACTIVE");
+    expect(next.status).toBe("Running");
   });
 
-  it("to が CANCELLED（英国綴り）のとき CANCELED に正規化する", () => {
+  it("to が CANCELLED（英国綴り）のとき Cancelled に正規化する", () => {
     // Arrange
     const event = parseExecutionStreamEvent(
       JSON.stringify({
@@ -362,8 +359,7 @@ describe("applyExecutionStreamEvent", () => {
     const next = applyExecutionStreamEvent(baseExecution, event);
 
     // Assert
-    expect(next.status).toBe("CANCELED");
-    expect(next.canceledAt).toBe("2026-01-01T12:00:00Z");
+    expect(next.status).toBe("Cancelled");
   });
 
   it("GraphUpdated を適用し存在しないノードを追加する", () => {

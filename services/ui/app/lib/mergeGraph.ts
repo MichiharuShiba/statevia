@@ -1,5 +1,5 @@
 import type { GraphDefinition, GraphEdgeDef, GraphGroupDef, LayoutHints } from "../graphs/types";
-import type { ExecutionDTO, ExecutionNodeDTO, NodeStatus } from "./types";
+import type { ExecutionNodeDTO, NodeStatus, WorkflowView } from "./types";
 
 export type MergedGraphNode = {
   nodeId: string;
@@ -59,7 +59,7 @@ function toEdge(edge: GraphEdgeDef, index: number): MergedGraphEdge {
   };
 }
 
-export function mergeGraph(execution: ExecutionDTO, definition: GraphDefinition | null): MergedGraph {
+export function mergeGraph(execution: WorkflowView, definition: GraphDefinition | null): MergedGraph {
   const nodeById = new Map(execution.nodes.map((n) => [n.nodeId, n] as const));
   if (!definition) {
     return {

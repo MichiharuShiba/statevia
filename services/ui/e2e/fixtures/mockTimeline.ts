@@ -1,7 +1,7 @@
 /**
  * 実行履歴タイムライン・リプレイ機能の e2e 用テストデータ
  */
-import type { ExecutionDTO, ExecutionEventWithSeq } from "../../app/lib/types";
+import type { ExecutionEventWithSeq, WorkflowView } from "../../app/lib/types";
 import { mockExecution } from "./mockExecution";
 
 const EXECUTION_ID = "ex-1";
@@ -69,15 +69,9 @@ export const timelineEventsPage2: ExecutionEventWithSeq[] = [
 ];
 
 /** リプレイ用: seq 1 時点の状態（ノード少なめ・IDLE） */
-export const stateAtSeq1: ExecutionDTO = {
+export const stateAtSeq1: WorkflowView = {
   ...mockExecution,
-  executionId: EXECUTION_ID,
-  status: "ACTIVE",
-  graphId: mockExecution.graphId,
-  cancelRequestedAt: null,
-  canceledAt: null,
-  failedAt: null,
-  completedAt: null,
+  displayId: EXECUTION_ID,
   nodes: [
     { nodeId: "start", nodeType: "Start", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
     { nodeId: "task-a", nodeType: "Task", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
@@ -85,7 +79,7 @@ export const stateAtSeq1: ExecutionDTO = {
 };
 
 /** リプレイ用: seq 2 時点の状態 */
-export const stateAtSeq2: ExecutionDTO = {
+export const stateAtSeq2: WorkflowView = {
   ...stateAtSeq1,
   nodes: [
     { nodeId: "start", nodeType: "Start", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
@@ -94,7 +88,7 @@ export const stateAtSeq2: ExecutionDTO = {
 };
 
 /** リプレイ用: seq 3 時点の状態（start が READY） */
-export const stateAtSeq3: ExecutionDTO = {
+export const stateAtSeq3: WorkflowView = {
   ...stateAtSeq1,
   nodes: [
     { nodeId: "start", nodeType: "Start", status: "READY", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
@@ -103,7 +97,7 @@ export const stateAtSeq3: ExecutionDTO = {
 };
 
 /** リプレイ用: seq 4 時点の状態（start SUCCEEDED, task-a RUNNING） */
-export const stateAtSeq4: ExecutionDTO = {
+export const stateAtSeq4: WorkflowView = {
   ...stateAtSeq1,
   nodes: [
     { nodeId: "start", nodeType: "Start", status: "SUCCEEDED", attempt: 1, workerId: null, waitKey: null, canceledByExecution: false },
@@ -112,7 +106,7 @@ export const stateAtSeq4: ExecutionDTO = {
 };
 
 /** seq に応じて返すリプレイ用状態 */
-export function getStateAtSeq(seq: number): ExecutionDTO {
+export function getStateAtSeq(seq: number): WorkflowView {
   switch (seq) {
     case 1:
       return stateAtSeq1;

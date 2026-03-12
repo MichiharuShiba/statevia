@@ -1,10 +1,10 @@
 "use client";
 
-import type { ExecutionDTO, ExecutionNodeDTO } from "../../lib/types";
+import type { ExecutionNodeDTO, WorkflowView } from "../../lib/types";
 import { getStatusStyle } from "../../lib/statusStyle";
 
 type NodeDetailProps = {
-  execution: ExecutionDTO | null;
+  execution: WorkflowView | null;
   node: ExecutionNodeDTO | null;
   loading: boolean;
   onResume: () => void;

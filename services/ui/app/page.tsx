@@ -20,7 +20,8 @@ import { useExecutionStateAtSeq } from "./features/execution/useExecutionStateAt
 import { getNodeWithFallback, useGraphData } from "./features/graph/useGraphData";
 import { getResumeDisabledReason, useNodeCommands } from "./features/nodes/useNodeCommands";
 import { apiGet } from "./lib/api";
-import type { ExecutionDTO } from "./lib/types";
+import { buildWorkflowView } from "./lib/workflowView";
+import type { WorkflowDTO, WorkflowGraphDTO, WorkflowView } from "./lib/types";
 import { toToastError, type ToastState } from "./lib/errors";
 
 /** executionId ごとの Graph ビューポート（ズーム・パン位置） */
@@ -41,7 +42,7 @@ export default function Page() {
   const [replayAtSeq, setReplayAtSeq] = useState<number | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [executionIdB, setExecutionIdB] = useState("");
-  const [executionB, setExecutionB] = useState<ExecutionDTO | null>(null);
+  const [executionB, setExecutionB] = useState<WorkflowView | null>(null);
   const [loadingB, setLoadingB] = useState(false);
 
   const {
@@ -65,9 +66,9 @@ export default function Page() {
     loadingMore: timelineLoadingMore,
     error: timelineError,
     loadMore: timelineLoadMore
-  } = useExecutionEvents(execution?.executionId ?? null);
+  } = useExecutionEvents(execution?.displayId ?? null);
   const { state: stateAtSeq, loading: stateAtSeqLoading } = useExecutionStateAtSeq(
-    execution?.executionId ?? null,
+    execution?.displayId ?? null,
     replayAtSeq
   );
 
@@ -92,8 +93,14 @@ export default function Page() {
     if (!executionIdB.trim()) return;
     setLoadingB(true);
     try {
-      const res = await apiGet<ExecutionDTO>(`/executions/${executionIdB.trim()}`);
-      setExecutionB(res);
+      const workflow = await apiGet<WorkflowDTO>(`/executions/${executionIdB.trim()}`);
+      let graph: WorkflowGraphDTO | null = null;
+      try {
+        graph = await apiGet<WorkflowGraphDTO>(`/executions/${executionIdB.trim()}/graph`);
+      } catch {
+        // ignore
+      }
+      setExecutionB(buildWorkflowView(workflow, graph));
     } catch {
       setExecutionB(null);
     } finally {
@@ -123,13 +130,13 @@ export default function Page() {
     return resumeEdge?.eventName ?? null;
   }, [selectedNodeId, graphData?.edges]);
 
-  const savedGraphViewport = execution ? graphViewportByExecutionId[execution.executionId] : undefined;
+  const savedGraphViewport = execution ? graphViewportByExecutionId[execution.displayId] : undefined;
   const handleGraphViewportChange = useCallback(
     (viewport: GraphViewport) => {
       if (displayExecution) {
         setGraphViewportByExecutionId((prev) => ({
           ...prev,
-          [displayExecution.executionId]: viewport
+          [displayExecution.displayId]: viewport
         }));
       }
     },
@@ -197,7 +204,7 @@ export default function Page() {
           )}
 
           <TenantMissingBanner />
-          <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequestedAt} terminal={terminal} />
+          <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequested} terminal={terminal} />
 
           {showExecutionPanels && isReplaying && (
             <ReplayBanner onBackToCurrent={() => setReplayAtSeq(null)} />

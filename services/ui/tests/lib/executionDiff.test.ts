@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { computeExecutionDiff } from "../../app/lib/executionDiff";
-import type { ExecutionDTO } from "../../app/lib/types";
+import type { ExecutionNodeDTO, WorkflowStatus, WorkflowView } from "../../app/lib/types";
 
 function node(
   nodeId: string,
-  status: ExecutionDTO["nodes"][0]["status"],
+  status: ExecutionNodeDTO["status"],
   nodeType = "Task"
-): ExecutionDTO["nodes"][0] {
+): ExecutionNodeDTO {
   return {
     nodeId,
     nodeType,
@@ -19,18 +19,18 @@ function node(
 }
 
 function exec(
-  executionId: string,
-  nodes: ExecutionDTO["nodes"],
-  status: ExecutionDTO["status"] = "ACTIVE"
-): ExecutionDTO {
+  displayId: string,
+  nodes: ExecutionNodeDTO[],
+  status: WorkflowStatus = "Running"
+): WorkflowView {
   return {
-    executionId,
+    displayId,
+    resourceId: "res-1",
     status,
+    startedAt: "2026-01-01T00:00:00Z",
+    cancelRequested: false,
+    restartLost: false,
     graphId: "g1",
-    cancelRequestedAt: null,
-    canceledAt: null,
-    failedAt: null,
-    completedAt: null,
     nodes
   };
 }

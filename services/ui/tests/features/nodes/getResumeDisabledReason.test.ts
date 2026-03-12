@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { getResumeDisabledReason } from "../../../app/features/nodes/useNodeCommands";
-import type { ExecutionDTO, ExecutionNodeDTO } from "../../../app/lib/types";
+import type { ExecutionNodeDTO, WorkflowView } from "../../../app/lib/types";
 
-function execution(overrides: Partial<ExecutionDTO> = {}): ExecutionDTO {
+function execution(overrides: Partial<WorkflowView> = {}): WorkflowView {
   return {
-    executionId: "ex-1",
-    status: "ACTIVE",
+    displayId: "ex-1",
+    resourceId: "r-1",
+    status: "Running",
+    startedAt: "2026-01-01T00:00:00Z",
+    cancelRequested: false,
+    restartLost: false,
     graphId: "g-1",
-    cancelRequestedAt: null,
-    canceledAt: null,
-    failedAt: null,
-    completedAt: null,
     nodes: [],
     ...overrides
   };
@@ -64,9 +64,9 @@ describe("getResumeDisabledReason", () => {
     expect(result).toBe("Node を選択してください");
   });
 
-  it("execution が終了状態 (COMPLETED) のときメッセージを返す", () => {
+  it("execution が終了状態 (Completed) のときメッセージを返す", () => {
     // Arrange
-    const exec = execution({ status: "COMPLETED" });
+    const exec = execution({ status: "Completed" });
     const n = node();
 
     // Act
@@ -76,9 +76,9 @@ describe("getResumeDisabledReason", () => {
     expect(result).toBe("Executionは終了しています");
   });
 
-  it("execution が終了状態 (FAILED) のときメッセージを返す", () => {
+  it("execution が終了状態 (Failed) のときメッセージを返す", () => {
     // Arrange
-    const exec = execution({ status: "FAILED" });
+    const exec = execution({ status: "Failed" });
     const n = node();
 
     // Act
@@ -90,7 +90,7 @@ describe("getResumeDisabledReason", () => {
 
   it("cancel が要求済みのときメッセージを返す", () => {
     // Arrange
-    const exec = execution({ cancelRequestedAt: "2026-01-01T00:00:00Z" });
+    const exec = execution({ cancelRequested: true });
     const n = node();
 
     // Act
@@ -112,9 +112,9 @@ describe("getResumeDisabledReason", () => {
     expect(result).toBe("WAITING 状態のノードのみ Resume できます");
   });
 
-  it("execution が終了状態 (CANCELED) のときメッセージを返す", () => {
+  it("execution が終了状態 (Cancelled) のときメッセージを返す", () => {
     // Arrange
-    const exec = execution({ status: "CANCELED" });
+    const exec = execution({ status: "Cancelled" });
     const n = node();
 
     // Act
@@ -150,7 +150,7 @@ describe("getResumeDisabledReason", () => {
 });
 
 describe("getResumeDisabledReason (境界値)", () => {
-  it("execution.nodes が空配列でも ACTIVE なら null を返す（ノードは別途渡す）", () => {
+  it("execution.nodes が空配列でも Running なら null を返す（ノードは別途渡す）", () => {
     // Arrange
     const exec = execution({ nodes: [] });
     const n = node();
