@@ -19,8 +19,15 @@ builder.Services.AddDbContextFactory<CoreDbContext>(options =>
 
 builder.Services.AddScoped<IDisplayIdService, DisplayIdServiceImpl>();
 builder.Services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
+builder.Services.AddCors();
 
 var app = builder.Build();
+
+// Phase 3.2: UI からの跨域アクセスを許可（v2 では認証なし）
+app.UseCors(policy => policy
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
 
 app.MapControllers();
 app.MapGet("/v1/health", () => Results.Ok(new { status = "ok" }));

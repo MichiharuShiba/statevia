@@ -90,6 +90,30 @@ public class WorkflowsController : ControllerBase
         });
     }
 
+    /// <summary>GET /v1/workflows — 一覧（U4 一覧も display_id / resource_id）。display_ids を LEFT JOIN で 1 クエリ取得。</summary>
+    [HttpGet]
+    public async Task<ActionResult<List<WorkflowResponse>>> List(CancellationToken ct)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        var displayIdsForWorkflow = db.DisplayIds.Where(x => x.Kind == "workflow");
+        var list = await (
+            from w in db.Workflows.AsNoTracking()
+            join d in displayIdsForWorkflow on w.WorkflowId equals d.ResourceId into dGroup
+            from d in dGroup.DefaultIfEmpty()
+            orderby w.StartedAt descending
+            select new WorkflowResponse
+            {
+                DisplayId = d != null ? d.DisplayId : w.WorkflowId.ToString(),
+                ResourceId = w.WorkflowId,
+                Status = w.Status,
+                StartedAt = w.StartedAt,
+                UpdatedAt = w.UpdatedAt,
+                CancelRequested = w.CancelRequested,
+                RestartLost = w.RestartLost
+            }).ToListAsync(ct).ConfigureAwait(false);
+        return Ok(list);
+    }
+
     /// <summary>GET /v1/workflows/{id} — DB の projection から返す（U4）。</summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<WorkflowResponse>> Get(string id, CancellationToken ct)

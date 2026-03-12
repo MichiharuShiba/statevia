@@ -64,6 +64,27 @@ public class DefinitionsController : ControllerBase
         });
     }
 
+    /// <summary>GET /v1/definitions — 一覧（U4 一覧も display_id / resource_id）。display_ids を LEFT JOIN で 1 クエリ取得。</summary>
+    [HttpGet]
+    public async Task<ActionResult<List<DefinitionResponse>>> List(CancellationToken ct)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        var displayIdsForDefinition = db.DisplayIds.Where(x => x.Kind == "definition");
+        var list = await (
+            from def in db.WorkflowDefinitions.AsNoTracking()
+            join d in displayIdsForDefinition on def.DefinitionId equals d.ResourceId into dGroup
+            from d in dGroup.DefaultIfEmpty()
+            orderby def.CreatedAt
+            select new DefinitionResponse
+            {
+                DisplayId = d != null ? d.DisplayId : def.DefinitionId.ToString(),
+                ResourceId = def.DefinitionId,
+                Name = def.Name,
+                CreatedAt = def.CreatedAt
+            }).ToListAsync(ct).ConfigureAwait(false);
+        return Ok(list);
+    }
+
     /// <summary>GET /v1/definitions/{id} — 表示用 ID または UUID で取得（U4）。</summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<DefinitionResponse>> Get(string id, CancellationToken ct)

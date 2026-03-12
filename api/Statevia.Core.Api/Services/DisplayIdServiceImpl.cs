@@ -71,6 +71,19 @@ public sealed class DisplayIdServiceImpl : IDisplayIdService
         return displayId;
     }
 
+    public async Task<IReadOnlyDictionary<Guid, string>> GetDisplayIdsAsync(string kind, IEnumerable<Guid> resourceIds, CancellationToken ct = default)
+    {
+        var ids = resourceIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<Guid, string>();
+
+        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        var pairs = await db.DisplayIds.AsNoTracking()
+            .Where(x => x.Kind == kind && ids.Contains(x.ResourceId))
+            .Select(x => new { x.ResourceId, x.DisplayId })
+            .ToListAsync(ct).ConfigureAwait(false);
+        return pairs.ToDictionary(x => x.ResourceId, x => x.DisplayId);
+    }
+
     private static string GenerateDisplayId()
     {
         var bytes = new byte[Length];
