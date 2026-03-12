@@ -20,6 +20,7 @@ builder.Services.AddDbContextFactory<CoreDbContext>(options =>
 builder.Services.AddScoped<IDisplayIdService, DisplayIdServiceImpl>();
 builder.Services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
 builder.Services.AddCors();
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
