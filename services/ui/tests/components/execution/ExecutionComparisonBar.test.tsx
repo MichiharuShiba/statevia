@@ -1,30 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ExecutionComparisonBar } from "../../../app/components/execution/ExecutionComparisonBar";
-import type { ExecutionDTO } from "../../../app/lib/types";
+import type { WorkflowView } from "../../../app/lib/types";
 import { computeExecutionDiff } from "../../../app/lib/executionDiff";
 
 function exec(
-  executionId: string,
-  nodes: ExecutionDTO["nodes"],
-  status: ExecutionDTO["status"] = "ACTIVE"
-): ExecutionDTO {
+  displayId: string,
+  nodes: WorkflowView["nodes"],
+  status: WorkflowView["status"] = "Running"
+): WorkflowView {
   return {
-    executionId,
+    displayId,
+    resourceId: displayId,
     status,
+    startedAt: "2026-01-01T00:00:00Z",
+    cancelRequested: false,
+    restartLost: false,
     graphId: "g1",
-    cancelRequestedAt: null,
-    canceledAt: null,
-    failedAt: null,
-    completedAt: null,
     nodes
   };
 }
 
 const node = (
   nodeId: string,
-  status: ExecutionDTO["nodes"][0]["status"]
-): ExecutionDTO["nodes"][0] => ({
+  status: WorkflowView["nodes"][0]["status"]
+): WorkflowView["nodes"][0] => ({
   nodeId,
   nodeType: "Task",
   status,

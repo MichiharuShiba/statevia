@@ -11,6 +11,13 @@ function joinUrl(parts: string[]) {
   return `${base()}/${p}`;
 }
 
+/** v2: Core-API（C#）は /v1/workflows と /v1/definitions。旧 /executions と /definitions を変換する。 */
+function pathForBackend(pathParts: string[]): string[] {
+  if (pathParts[0] === "executions") return ["v1", "workflows", ...pathParts.slice(1)];
+  if (pathParts[0] === "definitions") return ["v1", "definitions", ...pathParts.slice(1)];
+  return pathParts;
+}
+
 function authAndTenantHeaders(req: NextRequest, pathParts: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   const authFromReq = req.headers.get("authorization");
@@ -42,7 +49,8 @@ function authAndTenantHeaders(req: NextRequest, pathParts: string[]): Record<str
 }
 
 async function forward(req: NextRequest, method: string, pathParts: string[]) {
-  const url = joinUrl(pathParts);
+  const backendPath = pathForBackend(pathParts);
+  const url = joinUrl(backendPath);
   const headers: Record<string, string> = {
     Accept: req.headers.get("accept") ?? "application/json",
     "X-Idempotency-Key": req.headers.get("x-idempotency-key") ?? crypto.randomUUID(),

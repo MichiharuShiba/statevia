@@ -6,33 +6,41 @@
 
 Statevia is a definition-driven, event-sourced workflow engine with three components:
 
-| Component | Stack | Location |
-|---|---|---|
-| **core** (C# library + CLI) | .NET 8 | `core/` |
-| **core-api** (REST API) | Node.js / Express / TypeScript | `services/core-api/` |
-| **ui** (Web dashboard) | Next.js / React / ReactFlow | `services/ui/` |
+| Component                     | Stack                       | Location       |
+| ----------------------------- | --------------------------- | -------------- |
+| **engine** (C# library + CLI) | .NET 8                      | `engine/`      |
+| **core-api** (REST API)       | **C# ASP.NET Core** (v2)    | `api/`         |
+| **ui** (Web dashboard)        | Next.js / React / ReactFlow | `services/ui/` |
 
-PostgreSQL 16 is the event store. The UI proxies API calls through a Next.js route handler to avoid CORS.
+**v2**: Core-API は C# のみ。TypeScript の `services/core-api/` は v2 では使用しない（legacy はタグ `legacy/core-api-ts` で保存）。PostgreSQL 16 は EF Core 経由で使用。UI は Next.js の route handler で API にプロキシして CORS を避けられる。
 
 ### Running services
 
 1. **PostgreSQL** — run via Docker:
-   ```
+
+   ```bash
    sudo docker run -d --name statevia-postgres \
-     -e POSTGRES_USER=core -e POSTGRES_PASSWORD=core -e POSTGRES_DB=core \
+     -e POSTGRES_USER=statevia -e POSTGRES_PASSWORD=statevia -e POSTGRES_DB=statevia \
      -p 5432:5432 \
-     -v $(pwd)/services/core-api/sql:/docker-entrypoint-initdb.d:ro \
      postgres:16
    ```
-2. **core-api** — build then run (requires PostgreSQL):
+
+   C# API は EF Core マイグレーションでスキーマを作成するため、初期 SQL のマウントは不要。
+2. **core-api (C#)** — run (requires PostgreSQL; run migrations first):
+
+   ```bash
+   cd api && dotnet run --project Statevia.Core.Api
    ```
-   cd services/core-api && npm run build && DATABASE_URL="postgres://core:core@localhost:5432/core" PORT=8080 npm run dev
-   ```
-   The `dev` script uses `node --watch dist/server.js`, so you must `npm run build` first; it watches the compiled JS, not the TS source.
+
+   Or with env: `DATABASE_URL="postgres://statevia:statevia@localhost:5432/statevia" PORT=8080 dotnet run --project Statevia.Core.Api`
+   Migrations: `cd api && dotnet ef database update --project Statevia.Core.Api`.
 3. **ui** — run dev server:
-   ```
+
+   ```bash
    cd services/ui && CORE_API_INTERNAL_BASE="http://localhost:8080" npm run dev
    ```
+
+   UI はプロキシ経由で Core-API（C#）の `/v1/definitions` と `/v1/workflows` を利用する（Phase 3 で切り替え済みを想定）。
 
 ### Docker gotcha (Cloud VM)
 
@@ -40,9 +48,9 @@ The Cloud VM runs inside a container. Docker needs `fuse-overlayfs` storage driv
 
 ### Tests
 
-- **core (C#):** `dotnet test` from `core/` — 91 tests (xunit)
-- **core-api:** `npm test` from `services/core-api/` — 151 tests (vitest, no DB needed)
-- **ui:** `npm run test:run` from `services/ui/` — 178 tests (vitest)
+- **engine (C#):** `cd engine && dotnet test statevia-engine.sln` — xunit
+- **core-api (C#):** `cd api && dotnet test statevia-api.sln` — xunit (when tests exist)
+- **ui:** `npm run test:run` from `services/ui/` — vitest
 
 ### Lint
 
@@ -50,11 +58,11 @@ No ESLint is configured. TypeScript compilation (`tsc --noEmit`) serves as the p
 
 ### Key env vars
 
-| Variable | Service | Default |
-|---|---|---|
-| `DATABASE_URL` | core-api | `postgres://core:core@localhost:5432/core` |
-| `PORT` | core-api | `8080` |
-| `CORE_API_INTERNAL_BASE` | ui | `http://localhost:8080` |
+| Variable                 | Service       | Default                                                                                                                |
+| ------------------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | core-api (C#) | `Host=localhost;Database=statevia;Username=statevia;Password=statevia` (or `postgres://core:core@localhost:5432/core`) |
+| `PORT`                   | core-api (C#) | `8080` (via ASP.NET Core)                                                                                              |
+| `CORE_API_INTERNAL_BASE` | ui            | `http://localhost:8080`                                                                                                |
 
 ### .NET SDK
 

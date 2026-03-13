@@ -1,6 +1,6 @@
 import type { GraphGroupDef, LayoutHints } from "../graphs/types";
 import type { PositionedEdge, PositionedNode } from "./graphLayout";
-import type { ExecutionDTO } from "./types";
+import type { WorkflowView } from "./types";
 
 export type GroupBounds = {
   groupId: string;
@@ -12,7 +12,7 @@ export type GroupBounds = {
   h: number;
 };
 
-export function buildGroups(nodes: ExecutionDTO["nodes"]): {
+export function buildGroups(nodes: WorkflowView["nodes"]): {
   groups: Array<{ groupId: string; label: string; nodeIds: string[] }>;
   nodeToGroup: Record<string, string>;
 } {

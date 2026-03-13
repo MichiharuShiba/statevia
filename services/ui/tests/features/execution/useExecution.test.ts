@@ -1,21 +1,41 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useExecution, getReconnectDelayMs } from "../../../app/features/execution/useExecution";
-import type { ExecutionDTO, ExecutionNodeDTO } from "../../../app/lib/types";
+import type { WorkflowDTO, WorkflowGraphDTO } from "../../../app/lib/types";
 import * as api from "../../../app/lib/api";
 
-function execution(nodes: ExecutionNodeDTO[], overrides: Partial<ExecutionDTO> = {}): ExecutionDTO {
+function workflowDto(overrides: Partial<WorkflowDTO> = {}): WorkflowDTO {
   return {
-    executionId: "ex-1",
-    status: "ACTIVE",
-    graphId: "g-1",
-    cancelRequestedAt: null,
-    canceledAt: null,
-    failedAt: null,
-    completedAt: null,
-    nodes,
+    displayId: "ex-1",
+    resourceId: "r-1",
+    status: "Running",
+    startedAt: "2026-01-01T00:00:00Z",
+    cancelRequested: false,
+    restartLost: false,
     ...overrides
   };
+}
+
+function graphDto(nodes: Array<{ nodeId: string; stateName: string; completedAt?: string | null }> = []): WorkflowGraphDTO {
+  return {
+    nodes: nodes.map((n) => ({
+      nodeId: n.nodeId,
+      stateName: n.stateName,
+      startedAt: "2026-01-01T00:00:00Z",
+      completedAt: n.completedAt ?? null
+    })),
+    edges: []
+  };
+}
+
+/** v2: apiGet を workflow と graph の2回呼び出し用にモックする。 */
+function mockApiGetForWorkflowAndGraph(workflow: WorkflowDTO, graph: WorkflowGraphDTO) {
+  let callIndex = 0;
+  vi.mocked(api.apiGet).mockImplementation(async (path: string) => {
+    if (path.includes("/graph")) return graph as never;
+    callIndex++;
+    return workflow as never;
+  });
 }
 
 describe("getReconnectDelayMs", () => {
@@ -49,13 +69,13 @@ class MinimalEventSource {
 }
 
 describe("useExecution", () => {
-  const defaultExecution = execution([
-    { nodeId: "n-1", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false }
-  ]);
+  const defaultWorkflow = workflowDto();
+  const defaultGraph = graphDto([{ nodeId: "n-1", stateName: "TASK" }]);
 
   beforeEach(() => {
     vi.stubGlobal("EventSource", MinimalEventSource);
-    vi.spyOn(api, "apiGet").mockResolvedValue(defaultExecution);
+    vi.spyOn(api, "apiGet");
+    mockApiGetForWorkflowAndGraph(defaultWorkflow, defaultGraph);
     vi.spyOn(api, "apiPost").mockResolvedValue({
       executionId: "ex-1",
       command: "cancel",
@@ -83,8 +103,9 @@ describe("useExecution", () => {
 
     // Assert
     expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1");
+    expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1/graph");
     expect(result.current.execution).not.toBeNull();
-    expect(result.current.execution?.executionId).toBe("ex-1");
+    expect(result.current.execution?.displayId).toBe("ex-1");
     expect(result.current.selectedNodeId).toBe("n-1");
   });
 
@@ -114,6 +135,7 @@ describe("useExecution", () => {
     });
     expect(result.current.execution).not.toBeNull();
     vi.mocked(api.apiGet).mockClear();
+    mockApiGetForWorkflowAndGraph(defaultWorkflow, defaultGraph);
 
     // Act
     await act(async () => {
@@ -228,7 +250,7 @@ describe("useExecution", () => {
       });
 
       // Assert: execution は変わらない（applyRawEvent が early return した）
-      expect(result.current.execution?.executionId).toBe("ex-1");
+      expect(result.current.execution?.displayId).toBe("ex-1");
     });
 
     it("ストリーム onerror で再接続がスケジュールされ、遅延後に再度 connect する", async () => {
@@ -451,16 +473,11 @@ describe("useExecution", () => {
   });
 
   it("大量ノードで loadExecution 時 selectedNodeId は先頭ノードになる", async () => {
-    const manyNodes: ExecutionNodeDTO[] = Array.from({ length: 200 }, (_, i) => ({
+    const manyGraphNodes = Array.from({ length: 200 }, (_, i) => ({
       nodeId: `n-${i}`,
-      nodeType: "TASK",
-      status: "IDLE",
-      attempt: 0,
-      workerId: null,
-      waitKey: null,
-      canceledByExecution: false
+      stateName: "TASK" as const
     }));
-    vi.mocked(api.apiGet).mockResolvedValueOnce(execution(manyNodes));
+    mockApiGetForWorkflowAndGraph(workflowDto(), graphDto(manyGraphNodes));
 
     const { result } = renderHook(() => useExecution("ex-1"));
 
@@ -483,7 +500,7 @@ describe("useExecution", () => {
   });
 
   it("applyExecutionSnapshot: nodes が空のとき selectedNodeId は null", async () => {
-    vi.mocked(api.apiGet).mockResolvedValueOnce(execution([]));
+    mockApiGetForWorkflowAndGraph(workflowDto(), graphDto([]));
 
     const { result } = renderHook(() => useExecution("ex-1"));
 
@@ -496,14 +513,7 @@ describe("useExecution", () => {
   });
 
   it("applyExecutionSnapshot: 現在の selectedNodeId が response に無いとき先頭ノードに切り替わる", async () => {
-    const first = execution([
-      { nodeId: "n-1", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false }
-    ]);
-    const second = execution([
-      { nodeId: "n-2", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
-      { nodeId: "n-3", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false }
-    ]);
-    vi.mocked(api.apiGet).mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+    mockApiGetForWorkflowAndGraph(workflowDto(), graphDto([{ nodeId: "n-1", stateName: "TASK" }]));
 
     const { result } = renderHook(() => useExecution("ex-1"));
 
@@ -516,6 +526,10 @@ describe("useExecution", () => {
       result.current.setSelectedNodeId("n-1");
     });
 
+    mockApiGetForWorkflowAndGraph(
+      workflowDto(),
+      graphDto([{ nodeId: "n-2", stateName: "TASK" }, { nodeId: "n-3", stateName: "TASK" }])
+    );
     await act(async () => {
       result.current.loadExecution();
     });

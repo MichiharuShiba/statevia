@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { getStatusStyle, getNodeSortWeight } from "../../app/lib/statusStyle";
 
 describe("getStatusStyle", () => {
-  it("Execution status ACTIVE のスタイルを返す", () => {
-    // Arrange
-    const status = "ACTIVE";
+  it("Workflow status Running のスタイルを返す", () => {
+    // Arrange (v2)
+    const status = "Running";
 
     // Act
     const result = getStatusStyle(status);
@@ -14,9 +14,9 @@ describe("getStatusStyle", () => {
     expect(result.emphasisRank).toBe(20);
   });
 
-  it("COMPLETED のスタイルを返す", () => {
-    // Arrange
-    const status = "COMPLETED";
+  it("Workflow status Completed のスタイルを返す", () => {
+    // Arrange (v2)
+    const status = "Completed";
 
     // Act
     const result = getStatusStyle(status);
@@ -38,8 +38,8 @@ describe("getStatusStyle", () => {
     expect(result.icon).toBe("⏸");
   });
 
-  it("FAILED のスタイルを返す", () => {
-    // Arrange
+  it("Node status FAILED のスタイルを返す", () => {
+    // Arrange (NodeStatus)
     const status = "FAILED";
 
     // Act
@@ -50,8 +50,8 @@ describe("getStatusStyle", () => {
     expect(result.emphasisRank).toBe(80);
   });
 
-  it("CANCELED のスタイルを返す", () => {
-    // Arrange
+  it("Node status CANCELED のスタイルを返す", () => {
+    // Arrange (NodeStatus)
     const status = "CANCELED";
 
     // Act
@@ -109,9 +109,9 @@ describe("getNodeSortWeight", () => {
 });
 
 describe("getStatusStyle / getNodeSortWeight (境界値)", () => {
-  it("getStatusStyle は全 ExecutionStatus でスタイルを返す", () => {
-    // Arrange
-    const statuses = ["ACTIVE", "COMPLETED", "FAILED", "CANCELED"] as const;
+  it("getStatusStyle は全 WorkflowStatus でスタイルを返す", () => {
+    // Arrange (v2: C# API の status 値)
+    const statuses = ["Running", "Completed", "Failed", "Cancelled"] as const;
 
     // Act & Assert
     statuses.forEach((status) => {

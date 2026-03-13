@@ -2,22 +2,22 @@
 
 import { useState } from "react";
 import { apiPost } from "../../lib/api";
-import type { CommandAccepted, ExecutionDTO, ExecutionNodeDTO } from "../../lib/types";
+import type { CommandAccepted, ExecutionNodeDTO, WorkflowView } from "../../lib/types";
 
-const TERMINAL_STATUSES = new Set<string>(["COMPLETED", "FAILED", "CANCELED"]);
+const TERMINAL_STATUSES = new Set<string>(["Completed", "Cancelled", "Failed"]);
 
-function isTerminalExecution(status: ExecutionDTO["status"]): boolean {
+function isTerminalExecution(status: WorkflowView["status"]): boolean {
   return TERMINAL_STATUSES.has(status);
 }
 
 export function getResumeDisabledReason(
-  execution: ExecutionDTO | null,
+  execution: WorkflowView | null,
   node: ExecutionNodeDTO | null
 ): string | null {
   if (!execution) return "Execution が未読込です";
   if (!node) return "Node を選択してください";
   if (isTerminalExecution(execution.status)) return "Executionは終了しています";
-  if (execution.cancelRequestedAt)
+  if (execution.cancelRequested)
     return "Cancel要求済みのため、Resumeなど進行系操作はできません";
   if (node.status !== "WAITING") return "WAITING 状態のノードのみ Resume できます";
   return null;
@@ -29,7 +29,7 @@ export type UseNodeCommandsOptions = {
 };
 
 export function useNodeCommands(
-  execution: ExecutionDTO | null,
+  execution: WorkflowView | null,
   options: UseNodeCommandsOptions = {}
 ) {
   const { onSuccess, onError } = options;
@@ -42,7 +42,7 @@ export function useNodeCommands(
     setLoading(true);
     try {
       await apiPost<CommandAccepted>(
-        `/executions/${execution.executionId}/nodes/${node.nodeId}/resume`,
+        `/executions/${execution.displayId}/nodes/${node.nodeId}/resume`,
         { resumeKey: node.waitKey ?? undefined }
       );
       onSuccess?.();

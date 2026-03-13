@@ -1,0 +1,41 @@
+# v2: engine (C#), core-api (C# ASP.NET Core), ui (Next.js/TS)
+# 初回: postgres 起動後、ホストでマイグレーション実行
+#   Bash:   cd api && DATABASE_URL="postgres://core:core@localhost:5432/core" dotnet ef database update --project Statevia.Core.Api
+#   PowerShell: cd api; $env:DATABASE_URL="postgres://statevia:statevia@localhost:5432/statevia"; dotnet ef database update --project Statevia.Core.Api
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: statevia
+      POSTGRES_PASSWORD: statevia
+      POSTGRES_DB: statevia
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # C# API は EF Core マイグレーションでスキーマ作成するため init SQL は不要
+
+  core-api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      ASPNETCORE_URLS: "http://+:8080"
+      DATABASE_URL: "postgres://statevia:statevia@postgres:5432/statevia"
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+
+  ui:
+    build:
+      context: services/ui
+    environment:
+      CORE_API_INTERNAL_BASE: "http://core-api:8080"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - core-api
+
+volumes:
+  pgdata: {}

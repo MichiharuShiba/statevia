@@ -225,7 +225,7 @@ t8: E Completed → Workflow Completed
 
 ```txt
 statevia/
-├─ core/
+├─ engine/                       # C# ワークフローエンジン（.NET、v2）
 ├─ docs/
 └─ services/
    ├─ core-api/

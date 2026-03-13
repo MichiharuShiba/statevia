@@ -1,6 +1,6 @@
 "use client";
 
-import type { ExecutionDTO } from "../../lib/types";
+import type { WorkflowView } from "../../lib/types";
 import { getStatusStyle } from "../../lib/statusStyle";
 import type { ViewMode } from "../ViewToggle";
 import { ViewToggle } from "../ViewToggle";
@@ -12,7 +12,7 @@ type ExecutionHeaderProps = {
   onCancel: () => void;
   loading: boolean;
   canCancel: boolean;
-  execution: ExecutionDTO | null;
+  execution: WorkflowView | null;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   /** 比較モード（2実行差分表示） */
@@ -96,7 +96,7 @@ export function ExecutionHeader({
               graphId: <span className="font-mono">{execution.graphId}</span>
             </div>
             <div>
-              cancelRequestedAt: <span className="font-mono">{execution.cancelRequestedAt ?? "—"}</span>
+              cancelRequested: <span className="font-mono">{execution.cancelRequested ? "true" : "false"}</span>
             </div>
           </div>
         </div>

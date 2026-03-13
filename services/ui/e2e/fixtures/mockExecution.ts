@@ -1,13 +1,13 @@
-import type { ExecutionDTO } from "../../app/lib/types";
+import type { WorkflowView } from "../../app/lib/types";
 
-export const mockExecution: ExecutionDTO = {
-  executionId: "ex-1",
-  status: "ACTIVE",
+export const mockExecution: WorkflowView = {
+  displayId: "ex-1",
+  resourceId: "res-1",
+  status: "Running",
+  startedAt: "2026-01-01T00:00:00Z",
+  cancelRequested: false,
+  restartLost: false,
   graphId: "hello",
-  cancelRequestedAt: null,
-  canceledAt: null,
-  failedAt: null,
-  completedAt: null,
   nodes: [
     { nodeId: "start", nodeType: "Start", status: "SUCCEEDED", attempt: 1, workerId: null, waitKey: null, canceledByExecution: false },
     { nodeId: "task-a", nodeType: "Task", status: "RUNNING", attempt: 1, workerId: "w1", waitKey: null, canceledByExecution: false },

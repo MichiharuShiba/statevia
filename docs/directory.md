@@ -23,108 +23,33 @@ statevia/
 │  ├─ ui-visual-spec.md
 │  └─ directory.md
 │
-├─ core/                         # C# ワークフローエンジン（.NET）
-│  ├─ statevia.sln              # .NET ソリューション
-│  ├─ .gitignore                # core 配下用 .NET
-│  ├─ .editorconfig
+├─ engine/                       # C# ワークフローエンジン（.NET、v2）
+│  ├─ statevia-engine.sln       # .NET ソリューション（samples は含めない）
 │  ├─ Directory.Build.props
 │  │
-│  ├─ Statevia.Core/            # エンジンコア
-│  │  ├─ Statevia.Core.csproj
+│  ├─ Statevia.Core.Engine/     # エンジンコア（旧 Statevia.Core）
+│  │  ├─ Statevia.Core.Engine.csproj
 │  │  ├─ Engine/
-│  │  │  ├─ WorkflowEngine.cs
-│  │  │  ├─ WorkflowEngineOptions.cs
-│  │  │  ├─ WorkflowInstance.cs
-│  │  │  ├─ WorkflowStateStore.cs
-│  │  │  ├─ WorkflowSnapshotExtensions.cs
-│  │  │  └─ EventProvider.cs
-│  │  │
 │  │  ├─ FSM/
-│  │  │  ├─ IFsm.cs
-│  │  │  ├─ TransitionTable.cs
-│  │  │  ├─ TransitionResult.cs
-│  │  │  └─ Fact.cs
-│  │  │
 │  │  ├─ Scheduler/
-│  │  │  ├─ IScheduler.cs
-│  │  │  ├─ DefaultScheduler.cs
-│  │  │  └─ ExecutionLimiter.cs
-│  │  │
 │  │  ├─ Execution/
-│  │  │  └─ DefaultStateExecutor.cs
-│  │  │
 │  │  ├─ Join/
-│  │  │  ├─ IJoinTracker.cs
-│  │  │  └─ JoinTracker.cs
-│  │  │
 │  │  ├─ Definition/
-│  │  │  ├─ DefinitionLoader.cs
-│  │  │  ├─ DefinitionCompiler.cs
-│  │  │  ├─ WorkflowDefinition.cs
-│  │  │  ├─ DictionaryStateExecutorFactory.cs
-│  │  │  ├─ ScalarPreservingNodeTypeResolver.cs
-│  │  │  └─ Validation/
-│  │  │     ├─ DefinitionValidator.cs
-│  │  │     ├─ Level1Validator.cs
-│  │  │     └─ Level2Validator.cs
-│  │  │
 │  │  ├─ ExecutionGraph/
-│  │  │  ├─ ExecutionGraph.cs
-│  │  │  ├─ ExecutionNode.cs
-│  │  │  └─ ExecutionEdge.cs
-│  │  │
 │  │  └─ Abstractions/
-│  │     ├─ IWorkflowEngine.cs
-│  │     ├─ IState.cs
-│  │     ├─ IStateExecutor.cs
-│  │     ├─ IStateExecutorFactory.cs
-│  │     ├─ IEventProvider.cs
-│  │     ├─ IReadOnlyStateStore.cs
-│  │     ├─ StateContext.cs
-│  │     ├─ CompiledWorkflowDefinition.cs
-│  │     ├─ WorkflowSnapshot.cs
-│  │     └─ Unit.cs
 │  │
-│  ├─ Statevia.Cli/             # CLI
+│  ├─ Statevia.Cli/
 │  │  ├─ Statevia.Cli.csproj
 │  │  └─ Program.cs
 │  │
-│  ├─ Statevia.Core.Tests/       # コア単体テスト
-│  │  ├─ Statevia.Core.Tests.csproj
-│  │  ├─ Abstractions/
-│  │  │  └─ UnitTests.cs
-│  │  ├─ Engine/
-│  │  │  ├─ CancelTests.cs
-│  │  │  ├─ WaitResumeTests.cs
-│  │  │  └─ WorkflowEngineTests.cs
-│  │  ├─ Definition/
-│  │  │  ├─ DefinitionLoaderTests.cs
-│  │  │  ├─ DefinitionCompilerTests.cs
-│  │  │  ├─ DefinitionValidatorTests.cs
-│  │  │  ├─ DictionaryStateExecutorFactoryTests.cs
-│  │  │  ├─ Level1ValidationTests.cs
-│  │  │  └─ Level2ValidationTests.cs
-│  │  ├─ Execution/
-│  │  │  └─ DefaultStateExecutorTests.cs
-│  │  ├─ FSM/
-│  │  │  └─ FsmTests.cs
-│  │  ├─ Join/
-│  │  │  └─ ForkJoinTests.cs
-│  │  ├─ Scheduler/
-│  │  │  └─ SchedulerTests.cs
-│  │  └─ ExecutionGraph/
-│  │     └─ ExecutionGraphTests.cs
+│  ├─ Statevia.Core.Engine.Tests/
+│  │  └─ Statevia.Core.Engine.Tests.csproj
 │  │
-│  ├─ Statevia.Cli.Tests/        # CLI 単体テスト
-│  │  ├─ Statevia.Cli.Tests.csproj
-│  │  └─ ProgramTests.cs
+│  ├─ Statevia.Cli.Tests/
+│  │  └─ Statevia.Cli.Tests.csproj
 │  │
-│  └─ samples/                   # サンプル
+│  └─ samples/                   # .sln には含めない
 │     └─ hello-statevia/
-│        ├─ hello-statevia.csproj
-│        ├─ hello.yaml
-│        ├─ Program.cs
-│        └─ README.md
 │
 └─ services/                     # Node/TypeScript スタック（独立）
    ├─ .gitignore                 # services 共通（Node 用）

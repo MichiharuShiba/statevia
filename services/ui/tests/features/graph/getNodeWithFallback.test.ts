@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { getNodeWithFallback, type GraphData } from "../../../app/features/graph/useGraphData";
-import type { ExecutionDTO, ExecutionNodeDTO } from "../../../app/lib/types";
+import type { ExecutionNodeDTO, WorkflowView } from "../../../app/lib/types";
 
-function execution(nodes: ExecutionNodeDTO[]): ExecutionDTO {
+function execution(nodes: ExecutionNodeDTO[]): WorkflowView {
   return {
-    executionId: "ex-1",
-    status: "ACTIVE",
+    displayId: "ex-1",
+    resourceId: "res-1",
+    status: "Running",
+    startedAt: "2026-01-01T00:00:00Z",
+    cancelRequested: false,
+    restartLost: false,
     graphId: "g-1",
-    cancelRequestedAt: null,
-    canceledAt: null,
-    failedAt: null,
-    completedAt: null,
     nodes
   };
 }

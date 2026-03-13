@@ -1,6 +1,52 @@
-export type ExecutionStatus = "ACTIVE" | "COMPLETED" | "FAILED" | "CANCELED";
+/** v2: C# API のワークフロー状態。 */
+export type WorkflowStatus = "Running" | "Completed" | "Cancelled" | "Failed";
+
 export type NodeStatus = "IDLE" | "READY" | "RUNNING" | "WAITING" | "SUCCEEDED" | "FAILED" | "CANCELED";
 
+/** v2: GET /v1/workflows/:id のレスポンス（C# WorkflowResponse）。 */
+export type WorkflowDTO = {
+  displayId: string;
+  resourceId: string;
+  status: WorkflowStatus;
+  startedAt: string;
+  updatedAt?: string | null;
+  cancelRequested: boolean;
+  restartLost: boolean;
+};
+
+/** v2: GET /v1/workflows/:id/graph のノード（C# ExecutionNode）。camelCase / PascalCase 両対応。 */
+export type WorkflowGraphNodeDTO = {
+  nodeId?: string;
+  NodeId?: string;
+  stateName?: string;
+  StateName?: string;
+  startedAt?: string;
+  StartedAt?: string;
+  completedAt?: string | null;
+  CompletedAt?: string | null;
+  fact?: string | null;
+  Fact?: string | null;
+  output?: unknown;
+  Output?: unknown;
+};
+
+/** v2: GET /v1/workflows/:id/graph の辺（C# ExecutionEdge）。 */
+export type WorkflowGraphEdgeDTO = {
+  fromNodeId?: string;
+  FromNodeId?: string;
+  toNodeId?: string;
+  ToNodeId?: string;
+  type?: number;
+  Type?: number;
+};
+
+/** v2: GET /v1/workflows/:id/graph のレスポンス。 */
+export type WorkflowGraphDTO = {
+  nodes: WorkflowGraphNodeDTO[];
+  edges: WorkflowGraphEdgeDTO[];
+};
+
+/** グラフ可視化用のノード（状態実行）。v2 では WorkflowGraphDTO から変換。 */
 export type ExecutionNodeDTO = {
   nodeId: string;
   nodeType: string;
@@ -9,25 +55,18 @@ export type ExecutionNodeDTO = {
   workerId: string | null;
   waitKey: string | null;
   canceledByExecution: boolean;
-  /** 失敗時のみ。API/SSE から設定 */
   error?: { message?: string } | null;
-  /** Cancel 時。SSE NodeCancelled から設定（API では未永続化） */
   cancelReason?: string | null;
 };
 
-export type ExecutionDTO = {
-  executionId: string;
-  status: ExecutionStatus;
+/** v2: ワークフロー + グラフから組み立てたビュー。一覧・詳細・グラフで利用。 */
+export type WorkflowView = WorkflowDTO & {
   graphId: string;
-  cancelRequestedAt: string | null;
-  canceledAt: string | null;
-  failedAt: string | null;
-  completedAt: string | null;
   nodes: ExecutionNodeDTO[];
 };
 
 export type CommandAccepted = {
-  executionId: string;
+  executionId: string; // v2 では displayId を格納
   command: string;
   accepted: true;
   correlationId?: string | null;
@@ -102,11 +141,9 @@ export type ExecutionStreamEvent =
   | NodeCancelledEvent
   | NodeFailedEvent;
 
-/** GET /executions/:id/events のレスポンス（seq 付きでタイムライン/リプレイ用） */
 export type ExecutionEventWithSeq = { seq: number } & ExecutionStreamEvent;
 
 export type ExecutionEventsResponse = {
   events: ExecutionEventWithSeq[];
-  /** さらにイベントがある場合 true（ページング用） */
   hasMore?: boolean;
 };
