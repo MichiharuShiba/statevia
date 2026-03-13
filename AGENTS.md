@@ -20,7 +20,7 @@ Statevia is a definition-driven, event-sourced workflow engine with three compon
 
    ```bash
    sudo docker run -d --name statevia-postgres \
-     -e POSTGRES_USER=core -e POSTGRES_PASSWORD=core -e POSTGRES_DB=core \
+     -e POSTGRES_USER=statevia -e POSTGRES_PASSWORD=statevia -e POSTGRES_DB=statevia \
      -p 5432:5432 \
      postgres:16
    ```
@@ -32,7 +32,7 @@ Statevia is a definition-driven, event-sourced workflow engine with three compon
    cd api && dotnet run --project Statevia.Core.Api
    ```
 
-   Or with env: `DATABASE_URL="postgres://core:core@localhost:5432/core" PORT=8080 dotnet run --project Statevia.Core.Api`
+   Or with env: `DATABASE_URL="postgres://statevia:statevia@localhost:5432/statevia" PORT=8080 dotnet run --project Statevia.Core.Api`
    Migrations: `cd api && dotnet ef database update --project Statevia.Core.Api`.
 3. **ui** — run dev server:
 
