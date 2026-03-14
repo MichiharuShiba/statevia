@@ -51,64 +51,14 @@ statevia/
 │  └─ samples/                   # .sln には含めない
 │     └─ hello-statevia/
 │
-└─ services/                     # Node/TypeScript スタック（独立）
+├─ api/                          # Core-API（C# ASP.NET Core、v2）
+│  ├─ Statevia.Core.Api/
+│  ├─ statevia-api.sln
+│  └─ Dockerfile
+│
+└─ services/                     # UI 等（Next.js/TS）
    ├─ .gitignore                 # services 共通（Node 用）
-   ├─ docker-compose.yml         # postgres + core-api
-   └─ core-api/                  # Express API（Execution/Node の HTTP API、DDD 構成）
-      ├─ .gitignore              # core-api 配下用 Node
-      ├─ .env.example
-      ├─ Dockerfile
-      ├─ package.json
-      ├─ tsconfig.json
-      ├─ src/
-      │  ├─ server.ts
-      │  │
-      │  ├─ domain/                    # Domain Layer (DDD)
-      │  │  ├─ entities/               # エンティティ
-      │  │  │  ├─ execution.ts
-      │  │  │  └─ node.ts
-      │  │  ├─ value-objects/          # 値オブジェクト
-      │  │  │  ├─ actor.ts
-      │  │  │  ├─ event-envelope.ts
-      │  │  │  └─ execution-state.ts
-      │  │  ├─ domain-services/        # ドメインサービス
-      │  │  │  ├─ reducer.ts
-      │  │  │  └─ guards.ts
-      │  │  ├─ events/                 # ドメインイベント
-      │  │  │  └─ event-types.ts
-      │  │  └─ errors.ts              # ドメインエラー
-      │  │
-      │  ├─ application/              # Application Layer
-      │  │  ├─ commands/               # コマンドハンドラー
-      │  │  │  └─ command-handlers.ts
-      │  │  ├─ use-cases/              # ユースケース
-      │  │  │  ├─ create-execution-use-case.ts
-      │  │  │  └─ execute-command-use-case.ts
-      │  │  └─ services/               # アプリケーションサービス
-      │  │     └─ orchestrator.ts
-      │  │
-      │  ├─ infrastructure/            # Infrastructure Layer
-      │  │  ├─ persistence/            # 永続化
-      │  │  │  ├─ db.ts
-      │  │  │  └─ repositories/
-      │  │  │     ├─ event-store.ts
-      │  │  │     └─ execution-repository.ts
-      │  │  └─ idempotency/            # 冪等性管理
-      │  │     └─ idempotency-service.ts
-      │  │
-      │  └─ presentation/               # Presentation Layer
-      │     ├─ http/                    # HTTP層
-      │     │  ├─ routes.ts
-      │     │  ├─ routes/
-      │     │  │  ├─ executions.ts
-      │     │  │  └─ nodes.ts
-      │     │  ├─ errors.ts
-      │     │  ├─ error-handler.ts
-      │     │  ├─ middleware.ts
-      │     │  └─ idempotent-handler.ts
-      │     └─ dto/                     # DTO
-      │        └─ validators.ts
-      │
-      └─ sql/
-         └─ 001_init.sql
+   └─ ui/                        # Next.js ダッシュボード
 ```
+
+注: docker-compose はリポジトリルートの `docker-compose.yml`。Core-API は `api/`（C#）。
