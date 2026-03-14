@@ -271,23 +271,18 @@ services/core-engine/
    └─ CoreEngine.Tests/
 ```
 
-### 9.2 Core-API（TypeScript / DB owner）
+### 9.2 Core-API（C# / DB owner、v2）
 
 ```text
-services/core-api/
-├─ src/
-│  ├─ http/                            # public endpoints (UI contract)
-│  ├─ coreEngineClient/                # /internal/v1/decide client
-│  ├─ store/
-│  │  ├─ eventStore.ts                 # append events
-│  │  ├─ projections.ts                # upsert executions/node_states
-│  │  ├─ readRepo.ts                   # load projection state + version
-│  │  └─ dedupRepo.ts                  # command_dedup
-│  ├─ projector/                       # apply reducer or projection builder
-│  └─ read/                            # GET /executions/:id, /graphs/:id
-└─ sql/
-   └─ migrations...
+api/
+├─ Statevia.Core.Api/                  # ASP.NET Core
+│  ├─ Controllers/                     # public endpoints (UI contract)
+│  ├─ Persistence/                    # EF Core + event store
+│  └─ ...
+└─ Dockerfile
 ```
+
+注: 旧 TypeScript の services/core-api は削除済み。
 
 ### 9.3 UI（TypeScript）
 
@@ -313,7 +308,6 @@ contracts/
 
 ## 10. 運用の最小docker構成（参考）
 
-- core-api
-- core-engine
-- postgres（core-api所有）
+- core-api（C#、api/）
+- postgres（core-api が EF Core で利用）
 - ui（任意）

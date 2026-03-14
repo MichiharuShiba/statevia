@@ -1,6 +1,6 @@
 # スキーマ定義(V2)
 
-- `services/core-api/sql/001_init.sql`
+v2 の永続化は C# API（api/）の EF Core マイグレーションで管理。以下はレガシー TS API の SQL 参考（削除済み services/core-api の内容）。
 
 ```sql
 -- executions: projection root
@@ -61,14 +61,14 @@ create table if not exists command_dedup (
 create index if not exists idx_command_dedup_created_at on command_dedup(created_at);
 ```
 
-- `services/core-api/sql/002_add_executions_version.sql`
+- （参考）002_add_executions_version.sql
 
 ```sql
 alter table executions
   add column if not exists version int not null default 0;
 ```
 
-- `services/core-api/sql/003_add_command_dedup.sql`
+- （参考）003_add_command_dedup.sql
 
 ```sql
 create table if not exists command_dedup (
