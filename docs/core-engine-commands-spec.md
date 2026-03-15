@@ -1,8 +1,7 @@
-# Core Commands Specification (Fixed List)
+# コアコマンド仕様（固定一覧）
 
 Version: 1.0
 Project: 実行型ステートマシン
-Policy: Cancel wins
 
 ---
 
@@ -11,7 +10,7 @@ Policy: Cancel wins
 - 外部入力は Command として受ける
 - Command は **必ず検証（ガード）**され、通れば 1つ以上の Event に変換される
 - reducer は Event だけを見る（コマンド直適用は禁止）
-- Cancel wins を UX と整合させるため、Cancel要求以降は「進行系コマンド」を原則拒否
+- Cancel要求以降は「進行系コマンド」を原則拒否（UX と整合）
 
 ---
 
@@ -56,7 +55,7 @@ Policy: Cancel wins
 - Execution.status が COMPLETED/FAILED/CANCELED の場合、**全コマンド拒否**
   - 例外: ArchiveExecution は許可してよい（運用）
 
-### 3.2 Cancel要求以降（Cancel wins）
+### 3.2 Cancel要求以降
 
 - execution.cancelRequestedAt が存在する場合、以下は **原則拒否**
   - StartExecution
@@ -127,7 +126,7 @@ payload:
 2) EXECUTION_CANCELED（確定）
 
 > “確定”を即時にするか、ワーカー停止などを待って確定するかは運用選択。
-> ただし Cancel wins のため REQUESTED が入った時点で以後の終端競合は Cancel 優先。
+> REQUESTED が入った時点で以後の終端競合は Cancel 優先。
 
 ---
 
@@ -287,7 +286,7 @@ reducer / command-handler とは別に、以下を担当するコンポーネン
 
 ---
 
-## 7. Cancel wins を破らないための必須チェック
+## 7. 必須チェック
 
 - CancelExecution は最優先で受理される（終端以外）
 - cancelRequestedAt が入ったら進行系コマンドを拒否する（デフォルト）

@@ -1,42 +1,9 @@
-# FSM Specification
+# FSM 仕様
 
-statevia uses a fact-driven finite state machine.
-
-## Core Concept
-
-Transitions are evaluated by:
-
-(State, Fact) -> TransitionResult
-
-Facts represent actual execution results:
-
-- Completed
-- Failed
-- Cancelled
-- Joined
-
-Requests (e.g., cancel requests) are not facts.
-
-## FSM Characteristics
-
-- Deterministic transitions
-- No implicit state transitions
-- Self transitions are forbidden
-- Transitions are precompiled into O(1) lookup tables
-
-## Transition Result
-
-A transition result may:
-
-- Start new states
-- End the current state
-- Trigger fork or join logic
+Version: 1.0
+Project: 実行型ステートマシン
 
 ---
-
-# 日本語
-
-## FSM 仕様
 
 statevia は事実駆動型有限状態機械を使用します。
 

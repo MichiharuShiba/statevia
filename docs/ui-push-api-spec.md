@@ -1,4 +1,9 @@
-# UI Push API Specification
+# UI Push API 仕様
+
+Version: 1.0
+Project: 実行型ステートマシン
+
+---
 
 本ドキュメントは Statevia の ExecutionGraph / 実行状態を
 管理 UI に対して Push 配信するための公式 API 仕様を定義する。
