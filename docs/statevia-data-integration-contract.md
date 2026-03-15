@@ -1,32 +1,31 @@
-# Data Integration Contract
+# データ連携契約
 
 Version: 1.0
-Scope: Core / Core-API / UI 間のデータ連携
+Project: 実行型ステートマシン
+Scope: Core-Engine / Core-API / UI 間のデータ連携
 Goal: 「どのデータを」「どのタイミングで」「どの形式で」連携するかを固定する
+
+**現在の実装**: Core-Engine は `engine/`（C# ライブラリ）、Core-API は `api/`（C#）。Engine は API プロセス内で利用。UI は `/api/core/*` で API にプロキシ。以下は原則と、実装に存在する部分に沿った記述。
 
 ---
 
 ## 0. 全体像（責務の境界）
 
-### Core（Domain Kernel）
+### Core-Engine（Domain Kernel・ライブラリ）
 
-- 固定イベント一覧（core-events-spec.md）
-- Reducer（Cancel wins + normalize）
-- Command→Event 変換のルール（core-commands-spec.md）
-- **純粋ロジック**（副作用なし、I/Oなし）
+- 固定イベント・Reducer（優先順位 + normalize）・Command→Event のルール（core-engine-events-spec / core-engine-commands-spec 等で仕様化）
+- **純粋ロジック**（I/O は API 層が担当）
 
-### Core-API（Integration Boundary）
+### Core-API（C# / Integration Boundary）
 
-- HTTP API 契約（core-api-contract.md）
-- Idempotency / エラー規約
-- Event永続化・Projection更新・Read API
-- UI Push（SSE/WS）での更新配信（将来）
+- HTTP API 契約（core-api-interface.md）
+- 永続化（EF Core）・Read API（v1/workflows, v1/definitions）
+- UI Push（SSE/WS）は未実装
 
 ### UI（Presentation）
 
-- Command 発行（操作）
-- Read Model 表示（ExecutionGraph）
-- Realtime 更新反映（Push）
+- Command 発行（ワークフロー開始・キャンセル・イベント）
+- Read Model 表示（一覧・詳細・ExecutionGraph）
 
 ---
 
@@ -93,9 +92,9 @@ UIが依存してよいレスポンス形を固定する。
 - 推奨ヘッダ:
   - `X-Correlation-Id`
 
-#### 例: Cancel（Cancel wins）
+#### 例: Cancel
 
-`POST /executions/{executionId}/cancel`
+`POST /v1/workflows/{id}/cancel`（現行）
 
 Response（固定形）
 
@@ -111,7 +110,7 @@ Response（固定形）
 
 ### 3.2 Read API（Query）
 
-`GET /executions/{executionId}`
+`GET /v1/workflows/{id}`（現行）
 
 - UIは最終状態確認にこれを使う
 - コマンド直後のUI更新は（Pushがない場合）このGETをポーリングしてもよい
@@ -160,7 +159,7 @@ Pushを入れると連携が一気に強くなる。
 - 実装が軽い（UI側も簡単）
 - サーバ→クライアント方向で十分なケースが多い
 
-`GET /executions/{executionId}/stream` (SSE)
+`GET /executions/{executionId}/stream` (SSE) — **未実装**
 
 ### 5.2 Push イベント（UI向け）
 
@@ -179,7 +178,7 @@ UIが扱いやすいよう、CoreのEventをそのまま流すのではなく、
 }
 ```
 
-UIは受けたら `GET /executions/{id}` を再取得する（最小・堅牢）。
+UIは受けたら `GET /v1/workflows/{id}` を再取得する（最小・堅牢）。
 
 #### UI-PATCH（中級：差分で高速化）
 
@@ -244,17 +243,17 @@ Core-APIはエラーレスポンスに以下を入れる。
 
 ### 8.1 現状（Pushなし）
 
-UI -> Core-API: POST /cancel
-Core-API -> UI: 202 Accepted
-UI -> Core-API: GET /executions/{id} (poll)
-Core-API -> UI: status=CANCELED
+UI -> Core-API: POST /v1/workflows/{id}/cancel
+Core-API -> UI: 204 No Content
+UI -> Core-API: GET /v1/workflows/{id} (poll)
+Core-API -> UI: status 等
 
-### 8.2 将来（Pushあり）
+### 8.2 将来（Pushあり・未実装）
 
 UI -> Core-API: POST /cancel
 Core-API -> UI: 202 Accepted
 Core-API -> UI: SSE EXECUTION_UPDATED
-UI -> Core-API: GET /executions/{id}
+UI -> Core-API: GET /v1/workflows/{id}
 Core-API -> UI: status=CANCELED
 
 ---
@@ -264,4 +263,3 @@ Core-API -> UI: status=CANCELED
 - Read Model は後方互換を守る（フィールド追加は可、削除/意味変更は不可）
 - Push payload も同様
 - 破壊的変更が必要なら `v2` エンドポイントを追加する
-

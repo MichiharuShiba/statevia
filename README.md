@@ -36,7 +36,7 @@ statevia は以下の思想をベースに設計されています。
 
 設計思想の詳細:
 
-- docs/design-philosophy.md
+- docs/statevia-design-philosophy.md
 
 ## 📸 UI スクリーンショット
 
@@ -60,7 +60,7 @@ Definition (JSON/YAML)
 
 詳細:
 
-- docs/architecture.md
+- docs/statevia-architecture.md
 
 ---
 
@@ -85,19 +85,19 @@ var graph = engine.ExecutionGraph;
 ## 仕様ドキュメント
 
 - Definition
-  - docs/definition-spec.md
+  - docs/core-engine-definition-spec.md
 
 - FSM
-  - docs/fsm-spec.md
+  - docs/core-engine-fsm-spec.md
 
 - Fork / Join
-  - docs/fork-join-spec.md
+  - docs/core-engine-fork-join-spec.md
 
 - Wait / Cancel
-  - docs/wait-cancel-spec.md
+  - docs/core-engine-wait-cancel-spec.md
 
 - ExecutionGraph
-  - docs/execution-graph-spec.md
+  - docs/core-engine-execution-graph-spec.md
 
 ---
 

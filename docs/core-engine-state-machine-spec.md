@@ -1,4 +1,4 @@
-# Core State Machine Specification (Cancel Wins)
+# コア状態機械仕様
 
 Version: 1.0
 Project: 実行型ステートマシン
@@ -85,7 +85,7 @@ UIは本仕様の結果を描画するだけであり、優先順位ロジック
 
 ---
 
-## 5. Cancel Wins のコアルール
+## 5. 競合解決のコアルール
 
 ### 5.1 Cancelは「最終確定」イベント
 
@@ -119,7 +119,7 @@ UIは本仕様の結果を描画するだけであり、優先順位ロジック
 
 ### 6.1 Execution遷移
 
-- ACTIVE → CANCELED（Cancel wins）
+- ACTIVE → CANCELED
 - ACTIVE → FAILED
 - ACTIVE → COMPLETED
 - FAILED/COMPLETED/CANCELED は終端（不可逆）
@@ -128,7 +128,7 @@ UIは本仕様の結果を描画するだけであり、優先順位ロジック
 
 - IDLE → READY → RUNNING → (SUCCEEDED | FAILED | WAITING)
 - WAITING → (RUNNING via RESUME) → (SUCCEEDED | FAILED)
-- 任意状態 → CANCELED（Cancel wins。ただし終端ノードは保持してもよい）
+- 任意状態 → CANCELED（ただし終端ノードは保持してもよい）
 
 ---
 
@@ -196,7 +196,7 @@ Joinは「合流条件」が満たされたときに次へ進める。
 3. Success/Completion関連
 4. Running/Waiting/Ready関連
 
-これにより「Cancel wins」を機械的に担保する。
+これにより終端の優先順位を機械的に担保する。
 
 ---
 

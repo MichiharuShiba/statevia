@@ -1,4 +1,9 @@
-# ExecutionGraph JSON Schema
+# ExecutionGraph JSON スキーマ
+
+Version: 1.0
+Project: 実行型ステートマシン
+
+---
 
 ## 1. 目的
 

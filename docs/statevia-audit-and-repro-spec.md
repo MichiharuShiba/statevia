@@ -1,4 +1,4 @@
-# Audit & Reproducibility Specification (Level 2: Hash Chain)
+# 監査・再現性仕様（Level 2: ハッシュチェーン）
 
 Version: 1.0
 Project: 実行型ステートマシン
@@ -42,7 +42,7 @@ Focus: 完全監査可能 / 再現性 / BI
 
 ## 2. EventEnvelope（監査強化版）
 
-EventEnvelope は core-events-spec.md を踏襲し、監査上の必須フィールドを追加固定する。
+EventEnvelope は core-engine-events-spec.md を踏襲し、監査上の必須フィールドを追加固定する。
 
 ### 2.1 必須
 
@@ -66,7 +66,7 @@ EventEnvelope は core-events-spec.md を踏襲し、監査上の必須フィー
   - userAgent?: string
   - requestId?: string
   - endpoint?: string
-- policyVersion?: string（Cancel wins等のポリシーバージョン）
+- policyVersion?: string（ポリシーバージョン）
 - tags?: string[]
 
 > 監査の“強さ”は「イベントに十分な文脈があるか」で決まる。

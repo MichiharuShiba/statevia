@@ -1,4 +1,9 @@
-# UI 可視化仕様（UI Visual Specification）
+# UI 可視化仕様
+
+Version: 1.0
+Project: 実行型ステートマシン
+
+---
 
 本ドキュメントは、Statevia における ExecutionGraph の公式 UI 表現仕様を定義する。
 本仕様は、Statevia の管理 UI / ビジュアライザ実装における **規範仕様（Normative Spec）** である。
