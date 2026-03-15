@@ -1,6 +1,13 @@
 # UI / API 認証・テナント設定
 
+Version: 1.0
+Project: 実行型ステートマシン
+
+---
+
 REST および Push（SSE）で Core API に認証・テナントヘッダを送るための設定方法。
+
+**現在の実装**: Core-API（C#）は認証・テナントを未使用。UI の route はヘッダを転送するため、将来認証・テナントを有効にした場合の設定として有効。
 
 ---
 
@@ -74,4 +81,4 @@ ui:
 ## 6. 関連仕様
 
 - [UI Push API Specification](./ui-push-api-spec.md) — 認証・テナントヘッダの仕様
-- [Core API Contract](./core-api-contract.md) — 共通ヘッダ（Authorization 任意）
+- [Core API Contract](./core-api-interface.md) — 共通ヘッダ（Authorization 任意）

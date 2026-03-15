@@ -1,38 +1,9 @@
-# Design Philosophy
+# 設計哲学
 
-statevia is designed around the following principles:
-
-- Definition-driven workflow
-- Fact-driven FSM
-- Fork / Join as control nodes, not states
-- Explicit dependency declaration
-- Asynchronous execution with cooperative cancellation
-- Safety-first design
-- Engine does not interfere with user logic
-- Observation and execution are strictly separated
-
-## Key Decisions
-
-### Fact-driven Transitions
-
-Only actual results (facts) trigger state transitions.
-Requests (e.g., cancellation requests) are not considered facts.
-
-### Non-intrusive Engine
-
-The engine never forcefully aborts state execution.
-Cancellation is cooperative and handled by user code.
-
-### Formal Structure
-
-The workflow definition is treated as a formal specification,
-not just a configuration file.
+Version: 1.0
+Project: 実行型ステートマシン
 
 ---
-
-# 日本語
-
-## 設計哲学
 
 statevia は以下の原則に基づいて設計されています：
 

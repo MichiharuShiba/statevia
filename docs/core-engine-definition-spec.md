@@ -1,0 +1,222 @@
+# 定義仕様
+
+Version: 1.0
+Project: 実行型ステートマシン
+
+---
+
+Core-Engine が受け付けるワークフロー定義の YAML/JSON 仕様。**states 形式**と**nodes 形式**の二通りを扱う。
+
+- **States 形式**: 状態名をキーにした `states` マップ。エンジンが直接ロード・コンパイルする（現行実装）。
+- **Nodes 形式**: ノードの配列 `nodes`。UI やエディタ向け。実行時には states 形式へ変換して利用する想定。
+
+---
+
+## 1. States 形式
+
+### 1.1 基本構造
+
+```yaml
+workflow:
+  name: <string>
+
+states:
+  <StateName>:
+    on:                          # 事実駆動の遷移（Fact → 遷移）
+      <Fact>:
+        next: <StateName>        # 単一遷移
+        fork: [<StateName>, ...]  # 並列開始
+        end: true                 # ワークフロー終了
+    wait:                         # 待機（オプション）
+      event: <EventName>
+    join:                         # 合流（オプション）
+      allOf: [<StateName>, ...]
+```
+
+- **workflow.name**: ワークフロー名（任意、デフォルト "Unnamed"）。
+- **states**: 状態名 → 状態定義のマップ。各状態は `on`（遷移）、`wait`（待機）、`join`（合流）のいずれかまたは組み合わせを持つ。
+
+### 1.2 遷移（on）
+
+- **on**: 事実名（例: `Completed`, `Joined`, `Failed`）をキーに、遷移先を指定する。
+  - **next**: 次に遷移する状態名（1 つ）。
+  - **fork**: 並列に開始する状態名のリスト。
+  - **end**: `true` でワークフロー終了。
+
+### 1.3 Wait（待機）
+
+- **wait.event**: 再開に使うイベント名。Resume 時にこのイベント名で `PublishEvent` するとその状態が再開する。
+
+### 1.4 Join（合流）
+
+- **join.allOf**: 完了を待つ状態名のリスト。すべてが完了すると `Joined` 事実が発生し、`on.Joined` で次へ遷移できる。
+
+### 1.5 例（States 形式）
+
+```yaml
+workflow:
+  name: HelloWorkflow
+
+states:
+  Start:
+    on:
+      Completed:
+        fork: [Prepare, AskUser]
+
+  Prepare:
+    on:
+      Completed:
+        next: Join1
+
+  AskUser:
+    wait:
+      event: UserApproved
+    on:
+      Completed:
+        next: Join1
+
+  Join1:
+    join:
+      allOf: [Prepare, AskUser]
+    on:
+      Joined:
+        next: Work
+
+  Work:
+    on:
+      Completed:
+        next: End
+
+  End:
+    on:
+      Completed:
+        end: true
+```
+
+---
+
+## 2. Nodes 形式
+
+### 2.1 基本構造
+
+ルートに **nodes** 配列があり、各要素が `id` と `type` を持つ。`workflow` メタデータと任意で `controls`（cancel/resume イベント）を併記する。
+
+```yaml
+version: 1
+
+workflow:
+  id: <string>
+  name: <string>
+  description: <string>   # 任意
+
+controls:                  # 任意
+  cancel:
+    event: <EventName>
+  resume:
+    event: <EventName>
+
+nodes:
+  - id: <nodeId>
+    type: start | end | action | wait | fork | join
+    label: <string>        # 任意
+    # 型ごとのプロパティ（下記）
+```
+
+### 2.2 ノード型とプロパティ
+
+| type   | 必須プロパティ     | 任意・備考 |
+|--------|--------------------|------------|
+| start  | next               | 開始ノード。1 つのみ。 |
+| end    | —                  | 終端ノード。 |
+| action | action, next       | input, onError.next, label 等。 |
+| wait   | event, next        | timeout, onTimeout.next。 |
+| fork   | branches           | 2 要素以上の配列。 |
+| join   | next               | mode: all 等。 |
+
+- **start**: `next` で次ノード ID。
+- **end**: `next` なし。
+- **action**: `action` はアクション参照（例: `order.create`）。`next` で次ノード。`input` で入力マップ。
+- **wait**: `event` で待機イベント名。`next` で再開後の次ノード。`timeout`（ISO 8601 duration）でタイムアウト指定可。
+- **fork**: `branches` に並列ブランチのノード ID の配列。
+- **join**: すべてのブランチの完了を待ち、`next` へ進む。
+
+### 2.3 例（Nodes 形式・抜粋）
+
+```yaml
+version: 1
+
+workflow:
+  id: order-workflow
+  name: Order Processing Workflow
+
+nodes:
+  - id: start
+    type: start
+    label: Start
+    next: createOrder
+
+  - id: createOrder
+    type: action
+    label: Create Order
+    action: order.create
+    next: waitPayment
+
+  - id: waitPayment
+    type: wait
+    label: Wait Payment
+    event: payment.completed
+    next: endSuccess
+
+  - id: forkFulfillment
+    type: fork
+    label: Parallel Fulfillment
+    branches:
+      - prepareShipment
+      - notifyUser
+
+  - id: joinFulfillment
+    type: join
+    label: Join Fulfillment
+    mode: all
+    next: shipOrder
+
+  - id: endSuccess
+    type: end
+    label: Completed
+```
+
+- **label**, **description**, **tags**, **ui** は UI/エディタ用。エンジンは無視してよい。
+- **metadata** をルートに置く場合もエンジンは無視してよい。
+
+### 2.4 States 形式との対応
+
+Nodes 形式は、実行前に **states 形式の CompiledWorkflowDefinition に変換**して利用する想定。変換レイヤーが nodes の `id`/`type`/`next`/`event`/`branches` を states の `on`/`wait`/`join` にマッピングする。
+
+---
+
+## 3. ルール（共通）
+
+- 状態名（states 形式）またはノード ID（nodes 形式）は一意とする。
+- 自己遷移（A → A）は禁止。
+- Join の allOf / branches は既存の状態・ノードを参照する。
+- Fork と Join は制御構造であり、実行順序の保証範囲は実装に依存する。
+- Wait は指定イベントで再開する待機を表す。
+
+---
+
+## 4. 検証レベル（States 形式）
+
+エンジンが States 形式に対して行う検証の目安。
+
+**LEVEL 1**
+
+- 構文・参照整合性
+- 自己遷移の禁止
+
+**LEVEL 2**
+
+- 開始状態からの到達可能性
+- 循環 Join の禁止
+- 明示的依存関係の強制
+
+Nodes 形式の検証は、変換後の states に対して同様のレベルを適用するか、変換前の nodes 用ルールを別途定義する。

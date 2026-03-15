@@ -1,8 +1,7 @@
-# Core Events Specification
+# コアイベント仕様
 
 Version: 1.0
 Project: 実行型ステートマシン
-Policy: Cancel wins
 
 ---
 
@@ -10,7 +9,7 @@ Policy: Cancel wins
 
 - コアは **Command → Event** に変換し、状態は **Event のみ**で更新する（Event Sourcing/監査性を想定）
 - イベントは「事実」。後から意味を変えない
-- 競合は reducer で **優先順位規則**により決定（Cancel wins）
+- 競合は reducer で **優先順位規則**により決定
 - ここにない Event type は発行禁止（互換性・監査性のため）
 
 ---
@@ -56,7 +55,7 @@ Policy: Cancel wins
 
 ### C. Node Lifecycle（10）
 
-9.  NODE_CREATED
+9. NODE_CREATED
 10. NODE_READY
 11. NODE_STARTED
 12. NODE_PROGRESS_REPORTED
@@ -78,6 +77,98 @@ Policy: Cancel wins
 22. FORK_OPENED
 23. JOIN_GATE_UPDATED
 24. JOIN_PASSED
+
+---
+
+## 2.1 イベントの流れ（フロー図）
+
+### Execution レベル
+
+```mermaid
+flowchart LR
+  subgraph A["Execution Lifecycle"]
+    E1[EXECUTION_CREATED]
+    E2[EXECUTION_STARTED]
+    E3[EXECUTION_COMPLETED]
+    E4[EXECUTION_ARCHIVED]
+    E1 --> E2 --> E3 --> E4
+  end
+
+  subgraph B["Termination"]
+    C1[EXECUTION_CANCEL_REQUESTED]
+    C2[EXECUTION_CANCELED]
+    F1[EXECUTION_FAIL_REQUESTED]
+    F2[EXECUTION_FAILED]
+    C1 --> C2
+    F1 --> F2
+  end
+
+  E2 -.->|キャンセル要求| C1
+  E2 -.->|失敗| F1
+  C2 -->|終端確定| X((終了))
+  F2 -->|CANCEL が無ければ| X
+  E3 -->|正常終了| X
+```
+
+- 通常: CREATED → STARTED → COMPLETED（任意で ARCHIVED）。
+- キャンセル: CANCEL_REQUESTED 発行後は Cancel 優先で CANCELED が終端確定。
+- 失敗: FAIL_REQUESTED → FAILED。CANCEL_REQUESTED/CANCELED がある場合は Execution 終端は CANCELED 優先。
+
+### Node レベル（1 ノードのライフサイクル）
+
+```mermaid
+flowchart TD
+  N1[NODE_CREATED]
+  N2[NODE_READY]
+  N3[NODE_STARTED]
+  N4[NODE_PROGRESS_REPORTED]
+  N5[NODE_WAITING]
+  N6[NODE_RESUME_REQUESTED]
+  N7[NODE_RESUMED]
+  N8[NODE_SUCCEEDED]
+  N9[NODE_FAIL_REPORTED]
+  N10[NODE_FAILED]
+  NC1[NODE_CANCEL_REQUESTED]
+  NC2[NODE_CANCELED]
+  NI[NODE_INTERRUPT_REQUESTED]
+
+  N1 --> N2 --> N3
+  N3 --> N4
+  N3 --> N5
+  N5 --> N6 --> N7 --> N3
+  N7 --> N8
+  N3 --> N9 --> N10
+  N3 --> NI
+  N5 --> NC1 --> NC2
+  N3 -.->|キャンセル| NC1
+```
+
+- 作成 → READY → STARTED。待機する場合は WAITING → RESUME_REQUESTED → RESUMED で再開。
+- 成功: NODE_SUCCEEDED。失敗: NODE_FAIL_REPORTED → NODE_FAILED。
+- キャンセル: NODE_CANCEL_REQUESTED → NODE_CANCELED。実行中への停止要求は NODE_INTERRUPT_REQUESTED（best-effort）。
+
+### Fork / Join
+
+```mermaid
+flowchart LR
+  subgraph Fork["Fork"]
+    F[FORK_OPENED]
+    F --> B1[branch 1]
+    F --> B2[branch 2]
+  end
+
+  subgraph Join["Join"]
+    J1[JOIN_GATE_UPDATED]
+    J2[JOIN_PASSED]
+    B1 --> J1
+    B2 --> J1
+    J1 -->|isPassable| J2
+  end
+```
+
+- FORK_OPENED: ブランチがアクティブ化された事実（payload に branchIds）。
+- JOIN_GATE_UPDATED: 各ブランチの完了/失敗/キャンセルに応じてゲート更新（expectedBranches, completedBranches, isPassable 等）。
+- JOIN_PASSED: 条件を満たして次へ進んだ事実。
 
 ---
 
@@ -133,7 +224,7 @@ payload:
 
 意味:
 
-- この時点で「Cancel wins」判定が固定される（以後の終端競合は Cancel 優先）
+- この時点で終端の優先が固定される（以後の終端競合は Cancel 優先）
 
 ---
 
@@ -316,7 +407,7 @@ payload:
 
 意味:
 
-- nodeの終端確定（Cancel wins）
+- nodeの終端確定
 
 ---
 
@@ -389,7 +480,7 @@ payload:
 
 ---
 
-## 5. Cancel Wins を担保する実装上の必須条件
+## 5. 実装上の必須条件
 
 - reducer は以下を必ず守る:
   - CANCEL_REQUESTED が観測されたら execution.cancelRequestedAt をセット（以後保持）
