@@ -49,9 +49,9 @@ public sealed class DisplayIdServiceImpl : IDisplayIdService
         if (Guid.TryParse(idOrUuid, out var guid))
         {
             var byDisplay = await db.DisplayIds.FirstOrDefaultAsync(x => x.Kind == kind && x.ResourceId == guid, ct).ConfigureAwait(false);
-            if (byDisplay != null) return guid;
-            if (kind == "definition" && await db.WorkflowDefinitions.AnyAsync(x => x.DefinitionId == guid, ct).ConfigureAwait(false)) return guid;
-            if (kind == "workflow" && await db.Workflows.AnyAsync(x => x.WorkflowId == guid, ct).ConfigureAwait(false)) return guid;
+            if (byDisplay is not null) return guid;
+            if (kind is "definition" && await db.WorkflowDefinitions.AnyAsync(x => x.DefinitionId == guid, ct).ConfigureAwait(false)) return guid;
+            if (kind is "workflow" && await db.Workflows.AnyAsync(x => x.WorkflowId == guid, ct).ConfigureAwait(false)) return guid;
             return null;
         }
         var row = await db.DisplayIds.FirstOrDefaultAsync(x => x.Kind == kind && x.DisplayId == idOrUuid, ct).ConfigureAwait(false);

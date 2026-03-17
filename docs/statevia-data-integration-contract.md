@@ -88,7 +88,8 @@ UIが依存してよいレスポンス形を固定する。
 - すべて `202 Accepted` を基本（非同期）
 - 必須ヘッダ:
   - `X-Idempotency-Key`
-
+- 任意ヘッダ:
+  - **`X-Tenant-Id`**: テナントスコープ。省略時は `"default"`。作成するリソース（定義・ワークフロー）および冪等キーはこのテナントに紐づく。
 - 推奨ヘッダ:
   - `X-Correlation-Id`
 
@@ -108,7 +109,15 @@ Response（固定形）
 }
 ```
 
+#### Idempotency-Key の保持期間
+
+- Core-API は `X-Idempotency-Key` 単位でコマンドを **`command_dedup` テーブルに保存**し、同一キー＋同一リクエストの再送時には初回レスポンスを返す。
+- `command_dedup.expires_at` の **デフォルト値は `created_at + 24h`** とし、この期間を過ぎたレコードはクリーンアップ対象とする。
+- **旧 `idempotency_keys` は使用しない（廃止）。冪等は `command_dedup` に一本化している。**
+
 ### 3.2 Read API（Query）
+
+- **テナント**: 一覧・詳細はいずれも **`X-Tenant-Id`** でスコープする。省略時は `"default"`。他テナントのリソースは返さない（404 相当）。
 
 `GET /v1/workflows/{id}`（現行）
 

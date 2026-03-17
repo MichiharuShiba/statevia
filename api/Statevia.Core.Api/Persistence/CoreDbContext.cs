@@ -12,6 +12,7 @@ public class CoreDbContext : DbContext
     public DbSet<EventStoreRow> EventStore => Set<EventStoreRow>();
     public DbSet<WorkflowEventRow> WorkflowEvents => Set<WorkflowEventRow>();
     public DbSet<ExecutionGraphSnapshotRow> ExecutionGraphSnapshots => Set<ExecutionGraphSnapshotRow>();
+    public DbSet<CommandDedupRow> CommandDedup => Set<CommandDedupRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,6 +34,7 @@ public class CoreDbContext : DbContext
             e.ToTable("workflow_definitions");
             e.HasKey(x => x.DefinitionId);
             e.Property(x => x.DefinitionId).HasColumnName("definition_id");
+            e.Property(x => x.TenantId).HasMaxLength(64).HasColumnName("tenant_id");
             e.Property(x => x.Name).HasMaxLength(512).HasColumnName("name");
             e.Property(x => x.SourceYaml).HasColumnName("source_yaml");
             e.Property(x => x.CompiledJson).HasColumnName("compiled_json");
@@ -45,6 +47,7 @@ public class CoreDbContext : DbContext
             e.ToTable("workflows");
             e.HasKey(x => x.WorkflowId);
             e.Property(x => x.WorkflowId).HasColumnName("workflow_id");
+            e.Property(x => x.TenantId).HasMaxLength(64).HasColumnName("tenant_id");
             e.Property(x => x.DefinitionId).HasColumnName("definition_id");
             e.Property(x => x.Status).HasMaxLength(64).HasColumnName("status");
             e.Property(x => x.StartedAt).HasColumnName("started_at");
@@ -94,6 +97,23 @@ public class CoreDbContext : DbContext
             e.Property(x => x.WorkflowId).HasColumnName("workflow_id");
             e.Property(x => x.GraphJson).HasColumnName("graph_json");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        });
+
+        // command_dedup（コマンド冪等制御）
+        modelBuilder.Entity<CommandDedupRow>(e =>
+        {
+            e.ToTable("command_dedup");
+            e.HasKey(x => x.DedupKey);
+            e.Property(x => x.DedupKey).HasColumnName("dedup_key");
+            e.Property(x => x.Endpoint).HasColumnName("endpoint");
+            e.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key");
+            e.Property(x => x.RequestHash).HasColumnName("request_hash");
+            e.Property(x => x.StatusCode).HasColumnName("status_code");
+            e.Property(x => x.ResponseBody).HasColumnName("response_body");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.ExpiresAt).HasColumnName("expires_at");
+
+            // TODO: ExpiresAt の DB デフォルト値（created_at + interval '24 hours'）はマイグレーションで設定する。
         });
     }
 }

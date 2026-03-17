@@ -18,6 +18,8 @@ builder.Services.AddDbContextFactory<CoreDbContext>(options =>
     options.UseNpgsql(conn, o => o.MigrationsHistoryTable("__ef_migrations_history")));
 
 builder.Services.AddScoped<IDisplayIdService, DisplayIdServiceImpl>();
+builder.Services.AddScoped<IExecutionReadModelService, ExecutionReadModelService>();
+builder.Services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
 builder.Services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
 builder.Services.AddCors();
 builder.Services.AddControllers();

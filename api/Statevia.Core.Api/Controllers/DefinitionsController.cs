@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Services;
 using Statevia.Core.Api.Hosting;
@@ -10,6 +11,8 @@ namespace Statevia.Core.Api.Controllers;
 [Route("v1/definitions")]
 public class DefinitionsController : ControllerBase
 {
+    private const string DefaultTenantId = "default";
+
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
     private readonly IDisplayIdService _displayIds;
     private readonly IDefinitionCompilerService _compiler;
@@ -29,7 +32,7 @@ public class DefinitionsController : ControllerBase
     public async Task<ActionResult<DefinitionResponse>> Create([FromBody] CreateDefinitionRequest request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request?.Name) || string.IsNullOrWhiteSpace(request?.Yaml))
-            return BadRequest(new { error = "name and yaml are required" });
+            return ApiErrorResult.ValidationError("name and yaml are required");
 
         string compiledJson;
         try
@@ -38,9 +41,10 @@ public class DefinitionsController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return ApiErrorResult.ValidationError(ex.Message);
         }
 
+        var tenantId = Request.Headers["X-Tenant-Id"].FirstOrDefault() ?? DefaultTenantId;
         var id = Guid.NewGuid();
         var displayId = await _displayIds.AllocateAsync("definition", id, ct).ConfigureAwait(false);
 
@@ -48,6 +52,7 @@ public class DefinitionsController : ControllerBase
         db.WorkflowDefinitions.Add(new WorkflowDefinitionRow
         {
             DefinitionId = id,
+            TenantId = tenantId,
             Name = request.Name,
             SourceYaml = request.Yaml,
             CompiledJson = compiledJson,
@@ -68,10 +73,11 @@ public class DefinitionsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<DefinitionResponse>>> List(CancellationToken ct)
     {
+        var tenantId = Request.Headers["X-Tenant-Id"].FirstOrDefault() ?? DefaultTenantId;
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         var displayIdsForDefinition = db.DisplayIds.Where(x => x.Kind == "definition");
         var list = await (
-            from def in db.WorkflowDefinitions.AsNoTracking()
+            from def in db.WorkflowDefinitions.AsNoTracking().Where(x => x.TenantId == tenantId)
             join d in displayIdsForDefinition on def.DefinitionId equals d.ResourceId into dGroup
             from d in dGroup.DefaultIfEmpty()
             orderby def.CreatedAt
@@ -89,14 +95,16 @@ public class DefinitionsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<DefinitionResponse>> Get(string id, CancellationToken ct)
     {
+        var tenantId = Request.Headers["X-Tenant-Id"].FirstOrDefault() ?? DefaultTenantId;
         var uuid = await _displayIds.ResolveAsync("definition", id, ct).ConfigureAwait(false);
-        if (uuid == null)
-            return NotFound();
+        if (uuid is null)
+            return ApiErrorResult.NotFound("Definition not found");
 
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        var row = await db.WorkflowDefinitions.AsNoTracking().FirstOrDefaultAsync(x => x.DefinitionId == uuid.Value, ct).ConfigureAwait(false);
-        if (row == null)
-            return NotFound();
+        var row = await db.WorkflowDefinitions.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.DefinitionId == uuid.Value && x.TenantId == tenantId, ct).ConfigureAwait(false);
+        if (row is null)
+            return ApiErrorResult.NotFound("Definition not found");
 
         var displayId = await _displayIds.GetDisplayIdAsync("definition", id, ct).ConfigureAwait(false);
 

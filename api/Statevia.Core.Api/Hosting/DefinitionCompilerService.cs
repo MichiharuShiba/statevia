@@ -29,7 +29,7 @@ public sealed class DefinitionCompilerService : IDefinitionCompilerService
         foreach (var stateName in def.States.Keys)
         {
             var stateDef = def.States[stateName];
-            if (stateDef.Wait != null)
+            if (stateDef.Wait is not null)
                 executors[stateName] = DefaultStateExecutor.Create(new WaitOnlyState(stateDef.Wait.Event));
             else
                 executors[stateName] = DefaultStateExecutor.Create(new NoOpState());
