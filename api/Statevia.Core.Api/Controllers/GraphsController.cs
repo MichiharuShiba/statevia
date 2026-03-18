@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
-using Statevia.Core.Api.Services;
 
 namespace Statevia.Core.Api.Controllers;
 

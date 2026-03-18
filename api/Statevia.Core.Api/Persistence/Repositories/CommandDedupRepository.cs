@@ -1,13 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Persistence.Repositories;
-
-public interface ICommandDedupRepository
-{
-    Task<CommandDedupRow?> FindValidAsync(string dedupKey, DateTime utcNow, CancellationToken ct);
-    Task SaveAsync(CommandDedupRow row, CancellationToken ct);
-}
 
 public sealed class CommandDedupRepository : ICommandDedupRepository
 {

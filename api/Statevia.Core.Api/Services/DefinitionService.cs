@@ -1,16 +1,10 @@
+using Statevia.Core.Api.Abstractions.Persistence;
+using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Hosting;
 using Statevia.Core.Api.Persistence;
-using Statevia.Core.Api.Persistence.Repositories;
 
 namespace Statevia.Core.Api.Services;
-
-public interface IDefinitionService
-{
-    Task<DefinitionResponse> CreateAsync(string tenantId, CreateDefinitionRequest request, CancellationToken ct);
-    Task<List<DefinitionResponse>> ListAsync(string tenantId, CancellationToken ct);
-    Task<DefinitionResponse?> GetAsync(string tenantId, string idOrUuid, CancellationToken ct);
-}
 
 public sealed class DefinitionService : IDefinitionService
 {

@@ -1,20 +1,12 @@
 using System.Text.Json;
+using Statevia.Core.Api.Abstractions.Persistence;
+using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Persistence;
-using Statevia.Core.Api.Persistence.Repositories;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Api.Hosting;
 
 namespace Statevia.Core.Api.Services;
-
-public interface IWorkflowService
-{
-    Task<WorkflowResponse?> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct);
-    Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct);
-    Task<string?> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct);
-    Task<bool> CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct);
-    Task<bool> PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct);
-}
 
 public sealed class WorkflowService : IWorkflowService
 {
@@ -118,7 +110,7 @@ public sealed class WorkflowService : IWorkflowService
             {
                 DedupKey = saveKey.DedupKey,
                 Endpoint = saveKey.Endpoint,
-                IdempotencyKey = null,
+                IdempotencyKey = saveKey.IdempotencyKey,
                 RequestHash = null,
                 StatusCode = StatusCodes.Status201Created,
                 ResponseBody = responseJson,
@@ -190,7 +182,7 @@ public sealed class WorkflowService : IWorkflowService
             {
                 DedupKey = saveKey.DedupKey,
                 Endpoint = saveKey.Endpoint,
-                IdempotencyKey = null,
+                IdempotencyKey = saveKey.IdempotencyKey,
                 RequestHash = null,
                 StatusCode = StatusCodes.Status204NoContent,
                 ResponseBody = null,
@@ -235,7 +227,7 @@ public sealed class WorkflowService : IWorkflowService
             {
                 DedupKey = saveKey.DedupKey,
                 Endpoint = saveKey.Endpoint,
-                IdempotencyKey = null,
+                IdempotencyKey = saveKey.IdempotencyKey,
                 RequestHash = null,
                 StatusCode = StatusCodes.Status204NoContent,
                 ResponseBody = null,

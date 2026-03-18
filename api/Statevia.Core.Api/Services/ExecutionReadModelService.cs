@@ -1,14 +1,10 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Services;
-
-public interface IExecutionReadModelService
-{
-    Task<ExecutionReadModel?> GetByDisplayIdAsync(string id, string tenantId, CancellationToken ct = default);
-}
 
 /// <summary>
 /// workflows / execution_graph_snapshots / display_ids から Execution Read Model を組み立てるサービス。

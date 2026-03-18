@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Services;

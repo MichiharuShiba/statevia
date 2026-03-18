@@ -1,4 +1,4 @@
-namespace Statevia.Core.Api.Services;
+namespace Statevia.Core.Api.Abstractions.Services;
 
 /// <summary>表示用 ID（10 桁・62 文字種）の生成と UUID 解決（U3）。</summary>
 public interface IDisplayIdService

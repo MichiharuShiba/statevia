@@ -1,4 +1,4 @@
-namespace Statevia.Core.Api.Services;
+namespace Statevia.Core.Api.Hosting;
 
 public static class TenantHeader
 {

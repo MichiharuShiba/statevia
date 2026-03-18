@@ -1,18 +1,6 @@
-using Statevia.Core.Api.Persistence;
-using Statevia.Core.Api.Persistence.Repositories;
+using Statevia.Core.Api.Abstractions.Services;
 
 namespace Statevia.Core.Api.Services;
-
-public readonly struct CommandDedupKey
-{
-    public string DedupKey { get; init; }
-    public string Endpoint { get; init; }
-}
-
-public interface ICommandDedupService
-{
-    CommandDedupKey? Create(string tenantId, string? idempotencyKey, string method, string path);
-}
 
 public sealed class CommandDedupService : ICommandDedupService
 {
@@ -28,8 +16,8 @@ public sealed class CommandDedupService : ICommandDedupService
         return new CommandDedupKey
         {
             DedupKey = dedupKey,
-            Endpoint = endpoint
+            Endpoint = endpoint,
+            IdempotencyKey = idempotencyKey.Trim()
         };
     }
 }
-

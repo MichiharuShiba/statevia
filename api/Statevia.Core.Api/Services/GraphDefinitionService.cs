@@ -1,14 +1,10 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Services;
-
-public interface IGraphDefinitionService
-{
-    Task<GraphDefinitionResponse?> GetByGraphIdAsync(string graphId, string tenantId, CancellationToken ct = default);
-}
 
 /// <summary>定義の compiled_json から契約の Graph Definition（nodes / edges）を組み立てる。</summary>
 public sealed class GraphDefinitionService : IGraphDefinitionService
