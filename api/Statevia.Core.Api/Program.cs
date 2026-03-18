@@ -20,6 +20,7 @@ builder.Services.AddDbContextFactory<CoreDbContext>(options =>
 
 builder.Services.AddScoped<IDisplayIdService, DisplayIdServiceImpl>();
 builder.Services.AddScoped<IExecutionReadModelService, ExecutionReadModelService>();
+builder.Services.AddSingleton<IIdGenerator, UuidV7Generator>();
 builder.Services.AddScoped<ICommandDedupService, CommandDedupService>();
 builder.Services.AddScoped<IDefinitionRepository, DefinitionRepository>();
 builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();

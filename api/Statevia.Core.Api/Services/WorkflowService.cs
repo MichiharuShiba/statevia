@@ -21,6 +21,7 @@ public sealed class WorkflowService : IWorkflowService
     private readonly IWorkflowEngine _engine;
     private readonly IDisplayIdService _displayIds;
     private readonly IDefinitionCompilerService _compiler;
+    private readonly IIdGenerator _idGenerator;
     private readonly ICommandDedupService _dedupService;
     private readonly IWorkflowRepository _workflows;
     private readonly IDefinitionRepository _definitions;
@@ -30,6 +31,7 @@ public sealed class WorkflowService : IWorkflowService
         IWorkflowEngine engine,
         IDisplayIdService displayIds,
         IDefinitionCompilerService compiler,
+        IIdGenerator idGenerator,
         ICommandDedupService dedupService,
         IWorkflowRepository workflows,
         IDefinitionRepository definitions,
@@ -38,6 +40,7 @@ public sealed class WorkflowService : IWorkflowService
         _engine = engine;
         _displayIds = displayIds;
         _compiler = compiler;
+        _idGenerator = idGenerator;
         _dedupService = dedupService;
         _workflows = workflows;
         _definitions = definitions;
@@ -70,7 +73,7 @@ public sealed class WorkflowService : IWorkflowService
 
         var (compiled, _) = _compiler.ValidateAndCompile(defRow.Name, defRow.SourceYaml);
 
-        var workflowId = Guid.NewGuid();
+        var workflowId = _idGenerator.NewGuid();
         var engineId = workflowId.ToString();
         _engine.Start(compiled, engineId);
 

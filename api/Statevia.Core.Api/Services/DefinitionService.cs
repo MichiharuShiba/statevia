@@ -17,15 +17,18 @@ public sealed class DefinitionService : IDefinitionService
     private readonly IDisplayIdService _displayIds;
     private readonly IDefinitionCompilerService _compiler;
     private readonly IDefinitionRepository _definitions;
+    private readonly IIdGenerator _idGenerator;
 
     public DefinitionService(
         IDisplayIdService displayIds,
         IDefinitionCompilerService compiler,
-        IDefinitionRepository definitions)
+        IDefinitionRepository definitions,
+        IIdGenerator idGenerator)
     {
         _displayIds = displayIds;
         _compiler = compiler;
         _definitions = definitions;
+        _idGenerator = idGenerator;
     }
 
     public async Task<DefinitionResponse> CreateAsync(string tenantId, CreateDefinitionRequest request, CancellationToken ct)
@@ -33,7 +36,7 @@ public sealed class DefinitionService : IDefinitionService
         string compiledJson;
         (_, compiledJson) = _compiler.ValidateAndCompile(request.Name!, request.Yaml!);
 
-        var id = Guid.NewGuid();
+        var id = _idGenerator.NewGuid();
         var displayId = await _displayIds.AllocateAsync("definition", id, ct).ConfigureAwait(false);
 
         var now = DateTime.UtcNow;
