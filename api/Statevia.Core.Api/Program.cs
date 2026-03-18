@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Api.Persistence;
+using Statevia.Core.Api.Persistence.Repositories;
 using Statevia.Core.Api.Services;
 using Statevia.Core.Api.Hosting;
 
@@ -19,6 +20,12 @@ builder.Services.AddDbContextFactory<CoreDbContext>(options =>
 
 builder.Services.AddScoped<IDisplayIdService, DisplayIdServiceImpl>();
 builder.Services.AddScoped<IExecutionReadModelService, ExecutionReadModelService>();
+builder.Services.AddScoped<ICommandDedupService, CommandDedupService>();
+builder.Services.AddScoped<IDefinitionRepository, DefinitionRepository>();
+builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
+builder.Services.AddScoped<ICommandDedupRepository, CommandDedupRepository>();
+builder.Services.AddScoped<IDefinitionService, DefinitionService>();
+builder.Services.AddScoped<IWorkflowService, WorkflowService>();
 builder.Services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
 builder.Services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
 builder.Services.AddCors();
