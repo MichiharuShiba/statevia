@@ -11,13 +11,14 @@ public sealed class CommandDedupService : ICommandDedupService
 
         var trimmed = (path ?? string.Empty).TrimEnd('/');
         var endpoint = $"{method} {trimmed}";
-        var dedupKey = $"{tenantId}|{endpoint}:{idempotencyKey}";
+        var idempotencyKeyTrimmed = idempotencyKey.Trim();
+        var dedupKey = $"{tenantId}|{endpoint}:{idempotencyKeyTrimmed}";
 
         return new CommandDedupKey
         {
             DedupKey = dedupKey,
             Endpoint = endpoint,
-            IdempotencyKey = idempotencyKey.Trim()
+            IdempotencyKey = idempotencyKeyTrimmed
         };
     }
 }
