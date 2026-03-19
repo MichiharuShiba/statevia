@@ -26,9 +26,6 @@ public class GraphsController : ControllerBase
 
         var tenantId = Request.Headers["X-Tenant-Id"].FirstOrDefault() ?? DefaultTenantId;
         var graph = await _graphService.GetByGraphIdAsync(graphId, tenantId, ct).ConfigureAwait(false);
-        if (graph is null)
-            return ApiErrorResult.NotFound("Graph not found");
-
         return Ok(graph);
     }
 }

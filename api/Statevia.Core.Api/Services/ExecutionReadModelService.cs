@@ -22,13 +22,11 @@ public sealed class ExecutionReadModelService : IExecutionReadModelService
         _displayIds = displayIds;
     }
 
-    public async Task<ExecutionReadModel?> GetByDisplayIdAsync(string id, string tenantId, CancellationToken ct = default)
+    public async Task<ExecutionReadModel> GetByDisplayIdAsync(string id, string tenantId, CancellationToken ct = default)
     {
         var uuid = await _displayIds.ResolveAsync("workflow", id, ct).ConfigureAwait(false);
         if (uuid is null)
-        {
-            return null;
-        }
+            throw new NotFoundException("Workflow not found");
 
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
 
@@ -36,17 +34,13 @@ public sealed class ExecutionReadModelService : IExecutionReadModelService
             .FirstOrDefaultAsync(x => x.WorkflowId == uuid && x.TenantId == tenantId, ct)
             .ConfigureAwait(false);
         if (workflow is null)
-        {
-            return null;
-        }
+            throw new NotFoundException("Workflow not found");
 
         var snapshot = await db.ExecutionGraphSnapshots.AsNoTracking()
             .FirstOrDefaultAsync(x => x.WorkflowId == uuid, ct)
             .ConfigureAwait(false);
         if (snapshot is null)
-        {
-            return null;
-        }
+            throw new NotFoundException("Workflow not found");
 
         var displayId = await _displayIds.GetDisplayIdAsync("workflow", id, ct)
             .ConfigureAwait(false) ?? workflow.WorkflowId.ToString();
