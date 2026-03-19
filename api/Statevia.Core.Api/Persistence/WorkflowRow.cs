@@ -4,6 +4,7 @@ namespace Statevia.Core.Api.Persistence;
 public class WorkflowRow
 {
     public Guid WorkflowId { get; set; }
+    public string TenantId { get; set; } = "default";
     public Guid DefinitionId { get; set; }
     public required string Status { get; set; }
     public DateTime StartedAt { get; set; }

@@ -4,6 +4,7 @@ namespace Statevia.Core.Api.Persistence;
 public class WorkflowDefinitionRow
 {
     public Guid DefinitionId { get; set; }
+    public string TenantId { get; set; } = "default";
     public required string Name { get; set; }
     public required string SourceYaml { get; set; }
     public required string CompiledJson { get; set; }

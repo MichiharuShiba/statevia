@@ -1,3 +1,4 @@
+using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Definition.Validation;
@@ -6,11 +7,6 @@ using Statevia.Core.Engine.Execution;
 namespace Statevia.Core.Api.Hosting;
 
 /// <summary>YAML を検証・コンパイルして CompiledWorkflowDefinition を返す。API 用の汎用 State でコンパイルする。</summary>
-public interface IDefinitionCompilerService
-{
-    (CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(string name, string yaml);
-}
-
 public sealed class DefinitionCompilerService : IDefinitionCompilerService
 {
     private readonly DefinitionLoader _loader = new();
@@ -29,7 +25,7 @@ public sealed class DefinitionCompilerService : IDefinitionCompilerService
         foreach (var stateName in def.States.Keys)
         {
             var stateDef = def.States[stateName];
-            if (stateDef.Wait != null)
+            if (stateDef.Wait is not null)
                 executors[stateName] = DefaultStateExecutor.Create(new WaitOnlyState(stateDef.Wait.Event));
             else
                 executors[stateName] = DefaultStateExecutor.Create(new NoOpState());

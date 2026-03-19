@@ -1,0 +1,43 @@
+using Statevia.Core.Api.Infrastructure;
+using Statevia.Core.Api.Services;
+using Xunit;
+
+namespace Statevia.Core.Api.Tests;
+
+public sealed class UnitTest1
+{
+    [Fact]
+    public void UuidV7Generator_ShouldSetVersion7AndRFC4122Variant()
+    {
+        var gen = new UuidV7Generator();
+        for (var i = 0; i < 200; i++)
+        {
+            var g = gen.NewGuid();
+            var bytes = g.ToByteArray();
+
+            // UUID version is stored in the high nibble of byte[6].
+            var version = (bytes[6] >> 4) & 0x0F;
+            Assert.Equal(7, version);
+
+            // RFC 4122 variant: the two most significant bits of byte[8] are 10xx.
+            Assert.Equal(0x80, bytes[8] & 0xC0);
+        }
+    }
+
+    [Fact]
+    public void CommandDedupService_Create_ShouldTrimEndSlashAndIncludeIdempotencyKey()
+    {
+        var svc = new CommandDedupService();
+        var keyOpt = svc.Create(
+            tenantId: "tenant-1",
+            idempotencyKey: "  abc123  ",
+            method: "POST",
+            path: "/v1/workflows/1/")!;
+
+        Assert.NotNull(keyOpt);
+        var key = keyOpt.Value;
+        Assert.Equal("POST /v1/workflows/1", key.Endpoint);
+        Assert.Equal("abc123", key.IdempotencyKey);
+        Assert.Equal("tenant-1|POST /v1/workflows/1:abc123", key.DedupKey);
+    }
+}
