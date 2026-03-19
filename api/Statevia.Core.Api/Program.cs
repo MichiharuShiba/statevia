@@ -15,8 +15,36 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<IWorkflowEngine>(_ => new WorkflowEngine());
 
 // DbContext（EF Core + PostgreSQL）
-var conn = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? Environment.GetEnvironmentVariable("DATABASE_URL")
+// Docker / CI では DATABASE_URL を優先して接続先を差し替える。
+// ただし Npgsql は `Host=...;Database=...` 形式を期待するため、postgres:// 形式は正規化する。
+static string NormalizeDatabaseUrl(string url)
+{
+    if (url.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+        url.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        var uri = new Uri(url);
+        var dbName = uri.AbsolutePath.TrimStart('/');
+
+        var user = "";
+        var pass = "";
+        if (!string.IsNullOrEmpty(uri.UserInfo))
+        {
+            var parts = uri.UserInfo.Split(':', 2);
+            user = Uri.UnescapeDataString(parts[0]);
+            pass = parts.Length > 1 ? Uri.UnescapeDataString(parts[1]) : "";
+        }
+
+        var port = uri.IsDefaultPort ? 5432 : uri.Port;
+        return $"Host={uri.Host};Port={port};Database={dbName};Username={user};Password={pass}";
+    }
+
+    return url;
+}
+
+var rawDatabaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+var conn =
+    (string.IsNullOrWhiteSpace(rawDatabaseUrl) ? null : NormalizeDatabaseUrl(rawDatabaseUrl))
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=statevia;Username=statevia;Password=statevia";
 builder.Services.AddDbContextFactory<CoreDbContext>(options =>
     options.UseNpgsql(conn, o => o.MigrationsHistoryTable("__ef_migrations_history")));
