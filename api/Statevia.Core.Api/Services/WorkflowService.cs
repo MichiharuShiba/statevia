@@ -2,6 +2,7 @@ using System.Text.Json;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Controllers;
+using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Persistence;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Api.Hosting;
@@ -39,29 +40,35 @@ public sealed class WorkflowService : IWorkflowService
         _dedup = dedup;
     }
 
-    public async Task<WorkflowResponse?> StartAsync(
+    public async Task<WorkflowResponse> StartAsync(
         string tenantId,
         StartWorkflowRequest request,
-        CommandDedupKey? dedupKey,
+        string? idempotencyKey,
+        string method,
+        string path,
         CancellationToken ct)
     {
+        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, method, path);
+
         if (dedupKey is { } key)
         {
             var dedupCheckTime = DateTime.UtcNow;
             var existing = await _dedup.FindValidAsync(key.DedupKey, dedupCheckTime, ct).ConfigureAwait(false);
             if (existing is not null)
             {
-                return DeserializeCachedWorkflowResponse(existing);
+                var cached = DeserializeCachedWorkflowResponse(existing);
+                if (cached is not null)
+                    return cached;
             }
         }
 
         var defUuid = await _displayIds.ResolveAsync("definition", request.DefinitionId!, ct).ConfigureAwait(false);
         if (defUuid is null)
-            return null;
+            throw new NotFoundException("Definition not found");
 
         var defRow = await _definitions.GetByIdAsync(tenantId, defUuid.Value, ct).ConfigureAwait(false);
         if (defRow is null)
-            return null;
+            throw new NotFoundException("Definition not found");
 
         var (compiled, _) = _compiler.ValidateAndCompile(defRow.Name, defRow.SourceYaml);
 
@@ -136,41 +143,45 @@ public sealed class WorkflowService : IWorkflowService
         }).ToList();
     }
 
-    public async Task<string?> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
+    public async Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
         var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            return null;
+            throw new NotFoundException("Workflow not found");
 
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (workflow is null)
-            return null;
+            throw new NotFoundException("Workflow not found");
 
         var row = await _workflows.GetSnapshotByWorkflowIdAsync(uuid.Value, ct).ConfigureAwait(false);
-        return row is null ? null : row.GraphJson;
+        return row is null ? throw new NotFoundException("Workflow not found") : row.GraphJson;
     }
 
-    public async Task<bool> CancelAsync(
+    public async Task CancelAsync(
         string tenantId,
         string idOrUuid,
-        CommandDedupKey? dedupKey,
+        string? idempotencyKey,
+        string method,
+        string path,
         CancellationToken ct)
     {
+        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, method, path);
+
         if (dedupKey is { } key)
         {
             var dedupCheckTime = DateTime.UtcNow;
             var existing = await _dedup.FindValidAsync(key.DedupKey, dedupCheckTime, ct).ConfigureAwait(false);
             if (existing is not null)
-                return true;
+                return;
         }
 
         var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            return false;
+            throw new NotFoundException("Workflow not found");
 
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (workflow is null)
-            return false;
+            throw new NotFoundException("Workflow not found");
 
         await _engine.CancelAsync(uuid.Value.ToString()).ConfigureAwait(false);
         await UpdateProjectionAsync(uuid.Value, ct).ConfigureAwait(false);
@@ -190,32 +201,34 @@ public sealed class WorkflowService : IWorkflowService
                 ExpiresAt = now.AddHours(24)
             }, ct).ConfigureAwait(false);
         }
-
-        return true;
     }
 
-    public async Task<bool> PublishEventAsync(
+    public async Task PublishEventAsync(
         string tenantId,
         string idOrUuid,
         string eventName,
-        CommandDedupKey? dedupKey,
+        string? idempotencyKey,
+        string method,
+        string path,
         CancellationToken ct)
     {
+        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, method, path);
+
         if (dedupKey is { } key)
         {
             var dedupCheckTime = DateTime.UtcNow;
             var existing = await _dedup.FindValidAsync(key.DedupKey, dedupCheckTime, ct).ConfigureAwait(false);
             if (existing is not null)
-                return true;
+                return;
         }
 
         var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            return false;
+            throw new NotFoundException("Workflow not found");
 
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (workflow is null)
-            return false;
+            throw new NotFoundException("Workflow not found");
 
         _engine.PublishEvent(uuid.Value.ToString(), eventName);
         await UpdateProjectionAsync(uuid.Value, ct).ConfigureAwait(false);
@@ -235,8 +248,6 @@ public sealed class WorkflowService : IWorkflowService
                 ExpiresAt = now.AddHours(24)
             }, ct).ConfigureAwait(false);
         }
-
-        return true;
     }
 
     private WorkflowResponse? DeserializeCachedWorkflowResponse(CommandDedupRow existing)

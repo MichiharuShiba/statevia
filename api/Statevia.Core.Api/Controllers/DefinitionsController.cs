@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Hosting;
@@ -21,20 +22,9 @@ public class DefinitionsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<DefinitionResponse>> Create([FromBody] CreateDefinitionRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request?.Name) || string.IsNullOrWhiteSpace(request?.Yaml))
-            return ApiErrorResult.ValidationError("name and yaml are required");
-
         var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
-
-        try
-        {
-            var created = await _definitions.CreateAsync(tenantId, request, ct).ConfigureAwait(false);
-            return CreatedAtAction(nameof(Get), new { id = created.DisplayId }, created);
-        }
-        catch (ArgumentException ex)
-        {
-            return ApiErrorResult.ValidationError(ex.Message);
-        }
+        var created = await _definitions.CreateAsync(tenantId, request, ct).ConfigureAwait(false);
+        return CreatedAtAction(nameof(Get), new { id = created.DisplayId }, created);
     }
 
     /// <summary>GET /v1/definitions — 一覧（U4 一覧も display_id / resource_id）。display_ids を LEFT JOIN で 1 クエリ取得。</summary>
@@ -52,14 +42,17 @@ public class DefinitionsController : ControllerBase
     {
         var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
         var row = await _definitions.GetAsync(tenantId, id, ct).ConfigureAwait(false);
-        return row is null ? ApiErrorResult.NotFound("Definition not found") : Ok(row);
+        return Ok(row);
     }
 }
 
 public class CreateDefinitionRequest
 {
-    public string? Name { get; set; }
-    public string? Yaml { get; set; }
+    [Required]
+    public string Name { get; set; } = "";
+
+    [Required]
+    public string Yaml { get; set; } = "";
 }
 
 public class DefinitionResponse

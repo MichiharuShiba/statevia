@@ -20,20 +20,18 @@ public sealed class GraphDefinitionService : IGraphDefinitionService
         _displayIds = displayIds;
     }
 
-    public async Task<GraphDefinitionResponse?> GetByGraphIdAsync(string graphId, string tenantId, CancellationToken ct = default)
+    public async Task<GraphDefinitionResponse> GetByGraphIdAsync(string graphId, string tenantId, CancellationToken ct = default)
     {
         var uuid = await _displayIds.ResolveAsync("definition", graphId, ct).ConfigureAwait(false);
         if (uuid == null)
-        {
-            return null;
-        }
+            throw new NotFoundException("Graph not found");
 
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         var row = await db.WorkflowDefinitions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.DefinitionId == uuid && x.TenantId == tenantId, ct)
             .ConfigureAwait(false);
         if (row is null)
-            return null;
+            throw new NotFoundException("Graph not found");
 
         return BuildFromCompiledJson(graphId, row.Name, row.CompiledJson);
     }

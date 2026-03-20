@@ -4,5 +4,5 @@ namespace Statevia.Core.Api.Abstractions.Services;
 
 public interface IGraphDefinitionService
 {
-    Task<GraphDefinitionResponse?> GetByGraphIdAsync(string graphId, string tenantId, CancellationToken ct = default);
+    Task<GraphDefinitionResponse> GetByGraphIdAsync(string graphId, string tenantId, CancellationToken ct = default);
 }

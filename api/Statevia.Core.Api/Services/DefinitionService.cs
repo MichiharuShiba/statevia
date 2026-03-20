@@ -3,6 +3,7 @@ using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Hosting;
 using Statevia.Core.Api.Persistence;
+using Statevia.Core.Api.Contracts;
 
 namespace Statevia.Core.Api.Services;
 
@@ -65,15 +66,15 @@ public sealed class DefinitionService : IDefinitionService
         }).ToList();
     }
 
-    public async Task<DefinitionResponse?> GetAsync(string tenantId, string idOrUuid, CancellationToken ct)
+    public async Task<DefinitionResponse> GetAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
         var uuid = await _displayIds.ResolveAsync("definition", idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            return null;
+            throw new NotFoundException("Definition not found");
 
         var row = await _definitions.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (row is null)
-            return null;
+            throw new NotFoundException("Definition not found");
 
         var displayId = await _displayIds.GetDisplayIdAsync("definition", idOrUuid, ct).ConfigureAwait(false);
         return new DefinitionResponse
