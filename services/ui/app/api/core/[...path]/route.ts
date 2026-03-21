@@ -15,6 +15,7 @@ function joinUrl(parts: string[]) {
 function pathForBackend(pathParts: string[]): string[] {
   if (pathParts[0] === "executions") return ["v1", "workflows", ...pathParts.slice(1)];
   if (pathParts[0] === "definitions") return ["v1", "definitions", ...pathParts.slice(1)];
+  if (pathParts[0] === "graphs") return ["v1", "graphs", ...pathParts.slice(1)];
   return pathParts;
 }
 

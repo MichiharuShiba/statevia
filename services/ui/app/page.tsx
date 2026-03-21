@@ -12,11 +12,11 @@ import { NodeGraphView, type GraphViewport } from "./components/nodes/NodeGraphV
 import { NodeListView } from "./components/nodes/NodeListView";
 import { Toast } from "./components/Toast";
 import type { ViewMode } from "./components/ViewToggle";
-import { getGraphDefinition } from "./graphs/registry";
 import { computeExecutionDiff } from "./lib/executionDiff";
 import { useExecution } from "./features/execution/useExecution";
 import { useExecutionEvents } from "./features/execution/useExecutionEvents";
 import { useExecutionStateAtSeq } from "./features/execution/useExecutionStateAtSeq";
+import { useGraphDefinition } from "./features/graph/useGraphDefinition";
 import { getNodeWithFallback, useGraphData } from "./features/graph/useGraphData";
 import { getResumeDisabledReason, useNodeCommands } from "./features/nodes/useNodeCommands";
 import { apiGet } from "./lib/api";
@@ -76,7 +76,9 @@ export default function Page() {
     replayAtSeq != null && stateAtSeq != null ? stateAtSeq : execution;
   const isReplaying = replayAtSeq != null && stateAtSeq != null;
 
-  const graphDefinition = execution ? getGraphDefinition(execution.graphId) : null;
+  const { definition: graphDefinition, loading: graphDefinitionLoading } = useGraphDefinition(
+    execution?.graphId ?? null
+  );
   const graphData = useGraphData(displayExecution, graphDefinition);
 
   const { resumeNode, loading: nodeLoading } = useNodeCommands(execution, {
@@ -87,7 +89,8 @@ export default function Page() {
     onError: (err) => setToast(toToastError(err))
   });
 
-  const loading = executionLoading || nodeLoading || stateAtSeqLoading;
+  const loading =
+    executionLoading || nodeLoading || stateAtSeqLoading || graphDefinitionLoading;
 
   const loadExecutionB = useCallback(async () => {
     if (!executionIdB.trim()) return;
