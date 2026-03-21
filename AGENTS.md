@@ -66,7 +66,7 @@ Further HTTP contract: `docs/core-api-interface.md`.
    cd services/ui && CORE_API_INTERNAL_BASE="http://localhost:8080" npm run dev
    ```
 
-   UI はプロキシ経由で Core-API（C#）の `/v1/definitions` と `/v1/workflows` を利用する（Phase 3 で切り替え済みを想定）。
+   UI は `/api/core/workflows/*` 等のプロキシ経由で Core-API（C#）の `/v1/definitions` と `/v1/workflows` を利用する。
 
 ### Docker gotcha (Cloud VM)
 

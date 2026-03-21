@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Abstractions.Persistence;
@@ -15,4 +16,16 @@ public interface IEventStoreRepository
     /// サービス層で複数テーブルを一括コミットする前提。
     /// </summary>
     Task AppendAsync(CoreDbContext db, Guid workflowId, EventStoreEventType eventType, string? payloadJson, CancellationToken ct = default);
+
+    /// <summary>
+    /// <paramref name="workflowId"/> のイベントを <paramref name="afterSeq"/> より大きい seq のみ、昇順で最大 <paramref name="limit"/> + 1 件読む（hasMore 判定用）。
+    /// </summary>
+    Task<(IReadOnlyList<EventStoreRow> Items, bool HasMore)> ListAfterSeqAsync(
+        Guid workflowId,
+        long afterSeq,
+        int limit,
+        CancellationToken ct = default);
+
+    /// <summary>最大 seq。イベントが無い場合は 0。</summary>
+    Task<long> GetMaxSeqAsync(Guid workflowId, CancellationToken ct = default);
 }

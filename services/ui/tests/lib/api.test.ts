@@ -150,7 +150,7 @@ describe("apiPost", () => {
 
   it("POST で JSON body と idempotency key を送る", async () => {
     // Arrange
-    const path = "/executions/ex-1/nodes/n-1/resume";
+    const path = "/workflows/ex-1/nodes/n-1/resume";
     const body = { resumeKey: "key-1" };
 
     // Act
@@ -161,7 +161,7 @@ describe("apiPost", () => {
     expect(result.body).toEqual(body);
     expect(typeof result.idem).toBe("string");
     expect(fetch).toHaveBeenCalledWith(
-      "/api/core/executions/ex-1/nodes/n-1/resume",
+      "/api/core/workflows/ex-1/nodes/n-1/resume",
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({

@@ -61,6 +61,7 @@ builder.Services.AddScoped<ICommandDedupRepository, CommandDedupRepository>();
 builder.Services.AddScoped<IEventStoreRepository, EventStoreRepository>();
 builder.Services.AddScoped<IDefinitionService, DefinitionService>();
 builder.Services.AddScoped<IWorkflowService, WorkflowService>();
+builder.Services.AddScoped<WorkflowStreamService>();
 builder.Services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
 builder.Services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
 builder.Services.AddCors();

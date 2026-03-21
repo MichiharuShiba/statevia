@@ -317,6 +317,135 @@ public sealed class WorkflowService : IWorkflowService
         }
     }
 
+    public async Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct)
+    {
+        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        if (uuid is null)
+            throw new NotFoundException("Workflow not found");
+
+        return await BuildWorkflowViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
+    }
+
+    public async Task<WorkflowViewDto> GetWorkflowViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct)
+    {
+        if (atSeq < 1)
+            throw new ArgumentException("atSeq must be >= 1");
+
+        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        if (uuid is null)
+            throw new NotFoundException("Workflow not found");
+
+        var maxSeq = await _eventStore.GetMaxSeqAsync(uuid.Value, ct).ConfigureAwait(false);
+        if (maxSeq == 0)
+            return await BuildWorkflowViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
+
+        if (atSeq > maxSeq)
+            throw new NotFoundException("atSeq out of range");
+
+        return await BuildWorkflowViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
+    }
+
+    public async Task<ExecutionEventsResponseDto> ListEventsAsync(
+        string tenantId,
+        string idOrUuid,
+        long afterSeq,
+        int limit,
+        CancellationToken ct)
+    {
+        if (afterSeq < 0)
+            throw new ArgumentException("afterSeq must be >= 0");
+        if (limit is < 1 or > 5000)
+            throw new ArgumentException("limit must be between 1 and 5000");
+
+        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        if (uuid is null)
+            throw new NotFoundException("Workflow not found");
+
+        var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
+        if (workflow is null)
+            throw new NotFoundException("Workflow not found");
+
+        var displayId = await _displayIds.GetDisplayIdAsync("workflow", idOrUuid, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
+        var graphJson = await GetGraphJsonAsync(tenantId, idOrUuid, ct).ConfigureAwait(false);
+        var patchNodes = WorkflowViewMapper.MapGraphPatchNodes(graphJson);
+
+        var (items, hasMore) = await _eventStore.ListAfterSeqAsync(uuid.Value, afterSeq, limit, ct).ConfigureAwait(false);
+
+        var typeStarted = EventStoreEventType.WorkflowStarted.ToPersistedString();
+        var typeCancelled = EventStoreEventType.WorkflowCancelled.ToPersistedString();
+        var typePublished = EventStoreEventType.EventPublished.ToPersistedString();
+
+        var events = new List<TimelineEventDto>(items.Count);
+        foreach (var row in items)
+        {
+            var at = row.OccurredAt.ToString("O");
+            var timelineEvent = row.Type switch
+            {
+                _ when row.Type == typeStarted => new TimelineEventDto
+                {
+                    Seq = row.Seq,
+                    Type = "ExecutionStatusChanged",
+                    ExecutionId = displayId,
+                    To = "Running",
+                    At = at
+                },
+                _ when row.Type == typeCancelled => new TimelineEventDto
+                {
+                    Seq = row.Seq,
+                    Type = "ExecutionStatusChanged",
+                    ExecutionId = displayId,
+                    To = "Cancelled",
+                    At = at
+                },
+                _ when row.Type == typePublished => new TimelineEventDto
+                {
+                    Seq = row.Seq,
+                    Type = "GraphUpdated",
+                    ExecutionId = displayId,
+                    Patch = new GraphUpdatedPatchDto { Nodes = patchNodes },
+                    At = at
+                },
+                _ => null
+            };
+            if (timelineEvent is not null)
+                events.Add(timelineEvent);
+        }
+
+        return new ExecutionEventsResponseDto { Events = events, HasMore = hasMore };
+    }
+
+    public Task ResumeNodeAsync(
+        string tenantId,
+        string idOrUuid,
+        string nodeId,
+        string? resumeKey,
+        string? idempotencyKey,
+        string method,
+        string path,
+        CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
+        if (string.IsNullOrWhiteSpace(resumeKey))
+            throw new ArgumentException("resumeKey is required");
+
+        return PublishEventAsync(tenantId, idOrUuid, resumeKey!, idempotencyKey, method, path, ct);
+    }
+
+    private async Task<WorkflowViewDto> BuildWorkflowViewInternalAsync(string tenantId, Guid uuid, string idOrUuidForDisplay, CancellationToken ct)
+    {
+        var workflow = await _workflows.GetByIdAsync(tenantId, uuid, ct).ConfigureAwait(false);
+        if (workflow is null)
+            throw new NotFoundException("Workflow not found");
+
+        var snapshot = await _workflows.GetSnapshotByWorkflowIdAsync(uuid, ct).ConfigureAwait(false);
+        if (snapshot is null)
+            throw new NotFoundException("Workflow not found");
+
+        var displayId = await _displayIds.GetDisplayIdAsync("workflow", idOrUuidForDisplay, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
+        var graphId = await _displayIds.GetDisplayIdAsync("definition", workflow.DefinitionId.ToString("D"), ct).ConfigureAwait(false) ?? workflow.DefinitionId.ToString("D");
+        return WorkflowViewMapper.BuildWorkflowView(workflow, snapshot.GraphJson, displayId, graphId);
+    }
+
     private WorkflowResponse? DeserializeCachedWorkflowResponse(CommandDedupRow existing)
     {
         if (string.IsNullOrEmpty(existing.ResponseBody))

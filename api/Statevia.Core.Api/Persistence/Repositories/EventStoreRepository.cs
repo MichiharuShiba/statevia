@@ -1,4 +1,6 @@
+using System;
 using System.Data;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
@@ -71,5 +73,42 @@ public sealed class EventStoreRepository : IEventStoreRepository
             PayloadJson = payloadJson,
             CreatedAt = now
         });
+    }
+
+    public async Task<(IReadOnlyList<EventStoreRow> Items, bool HasMore)> ListAfterSeqAsync(
+        Guid workflowId,
+        long afterSeq,
+        int limit,
+        CancellationToken ct = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(afterSeq);
+        ArgumentOutOfRangeException.ThrowIfLessThan(limit, 1);
+
+        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        var take = limit + 1;
+        var list = await db.EventStore.AsNoTracking()
+            .Where(e => e.WorkflowId == workflowId && e.Seq > afterSeq)
+            .OrderBy(e => e.Seq)
+            .Take(take)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        var hasMore = list.Count > limit;
+        if (hasMore)
+            list.RemoveAt(list.Count - 1);
+
+        return (list, hasMore);
+    }
+
+    public async Task<long> GetMaxSeqAsync(Guid workflowId, CancellationToken ct = default)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        var max = await db.EventStore.AsNoTracking()
+            .Where(e => e.WorkflowId == workflowId)
+            .Select(e => (long?)e.Seq)
+            .MaxAsync(ct)
+            .ConfigureAwait(false);
+
+        return max ?? 0L;
     }
 }

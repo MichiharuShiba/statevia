@@ -58,7 +58,7 @@ describe("useNodeCommands", () => {
 
     // Assert
     expect(api.apiPost).toHaveBeenCalledWith(
-      "/executions/ex-1/nodes/n-1/resume",
+      "/workflows/ex-1/nodes/n-1/resume",
       { resumeKey: "wk-1" }
     );
     expect(onSuccess).toHaveBeenCalled();

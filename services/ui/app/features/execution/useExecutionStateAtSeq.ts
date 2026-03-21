@@ -7,7 +7,7 @@ import type { WorkflowView } from "../../lib/types";
 /**
  * 指定 seq 時点の実行状態を取得（リプレイ表示用）。
  * atSeq が null の場合は何も取得しない。
- * v2 C# API には /state?atSeq= が未実装のため 404 となる。
+ * Core-API: GET /v1/workflows/:id/state?atSeq=（現在はスナップショット近似）。
  */
 export function useExecutionStateAtSeq(
   executionId: string | null,
@@ -29,7 +29,7 @@ export function useExecutionStateAtSeq(
     setError(null);
 
     apiGet<WorkflowView>(
-      `/executions/${encodeURIComponent(executionId)}/state?atSeq=${atSeq}`
+      `/workflows/${encodeURIComponent(executionId)}/state?atSeq=${atSeq}`
     )
       .then((res) => {
         if (!cancelled) setState(res);
