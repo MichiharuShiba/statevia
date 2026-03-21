@@ -14,30 +14,21 @@ export type WorkflowDTO = {
   restartLost: boolean;
 };
 
-/** v2: GET /v1/workflows/:id/graph のノード（C# ExecutionNode）。camelCase / PascalCase 両対応。 */
+/** v2: GET /v1/workflows/:id/graph のノード（C# ExecutionNode）。JSON は camelCase（Core-API）。 */
 export type WorkflowGraphNodeDTO = {
   nodeId?: string;
-  NodeId?: string;
   stateName?: string;
-  StateName?: string;
   startedAt?: string;
-  StartedAt?: string;
   completedAt?: string | null;
-  CompletedAt?: string | null;
   fact?: string | null;
-  Fact?: string | null;
   output?: unknown;
-  Output?: unknown;
 };
 
 /** v2: GET /v1/workflows/:id/graph の辺（C# ExecutionEdge）。 */
 export type WorkflowGraphEdgeDTO = {
   fromNodeId?: string;
-  FromNodeId?: string;
   toNodeId?: string;
-  ToNodeId?: string;
   type?: number;
-  Type?: number;
 };
 
 /** v2: GET /v1/workflows/:id/graph のレスポンス。 */

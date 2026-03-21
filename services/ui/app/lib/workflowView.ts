@@ -5,27 +5,19 @@ import type {
   WorkflowView
 } from "./types";
 
-function pick<T extends Record<string, unknown>, K extends string>(
-  obj: T,
-  ...keys: [K, string]
-): string {
-  const v = obj[keys[0]] ?? obj[keys[1]];
-  return typeof v === "string" ? v : "";
-}
-
-/** C# WorkflowGraphDTO のノードを ExecutionNodeDTO に変換（v2）。camelCase / PascalCase 両対応。 */
+/** C# WorkflowGraphDTO のノードを ExecutionNodeDTO に変換（v2）。Core-API の camelCase JSON を前提。 */
 function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNodeDTO {
   let status: ExecutionNodeDTO["status"] = "RUNNING";
-  const completedAt = n.completedAt ?? n.CompletedAt;
-  const fact = String(n.fact ?? n.Fact ?? "").toLowerCase();
+  const completedAt = n.completedAt;
+  const fact = String(n.fact ?? "").toLowerCase();
   if (completedAt != null) {
     if (fact.includes("fail")) status = "FAILED";
     else if (fact.includes("cancel")) status = "CANCELED";
     else status = "SUCCEEDED";
   }
   return {
-    nodeId: pick(n as Record<string, unknown>, "nodeId", "NodeId"),
-    nodeType: pick(n as Record<string, unknown>, "stateName", "StateName"),
+    nodeId: typeof n.nodeId === "string" ? n.nodeId : "",
+    nodeType: typeof n.stateName === "string" ? n.stateName : "",
     status,
     attempt: 0,
     workerId: null,
