@@ -63,44 +63,44 @@ builder.Services.AddScoped<IWorkflowService, WorkflowService>();
 builder.Services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
 builder.Services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
 builder.Services.AddCors();
- builder.Services.AddControllers(options =>
+builder.Services.AddControllers(options =>
     {
         // 例外 -> 契約エラー（404/422/500）を一箇所に集約する。
         options.Filters.Add<ApiExceptionFilter>();
     })
     .AddControllersAsServices();
 
- // ASP.NET 標準のモデルバリデーション（[Required] 等）を契約の 422 形式に寄せる。
- builder.Services.Configure<ApiBehaviorOptions>(options =>
- {
-     options.InvalidModelStateResponseFactory = context =>
-     {
-         var errors = context.ModelState
-             .Where(kvp => kvp.Value?.Errors.Count > 0)
-             .SelectMany(kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage))
-             .Where(m => !string.IsNullOrWhiteSpace(m))
-             .ToArray();
+// ASP.NET 標準のモデルバリデーション（[Required] 等）を契約の 422 形式に寄せる。
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState
+            .Where(kvp => kvp.Value?.Errors.Count > 0)
+            .SelectMany(kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage))
+            .Where(m => !string.IsNullOrWhiteSpace(m))
+            .ToArray();
 
-         var message = errors.Length > 0 ? string.Join("; ", errors) : "Validation failed";
+        var message = errors.Length > 0 ? string.Join("; ", errors) : "Validation failed";
 
-         var details = context.ModelState.ToDictionary(
-             kvp => kvp.Key,
-             kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray() ?? Array.Empty<string>()
-         );
+        var details = context.ModelState.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray() ?? Array.Empty<string>()
+        );
 
-         return new UnprocessableEntityObjectResult(
-             new ErrorResponse
-             {
-                 Error = new ApiError
-                 {
-                     Code = "VALIDATION_ERROR",
-                     Message = message,
-                     Details = details
-                 }
-             }
-         );
-     };
- });
+        return new UnprocessableEntityObjectResult(
+            new ErrorResponse
+            {
+                Error = new ApiError
+                {
+                    Code = "VALIDATION_ERROR",
+                    Message = message,
+                    Details = details
+                }
+            }
+        );
+    };
+});
 
 var app = builder.Build();
 

@@ -14,6 +14,30 @@ Statevia is a definition-driven, event-sourced workflow engine with three compon
 
 **v2**: Core-API は C# のみ。TypeScript の `services/core-api/` は v2 では使用しない（legacy はタグ `legacy/core-api-ts` で保存）。PostgreSQL 16 は EF Core 経由で使用。UI は Next.js の route handler で API にプロキシして CORS を避けられる。
 
+### Core-API (v2) — layers, DI, persistence
+
+| Layer | Role | Location / types |
+| ----- | ---- | ---------------- |
+| **Controllers** | HTTP I/O: route, headers (`X-Tenant-Id`, `X-Idempotency-Key`), binding, status codes. Prefer `[Required]` / model validation; avoid business logic. | `api/Statevia.Core.Api/Controllers/` |
+| **Services** | Use cases: orchestrate **repositories**, **display IDs**, **command dedup**, and the in-process **`IWorkflowEngine`**. | `api/Statevia.Core.Api/Services/`, interfaces in `Abstractions/Services/` |
+| **Repositories** | Persistence only: EF Core `CoreDbContext` via `IDbContextFactory<CoreDbContext>` inside repository implementations. | `api/Statevia.Core.Api/Persistence/Repositories/`, interfaces in `Abstractions/Persistence/` |
+| **Engine** | Workflow execution (in-memory); Core-API calls it as a singleton. | `engine/` → `IWorkflowEngine` / `WorkflowEngine` |
+
+**Persistence note:** Write paths go through **repositories** from `WorkflowService` / `DefinitionService`. Some **read-model** assembly (`ExecutionReadModelService`, `GraphDefinitionService`) uses `IDbContextFactory<CoreDbContext>` directly to keep projection queries localized without duplicating repository surface for every report shape.
+
+**Dependency injection (`Program.cs`):**
+
+- **Singleton:** `IWorkflowEngine`, `IDefinitionCompilerService`, `IIdGenerator` (as registered).
+- **Scoped:** Services (`IDefinitionService`, `IWorkflowService`, …), repositories, `IDbContextFactory`-backed helpers.
+- **DbContext:** `AddDbContextFactory<CoreDbContext>` (Npgsql; `DATABASE_URL` normalized from `postgres://` when needed).
+
+**Errors and validation (contract `docs/statevia-data-integration-contract.md` §7):**
+
+- **`ApiExceptionFilter`:** maps `NotFoundException` → 404, `ArgumentException` → 422, others → 500 with `{ "error": { "code", "message", … } }`.
+- **`ApiBehaviorOptions.InvalidModelStateResponseFactory`:** ASP.NET model validation failures → 422 with the same envelope.
+
+Further HTTP contract: `docs/core-api-interface.md`.
+
 ### Running services
 
 1. **PostgreSQL** — run via Docker:
