@@ -40,6 +40,10 @@ Statevia is a definition-driven, event-sourced workflow engine with three compon
 
 Further HTTP contract: `docs/core-api-interface.md`.
 
+### Docker Compose（運用）
+
+`docker-compose.yml` の起動手順・注意点は **`docs/operations-docker.md`** を参照。
+
 ### Running services
 
 1. **PostgreSQL** — run via Docker:

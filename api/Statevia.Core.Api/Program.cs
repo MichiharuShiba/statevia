@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Statevia.Core.Engine.Abstractions;
@@ -70,7 +71,12 @@ builder.Services.AddControllers(options =>
         // 例外 -> 契約エラー（404/422/500）を一箇所に集約する。
         options.Filters.Add<ApiExceptionFilter>();
     })
-    .AddControllersAsServices();
+    .AddControllersAsServices()
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        o.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+    });
 
 // ASP.NET 標準のモデルバリデーション（[Required] 等）を契約の 422 形式に寄せる。
 builder.Services.Configure<ApiBehaviorOptions>(options =>

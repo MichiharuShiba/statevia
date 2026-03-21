@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using Statevia.Core.Api.Abstractions.Services;
@@ -27,13 +28,31 @@ public class DefinitionsController : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = created.DisplayId }, created);
     }
 
-    /// <summary>GET /v1/definitions — 一覧（U4 一覧も display_id / resource_id）。display_ids を LEFT JOIN で 1 クエリ取得。</summary>
+    /// <summary>
+    /// GET /v1/definitions — 一覧（U4）。クエリなしは従来どおり配列。
+    /// <c>?limit=&amp;offset=&amp;name=</c> で <see cref="PagedResult{T}"/>（name は部分一致）。
+    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<List<DefinitionResponse>>> List(CancellationToken ct)
+    public async Task<IActionResult> List(
+        [FromQuery] int? limit,
+        [FromQuery] int offset = 0,
+        [FromQuery] string? name = null,
+        CancellationToken ct = default)
     {
         var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
-        var list = await _definitions.ListAsync(tenantId, ct).ConfigureAwait(false);
-        return Ok(list);
+        if (limit is null)
+        {
+            var list = await _definitions.ListAsync(tenantId, ct).ConfigureAwait(false);
+            return Ok(list);
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfLessThan(limit.Value, 1);
+        if (limit.Value > 500)
+            throw new ArgumentException("limit must be at most 500");
+
+        var paged = await _definitions.ListPagedAsync(tenantId, offset, limit.Value, name, ct).ConfigureAwait(false);
+        return Ok(paged);
     }
 
     /// <summary>GET /v1/definitions/{id} — 表示用 ID または UUID で取得（U4）。</summary>

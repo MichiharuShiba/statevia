@@ -24,14 +24,48 @@ public sealed class WorkflowRepository : IWorkflowRepository
     public async Task<List<(WorkflowRow Workflow, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        var rows = await QueryWorkflowsWithDisplayIds(db, tenantId)
+            .OrderByDescending(x => x.Item1.StartedAt)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+        return rows.ConvertAll(x => (Workflow: x.Item1, DisplayId: x.Item2));
+    }
+
+    public async Task<(int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
+        string tenantId,
+        int offset,
+        int limit,
+        string? statusFilter,
+        CancellationToken ct)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        var joinQuery = QueryWorkflowsWithDisplayIds(db, tenantId);
+
+        if (!string.IsNullOrWhiteSpace(statusFilter))
+            joinQuery = joinQuery.Where(x => x.Item1.Status == statusFilter);
+
+        var total = await joinQuery.CountAsync(ct).ConfigureAwait(false);
+        var page = await joinQuery
+            .OrderByDescending(x => x.Item1.StartedAt)
+            .Skip(offset)
+            .Take(limit)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        List<(WorkflowRow Workflow, string? DisplayId)> list = page.ConvertAll(x => (Workflow: x.Item1, DisplayId: x.Item2));
+        return (total, list);
+    }
+
+    /// <summary>
+    /// テナントのワークフロー行と <c>display_ids</c>（kind=workflow）の左外部結合。一覧・ページングで共通。
+    /// </summary>
+    private static IQueryable<ValueTuple<WorkflowRow, string?>> QueryWorkflowsWithDisplayIds(CoreDbContext db, string tenantId)
+    {
         var displayIdsForWorkflow = db.DisplayIds.Where(x => x.Kind == "workflow");
-        return await (
-            from w in db.Workflows.AsNoTracking().Where(x => x.TenantId == tenantId)
+        return from w in db.Workflows.AsNoTracking().Where(x => x.TenantId == tenantId)
             join d in displayIdsForWorkflow on w.WorkflowId equals d.ResourceId into dGroup
             from d in dGroup.DefaultIfEmpty()
-            orderby w.StartedAt descending
-            select new ValueTuple<WorkflowRow, string?>(w, d != null ? d.DisplayId : null)
-        ).ToListAsync(ct).ConfigureAwait(false);
+            select new ValueTuple<WorkflowRow, string?>(w, d != null ? d.DisplayId : null);
     }
 
     public async Task AddWorkflowAndSnapshotAsync(WorkflowRow workflow, ExecutionGraphSnapshotRow snapshot, CancellationToken ct)

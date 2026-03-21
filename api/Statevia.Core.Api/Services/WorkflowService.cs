@@ -170,6 +170,59 @@ public sealed class WorkflowService : IWorkflowService
         }).ToList();
     }
 
+    public async Task<PagedResult<WorkflowResponse>> ListPagedAsync(
+        string tenantId,
+        int offset,
+        int limit,
+        string? status,
+        CancellationToken ct)
+    {
+        var (total, pairs) = await _workflows.ListWithDisplayIdsPageAsync(tenantId, offset, limit, status, ct).ConfigureAwait(false);
+        var items = pairs.Select(p => new WorkflowResponse
+        {
+            DisplayId = p.DisplayId ?? p.Workflow.WorkflowId.ToString(),
+            ResourceId = p.Workflow.WorkflowId,
+            Status = p.Workflow.Status,
+            StartedAt = p.Workflow.StartedAt,
+            UpdatedAt = p.Workflow.UpdatedAt,
+            CancelRequested = p.Workflow.CancelRequested,
+            RestartLost = p.Workflow.RestartLost
+        }).ToList();
+
+        return new PagedResult<WorkflowResponse>
+        {
+            Items = items,
+            TotalCount = total,
+            Offset = offset,
+            Limit = limit,
+            HasMore = offset + items.Count < total
+        };
+    }
+
+    public async Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct)
+    {
+        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        if (uuid is null)
+            throw new NotFoundException("Workflow not found");
+
+        var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
+        if (workflow is null)
+            throw new NotFoundException("Workflow not found");
+
+        var displayId = await _displayIds.GetDisplayIdAsync("workflow", idOrUuid, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
+
+        return new WorkflowResponse
+        {
+            DisplayId = displayId,
+            ResourceId = workflow.WorkflowId,
+            Status = workflow.Status,
+            StartedAt = workflow.StartedAt,
+            UpdatedAt = workflow.UpdatedAt,
+            CancelRequested = workflow.CancelRequested,
+            RestartLost = workflow.RestartLost
+        };
+    }
+
     public async Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
         var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
