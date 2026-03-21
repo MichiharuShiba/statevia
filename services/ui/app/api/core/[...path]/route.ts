@@ -11,9 +11,9 @@ function joinUrl(parts: string[]) {
   return `${base()}/${p}`;
 }
 
-/** v2: Core-API（C#）は /v1/workflows と /v1/definitions。旧 /executions と /definitions を変換する。 */
+/** v2: UI は `/workflows` のみ。Core-API の `/v1/workflows` に転送する。 */
 function pathForBackend(pathParts: string[]): string[] {
-  if (pathParts[0] === "executions") return ["v1", "workflows", ...pathParts.slice(1)];
+  if (pathParts[0] === "workflows") return ["v1", "workflows", ...pathParts.slice(1)];
   if (pathParts[0] === "definitions") return ["v1", "definitions", ...pathParts.slice(1)];
   if (pathParts[0] === "graphs") return ["v1", "graphs", ...pathParts.slice(1)];
   return pathParts;

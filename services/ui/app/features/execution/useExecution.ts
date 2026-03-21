@@ -47,10 +47,10 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
   };
 
   const refreshExecutionSnapshot = async (displayId: string) => {
-    const workflow = await apiGet<WorkflowDTO>(`/executions/${displayId}`);
+    const workflow = await apiGet<WorkflowDTO>(`/workflows/${displayId}`);
     let graph: WorkflowGraphDTO | null = null;
     try {
-      graph = await apiGet<WorkflowGraphDTO>(`/executions/${displayId}/graph`);
+      graph = await apiGet<WorkflowGraphDTO>(`/workflows/${displayId}/graph`);
     } catch {
       // graph 未取得時は nodes 空で表示
     }
@@ -105,7 +105,7 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
       if (disposed) return;
 
       const { tenantId } = getApiConfig();
-      const streamPath = `/api/core/executions/${encodeURIComponent(currentDisplayId)}/stream`;
+      const streamPath = `/api/core/workflows/${encodeURIComponent(currentDisplayId)}/stream`;
       const streamUrl = tenantId
         ? `${streamPath}?${new URLSearchParams({ tenantId }).toString()}`
         : streamPath;
@@ -156,7 +156,7 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
     if (!execution) return;
     setLoading(true);
     try {
-      await apiPost<CommandAccepted>(`/executions/${execution.displayId}/cancel`, { reason: "ui" });
+      await apiPost<CommandAccepted>(`/workflows/${execution.displayId}/cancel`, { reason: "ui" });
       onCancelSuccess?.();
       await loadExecution();
     } catch (error) {

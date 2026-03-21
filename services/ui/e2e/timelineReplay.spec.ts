@@ -8,7 +8,7 @@ import {
 
 test.describe("実行履歴タイムライン・リプレイ", () => {
   test.beforeEach(async ({ page }) => {
-    await page.route("**/api/core/executions/**", (route) => {
+    await page.route("**/api/core/workflows/**", (route) => {
       const url = route.request().url();
 
       if (url.includes("/stream")) {

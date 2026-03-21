@@ -96,10 +96,10 @@ export default function Page() {
     if (!executionIdB.trim()) return;
     setLoadingB(true);
     try {
-      const workflow = await apiGet<WorkflowDTO>(`/executions/${executionIdB.trim()}`);
+      const workflow = await apiGet<WorkflowDTO>(`/workflows/${executionIdB.trim()}`);
       let graph: WorkflowGraphDTO | null = null;
       try {
-        graph = await apiGet<WorkflowGraphDTO>(`/executions/${executionIdB.trim()}/graph`);
+        graph = await apiGet<WorkflowGraphDTO>(`/workflows/${executionIdB.trim()}/graph`);
       } catch {
         // ignore
       }

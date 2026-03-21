@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Hosting;
+using Statevia.Core.Api.Services;
 
 namespace Statevia.Core.Api.Controllers;
 
@@ -12,13 +13,16 @@ public class WorkflowsController : ControllerBase
 {
     private readonly IExecutionReadModelService _executionReadModel;
     private readonly IWorkflowService _workflows;
+    private readonly WorkflowStreamService _stream;
 
     public WorkflowsController(
         IExecutionReadModelService executionReadModel,
-        IWorkflowService workflows)
+        IWorkflowService workflows,
+        WorkflowStreamService stream)
     {
         _executionReadModel = executionReadModel;
         _workflows = workflows;
+        _stream = stream;
     }
 
     /// <summary>POST /v1/workflows — definitionId で定義を取得し、Engine.Start を呼ぶ。display_id と resource_id を返す（U4）。</summary>
@@ -65,6 +69,36 @@ public class WorkflowsController : ControllerBase
         return Content(graphJson, "application/json");
     }
 
+    /// <summary>GET /v1/workflows/{id}/state?atSeq= — UI 用 WorkflowView（リプレイは現状スナップショット近似）。</summary>
+    [HttpGet("{id}/state")]
+    public async Task<ActionResult<WorkflowViewDto>> GetState(string id, [FromQuery] long atSeq, CancellationToken ct)
+    {
+        var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
+        var view = await _workflows.GetWorkflowViewAtSeqAsync(tenantId, id, atSeq, ct).ConfigureAwait(false);
+        return Ok(view);
+    }
+
+    /// <summary>GET /v1/workflows/{id}/events — event_store 由来のタイムライン（limit / afterSeq）。</summary>
+    [HttpGet("{id}/events")]
+    public async Task<ActionResult<ExecutionEventsResponseDto>> GetEvents(
+        string id,
+        [FromQuery] long afterSeq = 0,
+        [FromQuery] int limit = 500,
+        CancellationToken ct = default)
+    {
+        var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
+        var res = await _workflows.ListEventsAsync(tenantId, id, afterSeq, limit, ct).ConfigureAwait(false);
+        return Ok(res);
+    }
+
+    /// <summary>GET /v1/workflows/{id}/stream — SSE（グラフ JSON の変化を GraphUpdated として送出）。</summary>
+    [HttpGet("{id}/stream")]
+    public async Task GetStream(string id, CancellationToken ct)
+    {
+        var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
+        await _stream.WriteStreamAsync(Response, tenantId, id, ct).ConfigureAwait(false);
+    }
+
     /// <summary>POST /v1/workflows/{id}/cancel — Engine.CancelAsync を呼び、projection を更新。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。</summary>
     [HttpPost("{id}/cancel")]
     public async Task<ActionResult> Cancel(string id, CancellationToken ct)
@@ -79,6 +113,24 @@ public class WorkflowsController : ControllerBase
             Request.Path.Value ?? string.Empty,
             ct).ConfigureAwait(false);
 
+        return NoContent();
+    }
+
+    /// <summary>POST /v1/workflows/{id}/nodes/{nodeId}/resume — body: { "resumeKey": "..." }。PublishEvent と同様。X-Idempotency-Key で冪等。</summary>
+    [HttpPost("{id}/nodes/{nodeId}/resume")]
+    public async Task<ActionResult> ResumeNode(string id, string nodeId, [FromBody] ResumeNodeRequest? body, CancellationToken ct)
+    {
+        var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
+        var idempotencyKey = Request.Headers["X-Idempotency-Key"].FirstOrDefault();
+        await _workflows.ResumeNodeAsync(
+            tenantId,
+            id,
+            nodeId,
+            body?.ResumeKey,
+            idempotencyKey,
+            Request.Method,
+            Request.Path.Value ?? string.Empty,
+            ct).ConfigureAwait(false);
         return NoContent();
     }
 

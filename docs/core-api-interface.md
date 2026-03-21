@@ -164,4 +164,4 @@ Request:
 ## 5. UI からのアクセス
 
 UI は `/api/core/*` 経由で Core-API にプロキシする。  
-例: `/api/core/executions/xxx` → Core-API の `/v1/workflows/xxx`（route のマッピングは UI 側で実施）。
+例: `/api/core/workflows/xxx` → Core-API の `/v1/workflows/xxx`（route のマッピングは UI 側で実施）。

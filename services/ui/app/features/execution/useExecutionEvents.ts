@@ -25,7 +25,7 @@ export function useExecutionEvents(executionId: string | null, options?: { limit
         const q = new URLSearchParams({ limit: String(limit) });
         if (afterSeq > 0) q.set("afterSeq", String(afterSeq));
         const res = await apiGet<ExecutionEventsResponse>(
-          `/executions/${encodeURIComponent(executionId)}/events?${q.toString()}`
+          `/workflows/${encodeURIComponent(executionId)}/events?${q.toString()}`
         );
         const list = res.events ?? [];
         setHasMore(res.hasMore === true);
@@ -56,7 +56,7 @@ export function useExecutionEvents(executionId: string | null, options?: { limit
 
     const q = new URLSearchParams({ limit: String(limit) });
     apiGet<ExecutionEventsResponse>(
-      `/executions/${encodeURIComponent(executionId)}/events?${q.toString()}`
+      `/workflows/${encodeURIComponent(executionId)}/events?${q.toString()}`
     )
       .then((res) => {
         if (!cancelled) {
