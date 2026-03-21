@@ -37,9 +37,20 @@ public sealed class WorkflowRepository : IWorkflowRepository
     public async Task AddWorkflowAndSnapshotAsync(WorkflowRow workflow, ExecutionGraphSnapshotRow snapshot, CancellationToken ct)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        AddWorkflowAndSnapshotCore(db, workflow, snapshot);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+    }
+
+    public Task AddWorkflowAndSnapshotAsync(CoreDbContext db, WorkflowRow workflow, ExecutionGraphSnapshotRow snapshot, CancellationToken ct)
+    {
+        AddWorkflowAndSnapshotCore(db, workflow, snapshot);
+        return Task.CompletedTask;
+    }
+
+    private static void AddWorkflowAndSnapshotCore(CoreDbContext db, WorkflowRow workflow, ExecutionGraphSnapshotRow snapshot)
+    {
         db.Workflows.Add(workflow);
         db.ExecutionGraphSnapshots.Add(snapshot);
-        await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     public async Task<ExecutionGraphSnapshotRow?> GetSnapshotByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
@@ -53,6 +64,23 @@ public sealed class WorkflowRepository : IWorkflowRepository
     public async Task UpdateWorkflowAndSnapshotAsync(Guid workflowId, string status, bool? cancelRequested, string graphJson, CancellationToken ct)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        await UpdateWorkflowAndSnapshotCoreAsync(db, workflowId, status, cancelRequested, graphJson, ct).ConfigureAwait(false);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task UpdateWorkflowAndSnapshotAsync(CoreDbContext db, Guid workflowId, string status, bool? cancelRequested, string graphJson, CancellationToken ct)
+    {
+        await UpdateWorkflowAndSnapshotCoreAsync(db, workflowId, status, cancelRequested, graphJson, ct).ConfigureAwait(false);
+    }
+
+    private static async Task UpdateWorkflowAndSnapshotCoreAsync(
+        CoreDbContext db,
+        Guid workflowId,
+        string status,
+        bool? cancelRequested,
+        string graphJson,
+        CancellationToken ct)
+    {
         var w = await db.Workflows.FirstOrDefaultAsync(x => x.WorkflowId == workflowId, ct).ConfigureAwait(false);
         if (w is not null)
         {
@@ -70,8 +98,6 @@ public sealed class WorkflowRepository : IWorkflowRepository
             g.GraphJson = graphJson;
             g.UpdatedAt = DateTime.UtcNow;
         }
-
-        await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 }
 

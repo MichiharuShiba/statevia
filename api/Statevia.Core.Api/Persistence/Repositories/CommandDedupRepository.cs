@@ -27,5 +27,11 @@ public sealed class CommandDedupRepository : ICommandDedupRepository
         db.CommandDedup.Add(row);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
+
+    public Task SaveAsync(CoreDbContext db, CommandDedupRow row, CancellationToken ct)
+    {
+        db.CommandDedup.Add(row);
+        return Task.CompletedTask;
+    }
 }
 

@@ -1,4 +1,6 @@
+using System.Data;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Controllers;
@@ -20,6 +22,7 @@ public sealed class WorkflowService : IWorkflowService
     private readonly IDefinitionRepository _definitions;
     private readonly ICommandDedupRepository _dedup;
     private readonly IEventStoreRepository _eventStore;
+    private readonly IDbContextFactory<CoreDbContext> _dbFactory;
 
     public WorkflowService(
         IWorkflowEngine engine,
@@ -30,7 +33,8 @@ public sealed class WorkflowService : IWorkflowService
         IWorkflowRepository workflows,
         IDefinitionRepository definitions,
         ICommandDedupRepository dedup,
-        IEventStoreRepository eventStore)
+        IEventStoreRepository eventStore,
+        IDbContextFactory<CoreDbContext> dbFactory)
     {
         _engine = engine;
         _displayIds = displayIds;
@@ -41,6 +45,7 @@ public sealed class WorkflowService : IWorkflowService
         _definitions = definitions;
         _dedup = dedup;
         _eventStore = eventStore;
+        _dbFactory = dbFactory;
     }
 
     public async Task<WorkflowResponse> StartAsync(
@@ -85,30 +90,23 @@ public sealed class WorkflowService : IWorkflowService
 
         var createdAt = DateTime.UtcNow;
 
-        await _workflows.AddWorkflowAndSnapshotAsync(
-            new WorkflowRow
-            {
-                WorkflowId = workflowId,
-                TenantId = tenantId,
-                DefinitionId = defUuid.Value,
-                Status = status,
-                StartedAt = createdAt,
-                UpdatedAt = createdAt,
-                CancelRequested = false,
-                RestartLost = false
-            },
-            new ExecutionGraphSnapshotRow
-            {
-                WorkflowId = workflowId,
-                GraphJson = graphJson,
-                UpdatedAt = createdAt
-            },
-            ct).ConfigureAwait(false);
-
-        var startedPayload = JsonSerializer.Serialize(
-            new { definitionId = defUuid.Value.ToString(), tenantId },
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-        await _eventStore.AppendAsync(workflowId, EventStoreEventType.WorkflowStarted, startedPayload, ct).ConfigureAwait(false);
+        var workflowRow = new WorkflowRow
+        {
+            WorkflowId = workflowId,
+            TenantId = tenantId,
+            DefinitionId = defUuid.Value,
+            Status = status,
+            StartedAt = createdAt,
+            UpdatedAt = createdAt,
+            CancelRequested = false,
+            RestartLost = false
+        };
+        var snapshotRow = new ExecutionGraphSnapshotRow
+        {
+            WorkflowId = workflowId,
+            GraphJson = graphJson,
+            UpdatedAt = createdAt
+        };
 
         var response = new WorkflowResponse
         {
@@ -118,21 +116,42 @@ public sealed class WorkflowService : IWorkflowService
             StartedAt = createdAt
         };
 
-        if (dedupKey is { } saveKey)
+        var startedPayload = JsonSerializer.Serialize(
+            new { definitionId = defUuid.Value.ToString(), tenantId },
+            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct).ConfigureAwait(false);
+        try
         {
-            var responseJson = JsonSerializer.Serialize(response, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-            await _dedup.SaveAsync(new CommandDedupRow
+            await _workflows.AddWorkflowAndSnapshotAsync(db, workflowRow, snapshotRow, ct).ConfigureAwait(false);
+            await _eventStore.AppendAsync(db, workflowId, EventStoreEventType.WorkflowStarted, startedPayload, ct).ConfigureAwait(false);
+
+            if (dedupKey is { } saveKey)
             {
-                DedupKey = saveKey.DedupKey,
-                Endpoint = saveKey.Endpoint,
-                IdempotencyKey = saveKey.IdempotencyKey,
-                RequestHash = null,
-                StatusCode = StatusCodes.Status201Created,
-                ResponseBody = responseJson,
-                CreatedAt = createdAt,
-                ExpiresAt = createdAt.AddHours(24)
-            }, ct).ConfigureAwait(false);
+                var responseJson = JsonSerializer.Serialize(response, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                await _dedup.SaveAsync(db, new CommandDedupRow
+                {
+                    DedupKey = saveKey.DedupKey,
+                    Endpoint = saveKey.Endpoint,
+                    IdempotencyKey = saveKey.IdempotencyKey,
+                    RequestHash = null,
+                    StatusCode = StatusCodes.Status201Created,
+                    ResponseBody = responseJson,
+                    CreatedAt = createdAt,
+                    ExpiresAt = createdAt.AddHours(24)
+                }, ct).ConfigureAwait(false);
+            }
+
+            await db.SaveChangesAsync(ct).ConfigureAwait(false);
+            await tx.CommitAsync(ct).ConfigureAwait(false);
         }
+        catch
+        {
+            await tx.RollbackAsync(ct).ConfigureAwait(false);
+            throw;
+        }
+
         return response;
     }
 
@@ -192,27 +211,42 @@ public sealed class WorkflowService : IWorkflowService
             throw new NotFoundException("Workflow not found");
 
         await _engine.CancelAsync(uuid.Value.ToString()).ConfigureAwait(false);
-        await UpdateProjectionAsync(uuid.Value, ct).ConfigureAwait(false);
 
+        var (projStatus, projCancel, projGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var cancelPayload = JsonSerializer.Serialize(
             new { tenantId },
             new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-        await _eventStore.AppendAsync(uuid.Value, EventStoreEventType.WorkflowCancelled, cancelPayload, ct).ConfigureAwait(false);
 
-        if (dedupKey is { } saveKey)
+        await using var dbCancel = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        await using var txCancel = await dbCancel.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct).ConfigureAwait(false);
+        try
         {
-            var now = DateTime.UtcNow;
-            await _dedup.SaveAsync(new CommandDedupRow
+            await _workflows.UpdateWorkflowAndSnapshotAsync(dbCancel, uuid.Value, projStatus, projCancel, projGraphJson, ct).ConfigureAwait(false);
+            await _eventStore.AppendAsync(dbCancel, uuid.Value, EventStoreEventType.WorkflowCancelled, cancelPayload, ct).ConfigureAwait(false);
+
+            if (dedupKey is { } saveKey)
             {
-                DedupKey = saveKey.DedupKey,
-                Endpoint = saveKey.Endpoint,
-                IdempotencyKey = saveKey.IdempotencyKey,
-                RequestHash = null,
-                StatusCode = StatusCodes.Status204NoContent,
-                ResponseBody = null,
-                CreatedAt = now,
-                ExpiresAt = now.AddHours(24)
-            }, ct).ConfigureAwait(false);
+                var now = DateTime.UtcNow;
+                await _dedup.SaveAsync(dbCancel, new CommandDedupRow
+                {
+                    DedupKey = saveKey.DedupKey,
+                    Endpoint = saveKey.Endpoint,
+                    IdempotencyKey = saveKey.IdempotencyKey,
+                    RequestHash = null,
+                    StatusCode = StatusCodes.Status204NoContent,
+                    ResponseBody = null,
+                    CreatedAt = now,
+                    ExpiresAt = now.AddHours(24)
+                }, ct).ConfigureAwait(false);
+            }
+
+            await dbCancel.SaveChangesAsync(ct).ConfigureAwait(false);
+            await txCancel.CommitAsync(ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            await txCancel.RollbackAsync(ct).ConfigureAwait(false);
+            throw;
         }
     }
 
@@ -244,27 +278,42 @@ public sealed class WorkflowService : IWorkflowService
             throw new NotFoundException("Workflow not found");
 
         _engine.PublishEvent(uuid.Value.ToString(), eventName);
-        await UpdateProjectionAsync(uuid.Value, ct).ConfigureAwait(false);
 
+        var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var publishedPayload = JsonSerializer.Serialize(
             new { tenantId, name = eventName },
             new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-        await _eventStore.AppendAsync(uuid.Value, EventStoreEventType.EventPublished, publishedPayload, ct).ConfigureAwait(false);
 
-        if (dedupKey is { } saveKey)
+        await using var dbPub = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        await using var txPub = await dbPub.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct).ConfigureAwait(false);
+        try
         {
-            var now = DateTime.UtcNow;
-            await _dedup.SaveAsync(new CommandDedupRow
+            await _workflows.UpdateWorkflowAndSnapshotAsync(dbPub, uuid.Value, pubStatus, pubCancel, pubGraphJson, ct).ConfigureAwait(false);
+            await _eventStore.AppendAsync(dbPub, uuid.Value, EventStoreEventType.EventPublished, publishedPayload, ct).ConfigureAwait(false);
+
+            if (dedupKey is { } saveKey)
             {
-                DedupKey = saveKey.DedupKey,
-                Endpoint = saveKey.Endpoint,
-                IdempotencyKey = saveKey.IdempotencyKey,
-                RequestHash = null,
-                StatusCode = StatusCodes.Status204NoContent,
-                ResponseBody = null,
-                CreatedAt = now,
-                ExpiresAt = now.AddHours(24)
-            }, ct).ConfigureAwait(false);
+                var now = DateTime.UtcNow;
+                await _dedup.SaveAsync(dbPub, new CommandDedupRow
+                {
+                    DedupKey = saveKey.DedupKey,
+                    Endpoint = saveKey.Endpoint,
+                    IdempotencyKey = saveKey.IdempotencyKey,
+                    RequestHash = null,
+                    StatusCode = StatusCodes.Status204NoContent,
+                    ResponseBody = null,
+                    CreatedAt = now,
+                    ExpiresAt = now.AddHours(24)
+                }, ct).ConfigureAwait(false);
+            }
+
+            await dbPub.SaveChangesAsync(ct).ConfigureAwait(false);
+            await txPub.CommitAsync(ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            await txPub.RollbackAsync(ct).ConfigureAwait(false);
+            throw;
         }
     }
 
@@ -295,16 +344,22 @@ public sealed class WorkflowService : IWorkflowService
 
     private async Task UpdateProjectionAsync(Guid workflowId, CancellationToken ct)
     {
+        var (status, cancelRequested, graphJson) = BuildProjectionFromEngine(workflowId);
+        await _workflows.UpdateWorkflowAndSnapshotAsync(
+            workflowId,
+            status,
+            cancelRequested,
+            graphJson,
+            ct).ConfigureAwait(false);
+    }
+
+    private (string Status, bool? CancelRequested, string GraphJson) BuildProjectionFromEngine(Guid workflowId)
+    {
         var engineId = workflowId.ToString();
         var snapshot = _engine.GetSnapshot(engineId);
         var graphJson = _engine.ExportExecutionGraph(engineId);
         var status = MapStatus(snapshot);
-        await _workflows.UpdateWorkflowAndSnapshotAsync(
-            workflowId,
-            status,
-            snapshot?.IsCancelled,
-            graphJson,
-            ct).ConfigureAwait(false);
+        return (status, snapshot?.IsCancelled, graphJson);
     }
 }
 
