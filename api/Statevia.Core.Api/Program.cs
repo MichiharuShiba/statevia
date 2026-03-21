@@ -58,6 +58,7 @@ builder.Services.AddScoped<ICommandDedupService, CommandDedupService>();
 builder.Services.AddScoped<IDefinitionRepository, DefinitionRepository>();
 builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
 builder.Services.AddScoped<ICommandDedupRepository, CommandDedupRepository>();
+builder.Services.AddScoped<IEventStoreRepository, EventStoreRepository>();
 builder.Services.AddScoped<IDefinitionService, DefinitionService>();
 builder.Services.AddScoped<IWorkflowService, WorkflowService>();
 builder.Services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();

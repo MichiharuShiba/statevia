@@ -25,6 +25,8 @@ Statevia is a definition-driven, event-sourced workflow engine with three compon
 
 **Persistence note:** Write paths go through **repositories** from `WorkflowService` / `DefinitionService`. Some **read-model** assembly (`ExecutionReadModelService`, `GraphDefinitionService`) uses `IDbContextFactory<CoreDbContext>` directly to keep projection queries localized without duplicating repository surface for every report shape.
 
+**event_store:** `IEventStoreRepository` appends rows (`workflow_id`, monotonic `seq`, `type`, `payload_json`, …) inside a **Serializable** transaction. Event kinds are defined as **`EventStoreEventType`** (`Abstractions/Persistence/EventStoreEventType.cs`); `WorkflowService` records command-level events after successful writes (`WorkflowStarted`, `WorkflowCancelled`, `EventPublished`). This is not a full engine event log yet; projection remains `workflows` + `execution_graph_snapshots`.
+
 **Dependency injection (`Program.cs`):**
 
 - **Singleton:** `IWorkflowEngine`, `IDefinitionCompilerService`, `IIdGenerator` (as registered).

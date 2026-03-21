@@ -19,6 +19,7 @@ public sealed class WorkflowService : IWorkflowService
     private readonly IWorkflowRepository _workflows;
     private readonly IDefinitionRepository _definitions;
     private readonly ICommandDedupRepository _dedup;
+    private readonly IEventStoreRepository _eventStore;
 
     public WorkflowService(
         IWorkflowEngine engine,
@@ -28,7 +29,8 @@ public sealed class WorkflowService : IWorkflowService
         ICommandDedupService dedupService,
         IWorkflowRepository workflows,
         IDefinitionRepository definitions,
-        ICommandDedupRepository dedup)
+        ICommandDedupRepository dedup,
+        IEventStoreRepository eventStore)
     {
         _engine = engine;
         _displayIds = displayIds;
@@ -38,6 +40,7 @@ public sealed class WorkflowService : IWorkflowService
         _workflows = workflows;
         _definitions = definitions;
         _dedup = dedup;
+        _eventStore = eventStore;
     }
 
     public async Task<WorkflowResponse> StartAsync(
@@ -101,6 +104,11 @@ public sealed class WorkflowService : IWorkflowService
                 UpdatedAt = createdAt
             },
             ct).ConfigureAwait(false);
+
+        var startedPayload = JsonSerializer.Serialize(
+            new { definitionId = defUuid.Value.ToString(), tenantId },
+            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        await _eventStore.AppendAsync(workflowId, EventStoreEventType.WorkflowStarted, startedPayload, ct).ConfigureAwait(false);
 
         var response = new WorkflowResponse
         {
@@ -186,6 +194,11 @@ public sealed class WorkflowService : IWorkflowService
         await _engine.CancelAsync(uuid.Value.ToString()).ConfigureAwait(false);
         await UpdateProjectionAsync(uuid.Value, ct).ConfigureAwait(false);
 
+        var cancelPayload = JsonSerializer.Serialize(
+            new { tenantId },
+            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        await _eventStore.AppendAsync(uuid.Value, EventStoreEventType.WorkflowCancelled, cancelPayload, ct).ConfigureAwait(false);
+
         if (dedupKey is { } saveKey)
         {
             var now = DateTime.UtcNow;
@@ -232,6 +245,11 @@ public sealed class WorkflowService : IWorkflowService
 
         _engine.PublishEvent(uuid.Value.ToString(), eventName);
         await UpdateProjectionAsync(uuid.Value, ct).ConfigureAwait(false);
+
+        var publishedPayload = JsonSerializer.Serialize(
+            new { tenantId, name = eventName },
+            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        await _eventStore.AppendAsync(uuid.Value, EventStoreEventType.EventPublished, publishedPayload, ct).ConfigureAwait(false);
 
         if (dedupKey is { } saveKey)
         {
