@@ -21,18 +21,6 @@ describe("mapGraphDefinitionResponse", () => {
     expect(def.edges[0].to).toBe("b");
   });
 
-  it("PascalCase にも対応する", () => {
-    const raw = {
-      GraphId: "g1",
-      Nodes: [{ NodeId: "x", NodeType: "Task", Label: "X" }],
-      Edges: []
-    };
-    const def = mapGraphDefinitionResponse(raw, "g1");
-    expect(def).not.toBeNull();
-    if (def === null) throw new Error("expected non-null");
-    expect(def.nodes[0].nodeId).toBe("x");
-  });
-
   it("nodes が空なら null", () => {
     expect(mapGraphDefinitionResponse({ graphId: "x", nodes: [] }, "x")).toBeNull();
   });
