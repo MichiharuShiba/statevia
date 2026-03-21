@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using Statevia.Core.Api.Abstractions.Services;
@@ -11,16 +12,13 @@ namespace Statevia.Core.Api.Controllers;
 [Route("v1/workflows")]
 public class WorkflowsController : ControllerBase
 {
-    private readonly IExecutionReadModelService _executionReadModel;
     private readonly IWorkflowService _workflows;
     private readonly WorkflowStreamService _stream;
 
     public WorkflowsController(
-        IExecutionReadModelService executionReadModel,
         IWorkflowService workflows,
         WorkflowStreamService stream)
     {
-        _executionReadModel = executionReadModel;
         _workflows = workflows;
         _stream = stream;
     }
@@ -42,21 +40,39 @@ public class WorkflowsController : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = created.DisplayId }, created);
     }
 
-    /// <summary>GET /v1/workflows — 一覧（U4 一覧も display_id / resource_id）。X-Tenant-Id でスコープ。</summary>
+    /// <summary>
+    /// GET /v1/workflows — 一覧（U4）。クエリなしは従来どおり配列。
+    /// <c>?limit=&amp;offset=&amp;status=</c> で <see cref="PagedResult{T}"/>（O1/O2）。
+    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<List<WorkflowResponse>>> List(CancellationToken ct)
+    public async Task<IActionResult> List(
+        [FromQuery] int? limit,
+        [FromQuery] int offset = 0,
+        [FromQuery] string? status = null,
+        CancellationToken ct = default)
     {
         var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
-        var list = await _workflows.ListAsync(tenantId, ct).ConfigureAwait(false);
-        return Ok(list);
+        if (limit is null)
+        {
+            var list = await _workflows.ListAsync(tenantId, ct).ConfigureAwait(false);
+            return Ok(list);
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfLessThan(limit.Value, 1);
+        if (limit.Value > 500)
+            throw new ArgumentException("limit must be at most 500");
+
+        var paged = await _workflows.ListPagedAsync(tenantId, offset, limit.Value, status, ct).ConfigureAwait(false);
+        return Ok(paged);
     }
 
-    /// <summary>GET /v1/workflows/{id} — Execution Read Model（契約準拠）を返す。X-Tenant-Id でスコープ。</summary>
+    /// <summary>GET /v1/workflows/{id} — 一覧と同一の <see cref="WorkflowResponse"/>（UI WorkflowDTO 向け）。X-Tenant-Id でスコープ。</summary>
     [HttpGet("{id}")]
-    public async Task<ActionResult<ExecutionReadModel>> Get(string id, CancellationToken ct)
+    public async Task<ActionResult<WorkflowResponse>> Get(string id, CancellationToken ct)
     {
         var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
-        var model = await _executionReadModel.GetByDisplayIdAsync(id, tenantId, ct).ConfigureAwait(false);
+        var model = await _workflows.GetWorkflowResponseAsync(tenantId, id, ct).ConfigureAwait(false);
         return Ok(model);
     }
 

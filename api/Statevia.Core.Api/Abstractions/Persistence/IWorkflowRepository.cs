@@ -6,6 +6,14 @@ public interface IWorkflowRepository
 {
     Task<WorkflowRow?> GetByIdAsync(string tenantId, Guid workflowId, CancellationToken ct);
     Task<List<(WorkflowRow Workflow, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct);
+
+    /// <summary>一覧のページング。<paramref name="statusFilter"/> は workflows.status 完全一致（O2）。</summary>
+    Task<(int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
+        string tenantId,
+        int offset,
+        int limit,
+        string? statusFilter,
+        CancellationToken ct);
     Task AddWorkflowAndSnapshotAsync(WorkflowRow workflow, ExecutionGraphSnapshotRow snapshot, CancellationToken ct);
     /// <summary>同一 <see cref="CoreDbContext"/> 上に追加のみ（SaveChanges は呼び出し側）。</summary>
     Task AddWorkflowAndSnapshotAsync(CoreDbContext db, WorkflowRow workflow, ExecutionGraphSnapshotRow snapshot, CancellationToken ct);

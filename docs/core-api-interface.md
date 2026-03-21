@@ -60,8 +60,8 @@ Response: 201 Created
 
 **GET /v1/definitions**
 
-Response: 200 OK  
-`DefinitionResponse[]`（displayId, resourceId, name, createdAt）
+- クエリなし: Response 200 OK、`DefinitionResponse[]`（displayId, resourceId, name, createdAt）
+- **`?limit=&offset=&name=`**（いずれか指定時）: 200 OK、`PagedResult<DefinitionResponse>`（`items`, `totalCount`, `offset`, `limit`, `hasMore`）。`name` は名前の部分一致。`limit` は 1〜500、`offset` は 0 以上。
 
 ### 2.3 定義取得
 
@@ -104,14 +104,14 @@ Request:
 
 **GET /v1/workflows**
 
-Response: 200 OK  
-`WorkflowResponse[]`（displayId, resourceId, status, startedAt, updatedAt, cancelRequested, restartLost）
+- クエリなし: Response 200 OK、`WorkflowResponse[]`（displayId, resourceId, status, startedAt, updatedAt, cancelRequested, restartLost）
+- **`?limit=&offset=&status=`**（いずれか指定時）: 200 OK、`PagedResult<WorkflowResponse>`。`status` は `workflows.status` 列と**完全一致**。`limit` は 1〜500。
 
 ### 3.3 ワークフロー取得
 
 **GET /v1/workflows/{id}**
 
-Response: 200 OK で 1 件。404 は未存在。
+- Response: 200 OK、**一覧と同一形の `WorkflowResponse`**（UI の WorkflowDTO と整合）。404 は未存在。
 
 ### 3.4 実行グラフ取得
 

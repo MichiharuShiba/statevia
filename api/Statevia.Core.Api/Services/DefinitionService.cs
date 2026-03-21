@@ -66,6 +66,32 @@ public sealed class DefinitionService : IDefinitionService
         }).ToList();
     }
 
+    public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(
+        string tenantId,
+        int offset,
+        int limit,
+        string? nameContains,
+        CancellationToken ct)
+    {
+        var (total, pairs) = await _definitions.ListWithDisplayIdsPageAsync(tenantId, offset, limit, nameContains, ct).ConfigureAwait(false);
+        var items = pairs.Select(p => new DefinitionResponse
+        {
+            DisplayId = p.DisplayId ?? p.Def.DefinitionId.ToString(),
+            ResourceId = p.Def.DefinitionId,
+            Name = p.Def.Name,
+            CreatedAt = p.Def.CreatedAt
+        }).ToList();
+
+        return new PagedResult<DefinitionResponse>
+        {
+            Items = items,
+            TotalCount = total,
+            Offset = offset,
+            Limit = limit,
+            HasMore = offset + items.Count < total
+        };
+    }
+
     public async Task<DefinitionResponse> GetAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
         var uuid = await _displayIds.ResolveAsync("definition", idOrUuid, ct).ConfigureAwait(false);
