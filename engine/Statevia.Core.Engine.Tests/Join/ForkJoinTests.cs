@@ -16,11 +16,17 @@ public class ForkJoinTests
         var def = CreateDefinitionWithJoin();
         var tracker = new JoinTracker(def);
 
-        // Act / Assert: 1 件目ではまだ揃わないので null
-        Assert.Null(tracker.RecordFact("Prepare", "Completed", "data1"));
+        // Act
+        var first = tracker.RecordFact("Prepare", "Completed", "data1");
 
-        // Act / Assert: 2 件目で allOf が揃い Join1 が返る
-        Assert.Equal("Join1", tracker.RecordFact("AskUser", "Completed", true));
+        // Assert（1 件目では allOf が揃わない）
+        Assert.Null(first);
+
+        // Act
+        var second = tracker.RecordFact("AskUser", "Completed", true);
+
+        // Assert（2 件目で Join 状態名が返る）
+        Assert.Equal("Join1", second);
     }
 
     /// <summary>GetJoinInputs が Join の allOf に含まれる状態の出力を全て返すことを検証する。</summary>

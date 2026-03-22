@@ -187,6 +187,7 @@ public class DefinitionCompilerTests
     [Fact]
     public void Compile_Throws_WhenStatesEmpty()
     {
+        // Arrange
         var def = new WorkflowDefinition
         {
             Workflow = new WorkflowMetadata { Name = "Test" },
@@ -195,6 +196,7 @@ public class DefinitionCompilerTests
         var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
         var compiler = new DefinitionCompiler(factory);
 
+        // Act & Assert
         Assert.Throws<InvalidOperationException>(() => compiler.Compile(def));
     }
 

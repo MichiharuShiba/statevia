@@ -62,12 +62,15 @@ public class WorkflowEngineTests
     [Fact]
     public void ExportExecutionGraph_ReturnsJson_WhenWorkflowExists()
     {
+        // Arrange
         var def = CreateMinimalDefinition();
         var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
         var id = engine.Start(def);
 
+        // Act
         var json = engine.ExportExecutionGraph(id);
 
+        // Assert
         Assert.NotNull(json);
         Assert.NotEqual("{}", json);
     }

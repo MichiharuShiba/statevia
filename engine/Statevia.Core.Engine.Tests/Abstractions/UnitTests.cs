@@ -9,7 +9,10 @@ public class UnitTests
     [Fact]
     public void Value_IsAvailable()
     {
-        // Arrange & Act
+        // Arrange
+        // （なし）
+
+        // Act
         var u = Unit.Value;
 
         // Assert
@@ -38,12 +41,19 @@ public class UnitTests
         // Arrange
         var u = Unit.Value;
 
-        // Act & Assert
-        Assert.True(u.Equals((object)Unit.Value));
-        Assert.True(u.Equals((object)default(Unit)));
-        Assert.False(u.Equals((object?)null));
-        Assert.False(u.Equals((object)42));
-        Assert.False(u.Equals((object)"x"));
+        // Act
+        var eqSelf = u.Equals((object)Unit.Value);
+        var eqDefault = u.Equals((object)default(Unit));
+        var eqNull = u.Equals((object?)null);
+        var eqInt = u.Equals((object)42);
+        var eqStr = u.Equals((object)"x");
+
+        // Assert
+        Assert.True(eqSelf);
+        Assert.True(eqDefault);
+        Assert.False(eqNull);
+        Assert.False(eqInt);
+        Assert.False(eqStr);
     }
 
     /// <summary>GetHashCode が常に 0 を返すことを検証する。</summary>
@@ -82,9 +92,13 @@ public class UnitTests
         var a = Unit.Value;
         var b = default(Unit);
 
-        // Act & Assert
-        Assert.True(a == b);
-        Assert.True(b == a);
+        // Act
+        var ab = a == b;
+        var ba = b == a;
+
+        // Assert
+        Assert.True(ab);
+        Assert.True(ba);
     }
 
     /// <summary>不等価演算子 != が常に false を返すことを検証する。</summary>
@@ -95,8 +109,12 @@ public class UnitTests
         var a = Unit.Value;
         var b = default(Unit);
 
-        // Act & Assert
-        Assert.False(a != b);
-        Assert.False(b != a);
+        // Act
+        var ab = a != b;
+        var ba = b != a;
+
+        // Assert
+        Assert.False(ab);
+        Assert.False(ba);
     }
 }

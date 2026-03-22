@@ -3,6 +3,7 @@ using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Execution;
 using Statevia.Core.Engine.ExecutionGraphs;
 using Statevia.Core.Engine.FSM;
+using Statevia.Core.Engine.Infrastructure;
 using Statevia.Core.Engine.Join;
 using Statevia.Core.Engine.Scheduler;
 
@@ -15,6 +16,7 @@ namespace Statevia.Core.Engine.Engine;
 public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
 {
     private readonly IScheduler _scheduler;
+    private readonly IWorkflowInstanceIdGenerator _workflowInstanceIdGenerator;
     private readonly ConcurrentDictionary<string, WorkflowInstance> _instances = new();
     private readonly ConcurrentDictionary<string, EventProvider> _eventProviders = new();
 
@@ -22,13 +24,14 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
     {
         options ??= new WorkflowEngineOptions();
         _scheduler = new DefaultScheduler(options.MaxParallelism);
+        _workflowInstanceIdGenerator = options.WorkflowInstanceIdGenerator ?? new UuidV7WorkflowInstanceIdGenerator();
     }
 
     /// <inheritdoc />
-    public string Start(CompiledWorkflowDefinition definition, string? workflowId = null)
+    public string Start(CompiledWorkflowDefinition definition, string? workflowId = null, object? workflowInput = null)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        workflowId ??= Guid.NewGuid().ToString("N")[..12];
+        workflowId ??= _workflowInstanceIdGenerator.NewWorkflowInstanceId();
         var eventProvider = new EventProvider(workflowId);
         var instance = new WorkflowInstance
         {
@@ -40,7 +43,7 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
         };
         _instances[workflowId] = instance;
         _eventProviders[workflowId] = eventProvider;
-        _ = RunWorkflowAsync(instance, eventProvider);
+        _ = RunWorkflowAsync(instance, eventProvider, workflowInput);
         return workflowId;
     }
 
@@ -79,9 +82,9 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
     public string ExportExecutionGraph(string workflowId) =>
         _instances.TryGetValue(workflowId, out var instance) ? instance.Graph.ExportJson() : "{}";
 
-    private async Task RunWorkflowAsync(WorkflowInstance instance, EventProvider eventProvider)
+    private async Task RunWorkflowAsync(WorkflowInstance instance, EventProvider eventProvider, object? workflowInput)
     {
-        try { await ScheduleStateAsync(instance, eventProvider, instance.Definition.InitialState, null, null, null).ConfigureAwait(false); }
+        try { await ScheduleStateAsync(instance, eventProvider, instance.Definition.InitialState, null, null, workflowInput).ConfigureAwait(false); }
 #pragma warning disable CA1031 // Do not catch general exception types - workflow failure is observed via MarkFailed()
         catch (Exception) { instance.MarkFailed(); }
 #pragma warning restore CA1031
@@ -192,14 +195,15 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
         }
         if (transition.Fork != null)
         {
+            // Broadcast: 同一 output を各分岐の先頭状態へ渡す（workflow-input-output-spec §3.3）。
             foreach (var nextState in transition.Fork)
             {
-                _ = ScheduleStateAsync(instance, eventProvider, nextState, nodeId, EdgeType.Fork, null);
+                _ = ScheduleStateAsync(instance, eventProvider, nextState, nodeId, EdgeType.Fork, output);
             }
         }
         else if (transition.Next != null)
         {
-            _ = ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, null);
+            _ = ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, output);
         }
     }
 

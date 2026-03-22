@@ -8,9 +8,13 @@ public class ProgramTests
     [Fact]
     public void Placeholder_Passes()
     {
-        // Arrange / Act: なし
+        // Arrange
+        // （なし）
+
+        // Act
+        var ok = true;
 
         // Assert
-        Assert.True(true);
+        Assert.True(ok);
     }
 }
