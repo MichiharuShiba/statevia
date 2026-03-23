@@ -23,6 +23,7 @@ public static class Level1Validator
             ValidateStateName(stateName, errors);
             ValidateTransitions(stateName, stateDef, stateNames, errors);
             ValidateJoin(stateDef, stateNames, errors);
+            ValidateInputMapping(stateName, stateDef, errors);
         }
 
         return new ValidationResult(errors);
@@ -92,6 +93,56 @@ public static class Level1Validator
         {
             errors.Add($"Join references unknown state: {joinState}");
         }
+    }
+
+    private static void ValidateInputMapping(string stateName, StateDefinition stateDef, List<string> errors)
+    {
+        var m = stateDef.InputMapping;
+        if (m == null)
+        {
+            return;
+        }
+
+        if (m.Path == null)
+        {
+            errors.Add($"inputMapping must define path: {stateName}");
+            return;
+        }
+
+        if (!IsValidSimpleJsonPath(m.Path))
+        {
+            errors.Add($"inputMapping.path is invalid for state '{stateName}': {m.Path}");
+        }
+    }
+
+    // Supported subset: "$" or "$.a.b" (alnum/_ segments)
+    private static bool IsValidSimpleJsonPath(string path)
+    {
+        if (path == "$")
+        {
+            return true;
+        }
+
+        if (!path.StartsWith("$.", StringComparison.Ordinal) || path.EndsWith('.'))
+        {
+            return false;
+        }
+
+        var segments = path[2..].Split('.', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (var seg in segments)
+        {
+            if (seg.Length == 0 || seg.Any(ch => !(char.IsLetterOrDigit(ch) || ch == '_')))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
 

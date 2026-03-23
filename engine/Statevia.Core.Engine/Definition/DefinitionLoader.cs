@@ -68,6 +68,7 @@ public sealed class DefinitionLoader
         IReadOnlyDictionary<string, TransitionDefinition>? on = null;
         WaitDefinition? wait = null;
         JoinDefinition? join = null;
+        InputMappingDefinition? inputMapping = null;
 
         if (dict.TryGetValue("on", out var onVal) && onVal != null)
         {
@@ -96,7 +97,17 @@ public sealed class DefinitionLoader
             }
         }
 
-        return new StateDefinition { On = on, Wait = wait, Join = join };
+        if (dict.TryGetValue("inputMapping", out var inputMapVal) && inputMapVal != null)
+        {
+            var mapDict = ToStringDict(inputMapVal);
+            EnsureOnlyKnownKeys(mapDict, ["path"], "inputMapping");
+            inputMapping = new InputMappingDefinition
+            {
+                Path = GetStr(mapDict, "path")
+            };
+        }
+
+        return new StateDefinition { On = on, Wait = wait, Join = join, InputMapping = inputMapping };
     }
 
     private static IReadOnlyDictionary<string, TransitionDefinition> ParseOn(Dictionary<string, object?> dict)
@@ -180,5 +191,16 @@ public sealed class DefinitionLoader
             return enumerable.Cast<object?>().Select(x => x?.ToString() ?? "").ToList();
         }
         return null;
+    }
+
+    private static void EnsureOnlyKnownKeys(Dictionary<string, object?> dict, IReadOnlyCollection<string> knownKeys, string sectionName)
+    {
+        foreach (var key in dict.Keys)
+        {
+            if (!knownKeys.Contains(key, StringComparer.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Unknown key in {sectionName}: {key}");
+            }
+        }
     }
 }

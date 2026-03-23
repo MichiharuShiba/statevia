@@ -21,6 +21,10 @@ public sealed class CompiledWorkflowDefinition
     /// <summary>Wait テーブル。状態名 → 待機するイベント名。</summary>
     public required IReadOnlyDictionary<string, string> WaitTable { get; init; }
 
+    /// <summary>状態ごとの入力マッピング定義（stateName -> inputMapping）。未定義状態は raw 通過。</summary>
+    public IReadOnlyDictionary<string, Statevia.Core.Engine.Definition.InputMappingDefinition> InputMappings { get; init; }
+        = new System.Collections.Generic.Dictionary<string, Statevia.Core.Engine.Definition.InputMappingDefinition>(System.StringComparer.OrdinalIgnoreCase);
+
     /// <summary>初期状態名。</summary>
     public required string InitialState { get; init; }
 

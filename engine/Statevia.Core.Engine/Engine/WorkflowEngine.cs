@@ -3,6 +3,7 @@ using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Execution;
 using Statevia.Core.Engine.ExecutionGraphs;
 using Statevia.Core.Engine.FSM;
+using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Infrastructure;
 using Statevia.Core.Engine.Join;
 using Statevia.Core.Engine.Scheduler;
@@ -84,7 +85,8 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
 
     private async Task RunWorkflowAsync(WorkflowInstance instance, EventProvider eventProvider, object? workflowInput)
     {
-        try { await ScheduleStateAsync(instance, eventProvider, instance.Definition.InitialState, null, null, workflowInput).ConfigureAwait(false); }
+        var initialInput = ApplyInputMapping(instance.Definition, instance.Definition.InitialState, workflowInput);
+        try { await ScheduleStateAsync(instance, eventProvider, instance.Definition.InitialState, null, null, initialInput).ConfigureAwait(false); }
 #pragma warning disable CA1031 // Do not catch general exception types - workflow failure is observed via MarkFailed()
         catch (Exception) { instance.MarkFailed(); }
 #pragma warning restore CA1031
@@ -160,7 +162,8 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
         var transition = instance.Fsm.Evaluate(joinStateName, Fact.Joined);
         if (transition.HasTransition && transition.Next != null)
         {
-            await ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, joinInputs).ConfigureAwait(false);
+            var mappedJoinInput = ApplyInputMapping(instance.Definition, transition.Next, joinInputs);
+            await ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, mappedJoinInput).ConfigureAwait(false);
         }
         else if (transition.End)
         {
@@ -198,13 +201,25 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
             // Broadcast: 同一 output を各分岐の先頭状態へ渡す（workflow-input-output-spec §3.3）。
             foreach (var nextState in transition.Fork)
             {
-                _ = ScheduleStateAsync(instance, eventProvider, nextState, nodeId, EdgeType.Fork, output);
+                var mappedForkInput = ApplyInputMapping(instance.Definition, nextState, output);
+                _ = ScheduleStateAsync(instance, eventProvider, nextState, nodeId, EdgeType.Fork, mappedForkInput);
             }
         }
         else if (transition.Next != null)
         {
-            _ = ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, output);
+            var mappedInput = ApplyInputMapping(instance.Definition, transition.Next, output);
+            _ = ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, mappedInput);
         }
+    }
+
+    private static object? ApplyInputMapping(CompiledWorkflowDefinition definition, string targetState, object? rawInput)
+    {
+        if (!definition.InputMappings.TryGetValue(targetState, out var mapping))
+        {
+            return rawInput;
+        }
+
+        return InputMappingEvaluator.Apply(mapping, rawInput);
     }
 
     /// <inheritdoc />

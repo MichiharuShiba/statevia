@@ -23,9 +23,23 @@ public sealed class DefinitionCompiler
             ForkTable = BuildForkTable(definition),
             JoinTable = BuildJoinTable(definition),
             WaitTable = BuildWaitTable(definition),
+            InputMappings = BuildInputMappingTable(definition),
             InitialState = DetermineInitialState(definition),
             StateExecutorFactory = _executorFactory
         };
+    }
+
+    private static IReadOnlyDictionary<string, InputMappingDefinition> BuildInputMappingTable(WorkflowDefinition definition)
+    {
+        var result = new Dictionary<string, InputMappingDefinition>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (stateName, stateDef) in definition.States)
+        {
+            if (stateDef.InputMapping != null)
+            {
+                result[stateName] = stateDef.InputMapping;
+            }
+        }
+        return result;
     }
 
     private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, TransitionTarget>> BuildTransitionTable(WorkflowDefinition definition)

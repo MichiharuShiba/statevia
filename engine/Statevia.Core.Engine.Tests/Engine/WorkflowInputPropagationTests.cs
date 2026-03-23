@@ -115,6 +115,92 @@ public class WorkflowInputPropagationTests
         Assert.Equal("out-B", dict["B"]);
     }
 
+    /// <summary>next 遷移先の inputMapping.path が raw input に適用されることを検証する。</summary>
+    [Fact]
+    public async Task Next_transition_applies_inputMapping_path()
+    {
+        // Arrange
+        object? bInput = "unset";
+        var def = CreateTwoStateChainWithInputMapping(
+            DefaultStateExecutor.Create(new DelegateState((_, _, _) =>
+                Task.FromResult<object?>(new Dictionary<string, object?> { ["payload"] = "mapped-value" }))),
+            DefaultStateExecutor.Create(new DelegateState((_, input, _) =>
+            {
+                bInput = input;
+                return Task.FromResult<object?>(null);
+            })),
+            new InputMappingDefinition { Path = "$.payload" });
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var id = engine.Start(def);
+
+        // Act
+        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+
+        // Assert
+        Assert.Equal("mapped-value", bInput);
+    }
+
+    /// <summary>Fork 分岐先ごとに inputMapping.path が適用されることを検証する。</summary>
+    [Fact]
+    public async Task Fork_transition_applies_inputMapping_per_branch()
+    {
+        // Arrange
+        var aInput = "unset";
+        var bInput = "unset";
+        var def = CreateForkDefinitionWithInputMapping(
+            DefaultStateExecutor.Create(new DelegateState((_, _, _) =>
+                Task.FromResult<object?>(new Dictionary<string, object?> { ["v"] = "fork-mapped" }))),
+            DefaultStateExecutor.Create(new DelegateState((_, input, _) =>
+            {
+                aInput = input?.ToString() ?? "null";
+                return Task.FromResult<object?>("a");
+            })),
+            DefaultStateExecutor.Create(new DelegateState((_, input, _) =>
+            {
+                bInput = input?.ToString() ?? "null";
+                return Task.FromResult<object?>("b");
+            })),
+            new Dictionary<string, InputMappingDefinition>
+            {
+                ["A"] = new() { Path = "$.v" },
+                ["B"] = new() { Path = "$.v" }
+            });
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var id = engine.Start(def);
+
+        // Act
+        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+
+        // Assert
+        Assert.Equal("fork-mapped", aInput);
+        Assert.Equal("fork-mapped", bInput);
+    }
+
+    /// <summary>Join 後の next 遷移先に inputMapping.path が適用されることを検証する。</summary>
+    [Fact]
+    public async Task Join_next_applies_inputMapping_path()
+    {
+        // Arrange
+        object? afterInput = "unset";
+        var def = CreateJoinThenNextWithInputMapping(
+            DefaultStateExecutor.Create(new DelegateState((_, _, _) => Task.FromResult<object?>("out-A"))),
+            DefaultStateExecutor.Create(new DelegateState((_, _, _) => Task.FromResult<object?>("out-B"))),
+            DefaultStateExecutor.Create(new DelegateState((_, input, _) =>
+            {
+                afterInput = input;
+                return Task.FromResult<object?>(null);
+            })),
+            new InputMappingDefinition { Path = "$.A" });
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var id = engine.Start(def);
+
+        // Act
+        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+
+        // Assert
+        Assert.Equal("out-A", afterInput);
+    }
+
     private static async Task WaitUntilCompletedAsync(WorkflowEngine engine, string workflowId, int maxMs = 3000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(maxMs);
@@ -174,6 +260,28 @@ public class WorkflowInputPropagationTests
         };
     }
 
+    private static CompiledWorkflowDefinition CreateTwoStateChainWithInputMapping(
+        IStateExecutor a,
+        IStateExecutor b,
+        InputMappingDefinition mappingForB)
+    {
+        return new CompiledWorkflowDefinition
+        {
+            Name = "ChainMapped",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+            {
+                ["A"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { Next = "B" } },
+                ["B"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } }
+            },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
+            JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+            WaitTable = new Dictionary<string, string>(),
+            InputMappings = new Dictionary<string, InputMappingDefinition> { ["B"] = mappingForB },
+            InitialState = "A",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["A"] = a, ["B"] = b })
+        };
+    }
+
     private static CompiledWorkflowDefinition CreateForkDefinition(IStateExecutor start, IStateExecutor a, IStateExecutor b)
     {
         return new CompiledWorkflowDefinition
@@ -188,6 +296,35 @@ public class WorkflowInputPropagationTests
             ForkTable = new Dictionary<string, IReadOnlyList<string>> { ["Start"] = new[] { "A", "B" } },
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
             WaitTable = new Dictionary<string, string>(),
+            InitialState = "Start",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
+            {
+                ["Start"] = start,
+                ["A"] = a,
+                ["B"] = b
+            })
+        };
+    }
+
+    private static CompiledWorkflowDefinition CreateForkDefinitionWithInputMapping(
+        IStateExecutor start,
+        IStateExecutor a,
+        IStateExecutor b,
+        IReadOnlyDictionary<string, InputMappingDefinition> inputMappings)
+    {
+        return new CompiledWorkflowDefinition
+        {
+            Name = "ForkMapped",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+            {
+                ["Start"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { Fork = new[] { "A", "B" } } },
+                ["A"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } },
+                ["B"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } }
+            },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>> { ["Start"] = new[] { "A", "B" } },
+            JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+            WaitTable = new Dictionary<string, string>(),
+            InputMappings = inputMappings,
             InitialState = "Start",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
             {
@@ -219,6 +356,36 @@ public class WorkflowInputPropagationTests
             ForkTable = new Dictionary<string, IReadOnlyList<string>> { ["Start"] = new[] { "A", "B" } },
             JoinTable = new Dictionary<string, IReadOnlyList<string>> { ["Join1"] = new[] { "A", "B" } },
             WaitTable = new Dictionary<string, string>(),
+            InitialState = "Start",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
+            {
+                ["Start"] = DefaultStateExecutor.Create(new ImmediateState()),
+                ["A"] = a,
+                ["B"] = b,
+                ["AfterJoin"] = afterJoin
+            })
+        };
+    }
+
+    private static CompiledWorkflowDefinition CreateJoinThenNextWithInputMapping(
+        IStateExecutor a,
+        IStateExecutor b,
+        IStateExecutor afterJoin,
+        InputMappingDefinition mappingForAfterJoin)
+    {
+        return new CompiledWorkflowDefinition
+        {
+            Name = "JoinNextMapped",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+            {
+                ["Start"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { Fork = new[] { "A", "B" } } },
+                ["Join1"] = new Dictionary<string, TransitionTarget> { ["Joined"] = new TransitionTarget { Next = "AfterJoin" } },
+                ["AfterJoin"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } }
+            },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>> { ["Start"] = new[] { "A", "B" } },
+            JoinTable = new Dictionary<string, IReadOnlyList<string>> { ["Join1"] = new[] { "A", "B" } },
+            WaitTable = new Dictionary<string, string>(),
+            InputMappings = new Dictionary<string, InputMappingDefinition> { ["AfterJoin"] = mappingForAfterJoin },
             InitialState = "Start",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
             {

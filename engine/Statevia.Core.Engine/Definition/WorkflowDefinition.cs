@@ -25,6 +25,8 @@ public sealed class StateDefinition
     public WaitDefinition? Wait { get; init; }
     /// <summary>Join の allOf 依存定義。</summary>
     public JoinDefinition? Join { get; init; }
+    /// <summary>遷移でこの状態に入る直前に候補 input へ適用するマッピング。</summary>
+    public InputMappingDefinition? InputMapping { get; init; }
 }
 
 /// <summary>遷移の定義。next / fork / end のいずれか。</summary>
@@ -50,4 +52,14 @@ public sealed class JoinDefinition
 {
     /// <summary>完了を待つ状態名の一覧。</summary>
     public required IReadOnlyList<string> AllOf { get; init; }
+}
+
+/// <summary>
+/// 状態入力の最小マッピング定義。
+/// 現在は JSONPath 風の <c>path</c>（例: <c>$.foo.bar</c>）のみをサポートする。
+/// </summary>
+public sealed class InputMappingDefinition
+{
+    /// <summary>入力候補から値を抽出するパス。未指定時は恒等（raw 通過）。</summary>
+    public string? Path { get; init; }
 }

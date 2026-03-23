@@ -129,6 +129,60 @@ public class DefinitionLoaderTests
         Assert.True(state.On!["Completed"].End);
     }
 
+    /// <summary>状態直下の inputMapping.path をパースできることを検証する。</summary>
+    [Fact]
+    public void Load_ParsesInputMappingPath()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                on:
+                  Completed:
+                    next: B
+              B:
+                inputMapping:
+                  path: $.payload.value
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new DefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        Assert.Equal("$.payload.value", def.States["B"].InputMapping?.Path);
+    }
+
+    /// <summary>inputMapping に未知キーがある場合は InvalidOperationException を投げることを検証する。</summary>
+    [Fact]
+    public void Load_InputMappingWithUnknownKey_Throws()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              B:
+                inputMapping:
+                  path: $.payload.value
+                  const: 1
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new DefinitionLoader();
+
+        // Act & Assert
+        var ex = Assert.Throws<InvalidOperationException>(() => loader.Load(yaml));
+        Assert.Contains("Unknown key in inputMapping", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("const", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>states が空の YAML をパースすることを検証する。</summary>
     [Fact]
     public void Load_WithEmptyStates_ReturnsEmptyStates()

@@ -228,6 +228,35 @@ public class DefinitionCompilerTests
         Assert.Equal(new[] { "A", "B" }, compiled.JoinTable["Join"]);
     }
 
+    /// <summary>inputMapping を持つ状態が InputMappings テーブルに含まれることを検証する。</summary>
+    [Fact]
+    public void Compile_ProducesInputMappingTable()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "B" } } },
+                ["B"] = new StateDefinition
+                {
+                    InputMapping = new InputMappingDefinition { Path = "$.payload" },
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+        var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
+        var compiler = new DefinitionCompiler(factory);
+
+        // Act
+        var compiled = compiler.Compile(def);
+
+        // Assert
+        Assert.True(compiled.InputMappings.ContainsKey("B"));
+        Assert.Equal("$.payload", compiled.InputMappings["B"].Path);
+    }
+
     /// <summary>複数の Join 状態がある場合、すべてが Join テーブルに含まれることを検証する。</summary>
     [Fact]
     public void Compile_MultipleJoinStates_AllIncludedInJoinTable()
