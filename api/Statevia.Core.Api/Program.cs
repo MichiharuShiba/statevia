@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Engine;
+using Statevia.Core.Engine.Infrastructure;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
@@ -13,9 +14,6 @@ using Statevia.Core.Api.Services;
 using Statevia.Core.Api.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// IWorkflowEngine を DI でシングルトン登録（計画 3.3）
-builder.Services.AddSingleton<IWorkflowEngine>(_ => new WorkflowEngine());
 
 // DbContext（EF Core + PostgreSQL）
 // Docker / CI では DATABASE_URL を優先して接続先を差し替える。
@@ -55,6 +53,17 @@ builder.Services.AddDbContextFactory<CoreDbContext>(options =>
 builder.Services.AddScoped<IDisplayIdService, DisplayIdServiceImpl>();
 builder.Services.AddScoped<IExecutionReadModelService, ExecutionReadModelService>();
 builder.Services.AddSingleton<IIdGenerator, UuidV7Generator>();
+
+// IWorkflowEngine を DI でシングルトン登録（計画 3.3）
+// workflowId 未指定時の生成は Core-API の IIdGenerator と同一経路（UUID v7）に揃える。
+builder.Services.AddSingleton<IWorkflowEngine>(sp =>
+{
+    var idGen = sp.GetRequiredService<IIdGenerator>();
+    return new WorkflowEngine(new WorkflowEngineOptions
+    {
+        WorkflowInstanceIdGenerator = new DelegateWorkflowInstanceIdGenerator(() => idGen.NewGuid().ToString())
+    });
+});
 builder.Services.AddScoped<ICommandDedupService, CommandDedupService>();
 builder.Services.AddScoped<IDefinitionRepository, DefinitionRepository>();
 builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
