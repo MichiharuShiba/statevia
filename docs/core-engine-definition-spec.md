@@ -93,6 +93,84 @@ states:
         end: true
 ```
 
+### 1.6 例（inputMapping を使った States 形式）
+
+`inputMapping.path` は、遷移で入る直前の候補 input に適用される。  
+現在の最小仕様は `"$"` と `"$.foo.bar"`。
+
+```yaml
+workflow:
+  name: InputMappingSample
+
+states:
+  Start:
+    on:
+      Completed:
+        next: ExtractPayload
+
+  ExtractPayload:
+    inputMapping:
+      path: $.payload.value
+    on:
+      Completed:
+        next: End
+
+  End:
+    on:
+      Completed:
+        end: true
+```
+
+- `Start` の output が `{ payload: { value: 42 } }` のとき、`ExtractPayload` の input は `42` になる。
+- `$.payload.value` が見つからない場合、`ExtractPayload` の input は `null` になる。
+
+### 1.7 例（Fork/Join と inputMapping）
+
+Fork の各分岐先・Join 後の次状態でも `inputMapping.path` を適用できる。
+
+```yaml
+workflow:
+  name: ForkJoinInputMappingSample
+
+states:
+  Start:
+    on:
+      Completed:
+        fork: [A, B]
+
+  A:
+    inputMapping:
+      path: $.shared
+    on:
+      Completed:
+        next: Join1
+
+  B:
+    inputMapping:
+      path: $.shared
+    on:
+      Completed:
+        next: Join1
+
+  Join1:
+    join:
+      allOf: [A, B]
+    on:
+      Joined:
+        next: AfterJoin
+
+  AfterJoin:
+    inputMapping:
+      path: $.A
+    on:
+      Completed:
+        end: true
+```
+
+- `Start` の output が `{ shared: "fork-value" }` の場合、`A` と `B` の input はどちらも `"fork-value"`。
+- `Join1` 後の候補 input は `{ A: <Aのoutput>, B: <Bのoutput> }` の辞書。
+- `AfterJoin` の `path: $.A` により、`A` の output だけを抽出して input に渡す。
+
 ---
 
 ## 2. Nodes 形式
@@ -184,6 +262,61 @@ nodes:
     type: end
     label: Completed
 ```
+
+### 2.3.1 例（Nodes 形式 + inputMapping）
+
+`action.inputMapping.path` を使うことで、States 形式と同様に遷移直前の候補 input を抽出できる。
+
+```yaml
+version: 1
+
+workflow:
+  id: fork-join-inputmap
+  name: ForkJoin InputMapping (Nodes)
+
+nodes:
+  - id: start
+    type: action
+    action: seed
+    next: fork1
+
+  - id: fork1
+    type: fork
+    branches: [a, b]
+
+  - id: a
+    type: action
+    action: branch.a
+    inputMapping:
+      path: $.shared
+    next: join1
+
+  - id: b
+    type: action
+    action: branch.b
+    inputMapping:
+      path: $.shared
+    next: join1
+
+  - id: join1
+    type: join
+    mode: all
+    next: afterJoin
+
+  - id: afterJoin
+    type: action
+    action: finalize
+    inputMapping:
+      path: $.a
+    next: end1
+
+  - id: end1
+    type: end
+```
+
+- `start` の output が `{ shared: "fork-value" }` なら `a` / `b` は `"fork-value"` を受け取る。
+- `join1` 後の候補 input は `{ a: <aのoutput>, b: <bのoutput> }`。
+- `afterJoin` は `path: $.a` で join 辞書から `a` の output を抽出する。
 
 - **label**, **description**, **tags**, **ui** は UI/エディタ用。エンジンは無視してよい。
 - **metadata** をルートに置く場合もエンジンは無視してよい。
