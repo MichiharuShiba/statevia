@@ -201,6 +201,46 @@ public class WorkflowInputPropagationTests
         Assert.Equal("out-A", afterInput);
     }
 
+    /// <summary>input マップで複数キー・ネストキー・リテラルが構築されることを検証する。</summary>
+    [Fact]
+    public async Task Next_transition_builds_object_with_nested_and_literal_values()
+    {
+        // Arrange
+        object? bInput = null;
+        var def = CreateTwoStateChainWithStateInput(
+            DefaultStateExecutor.Create(new DelegateState((_, _, _) =>
+                Task.FromResult<object?>(new Dictionary<string, object?> { ["a"] = new Dictionary<string, object?> { ["b"] = "from-path" } }))),
+            DefaultStateExecutor.Create(new DelegateState((_, input, _) =>
+            {
+                bInput = input;
+                return Task.FromResult<object?>(null);
+            })),
+            new StateInputDefinition
+            {
+                Values = new Dictionary<string, StateInputValueDefinition>
+                {
+                    ["foo"] = new() { Path = "$.a" },
+                    ["foo.bar"] = new() { Path = "$.a.b" },
+                    ["title"] = new() { Literal = "my song" },
+                    ["count"] = new() { Literal = 2L },
+                    ["enabled"] = new() { Literal = true }
+                }
+            });
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var id = engine.Start(def);
+
+        // Act
+        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+
+        // Assert
+        var dict = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(bInput);
+        Assert.Equal("my song", dict["title"]);
+        Assert.Equal(2L, dict["count"]);
+        Assert.Equal(true, dict["enabled"]);
+        var foo = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(dict["foo"]);
+        Assert.Equal("from-path", foo["bar"]);
+    }
+
     private static async Task WaitUntilCompletedAsync(WorkflowEngine engine, string workflowId, int maxMs = 3000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(maxMs);

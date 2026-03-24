@@ -60,6 +60,24 @@ public sealed class JoinDefinition
 /// </summary>
 public sealed class StateInputDefinition
 {
-    /// <summary>入力候補から値を抽出するパス。未指定時は恒等（raw 通過）。</summary>
+    /// <summary>入力候補から値を抽出するパス（単一ショートハンド）。</summary>
     public string? Path { get; init; }
+
+    /// <summary>
+    /// 複数キーの入力指定（key -> expression/literal）。
+    /// key にドットを含む場合はネストオブジェクトとして構築される。
+    /// </summary>
+    public IReadOnlyDictionary<string, StateInputValueDefinition>? Values { get; init; }
+}
+
+/// <summary>
+/// 入力値定義。<see cref="Path"/> が設定されていれば raw から抽出し、
+/// 未設定なら <see cref="Literal"/> をそのまま使う。
+/// </summary>
+public sealed class StateInputValueDefinition
+{
+    /// <summary>JSONPath 風パス（$ または $.a.b）。</summary>
+    public string? Path { get; init; }
+    /// <summary>リテラル値（string/number/bool/null/object/array）。</summary>
+    public object? Literal { get; init; }
 }

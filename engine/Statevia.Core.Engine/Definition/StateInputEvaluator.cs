@@ -9,12 +9,37 @@ internal static class StateInputEvaluator
 {
     public static object? Apply(StateInputDefinition? spec, object? rawInput)
     {
-        if (spec == null || string.IsNullOrWhiteSpace(spec.Path) || spec.Path == "$")
+        if (spec == null)
         {
             return rawInput;
         }
 
-        var path = spec.Path!;
+        if (!string.IsNullOrWhiteSpace(spec.Path))
+        {
+            return EvaluatePath(spec.Path!, rawInput);
+        }
+
+        if (spec.Values == null || spec.Values.Count == 0)
+        {
+            return rawInput;
+        }
+
+        var result = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, valueDef) in spec.Values)
+        {
+            var value = valueDef.Path != null ? EvaluatePath(valueDef.Path, rawInput) : valueDef.Literal;
+            SetByDottedKey(result, key, value);
+        }
+
+        return result;
+    }
+
+    private static object? EvaluatePath(string path, object? rawInput)
+    {
+        if (string.IsNullOrWhiteSpace(path) || path == "$")
+        {
+            return rawInput;
+        }
         if (!path.StartsWith("$.", StringComparison.Ordinal))
         {
             return rawInput;
@@ -32,7 +57,6 @@ internal static class StateInputEvaluator
                 }
                 continue;
             }
-
             if (current is IDictionary dict)
             {
                 if (!dict.Contains(segment))
@@ -42,10 +66,30 @@ internal static class StateInputEvaluator
                 current = dict[segment];
                 continue;
             }
-
             return null;
         }
-
         return current;
+    }
+
+    private static void SetByDottedKey(Dictionary<string, object?> root, string dottedKey, object? value)
+    {
+        var parts = dottedKey.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+        {
+            return;
+        }
+
+        Dictionary<string, object?> current = root;
+        for (var i = 0; i < parts.Length - 1; i++)
+        {
+            var p = parts[i];
+            if (!current.TryGetValue(p, out var next) || next is not Dictionary<string, object?> nextDict)
+            {
+                nextDict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                current[p] = nextDict;
+            }
+            current = nextDict;
+        }
+        current[parts[^1]] = value;
     }
 }

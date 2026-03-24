@@ -99,12 +99,7 @@ public sealed class DefinitionLoader
 
         if (dict.TryGetValue("input", out var inputVal) && inputVal != null)
         {
-            var mapDict = ToStringDict(inputVal);
-            EnsureOnlyKnownKeys(mapDict, ["path"], "input");
-            stateInput = new StateInputDefinition
-            {
-                Path = GetStr(mapDict, "path")
-            };
+            stateInput = ParseStateInput(inputVal);
         }
 
         return new StateDefinition { On = on, Wait = wait, Join = join, Input = stateInput };
@@ -192,6 +187,47 @@ public sealed class DefinitionLoader
         }
         return null;
     }
+
+    private static StateInputDefinition ParseStateInput(object inputVal)
+    {
+        // ショートハンド: input: $.a.b
+        if (inputVal is string s)
+        {
+            if (IsPathExpression(s))
+            {
+                return new StateInputDefinition { Path = s };
+            }
+            return new StateInputDefinition { Values = new Dictionary<string, StateInputValueDefinition>(StringComparer.OrdinalIgnoreCase) { ["value"] = new() { Literal = s } } };
+        }
+
+        // マップ: input: { foo: $.a, bar: 2, ... }
+        var map = ToStringDict(inputVal);
+        if (map.Count == 1
+            && map.TryGetValue("path", out var pathVal)
+            && pathVal is string onlyPath
+            && IsPathExpression(onlyPath))
+        {
+            return new StateInputDefinition { Path = onlyPath };
+        }
+
+        var values = new Dictionary<string, StateInputValueDefinition>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, raw) in map)
+        {
+            if (raw is string path && IsPathExpression(path))
+            {
+                values[key] = new StateInputValueDefinition { Path = path };
+            }
+            else
+            {
+                values[key] = new StateInputValueDefinition { Literal = raw };
+            }
+        }
+
+        return new StateInputDefinition { Values = values };
+    }
+
+    private static bool IsPathExpression(string s) =>
+        s == "$" || s.StartsWith("$.", StringComparison.Ordinal);
 
     private static void EnsureOnlyKnownKeys(Dictionary<string, object?> dict, IReadOnlyCollection<string> knownKeys, string sectionName)
     {

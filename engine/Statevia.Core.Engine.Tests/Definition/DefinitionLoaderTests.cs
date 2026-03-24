@@ -158,9 +158,9 @@ public class DefinitionLoaderTests
         Assert.Equal("$.payload.value", def.States["B"].Input?.Path);
     }
 
-    /// <summary>input に未知キーがある場合は InvalidOperationException を投げることを検証する。</summary>
+    /// <summary>input のマップ値にパス式とリテラルを混在してパースできることを検証する。</summary>
     [Fact]
-    public void Load_StateInputWithUnknownKey_Throws()
+    public void Load_ParsesStateInputMap_WithPathAndLiterals()
     {
         // Arrange
         var yaml = """
@@ -169,18 +169,28 @@ public class DefinitionLoaderTests
             states:
               B:
                 input:
-                  path: $.payload.value
-                  const: 1
+                  foo: $.payload.value
+                  title: my song
+                  count: 2
+                  enabled: true
                 on:
                   Completed:
                     end: true
             """;
         var loader = new DefinitionLoader();
 
-        // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(() => loader.Load(yaml));
-        Assert.Contains("Unknown key in input", ex.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("const", ex.Message, StringComparison.OrdinalIgnoreCase);
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        var input = def.States["B"].Input;
+        Assert.NotNull(input);
+        Assert.Null(input!.Path);
+        Assert.NotNull(input.Values);
+        Assert.Equal("$.payload.value", input.Values!["foo"].Path);
+        Assert.Equal("my song", input.Values["title"].Literal);
+        Assert.Equal(2L, input.Values["count"].Literal);
+        Assert.Equal(true, input.Values["enabled"].Literal);
     }
 
     /// <summary>states が空の YAML をパースすることを検証する。</summary>

@@ -95,8 +95,8 @@ states:
 
 ### 1.6 例（input を使った States 形式）
 
-`input.path` は、遷移で入る直前の候補 input に適用される。  
-現在の最小仕様は `"$"` と `"$.foo.bar"`。
+`input` は、遷移で入る直前の候補 input に適用される。  
+`path` の単一ショートハンドと、複数キーのマップ形式をサポートする。
 
 ```yaml
 workflow:
@@ -123,6 +123,33 @@ states:
 
 - `Start` の output が `{ payload: { value: 42 } }` のとき、`ExtractPayload` の input は `42` になる。
 - `$.payload.value` が見つからない場合、`ExtractPayload` の input は `null` になる。
+- `input` 定義がある状態では、定義で構築した値のみが input になる（未指定フィールドの自動マージはしない）。
+
+### 1.6.1 input マップ形式（複数/ネスト/リテラル）
+
+```yaml
+states:
+  B:
+    input:
+      foo: $.a
+      foo.bar: $.a.b
+      title: "my song"
+      retry: 2
+      enabled: true
+      note: null
+```
+
+- `$` または `$.` で始まる文字列はパス式
+- それ以外はリテラル
+- `foo.bar` はネストオブジェクトとして構築される（後勝ち）
+
+### 1.6.2 ユーザー定義状態（IState）との関係
+
+- 各状態の output は `IState<TInput, TOutput>.ExecuteAsync(...)` の戻り値。
+- 次状態 input の決定ルール:
+  - `input` 未定義: 直前 output をそのまま渡す
+  - `input` 定義あり: `input` の評価結果のみを渡す
+- `input` 定義ありの場合、マッピングしない output の値は引き継がれないため、必要な値は明示的に `input` へ記述する。
 
 ### 1.7 例（Fork/Join と input）
 

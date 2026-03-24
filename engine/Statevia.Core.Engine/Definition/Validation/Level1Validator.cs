@@ -103,15 +103,33 @@ public static class Level1Validator
             return;
         }
 
-        if (m.Path == null)
+        if (m.Path != null)
         {
-            errors.Add($"input must define path: {stateName}");
+            if (!IsValidSimpleJsonPath(m.Path))
+            {
+                errors.Add($"input.path is invalid for state '{stateName}': {m.Path}");
+            }
             return;
         }
 
-        if (!IsValidSimpleJsonPath(m.Path))
+        if (m.Values == null || m.Values.Count == 0)
         {
-            errors.Add($"input.path is invalid for state '{stateName}': {m.Path}");
+            errors.Add($"input must define path or values: {stateName}");
+            return;
+        }
+
+        foreach (var (key, valueDef) in m.Values)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                errors.Add($"input key cannot be empty: {stateName}");
+                continue;
+            }
+
+            if (valueDef.Path != null && !IsValidSimpleJsonPath(valueDef.Path))
+            {
+                errors.Add($"input.path is invalid for state '{stateName}' key '{key}': {valueDef.Path}");
+            }
         }
     }
 

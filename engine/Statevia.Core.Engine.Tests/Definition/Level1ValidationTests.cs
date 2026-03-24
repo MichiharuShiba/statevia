@@ -204,4 +204,37 @@ public class Level1ValidationTests
         // Assert
         Assert.True(result.IsValid);
     }
+
+    /// <summary>input マップ内の path が不正な場合は Level1 検証で失敗することを検証する。</summary>
+    [Fact]
+    public void Validate_InvalidStateInputMapPath_Fails()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Input = new StateInputDefinition
+                    {
+                        Values = new Dictionary<string, StateInputValueDefinition>
+                        {
+                            ["foo"] = new() { Path = "a.b" },
+                            ["bar"] = new() { Literal = 1L }
+                        }
+                    },
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("input.path is invalid", StringComparison.OrdinalIgnoreCase));
+    }
 }
