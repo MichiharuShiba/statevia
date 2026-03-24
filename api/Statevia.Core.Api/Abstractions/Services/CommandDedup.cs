@@ -9,5 +9,5 @@ public readonly struct CommandDedupKey
 
 public interface ICommandDedupService
 {
-    CommandDedupKey? Create(string tenantId, string? idempotencyKey, string method, string path);
+    CommandDedupKey? Create(string tenantId, string? idempotencyKey, string method, string path, string? requestHash = null);
 }

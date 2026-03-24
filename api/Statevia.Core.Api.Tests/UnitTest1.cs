@@ -49,4 +49,22 @@ public sealed class UnitTest1
         Assert.Equal("abc123", key.IdempotencyKey);
         Assert.Equal("tenant-1|POST /v1/workflows/1:abc123", key.DedupKey);
     }
+
+    /// <summary>requestHash 指定時は dedup キー末尾にハッシュを連結する。</summary>
+    [Fact]
+    public void CommandDedupService_Create_ShouldIncludeRequestHashWhenProvided()
+    {
+        var svc = new CommandDedupService();
+
+        var keyOpt = svc.Create(
+            tenantId: "tenant-1",
+            idempotencyKey: "abc123",
+            method: "POST",
+            path: "/v1/workflows",
+            requestHash: "hash-xyz")!;
+
+        Assert.NotNull(keyOpt);
+        var key = keyOpt.Value;
+        Assert.Equal("tenant-1|POST /v1/workflows:abc123:hash-xyz", key.DedupKey);
+    }
 }

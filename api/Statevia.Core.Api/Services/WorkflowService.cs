@@ -1,4 +1,6 @@
 using System.Data;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Api.Abstractions.Persistence;
@@ -13,6 +15,8 @@ namespace Statevia.Core.Api.Services;
 
 public sealed class WorkflowService : IWorkflowService
 {
+    private static readonly JsonSerializerOptions DedupJsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
     private readonly IWorkflowEngine _engine;
     private readonly IDisplayIdService _displayIds;
     private readonly IDefinitionCompilerService _compiler;
@@ -56,7 +60,8 @@ public sealed class WorkflowService : IWorkflowService
         string path,
         CancellationToken ct)
     {
-        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, method, path);
+        var requestHash = ComputeStartRequestHash(request);
+        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, method, path, requestHash);
 
         if (dedupKey is { } key)
         {
@@ -82,7 +87,7 @@ public sealed class WorkflowService : IWorkflowService
 
         var workflowId = _idGenerator.NewGuid();
         var engineId = workflowId.ToString();
-        _engine.Start(compiled, engineId);
+        _engine.Start(compiled, engineId, request.Input);
 
         var displayId = await _displayIds.AllocateAsync("workflow", workflowId, ct).ConfigureAwait(false);
         var status = MapStatus(_engine.GetSnapshot(engineId));
@@ -135,7 +140,7 @@ public sealed class WorkflowService : IWorkflowService
                     DedupKey = saveKey.DedupKey,
                     Endpoint = saveKey.Endpoint,
                     IdempotencyKey = saveKey.IdempotencyKey,
-                    RequestHash = null,
+                    RequestHash = requestHash,
                     StatusCode = StatusCodes.Status201Created,
                     ResponseBody = responseJson,
                     CreatedAt = createdAt,
@@ -513,6 +518,18 @@ public sealed class WorkflowService : IWorkflowService
         {
             return null;
         }
+    }
+
+    private static string ComputeStartRequestHash(StartWorkflowRequest request)
+    {
+        var normalized = JsonSerializer.Serialize(
+            new
+            {
+                definitionId = request.DefinitionId,
+                input = request.Input
+            },
+            DedupJsonOptions);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
     }
 
     private static string MapStatus(WorkflowSnapshot? snapshot)
