@@ -153,4 +153,88 @@ public class Level1ValidationTests
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, e => e.Contains("Join references unknown", StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>input.path の形式が不正な定義は Level1 検証で失敗することを検証する。</summary>
+    [Fact]
+    public void Validate_InvalidStateInputPath_Fails()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Input = new StateInputDefinition { Path = "payload.value" },
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("input.path is invalid", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>input.path が "$.foo.bar" 形式なら Level1 検証を通過することを検証する。</summary>
+    [Fact]
+    public void Validate_ValidStateInputPath_Passes()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Input = new StateInputDefinition { Path = "$.foo.bar" },
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.True(result.IsValid);
+    }
+
+    /// <summary>input マップ内の path が不正な場合は Level1 検証で失敗することを検証する。</summary>
+    [Fact]
+    public void Validate_InvalidStateInputMapPath_Fails()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Input = new StateInputDefinition
+                    {
+                        Values = new Dictionary<string, StateInputValueDefinition>
+                        {
+                            ["foo"] = new() { Path = "a.b" },
+                            ["bar"] = new() { Literal = 1L }
+                        }
+                    },
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("input.path is invalid", StringComparison.OrdinalIgnoreCase));
+    }
 }

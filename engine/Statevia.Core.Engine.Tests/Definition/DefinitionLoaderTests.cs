@@ -129,6 +129,70 @@ public class DefinitionLoaderTests
         Assert.True(state.On!["Completed"].End);
     }
 
+    /// <summary>状態直下の input.path をパースできることを検証する。</summary>
+    [Fact]
+    public void Load_ParsesStateInputPath()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                on:
+                  Completed:
+                    next: B
+              B:
+                input:
+                  path: $.payload.value
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new DefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        Assert.Equal("$.payload.value", def.States["B"].Input?.Path);
+    }
+
+    /// <summary>input のマップ値にパス式とリテラルを混在してパースできることを検証する。</summary>
+    [Fact]
+    public void Load_ParsesStateInputMap_WithPathAndLiterals()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              B:
+                input:
+                  foo: $.payload.value
+                  title: my song
+                  count: 2
+                  enabled: true
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new DefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        var input = def.States["B"].Input;
+        Assert.NotNull(input);
+        Assert.Null(input!.Path);
+        Assert.NotNull(input.Values);
+        Assert.Equal("$.payload.value", input.Values!["foo"].Path);
+        Assert.Equal("my song", input.Values["title"].Literal);
+        Assert.Equal(2L, input.Values["count"].Literal);
+        Assert.Equal(true, input.Values["enabled"].Literal);
+    }
+
     /// <summary>states が空の YAML をパースすることを検証する。</summary>
     [Fact]
     public void Load_WithEmptyStates_ReturnsEmptyStates()
