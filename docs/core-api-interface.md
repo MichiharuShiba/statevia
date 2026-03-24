@@ -82,11 +82,15 @@ Request:
 
 ```json
 {
-  "definitionId": "string"
+  "definitionId": "string",
+  "input": {
+    "foo": "bar"
+  }
 }
 ```
 
 - `definitionId`: 定義の displayId または UUID
+- `input`: 任意の JSON 値（省略可）。初期状態へ `workflowInput` として渡される。
 - Response: 201 Created
 
 ```json
@@ -147,7 +151,7 @@ Request:
 ### 4.1 ヘッダ
 
 - **Content-Type**: application/json（Body がある場合）
-- **X-Idempotency-Key**: 任意（現行実装では未使用だが推奨）
+- **X-Idempotency-Key**: 任意。`POST /v1/workflows` では `definitionId + input` を含むリクエストハッシュで冪等キーを分離する（同一キーでも input が異なれば別リクエスト扱い）。
 
 ### 4.2 ステータスコード
 

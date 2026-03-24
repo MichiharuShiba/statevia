@@ -40,6 +40,8 @@ Statevia is a definition-driven, event-sourced workflow engine with three compon
 
 Further HTTP contract: `docs/core-api-interface.md`.
 
+**Input/Output exposure policy (IO-14):** `workflowInput` / state `output` are not returned by default in list/get APIs; when they appear in graph/snapshot payloads for debugging, clients must treat them as potentially sensitive and apply masking/size controls before external logging.
+
 ### Docker Compose（運用）
 
 `docker-compose.yml` の起動手順・注意点は **`docs/operations-docker.md`** を参照。

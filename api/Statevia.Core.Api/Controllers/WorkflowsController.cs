@@ -1,6 +1,7 @@
 using System;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Hosting;
@@ -172,6 +173,7 @@ public class StartWorkflowRequest
 {
     [Required]
     public string DefinitionId { get; set; } = "";
+    public JsonElement? Input { get; set; }
 }
 
 public class PublishEventRequest
