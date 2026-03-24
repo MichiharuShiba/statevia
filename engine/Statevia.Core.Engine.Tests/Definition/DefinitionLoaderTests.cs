@@ -129,9 +129,9 @@ public class DefinitionLoaderTests
         Assert.True(state.On!["Completed"].End);
     }
 
-    /// <summary>状態直下の inputMapping.path をパースできることを検証する。</summary>
+    /// <summary>状態直下の input.path をパースできることを検証する。</summary>
     [Fact]
-    public void Load_ParsesInputMappingPath()
+    public void Load_ParsesStateInputPath()
     {
         // Arrange
         var yaml = """
@@ -143,7 +143,7 @@ public class DefinitionLoaderTests
                   Completed:
                     next: B
               B:
-                inputMapping:
+                input:
                   path: $.payload.value
                 on:
                   Completed:
@@ -155,12 +155,12 @@ public class DefinitionLoaderTests
         var def = loader.Load(yaml);
 
         // Assert
-        Assert.Equal("$.payload.value", def.States["B"].InputMapping?.Path);
+        Assert.Equal("$.payload.value", def.States["B"].Input?.Path);
     }
 
-    /// <summary>inputMapping に未知キーがある場合は InvalidOperationException を投げることを検証する。</summary>
+    /// <summary>input に未知キーがある場合は InvalidOperationException を投げることを検証する。</summary>
     [Fact]
-    public void Load_InputMappingWithUnknownKey_Throws()
+    public void Load_StateInputWithUnknownKey_Throws()
     {
         // Arrange
         var yaml = """
@@ -168,7 +168,7 @@ public class DefinitionLoaderTests
               name: W
             states:
               B:
-                inputMapping:
+                input:
                   path: $.payload.value
                   const: 1
                 on:
@@ -179,7 +179,7 @@ public class DefinitionLoaderTests
 
         // Act & Assert
         var ex = Assert.Throws<InvalidOperationException>(() => loader.Load(yaml));
-        Assert.Contains("Unknown key in inputMapping", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Unknown key in input", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("const", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 

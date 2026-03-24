@@ -154,9 +154,9 @@ public class Level1ValidationTests
         Assert.Contains(result.Errors, e => e.Contains("Join references unknown", StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>inputMapping.path の形式が不正な定義は Level1 検証で失敗することを検証する。</summary>
+    /// <summary>input.path の形式が不正な定義は Level1 検証で失敗することを検証する。</summary>
     [Fact]
-    public void Validate_InvalidInputMappingPath_Fails()
+    public void Validate_InvalidStateInputPath_Fails()
     {
         // Arrange
         var def = new WorkflowDefinition
@@ -166,7 +166,7 @@ public class Level1ValidationTests
             {
                 ["A"] = new StateDefinition
                 {
-                    InputMapping = new InputMappingDefinition { Path = "payload.value" },
+                    Input = new StateInputDefinition { Path = "payload.value" },
                     On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
                 }
             }
@@ -177,12 +177,12 @@ public class Level1ValidationTests
 
         // Assert
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.Contains("inputMapping.path is invalid", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Errors, e => e.Contains("input.path is invalid", StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>inputMapping.path が "$.foo.bar" 形式なら Level1 検証を通過することを検証する。</summary>
+    /// <summary>input.path が "$.foo.bar" 形式なら Level1 検証を通過することを検証する。</summary>
     [Fact]
-    public void Validate_ValidInputMappingPath_Passes()
+    public void Validate_ValidStateInputPath_Passes()
     {
         // Arrange
         var def = new WorkflowDefinition
@@ -192,7 +192,7 @@ public class Level1ValidationTests
             {
                 ["A"] = new StateDefinition
                 {
-                    InputMapping = new InputMappingDefinition { Path = "$.foo.bar" },
+                    Input = new StateInputDefinition { Path = "$.foo.bar" },
                     On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
                 }
             }

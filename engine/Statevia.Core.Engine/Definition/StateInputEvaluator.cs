@@ -3,18 +3,18 @@ using System.Collections;
 namespace Statevia.Core.Engine.Definition;
 
 /// <summary>
-/// inputMapping の最小評価器。JSONPath 風の path（$, $.a.b）を評価する。
+/// <c>states.&lt;name&gt;.input</c> の最小評価器。JSONPath 風の path（$, $.a.b）を評価する。
 /// </summary>
-internal static class InputMappingEvaluator
+internal static class StateInputEvaluator
 {
-    public static object? Apply(InputMappingDefinition? mapping, object? rawInput)
+    public static object? Apply(StateInputDefinition? spec, object? rawInput)
     {
-        if (mapping == null || string.IsNullOrWhiteSpace(mapping.Path) || mapping.Path == "$")
+        if (spec == null || string.IsNullOrWhiteSpace(spec.Path) || spec.Path == "$")
         {
             return rawInput;
         }
 
-        var path = mapping.Path!;
+        var path = spec.Path!;
         if (!path.StartsWith("$.", StringComparison.Ordinal))
         {
             return rawInput;

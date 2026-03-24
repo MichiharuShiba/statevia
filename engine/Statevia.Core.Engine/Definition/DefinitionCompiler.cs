@@ -23,20 +23,20 @@ public sealed class DefinitionCompiler
             ForkTable = BuildForkTable(definition),
             JoinTable = BuildJoinTable(definition),
             WaitTable = BuildWaitTable(definition),
-            InputMappings = BuildInputMappingTable(definition),
+            StateInputs = BuildStateInputTable(definition),
             InitialState = DetermineInitialState(definition),
             StateExecutorFactory = _executorFactory
         };
     }
 
-    private static IReadOnlyDictionary<string, InputMappingDefinition> BuildInputMappingTable(WorkflowDefinition definition)
+    private static IReadOnlyDictionary<string, StateInputDefinition> BuildStateInputTable(WorkflowDefinition definition)
     {
-        var result = new Dictionary<string, InputMappingDefinition>(StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<string, StateInputDefinition>(StringComparer.OrdinalIgnoreCase);
         foreach (var (stateName, stateDef) in definition.States)
         {
-            if (stateDef.InputMapping != null)
+            if (stateDef.Input != null)
             {
-                result[stateName] = stateDef.InputMapping;
+                result[stateName] = stateDef.Input;
             }
         }
         return result;

@@ -228,9 +228,9 @@ public class DefinitionCompilerTests
         Assert.Equal(new[] { "A", "B" }, compiled.JoinTable["Join"]);
     }
 
-    /// <summary>inputMapping を持つ状態が InputMappings テーブルに含まれることを検証する。</summary>
+    /// <summary>input を持つ状態が StateInputs テーブルに含まれることを検証する。</summary>
     [Fact]
-    public void Compile_ProducesInputMappingTable()
+    public void Compile_ProducesStateInputTable()
     {
         // Arrange
         var def = new WorkflowDefinition
@@ -241,7 +241,7 @@ public class DefinitionCompilerTests
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "B" } } },
                 ["B"] = new StateDefinition
                 {
-                    InputMapping = new InputMappingDefinition { Path = "$.payload" },
+                    Input = new StateInputDefinition { Path = "$.payload" },
                     On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
                 }
             }
@@ -253,8 +253,8 @@ public class DefinitionCompilerTests
         var compiled = compiler.Compile(def);
 
         // Assert
-        Assert.True(compiled.InputMappings.ContainsKey("B"));
-        Assert.Equal("$.payload", compiled.InputMappings["B"].Path);
+        Assert.True(compiled.StateInputs.ContainsKey("B"));
+        Assert.Equal("$.payload", compiled.StateInputs["B"].Path);
     }
 
     /// <summary>複数の Join 状態がある場合、すべてが Join テーブルに含まれることを検証する。</summary>

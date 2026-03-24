@@ -23,7 +23,7 @@ public static class Level1Validator
             ValidateStateName(stateName, errors);
             ValidateTransitions(stateName, stateDef, stateNames, errors);
             ValidateJoin(stateDef, stateNames, errors);
-            ValidateInputMapping(stateName, stateDef, errors);
+            ValidateStateInput(stateName, stateDef, errors);
         }
 
         return new ValidationResult(errors);
@@ -95,9 +95,9 @@ public static class Level1Validator
         }
     }
 
-    private static void ValidateInputMapping(string stateName, StateDefinition stateDef, List<string> errors)
+    private static void ValidateStateInput(string stateName, StateDefinition stateDef, List<string> errors)
     {
-        var m = stateDef.InputMapping;
+        var m = stateDef.Input;
         if (m == null)
         {
             return;
@@ -105,13 +105,13 @@ public static class Level1Validator
 
         if (m.Path == null)
         {
-            errors.Add($"inputMapping must define path: {stateName}");
+            errors.Add($"input must define path: {stateName}");
             return;
         }
 
         if (!IsValidSimpleJsonPath(m.Path))
         {
-            errors.Add($"inputMapping.path is invalid for state '{stateName}': {m.Path}");
+            errors.Add($"input.path is invalid for state '{stateName}': {m.Path}");
         }
     }
 

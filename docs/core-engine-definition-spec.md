@@ -93,9 +93,9 @@ states:
         end: true
 ```
 
-### 1.6 例（inputMapping を使った States 形式）
+### 1.6 例（input を使った States 形式）
 
-`inputMapping.path` は、遷移で入る直前の候補 input に適用される。  
+`input.path` は、遷移で入る直前の候補 input に適用される。  
 現在の最小仕様は `"$"` と `"$.foo.bar"`。
 
 ```yaml
@@ -109,7 +109,7 @@ states:
         next: ExtractPayload
 
   ExtractPayload:
-    inputMapping:
+    input:
       path: $.payload.value
     on:
       Completed:
@@ -124,9 +124,9 @@ states:
 - `Start` の output が `{ payload: { value: 42 } }` のとき、`ExtractPayload` の input は `42` になる。
 - `$.payload.value` が見つからない場合、`ExtractPayload` の input は `null` になる。
 
-### 1.7 例（Fork/Join と inputMapping）
+### 1.7 例（Fork/Join と input）
 
-Fork の各分岐先・Join 後の次状態でも `inputMapping.path` を適用できる。
+Fork の各分岐先・Join 後の次状態でも `input.path` を適用できる。
 
 ```yaml
 workflow:
@@ -139,14 +139,14 @@ states:
         fork: [A, B]
 
   A:
-    inputMapping:
+    input:
       path: $.shared
     on:
       Completed:
         next: Join1
 
   B:
-    inputMapping:
+    input:
       path: $.shared
     on:
       Completed:
@@ -160,7 +160,7 @@ states:
         next: AfterJoin
 
   AfterJoin:
-    inputMapping:
+    input:
       path: $.A
     on:
       Completed:
@@ -263,9 +263,9 @@ nodes:
     label: Completed
 ```
 
-### 2.3.1 例（Nodes 形式 + inputMapping）
+### 2.3.1 例（Nodes 形式 + input）
 
-`action.inputMapping.path` を使うことで、States 形式と同様に遷移直前の候補 input を抽出できる。
+`action` ノードの `input.path` を使うことで、States 形式と同様に遷移直前の候補 input を抽出できる。
 
 ```yaml
 version: 1
@@ -287,14 +287,14 @@ nodes:
   - id: a
     type: action
     action: branch.a
-    inputMapping:
+    input:
       path: $.shared
     next: join1
 
   - id: b
     type: action
     action: branch.b
-    inputMapping:
+    input:
       path: $.shared
     next: join1
 
@@ -306,7 +306,7 @@ nodes:
   - id: afterJoin
     type: action
     action: finalize
-    inputMapping:
+    input:
       path: $.a
     next: end1
 

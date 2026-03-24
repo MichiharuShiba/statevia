@@ -85,7 +85,7 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
 
     private async Task RunWorkflowAsync(WorkflowInstance instance, EventProvider eventProvider, object? workflowInput)
     {
-        var initialInput = ApplyInputMapping(instance.Definition, instance.Definition.InitialState, workflowInput);
+        var initialInput = ApplyStateInput(instance.Definition, instance.Definition.InitialState, workflowInput);
         try { await ScheduleStateAsync(instance, eventProvider, instance.Definition.InitialState, null, null, initialInput).ConfigureAwait(false); }
 #pragma warning disable CA1031 // Do not catch general exception types - workflow failure is observed via MarkFailed()
         catch (Exception) { instance.MarkFailed(); }
@@ -162,7 +162,7 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
         var transition = instance.Fsm.Evaluate(joinStateName, Fact.Joined);
         if (transition.HasTransition && transition.Next != null)
         {
-            var mappedJoinInput = ApplyInputMapping(instance.Definition, transition.Next, joinInputs);
+            var mappedJoinInput = ApplyStateInput(instance.Definition, transition.Next, joinInputs);
             await ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, mappedJoinInput).ConfigureAwait(false);
         }
         else if (transition.End)
@@ -201,25 +201,25 @@ public sealed class WorkflowEngine : IWorkflowEngine, IDisposable
             // Broadcast: 同一 output を各分岐の先頭状態へ渡す（workflow-input-output-spec §3.3）。
             foreach (var nextState in transition.Fork)
             {
-                var mappedForkInput = ApplyInputMapping(instance.Definition, nextState, output);
+                var mappedForkInput = ApplyStateInput(instance.Definition, nextState, output);
                 _ = ScheduleStateAsync(instance, eventProvider, nextState, nodeId, EdgeType.Fork, mappedForkInput);
             }
         }
         else if (transition.Next != null)
         {
-            var mappedInput = ApplyInputMapping(instance.Definition, transition.Next, output);
+            var mappedInput = ApplyStateInput(instance.Definition, transition.Next, output);
             _ = ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, mappedInput);
         }
     }
 
-    private static object? ApplyInputMapping(CompiledWorkflowDefinition definition, string targetState, object? rawInput)
+    private static object? ApplyStateInput(CompiledWorkflowDefinition definition, string targetState, object? rawInput)
     {
-        if (!definition.InputMappings.TryGetValue(targetState, out var mapping))
+        if (!definition.StateInputs.TryGetValue(targetState, out var spec))
         {
             return rawInput;
         }
 
-        return InputMappingEvaluator.Apply(mapping, rawInput);
+        return StateInputEvaluator.Apply(spec, rawInput);
     }
 
     /// <inheritdoc />

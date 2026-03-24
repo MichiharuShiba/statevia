@@ -115,13 +115,13 @@ public class WorkflowInputPropagationTests
         Assert.Equal("out-B", dict["B"]);
     }
 
-    /// <summary>next 遷移先の inputMapping.path が raw input に適用されることを検証する。</summary>
+    /// <summary>next 遷移先の input.path が raw input に適用されることを検証する。</summary>
     [Fact]
-    public async Task Next_transition_applies_inputMapping_path()
+    public async Task Next_transition_applies_state_input_path()
     {
         // Arrange
         object? bInput = "unset";
-        var def = CreateTwoStateChainWithInputMapping(
+        var def = CreateTwoStateChainWithStateInput(
             DefaultStateExecutor.Create(new DelegateState((_, _, _) =>
                 Task.FromResult<object?>(new Dictionary<string, object?> { ["payload"] = "mapped-value" }))),
             DefaultStateExecutor.Create(new DelegateState((_, input, _) =>
@@ -129,7 +129,7 @@ public class WorkflowInputPropagationTests
                 bInput = input;
                 return Task.FromResult<object?>(null);
             })),
-            new InputMappingDefinition { Path = "$.payload" });
+            new StateInputDefinition { Path = "$.payload" });
         using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
         var id = engine.Start(def);
 
@@ -140,14 +140,14 @@ public class WorkflowInputPropagationTests
         Assert.Equal("mapped-value", bInput);
     }
 
-    /// <summary>Fork 分岐先ごとに inputMapping.path が適用されることを検証する。</summary>
+    /// <summary>Fork 分岐先ごとに input.path が適用されることを検証する。</summary>
     [Fact]
-    public async Task Fork_transition_applies_inputMapping_per_branch()
+    public async Task Fork_transition_applies_state_input_per_branch()
     {
         // Arrange
         var aInput = "unset";
         var bInput = "unset";
-        var def = CreateForkDefinitionWithInputMapping(
+        var def = CreateForkDefinitionWithStateInput(
             DefaultStateExecutor.Create(new DelegateState((_, _, _) =>
                 Task.FromResult<object?>(new Dictionary<string, object?> { ["v"] = "fork-mapped" }))),
             DefaultStateExecutor.Create(new DelegateState((_, input, _) =>
@@ -160,7 +160,7 @@ public class WorkflowInputPropagationTests
                 bInput = input?.ToString() ?? "null";
                 return Task.FromResult<object?>("b");
             })),
-            new Dictionary<string, InputMappingDefinition>
+            new Dictionary<string, StateInputDefinition>
             {
                 ["A"] = new() { Path = "$.v" },
                 ["B"] = new() { Path = "$.v" }
@@ -176,13 +176,13 @@ public class WorkflowInputPropagationTests
         Assert.Equal("fork-mapped", bInput);
     }
 
-    /// <summary>Join 後の next 遷移先に inputMapping.path が適用されることを検証する。</summary>
+    /// <summary>Join 後の next 遷移先に input.path が適用されることを検証する。</summary>
     [Fact]
-    public async Task Join_next_applies_inputMapping_path()
+    public async Task Join_next_applies_state_input_path()
     {
         // Arrange
         object? afterInput = "unset";
-        var def = CreateJoinThenNextWithInputMapping(
+        var def = CreateJoinThenNextWithStateInput(
             DefaultStateExecutor.Create(new DelegateState((_, _, _) => Task.FromResult<object?>("out-A"))),
             DefaultStateExecutor.Create(new DelegateState((_, _, _) => Task.FromResult<object?>("out-B"))),
             DefaultStateExecutor.Create(new DelegateState((_, input, _) =>
@@ -190,7 +190,7 @@ public class WorkflowInputPropagationTests
                 afterInput = input;
                 return Task.FromResult<object?>(null);
             })),
-            new InputMappingDefinition { Path = "$.A" });
+            new StateInputDefinition { Path = "$.A" });
         using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
         var id = engine.Start(def);
 
@@ -260,10 +260,10 @@ public class WorkflowInputPropagationTests
         };
     }
 
-    private static CompiledWorkflowDefinition CreateTwoStateChainWithInputMapping(
+    private static CompiledWorkflowDefinition CreateTwoStateChainWithStateInput(
         IStateExecutor a,
         IStateExecutor b,
-        InputMappingDefinition mappingForB)
+        StateInputDefinition mappingForB)
     {
         return new CompiledWorkflowDefinition
         {
@@ -276,7 +276,7 @@ public class WorkflowInputPropagationTests
             ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
             WaitTable = new Dictionary<string, string>(),
-            InputMappings = new Dictionary<string, InputMappingDefinition> { ["B"] = mappingForB },
+            StateInputs = new Dictionary<string, StateInputDefinition> { ["B"] = mappingForB },
             InitialState = "A",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["A"] = a, ["B"] = b })
         };
@@ -306,11 +306,11 @@ public class WorkflowInputPropagationTests
         };
     }
 
-    private static CompiledWorkflowDefinition CreateForkDefinitionWithInputMapping(
+    private static CompiledWorkflowDefinition CreateForkDefinitionWithStateInput(
         IStateExecutor start,
         IStateExecutor a,
         IStateExecutor b,
-        IReadOnlyDictionary<string, InputMappingDefinition> inputMappings)
+        IReadOnlyDictionary<string, StateInputDefinition> stateInputs)
     {
         return new CompiledWorkflowDefinition
         {
@@ -324,7 +324,7 @@ public class WorkflowInputPropagationTests
             ForkTable = new Dictionary<string, IReadOnlyList<string>> { ["Start"] = new[] { "A", "B" } },
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
             WaitTable = new Dictionary<string, string>(),
-            InputMappings = inputMappings,
+            StateInputs = stateInputs,
             InitialState = "Start",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
             {
@@ -367,11 +367,11 @@ public class WorkflowInputPropagationTests
         };
     }
 
-    private static CompiledWorkflowDefinition CreateJoinThenNextWithInputMapping(
+    private static CompiledWorkflowDefinition CreateJoinThenNextWithStateInput(
         IStateExecutor a,
         IStateExecutor b,
         IStateExecutor afterJoin,
-        InputMappingDefinition mappingForAfterJoin)
+        StateInputDefinition mappingForAfterJoin)
     {
         return new CompiledWorkflowDefinition
         {
@@ -385,7 +385,7 @@ public class WorkflowInputPropagationTests
             ForkTable = new Dictionary<string, IReadOnlyList<string>> { ["Start"] = new[] { "A", "B" } },
             JoinTable = new Dictionary<string, IReadOnlyList<string>> { ["Join1"] = new[] { "A", "B" } },
             WaitTable = new Dictionary<string, string>(),
-            InputMappings = new Dictionary<string, InputMappingDefinition> { ["AfterJoin"] = mappingForAfterJoin },
+            StateInputs = new Dictionary<string, StateInputDefinition> { ["AfterJoin"] = mappingForAfterJoin },
             InitialState = "Start",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
             {

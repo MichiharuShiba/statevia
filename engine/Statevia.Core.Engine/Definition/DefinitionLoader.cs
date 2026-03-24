@@ -68,7 +68,7 @@ public sealed class DefinitionLoader
         IReadOnlyDictionary<string, TransitionDefinition>? on = null;
         WaitDefinition? wait = null;
         JoinDefinition? join = null;
-        InputMappingDefinition? inputMapping = null;
+        StateInputDefinition? stateInput = null;
 
         if (dict.TryGetValue("on", out var onVal) && onVal != null)
         {
@@ -97,17 +97,17 @@ public sealed class DefinitionLoader
             }
         }
 
-        if (dict.TryGetValue("inputMapping", out var inputMapVal) && inputMapVal != null)
+        if (dict.TryGetValue("input", out var inputVal) && inputVal != null)
         {
-            var mapDict = ToStringDict(inputMapVal);
-            EnsureOnlyKnownKeys(mapDict, ["path"], "inputMapping");
-            inputMapping = new InputMappingDefinition
+            var mapDict = ToStringDict(inputVal);
+            EnsureOnlyKnownKeys(mapDict, ["path"], "input");
+            stateInput = new StateInputDefinition
             {
                 Path = GetStr(mapDict, "path")
             };
         }
 
-        return new StateDefinition { On = on, Wait = wait, Join = join, InputMapping = inputMapping };
+        return new StateDefinition { On = on, Wait = wait, Join = join, Input = stateInput };
     }
 
     private static IReadOnlyDictionary<string, TransitionDefinition> ParseOn(Dictionary<string, object?> dict)
