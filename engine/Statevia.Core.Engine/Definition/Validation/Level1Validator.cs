@@ -21,6 +21,7 @@ public static class Level1Validator
         foreach (var (stateName, stateDef) in definition.States)
         {
             ValidateStateName(stateName, errors);
+            ValidateActionAndWait(stateName, stateDef, errors);
             ValidateTransitions(stateName, stateDef, stateNames, errors);
             ValidateJoin(stateDef, stateNames, errors);
             ValidateStateInput(stateName, stateDef, errors);
@@ -34,6 +35,14 @@ public static class Level1Validator
         if (string.IsNullOrWhiteSpace(stateName))
         {
             errors.Add("State name cannot be empty.");
+        }
+    }
+
+    private static void ValidateActionAndWait(string stateName, StateDefinition stateDef, List<string> errors)
+    {
+        if (stateDef.Wait != null && !string.IsNullOrWhiteSpace(stateDef.Action))
+        {
+            errors.Add($"State '{stateName}' cannot specify both wait and action.");
         }
     }
 

@@ -19,6 +19,12 @@ public sealed class WorkflowMetadata
 /// <summary>単一状態の定義。on（事実→遷移）、wait、join を含みます。</summary>
 public sealed class StateDefinition
 {
+    /// <summary>
+    /// Core-API の Action Registry で解決するアクション ID（例: <c>order.create</c>）。
+    /// 省略時は既定の no-op。wait のみの状態では通常省略する。
+    /// </summary>
+    public string? Action { get; init; }
+
     /// <summary>事実駆動 FSM の遷移定義（事実名 → 遷移）。</summary>
     public IReadOnlyDictionary<string, TransitionDefinition>? On { get; init; }
     /// <summary>Wait/Resume 用の待機イベント定義。</summary>

@@ -1,4 +1,8 @@
 using Statevia.Core.Api.Abstractions.Services;
+using Statevia.Core.Api.Application.Actions;
+using Statevia.Core.Api.Application.Actions.Abstractions;
+using Statevia.Core.Api.Application.Actions.Builtins;
+using Statevia.Core.Api.Application.Definition;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Definition.Validation;
@@ -6,10 +10,16 @@ using Statevia.Core.Engine.Execution;
 
 namespace Statevia.Core.Api.Hosting;
 
-/// <summary>YAML を検証・コンパイルして CompiledWorkflowDefinition を返す。API 用の汎用 State でコンパイルする。</summary>
+/// <summary>YAML を検証・コンパイルして CompiledWorkflowDefinition を返す。Action Registry で action を検証・解決する。</summary>
 public sealed class DefinitionCompilerService : IDefinitionCompilerService
 {
     private readonly DefinitionLoader _loader = new();
+    private readonly IActionRegistry _actionRegistry;
+
+    public DefinitionCompilerService(IActionRegistry actionRegistry)
+    {
+        _actionRegistry = actionRegistry;
+    }
 
     public (CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(string name, string yaml)
     {
@@ -21,16 +31,9 @@ public sealed class DefinitionCompilerService : IDefinitionCompilerService
         if (!l2.IsValid)
             throw new ArgumentException("Level 2 validation failed: " + string.Join("; ", l2.Errors));
 
-        var executors = new Dictionary<string, IStateExecutor>(StringComparer.OrdinalIgnoreCase);
-        foreach (var stateName in def.States.Keys)
-        {
-            var stateDef = def.States[stateName];
-            if (stateDef.Wait is not null)
-                executors[stateName] = DefaultStateExecutor.Create(new WaitOnlyState(stateDef.Wait.Event));
-            else
-                executors[stateName] = DefaultStateExecutor.Create(new NoOpState());
-        }
-        var factory = new DictionaryStateExecutorFactory(executors);
+        ValidateRegisteredActions(def);
+
+        var factory = new ActionExecutorFactory(def, _actionRegistry);
         var compiler = new DefinitionCompiler(factory);
         var compiled = compiler.Compile(def);
         var compiledJson = System.Text.Json.JsonSerializer.Serialize(new
@@ -45,19 +48,23 @@ public sealed class DefinitionCompilerService : IDefinitionCompilerService
         return (compiled, compiledJson);
     }
 
-    private sealed class NoOpState : IState<Unit, Unit>
+    private void ValidateRegisteredActions(WorkflowDefinition def)
     {
-        public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct) => Task.FromResult(Unit.Value);
+        foreach (var (stateName, state) in def.States)
+        {
+            if (string.IsNullOrWhiteSpace(state.Action))
+                continue;
+
+            var id = state.Action.Trim();
+            if (!_actionRegistry.Exists(id))
+                throw new ArgumentException($"Unknown action '{id}' in state '{stateName}'.");
+        }
     }
 
-    private sealed class WaitOnlyState : IState<Unit, Unit>
+    /// <summary>起動時に組み込みアクションを Registry へ登録する。</summary>
+    public static void RegisterBuiltinActions(IActionRegistry registry)
     {
-        private readonly string _eventName;
-        public WaitOnlyState(string eventName) => _eventName = eventName;
-        public async Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
-        {
-            await ctx.Events.WaitAsync(_eventName, ct).ConfigureAwait(false);
-            return Unit.Value;
-        }
+        ArgumentNullException.ThrowIfNull(registry);
+        registry.Register(WellKnownActionIds.NoOp, DefaultStateExecutor.Create(new NoOpState()));
     }
 }

@@ -102,7 +102,9 @@ public sealed class DefinitionLoader
             stateInput = ParseStateInput(inputVal);
         }
 
-        return new StateDefinition { On = on, Wait = wait, Join = join, Input = stateInput };
+        var action = GetStr(dict, "action");
+
+        return new StateDefinition { Action = action, On = on, Wait = wait, Join = join, Input = stateInput };
     }
 
     private static IReadOnlyDictionary<string, TransitionDefinition> ParseOn(Dictionary<string, object?> dict)

@@ -22,6 +22,7 @@ workflow:
 
 states:
   <StateName>:
+    action: <ActionId>            # 任意。Core-API の Action Registry に登録された ID（例: order.create）
     on:                          # 事実駆動の遷移（Fact → 遷移）
       <Fact>:
         next: <StateName>        # 単一遷移
@@ -35,6 +36,7 @@ states:
 
 - **workflow.name**: ワークフロー名（任意、デフォルト "Unnamed"）。
 - **states**: 状態名 → 状態定義のマップ。各状態は `on`（遷移）、`wait`（待機）、`join`（合流）のいずれかまたは組み合わせを持つ。
+- **action**: 任意。定義登録時に Core-API が Registry へ照合し、未登録の ID はエラーになる。**省略時**は組み込みの `noop`（即時完了）と同等。**`wait` を指定する状態では `action` と併記できない**。
 
 ### 1.2 遷移（on）
 
