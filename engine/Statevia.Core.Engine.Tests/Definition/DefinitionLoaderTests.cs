@@ -1,4 +1,5 @@
 using Statevia.Core.Engine.Definition;
+using Statevia.Core.Engine.Definition.Validation;
 using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Definition;
@@ -156,6 +157,52 @@ public class DefinitionLoaderTests
 
         // Assert
         Assert.Equal("$.payload.value", def.States["B"].Input?.Path);
+    }
+
+    /// <summary>states.&lt;name&gt;.action をパースできることを検証する。</summary>
+    [Fact]
+    public void Load_ParsesStateAction()
+    {
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              CreateOrder:
+                action: order.create
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new DefinitionLoader();
+
+        var def = loader.Load(yaml);
+
+        Assert.Equal("order.create", def.States["CreateOrder"].Action);
+    }
+
+    /// <summary>wait と action の併記は Level 1 検証で拒否されることを検証する。</summary>
+    [Fact]
+    public void Level1_RejectsWaitAndActionTogether()
+    {
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: order.create
+                wait:
+                  event: E
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new DefinitionLoader();
+        var def = loader.Load(yaml);
+
+        var r = Level1Validator.Validate(def);
+
+        Assert.False(r.IsValid);
+        Assert.Contains(r.Errors, e => e.Contains("both wait and action", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>input のマップ値にパス式とリテラルを混在してパースできることを検証する。</summary>

@@ -12,6 +12,8 @@ using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Persistence.Repositories;
 using Statevia.Core.Api.Services;
 using Statevia.Core.Api.Hosting;
+using Statevia.Core.Api.Application.Actions.Abstractions;
+using Statevia.Core.Api.Application.Actions.Registry;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,6 +75,12 @@ builder.Services.AddScoped<IDefinitionService, DefinitionService>();
 builder.Services.AddScoped<IWorkflowService, WorkflowService>();
 builder.Services.AddScoped<WorkflowStreamService>();
 builder.Services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
+builder.Services.AddSingleton<IActionRegistry>(_ =>
+{
+    var registry = new InMemoryActionRegistry();
+    DefinitionCompilerService.RegisterBuiltinActions(registry);
+    return registry;
+});
 builder.Services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
 builder.Services.AddCors();
 builder.Services.AddControllers(options =>
