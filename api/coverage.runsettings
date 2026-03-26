@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <!-- Program.cs / Migrations は unit テストでは網羅が困難なため除外 -->
+          <!-- engine は API ユニットテストでは稼げないため、アセンブリごと除外 -->
+          <Exclude>[*]Statevia.Core.Engine*</Exclude>
+          <ExcludeByFile>**/Program.cs</ExcludeByFile>
+          <ExcludeByFile>**/Migrations/**/*.cs</ExcludeByFile>
+          <ExcludeByFile>**\\Migrations\\**\\*.cs</ExcludeByFile>
+          <ExcludeByFile>*\\Migrations\\*.cs</ExcludeByFile>
+          <ExcludeByFile>**\\Migrations\\*.cs</ExcludeByFile>
+          <ExcludeByFile>*001_InitialCreate.cs</ExcludeByFile>
+          <ExcludeByFile>*002_AddCommandDedupTable.cs</ExcludeByFile>
+          <ExcludeByFile>*003_AddTenantIdToWorkflowsAndDefinitions.cs</ExcludeByFile>
+          <ExcludeByFile>*CoreDbContextModelSnapshot.cs</ExcludeByFile>
+          <!-- engine は API 側ユニットテストではカバレッジを稼げないため除外 -->
+          <!-- coverlet の filename は backslash 区切りなので、ディレクトリ名の部分一致で除外 -->
+          <ExcludeByFile>**/Statevia.Core.Engine/**/*.cs</ExcludeByFile>
+          <ExcludeByFile>**\\Statevia.Core.Engine\\**\\*.cs</ExcludeByFile>
+          <Format>cobertura</Format>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
+
