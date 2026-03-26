@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Statevia.Core.Api.Migrations
 {
     /// <inheritdoc />
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     public partial class AddTenantIdToWorkflowsAndDefinitions : Migration
     {
         /// <inheritdoc />

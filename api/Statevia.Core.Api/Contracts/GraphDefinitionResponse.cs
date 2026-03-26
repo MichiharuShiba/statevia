@@ -9,6 +9,7 @@ public sealed class GraphDefinitionResponse
     public GraphUiDefinition? Ui { get; init; }
 }
 
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public sealed class GraphNodeDefinition
 {
     public string NodeId { get; init; } = string.Empty;
@@ -22,12 +23,14 @@ public sealed class GraphEdgeDefinition
     public string To { get; init; } = string.Empty;
 }
 
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public sealed class GraphUiDefinition
 {
     public string Layout { get; init; } = "dagre";
     public IReadOnlyDictionary<string, GraphNodePosition>? Positions { get; init; }
 }
 
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public sealed class GraphNodePosition
 {
     public double X { get; init; }
