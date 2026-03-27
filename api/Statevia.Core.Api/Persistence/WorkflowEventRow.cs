@@ -1,6 +1,7 @@
 namespace Statevia.Core.Api.Persistence;
 
 /// <summary>workflow_events テーブル（監査専用）。行の PK は EventStore の event_id とは別（監査レコードの一意 ID）。</summary>
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public class WorkflowEventRow
 {
     public Guid WorkflowEventId { get; set; }
