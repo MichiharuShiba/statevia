@@ -2,6 +2,8 @@
 
 ## Cursor Cloud specific instructions
 
+開発者向けのコーディング方針（変更スコープ、コンポーネント別ルール、コミット方針など）は **`docs/development-guidelines.md`** を参照してください。
+
 ### Architecture overview
 
 Statevia is a definition-driven, event-sourced workflow engine with three components:

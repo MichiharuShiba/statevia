@@ -53,7 +53,7 @@ coverage/
 .cursorrules
 .vscode/
 docs/out
-.exclude/
+.workspace-docs/
 
 # MSBuild Binary and Structured Log
 *.binlog
