@@ -235,6 +235,13 @@ statevia/
 
 ---
 
+## 開発者向け
+
+- コーディング方針・レイヤー責務・テスト・コミットルール: [docs/development-guidelines.md](docs/development-guidelines.md)
+- エージェント向けの起動・DI・契約の要約: リポジトリ直下 [AGENTS.md](AGENTS.md)
+
+---
+
 ## License
 
 MIT
