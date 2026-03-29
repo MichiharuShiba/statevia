@@ -294,7 +294,9 @@ nodes:
 
 ### 2.3.1 例（Nodes 形式 + input）
 
-`action` ノードの `input.path` を使うことで、States 形式と同様に遷移直前の候補 input を抽出できる。
+`action` ノードの `input` は **States 形式と同じ規則**とする。パスは **`$` / `$.seg1.seg2`** のみ（`Level1Validator` の単純 JSONPath 制約に準拠）。**`${input.x}` のような `${...}` テンプレは採用しない**（`.workspace-docs/specs/done/v2-definition-spec.md` および `v2-nodes-to-states-conversion-spec.md` に合わせる）。
+
+`input.path` ショートハンド、またはキーごとの `$.` 参照で、遷移直前の候補 input を抽出できる。
 
 ```yaml
 version: 1
