@@ -14,6 +14,8 @@ Wait は指定されたイベントが発生するまで状態実行を一時停
 - Wait は待機スコープを導入します。
 - Resume は同じ状態実行を継続します。
 - 各 Wait は一度だけ再開できます。
+- **`wait.event`**: `PublishEvent` のイベント名と一致したときに待機が解ける（`WaitOnlyState` / `EventProvider`）。
+- **FSM の事実**: 待機解消後に状態実行が正常終了すると、遷移評価に使われる事実は **`Completed`** である。定義の `on` は **`Completed` キー**で次遷移を書く（`core-engine-fsm-spec.md` の「Wait 状態と事実」を参照）。
 
 ## Cancel（キャンセル）
 
