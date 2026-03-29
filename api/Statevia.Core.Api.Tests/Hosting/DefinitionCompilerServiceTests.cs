@@ -1,6 +1,9 @@
+using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Application.Actions.Abstractions;
 using Statevia.Core.Api.Application.Actions.Registry;
+using Statevia.Core.Api.Application.Definition;
 using Statevia.Core.Api.Hosting;
+using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Execution;
 
@@ -8,11 +11,14 @@ namespace Statevia.Core.Api.Tests.Hosting;
 
 public sealed class DefinitionCompilerServiceTests
 {
+    private static IDefinitionLoadStrategy CreateDefaultStrategy() =>
+        new DefinitionLoadStrategy(new DefinitionLoader(), new NodeDefinitionLoader());
+
     private static DefinitionCompilerService CreateSut(IActionRegistry? registry = null)
     {
         registry ??= new InMemoryActionRegistry();
         DefinitionCompilerService.RegisterBuiltinActions(registry);
-        return new DefinitionCompilerService(registry);
+        return new DefinitionCompilerService(registry, CreateDefaultStrategy());
     }
 
     /// <summary>
@@ -109,7 +115,7 @@ public sealed class DefinitionCompilerServiceTests
         registry.Register(
             "custom.echo",
             new DefaultStateExecutor((_, input, _) => Task.FromResult<object?>(input)));
-        var svc = new DefinitionCompilerService(registry);
+        var svc = new DefinitionCompilerService(registry, CreateDefaultStrategy());
         var yaml = """
             workflow:
               name: W
@@ -141,7 +147,7 @@ public sealed class DefinitionCompilerServiceTests
         registry.Register(
             "custom.echo",
             new DefaultStateExecutor((_, input, _) => Task.FromResult<object?>(input)));
-        var compiler = new DefinitionCompilerService(registry);
+        var compiler = new DefinitionCompilerService(registry, CreateDefaultStrategy());
         var yaml = """
             workflow:
               name: W
@@ -163,6 +169,56 @@ public sealed class DefinitionCompilerServiceTests
         var json = engine.ExportExecutionGraph(wfId);
         // Assert
         Assert.Contains("42", json, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// ルートに nodes 配列がある場合は NodeDefinitionLoader 経由となり、未実装のため NotSupportedException になる。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesRoot_ThrowsNotSupported()
+    {
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: N
+            nodes:
+              - id: start
+                type: start
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        var ex = Assert.Throws<NotSupportedException>(() => svc.ValidateAndCompile("N", yaml));
+
+        Assert.Contains("nodes", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// nodes 配列と states オブジェクトの併存は U10 に従い ArgumentException。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesAndStatesBoth_ThrowsArgumentException()
+    {
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: X
+            nodes:
+              - id: a
+                type: start
+                next: b
+            states:
+              A:
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("X", yaml));
+
+        Assert.Contains("both", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
 

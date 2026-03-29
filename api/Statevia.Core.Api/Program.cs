@@ -14,6 +14,8 @@ using Statevia.Core.Api.Services;
 using Statevia.Core.Api.Hosting;
 using Statevia.Core.Api.Application.Actions.Abstractions;
 using Statevia.Core.Api.Application.Actions.Registry;
+using Statevia.Core.Api.Application.Definition;
+using Statevia.Core.Engine.Definition;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -81,6 +83,9 @@ builder.Services.AddSingleton<IActionRegistry>(_ =>
     DefinitionCompilerService.RegisterBuiltinActions(registry);
     return registry;
 });
+builder.Services.AddSingleton<DefinitionLoader>();
+builder.Services.AddSingleton<NodeDefinitionLoader>();
+builder.Services.AddSingleton<IDefinitionLoadStrategy, DefinitionLoadStrategy>();
 builder.Services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
 builder.Services.AddCors();
 builder.Services.AddControllers(options =>

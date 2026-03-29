@@ -2,12 +2,15 @@ using System.Collections;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
+using Statevia.Core.Engine.Abstractions;
+
 namespace Statevia.Core.Engine.Definition;
 
 /// <summary>
 /// YAML/JSON 文字列からワークフロー定義を読み込み、WorkflowDefinition を生成します。
+/// states 形式（ルート <c>workflow</c> + <c>states</c>）専用。
 /// </summary>
-public sealed class DefinitionLoader
+public sealed class DefinitionLoader : IDefinitionLoader
 {
     private readonly IDeserializer _deserializer;
 
