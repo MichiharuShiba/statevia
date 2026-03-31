@@ -12,7 +12,7 @@ namespace Statevia.Core.Api.Tests.Hosting;
 public sealed class DefinitionCompilerServiceTests
 {
     private static IDefinitionLoadStrategy CreateDefaultStrategy() =>
-        new DefinitionLoadStrategy(new DefinitionLoader(), new NodeDefinitionLoader());
+        new DefinitionLoadStrategy(new StateWorkflowDefinitionLoader(), new NodesWorkflowDefinitionLoader());
 
     private static DefinitionCompilerService CreateSut(IActionRegistry? registry = null)
     {
@@ -172,10 +172,10 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
-    /// ルートに nodes 配列がある場合は NodeDefinitionLoader 経由となり、未実装のため NotSupportedException になる。
+    /// ルートに nodes 配列がある場合は NodesWorkflowDefinitionLoader 経由で states に変換されコンパイルできる。
     /// </summary>
     [Fact]
-    public void ValidateAndCompile_NodesRoot_ThrowsNotSupported()
+    public void ValidateAndCompile_NodesRoot_Succeeds()
     {
         var svc = CreateSut();
         var yaml = """
@@ -190,9 +190,52 @@ public sealed class DefinitionCompilerServiceTests
                 type: end
             """;
 
-        var ex = Assert.Throws<NotSupportedException>(() => svc.ValidateAndCompile("N", yaml));
+        var (compiled, _) = svc.ValidateAndCompile("N", yaml);
 
-        Assert.Contains("nodes", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.NotNull(compiled);
+        Assert.Equal("start", compiled.InitialState, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// nodes の fork / join（allOf MVP）が Engine の join テーブルとして解決される。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesForkJoin_Succeeds()
+    {
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: ForkJoin
+            nodes:
+              - id: start
+                type: start
+                next: fork1
+              - id: fork1
+                type: fork
+                branches: [b1, b2]
+              - id: b1
+                type: action
+                action: noop
+                next: join1
+              - id: b2
+                type: action
+                action: noop
+                next: join1
+              - id: join1
+                type: join
+                mode: all
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        var (compiled, _) = svc.ValidateAndCompile("ForkJoin", yaml);
+
+        Assert.NotNull(compiled.JoinTable);
+        Assert.True(compiled.JoinTable.TryGetValue("join1", out var allOf));
+        Assert.Contains("b1", allOf, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("b2", allOf, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -221,4 +264,5 @@ public sealed class DefinitionCompilerServiceTests
         Assert.Contains("both", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
+
 

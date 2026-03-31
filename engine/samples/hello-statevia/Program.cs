@@ -4,7 +4,7 @@ using Statevia.Core.Engine.Definition.Validation;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Execution;
 
-var loader = new DefinitionLoader();
+var loader = new StateWorkflowDefinitionLoader();
 var content = await File.ReadAllTextAsync("hello.yaml");
 var def = loader.Load(content);
 
@@ -102,3 +102,4 @@ sealed class EndState : IState<Unit, Unit>
 {
     public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct) => Task.FromResult(Unit.Value);
 }
+

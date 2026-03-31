@@ -4,9 +4,9 @@ using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Definition;
 
-public class DefinitionLoaderTests
+public class StateWorkflowDefinitionLoaderTests
 {
-    /// <summary>DefinitionLoader が YAML をパースし、workflow/states/fork/join を正しく読み込むことを検証する。</summary>
+    /// <summary>StateWorkflowDefinitionLoader が YAML をパースし、workflow/states/fork/join を正しく読み込むことを検証する。</summary>
     [Fact]
     public void Load_ParsesHelloWorkflow()
     {
@@ -33,7 +33,7 @@ public class DefinitionLoaderTests
             """;
 
         // Act
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
         var def = loader.Load(yaml);
 
         // Assert
@@ -68,7 +68,7 @@ public class DefinitionLoaderTests
                 wait:
                   event: resume
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
 
         // Act
         var def = loader.Load(yaml);
@@ -92,7 +92,7 @@ public class DefinitionLoaderTests
                 join:
                   allOf: [A, B]
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
 
         // Act
         var def = loader.Load(yaml);
@@ -119,7 +119,7 @@ public class DefinitionLoaderTests
                   Completed:
                     end: true
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
 
         // Act
         var def = loader.Load(yaml);
@@ -150,7 +150,7 @@ public class DefinitionLoaderTests
                   Completed:
                     end: true
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
 
         // Act
         var def = loader.Load(yaml);
@@ -173,7 +173,7 @@ public class DefinitionLoaderTests
                   Completed:
                     end: true
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
 
         var def = loader.Load(yaml);
 
@@ -196,7 +196,7 @@ public class DefinitionLoaderTests
                   Completed:
                     end: true
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
         var def = loader.Load(yaml);
 
         var r = Level1Validator.Validate(def);
@@ -224,7 +224,7 @@ public class DefinitionLoaderTests
                   Completed:
                     end: true
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
 
         // Act
         var def = loader.Load(yaml);
@@ -250,7 +250,7 @@ public class DefinitionLoaderTests
               name: Empty
             states: {}
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
 
         // Act
         var def = loader.Load(yaml);
@@ -269,7 +269,7 @@ public class DefinitionLoaderTests
             workflow:
               name: NoStates
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
 
         // Act
         var def = loader.Load(yaml);
@@ -294,7 +294,7 @@ public class DefinitionLoaderTests
                   Completed:
                     end: "true"
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
 
         // Act
         var def = loader.Load(yaml);
@@ -324,7 +324,7 @@ public class DefinitionLoaderTests
                   Completed:
                     end: true
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
 
         // Act
         var def = loader.Load(yaml);
@@ -350,7 +350,7 @@ public class DefinitionLoaderTests
                   Completed:
                     fork: true
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
 
         // Act
         var def = loader.Load(yaml);
@@ -381,7 +381,7 @@ public class DefinitionLoaderTests
                   Done:
                     end: true
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
 
         // Act
         var def = loader.Load(yaml);
@@ -410,7 +410,7 @@ public class DefinitionLoaderTests
                   Completed:
                     end: true
             """;
-        var loader = new DefinitionLoader();
+        var loader = new StateWorkflowDefinitionLoader();
 
         // Act
         var def = loader.Load(yaml);
@@ -420,4 +420,46 @@ public class DefinitionLoaderTests
         Assert.NotNull(state.On);
         Assert.False(state.On!["Completed"].End);
     }
+
+    [Fact]
+    public void Load_StateInputTemplate_ThrowsArgumentException()
+    {
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                input: ${input.value}
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        var loader = new StateWorkflowDefinitionLoader();
+
+        var ex = Assert.Throws<ArgumentException>(() => loader.Load(yaml));
+        Assert.Contains("${...}", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Load_StateInputInvalidPath_ThrowsArgumentException()
+    {
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                input:
+                  path: $.a.-b
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        var loader = new StateWorkflowDefinitionLoader();
+
+        var ex = Assert.Throws<ArgumentException>(() => loader.Load(yaml));
+        Assert.Contains("invalid input.path", ex.Message, StringComparison.Ordinal);
+    }
 }
+

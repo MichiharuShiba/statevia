@@ -1,35 +1,19 @@
-using System.Collections;
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
-
-using Statevia.Core.Engine.Abstractions;
-
 namespace Statevia.Core.Engine.Definition;
 
 /// <summary>
 /// YAML/JSON 文字列からワークフロー定義を読み込み、WorkflowDefinition を生成します。
 /// states 形式（ルート <c>workflow</c> + <c>states</c>）専用。
 /// </summary>
-public sealed class DefinitionLoader : IDefinitionLoader
+public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
 {
-    private readonly IDeserializer _deserializer;
-
-    public DefinitionLoader()
+    public StateWorkflowDefinitionLoader()
+        : base(useScalarPreservingNodeTypeResolver: true)
     {
-        _deserializer = new DeserializerBuilder()
-            .WithNamingConvention(CamelCaseNamingConvention.Instance)
-            .WithNodeTypeResolver(new ScalarPreservingNodeTypeResolver())
-            .IgnoreUnmatchedProperties()
-            .Build();
     }
 
-    /// <summary>YAML/JSON コンテンツをパースしてワークフロー定義を返します。</summary>
-    public WorkflowDefinition Load(string content)
+    /// <inheritdoc />
+    protected override WorkflowDefinition BuildDefinition(Dictionary<string, object?> root)
     {
-        var raw = _deserializer.Deserialize<object>(new StringReader(content))
-            ?? throw new InvalidOperationException("Invalid YAML/JSON");
-        var root = ToStringDict(raw);
-
         var workflowDict = GetChildDict(root, "workflow");
         var workflow = ParseWorkflow(workflowDict);
         var states = ParseStates(GetChildDict(root, "states"));
@@ -134,105 +118,9 @@ public sealed class DefinitionLoader : IDefinitionLoader
         End = GetBool(dict, "end")
     };
 
-    private static Dictionary<string, object?> GetChildDict(Dictionary<string, object?> dict, string key)
-    {
-        if (!dict.TryGetValue(key, out var val) || val == null)
-        {
-            return [];
-        }
-        return ToStringDict(val);
-    }
-
-    private static Dictionary<string, object?> ToStringDict(object? val)
-    {
-        var result = new Dictionary<string, object?>();
-        if (val == null)
-        {
-            return result;
-        }
-        if (val is Dictionary<string, object?> strDict)
-        {
-            return strDict;
-        }
-        if (val is IDictionary dict)
-        {
-            foreach (DictionaryEntry kv in dict)
-            {
-                result[kv.Key?.ToString() ?? ""] = kv.Value;
-            }
-        }
-        return result;
-    }
-
-    private static string? GetStr(Dictionary<string, object?> dict, string key) =>
-        dict.TryGetValue(key, out var v) && v != null ? v.ToString() : null;
-
-    private static bool GetBool(Dictionary<string, object?> dict, string key)
-    {
-        if (!dict.TryGetValue(key, out var v) || v == null)
-        {
-            return false;
-        }
-        if (v is bool b)
-        {
-            return b;
-        }
-        return string.Equals(v.ToString(), "true", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static IReadOnlyList<string>? GetStrList(Dictionary<string, object?> dict, string key)
-    {
-        if (!dict.TryGetValue(key, out var v) || v == null)
-        {
-            return null;
-        }
-        if (v is IEnumerable enumerable)
-        {
-            return enumerable.Cast<object?>().Select(x => x?.ToString() ?? "").ToList();
-        }
-        return null;
-    }
-
     private static StateInputDefinition ParseStateInput(object inputVal)
-    {
-        // ショートハンド: input: $.a.b
-        if (inputVal is string s)
-        {
-            if (IsPathExpression(s))
-            {
-                return new StateInputDefinition { Path = s };
-            }
-            return new StateInputDefinition { Values = new Dictionary<string, StateInputValueDefinition>(StringComparer.OrdinalIgnoreCase) { ["value"] = new() { Literal = s } } };
-        }
-
-        // マップ: input: { foo: $.a, bar: 2, ... }
-        var map = ToStringDict(inputVal);
-        if (map.Count == 1
-            && map.TryGetValue("path", out var pathVal)
-            && pathVal is string onlyPath
-            && IsPathExpression(onlyPath))
-        {
-            return new StateInputDefinition { Path = onlyPath };
-        }
-
-        var values = new Dictionary<string, StateInputValueDefinition>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (key, raw) in map)
-        {
-            if (raw is string path && IsPathExpression(path))
-            {
-                values[key] = new StateInputValueDefinition { Path = path };
-            }
-            else
-            {
-                values[key] = new StateInputValueDefinition { Literal = raw };
-            }
-        }
-
-        return new StateInputDefinition { Values = values };
-    }
-
-    private static bool IsPathExpression(string s) =>
-        s == "$" || s.StartsWith("$.", StringComparison.Ordinal);
+        => ParseStrictInputMapping(inputVal)
+            ?? throw new ArgumentException("input mapping is required.");
 
     private static void EnsureOnlyKnownKeys(Dictionary<string, object?> dict, IReadOnlyCollection<string> knownKeys, string sectionName)
     {

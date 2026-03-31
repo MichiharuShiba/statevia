@@ -83,8 +83,8 @@ builder.Services.AddSingleton<IActionRegistry>(_ =>
     DefinitionCompilerService.RegisterBuiltinActions(registry);
     return registry;
 });
-builder.Services.AddSingleton<DefinitionLoader>();
-builder.Services.AddSingleton<NodeDefinitionLoader>();
+builder.Services.AddSingleton<StateWorkflowDefinitionLoader>();
+builder.Services.AddSingleton<NodesWorkflowDefinitionLoader>();
 builder.Services.AddSingleton<IDefinitionLoadStrategy, DefinitionLoadStrategy>();
 builder.Services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
 builder.Services.AddCors();
@@ -144,3 +144,4 @@ app.MapControllers();
 app.MapGet("/v1/health", () => Results.Ok(new { status = "ok" }));
 
 app.Run();
+

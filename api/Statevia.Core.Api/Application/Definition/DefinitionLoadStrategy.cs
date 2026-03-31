@@ -4,14 +4,14 @@ using Statevia.Core.Engine.Definition;
 namespace Statevia.Core.Api.Application.Definition;
 
 /// <summary>
-/// ルート形式に応じて <see cref="DefinitionLoader"/>（states）または <see cref="NodeDefinitionLoader"/>（nodes）へ委譲する既定ストラテジ。
+/// ルート形式に応じて <see cref="StateWorkflowDefinitionLoader"/>（states）または <see cref="NodesWorkflowDefinitionLoader"/>（nodes）へ委譲する既定ストラテジ。
 /// </summary>
 public sealed class DefinitionLoadStrategy : IDefinitionLoadStrategy
 {
-    private readonly DefinitionLoader _statesLoader;
-    private readonly NodeDefinitionLoader _nodesLoader;
+    private readonly StateWorkflowDefinitionLoader _statesLoader;
+    private readonly NodesWorkflowDefinitionLoader _nodesLoader;
 
-    public DefinitionLoadStrategy(DefinitionLoader statesLoader, NodeDefinitionLoader nodesLoader)
+    public DefinitionLoadStrategy(StateWorkflowDefinitionLoader statesLoader, NodesWorkflowDefinitionLoader nodesLoader)
     {
         _statesLoader = statesLoader ?? throw new ArgumentNullException(nameof(statesLoader));
         _nodesLoader = nodesLoader ?? throw new ArgumentNullException(nameof(nodesLoader));
@@ -29,3 +29,4 @@ public sealed class DefinitionLoadStrategy : IDefinitionLoadStrategy
         return _statesLoader.Load(content);
     }
 }
+
