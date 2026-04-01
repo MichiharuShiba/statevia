@@ -263,6 +263,58 @@ public sealed class DefinitionCompilerServiceTests
 
         Assert.Contains("both", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>
+    /// states 形式の input で ${...} テンプレートは拒否される。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_StatesInputTemplate_ThrowsArgumentException()
+    {
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: S
+            states:
+              A:
+                action: noop
+                input: ${input.orderId}
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("S", yaml));
+        Assert.Contains("${...}", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// nodes 形式の action.input で不正な $. パスは拒否される。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesInputInvalidPath_ThrowsArgumentException()
+    {
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: N
+            nodes:
+              - id: start
+                type: start
+                next: act
+              - id: act
+                type: action
+                action: noop
+                input:
+                  orderId: $.input.-orderId
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("N", yaml));
+        Assert.Contains("invalid input path", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }
 
 
