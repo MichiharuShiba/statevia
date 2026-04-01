@@ -1,6 +1,9 @@
+using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Application.Actions.Abstractions;
 using Statevia.Core.Api.Application.Actions.Registry;
+using Statevia.Core.Api.Application.Definition;
 using Statevia.Core.Api.Hosting;
+using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Execution;
 
@@ -8,11 +11,14 @@ namespace Statevia.Core.Api.Tests.Hosting;
 
 public sealed class DefinitionCompilerServiceTests
 {
+    private static IDefinitionLoadStrategy CreateDefaultStrategy() =>
+        new DefinitionLoadStrategy(new StateWorkflowDefinitionLoader(), new NodesWorkflowDefinitionLoader());
+
     private static DefinitionCompilerService CreateSut(IActionRegistry? registry = null)
     {
         registry ??= new InMemoryActionRegistry();
         DefinitionCompilerService.RegisterBuiltinActions(registry);
-        return new DefinitionCompilerService(registry);
+        return new DefinitionCompilerService(registry, CreateDefaultStrategy());
     }
 
     /// <summary>
@@ -109,7 +115,7 @@ public sealed class DefinitionCompilerServiceTests
         registry.Register(
             "custom.echo",
             new DefaultStateExecutor((_, input, _) => Task.FromResult<object?>(input)));
-        var svc = new DefinitionCompilerService(registry);
+        var svc = new DefinitionCompilerService(registry, CreateDefaultStrategy());
         var yaml = """
             workflow:
               name: W
@@ -141,7 +147,7 @@ public sealed class DefinitionCompilerServiceTests
         registry.Register(
             "custom.echo",
             new DefaultStateExecutor((_, input, _) => Task.FromResult<object?>(input)));
-        var compiler = new DefinitionCompilerService(registry);
+        var compiler = new DefinitionCompilerService(registry, CreateDefaultStrategy());
         var yaml = """
             workflow:
               name: W
@@ -164,5 +170,151 @@ public sealed class DefinitionCompilerServiceTests
         // Assert
         Assert.Contains("42", json, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// ルートに nodes 配列がある場合は NodesWorkflowDefinitionLoader 経由で states に変換されコンパイルできる。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesRoot_Succeeds()
+    {
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: N
+            nodes:
+              - id: start
+                type: start
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        var (compiled, _) = svc.ValidateAndCompile("N", yaml);
+
+        Assert.NotNull(compiled);
+        Assert.Equal("start", compiled.InitialState, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// nodes の fork / join（allOf MVP）が Engine の join テーブルとして解決される。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesForkJoin_Succeeds()
+    {
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: ForkJoin
+            nodes:
+              - id: start
+                type: start
+                next: fork1
+              - id: fork1
+                type: fork
+                branches: [b1, b2]
+              - id: b1
+                type: action
+                action: noop
+                next: join1
+              - id: b2
+                type: action
+                action: noop
+                next: join1
+              - id: join1
+                type: join
+                mode: all
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        var (compiled, _) = svc.ValidateAndCompile("ForkJoin", yaml);
+
+        Assert.NotNull(compiled.JoinTable);
+        Assert.True(compiled.JoinTable.TryGetValue("join1", out var allOf));
+        Assert.Contains("b1", allOf, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("b2", allOf, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// nodes 配列と states オブジェクトの併存は U10 に従い ArgumentException。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesAndStatesBoth_ThrowsArgumentException()
+    {
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: X
+            nodes:
+              - id: a
+                type: start
+                next: b
+            states:
+              A:
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("X", yaml));
+
+        Assert.Contains("both", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// states 形式の input で ${...} テンプレートは拒否される。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_StatesInputTemplate_ThrowsArgumentException()
+    {
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: S
+            states:
+              A:
+                action: noop
+                input: ${input.orderId}
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("S", yaml));
+        Assert.Contains("${...}", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// nodes 形式の action.input で不正な $. パスは拒否される。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesInputInvalidPath_ThrowsArgumentException()
+    {
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: N
+            nodes:
+              - id: start
+                type: start
+                next: act
+              - id: act
+                type: action
+                action: noop
+                input:
+                  orderId: $.input.-orderId
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("N", yaml));
+        Assert.Contains("invalid input path", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }
+
 

@@ -144,6 +144,8 @@ states:
 - `$` または `$.` で始まる文字列はパス式
 - それ以外はリテラル
 - `foo.bar` はネストオブジェクトとして構築される（後勝ち）
+- パス式は `Level1Validator` と同じ単純 JSONPath 制約（`$` または `$.seg1.seg2`、セグメントは英数字と `_`）に従う。
+- `${...}` 形式のテンプレート文字列は受理しない（states/nodes ともに同一ルール）。
 
 ### 1.6.2 ユーザー定義状態（IState）との関係
 
@@ -354,7 +356,7 @@ nodes:
 
 ### 2.4 States 形式との対応
 
-Nodes 形式は、実行前に **states 形式の CompiledWorkflowDefinition に変換**して利用する想定。変換レイヤーが nodes の `id`/`type`/`next`/`event`/`branches` を states の `on`/`wait`/`join` にマッピングする。
+Nodes 形式は、実行前に **states 形式の CompiledWorkflowDefinition に変換**して利用する想定。変換レイヤーが nodes の `id`/`type`/`next`/`event`/`branches` を states の `on`/`wait`/`join` にマッピングする。実装上は Core-API の `NodesWorkflowDefinitionLoader` が nodes を `WorkflowDefinition` に変換し、states 形式は `StateWorkflowDefinitionLoader` が読み込む。
 
 ---
 

@@ -14,7 +14,7 @@ if (!File.Exists(path))
     return 1;
 }
 
-var loader = new DefinitionLoader();
+var loader = new StateWorkflowDefinitionLoader();
 var content = File.ReadAllText(path);
 
 try
@@ -45,3 +45,4 @@ catch (Exception ex)
     return 1;
 }
 #pragma warning restore CA1031
+

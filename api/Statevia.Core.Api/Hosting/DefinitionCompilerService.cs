@@ -13,17 +13,18 @@ namespace Statevia.Core.Api.Hosting;
 /// <summary>YAML を検証・コンパイルして CompiledWorkflowDefinition を返す。Action Registry で action を検証・解決する。</summary>
 public sealed class DefinitionCompilerService : IDefinitionCompilerService
 {
-    private readonly DefinitionLoader _loader = new();
+    private readonly IDefinitionLoadStrategy _definitionLoadStrategy;
     private readonly IActionRegistry _actionRegistry;
 
-    public DefinitionCompilerService(IActionRegistry actionRegistry)
+    public DefinitionCompilerService(IActionRegistry actionRegistry, IDefinitionLoadStrategy definitionLoadStrategy)
     {
         _actionRegistry = actionRegistry;
+        _definitionLoadStrategy = definitionLoadStrategy ?? throw new ArgumentNullException(nameof(definitionLoadStrategy));
     }
 
     public (CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(string name, string yaml)
     {
-        var def = _loader.Load(yaml);
+        var def = _definitionLoadStrategy.Load(yaml);
         var l1 = Level1Validator.Validate(def);
         if (!l1.IsValid)
             throw new ArgumentException("Level 1 validation failed: " + string.Join("; ", l1.Errors));
