@@ -52,8 +52,6 @@ coverage/
 .cursor/
 .cursorrules
 .vscode/
-.workspace-docs/
-.spec-workflow/
 .playwright-mcp/
 docs/out
 audit.log
