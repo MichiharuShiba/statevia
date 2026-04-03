@@ -1,0 +1,14 @@
+{
+  "filePath": ".spec-workflow/specs/api-request-basic-logging/requirements.md",
+  "currentVersion": 1,
+  "snapshots": [
+    {
+      "version": 1,
+      "filename": "snapshot-001.json",
+      "timestamp": "2026-04-03T16:08:39.692Z",
+      "trigger": "initial",
+      "approvalId": "approval_1775232519681_qpz7tyfw5",
+      "approvalTitle": "STV-403: API リクエスト基本ログ — requirements 承認"
+    }
+  ]
+}
