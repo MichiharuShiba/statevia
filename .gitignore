@@ -55,6 +55,7 @@ coverage/
 .playwright-mcp/
 docs/out
 audit.log
+.spec-workflow/approvals/
 
 # MSBuild Binary and Structured Log
 *.binlog
