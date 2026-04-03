@@ -73,6 +73,19 @@ public sealed class WorkflowService : IWorkflowService
                 if (cached is not null)
                     return cached;
             }
+
+            var conflicting = await _dedup.FindValidConflictingRequestHashAsync(
+                tenantId,
+                key.Endpoint,
+                key.IdempotencyKey,
+                requestHash,
+                dedupCheckTime,
+                ct).ConfigureAwait(false);
+            if (conflicting is not null)
+            {
+                throw new IdempotencyConflictException(
+                    "The same X-Idempotency-Key was used with a different request body.");
+            }
         }
 
         var defUuid = await _displayIds.ResolveAsync("definition", request.DefinitionId!, ct).ConfigureAwait(false);

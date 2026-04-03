@@ -161,5 +161,78 @@ public sealed class CommandDedupRepositoryTests
         await using var verify2 = new CoreDbContext(db.Options);
         Assert.NotNull(await verify2.CommandDedup.FirstOrDefaultAsync(x => x.DedupKey == "k2"));
     }
+
+    [Fact]
+    public async Task FindValidConflictingRequestHashAsync_ReturnsRow_WhenSameIdempotencyKeyButDifferentHash()
+    {
+        using var db = new SqliteTestDatabase();
+        var repo = new CommandDedupRepository(db.Factory);
+        var now = DateTime.UtcNow;
+        const string tenantId = "default";
+        const string idem = "idem-e2e-test";
+
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            ctx.CommandDedup.Add(new CommandDedupRow
+            {
+                DedupKey = $"{tenantId}|POST /v1/workflows:{idem}:AAA",
+                Endpoint = "POST /v1/workflows",
+                IdempotencyKey = idem,
+                RequestHash = "AAA",
+                StatusCode = 201,
+                ResponseBody = "{}",
+                CreatedAt = now,
+                ExpiresAt = now.AddHours(1)
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        var conflict = await repo.FindValidConflictingRequestHashAsync(
+            tenantId,
+            "POST /v1/workflows",
+            idem,
+            "BBB",
+            now,
+            default);
+
+        Assert.NotNull(conflict);
+        Assert.Equal("AAA", conflict!.RequestHash);
+    }
+
+    [Fact]
+    public async Task FindValidConflictingRequestHashAsync_ReturnsNull_WhenHashMatches()
+    {
+        using var db = new SqliteTestDatabase();
+        var repo = new CommandDedupRepository(db.Factory);
+        var now = DateTime.UtcNow;
+        const string tenantId = "default";
+        const string hash = "SAME";
+
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            ctx.CommandDedup.Add(new CommandDedupRow
+            {
+                DedupKey = $"{tenantId}|POST /v1/workflows:key1:{hash}",
+                Endpoint = "POST /v1/workflows",
+                IdempotencyKey = "key1",
+                RequestHash = hash,
+                StatusCode = 201,
+                ResponseBody = "{}",
+                CreatedAt = now,
+                ExpiresAt = now.AddHours(1)
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        var conflict = await repo.FindValidConflictingRequestHashAsync(
+            tenantId,
+            "POST /v1/workflows",
+            "key1",
+            hash,
+            now,
+            default);
+
+        Assert.Null(conflict);
+    }
 }
 

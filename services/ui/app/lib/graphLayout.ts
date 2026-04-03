@@ -109,6 +109,14 @@ export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: Lay
   edges: PositionedEdge[];
 } {
   const edges = rawEdges.length > 0 ? rawEdges : buildFallbackEdges(nodes);
+  const nodeIdSet = new Set(nodes.map((n) => n.nodeId));
+  const safeEdges = edges.filter(
+    (edge) =>
+      edge.from.length > 0 &&
+      edge.to.length > 0 &&
+      nodeIdSet.has(edge.from) &&
+      nodeIdSet.has(edge.to)
+  );
   const graph = new dagre.graphlib.Graph();
   graph.setGraph({
     rankdir: hints?.direction ?? "LR",
@@ -117,7 +125,8 @@ export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: Lay
     marginx: 20,
     marginy: 20
   });
-  graph.setDefaultEdgeLabel(() => ({}));
+  // dagre の rank/network-simplex は各エッジに minlen・weight が必須（未設定だと layout 中に落ちる）。
+  graph.setDefaultEdgeLabel(() => ({ minlen: 1, weight: 1 }));
 
   nodes.forEach((node) => {
     const baseSize = getNodeSize(node.nodeType);
@@ -128,8 +137,19 @@ export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: Lay
     });
   });
 
-  edges.forEach((edge) => {
-    graph.setEdge(edge.from, edge.to);
+  safeEdges.forEach((edge) => {
+    graph.setEdge(edge.from, edge.to, { minlen: 1, weight: 1 });
+  });
+
+  // graphlib の既存エッジ更新時にラベルが欠落した場合の保険（network-simplex の simplify が label.weight を参照する）。
+  graph.edges().forEach((e) => {
+    const lab = graph.edge(e) as { minlen?: number; weight?: number } | undefined;
+    if (!lab || typeof lab.minlen !== "number" || typeof lab.weight !== "number") {
+      graph.setEdge(e, {
+        minlen: typeof lab?.minlen === "number" ? lab.minlen : 1,
+        weight: typeof lab?.weight === "number" ? lab.weight : 1
+      });
+    }
   });
 
   dagre.layout(graph);
@@ -145,6 +165,6 @@ export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: Lay
     };
   });
 
-  return { nodes: applyBranchOffsets(positioned, hints), edges };
+  return { nodes: applyBranchOffsets(positioned, hints), edges: safeEdges };
 }
 

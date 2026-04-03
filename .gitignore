@@ -52,8 +52,11 @@ coverage/
 .cursor/
 .cursorrules
 .vscode/
-docs/out
 .workspace-docs/
+.spec-workflow/
+.playwright-mcp/
+docs/out
+audit.log
 
 # MSBuild Binary and Structured Log
 *.binlog

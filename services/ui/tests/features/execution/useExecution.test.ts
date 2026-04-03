@@ -148,6 +148,25 @@ describe("useExecution", () => {
     expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1");
   });
 
+  it("cancelExecution で POST 成功後に再取得が失敗したとき onCancelSuccess を呼ばず onError とクリアする", async () => {
+    const onCancelSuccess = vi.fn();
+    const onError = vi.fn();
+    const { result } = renderHook(() => useExecution("ex-1", { onCancelSuccess, onError }));
+    await act(async () => {
+      result.current.loadExecution();
+    });
+    expect(result.current.execution).not.toBeNull();
+    vi.mocked(api.apiGet).mockRejectedValueOnce(new Error("refresh failed"));
+
+    await act(async () => {
+      result.current.cancelExecution();
+    });
+
+    expect(onCancelSuccess).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
+    expect(result.current.execution).toBeNull();
+  });
+
   it("cancelExecution 失敗時に onError を呼ぶ", async () => {
     // Arrange
     const { result } = renderHook(() => useExecution("ex-1", { onError: vi.fn() }));
