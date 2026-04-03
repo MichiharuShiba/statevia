@@ -162,6 +162,7 @@ Request:
 | 成功（No Content） | 204  |
 | 入力不正           | 400  |
 | 存在しない         | 404  |
+| 冪等キー再利用（別リクエスト本文） | 409 。`error.code` は `IDEMPOTENCY_KEY_CONFLICT`（`POST /v1/workflows` のみ） |
 
 ---
 

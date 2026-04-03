@@ -19,7 +19,12 @@ export function Toast({ toast, onClose }: Readonly<ToastProps>) {
   const toneClass = getToneClass(toast.tone);
 
   return (
-    <div className={`rounded-2xl border px-4 py-3 text-sm ${toneClass}`}>
+    <div
+      className={`rounded-2xl border px-4 py-3 text-sm ${toneClass}`}
+      role="status"
+      aria-live="polite"
+      aria-label={toast.message}
+    >
       <div className="flex items-start justify-between gap-4">
         <p>{toast.message}</p>
         <button className="text-zinc-500 hover:text-zinc-900" onClick={onClose} aria-label="close toast">

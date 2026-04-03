@@ -15,18 +15,12 @@ public sealed class ApiExceptionFilter : IExceptionFilter
         while (root.InnerException is { } inner)
             root = inner;
 
-        ObjectResult result;
-        if (root is NotFoundException nf)
+        var result = root switch
         {
-            result = ApiErrorResult.NotFound(nf.Message);
-        }
-        else if (root is ArgumentException arg)
-        {
-            result = ApiErrorResult.ValidationError(arg.Message);
-        }
-        else
-        {
-            result = new ObjectResult(new ErrorResponse
+            NotFoundException nf => ApiErrorResult.NotFound(nf.Message),
+            IdempotencyConflictException idem => ApiErrorResult.Conflict("IDEMPOTENCY_KEY_CONFLICT", idem.Message),
+            ArgumentException arg => ApiErrorResult.ValidationError(arg.Message),
+            _ => new ObjectResult(new ErrorResponse
             {
                 Error = new ApiError
                 {
@@ -36,8 +30,8 @@ public sealed class ApiExceptionFilter : IExceptionFilter
             })
             {
                 StatusCode = StatusCodes.Status500InternalServerError
-            };
-        }
+            }
+        };
 
         context.Result = result;
         context.ExceptionHandled = true;

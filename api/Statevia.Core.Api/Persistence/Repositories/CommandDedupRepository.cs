@@ -21,6 +21,27 @@ public sealed class CommandDedupRepository : ICommandDedupRepository
             .ConfigureAwait(false);
     }
 
+    public async Task<CommandDedupRow?> FindValidConflictingRequestHashAsync(
+        string tenantId,
+        string endpoint,
+        string idempotencyKey,
+        string requestHash,
+        DateTime utcNow,
+        CancellationToken ct)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        var tenantPrefix = $"{tenantId}|";
+        return await db.CommandDedup.AsNoTracking()
+            .Where(x =>
+                x.ExpiresAt > utcNow
+                && x.Endpoint == endpoint
+                && x.IdempotencyKey == idempotencyKey
+                && x.DedupKey.StartsWith(tenantPrefix)
+                && (x.RequestHash == null || x.RequestHash != requestHash))
+            .FirstOrDefaultAsync(ct)
+            .ConfigureAwait(false);
+    }
+
     public async Task SaveAsync(CommandDedupRow row, CancellationToken ct)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);

@@ -47,13 +47,22 @@ export class ExecutionPage {
     await this.cancelButton.waitFor({ state: "visible" });
   }
 
+  /**
+   * Execution ヘッダー付近に表示されるワークフロー status バッジ（例: Running / Cancelled）。
+   */
+  async waitForExecutionStatus(status: string, options?: { timeout?: number }): Promise<void> {
+    const timeout = options?.timeout ?? 15_000;
+    const headerSection = this.page.locator("section").filter({ has: this.page.locator("#execution-id-input") });
+    await headerSection.getByText(status, { exact: true }).waitFor({ state: "visible", timeout });
+  }
+
   async loadExecution(): Promise<void> {
     await this.loadButton.click();
   }
 
   async waitForExecutionLoaded(options?: { timeout?: number; graphId?: string }): Promise<void> {
     const timeout = options?.timeout ?? 5000;
-    await this.page.getByText("ACTIVE", { exact: true }).waitFor({ state: "visible", timeout });
+    await this.waitForExecutionStatus("Running", { timeout });
     if (options?.graphId !== undefined) {
       await this.page.getByText(options.graphId, { exact: true }).first().waitFor({ state: "visible", timeout });
     }

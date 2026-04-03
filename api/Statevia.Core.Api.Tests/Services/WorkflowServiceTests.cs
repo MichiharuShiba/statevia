@@ -126,12 +126,28 @@ public sealed class WorkflowServiceTests
     private sealed class FakeCommandDedupRepository : ICommandDedupRepository
     {
         public CommandDedupRow? NextFindValid { get; set; }
+
+        /// <summary>非 null のとき <see cref="FindValidConflictingRequestHashAsync"/> がこれを返す。</summary>
+        public CommandDedupRow? NextConflictingRow { get; set; }
+
         public List<CommandDedupRow> SavedRows { get; } = new();
 
         public async Task<CommandDedupRow?> FindValidAsync(string dedupKey, DateTime utcNow, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             return NextFindValid;
+        }
+
+        public async Task<CommandDedupRow?> FindValidConflictingRequestHashAsync(
+            string tenantId,
+            string endpoint,
+            string idempotencyKey,
+            string requestHash,
+            DateTime utcNow,
+            CancellationToken ct)
+        {
+            await Task.Yield();
+            return NextConflictingRow;
         }
 
         public async Task SaveAsync(CommandDedupRow row, CancellationToken ct)
@@ -330,6 +346,63 @@ public sealed class WorkflowServiceTests
         Assert.Equal("CACHED-DISP", res.DisplayId);
         Assert.Equal(cached.ResourceId, res.ResourceId);
         Assert.Equal("Running", res.Status);
+
+        Assert.False(engine.StartCalled);
+    }
+
+    /// <summary>冪等キーは同一だが要求本文が異なるとき 409 相当の例外を投げる。</summary>
+    [Fact]
+    public async Task StartAsync_WhenIdempotencyKeyReusedWithDifferentBody_ThrowsIdempotencyConflictException()
+    {
+        var dedupRepo = new FakeCommandDedupRepository
+        {
+            NextFindValid = null,
+            NextConflictingRow = new CommandDedupRow
+            {
+                DedupKey = "t1|POST /v1/workflows:idem:deadbeef",
+                Endpoint = "POST /v1/workflows",
+                IdempotencyKey = "idem",
+                RequestHash = "deadbeef",
+                StatusCode = StatusCodes.Status201Created,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddHours(1)
+            }
+        };
+
+        var dedupKey = new CommandDedupKey { DedupKey = "d-new", Endpoint = "POST /v1/workflows", IdempotencyKey = "idem" };
+        var dedupService = new FakeCommandDedupService(dedupKey);
+
+        var engine = new FakeWorkflowEngine();
+        var display = new FakeDisplayIdService();
+        var compiler = new FakeDefinitionCompilerService((DummyCompiledDefinition("x"), "{}"));
+        var idGen = new FixedIdGenerator(Guid.NewGuid());
+        var workflowRepo = new FakeWorkflowRepository();
+        var definitionsRepo = new FakeDefinitionsRepoStub();
+        var eventStore = new FakeEventStoreRepository();
+
+        using var sqlite = new SqliteTestDatabase();
+        var sut = new WorkflowService(
+            engine,
+            display,
+            compiler,
+            idGen,
+            dedupService,
+            workflowRepo,
+            definitionsRepo,
+            dedupRepo,
+            eventStore,
+            sqlite.Factory);
+
+        using var inputDoc = JsonDocument.Parse("{}");
+        var request = new StartWorkflowRequest { DefinitionId = "def-1", Input = inputDoc.RootElement };
+
+        await Assert.ThrowsAsync<IdempotencyConflictException>(() => sut.StartAsync(
+            tenantId: "t1",
+            request: request,
+            idempotencyKey: "idem",
+            method: "POST",
+            path: "/v1/workflows",
+            CancellationToken.None));
 
         Assert.False(engine.StartCalled);
     }

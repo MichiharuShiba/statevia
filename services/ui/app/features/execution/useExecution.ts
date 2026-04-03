@@ -154,13 +154,21 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
 
   async function cancelExecution() {
     if (!execution) return;
+    const displayId = execution.displayId;
     setLoading(true);
+    let cancelPosted = false;
     try {
-      await apiPost<CommandAccepted>(`/workflows/${execution.displayId}/cancel`, { reason: "ui" });
+      await apiPost<CommandAccepted>(`/workflows/${displayId}/cancel`, { reason: "ui" });
+      cancelPosted = true;
+      // loadExecution は失敗を握りつぶすため、キャンセル後の再取得はここで判別する。
+      await refreshExecutionSnapshot(displayId);
       onCancelSuccess?.();
-      await loadExecution();
     } catch (error) {
       onErrorRef.current?.(error);
+      if (cancelPosted) {
+        setExecution(null);
+        setSelectedNodeId(null);
+      }
     } finally {
       setLoading(false);
     }

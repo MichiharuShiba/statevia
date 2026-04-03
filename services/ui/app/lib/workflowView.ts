@@ -7,17 +7,31 @@ import type {
 
 /** C# WorkflowGraphDTO のノードを ExecutionNodeDTO に変換（v2）。Core-API の camelCase JSON を前提。 */
 function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNodeDTO {
+  const nodeId =
+    (typeof n.nodeId === "string" ? n.nodeId : null) ??
+    (typeof (n as Record<string, unknown>).NodeId === "string" ? ((n as Record<string, unknown>).NodeId as string) : "");
+  const stateName =
+    (typeof n.stateName === "string" ? n.stateName : null) ??
+    (typeof (n as Record<string, unknown>).StateName === "string"
+      ? ((n as Record<string, unknown>).StateName as string)
+      : "");
+  const completedAt =
+    n.completedAt ??
+    ((n as Record<string, unknown>).CompletedAt as string | null | undefined);
+  const fact =
+    n.fact ??
+    ((n as Record<string, unknown>).Fact as string | null | undefined);
+
   let status: ExecutionNodeDTO["status"] = "RUNNING";
-  const completedAt = n.completedAt;
-  const fact = String(n.fact ?? "").toLowerCase();
+  const factText = String(fact ?? "").toLowerCase();
   if (completedAt != null) {
-    if (fact.includes("fail")) status = "FAILED";
-    else if (fact.includes("cancel")) status = "CANCELED";
+    if (factText.includes("fail")) status = "FAILED";
+    else if (factText.includes("cancel")) status = "CANCELED";
     else status = "SUCCEEDED";
   }
   return {
-    nodeId: typeof n.nodeId === "string" ? n.nodeId : "",
-    nodeType: typeof n.stateName === "string" ? n.stateName : "",
+    nodeId,
+    nodeType: stateName,
     status,
     attempt: 0,
     workerId: null,

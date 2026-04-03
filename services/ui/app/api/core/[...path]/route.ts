@@ -87,6 +87,14 @@ async function forward(req: NextRequest, method: string, pathParts: string[]) {
 
   const outText = await r.text();
 
+  // 204 / 205 / 304 は本文を持てない。本文付き NextResponse は TypeError になる（Undici/Fetch 準拠）。
+  if (r.status === 204 || r.status === 205 || r.status === 304) {
+    const headers: Record<string, string> = {};
+    const ct = r.headers.get("content-type");
+    if (ct) headers["Content-Type"] = ct;
+    return new NextResponse(null, { status: r.status, headers });
+  }
+
   return new NextResponse(outText, {
     status: r.status,
     headers: { "Content-Type": contentType }
