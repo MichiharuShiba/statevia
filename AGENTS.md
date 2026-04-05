@@ -97,6 +97,13 @@ No ESLint is configured. TypeScript compilation (`tsc --noEmit`) serves as the p
 | `DATABASE_URL`           | core-api (C#) | `Host=localhost;Database=statevia;Username=statevia;Password=statevia` (or `postgres://core:core@localhost:5432/core`) |
 | `PORT`                   | core-api (C#) | `8080` (via ASP.NET Core)                                                                                              |
 | `CORE_API_INTERNAL_BASE` | ui            | `http://localhost:8080`                                                                                                |
+| `STATEVIA_LOG_HTTP_BODIES` | core-api (C#) | 未設定時は従来どおり。`true` のとき本番でも HTTP リクエスト/レスポンス本文をログに載せる（機密に注意）。 |
+
+### Core-API: HTTP リクエストログ（STV-403）
+
+- **ミドルウェア** `RequestLoggingMiddleware` が **CORS より前**に実行され、各リクエストで **開始**・**完了**（およびミドルウェア境界の **未処理例外**）を `ILogger` に出力する。
+- **相関 ID**: 優先順は `traceparent`（W3C）→ `X-Trace-Id` → `X-Request-Id` → 生成 UUID（32 hex）。`HttpContext.Items["Statevia.TraceId"]` にも格納する。
+- **ログ項目（概要）**: `TraceId`, `Method`, `Path`（クエリなし）, `Query`, `TenantId`, `UserAgent`, 任意で `RequestBody` / `ResponseBody` スナップショット（**マスキング・長さ上限あり**）。本番では **本文ログは既定オフ**（`RequestLogOptions`）。開発環境では既定オン。本番で本文を有効化する場合は **`STATEVIA_LOG_HTTP_BODIES=true`**（IO-14 に照らし外部ログへ流す前はマスキングを確認すること）。
 
 ### .NET SDK
 
