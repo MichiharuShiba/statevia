@@ -226,7 +226,7 @@ t8: E Completed → Workflow Completed
 ```txt
 statevia/
 ├─ api/                          # Core-API（C# ASP.NET Core）
-├─ engine/                       # C# ワークフローエンジン（.NET、v2）
+├─ engine/                       # C# ワークフローエンジン（.NET）
 ├─ docs/
 ├─ docker-compose.yml
 └─ services/
