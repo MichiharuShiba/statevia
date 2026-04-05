@@ -1,6 +1,6 @@
 # v2 残タスク チケット一覧
 
-- Version: 1.0.6
+- Version: 1.0.7
 - 更新日: 2026-04-05
 - 対象: `v2-remaining-tasks.md` / `v2-logging-v1-tasks.md` の未完了項目に紐づく実行チケット
 - 関連: `.workspace-docs/50_tasks/10_in-progress/v2-remaining-tasks.md`, `.workspace-docs/50_tasks/10_in-progress/v2-logging-v1-tasks.md`
@@ -37,13 +37,13 @@
 | STV-401 | 完了 | E2E（Cancel シーケンス）を追加 | P1 | - | Core-API 実体で Cancel が green、`cancelled`（または契約上の終端）を検証。CI は環境変数ゲート可。 | 実装・受け入れ: `../20_done/v2-e2e-cancel-idempotency_backlog.md` |
 | STV-402 | 完了 | E2E（冪等・409）を追加 | P1 | STV-401 | 冪等挙動が契約どおり。409 の UI 表示を E2E で検証。再実行安定。 | 同上 |
 | STV-403 | 完了 | API リクエスト基本ログを導入 | P2 | - | 主要エンドポイントで開始/完了ログが出る。`traceId` で相関可能。検証手順またはテストを文書化。 | 元: LOG-1。実装・受け入れ: `../20_done/v2-logging-stv403_backlog.md` |
-| STV-404 | 未完了 | Engine 実行ログを導入 | P2 | - | workflowId/stateName を含むログ。失敗経路で Error。 | 元: LOG-2 |
-| STV-405 | 未完了 | Warning ポリシーを実装 | P2 | STV-404 | Warning 条件がコードで明文化。テストで最低1ケース。 | 元: LOG-3 |
-| STV-406 | 未完了 | `StateContext` に Logger を追加 | P2 | STV-404 | サンプル state で `ctx.Logger` 利用可。後方互換維持。 | 元: LOG-4 |
-| STV-407 | 未完了 | ログキー名を統一 | P2 | STV-403, STV-404 | 命名規約を docs に記載。API/Engine で適用。 | 元: LOG-5 |
-| STV-408 | 未完了 | input/output のマスキング方針を実装 | P2 | STV-407 | 代表機密キーがマスク。テストで生データ非露出。 | 元: LOG-6 |
-| STV-409 | 未完了 | ログ関連テストを追加 | P2 | STV-403〜STV-408 | テスト green。回帰検知可能。 | 元: LOG-7 |
-| STV-410 | 未完了 | 懸念事項 O6 を仕様化して分割 | P2 | - | サブチケット5件以上粒度。優先度・依存整理。 | 元: O6 |
+| STV-404 | 未完了 | Engine 実行ログを導入 | P2 | - | workflowId/stateName を含むログ。失敗経路で Error。 | 元: LOG-2。spec: `engine-execution-logging` |
+| STV-405 | 未完了 | Warning ポリシーを実装 | P2 | STV-404 | Warning 条件がコードで明文化。テストで最低1ケース。 | 元: LOG-3。spec: `logging-warning-policy` |
+| STV-406 | 未完了 | `StateContext` に Logger を追加 | P2 | STV-404 | サンプル state で `ctx.Logger` 利用可。後方互換維持。 | 元: LOG-4。spec: `state-context-logger` |
+| STV-407 | 未完了 | ログキー名を統一 | P2 | STV-403, STV-404 | 命名規約を docs に記載。API/Engine で適用。 | 元: LOG-5。spec: `unified-logging-key-names` |
+| STV-408 | 未完了 | input/output のマスキング方針を実装 | P2 | STV-407 | 代表機密キーがマスク。テストで生データ非露出。 | 元: LOG-6。spec: `workflow-io-log-masking` |
+| STV-409 | 未完了 | ログ関連テストを追加 | P2 | STV-403〜STV-408 | テスト green。回帰検知可能。 | 元: LOG-7。spec: `logging-regression-tests` |
+| STV-410 | 未完了 | 懸念事項 O6 を仕様化して分割 | P2 | - | サブチケット5件以上粒度。優先度・依存整理。 | 元: O6。spec: `concern-o6-decomposition` |
 | STV-411 | 見送り | テナント管理機能 O7 の設計チケット化 | P3 | 認証機能エピックの方針確定 | 認証エピック向け前提設計の文書化。実装チケットに分割可能なアウトライン。 | 元: O7 |
 
 > 詳細スコープ・受け入れ条件は以下の各チケット節を参照。  
@@ -52,6 +52,7 @@
 
 ### STV-404: Engine 実行ログを導入
 
+- **spec-workflow**: `.spec-workflow/specs/engine-execution-logging/`（`requirements.md` / `design.md` / `tasks.md`）
 - 優先度: **P2**
 - 元タスク: `logging-v1-tasks.md` の `LOG-2`
 - 目的: workflow/state のライフサイクルを可視化する
@@ -65,6 +66,7 @@
 
 ### STV-405: Warning ポリシーを実装
 
+- **spec-workflow**: `.spec-workflow/specs/logging-warning-policy/`
 - 優先度: **P2**
 - 元タスク: `logging-v1-tasks.md` の `LOG-3`
 - 目的: 継続可能な異常を Warning で一貫出力する
@@ -78,6 +80,7 @@
 
 ### STV-406: `StateContext` に Logger を追加
 
+- **spec-workflow**: `.spec-workflow/specs/state-context-logger/`
 - 優先度: **P2**
 - 元タスク: `logging-v1-tasks.md` の `LOG-4`
 - 目的: `IState` 実装から文脈付きログを出せるようにする
@@ -91,6 +94,7 @@
 
 ### STV-407: ログキー名を統一
 
+- **spec-workflow**: `.spec-workflow/specs/unified-logging-key-names/`
 - 優先度: **P2**
 - 元タスク: `logging-v1-tasks.md` の `LOG-5`
 - 目的: 検索しやすい構造化ログへ統一する
@@ -104,6 +108,7 @@
 
 ### STV-408: input/output のマスキング方針を実装
 
+- **spec-workflow**: `.spec-workflow/specs/workflow-io-log-masking/`
 - 優先度: **P2**
 - 元タスク: `logging-v1-tasks.md` の `LOG-6`
 - 目的: 秘密情報露出リスクを低減する
@@ -118,6 +123,7 @@
 
 ### STV-409: ログ関連テストを追加
 
+- **spec-workflow**: `.spec-workflow/specs/logging-regression-tests/`
 - 優先度: **P2**
 - 元タスク: `logging-v1-tasks.md` の `LOG-7`
 - 目的: 重要ログ経路の回帰を防止する
@@ -131,6 +137,7 @@
 
 ### STV-410: 懸念事項 O6 を仕様化して分割
 
+- **spec-workflow**: `.spec-workflow/specs/concern-o6-decomposition/`
 - 優先度: **P2**
 - 元タスク: `remaining-tasks.md` の `O6`
 - 目的: 大きな未確定課題を実装可能な粒度へ分解する
@@ -178,6 +185,7 @@
 
 | 版 | 日付 | 内容 |
 |----|------|------|
+| 1.0.7 | 2026-04-05 | `STV-404`〜`STV-410` の spec-workflow 起票（各 spec に `requirements.md` / `design.md` / `tasks.md`）。備考に spec フォルダ名を追記。 |
 | 1.0.6 | 2026-04-05 | `STV-404` は未完了に戻す。完了記録は `STV-403` のみ `20_done/v2-logging-stv403_backlog.md` に整理。 |
 | 1.0.5 | 2026-04-05 | `STV-403`/`STV-404` を完了に更新。詳細を `20_done/v2-logging-stv403-404_backlog.md` へ移設（1.0.6 で `STV-404` を差し戻し）。 |
 | 1.0.4 | 2026-04-03 | `STV-403` spec に `tasks.md` 下書きを追加。 |
