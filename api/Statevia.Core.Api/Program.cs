@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Infrastructure;
@@ -87,6 +88,30 @@ builder.Services.AddSingleton<StateWorkflowDefinitionLoader>();
 builder.Services.AddSingleton<NodesWorkflowDefinitionLoader>();
 builder.Services.AddSingleton<IDefinitionLoadStrategy, DefinitionLoadStrategy>();
 builder.Services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
+// STV-403: 本番は本文ログ既定オフ（IO-14）。開発時は詳細、必要なら環境変数で本番もオン。
+builder.Services.AddOptions<RequestLogOptions>()
+    .Configure<IHostEnvironment>((o, env) =>
+    {
+        if (env.IsProduction())
+        {
+            o.LogRequestBody = false;
+            o.LogResponseBody = false;
+        }
+        else
+        {
+            o.LogRequestBody = true;
+            o.LogResponseBody = true;
+        }
+
+        // 運用デバッグ用に本番でも一時的に本文を載せる場合
+        if (string.Equals(Environment.GetEnvironmentVariable("STATEVIA_LOG_HTTP_BODIES"), "true",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            o.LogRequestBody = true;
+            o.LogResponseBody = true;
+        }
+    });
+
 builder.Services.AddCors();
 builder.Services.AddControllers(options =>
     {
@@ -134,11 +159,18 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 
 var app = builder.Build();
 
+// STV-403: リクエストログ（CORS より前で OPTIONS 等も記録）
+app.UseMiddleware<RequestLoggingMiddleware>();
+
 // Phase 3.2: UI からの跨域アクセスを許可（v2 では認証なし）
 app.UseCors(policy => policy
     .AllowAnyOrigin()
     .AllowAnyMethod()
     .AllowAnyHeader());
+
+// STV-403 タスク 8: ルート確定後にのみ RouteValues / ドメイン ID を参照する
+app.UseRouting();
+app.UseMiddleware<TraceContextEnrichmentMiddleware>();
 
 app.MapControllers();
 app.MapGet("/v1/health", () => Results.Ok(new { status = "ok" }));
