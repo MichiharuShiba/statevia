@@ -2,7 +2,7 @@
 
 ## Directory Organization
 
-```
+```text
 [Define your project's directory structure. Examples below - adapt to your project type]
 
 Example for a library/package:
@@ -55,7 +55,7 @@ Common patterns:
 
 ### Module/Package Organization
 
-```
+```text
 [Describe your project's import/include patterns]
 Examples:
 - Absolute imports from project root
@@ -70,7 +70,7 @@ Examples:
 
 ### Module/Class Organization
 
-```
+```text
 Example patterns:
 1. Imports/includes/dependencies
 2. Constants and configuration
@@ -82,7 +82,7 @@ Example patterns:
 
 ### Function/Method Organization
 
-```
+```text
 Example patterns:
 - Input validation first
 - Core logic in the middle
@@ -92,7 +92,7 @@ Example patterns:
 
 ### File Organization Principles
 
-```
+```text
 Choose what works for your project:
 - One class/module per file
 - Related functionality grouped together
@@ -134,9 +134,9 @@ Suggested guidelines:
 
 [How dashboard or monitoring components are organized]
 
-### Example Structure:
+### Example Structure
 
-```
+```text
 src/
 └── dashboard/          # Self-contained dashboard subsystem
     ├── server/        # Backend server components

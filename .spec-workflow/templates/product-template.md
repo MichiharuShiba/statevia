@@ -28,9 +28,9 @@
 
 [How will we measure the success of this product?]
 
-- [Metric 1]: [Target]
-- [Metric 2]: [Target]
-- [Metric 3]: [Target]
+- **Metric 1** — [Target]
+- **Metric 2** — [Target]
+- **Metric 3** — [Target]
 
 ## Product Principles
 
