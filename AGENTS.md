@@ -11,12 +11,12 @@ Statevia is a definition-driven, event-sourced workflow engine with three compon
 | Component                     | Stack                       | Location       |
 | ----------------------------- | --------------------------- | -------------- |
 | **engine** (C# library + CLI) | .NET 8                      | `engine/`      |
-| **core-api** (REST API)       | **C# ASP.NET Core** (v2)    | `api/`         |
+| **core-api** (REST API)       | **C# ASP.NET Core**           | `api/`         |
 | **ui** (Web dashboard)        | Next.js / React / ReactFlow | `services/ui/` |
 
-**v2**: Core-API は C# のみ。TypeScript の `services/core-api/` は v2 では使用しない（legacy はタグ `legacy/core-api-ts` で保存）。PostgreSQL 16 は EF Core 経由で使用。UI は Next.js の route handler で API にプロキシして CORS を避けられる。
+Core-API は C# のみ。PostgreSQL 16 は EF Core 経由で使用。UI は Next.js の route handler で API にプロキシして CORS を避けられる。
 
-### Core-API (v2) — layers, DI, persistence
+### Core-API — layers, DI, persistence
 
 | Layer | Role | Location / types |
 | ----- | ---- | ---------------- |
@@ -89,6 +89,8 @@ The Cloud VM runs inside a container. Docker needs `fuse-overlayfs` storage driv
 ### Lint
 
 No ESLint is configured. TypeScript compilation (`tsc --noEmit`) serves as the primary code quality check. The UI test files have minor pre-existing TS2783 warnings (harmless spread-override pattern).
+
+Comment rules, Markdownlint (e.g. `.spec-workflow/`), and how to treat build or analyzer warnings: see **`docs/development-guidelines.md`** (sections 4.1–4.2).
 
 ### Key env vars
 

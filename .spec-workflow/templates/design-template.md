@@ -65,7 +65,7 @@ graph TD
 
 ### Model 1
 
-```
+```text
 [Define the structure of Model1 in your language]
 - id: [unique identifier type]
 - name: [string/text type]
@@ -74,7 +74,7 @@ graph TD
 
 ### Model 2
 
-```
+```text
 [Define the structure of Model2 in your language]
 - id: [unique identifier type]
 - [Additional properties as needed]
