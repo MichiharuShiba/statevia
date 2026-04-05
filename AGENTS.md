@@ -90,6 +90,8 @@ The Cloud VM runs inside a container. Docker needs `fuse-overlayfs` storage driv
 
 No ESLint is configured. TypeScript compilation (`tsc --noEmit`) serves as the primary code quality check. The UI test files have minor pre-existing TS2783 warnings (harmless spread-override pattern).
 
+Comment rules, Markdownlint (e.g. `.spec-workflow/`), and how to treat build or analyzer warnings: see **`docs/development-guidelines.md`** (sections 4.1–4.2).
+
 ### Key env vars
 
 | Variable                 | Service       | Default                                                                                                                |
