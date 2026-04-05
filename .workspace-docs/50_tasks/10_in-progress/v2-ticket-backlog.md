@@ -1,6 +1,6 @@
 # v2 残タスク チケット一覧
 
-- Version: 1.0.2
+- Version: 1.0.4
 - 更新日: 2026-04-03
 - 対象: `v2-remaining-tasks.md` / `v2-logging-v1-tasks.md` の未完了項目に紐づく実行チケット
 - 関連: `.workspace-docs/50_tasks/10_in-progress/v2-remaining-tasks.md`, `.workspace-docs/50_tasks/10_in-progress/v2-logging-v1-tasks.md`
@@ -36,7 +36,7 @@
 |----|------|--------|--------|------|----------|------|
 | STV-401 | 完了 | E2E（Cancel シーケンス）を追加 | P1 | - | Core-API 実体で Cancel が green、`cancelled`（または契約上の終端）を検証。CI は環境変数ゲート可。 | 実装・受け入れ: `../20_done/v2-e2e-cancel-idempotency_backlog.md` |
 | STV-402 | 完了 | E2E（冪等・409）を追加 | P1 | STV-401 | 冪等挙動が契約どおり。409 の UI 表示を E2E で検証。再実行安定。 | 同上 |
-| STV-403 | 未完了 | API リクエスト基本ログを導入 | P2 | - | 主要エンドポイントで開始/完了ログが出る。`traceId` で相関可能。検証手順またはテストを文書化。 | 元: LOG-1。spec-workflow: `.spec-workflow/specs/api-request-basic-logging/`（requirements 起票済） |
+| STV-403 | 未完了 | API リクエスト基本ログを導入 | P2 | - | 主要エンドポイントで開始/完了ログが出る。`traceId` で相関可能。検証手順またはテストを文書化。 | 元: LOG-1。spec: `api-request-basic-logging`（requirements / design / **tasks** 下書き済。実装は tasks 承認後） |
 | STV-404 | 未完了 | Engine 実行ログを導入 | P2 | - | workflowId/stateName を含むログ。失敗経路で Error。 | 元: LOG-2 |
 | STV-405 | 未完了 | Warning ポリシーを実装 | P2 | STV-404 | Warning 条件がコードで明文化。テストで最低1ケース。 | 元: LOG-3 |
 | STV-406 | 未完了 | `StateContext` に Logger を追加 | P2 | STV-404 | サンプル state で `ctx.Logger` 利用可。後方互換維持。 | 元: LOG-4 |
@@ -51,7 +51,7 @@
 
 ### STV-403: API リクエスト基本ログを導入
 
-- **spec-workflow**: `.spec-workflow/specs/api-request-basic-logging/`（Phase 1 `requirements.md` から着手）
+- **spec-workflow**: `.spec-workflow/specs/api-request-basic-logging/`（`requirements.md` / `design.md` / `tasks.md` 下書きまで。承認後に実装フェーズ）
 - 優先度: **P2**
 - 元タスク: `logging-v1-tasks.md` の `LOG-1`
 - 目的: API の開始/完了/例外を追跡可能にする
@@ -193,6 +193,8 @@
 
 | 版 | 日付 | 内容 |
 |----|------|------|
+| 1.0.4 | 2026-04-03 | `STV-403` spec に `tasks.md` 下書きを追加。 |
+| 1.0.3 | 2026-04-03 | `STV-403` spec に `design.md` たたき台を追加。 |
 | 1.0.2 | 2026-04-03 | `STV-403` を spec-workflow 起票（`api-request-basic-logging/requirements.md`）。 |
 | 1.0.1 | 2026-04-03 | `STV-401`/`STV-402` を完了に更新。詳細を `20_done/v2-e2e-cancel-idempotency_backlog.md` へ移設。 |
 | 1.0.0 | 2026-04-02 | メタブロック・チケット表7列化（完了条件・備考）。 |
