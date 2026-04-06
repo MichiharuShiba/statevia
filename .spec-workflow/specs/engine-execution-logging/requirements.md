@@ -32,6 +32,26 @@
 2. WHEN **状態実行が fact 付きで完了する** THEN **システムは `fact`, `elapsedMs`（計測する場合）を含む Info ログを出す**。
 3. IF **Join 状態** THEN **ログの粒度は通常 state と整合し、同一表の Warning/Error と衝突しない**（design でイベント名を固定）。
 
+#### `elapsedMs` の計測区間（Requirement 2 の補足）
+
+1. **`elapsedMs` が指す期間**は、**当該状態について `IStateExecutor.ExecuteAsync` を起動する直前**から、**その呼び出しが完了し fact（`Completed` / `Failed` / `Cancelled` 等）がエンジン内で確定するまで**の **壁時計経過**（UTC 基準）をミリ秒で表す。
+2. **Wait / Resume**: `ExecuteAsync` が外部イベント待ちで `await` している時間は **上記区間に含める**（待機込みの経過時間。突合せ用に「状態が占有していた時間」と解釈する）。
+3. **Join など `ExecuteAsync` を伴わない合成経路**では `elapsedMs` を **省略する**か **0 または意味付きのプレースホルダ**とする（どちらかを design で固定）。
+4. **「CPU だけ」「待ち除き」**の別メトリクスは本要件の範囲外（必要なら将来チケット）。
+
+### Requirement 2b — ログ出力の手段（ライブラリ汚染の防止）
+
+**User Story:** As a **Engine の単体利用者**, I want **ログ用のバックグラウンドスレッドやグローバル状態を Engine が持ち込まない**こと, so that **ホストに依存しない**。
+
+#### Acceptance Criteria — Requirement 2b
+
+1. WHEN **Engine がログを出す** THEN **手段は `Microsoft.Extensions.Logging` の標準 **同期** API（`ILogger` の `Log*` / `LoggerMessage` 等）に限定する**。Engine 内で **独自の非同期キュー・タイマー・イベントバスをログ専用に起動しない**。
+2. WHEN **実際の I/O やバッチ送信が行われる** THEN **それはホストが登録した `ILoggerProvider` の責務**とし、Engine は **抽象 (`ILogger` / `Microsoft.Extensions.Logging.Abstractions`) のみ**に依存する。
+3. WHEN **ロガーが未注入** THEN **既定は `NullLogger` 相当**とし、`new WorkflowEngine()` のような **単体利用でログ基盤の初期化を要求しない**。
+4. WHEN **ログ プロバイダが例外を投げる** THEN **その例外は state 遷移に伝播させない**（ログ呼び出しを囲む try/catch の方針は design）。
+
+**注:** 「同期 API」とは呼び出しスレッドで `Log*` が返ること（プロバイダ内部で非同期シンクしてよい）。
+
 ### Requirement 3 — 失敗経路
 
 **User Story:** As a **運用・開発者**, I want **状態実行例外および workflow 失敗が Error で記録される**こと, so that **アラートと手掛かりを得られる**。
@@ -43,11 +63,11 @@
 
 ### Requirement 4 — 依存と非機能
 
-**User Story:** As a **ライブラリ利用者**, I want **ログが実行を壊さず、テストで検証できる**こと, so that **本番と CI の両方で安全に使える**。
+**User Story:** As a **ライブラリ利用者**, I want **ログが実行セマンティクスを壊さず、テストで検証できる**こと, so that **本番と CI の両方で安全に使える**。
 
 #### Acceptance Criteria — Requirement 4
 
-1. WHEN **ロガーが未設定またはログ出力が失敗する** THEN **ワークフロー実行は従来どおり致命傷にしない**（try/catch 方針は design）。
+1. WHEN **ロガーが未設定またはログ出力が失敗する** THEN **ワークフロー実行は従来どおり致命傷にしない**（Requirement 2b および design の try/catch）。
 2. WHEN **実装がマージ対象である** THEN **単体テストで主要ログ経路が最低 1 ケース検証される**。
 
 ## Non-Functional Requirements
@@ -68,6 +88,7 @@
 ### Reliability
 
 - ログ失敗で state 遷移が壊れないこと。
+- **ライブラリ境界**: グローバル静的ロガーへの依存を追加しない（インスタンス／オプション経由の注入のみ）。
 
 ## Out of Scope
 
