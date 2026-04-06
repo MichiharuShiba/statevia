@@ -36,8 +36,10 @@
 | Core-API | `cd api && dotnet test statevia-api.sln` |
 | UI | `cd services/ui && npm run test:run`（Vitest）、型は `tsc --noEmit` |
 
-- **コメント・XML・テストの書き方**: `.cursor/rules/csharp-standards.mdc`（詳細は **`docs/development-guidelines.md` §4**）。
-- **ビルド／Analyzer／Markdown／UI の静的チェックの扱い**: 同上 **§4.2**。`.spec-workflow/**/*.md` はルート **`.markdownlint.json`** に従い、`markdownlint-cli2` で検証可能。
+- **C# のコメント・XML・テスト**: `.cursor/rules/csharp-standards.mdc`。
+- **TypeScript / React のコメント・テスト**: `.cursor/rules/typescript-standards.mdc`。
+- 全体の参照は **`docs/development-guidelines.md` §4**。
+- **ビルド／Analyzer／Markdown／UI の静的チェックの扱い**: 同上 **§4.3**。`.spec-workflow/**/*.md` はルート **`.markdownlint.json`** に従い、`markdownlint-cli2` で検証可能。
 
 ## Security & Compliance（概要）
 

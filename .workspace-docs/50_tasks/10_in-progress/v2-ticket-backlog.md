@@ -1,6 +1,6 @@
 # v2 残タスク チケット一覧
 
-- Version: 1.0.7
+- Version: 1.0.8
 - 更新日: 2026-04-05
 - 対象: `v2-remaining-tasks.md` / `v2-logging-v1-tasks.md` の未完了項目に紐づく実行チケット
 - 関連: `.workspace-docs/50_tasks/10_in-progress/v2-remaining-tasks.md`, `.workspace-docs/50_tasks/10_in-progress/v2-logging-v1-tasks.md`
@@ -13,8 +13,8 @@
 
 ## 現在の仕分け（2026-04-05）
 
-- **完了**: `STV-401`～`STV-403`（`STV-401`/`402`: `../20_done/v2-e2e-cancel-idempotency_backlog.md`。`STV-403`: `../20_done/v2-logging-stv403_backlog.md`）
-- **未完了**: `STV-404` ～ `STV-410`
+- **完了**: `STV-401`～`STV-404`（`STV-401`/`402`: `../20_done/v2-e2e-cancel-idempotency_backlog.md`。`STV-403`: `../20_done/v2-logging-stv403_backlog.md`。`STV-404`: `../20_done/v2-logging-stv404_backlog.md`）
+- **未完了**: `STV-405` ～ `STV-410`
 - **見送り（今はしない）**: `STV-411`（認証エピック連動）
 - **棄却**: なし
 
@@ -37,7 +37,7 @@
 | STV-401 | 完了 | E2E（Cancel シーケンス）を追加 | P1 | - | Core-API 実体で Cancel が green、`cancelled`（または契約上の終端）を検証。CI は環境変数ゲート可。 | 実装・受け入れ: `../20_done/v2-e2e-cancel-idempotency_backlog.md` |
 | STV-402 | 完了 | E2E（冪等・409）を追加 | P1 | STV-401 | 冪等挙動が契約どおり。409 の UI 表示を E2E で検証。再実行安定。 | 同上 |
 | STV-403 | 完了 | API リクエスト基本ログを導入 | P2 | - | 主要エンドポイントで開始/完了ログが出る。`traceId` で相関可能。検証手順またはテストを文書化。 | 元: LOG-1。実装・受け入れ: `../20_done/v2-logging-stv403_backlog.md` |
-| STV-404 | 未完了 | Engine 実行ログを導入 | P2 | - | workflowId/stateName を含むログ。失敗経路で Error。 | 元: LOG-2。spec: `engine-execution-logging` |
+| STV-404 | 完了 | Engine 実行ログを導入 | P2 | - | workflowId/stateName を含むログ。失敗経路で Error。 | 元: LOG-2。spec: `engine-execution-logging`。実装・受け入れ: `../20_done/v2-logging-stv404_backlog.md` |
 | STV-405 | 未完了 | Warning ポリシーを実装 | P2 | STV-404 | Warning 条件がコードで明文化。テストで最低1ケース。 | 元: LOG-3。spec: `logging-warning-policy` |
 | STV-406 | 未完了 | `StateContext` に Logger を追加 | P2 | STV-404 | サンプル state で `ctx.Logger` 利用可。後方互換維持。 | 元: LOG-4。spec: `state-context-logger` |
 | STV-407 | 未完了 | ログキー名を統一 | P2 | STV-403, STV-404 | 命名規約を docs に記載。API/Engine で適用。 | 元: LOG-5。spec: `unified-logging-key-names` |
@@ -48,21 +48,8 @@
 
 > 詳細スコープ・受け入れ条件は以下の各チケット節を参照。  
 > **`STV-401` / `STV-402` の節は完了により `../20_done/v2-e2e-cancel-idempotency_backlog.md` へ移した。**  
-> **`STV-403` の節は完了により `../20_done/v2-logging-stv403_backlog.md` へ移した。**
-
-### STV-404: Engine 実行ログを導入
-
-- **spec-workflow**: `.spec-workflow/specs/engine-execution-logging/`（`requirements.md` / `design.md` / `tasks.md`）
-- 優先度: **P2**
-- 元タスク: `logging-v1-tasks.md` の `LOG-2`
-- 目的: workflow/state のライフサイクルを可視化する
-- スコープ:
-  - workflow 開始/終了（完了・失敗・キャンセル）
-  - state 開始/完了
-- 受け入れ条件:
-  - workflowId/stateName を含むログが出る
-  - 失敗経路で Error ログが出る
-- 依存: なし
+> **`STV-403` の節は完了により `../20_done/v2-logging-stv403_backlog.md` へ移した。**  
+> **`STV-404` の節は完了により `../20_done/v2-logging-stv404_backlog.md` へ移した。**
 
 ### STV-405: Warning ポリシーを実装
 
@@ -168,7 +155,7 @@
 ## 推奨マイルストーン
 
 - **Sprint A**: ~~`STV-401`, `STV-402`~~ 完了（2026-04-03）
-- **Sprint B**: ~~`STV-403`~~ 完了（2026-04-05）。残: `STV-404`〜`STV-407`
+- **Sprint B**: ~~`STV-403`~~ / ~~`STV-404`~~ 完了（2026-04-05）。残: `STV-405`〜`STV-407`
 - **Sprint C**: `STV-408`, `STV-409`, `STV-410`
 - **認証エピック連動**: `STV-411`
 
@@ -185,6 +172,7 @@
 
 | 版 | 日付 | 内容 |
 |----|------|------|
+| 1.0.8 | 2026-04-05 | `STV-404` を完了に更新。詳細を `../20_done/v2-logging-stv404_backlog.md` へ移設。 |
 | 1.0.7 | 2026-04-05 | `STV-404`〜`STV-410` の spec-workflow 起票（各 spec に `requirements.md` / `design.md` / `tasks.md`）。備考に spec フォルダ名を追記。 |
 | 1.0.6 | 2026-04-05 | `STV-404` は未完了に戻す。完了記録は `STV-403` のみ `20_done/v2-logging-stv403_backlog.md` に整理。 |
 | 1.0.5 | 2026-04-05 | `STV-403`/`STV-404` を完了に更新。詳細を `20_done/v2-logging-stv403-404_backlog.md` へ移設（1.0.6 で `STV-404` を差し戻し）。 |

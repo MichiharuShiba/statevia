@@ -90,7 +90,7 @@ The Cloud VM runs inside a container. Docker needs `fuse-overlayfs` storage driv
 
 No ESLint is configured. TypeScript compilation (`tsc --noEmit`) serves as the primary code quality check. The UI test files have minor pre-existing TS2783 warnings (harmless spread-override pattern).
 
-Comment rules, Markdownlint (e.g. `.spec-workflow/`), and how to treat build or analyzer warnings: see **`docs/development-guidelines.md`** (sections 4.1–4.2).
+Comment rules, Markdownlint (e.g. `.spec-workflow/`), and how to treat build or analyzer warnings: see **`docs/development-guidelines.md`** (sections 4.1–4.3).
 
 ### Key env vars
 
@@ -106,6 +106,11 @@ Comment rules, Markdownlint (e.g. `.spec-workflow/`), and how to treat build or 
 - **ミドルウェア** `RequestLoggingMiddleware` が **CORS より前**に実行され、各リクエストで **開始**・**完了**（およびミドルウェア境界の **未処理例外**）を `ILogger` に出力する。
 - **相関 ID**: 優先順は `traceparent`（W3C）→ `X-Trace-Id` → `X-Request-Id` → 生成 UUID（32 hex）。`HttpContext.Items["Statevia.TraceId"]` にも格納する。
 - **ログ項目（概要）**: `TraceId`, `Method`, `Path`（クエリなし）, `Query`, `TenantId`, `UserAgent`, 任意で `RequestBody` / `ResponseBody` スナップショット（**マスキング・長さ上限あり**）。本番では **本文ログは既定オフ**（`RequestLogOptions`）。開発環境では既定オン。本番で本文を有効化する場合は **`STATEVIA_LOG_HTTP_BODIES=true`**（IO-14 に照らし外部ログへ流す前はマスキングを確認すること）。
+
+### Engine: 実行ログ（STV-404）
+
+- **`WorkflowEngine`** は `Microsoft.Extensions.Logging` の **同期 `ILogger<WorkflowEngine>`** のみ使用。`WorkflowEngineOptions.Logger` または `LoggerFactory` で注入（未設定は `NullLogger`）。プロバイダ例外は **ログ呼び出しを try/catch** して遷移に伝播させない。
+- **主な項目（概要）**: `Workflow started`（`WorkflowId`, `DefinitionName`, `InitialState`）、`State scheduled` / `State completed`（`StateName`, `NodeId`, `Fact`、通常状態は **`ElapsedMs`**＝`ExecuteAsync` 前後の壁時計。Wait の待機込み）、`State execute failed` / `Workflow terminal failure`（Error）、`Workflow completed`。Join 合成ノードの完了ログには **`ElapsedMs` を付けない**。
 
 ### .NET SDK
 
