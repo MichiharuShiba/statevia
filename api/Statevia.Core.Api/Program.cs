@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Infrastructure;
@@ -64,9 +65,11 @@ builder.Services.AddSingleton<IIdGenerator, UuidV7Generator>();
 builder.Services.AddSingleton<IWorkflowEngine>(sp =>
 {
     var idGen = sp.GetRequiredService<IIdGenerator>();
+    var logger = sp.GetRequiredService<ILogger<WorkflowEngine>>();
     return new WorkflowEngine(new WorkflowEngineOptions
     {
-        WorkflowInstanceIdGenerator = new DelegateWorkflowInstanceIdGenerator(() => idGen.NewGuid().ToString())
+        WorkflowInstanceIdGenerator = new DelegateWorkflowInstanceIdGenerator(() => idGen.NewGuid().ToString()),
+        Logger = logger
     });
 });
 builder.Services.AddScoped<ICommandDedupService, CommandDedupService>();
