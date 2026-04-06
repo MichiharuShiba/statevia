@@ -13,6 +13,7 @@
 | HTTP 契約・エラー形式 | `docs/core-api-interface.md`, `docs/data-integration-contract.md` |
 | 作業用仕様・計画・タスク（任意） | `.workspace-docs/`（`README.md` が入口） |
 | C# 細則（命名・コメント・パターンマッチ・テスト体裁） | `.cursor/rules/csharp-standards.mdc`（Cursor 利用時） |
+| TypeScript / React 細則（命名・JSDoc・型絞り込み・テスト体裁） | `.cursor/rules/typescript-standards.mdc`（Cursor 利用時） |
 | Markdown（`.spec-workflow` 等） | ルート `.markdownlint.json`（`markdownlint-cli2` で検証可能） |
 
 ---
@@ -47,19 +48,24 @@
 
 ---
 
-## 4. C# コーディング
+## 4. コーディングと静的チェック
 
-- 詳細は **`.cursor/rules/csharp-standards.mdc`**（変数名・XML コメント・パターンマッチ・テストの AAA と日本語サマリー）。
-- 原則として **モダン C# のパターンマッチ**（`is` パターン、switch 式）を優先する。
+- **C#** の細則は **`.cursor/rules/csharp-standards.mdc`**（§4.1）。**TypeScript / React** は **`.cursor/rules/typescript-standards.mdc`**（§4.2）。**リンター・ビルド**は §4.3。
 
-### 4.1 コメントと XML ドキュメント
+### 4.1 C#（コメント・XML・テストの要約）
 
+- **モダン C# のパターンマッチ**（`is` パターン、switch 式）を優先する。粒度の詳細は **`csharp-standards.mdc`**。
 - **public / internal** の型・メンバーには **XML ドキュメント**（`/// <summary>` 等）を付ける。
 - **private** は、意図がコードだけでは分かりにくい箇所（ヘルパー・複雑な分岐・仕様参照）に `/// <summary>` や行コメントを付ける。
 - **単体テスト**では、メソッドごとに **日本語の `/// <summary>`**（何を検証するか）と、本体の **`// Arrange` / `// Act` / `// Assert`** 区切りを付ける。
 - 上記の粒度・例は **`csharp-standards.mdc`** に従う。
 
-### 4.2 リンター・ビルド警告・静的チェック
+### 4.2 TypeScript（UI）
+
+- 詳細は **`.cursor/rules/typescript-standards.mdc`**（変数名・JSDoc・型の絞り込み・React の props・Vitest の AAA と日本語ケース名）。
+- 品質チェックは **§4.3** の UI 行に従う。
+
+### 4.3 リンター・ビルド警告・静的チェック
 
 - **C#**: `dotnet build` / `dotnet test` で出る **コンパイラエラー・Analyzer 警告**は、自分の変更に起因するものは **解消してから** PR に出す。触れていないファイルの既存警告をまとめて直すのは必須ではないが、**新規コードで警告を増やさない**こと。
 - **Markdown**: リポジトリ直下の **`.markdownlint.json`** に従う。`.spec-workflow/**/*.md` などを編集したときは例として次で確認できる。
@@ -119,5 +125,5 @@
 
 | 日付 | 内容 |
 |------|------|
-| 2026-04-05 | コメント規約・リンター・静的チェック（§4.1–4.2）、Markdownlint の参照を追加 |
+| 2026-04-05 | §4 再編（4.1 C#・4.2 TypeScript・4.3 静的チェック）、`typescript-standards.mdc` 追加、正本表に TypeScript 細則を追記 |
 | 2026-03-28 | 初版・ブランチ命名を追加 |
