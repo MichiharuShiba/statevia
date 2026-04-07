@@ -97,7 +97,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
 
     private async Task RunWorkflowAsync(WorkflowInstance instance, EventProvider eventProvider, object? workflowInput)
     {
-        var initialInput = ApplyStateInput(instance.Definition, instance.Definition.InitialState, workflowInput);
+        var initialInput = ApplyStateInput(instance, instance.Definition.InitialState, workflowInput);
         try
         {
             await ScheduleStateAsync(instance, eventProvider, instance.Definition.InitialState, null, null, initialInput).ConfigureAwait(false);
@@ -196,13 +196,17 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         var transition = instance.Fsm.Evaluate(joinStateName, Fact.Joined);
         if (transition.HasTransition && transition.Next != null)
         {
-            var mappedJoinInput = ApplyStateInput(instance.Definition, transition.Next, joinInputs);
+            var mappedJoinInput = ApplyStateInput(instance, transition.Next, joinInputs);
             await ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, mappedJoinInput).ConfigureAwait(false);
         }
         else if (transition.End)
         {
             instance.MarkCompleted();
             _workflowLog.LogWorkflowCompleted(instance.WorkflowId, instance.Definition.Name);
+        }
+        else
+        {
+            _workflowLog.LogWarningNoTransition(instance.WorkflowId, joinStateName, Fact.Joined);
         }
     }
 
@@ -225,6 +229,10 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         var transition = instance.Fsm.Evaluate(stateName, fact);
         if (!transition.HasTransition)
         {
+            if (!transition.End)
+            {
+                _workflowLog.LogWarningNoTransition(instance.WorkflowId, stateName, fact);
+            }
             return;
         }
         if (transition.End)
@@ -238,25 +246,35 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
             // Broadcast: 同一 output を各分岐の先頭状態へ渡す（workflow-input-output-spec §3.3）。
             foreach (var nextState in transition.Fork)
             {
-                var mappedForkInput = ApplyStateInput(instance.Definition, nextState, output);
+                var mappedForkInput = ApplyStateInput(instance, nextState, output);
                 _ = ScheduleStateAsync(instance, eventProvider, nextState, nodeId, EdgeType.Fork, mappedForkInput);
             }
         }
         else if (transition.Next != null)
         {
-            var mappedInput = ApplyStateInput(instance.Definition, transition.Next, output);
+            var mappedInput = ApplyStateInput(instance, transition.Next, output);
             _ = ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, mappedInput);
         }
     }
 
-    private static object? ApplyStateInput(CompiledWorkflowDefinition definition, string targetState, object? rawInput)
+    private object? ApplyStateInput(WorkflowInstance instance, string targetState, object? rawInput)
     {
-        if (!definition.StateInputs.TryGetValue(targetState, out var spec))
+        if (!instance.Definition.StateInputs.TryGetValue(targetState, out var spec))
         {
             return rawInput;
         }
 
-        return StateInputEvaluator.Apply(spec, rawInput);
+        var evaluated = StateInputEvaluator.ApplyWithDiagnostics(spec, rawInput);
+        foreach (var warning in evaluated.Warnings)
+        {
+            _workflowLog.LogWarningInputEvaluation(
+                instance.WorkflowId,
+                targetState,
+                warning.InputKey,
+                warning.Reason);
+        }
+
+        return evaluated.Value;
     }
 
     /// <inheritdoc />

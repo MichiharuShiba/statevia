@@ -96,6 +96,25 @@ public sealed partial class WorkflowEngine
                     definitionName,
                     stateName,
                     fact));
+
+        /// <summary>state input のフォールバック等、継続可能だが入力品質に注意が必要な状況（STV-405）。</summary>
+        public void LogWarningInputEvaluation(string workflowId, string stateName, string inputKey, string reason) =>
+            SafeLog(() =>
+                _logger.LogWarning(
+                    "Input evaluation warning WorkflowId={WorkflowId} StateName={StateName} InputKey={InputKey} Reason={Reason}",
+                    workflowId,
+                    stateName,
+                    inputKey,
+                    reason));
+
+        /// <summary>FSM に次遷移がなく終端でもない停滞（STV-405）。</summary>
+        public void LogWarningNoTransition(string workflowId, string stateName, string fact) =>
+            SafeLog(() =>
+                _logger.LogWarning(
+                    "No transition WorkflowId={WorkflowId} StateName={StateName} Fact={Fact}",
+                    workflowId,
+                    stateName,
+                    fact));
     }
 
     /// <summary>ログ プロバイダが例外を投げてもワークフロー遷移を壊さない（STV-404 Requirement 2b）。</summary>

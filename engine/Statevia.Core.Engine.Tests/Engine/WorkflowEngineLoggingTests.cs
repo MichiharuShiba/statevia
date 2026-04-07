@@ -74,6 +74,89 @@ public sealed class WorkflowEngineLoggingTests
         Assert.DoesNotContain(joinCompletes, e => e.Message.Contains("ElapsedMs", StringComparison.Ordinal));
     }
 
+    /// <summary>state input の path が raw に存在しないとき Input evaluation warning が出ることを検証する（STV-405）。</summary>
+    [Fact]
+    public async Task Logging_StateInputPathSegmentMissing_EmitsWarning()
+    {
+        // Arrange
+        var sink = new ListLogger();
+        var def = new CompiledWorkflowDefinition
+        {
+            Name = "InputWarn",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+            {
+                ["A"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { Next = "B" } },
+                ["B"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } }
+            },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
+            JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+            WaitTable = new Dictionary<string, string>(),
+            StateInputs = new Dictionary<string, StateInputDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["B"] = new StateInputDefinition { Path = "$.missing" }
+            },
+            InitialState = "A",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
+            {
+                ["A"] = DefaultStateExecutor.Create(new ConstantOutputState(new Dictionary<string, object?>())),
+                ["B"] = DefaultStateExecutor.Create(new ImmediateState())
+            })
+        };
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1, Logger = sink });
+
+        // Act
+        engine.Start(def);
+        await Task.Delay(300);
+
+        // Assert
+        Assert.Contains(
+            sink.Entries,
+            static e =>
+                e.Level == LogLevel.Warning &&
+                e.Message.Contains("Input evaluation warning", StringComparison.Ordinal) &&
+                e.Message.Contains("Reason=PathSegmentMissing", StringComparison.Ordinal) &&
+                e.Message.Contains("InputKey=$.missing", StringComparison.Ordinal) &&
+                e.Message.Contains("StateName=B", StringComparison.Ordinal));
+    }
+
+    /// <summary>FSM に Completed 遷移が無く停止するとき No transition の Warning が出ることを検証する（STV-405）。</summary>
+    [Fact]
+    public async Task Logging_NoFsmTransitionStall_EmitsWarning()
+    {
+        // Arrange
+        var sink = new ListLogger();
+        var def = new CompiledWorkflowDefinition
+        {
+            Name = "NoTransition",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+            {
+                ["Start"] = new Dictionary<string, TransitionTarget>()
+            },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
+            JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+            WaitTable = new Dictionary<string, string>(),
+            InitialState = "Start",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
+            {
+                ["Start"] = DefaultStateExecutor.Create(new ImmediateState())
+            })
+        };
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1, Logger = sink });
+
+        // Act
+        engine.Start(def);
+        await Task.Delay(200);
+
+        // Assert
+        Assert.Contains(
+            sink.Entries,
+            static e =>
+                e.Level == LogLevel.Warning &&
+                e.Message.Contains("No transition", StringComparison.Ordinal) &&
+                e.Message.Contains("StateName=Start", StringComparison.Ordinal) &&
+                e.Message.Contains("Fact=Completed", StringComparison.Ordinal));
+    }
+
     private sealed class ListLogger : ILogger<WorkflowEngine>
     {
         public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = new();
@@ -156,6 +239,16 @@ public sealed class WorkflowEngineLoggingTests
     private sealed class ImmediateState : IState<Unit, Unit>
     {
         public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct) => Task.FromResult(Unit.Value);
+    }
+
+    private sealed class ConstantOutputState : IState<object?, object?>
+    {
+        private readonly object? _output;
+
+        public ConstantOutputState(object? output) => _output = output;
+
+        public Task<object?> ExecuteAsync(StateContext ctx, object? input, CancellationToken ct) =>
+            Task.FromResult(_output);
     }
 
     private sealed class ThrowingState : IState<Unit, Unit>
