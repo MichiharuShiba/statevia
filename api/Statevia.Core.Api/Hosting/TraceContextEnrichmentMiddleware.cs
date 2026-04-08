@@ -37,7 +37,7 @@ public sealed class TraceContextEnrichmentMiddleware
             {
                 TryLog(() =>
                     logger.LogInformation(
-                        "HTTP trace enrich TraceId={TraceId} WorkflowDisplayId={WorkflowDisplayId} DefinitionDisplayId={DefinitionDisplayId} GraphDefinitionId={GraphDefinitionId}",
+                        "HTTP trace enrich TraceId={TraceId} WorkflowId={WorkflowId} DefinitionId={DefinitionId} GraphDefinitionId={GraphDefinitionId}",
                         traceId,
                         string.IsNullOrEmpty(wf) ? null : wf,
                         string.IsNullOrEmpty(def) ? null : def,
