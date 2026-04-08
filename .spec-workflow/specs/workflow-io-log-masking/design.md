@@ -2,7 +2,7 @@
 
 ## Overview
 
-`LogBodyRedactor` を **単一の真実源**とし、必要なら **`Statevia.Core` 共有プロジェクト**または **Engine から参照可能な小さな `LogRedaction` 静的クラス**を `api` からリンク共有する（プロジェクト分割の都合で **ソースリンク**や **複製 + テスト同期**は tasks で決定）。
+`LogBodyRedactor` 相当のロジックは、**中立配置の小さな共通 `LogRedaction` 静的クラス**へ集約する。配置は `engine/Statevia.Core.Engine/Infrastructure/Logging/` 配下を第一候補とし、`api` / `engine` の双方が同一実装を呼び出す。`STV-408` では固定ルール（`password` / `token` / `secret` / `authorization`）を実装し、ユーザー定義ルールは `STV-412` で拡張する。
 
 ### Engine 側
 
@@ -15,12 +15,12 @@
 ## Data Flow
 
 ```text
-Raw string → LogBodyRedactor.Redact(string) → Logger
+Raw string → LogRedaction.Redact(string) → Logger
 ```
 
 ## Testing
 
-- `LogBodyRedactor` のユニットテストに **ネスト JSON** と **workflowInput 風ペイロード**を追加。
+- `LogRedaction` のユニットテストに **ネスト JSON** と **workflowInput 風ペイロード**を追加。
 
 ## References
 

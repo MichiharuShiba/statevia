@@ -1,6 +1,6 @@
 # v2 残タスク チケット一覧
 
-- Version: 1.0.9
+- Version: 1.1.0
 - 更新日: 2026-04-08
 - 対象: `v2-remaining-tasks.md` / `v2-logging-v1-tasks.md` の未完了項目に紐づく実行チケット
 - 関連: `.workspace-docs/50_tasks/10_in-progress/v2-remaining-tasks.md`, `.workspace-docs/50_tasks/10_in-progress/v2-logging-v1-tasks.md`
@@ -41,7 +41,8 @@
 | STV-405 | 完了 | Warning ポリシーを実装 | P2 | STV-404 | Warning 条件がコードで明文化。テストで最低1ケース。 | 元: LOG-3。spec: `logging-warning-policy` |
 | STV-406 | 完了 | `StateContext` に Logger を追加 | P2 | STV-404 | サンプル state で `ctx.Logger` 利用可。後方互換維持。 | 元: LOG-4。spec: `state-context-logger` |
 | STV-407 | 未完了 | ログキー名を統一 | P2 | STV-403, STV-404 | 命名規約を docs に記載。API/Engine で適用。 | 元: LOG-5。spec: `unified-logging-key-names` |
-| STV-408 | 未完了 | input/output のマスキング方針を実装 | P2 | STV-407 | 代表機密キーがマスク。テストで生データ非露出。 | 元: LOG-6。spec: `workflow-io-log-masking` |
+| STV-408 | 未完了 | input/output のマスキング方針を実装 | P2 | STV-407 | 代表機密キーがマスク。テストで生データ非露出。 | 元: LOG-6。spec: `workflow-io-log-masking`。ユーザー定義ルールは後続バックログで管理 |
+| STV-412 | 見送り | ユーザー定義マスキングルールを追加 | P3 | STV-408 | ルールの上書き/追加方式（設定ファイル等）を定義し、代表ケースで適用できる。 | 元: STV-408 Out of Scope（リリース後検討） |
 | STV-409 | 未完了 | ログ関連テストを追加 | P2 | STV-403〜STV-408 | テスト green。回帰検知可能。 | 元: LOG-7。spec: `logging-regression-tests` |
 | STV-410 | 未完了 | 懸念事項 O6 を仕様化して分割 | P2 | - | サブチケット5件以上粒度。優先度・依存整理。 | 元: O6。spec: `concern-o6-decomposition` |
 | STV-411 | 見送り | テナント管理機能 O7 の設計チケット化 | P3 | 認証機能エピックの方針確定 | 認証エピック向け前提設計の文書化。実装チケットに分割可能なアウトライン。 | 元: O7 |
@@ -122,6 +123,19 @@
   - 将来変更で回帰検知可能
 - 依存: `STV-403`〜`STV-408`
 
+### STV-412: ユーザー定義マスキングルールを追加
+
+- 優先度: **P3**
+- 目的: プロダクト標準ルールに加えて、運用側で独自キーをマスク対象へ追加できるようにする
+- スコープ:
+  - 設定方式（例: 設定ファイルまたはアプリ設定）の設計
+  - デフォルトルールとのマージ/優先順位の定義
+  - 代表ユースケースのテスト
+- 受け入れ条件:
+  - デフォルトルールを壊さずに追加ルールが適用される
+  - 運用ドキュメントに設定手順がある
+- 依存: `STV-408`
+
 ### STV-410: 懸念事項 O6 を仕様化して分割
 
 - **spec-workflow**: `.spec-workflow/specs/concern-o6-decomposition/`
@@ -158,6 +172,7 @@
 - **Sprint B**: ~~`STV-403`~~ / ~~`STV-404`~~ / ~~`STV-405`~~ / ~~`STV-406`~~ 完了（〜2026-04-08）。残: `STV-407`
 - **Sprint C**: `STV-408`, `STV-409`, `STV-410`
 - **認証エピック連動**: `STV-411`
+- **ポストリリース拡張**: `STV-412`
 
 ---
 
@@ -172,6 +187,7 @@
 
 | 版 | 日付 | 内容 |
 |----|------|------|
+| 1.1.0 | 2026-04-08 | `STV-412`（ユーザー定義マスキングルール）を見送りバックログとして追加。`STV-408` 備考に連携方針を追記。 |
 | 1.0.9 | 2026-04-08 | `STV-405`/`STV-406` を完了に更新。仕分け・一覧・Sprint B の残件を最新化。 |
 | 1.0.8 | 2026-04-05 | `STV-404` を完了に更新。詳細を `../20_done/v2-logging-stv404_backlog.md` へ移設。 |
 | 1.0.7 | 2026-04-05 | `STV-404`〜`STV-410` の spec-workflow 起票（各 spec に `requirements.md` / `design.md` / `tasks.md`）。備考に spec フォルダ名を追記。 |
