@@ -140,7 +140,8 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
             Events = eventProvider,
             Store = new WorkflowStateStore(instance),
             WorkflowId = instance.WorkflowId,
-            StateName = stateName
+            StateName = stateName,
+            Logger = _workflowLog.CreateStateContextLogger(instance.WorkflowId, stateName)
         };
 
         var (fact, output) = await _scheduler.RunAsync(async ct =>
