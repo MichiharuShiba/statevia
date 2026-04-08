@@ -4,23 +4,23 @@
 
 ---
 
-- [ ] 1. 既存ログ出力の棚卸し
+- [x] 1. 既存ログ出力の棚卸し
   - **内容:** API Hosting / Engine の `LogInformation` 等を一覧化。
   - **Purpose:** design の表を確定。
 
-- [ ] 2. 命名規約ドキュメントの追加
+- [x] 2. 命名規約ドキュメントの追加
   - **Files:** `docs/`（新規）または `AGENTS.md`
   - **Purpose:** Requirement 1。
 
-- [ ] 3. Core-API のキー名整合
+- [x] 3. Core-API のキー名整合
   - **Files:** `api/Statevia.Core.Api/Hosting/*.cs`
   - **Purpose:** Requirement 2。
 
-- [ ] 4. Engine のキー名整合
+- [x] 4. Engine のキー名整合
   - **Files:** `engine/Statevia.Core.Engine/**/*.cs`
   - **Purpose:** Requirement 2。
 
-- [ ] 5. 回帰確認
+- [x] 5. 回帰確認
   - **内容:** `dotnet test`（api / engine）。
   - **Purpose:** リネームの安全性。
 
