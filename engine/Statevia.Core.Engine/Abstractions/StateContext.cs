@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace Statevia.Core.Engine.Abstractions;
 
 /// <summary>
@@ -17,4 +20,10 @@ public sealed class StateContext
 
     /// <summary>現在実行中の状態名。</summary>
     public required string StateName { get; init; }
+
+    /// <summary>
+    /// ユーザー定義 State から利用できるロガー。
+    /// 出力オブジェクトや workflowInput の生値を直接記録しないこと（IO-14）。
+    /// </summary>
+    public ILogger Logger { get; init; } = NullLogger.Instance;
 }
