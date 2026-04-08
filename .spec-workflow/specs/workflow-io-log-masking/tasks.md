@@ -8,16 +8,16 @@
   - **内容:** API の本文ログ、Engine の将来ログ。載せない方針なら文書のみで要件を満たすか判断。
   - **Purpose:** スコープ確定。
 
-- [ ] 2. `LogBodyRedactor` の拡張（必要なら）
-  - **Files:** `api/Statevia.Core.Api/Hosting/LogBodyRedactor.cs`
+- [ ] 2. 共通 `LogRedaction` を新設
+  - **Files:** `engine/Statevia.Core.Engine/Infrastructure/Logging/LogRedaction.cs`（新規）
   - **Purpose:** Requirement 1。
 
-- [ ] 3. 共有方針の実装（API / Engine）
-  - **Files:** design に従う
+- [ ] 3. API / Engine の適用先を共通実装に切替
+  - **Files:** `api/Statevia.Core.Api/Hosting/RequestLoggingMiddleware.cs`, `api/Statevia.Core.Api/Hosting/LogBodyRedactor.cs`（必要なら委譲化）, `engine/Statevia.Core.Engine/**/*.cs`（IO ログ経路）
   - **Purpose:** Requirement 2。
 
 - [ ] 4. テスト追加
-  - **Files:** `api/Statevia.Core.Api.Tests/Hosting/`
+  - **Files:** `api/Statevia.Core.Api.Tests/Hosting/`, `engine/Statevia.Core.Engine.Tests/`
   - **Purpose:** Requirement 3。
 
 - [ ] 5. ドキュメント（IO-14 との相互リンク）
