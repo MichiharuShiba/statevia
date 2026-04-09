@@ -4,24 +4,24 @@
 
 ---
 
-- [ ] 1. 現状調査: IO がログに載る経路の列挙
+- [x] 1. 現状調査: IO がログに載る経路の列挙
   - **内容:** API の本文ログ、Engine の将来ログ。載せない方針なら文書のみで要件を満たすか判断。
   - **Purpose:** スコープ確定。
 
-- [ ] 2. 共通 `LogRedaction` を新設
+- [x] 2. 共通 `LogRedaction` を新設
   - **Files:** `engine/Statevia.Core.Engine/Infrastructure/Logging/LogRedaction.cs`（新規）
   - **Purpose:** Requirement 1。
 
-- [ ] 3. API / Engine の適用先を共通実装に切替
+- [x] 3. API / Engine の適用先を共通実装に切替
   - **Files:** `api/Statevia.Core.Api/Hosting/RequestLoggingMiddleware.cs`, `api/Statevia.Core.Api/Hosting/LogBodyRedactor.cs`（必要なら委譲化）, `engine/Statevia.Core.Engine/**/*.cs`（IO ログ経路）
   - **Purpose:** Requirement 2。
 
-- [ ] 4. テスト追加
+- [x] 4. テスト追加
   - **Files:** `api/Statevia.Core.Api.Tests/Hosting/`, `engine/Statevia.Core.Engine.Tests/`
   - **Purpose:** Requirement 3。
 
-- [ ] 5. ドキュメント（IO-14 との相互リンク）
-  - **Files:** `AGENTS.md` または `docs/`
+- [x] 5. ドキュメント（IO-14 との相互リンク）
+  - **Files:** `docs/workflow-io-log-masking.md`
   - **Purpose:** 運用。
 
 ---
