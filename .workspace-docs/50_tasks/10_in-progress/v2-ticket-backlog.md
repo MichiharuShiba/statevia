@@ -1,6 +1,6 @@
 # v2 残タスク チケット一覧
 
-- Version: 1.3.2
+- Version: 1.3.3
 - 更新日: 2026-04-10
 - 対象: `v2-remaining-tasks.md` / `v2-logging-v1-tasks.md` の未完了項目に紐づく実行チケット
 - 関連: `.workspace-docs/50_tasks/10_in-progress/v2-remaining-tasks.md`, `.workspace-docs/50_tasks/10_in-progress/v2-logging-v1-tasks.md`, `.workspace-docs/30_specs/10_in-progress/o6-concerns_decomposition_spec.md`, `.workspace-docs/30_specs/10_in-progress/o6-subtickets_detailed_spec.md`
@@ -14,7 +14,7 @@
 ## 現在の仕分け（2026-04-10）
 
 - **完了**: `STV-401`～`STV-410`（`STV-401`/`402`: `../20_done/v2-e2e-cancel-idempotency_backlog.md`。`STV-403`: `../20_done/v2-logging-stv403_backlog.md`。`STV-404`: `../20_done/v2-logging-stv404_backlog.md`。`STV-410`: 変更履歴 1.3.0）
-- **未完了**: `STV-413`～`STV-418`
+- **未完了**: なし
 - **見送り（今はしない）**: `STV-411`（認証エピック連動）
 - **棄却**: なし
 
@@ -45,12 +45,12 @@
 | STV-412 | 見送り | ユーザー定義マスキングと外部テンプレート化 | P3 | STV-408 | 外部ファイル（テンプレート）によるルール読込と、ビルトイン既定とのマージが定義・検証される。 | 元: STV-408 Out of Scope（リリース後検討） |
 | STV-409 | 完了 | ログ関連テストを追加 | P2 | STV-403〜STV-408 | テスト green。回帰検知可能。 | 元: LOG-7。spec: `logging-regression-tests` |
 | STV-410 | 完了 | 懸念事項 O6 を仕様化して分割 | P2 | - | サブチケット5件以上粒度。優先度・依存整理。 | 元: O6。spec: `concern-o6-decomposition`、成果物: `.workspace-docs/30_specs/10_in-progress/o6-concerns_decomposition_spec.md` |
-| STV-413 | 未完了 | C2: projection 更新タイミングの統一仕様化 | P1 | - | コマンド戻り値/コールバックの更新順序とトランザクション境界を 1 仕様に統合する。 | O6。仕様: `o6-subtickets_detailed_spec.md`（STV-413 節） |
-| STV-414 | 未完了 | C7: Engine イベントと event_store 対応表の策定 | P1 | STV-413 | イベント種別・発火契機・payload・保存先の対応表を定義する。 | O6。仕様: `o6-subtickets_detailed_spec.md`（STV-414 節） |
-| STV-415 | 未完了 | C11: コールバック失敗時の再送べき等仕様化 | P1 | STV-413, STV-414 | `event_id` 重複排除・リトライ戦略・失敗時観測性を仕様化する。 | O6。仕様: `o6-subtickets_detailed_spec.md`（STV-415 節） |
-| STV-416 | 未完了 | C13: GetSnapshot と reducer 出力の整合方針決定 | P2 | STV-414 | スナップショットの正と差分検証方針を API/Engine で合意する。 | O6。仕様: `o6-subtickets_detailed_spec.md`（STV-416 節） |
-| STV-417 | 未完了 | C14: nodes 未対応要素の段階導入計画策定 | P2 | STV-413 | nodes 固有フィールドの優先順位と未対応時の契約を定義する。 | O6。仕様: `o6-subtickets_detailed_spec.md`（STV-417 節） |
-| STV-418 | 未完了 | O6 横断: 懸念対応ロードマップ統合 | P2 | STV-413, STV-414, STV-415, STV-416, STV-417 | O6 サブチケット群の依存順とスプリント配置を統合し追跡可能にする。 | O6。仕様: `o6-subtickets_detailed_spec.md`（STV-418 節） |
+| STV-413 | 完了 | C2: projection 更新タイミングの統一仕様化 | P1 | - | コマンド戻り値/コールバックの更新順序とトランザクション境界を 1 仕様に統合する。 | O6。反映先: `docs/statevia-data-integration-contract.md` 3.3 |
+| STV-414 | 完了 | C7: Engine イベントと event_store 対応表の策定 | P1 | STV-413 | イベント種別・発火契機・payload・保存先の対応表を定義する。 | O6。反映先: `docs/statevia-data-integration-contract.md` 3.3 |
+| STV-415 | 完了 | C11: コールバック失敗時の再送べき等仕様化 | P1 | STV-413, STV-414 | `event_id` 重複排除・リトライ戦略・失敗時観測性を仕様化する。 | O6。反映先: `docs/statevia-data-integration-contract.md` 3.3 |
+| STV-416 | 完了 | C13: GetSnapshot と reducer 出力の整合方針決定 | P2 | STV-414 | スナップショットの正と差分検証方針を API/Engine で合意する。 | O6。反映先: `AGENTS.md`（Read-model authority） |
+| STV-417 | 完了 | C14: nodes 未対応要素の段階導入計画策定 | P2 | STV-413 | nodes 固有フィールドの優先順位と未対応時の契約を定義する。 | O6。反映先: `v2-nodes-to-states-conversion-spec.md` 11.1 |
+| STV-418 | 完了 | O6 横断: 懸念対応ロードマップ統合 | P2 | STV-413, STV-414, STV-415, STV-416, STV-417 | O6 サブチケット群の依存順とスプリント配置を統合し追跡可能にする。 | O6。参照整合: `v2-ticket-backlog.md` / `v2-modification-plan.md` / `o6-subtickets_detailed_spec.md` |
 | STV-411 | 見送り | テナント管理機能 O7 の設計チケット化 | P3 | 認証機能エピックの方針確定 | 認証エピック向け前提設計の文書化。実装チケットに分割可能なアウトライン。 | 元: O7 |
 
 > 詳細スコープ・受け入れ条件は以下の各チケット節を参照。  
@@ -206,6 +206,7 @@
 
 | 版 | 日付 | 内容 |
 |----|------|------|
+| 1.3.3 | 2026-04-10 | `spec-workflow` 承認に基づき `STV-413`〜`STV-418` を完了へ更新。反映先ドキュメント（`docs` / `AGENTS.md` / `v2-nodes-to-states-conversion-spec.md`）を備考に追記。 |
 | 1.3.2 | 2026-04-10 | O6 サブチケットの仕様正本（`o6-subtickets_detailed_spec.md`）を追加。`STV-413`〜`STV-418` の備考を更新。 |
 | 1.3.1 | 2026-04-10 | `STV-412` にマスキングの外部テンプレート化（外部ファイル読込・マージ・運用手順）を追記。 |
 | 1.3.0 | 2026-04-09 | `STV-410` を完了に更新。O6 分解成果物（`o6-concerns_decomposition_spec.md`）を追加し、サブチケット `STV-413`〜`STV-418` を起票。 |

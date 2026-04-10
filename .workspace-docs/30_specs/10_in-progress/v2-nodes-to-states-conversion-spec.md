@@ -230,6 +230,17 @@ Core-API の `ActionExecutorFactory`（`api/Statevia.Core.Api/Application/Defini
 - 複数 fork からの合流、`join.mode` の拡張。
 - **`$.` 以外の入力マッピング表現**（別 DSL・テンプレート等）— **現時点で採用予定はない**。必要になれば states / nodes 双方の仕様を同時に改訂する。
 
+### 11.1 C14 段階導入順（STV-417 連携）
+
+`onError` / `timeout` / `output` / `controls` の導入順は、`.workspace-docs/30_specs/10_in-progress/o6-subtickets_detailed_spec.md`（STV-417）に合わせて次の優先度で進める。
+
+| 段階 | 対象 | 位置づけ |
+| ---- | ---- | -------- |
+| P1 | `onError` | action 失敗時の `Failed` 遷移契約を先行整備 |
+| P2 | `timeout` / `onTimeout` | Wait のスケジューラと event_store 意味づけを整備 |
+| P3 | `output` | states 出力と reducer / Read Model の対応を整備 |
+| P4 | `controls` | cancel / resume 等の外部制御と API 契約を整備 |
+
 **複数 end のグラフ**は不変ルール（§3.1）により本変換では許容しない。分岐ごとに見かけ上の終端が必要な場合は、**単一 end に収束するグラフ**で表現するか、将来別仕様で検討する。
 
 ---

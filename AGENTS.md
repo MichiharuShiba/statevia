@@ -29,6 +29,8 @@ Core-API は C# のみ。PostgreSQL 16 は EF Core 経由で使用。UI は Next
 
 **event_store:** `IEventStoreRepository` can append in isolation (own `DbContext` + **Serializable** tx) or via **`AppendAsync(CoreDbContext db, …)`** so **`WorkflowService`** can commit **workflows + execution_graph_snapshots + event_store + command_dedup** in **one** `SaveChanges` + outer transaction (`ReadCommitted` on start, `Serializable` on cancel/publish when seq races matter). Event kinds: **`EventStoreEventType`**. This is not a full engine event log; projection remains `workflows` + `execution_graph_snapshots`.
 
+**Read-model authority (STV-416):** HTTP の `GET /v1/workflows/{id}` / `GET /v1/workflows/{id}/graph` は **DB projection（`workflows` / `execution_graph_snapshots`）を正**とする。`GetSnapshot` / `ExportExecutionGraph` は in-process のランタイムビューであり、将来コールバック経路導入後は最終永続状態と一致しない可能性がある。
+
 **Dependency injection (`Program.cs`):**
 
 - **Singleton:** `IWorkflowEngine`, `IDefinitionCompilerService`, `IIdGenerator` (as registered).
