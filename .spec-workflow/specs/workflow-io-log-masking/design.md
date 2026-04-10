@@ -2,7 +2,7 @@
 
 ## Overview
 
-`LogBodyRedactor` 相当のロジックは、**中立配置の小さな共通 `LogRedaction` 静的クラス**へ集約する。配置は `engine/Statevia.Core.Engine/Infrastructure/Logging/` 配下を第一候補とし、`api` / `engine` の双方が同一実装を呼び出す。`STV-408` では固定ルール（`password` / `token` / `secret` / `authorization`）を実装し、ユーザー定義ルールは `STV-412` で拡張する。
+`LogBodyRedactor` 相当のロジックは、**中立配置の小さな共通 `LogRedaction` 静的クラス**へ集約する。配置は `engine/Statevia.Core.Engine/Infrastructure/Logging/` 配下を第一候補とし、`api` / `engine` の双方が同一実装を呼び出す。`STV-408` では固定ルール（`password` / `token` / `secret` / `authorization`）を実装し、ユーザー定義ルールおよび**外部テンプレートからの読込**は `STV-412` で拡張する。
 
 ### Engine 側
 

@@ -126,6 +126,34 @@ Response（固定形）
 
 ---
 
+## 3.3 O6 契約（STV-413〜STV-415）
+
+詳細正本: `.workspace-docs/30_specs/10_in-progress/o6-subtickets_detailed_spec.md`
+
+### STV-413: projection 更新タイミング（現状 + 将来）
+
+- 現状（コマンド同期経路）では、`POST /v1/workflows` / `POST /v1/workflows/{id}/cancel` / `POST /v1/workflows/{id}/events` の各コマンドで、Engine 呼び出し後に `GetSnapshot` / `ExportExecutionGraph` を取得し、`workflows` + `execution_graph_snapshots` + `event_store` を同一トランザクションで更新する。
+- 将来の U1 案 C（順序付きバッチ）では、**1 バッチ = 1 トランザクション**で `event_store` への INSERT → reducer 適用 → projection 更新を行う。
+- 途中失敗時はバッチ全体をロールバックし、再送時のべき等は STV-415 に従う。
+
+### STV-414: event_store 対応表（現行）
+
+| event_store `type` | 発火契機（HTTP） | payload（概要） |
+| ------------------ | ---------------- | --------------- |
+| `WorkflowStarted` | `POST /v1/workflows` 成功 | `definitionId`, `tenantId` |
+| `WorkflowCancelled` | `POST /v1/workflows/{id}/cancel` 成功 | `tenantId` |
+| `EventPublished` | `POST /v1/workflows/{id}/events` 成功 | `tenantId`, `name` |
+
+将来の `NODE_*` / `JOIN_*` / `EXECUTION_*` など Engine 内部イベントは、event_store に載せるかどうかを個別に定義し、未確定項目は TBD として追跡する。
+
+### STV-415: 再送べき等（将来契約）
+
+- 再送イベントは `clientEventId`（UUID 推奨）で重複排除できる前提とし、`(workflow_id, client_event_id)` の UNIQUE など同等手段で二重適用を防ぐ。
+- 案 C のバッチ再送では `batchId`（UUID）を付与し、バッチ内イベントは全成功時のみ commit、失敗時は全体 rollback のうえ同一 `batchId` 再送を許容する。
+- リトライは指数バックオフ + 最大試行回数を設け、上限超過時は構造化ログで観測可能にする（メトリクスは将来対応）。
+
+---
+
 ## 4. Graph 定義（UI描画に必要な静的データ）
 
 Read Model は「状態」だけなので、UIは別途「構造」を知る必要がある。
