@@ -17,7 +17,7 @@
 - [x] 4. `v2-ticket-backlog.md` または `v2-remaining-tasks.md` への反映
   - **Purpose:** Requirement 3。
 
-- [ ] 5. （任意）`v2-modification-plan.md` の参照更新
+- [x] 5. （任意）`v2-modification-plan.md` の参照更新
   - **内容:** O6 へのリンクを追加。
   - **Purpose:** トレーサビリティ。
 

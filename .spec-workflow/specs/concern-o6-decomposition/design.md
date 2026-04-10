@@ -25,5 +25,7 @@
 
 ## References
 
+- `.spec-workflow/specs/o6-subtickets-detailed/` — STV-413〜STV-418 の詳細仕様（spec-workflow）
+- `.workspace-docs/30_specs/10_in-progress/o6-subtickets_detailed_spec.md` — 上記と同一トピックのワークスペース正本
 - `.workspace-docs/30_specs/10_in-progress/v2-nodes-to-states-conversion-spec.md`
 - `.workspace-docs/50_tasks/20_done/v2-u7-reducer-placement.md`

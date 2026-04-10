@@ -1,7 +1,7 @@
 # O6 懸念分解仕様
 
-- Version: 1.0.0
-- 更新日: 2026-04-09
+- Version: 1.1.0
+- 更新日: 2026-04-10
 - 対象: `v2-modification-plan.md` の C2 / C7 / C11 / C13 / C14 の分解
 - 関連: `.workspace-docs/50_tasks/10_in-progress/v2-ticket-backlog.md`, `.spec-workflow/specs/concern-o6-decomposition/requirements.md`
 
@@ -57,8 +57,17 @@
 
 ---
 
+## 6. 詳細仕様（STV-413〜STV-418）
+
+各サブチケットの受け入れ可能な仕様は、次を正本とする。
+
+- `.workspace-docs/30_specs/10_in-progress/o6-subtickets_detailed_spec.md`
+
+---
+
 ## 変更履歴
 
 | 版 | 日付 | 内容 |
 |----|------|------|
+| 1.1.0 | 2026-04-10 | §6 を追加し、`o6-subtickets_detailed_spec.md` へリンク。 |
 | 1.0.0 | 2026-04-09 | C2/C7/C11/C13/C14 の棚卸しと、`STV-413`〜`STV-418` のサブチケット定義を追加。 |
