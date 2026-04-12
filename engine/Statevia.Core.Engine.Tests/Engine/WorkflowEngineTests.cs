@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
@@ -119,6 +120,56 @@ public class WorkflowEngineTests
         engine.PublishEvent("SomeEvent");
 
         // Assert: 例外が発生しないこと
+    }
+
+    /// <summary>複数ワークフローが存在するとき、イベント名のみのブロードキャストが例外で終了しないこと。</summary>
+    [Fact]
+    public void PublishEvent_BroadcastByEventName_DoesNotThrow_WhenMultipleWorkflows()
+    {
+        // Arrange
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 2 });
+        engine.Start(CreateMinimalDefinition());
+        engine.Start(CreateMinimalDefinition());
+
+        // Act
+        engine.PublishEvent("SomeEvent");
+
+        // Assert: 例外が発生しないこと
+    }
+
+    /// <summary>clientEventId 付き PublishEvent オーバーロードも従来と同様に例外を投げないことを検証する。</summary>
+    [Fact]
+    public void PublishEvent_WithClientEventId_DoesNotThrow()
+    {
+        // Arrange
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var workflowId = engine.Start(CreateMinimalDefinition());
+        var clientEventId = Guid.Parse("a1b2c3d4-e5f6-4789-a012-3456789abcde");
+
+        // Act
+        var result = engine.PublishEvent(workflowId, "SomeEvent", clientEventId);
+
+        // Assert
+        Assert.True(result.IsApplied);
+    }
+
+    /// <summary>複数ワークフローが存在するとき、clientEventId 付きブロードキャストが全インスタンスに届き、2 回目は冪等になる。</summary>
+    [Fact]
+    public void PublishEvent_WithClientEventId_Broadcast_AppliesThenAlreadyApplied_ForMultipleWorkflows()
+    {
+        // Arrange
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 2 });
+        engine.Start(CreateMinimalDefinition());
+        engine.Start(CreateMinimalDefinition());
+        var clientEventId = Guid.Parse("b2c3d4e5-f6a7-4890-b123-456789abcdef");
+
+        // Act
+        var firstBroadcast = engine.PublishEvent("SomeEvent", clientEventId);
+        var secondBroadcast = engine.PublishEvent("SomeEvent", clientEventId);
+
+        // Assert
+        Assert.True(firstBroadcast.IsApplied);
+        Assert.True(secondBroadcast.IsAlreadyApplied);
     }
 
     /// <summary>Dispose を呼んでも例外が発生しないことを検証する。</summary>

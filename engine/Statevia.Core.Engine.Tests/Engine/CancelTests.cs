@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
@@ -23,6 +24,29 @@ public class CancelTests
         await engine.CancelAsync(id);
 
         // Assert: スナップショットが取得でき、IsCancelled が true であること
+        var snapshot = engine.GetSnapshot(id);
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCancelled);
+    }
+
+    /// <summary>clientEventId 付き CancelAsync オーバーロードは二引数版と同様にインスタンスをキャンセルする。</summary>
+    [Fact]
+    public async Task CancelAsync_WithClientEventId_MarksInstanceCancelled_SameAsTwoArg()
+    {
+        // Arrange
+        var def = CreateDefinitionWithLongRunningState();
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var id = engine.Start(def);
+        await Task.Delay(50);
+        var clientEventId = Guid.Parse("b2c3d4e5-f6a7-4890-b123-456789abcdef");
+
+        // Act
+        var first = await engine.CancelAsync(id, clientEventId);
+        var second = await engine.CancelAsync(id, clientEventId);
+
+        // Assert
+        Assert.True(first.IsApplied);
+        Assert.True(second.IsAlreadyApplied);
         var snapshot = engine.GetSnapshot(id);
         Assert.NotNull(snapshot);
         Assert.True(snapshot.IsCancelled);

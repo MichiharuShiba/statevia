@@ -1,6 +1,8 @@
 using System;
 using System.Data;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
@@ -73,6 +75,73 @@ public sealed class EventStoreRepository : IEventStoreRepository
             PayloadJson = payloadJson,
             CreatedAt = now
         });
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> TryAppendIfAbsentByClientEventAsync(
+        CoreDbContext db,
+        Guid workflowId,
+        Guid clientEventId,
+        EventStoreEventType eventType,
+        string? payloadJson,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(db);
+
+        var typeString = eventType.ToPersistedString();
+        var fingerprintEventId = ComputeFingerprintEventId(workflowId, clientEventId, typeString);
+
+        if (db.EventStore.Local.Any(e => e.EventId == fingerprintEventId))
+            return false;
+
+        if (await db.EventStore.AsNoTracking()
+                .AnyAsync(e => e.EventId == fingerprintEventId, cancellationToken)
+                .ConfigureAwait(false))
+            return false;
+
+        var persistedMax = await db.EventStore
+            .AsNoTracking()
+            .Where(e => e.WorkflowId == workflowId)
+            .Select(e => (long?)e.Seq)
+            .MaxAsync(cancellationToken)
+            .ConfigureAwait(false) ?? 0L;
+
+        var localMax = db.ChangeTracker.Entries<EventStoreRow>()
+            .Where(e => e.Entity.WorkflowId == workflowId && e.State != EntityState.Deleted)
+            .Select(e => e.Entity.Seq)
+            .DefaultIfEmpty(0L)
+            .Max();
+
+        var nextSeq = Math.Max(persistedMax, localMax) + 1L;
+        var now = DateTime.UtcNow;
+
+        db.EventStore.Add(new EventStoreRow
+        {
+            EventId = fingerprintEventId,
+            WorkflowId = workflowId,
+            Seq = nextSeq,
+            Type = typeString,
+            OccurredAt = now,
+            SchemaVersion = 1,
+            PayloadJson = payloadJson,
+            CreatedAt = now
+        });
+
+        return true;
+    }
+
+    /// <summary>
+    /// 同一配送を表す安定した <see cref="EventStoreRow.EventId"/>（DB の event_id UNIQUE による insert-skip）。
+    /// </summary>
+    private static Guid ComputeFingerprintEventId(Guid workflowId, Guid clientEventId, string typeString)
+    {
+        var input = $"{workflowId:N}|{clientEventId:N}|{typeString}";
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        Span<byte> bytes = stackalloc byte[16];
+        hash.AsSpan(0, 16).CopyTo(bytes);
+        bytes[6] = (byte)((bytes[6] & 0x0F) | 0x50);
+        bytes[8] = (byte)((bytes[8] & 0x3F) | 0x80);
+        return new Guid(bytes);
     }
 
     public async Task<(IReadOnlyList<EventStoreRow> Items, bool HasMore)> ListAfterSeqAsync(
