@@ -1,9 +1,9 @@
 # Statevia Roadmap
 
-- Version: 1.0.0
-- 更新日: 2026-04-02
+- Version: 1.0.1
+- 更新日: 2026-04-12
 - 対象: Statevia のフェーズロードマップ（Engine → Playground → SaaS）
-- 関連: `.workspace-docs/40_plans/10_in-progress/v2-modification-plan.md`
+- 関連: `.workspace-docs/40_plans/10_in-progress/v2-modification-plan.md`、`.workspace-docs/30_specs/10_in-progress/ui-playground-design.md`
 
 ---
 
@@ -76,6 +76,8 @@ Persistence
 
 Workflow を可視化する。
 
+**設計正本（2026-04-12〜）**: `.workspace-docs/30_specs/10_in-progress/ui-playground-design.md`（ルート構成、API マッピング、MVP フェーズ P3.0〜P3.2）。
+
 Components
 
 UI
@@ -85,7 +87,7 @@ Features
 Workflow Editor
 
 - YAML editing
-- validation
+- validation（現行 API は `POST /v1/definitions` の 400 応答で代替。専用 validate は設計書のオープン事項）
 
 Workflow Runner
 
