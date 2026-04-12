@@ -1,18 +1,42 @@
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Npgsql;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Controllers;
+using Statevia.Core.Api.Hosting;
+using Statevia.Core.Api.Configuration;
 using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Services;
-using Statevia.Core.Api.Tests.Infrastructure;
 using Statevia.Core.Engine.Abstractions;
+using Statevia.Core.Api.Tests.Infrastructure;
 using System.Text.Json;
 
 namespace Statevia.Core.Api.Tests.Services;
 
 public sealed class WorkflowServiceTests
 {
+    private static readonly IOptions<EventDeliveryRetryOptions> DefaultEventDeliveryRetryOptions = Microsoft.Extensions.Options.Options.Create(
+        new EventDeliveryRetryOptions
+        {
+            MaxAttempts = 3,
+            BaseDelayMs = 0,
+            MaxDelayMs = 1,
+            Jitter = false,
+            MaxTotalBackoffMs = 10_000
+        });
+
+    private static IHttpContextAccessor UnitTestHttpContextAccessor(string traceId = "trace-unit-test")
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Items[RequestLogContext.TraceIdItemKey] = traceId;
+        return new HttpContextAccessor { HttpContext = httpContext };
+    }
+
     private sealed class FixedIdGenerator : IIdGenerator
     {
         private readonly Guid _id;
@@ -77,6 +101,14 @@ public sealed class WorkflowServiceTests
         public bool CancelCalled { get; private set; }
         public string? PublishEventLastWorkflowId { get; private set; }
         public string? PublishEventLastName { get; private set; }
+        public Guid? PublishEventLastClientEventId { get; private set; }
+        public Guid? CancelAsyncLastClientEventId { get; private set; }
+
+        /// <summary>設定時、一致する <c>clientEventId</c> の Publish で <see cref="ApplyResult.AlreadyApplied"/> を返す。</summary>
+        public Guid? PublishAlreadyAppliedWhenClientEventIdEquals { get; set; }
+
+        /// <summary>設定時、一致する <c>clientEventId</c> の Cancel で <see cref="ApplyResult.AlreadyApplied"/> を返す。</summary>
+        public Guid? CancelAlreadyAppliedWhenClientEventIdEquals { get; set; }
 
         public string Start(CompiledWorkflowDefinition definition, string? workflowId = null, object? workflowInput = null)
         {
@@ -91,20 +123,171 @@ public sealed class WorkflowServiceTests
         {
             PublishEventLastWorkflowId = workflowId;
             PublishEventLastName = eventName;
+            PublishEventLastClientEventId = null;
+        }
+
+        public ApplyResult PublishEvent(string workflowId, string eventName, Guid clientEventId)
+        {
+            PublishEventLastWorkflowId = workflowId;
+            PublishEventLastName = eventName;
+            PublishEventLastClientEventId = clientEventId;
+            if (PublishAlreadyAppliedWhenClientEventIdEquals is { } publishDup && publishDup == clientEventId)
+                return ApplyResult.AlreadyApplied;
+
+            return ApplyResult.Applied;
         }
 
         public void PublishEvent(string eventName)
             => throw new NotSupportedException();
 
+        public ApplyResult PublishEvent(string eventName, Guid clientEventId)
+            => throw new NotSupportedException();
+
         public Task CancelAsync(string workflowId)
         {
             CancelCalled = true;
+            CancelAsyncLastClientEventId = null;
             return Task.CompletedTask;
+        }
+
+        public Task<ApplyResult> CancelAsync(string workflowId, Guid clientEventId)
+        {
+            CancelCalled = true;
+            CancelAsyncLastClientEventId = clientEventId;
+            if (CancelAlreadyAppliedWhenClientEventIdEquals is { } cancelDup && cancelDup == clientEventId)
+                return Task.FromResult(ApplyResult.AlreadyApplied);
+
+            return Task.FromResult(ApplyResult.Applied);
         }
 
         public WorkflowSnapshot? GetSnapshot(string workflowId) => SnapshotToReturn;
 
         public string ExportExecutionGraph(string workflowId) => GraphJsonToReturn;
+    }
+
+    private sealed class FakeEventDeliveryDedupRepository : IEventDeliveryDedupRepository
+    {
+        private readonly ConcurrentDictionary<(string TenantId, Guid WorkflowId, Guid ClientEventId), EventDeliveryDedupRow> _rows = new();
+
+        /// <summary>テスト用: 既存行を投入する。</summary>
+        public void SeedRow(EventDeliveryDedupRow row) =>
+            _rows[(row.TenantId, row.WorkflowId, row.ClientEventId)] = Clone(row);
+
+        public Task<EventDeliveryDedupRow?> FindAsync(string tenantId, Guid workflowId, Guid clientEventId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_rows.TryGetValue((tenantId, workflowId, clientEventId), out var row) ? Clone(row) : null);
+        }
+
+        public Task InsertReceivedAsync(EventDeliveryDedupRow row, CancellationToken cancellationToken)
+        {
+            var key = (row.TenantId, row.WorkflowId, row.ClientEventId);
+            if (!_rows.TryAdd(key, Clone(row)))
+            {
+                var inner = new PostgresException(
+                    messageText: "duplicate key value violates unique constraint",
+                    severity: "ERROR",
+                    invariantSeverity: "ERROR",
+                    sqlState: "23505");
+                throw new DbUpdateException("duplicate key", inner);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task AddReceivedAsync(CoreDbContext db, EventDeliveryDedupRow row, CancellationToken cancellationToken) =>
+            InsertReceivedAsync(row, cancellationToken);
+
+        public Task<bool> TryUpdateStatusAsync(
+            CoreDbContext db,
+            string tenantId,
+            Guid workflowId,
+            Guid clientEventId,
+            string status,
+            DateTime utcNow,
+            DateTime? appliedAt,
+            string? errorCode,
+            CancellationToken cancellationToken)
+        {
+            var key = (tenantId, workflowId, clientEventId);
+            if (!_rows.TryGetValue(key, out var row))
+                return Task.FromResult(false);
+
+            row.Status = status;
+            row.UpdatedAt = utcNow;
+            row.AppliedAt = appliedAt;
+            row.ErrorCode = errorCode;
+            return Task.FromResult(true);
+        }
+
+        private static EventDeliveryDedupRow Clone(EventDeliveryDedupRow r) => new()
+        {
+            TenantId = r.TenantId,
+            WorkflowId = r.WorkflowId,
+            ClientEventId = r.ClientEventId,
+            BatchId = r.BatchId,
+            Status = r.Status,
+            AcceptedAt = r.AcceptedAt,
+            AppliedAt = r.AppliedAt,
+            ErrorCode = r.ErrorCode,
+            UpdatedAt = r.UpdatedAt
+        };
+    }
+
+    /// <summary>先頭 N 回の <see cref="IEventDeliveryDedupRepository.InsertReceivedAsync"/> のみ例外を投げ、以降は通常の fake に委譲する。</summary>
+    private sealed class FlakyThenSuccessEventDeliveryDedupRepository : IEventDeliveryDedupRepository
+    {
+        private readonly FakeEventDeliveryDedupRepository _inner = new();
+        private readonly int _transientFailuresBeforeSuccess;
+        private readonly Exception _transientFailure;
+
+        public FlakyThenSuccessEventDeliveryDedupRepository(int transientFailuresBeforeSuccess, Exception transientFailure)
+        {
+            _transientFailuresBeforeSuccess = transientFailuresBeforeSuccess;
+            _transientFailure = transientFailure;
+        }
+
+        /// <summary><see cref="InsertReceivedAsync"/> が呼ばれた累計回数。</summary>
+        public int InsertReceivedCallCount { get; private set; }
+
+        public Task<EventDeliveryDedupRow?> FindAsync(
+            string tenantId,
+            Guid workflowId,
+            Guid clientEventId,
+            CancellationToken cancellationToken) =>
+            _inner.FindAsync(tenantId, workflowId, clientEventId, cancellationToken);
+
+        public Task InsertReceivedAsync(EventDeliveryDedupRow row, CancellationToken cancellationToken)
+        {
+            InsertReceivedCallCount++;
+            if (InsertReceivedCallCount <= _transientFailuresBeforeSuccess)
+                throw _transientFailure;
+
+            return _inner.InsertReceivedAsync(row, cancellationToken);
+        }
+
+        public Task AddReceivedAsync(CoreDbContext db, EventDeliveryDedupRow row, CancellationToken cancellationToken) =>
+            InsertReceivedAsync(row, cancellationToken);
+
+        public Task<bool> TryUpdateStatusAsync(
+            CoreDbContext db,
+            string tenantId,
+            Guid workflowId,
+            Guid clientEventId,
+            string status,
+            DateTime utcNow,
+            DateTime? appliedAt,
+            string? errorCode,
+            CancellationToken cancellationToken) =>
+            _inner.TryUpdateStatusAsync(
+                db,
+                tenantId,
+                workflowId,
+                clientEventId,
+                status,
+                utcNow,
+                appliedAt,
+                errorCode,
+                cancellationToken);
     }
 
     private sealed class FakeCommandDedupService : ICommandDedupService
@@ -230,6 +413,8 @@ public sealed class WorkflowServiceTests
         public bool AfterSeqHasMore { get; set; }
         public long MaxSeq { get; set; }
 
+        private readonly HashSet<(Guid WorkflowId, Guid ClientEventId, EventStoreEventType Type)> _clientEventDedupKeys = new();
+
         /// <summary>設定時に追記処理で例外を投げて巻き戻し分岐を通す。</summary>
         public Exception? ThrowFromAppendWithDb { get; set; }
 
@@ -243,6 +428,25 @@ public sealed class WorkflowServiceTests
 
             Appended.Add((eventType, workflowId, payloadJson));
             await Task.Yield(); // async boundary for coverage
+        }
+
+        public Task<bool> TryAppendIfAbsentByClientEventAsync(
+            CoreDbContext db,
+            Guid workflowId,
+            Guid clientEventId,
+            EventStoreEventType eventType,
+            string? payloadJson,
+            CancellationToken cancellationToken)
+        {
+            if (ThrowFromAppendWithDb is { } ex)
+                throw ex;
+
+            var key = (workflowId, clientEventId, eventType);
+            if (!_clientEventDedupKeys.Add(key))
+                return Task.FromResult(false);
+
+            Appended.Add((eventType, workflowId, payloadJson));
+            return Task.FromResult(true);
         }
 
         public async Task<(IReadOnlyList<EventStoreRow> Items, bool HasMore)> ListAfterSeqAsync(Guid workflowId, long afterSeq, int limit, CancellationToken ct = default)
@@ -326,7 +530,11 @@ public sealed class WorkflowServiceTests
             definitionsRepo,
             dedupRepoRepo,
             eventStore,
-            dbFactory);
+            new FakeEventDeliveryDedupRepository(),
+            dbFactory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
 
         using var inputDoc = JsonDocument.Parse("{\"a\":1}");
         var request = new StartWorkflowRequest { DefinitionId = "def-1", Input = inputDoc.RootElement };
@@ -391,7 +599,11 @@ public sealed class WorkflowServiceTests
             definitionsRepo,
             dedupRepo,
             eventStore,
-            sqlite.Factory);
+            new FakeEventDeliveryDedupRepository(),
+            sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
 
         using var inputDoc = JsonDocument.Parse("{}");
         var request = new StartWorkflowRequest { DefinitionId = "def-1", Input = inputDoc.RootElement };
@@ -484,7 +696,11 @@ public sealed class WorkflowServiceTests
             definitionsRepo,
             dedupRepo,
             eventStore,
-            sqlite.Factory);
+            new FakeEventDeliveryDedupRepository(),
+            sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
 
         using var inputDoc = JsonDocument.Parse("{\"x\":true}");
         var request = new StartWorkflowRequest { DefinitionId = "def-2", Input = inputDoc.RootElement };
@@ -578,7 +794,11 @@ public sealed class WorkflowServiceTests
             definitionsRepo,
             dedupRepo,
             eventStore,
-            sqlite.Factory);
+            new FakeEventDeliveryDedupRepository(),
+            sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
 
         using var inputDoc = JsonDocument.Parse("{\"x\":true}");
         var request = new StartWorkflowRequest { DefinitionId = "def-2", Input = inputDoc.RootElement };
@@ -659,7 +879,11 @@ public sealed class WorkflowServiceTests
             definitionsRepo,
             dedupRepo,
             eventStore,
-            sqlite.Factory);
+            new FakeEventDeliveryDedupRepository(),
+            sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
 
         var request = new StartWorkflowRequest { DefinitionId = "missing" };
 
@@ -706,7 +930,11 @@ public sealed class WorkflowServiceTests
             definitionsRepo,
             dedupRepo,
             eventStore,
-            sqlite.Factory);
+            new FakeEventDeliveryDedupRepository(),
+            sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
     }
 
     /// <summary>最大連番が零でも連番一の表示を返す。</summary>
@@ -762,7 +990,11 @@ public sealed class WorkflowServiceTests
             new FakeDefinitionsRepoStub(),
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository { MaxSeq = 0 },
-            sqlite.Factory);
+            new FakeEventDeliveryDedupRepository(),
+            sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
 
         // Act
         var view = await sut.GetWorkflowViewAtSeqAsync("t1", idOrUuid: "display-or-uuid", atSeq: 1, CancellationToken.None);
@@ -796,7 +1028,11 @@ public sealed class WorkflowServiceTests
             definitions: new FakeDefinitionsRepoStub(),
             dedup: new FakeCommandDedupRepository(),
             eventStore: new FakeEventStoreRepository(),
-            dbFactory: sqlite.Factory);
+            eventDeliveryDedup: new FakeEventDeliveryDedupRepository(),
+            dbFactory: sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
@@ -856,7 +1092,11 @@ public sealed class WorkflowServiceTests
             definitions: new FakeDefinitionsRepoStub(),
             dedup: new FakeCommandDedupRepository(),
             eventStore: new FakeEventStoreRepository { MaxSeq = 5 },
-            dbFactory: sqlite.Factory);
+            eventDeliveryDedup: new FakeEventDeliveryDedupRepository(),
+            dbFactory: sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
@@ -916,7 +1156,11 @@ public sealed class WorkflowServiceTests
             definitions: new FakeDefinitionsRepoStub(),
             dedup: new FakeCommandDedupRepository(),
             eventStore: new FakeEventStoreRepository { MaxSeq = 5 },
-            dbFactory: sqlite.Factory);
+            eventDeliveryDedup: new FakeEventDeliveryDedupRepository(),
+            dbFactory: sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
 
         // Act
         var view = await sut.GetWorkflowViewAtSeqAsync("t1", idOrUuid: "display-or-uuid", atSeq: 2, CancellationToken.None);
@@ -997,7 +1241,11 @@ public sealed class WorkflowServiceTests
             definitions: new FakeDefinitionsRepoStub(),
             dedup: new FakeCommandDedupRepository(),
             eventStore: eventStore,
-            dbFactory: sqlite.Factory);
+            eventDeliveryDedup: new FakeEventDeliveryDedupRepository(),
+            dbFactory: sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
 
         // Act
         var res = await sut.ListEventsAsync("t1", idOrUuid: "idOrUuid", afterSeq: 0, limit: 10, CancellationToken.None);
@@ -1219,6 +1467,8 @@ public sealed class WorkflowServiceTests
 
         // Assert
         Assert.True(engine.CancelCalled);
+        var expectedCancelClientEventId = ClientEventIdResolver.FromIdempotencyKey("idem", new FixedIdGenerator(Guid.NewGuid()));
+        Assert.Equal(expectedCancelClientEventId, engine.CancelAsyncLastClientEventId);
         Assert.Single(workflowRepo.Updates);
         Assert.Equal(workflowId, workflowRepo.Updates[0].WorkflowId);
         Assert.Equal("Cancelled", workflowRepo.Updates[0].Status);
@@ -1241,67 +1491,6 @@ public sealed class WorkflowServiceTests
         Assert.Equal(dedupKey.DedupKey, dedupRepo.SavedRows[0].DedupKey);
         Assert.Equal(dedupKey.Endpoint, dedupRepo.SavedRows[0].Endpoint);
         Assert.Equal(dedupKey.IdempotencyKey, dedupRepo.SavedRows[0].IdempotencyKey);
-    }
-
-    /// <summary>実行機構のスナップショットが空値のとき不明状態と空の取消要求で更新する。</summary>
-    [Fact]
-    public async Task CancelAsync_WhenEngineSnapshotIsNull_UsesUnknownStatus_AndNullCancelRequested()
-    {
-        // Arrange
-        var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
-        var defId = Guid.NewGuid();
-
-        var dedupKey = new CommandDedupKey
-        {
-            DedupKey = "k1",
-            Endpoint = "POST /v1/workflows/cancel",
-            IdempotencyKey = "idem"
-        };
-
-        var dedupRepo = new FakeCommandDedupRepository { NextFindValid = null };
-
-        var engine = new FakeWorkflowEngine
-        {
-            SnapshotToReturn = null,
-            GraphJsonToReturn = "{\"nodes\":[]}"
-        };
-
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-
-        var workflowRepo = new FakeWorkflowRepository
-        {
-            ByIdResult = new WorkflowRow
-            {
-                WorkflowId = workflowId,
-                TenantId = tenantId,
-                DefinitionId = defId,
-                Status = "Running",
-                StartedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                CancelRequested = false,
-                RestartLost = false
-            }
-        };
-
-        var eventStore = new FakeEventStoreRepository();
-
-        var sut = MakeSut(
-            dedupService: new FakeCommandDedupService(dedupKey),
-            dedupRepo: dedupRepo,
-            engine: engine,
-            display: display,
-            workflowRepo: workflowRepo,
-            eventStore: eventStore);
-
-        // Act
-        await sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: "idem", method: "POST", path: "/v1/workflows/cancel", CancellationToken.None);
-
-        // Assert
-        Assert.Single(workflowRepo.Updates);
-        Assert.Equal("Unknown", workflowRepo.Updates[0].Status);
-        Assert.Null(workflowRepo.Updates[0].CancelRequested);
-        Assert.Equal(engine.GraphJsonToReturn, workflowRepo.Updates[0].GraphJson);
     }
 
     /// <summary>イベント追記に失敗したとき巻き戻して例外を再送出する。</summary>
@@ -1407,7 +1596,11 @@ public sealed class WorkflowServiceTests
             definitions: new FakeDefinitionsRepoStub(),
             dedup: new FakeCommandDedupRepository(),
             eventStore: eventStore,
-            dbFactory: sqlite.Factory);
+            eventDeliveryDedup: new FakeEventDeliveryDedupRepository(),
+            dbFactory: sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
 
         var method = typeof(WorkflowService).GetMethod(
             "UpdateProjectionAsync",
@@ -1591,6 +1784,8 @@ public sealed class WorkflowServiceTests
         // Assert
         Assert.Equal(workflowId.ToString(), engine.PublishEventLastWorkflowId);
         Assert.Equal(eventName, engine.PublishEventLastName);
+        var expectedClientEventId = ClientEventIdResolver.FromIdempotencyKey("idem", new FixedIdGenerator(Guid.NewGuid()));
+        Assert.Equal(expectedClientEventId, engine.PublishEventLastClientEventId);
 
         Assert.Single(workflowRepo.Updates);
         Assert.Equal(workflowId, workflowRepo.Updates[0].WorkflowId);
@@ -1615,6 +1810,145 @@ public sealed class WorkflowServiceTests
         Assert.Equal(dedupKey.DedupKey, dedupRepo.SavedRows[0].DedupKey);
         Assert.Equal(dedupKey.Endpoint, dedupRepo.SavedRows[0].Endpoint);
         Assert.Equal(dedupKey.IdempotencyKey, dedupRepo.SavedRows[0].IdempotencyKey);
+    }
+
+    /// <summary>Engine が AlreadyApplied のときも projection を更新し、冪等 event_store 追記が 1 回だけ行われる。</summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenEngineAlreadyApplied_UpdatesProjection_AndSingleDedupAppend()
+    {
+        // Arrange
+        var tenantId = "t1";
+        var workflowId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+        var dedupKey = new CommandDedupKey
+        {
+            DedupKey = "k1",
+            Endpoint = "POST /v1/workflows/events",
+            IdempotencyKey = "idem"
+        };
+
+        var expectedClientEventId = ClientEventIdResolver.FromIdempotencyKey("idem", new FixedIdGenerator(Guid.NewGuid()));
+
+        var engine = new FakeWorkflowEngine
+        {
+            PublishAlreadyAppliedWhenClientEventIdEquals = expectedClientEventId,
+            SnapshotToReturn = new WorkflowSnapshot
+            {
+                WorkflowId = workflowId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = Array.Empty<string>(),
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn = "{\"nodes\":[]}"
+        };
+
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = tenantId,
+                DefinitionId = defId,
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var eventStore = new FakeEventStoreRepository();
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(dedupKey),
+            dedupRepo: new FakeCommandDedupRepository { NextFindValid = null },
+            engine: engine,
+            display: display,
+            workflowRepo: workflowRepo,
+            eventStore: eventStore);
+
+        const string eventName = "Approve";
+
+        // Act
+        await sut.PublishEventAsync(tenantId, idOrUuid: "X", eventName: eventName, idempotencyKey: "idem", method: "POST", path: "/v1/workflows/events", CancellationToken.None);
+
+        // Assert
+        Assert.Equal(expectedClientEventId, engine.PublishEventLastClientEventId);
+        Assert.Single(workflowRepo.Updates);
+        Assert.Single(eventStore.Appended);
+        Assert.Equal(EventStoreEventType.EventPublished, eventStore.Appended[0].Type);
+        Assert.Equal(workflowId, eventStore.Appended[0].WorkflowId);
+    }
+
+    /// <summary>取消で Engine が AlreadyApplied のときも投影更新し、冪等 event_store 追記が 1 回だけ行われる。</summary>
+    [Fact]
+    public async Task CancelAsync_WhenEngineAlreadyApplied_UpdatesProjection_AndSingleDedupAppend()
+    {
+        // Arrange
+        var tenantId = "t1";
+        var workflowId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+        var dedupKey = new CommandDedupKey
+        {
+            DedupKey = "k1",
+            Endpoint = "POST /v1/workflows/cancel",
+            IdempotencyKey = "idem"
+        };
+
+        var expectedClientEventId = ClientEventIdResolver.FromIdempotencyKey("idem", new FixedIdGenerator(Guid.NewGuid()));
+
+        var engine = new FakeWorkflowEngine
+        {
+            CancelAlreadyAppliedWhenClientEventIdEquals = expectedClientEventId,
+            SnapshotToReturn = new WorkflowSnapshot
+            {
+                WorkflowId = workflowId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = Array.Empty<string>(),
+                IsCompleted = false,
+                IsCancelled = true,
+                IsFailed = false
+            },
+            GraphJsonToReturn = "{\"nodes\":[]}"
+        };
+
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = tenantId,
+                DefinitionId = defId,
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var eventStore = new FakeEventStoreRepository();
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(dedupKey),
+            dedupRepo: new FakeCommandDedupRepository { NextFindValid = null },
+            engine: engine,
+            display: display,
+            workflowRepo: workflowRepo,
+            eventStore: eventStore);
+
+        // Act
+        await sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: "idem", method: "POST", path: "/v1/workflows/cancel", CancellationToken.None);
+
+        // Assert
+        Assert.Equal(expectedClientEventId, engine.CancelAsyncLastClientEventId);
+        Assert.True(engine.CancelCalled);
+        Assert.Single(workflowRepo.Updates);
+        Assert.Single(eventStore.Appended);
+        Assert.Equal(EventStoreEventType.WorkflowCancelled, eventStore.Appended[0].Type);
+        Assert.Equal(workflowId, eventStore.Appended[0].WorkflowId);
     }
 
     /// <summary>イベント公開時の追記失敗で巻き戻して例外を再送出する。</summary>
@@ -1682,8 +2016,85 @@ public sealed class WorkflowServiceTests
         Assert.Equal("append failed", ex.Message);
         Assert.Equal(workflowId.ToString(), engine.PublishEventLastWorkflowId);
         Assert.Equal(eventName, engine.PublishEventLastName);
+        Assert.NotNull(engine.PublishEventLastClientEventId);
         Assert.Empty(eventStore.Appended);
         Assert.Empty(dedupRepo.SavedRows);
+    }
+
+    /// <summary>event_delivery_dedup が既に APPLIED のとき Engine を呼ばずに終了する。</summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenEventDeliveryAlreadyApplied_SkipsEngine()
+    {
+        // Arrange
+        var tenantId = "t1";
+        var workflowId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+        var clientEventId = Guid.Parse("550e8400-e29b-41d4-a716-446655440000");
+
+        var eventDedup = new FakeEventDeliveryDedupRepository();
+        var now = DateTime.UtcNow;
+        eventDedup.SeedRow(new EventDeliveryDedupRow
+        {
+            TenantId = tenantId,
+            WorkflowId = workflowId,
+            ClientEventId = clientEventId,
+            BatchId = null,
+            Status = EventDeliveryDedupStatuses.Applied,
+            AcceptedAt = now,
+            AppliedAt = now,
+            ErrorCode = null,
+            UpdatedAt = now
+        });
+
+        var engine = new FakeWorkflowEngine();
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = tenantId,
+                DefinitionId = defId,
+                Status = "Running",
+                StartedAt = now,
+                UpdatedAt = now,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        using var sqlite = new SqliteTestDatabase();
+        var eventStore = new FakeEventStoreRepository();
+        var sut = new WorkflowService(
+            engine,
+            display,
+            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            workflowRepo,
+            new FakeDefinitionsRepoStub(),
+            new FakeCommandDedupRepository(),
+            eventStore,
+            eventDedup,
+            sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
+
+        // Act
+        await sut.PublishEventAsync(
+            tenantId,
+            idOrUuid: "X",
+            eventName: "Approve",
+            idempotencyKey: clientEventId.ToString(),
+            method: "POST",
+            path: "/v1/workflows/events",
+            CancellationToken.None);
+
+        // Assert
+        Assert.Null(engine.PublishEventLastName);
+        Assert.Empty(workflowRepo.Updates);
+        Assert.Empty(eventStore.Appended);
     }
 
     /// <summary>応答取得で実行識別子を解決できないとき未検出例外を投げる。</summary>
@@ -1932,7 +2343,11 @@ public sealed class WorkflowServiceTests
             definitions: new FakeDefinitionsRepoStub(),
             dedup: new FakeCommandDedupRepository(),
             eventStore: eventStore,
-            dbFactory: sqlite.Factory);
+            eventDeliveryDedup: new FakeEventDeliveryDedupRepository(),
+            dbFactory: sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
 
         // Act
         await sut.ResumeNodeAsync(tenantId, idOrUuid: "X", nodeId: nodeId, resumeKey: resumeKey, idempotencyKey: null, method: "POST", path: "/v1/workflows", CancellationToken.None);
@@ -2459,6 +2874,377 @@ public sealed class WorkflowServiceTests
         await Assert.ThrowsAsync<NotFoundException>(() => sut.GetWorkflowViewAsync(tenantId, idOrUuid: "X", CancellationToken.None));
     }
 
+    /// <summary>RECEIVED 先行 INSERT が一時障害で失敗したあと再試行で成功する。</summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenInsertReceivedTransientlyFails_RetriesThenSucceeds()
+    {
+        // Arrange
+        var tenantId = "t1";
+        var workflowId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+
+        var dedupKey = new CommandDedupKey
+        {
+            DedupKey = "k-retry",
+            Endpoint = "POST /v1/workflows/events",
+            IdempotencyKey = "550e8400-e29b-41d4-a716-446655440099"
+        };
+
+        var dedupRepo = new FakeCommandDedupRepository { NextFindValid = null };
+
+        var engine = new FakeWorkflowEngine
+        {
+            SnapshotToReturn = new WorkflowSnapshot
+            {
+                WorkflowId = workflowId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = Array.Empty<string>(),
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn = "{\"nodes\":[]}"
+        };
+
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = tenantId,
+                DefinitionId = defId,
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var eventStore = new FakeEventStoreRepository();
+        var flakyEventDelivery = new FlakyThenSuccessEventDeliveryDedupRepository(2, new IOException("transient db"));
+
+        using var sqlite = new SqliteTestDatabase();
+        var sut = new WorkflowService(
+            engine,
+            display,
+            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(dedupKey),
+            workflowRepo,
+            new FakeDefinitionsRepoStub(),
+            dedupRepo,
+            eventStore,
+            flakyEventDelivery,
+            sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
+
+        // Act
+        await sut.PublishEventAsync(
+            tenantId,
+            idOrUuid: "X",
+            eventName: "Approve",
+            idempotencyKey: dedupKey.IdempotencyKey,
+            method: "POST",
+            path: "/v1/workflows/events",
+            CancellationToken.None);
+
+        // Assert
+        Assert.Equal(3, flakyEventDelivery.InsertReceivedCallCount);
+        Assert.Single(eventStore.Appended);
+        Assert.Equal(EventStoreEventType.EventPublished, eventStore.Appended[0].Type);
+    }
+
+    /// <summary>RECEIVED 先行 INSERT がキャンセルで失敗したとき再試行しない。</summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenInsertReceivedCanceled_DoesNotRetry()
+    {
+        // Arrange
+        var tenantId = "t1";
+        var workflowId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+
+        var dedupKey = new CommandDedupKey
+        {
+            DedupKey = "k-cancel",
+            Endpoint = "POST /v1/workflows/events",
+            IdempotencyKey = "550e8400-e29b-41d4-a716-446655440088"
+        };
+
+        var dedupRepo = new FakeCommandDedupRepository { NextFindValid = null };
+        var engine = new FakeWorkflowEngine();
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = tenantId,
+                DefinitionId = defId,
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var flakyEventDelivery = new FlakyThenSuccessEventDeliveryDedupRepository(5, new TaskCanceledException("canceled"));
+        using var sqlite = new SqliteTestDatabase();
+        var sut = new WorkflowService(
+            engine,
+            display,
+            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(dedupKey),
+            workflowRepo,
+            new FakeDefinitionsRepoStub(),
+            dedupRepo,
+            new FakeEventStoreRepository(),
+            flakyEventDelivery,
+            sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<TaskCanceledException>(() => sut.PublishEventAsync(
+            tenantId,
+            idOrUuid: "X",
+            eventName: "Approve",
+            idempotencyKey: dedupKey.IdempotencyKey,
+            method: "POST",
+            path: "/v1/workflows/events",
+            CancellationToken.None));
+
+        Assert.Equal(1, flakyEventDelivery.InsertReceivedCallCount);
+    }
+
+    /// <summary>一時障害が続き最大試行回数に達したとき例外を伝播する。</summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenInsertReceivedTransientExceedsMaxAttempts_Throws()
+    {
+        // Arrange
+        var tenantId = "t1";
+        var workflowId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+
+        var dedupKey = new CommandDedupKey
+        {
+            DedupKey = "k-max",
+            Endpoint = "POST /v1/workflows/events",
+            IdempotencyKey = "550e8400-e29b-41d4-a716-446655440077"
+        };
+
+        var dedupRepo = new FakeCommandDedupRepository { NextFindValid = null };
+        var engine = new FakeWorkflowEngine();
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = tenantId,
+                DefinitionId = defId,
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var flakyEventDelivery = new FlakyThenSuccessEventDeliveryDedupRepository(10, new IOException("always"));
+        var strictRetryOptions = Microsoft.Extensions.Options.Options.Create(
+            new EventDeliveryRetryOptions
+            {
+                MaxAttempts = 3,
+                BaseDelayMs = 0,
+                MaxDelayMs = 1,
+                Jitter = false,
+                MaxTotalBackoffMs = 10_000
+            });
+
+        using var sqlite = new SqliteTestDatabase();
+        var sut = new WorkflowService(
+            engine,
+            display,
+            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(dedupKey),
+            workflowRepo,
+            new FakeDefinitionsRepoStub(),
+            dedupRepo,
+            new FakeEventStoreRepository(),
+            flakyEventDelivery,
+            sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            strictRetryOptions,
+            UnitTestHttpContextAccessor());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<IOException>(() => sut.PublishEventAsync(
+            tenantId,
+            idOrUuid: "X",
+            eventName: "Approve",
+            idempotencyKey: dedupKey.IdempotencyKey,
+            method: "POST",
+            path: "/v1/workflows/events",
+            CancellationToken.None));
+
+        Assert.Equal(3, flakyEventDelivery.InsertReceivedCallCount);
+    }
+
+    /// <summary>
+    /// エンジンにインスタンスが無く投影が Running のとき、API 再起動喪失として引数例外（HTTP 422）を投げる。
+    /// </summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenEngineRuntimeMissing_AndWorkflowRunning_ThrowsArgumentException()
+    {
+        // Arrange
+        var tenantId = "t1";
+        var workflowId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+
+        var engine = new FakeWorkflowEngine();
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = tenantId,
+                DefinitionId = defId,
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository(),
+            engine: engine,
+            display: display,
+            workflowRepo: workflowRepo,
+            eventStore: new FakeEventStoreRepository());
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            sut.PublishEventAsync(
+                tenantId,
+                idOrUuid: "X",
+                eventName: "Approve",
+                idempotencyKey: null,
+                method: "POST",
+                path: "/v1/workflows/events",
+                CancellationToken.None));
+
+        Assert.Contains("not loaded in this API process", ex.Message, StringComparison.Ordinal);
+        Assert.Null(engine.PublishEventLastWorkflowId);
+    }
+
+    /// <summary>
+    /// エンジンにインスタンスが無く投影が Running のとき、キャンセルも同様に引数例外（HTTP 422）を投げる。
+    /// </summary>
+    [Fact]
+    public async Task CancelAsync_WhenEngineRuntimeMissing_AndWorkflowRunning_ThrowsArgumentException()
+    {
+        // Arrange
+        var tenantId = "t1";
+        var workflowId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+
+        var engine = new FakeWorkflowEngine();
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = tenantId,
+                DefinitionId = defId,
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository(),
+            engine: engine,
+            display: display,
+            workflowRepo: workflowRepo,
+            eventStore: new FakeEventStoreRepository());
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: null, method: "POST", path: "/v1/workflows/cancel", CancellationToken.None));
+
+        Assert.Contains("not loaded in this API process", ex.Message, StringComparison.Ordinal);
+        Assert.False(engine.CancelCalled);
+    }
+
+    /// <summary>
+    /// エンジンにインスタンスが無く投影が終了済みのとき、終了後コマンド拒否として引数例外（HTTP 422）を投げる。
+    /// </summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenEngineRuntimeMissing_AndWorkflowCompleted_ThrowsArgumentException()
+    {
+        // Arrange
+        var tenantId = "t1";
+        var workflowId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+
+        var engine = new FakeWorkflowEngine();
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = tenantId,
+                DefinitionId = defId,
+                Status = "Completed",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository(),
+            engine: engine,
+            display: display,
+            workflowRepo: workflowRepo,
+            eventStore: new FakeEventStoreRepository());
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            sut.PublishEventAsync(
+                tenantId,
+                idOrUuid: "X",
+                eventName: "Approve",
+                idempotencyKey: null,
+                method: "POST",
+                path: "/v1/workflows/events",
+                CancellationToken.None));
+
+        Assert.Contains("terminal state", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(engine.PublishEventLastWorkflowId);
+    }
+
     private static WorkflowService MakeSut(
         FakeCommandDedupService dedupService,
         FakeCommandDedupRepository dedupRepo,
@@ -2479,7 +3265,11 @@ public sealed class WorkflowServiceTests
             new FakeDefinitionsRepoStub(),
             dedupRepo,
             eventStore,
-            sqlite.Factory);
+            new FakeEventDeliveryDedupRepository(),
+            sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
     }
 }
 

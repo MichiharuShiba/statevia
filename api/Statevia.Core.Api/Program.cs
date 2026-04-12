@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Statevia.Core.Api.Configuration;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Infrastructure;
@@ -76,6 +78,7 @@ builder.Services.AddScoped<ICommandDedupService, CommandDedupService>();
 builder.Services.AddScoped<IDefinitionRepository, DefinitionRepository>();
 builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
 builder.Services.AddScoped<ICommandDedupRepository, CommandDedupRepository>();
+builder.Services.AddScoped<IEventDeliveryDedupRepository, EventDeliveryDedupRepository>();
 builder.Services.AddScoped<IEventStoreRepository, EventStoreRepository>();
 builder.Services.AddScoped<IDefinitionService, DefinitionService>();
 builder.Services.AddScoped<IWorkflowService, WorkflowService>();
@@ -114,6 +117,15 @@ builder.Services.AddOptions<RequestLogOptions>()
             o.LogResponseBody = true;
         }
     });
+
+builder.Services.AddOptions<EventDeliveryRetryOptions>()
+    .Bind(builder.Configuration.GetSection("EventDelivery:Retry"))
+    .Validate(o => o.MaxAttempts is >= 1 and <= 50, "EventDelivery:Retry:MaxAttempts must be between 1 and 50.")
+    .Validate(o => o.BaseDelayMs is >= 0 and <= 600_000, "EventDelivery:Retry:BaseDelayMs is out of range.")
+    .Validate(o => o.MaxDelayMs is >= 0 and <= 600_000, "EventDelivery:Retry:MaxDelayMs is out of range.")
+    .Validate(o => o.MaxTotalBackoffMs is >= 0 and <= 600_000, "EventDelivery:Retry:MaxTotalBackoffMs is out of range.");
+
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddCors();
 builder.Services.AddControllers(options =>

@@ -1,7 +1,7 @@
 # v2 残タスク チケット一覧
 
 - Version: 1.3.3
-- 更新日: 2026-04-10
+- 更新日: 2026-04-11
 - 対象: `v2-remaining-tasks.md` / `v2-logging-v1-tasks.md` の未完了項目に紐づく実行チケット
 - 関連: `.workspace-docs/50_tasks/10_in-progress/v2-remaining-tasks.md`, `.workspace-docs/50_tasks/10_in-progress/v2-logging-v1-tasks.md`, `.workspace-docs/30_specs/10_in-progress/o6-concerns_decomposition_spec.md`, `.workspace-docs/30_specs/10_in-progress/o6-subtickets_detailed_spec.md`
 
@@ -11,9 +11,10 @@
 
 ---
 
-## 現在の仕分け（2026-04-10）
+## 現在の仕分け（2026-04-11）
 
 - **完了**: `STV-401`～`STV-410`（`STV-401`/`402`: `../20_done/v2-e2e-cancel-idempotency_backlog.md`。`STV-403`: `../20_done/v2-logging-stv403_backlog.md`。`STV-404`: `../20_done/v2-logging-stv404_backlog.md`。`STV-410`: 変更履歴 1.3.0）
+- **完了（補足）**: O6 製造 spec のタスク8（`o6-subtickets-manufacturing`）相当として、イベント／キャンセルのランタイム喪失時 422、`event_delivery_dedup` 周りの契約追記、`WorkflowServiceTests` による回帰を 2026-04-11 に反映。
 - **未完了**: なし
 - **見送り（今はしない）**: `STV-411`（認証エピック連動）
 - **棄却**: なし

@@ -13,6 +13,7 @@ public class CoreDbContext : DbContext
     public DbSet<WorkflowEventRow> WorkflowEvents => Set<WorkflowEventRow>();
     public DbSet<ExecutionGraphSnapshotRow> ExecutionGraphSnapshots => Set<ExecutionGraphSnapshotRow>();
     public DbSet<CommandDedupRow> CommandDedup => Set<CommandDedupRow>();
+    public DbSet<EventDeliveryDedupRow> EventDeliveryDedup => Set<EventDeliveryDedupRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -114,6 +115,24 @@ public class CoreDbContext : DbContext
             e.Property(x => x.ExpiresAt).HasColumnName("expires_at");
 
             // TODO: ExpiresAt の DB デフォルト値（created_at + interval '24 hours'）はマイグレーションで設定する。
+        });
+
+        // event_delivery_dedup（イベント配送の冪等制御）
+        modelBuilder.Entity<EventDeliveryDedupRow>(e =>
+        {
+            e.ToTable("event_delivery_dedup");
+            e.HasKey(x => new { x.TenantId, x.WorkflowId, x.ClientEventId });
+            e.Property(x => x.TenantId).HasMaxLength(64).HasColumnName("tenant_id");
+            e.Property(x => x.WorkflowId).HasColumnName("workflow_id");
+            e.Property(x => x.ClientEventId).HasColumnName("client_event_id");
+            e.Property(x => x.BatchId).HasColumnName("batch_id");
+            e.Property(x => x.Status).HasMaxLength(32).HasColumnName("status");
+            e.Property(x => x.AcceptedAt).HasColumnName("accepted_at");
+            e.Property(x => x.AppliedAt).HasColumnName("applied_at");
+            e.Property(x => x.ErrorCode).HasMaxLength(128).HasColumnName("error_code");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+
+            e.HasIndex(x => new { x.TenantId, x.WorkflowId, x.BatchId });
         });
     }
 }

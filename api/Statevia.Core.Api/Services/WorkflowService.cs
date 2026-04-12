@@ -1,21 +1,48 @@
 using System.Data;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Contracts;
+using Statevia.Core.Api.Hosting;
+using Statevia.Core.Api.Infrastructure;
+using Statevia.Core.Api.Configuration;
 using Statevia.Core.Api.Persistence;
 using Statevia.Core.Engine.Abstractions;
-using Statevia.Core.Api.Hosting;
 
 namespace Statevia.Core.Api.Services;
 
 public sealed class WorkflowService : IWorkflowService
 {
     private static readonly JsonSerializerOptions DedupJsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    /// <summary><c>event_delivery_decision</c> 構造化ログの <c>decision</c> プロパティ値。</summary>
+    private static class EventDeliveryLogDecisions
+    {
+        internal const string Inserted = "inserted";
+        internal const string DuplicateKey = "duplicate_key";
+        internal const string AbortedTimeout = "aborted_timeout";
+        internal const string Retry = "retry";
+        internal const string BackoffBudgetExhausted = "backoff_budget_exhausted";
+        internal const string Failed = "failed";
+    }
+
+    /// <summary>
+    /// <c>event_delivery_decision</c> 構造化ログの <c>errorCode</c>、および dedup 行の既知 <c>error_code</c> 値。
+    /// </summary>
+    private static class EventDeliveryLogErrorCodes
+    {
+        internal const string None = "none";
+        internal const string UniqueViolation = "unique_violation";
+        internal const string PersistFailed = "persist_failed";
+    }
 
     private readonly IWorkflowEngine _engine;
     private readonly IDisplayIdService _displayIds;
@@ -26,7 +53,11 @@ public sealed class WorkflowService : IWorkflowService
     private readonly IDefinitionRepository _definitions;
     private readonly ICommandDedupRepository _dedup;
     private readonly IEventStoreRepository _eventStore;
+    private readonly IEventDeliveryDedupRepository _eventDeliveryDedup;
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
+    private readonly ILogger<WorkflowService> _logger;
+    private readonly IOptions<EventDeliveryRetryOptions> _eventDeliveryRetryOptions;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public WorkflowService(
         IWorkflowEngine engine,
@@ -38,7 +69,11 @@ public sealed class WorkflowService : IWorkflowService
         IDefinitionRepository definitions,
         ICommandDedupRepository dedup,
         IEventStoreRepository eventStore,
-        IDbContextFactory<CoreDbContext> dbFactory)
+        IEventDeliveryDedupRepository eventDeliveryDedup,
+        IDbContextFactory<CoreDbContext> dbFactory,
+        ILogger<WorkflowService> logger,
+        IOptions<EventDeliveryRetryOptions> eventDeliveryRetryOptions,
+        IHttpContextAccessor httpContextAccessor)
     {
         _engine = engine;
         _displayIds = displayIds;
@@ -49,7 +84,11 @@ public sealed class WorkflowService : IWorkflowService
         _definitions = definitions;
         _dedup = dedup;
         _eventStore = eventStore;
+        _eventDeliveryDedup = eventDeliveryDedup;
         _dbFactory = dbFactory;
+        _logger = logger;
+        _eventDeliveryRetryOptions = eventDeliveryRetryOptions;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<WorkflowResponse> StartAsync(
@@ -281,7 +320,15 @@ public sealed class WorkflowService : IWorkflowService
         if (workflow is null)
             throw new NotFoundException("Workflow not found");
 
-        await _engine.CancelAsync(uuid.Value.ToString()).ConfigureAwait(false);
+        var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
+
+        if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(tenantId, uuid.Value, clientEventId, ct).ConfigureAwait(false))
+            return;
+
+        EnsureEngineRuntimePresentForMutation(uuid.Value, workflow);
+
+        var cancelApply = await _engine.CancelAsync(uuid.Value.ToString(), clientEventId).ConfigureAwait(false);
+        var skipCancelEventAppend = cancelApply.IsAlreadyApplied;
 
         var (projStatus, projCancel, projGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var cancelPayload = JsonSerializer.Serialize(
@@ -293,7 +340,20 @@ public sealed class WorkflowService : IWorkflowService
         try
         {
             await _workflows.UpdateWorkflowAndSnapshotAsync(dbCancel, uuid.Value, projStatus, projCancel, projGraphJson, ct).ConfigureAwait(false);
-            await _eventStore.AppendAsync(dbCancel, uuid.Value, EventStoreEventType.WorkflowCancelled, cancelPayload, ct).ConfigureAwait(false);
+            if (!skipCancelEventAppend)
+            {
+                await _eventStore.AppendAsync(dbCancel, uuid.Value, EventStoreEventType.WorkflowCancelled, cancelPayload, ct).ConfigureAwait(false);
+            }
+            else
+            {
+                await _eventStore.TryAppendIfAbsentByClientEventAsync(
+                    dbCancel,
+                    uuid.Value,
+                    clientEventId,
+                    EventStoreEventType.WorkflowCancelled,
+                    cancelPayload,
+                    ct).ConfigureAwait(false);
+            }
 
             if (dedupKey is { } saveKey)
             {
@@ -311,12 +371,25 @@ public sealed class WorkflowService : IWorkflowService
                 }, ct).ConfigureAwait(false);
             }
 
+            var nowUtc = DateTime.UtcNow;
+            await _eventDeliveryDedup.TryUpdateStatusAsync(
+                dbCancel,
+                tenantId,
+                uuid.Value,
+                clientEventId,
+                EventDeliveryDedupStatuses.Applied,
+                nowUtc,
+                appliedAt: nowUtc,
+                errorCode: null,
+                ct).ConfigureAwait(false);
+
             await dbCancel.SaveChangesAsync(ct).ConfigureAwait(false);
             await txCancel.CommitAsync(ct).ConfigureAwait(false);
         }
         catch
         {
             await txCancel.RollbackAsync(ct).ConfigureAwait(false);
+            await TryMarkEventDeliveryFailedAsync(tenantId, uuid.Value, clientEventId, ct).ConfigureAwait(false);
             throw;
         }
     }
@@ -348,7 +421,15 @@ public sealed class WorkflowService : IWorkflowService
         if (workflow is null)
             throw new NotFoundException("Workflow not found");
 
-        _engine.PublishEvent(uuid.Value.ToString(), eventName);
+        var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
+
+        if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(tenantId, uuid.Value, clientEventId, ct).ConfigureAwait(false))
+            return;
+
+        EnsureEngineRuntimePresentForMutation(uuid.Value, workflow);
+
+        var publishApply = _engine.PublishEvent(uuid.Value.ToString(), eventName, clientEventId);
+        var skipEventAppend = publishApply.IsAlreadyApplied;
 
         var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var publishedPayload = JsonSerializer.Serialize(
@@ -360,7 +441,20 @@ public sealed class WorkflowService : IWorkflowService
         try
         {
             await _workflows.UpdateWorkflowAndSnapshotAsync(dbPub, uuid.Value, pubStatus, pubCancel, pubGraphJson, ct).ConfigureAwait(false);
-            await _eventStore.AppendAsync(dbPub, uuid.Value, EventStoreEventType.EventPublished, publishedPayload, ct).ConfigureAwait(false);
+            if (!skipEventAppend)
+            {
+                await _eventStore.AppendAsync(dbPub, uuid.Value, EventStoreEventType.EventPublished, publishedPayload, ct).ConfigureAwait(false);
+            }
+            else
+            {
+                await _eventStore.TryAppendIfAbsentByClientEventAsync(
+                    dbPub,
+                    uuid.Value,
+                    clientEventId,
+                    EventStoreEventType.EventPublished,
+                    publishedPayload,
+                    ct).ConfigureAwait(false);
+            }
 
             if (dedupKey is { } saveKey)
             {
@@ -378,12 +472,25 @@ public sealed class WorkflowService : IWorkflowService
                 }, ct).ConfigureAwait(false);
             }
 
+            var nowUtc = DateTime.UtcNow;
+            await _eventDeliveryDedup.TryUpdateStatusAsync(
+                dbPub,
+                tenantId,
+                uuid.Value,
+                clientEventId,
+                EventDeliveryDedupStatuses.Applied,
+                nowUtc,
+                appliedAt: nowUtc,
+                errorCode: null,
+                ct).ConfigureAwait(false);
+
             await dbPub.SaveChangesAsync(ct).ConfigureAwait(false);
             await txPub.CommitAsync(ct).ConfigureAwait(false);
         }
         catch
         {
             await txPub.RollbackAsync(ct).ConfigureAwait(false);
+            await TryMarkEventDeliveryFailedAsync(tenantId, uuid.Value, clientEventId, ct).ConfigureAwait(false);
             throw;
         }
     }
@@ -554,6 +661,33 @@ public sealed class WorkflowService : IWorkflowService
         return "Running";
     }
 
+    /// <summary>
+    /// 投影が終了状態かどうかを、<c>workflows.status</c> の文字列値から判定する。
+    /// </summary>
+    private static bool IsTerminalWorkflowProjectionStatus(string status) =>
+        status is "Completed" or "Cancelled" or "Failed";
+
+    /// <summary>
+    /// キャンセル／イベント発行の適用直前に、当該ワークフローがこのプロセスのエンジンへ読み込まれていることを検証する。
+    /// API 再起動などでインメモリ実行が失われた場合、DB 投影を壊さないよう <see cref="ArgumentException"/> を投げる（HTTP 422）。
+    /// </summary>
+    private void EnsureEngineRuntimePresentForMutation(Guid workflowId, WorkflowRow workflow)
+    {
+        if (_engine.GetSnapshot(workflowId.ToString()) is not null)
+            return;
+
+        if (IsTerminalWorkflowProjectionStatus(workflow.Status))
+        {
+            throw new ArgumentException(
+                "The workflow is already in a terminal state in the database projection, but there is no in-memory instance in this API process. Cancel or event delivery cannot be applied.",
+                paramName: null);
+        }
+
+        throw new ArgumentException(
+            "The workflow execution state is not loaded in this API process (for example after a restart). Commands cannot be applied while the in-memory runtime is missing.",
+            paramName: null);
+    }
+
     private async Task UpdateProjectionAsync(Guid workflowId, CancellationToken ct)
     {
         var (status, cancelRequested, graphJson) = BuildProjectionFromEngine(workflowId);
@@ -572,6 +706,260 @@ public sealed class WorkflowService : IWorkflowService
         var graphJson = _engine.ExportExecutionGraph(engineId);
         var status = MapStatus(snapshot);
         return (status, snapshot?.IsCancelled, graphJson);
+    }
+
+    /// <summary>
+    /// 現在リクエストの相関 ID（無ければ空文字）を返す。
+    /// </summary>
+    private string GetTraceIdOrEmpty()
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext?.Items.TryGetValue(RequestLogContext.TraceIdItemKey, out var traceObject) is true
+            && traceObject is string traceId)
+            return traceId;
+
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// イベント配送 dedup の観測性用に必須キーを構造化ログへ書き出す。
+    /// </summary>
+    private void LogEventDeliveryDecision(
+        string traceId,
+        string tenantId,
+        Guid workflowId,
+        Guid clientEventId,
+        string decision,
+        int attempt,
+        long elapsedMs,
+        string errorCode,
+        Exception? exception = null)
+    {
+        var level = decision switch
+        {
+            EventDeliveryLogDecisions.Failed or EventDeliveryLogDecisions.BackoffBudgetExhausted => LogLevel.Error,
+            EventDeliveryLogDecisions.Retry or EventDeliveryLogDecisions.AbortedTimeout => LogLevel.Warning,
+            _ => LogLevel.Information
+        };
+
+        _logger.Log(
+            level,
+            exception,
+            "event_delivery_decision traceId={traceId} workflowId={workflowId} tenantId={tenantId} clientEventId={clientEventId} decision={decision} attempt={attempt} elapsedMs={elapsedMs} errorCode={errorCode}",
+            traceId,
+            workflowId,
+            tenantId,
+            clientEventId,
+            decision,
+            attempt,
+            elapsedMs,
+            errorCode);
+    }
+
+    /// <summary>
+    /// ログ用のエラー分類コード（例外種別・SQLSTATE 等の短い識別子）。
+    /// </summary>
+    private static string MapErrorCode(Exception exception) =>
+        exception switch
+        {
+            TaskCanceledException => nameof(TaskCanceledException),
+            OperationCanceledException => nameof(OperationCanceledException),
+            TimeoutException => nameof(TimeoutException),
+            DbUpdateException dbUpdateException =>
+                dbUpdateException.InnerException?.GetType().Name ?? nameof(DbUpdateException),
+            _ => exception.GetType().Name
+        };
+
+    /// <summary>
+    /// <c>event_delivery_dedup</c> に RECEIVED を先行挿入する。一意制約違反時は既存行を読み、
+    /// 既に APPLIED なら true（呼び出し側は即 return）。それ以外は false（処理継続）。
+    /// DB 一時障害時は設定に従い段階的バックオフで再試行する（タイムアウト系は再試行しない）。
+    /// </summary>
+    private async Task<bool> TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(
+        string tenantId,
+        Guid workflowId,
+        Guid clientEventId,
+        CancellationToken cancellationToken)
+    {
+        var retryOptions = _eventDeliveryRetryOptions.Value;
+        var traceId = GetTraceIdOrEmpty();
+        var acceptedAt = DateTime.UtcNow;
+        var row = new EventDeliveryDedupRow
+        {
+            TenantId = tenantId,
+            WorkflowId = workflowId,
+            ClientEventId = clientEventId,
+            BatchId = null,
+            Status = EventDeliveryDedupStatuses.Received,
+            AcceptedAt = acceptedAt,
+            AppliedAt = null,
+            ErrorCode = null,
+            UpdatedAt = acceptedAt
+        };
+
+        var totalBackoffMs = 0;
+
+        for (var attempt = 1; attempt <= retryOptions.MaxAttempts; attempt++)
+        {
+            var attemptStopwatch = Stopwatch.StartNew();
+            try
+            {
+                await _eventDeliveryDedup.InsertReceivedAsync(row, cancellationToken).ConfigureAwait(false);
+                attemptStopwatch.Stop();
+                LogEventDeliveryDecision(
+                    traceId,
+                    tenantId,
+                    workflowId,
+                    clientEventId,
+                    decision: EventDeliveryLogDecisions.Inserted,
+                    attempt,
+                    attemptStopwatch.ElapsedMilliseconds,
+                    errorCode: EventDeliveryLogErrorCodes.None);
+                return false;
+            }
+            catch (DbUpdateException dbUpdateException)
+                when (EventDeliveryRetryPolicy.IsUniqueConstraintViolation(dbUpdateException))
+            {
+                attemptStopwatch.Stop();
+                LogEventDeliveryDecision(
+                    traceId,
+                    tenantId,
+                    workflowId,
+                    clientEventId,
+                    decision: EventDeliveryLogDecisions.DuplicateKey,
+                    attempt,
+                    attemptStopwatch.ElapsedMilliseconds,
+                    errorCode: EventDeliveryLogErrorCodes.UniqueViolation);
+
+                var existing = await _eventDeliveryDedup
+                    .FindAsync(tenantId, workflowId, clientEventId, cancellationToken)
+                    .ConfigureAwait(false);
+                if (existing is { Status: EventDeliveryDedupStatuses.Applied })
+                    return true;
+
+                if (existing is null)
+                    throw;
+
+                return false;
+            }
+            catch (Exception exception)
+                when (EventDeliveryRetryPolicy.IsNonRetryableTimeoutOrCancellation(exception))
+            {
+                attemptStopwatch.Stop();
+                LogEventDeliveryDecision(
+                    traceId,
+                    tenantId,
+                    workflowId,
+                    clientEventId,
+                    decision: EventDeliveryLogDecisions.AbortedTimeout,
+                    attempt,
+                    attemptStopwatch.ElapsedMilliseconds,
+                    MapErrorCode(exception),
+                    exception);
+                throw;
+            }
+            catch (Exception exception) when (
+                EventDeliveryRetryPolicy.IsTransientInfrastructureFailure(exception)
+                && attempt < retryOptions.MaxAttempts)
+            {
+                attemptStopwatch.Stop();
+                LogEventDeliveryDecision(
+                    traceId,
+                    tenantId,
+                    workflowId,
+                    clientEventId,
+                    decision: EventDeliveryLogDecisions.Retry,
+                    attempt,
+                    attemptStopwatch.ElapsedMilliseconds,
+                    MapErrorCode(exception),
+                    exception);
+
+                var failureIndex = attempt - 1;
+                var delayMs = EventDeliveryRetryPolicy.ComputeBackoffDelayMs(
+                    failureIndex,
+                    retryOptions,
+                    Random.Shared);
+
+                if (retryOptions.MaxTotalBackoffMs > 0)
+                {
+                    var remainingBudgetMs = retryOptions.MaxTotalBackoffMs - totalBackoffMs;
+                    if (remainingBudgetMs <= 0)
+                    {
+                        attemptStopwatch.Stop();
+                        LogEventDeliveryDecision(
+                            traceId,
+                            tenantId,
+                            workflowId,
+                            clientEventId,
+                            decision: EventDeliveryLogDecisions.BackoffBudgetExhausted,
+                            attempt,
+                            attemptStopwatch.ElapsedMilliseconds,
+                            errorCode: EventDeliveryLogDecisions.BackoffBudgetExhausted,
+                            exception);
+                        throw new InvalidOperationException(
+                            "Event delivery insert retry stopped: total backoff budget exhausted.",
+                            exception);
+                    }
+
+                    delayMs = Math.Min(delayMs, remainingBudgetMs);
+                }
+
+                totalBackoffMs += delayMs;
+                if (delayMs > 0)
+                    await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
+
+                continue;
+            }
+            catch (Exception exception)
+            {
+                attemptStopwatch.Stop();
+                LogEventDeliveryDecision(
+                    traceId,
+                    tenantId,
+                    workflowId,
+                    clientEventId,
+                    decision: EventDeliveryLogDecisions.Failed,
+                    attempt,
+                    attemptStopwatch.ElapsedMilliseconds,
+                    MapErrorCode(exception),
+                    exception);
+                throw;
+            }
+        }
+
+        throw new InvalidOperationException("Event delivery insert retry loop ended unexpectedly.");
+    }
+
+    /// <summary>
+    /// メイン永続化が失敗したとき、配送行を FAILED に更新する（ベストエフォート）。
+    /// </summary>
+    private async Task TryMarkEventDeliveryFailedAsync(
+        string tenantId,
+        Guid workflowId,
+        Guid clientEventId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+            var nowUtc = DateTime.UtcNow;
+            await _eventDeliveryDedup.TryUpdateStatusAsync(
+                db,
+                tenantId,
+                workflowId,
+                clientEventId,
+                EventDeliveryDedupStatuses.Failed,
+                nowUtc,
+                appliedAt: null,
+                errorCode: EventDeliveryLogErrorCodes.PersistFailed,
+                cancellationToken).ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // Do not catch general exception types — 補助更新の失敗は本例外に影響させない
+        catch
+        {
+            // 意図的に飲み込む
+        }
+#pragma warning restore CA1031
     }
 }
 

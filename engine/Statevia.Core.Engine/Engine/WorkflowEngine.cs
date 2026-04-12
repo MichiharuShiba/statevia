@@ -69,12 +69,98 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
     }
 
     /// <inheritdoc />
-    public void PublishEvent(string eventName)
+    public ApplyResult PublishEvent(string workflowId, string eventName, Guid clientEventId)
     {
-        foreach (var ep in _eventProviders.Values)
+        if (!_eventProviders.TryGetValue(workflowId, out var ep) || !_instances.TryGetValue(workflowId, out var instance))
+        {
+            return ApplyResult.Applied;
+        }
+
+        if (!instance.TryRegisterPublishClientEventId(clientEventId))
+        {
+            return ApplyResult.AlreadyApplied;
+        }
+
+        try
         {
             ep.Publish(eventName);
+            return ApplyResult.Applied;
         }
+        catch
+        {
+            instance.RemovePublishClientEventId(clientEventId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public void PublishEvent(string eventName)
+    {
+        if (_eventProviders.IsEmpty)
+        {
+            return;
+        }
+
+        List<Exception>? publishFailures = null;
+        foreach (var eventProvider in _eventProviders.Values.ToArray())
+        {
+            try
+            {
+                eventProvider.Publish(eventName);
+            }
+            catch (Exception exception)
+            {
+                publishFailures ??= new List<Exception>();
+                publishFailures.Add(exception);
+            }
+        }
+
+        if (publishFailures is { Count: > 0 })
+        {
+            throw publishFailures.Count == 1
+                ? publishFailures[0]
+                : new AggregateException(
+                    "One or more workflows failed during PublishEvent broadcast.",
+                    publishFailures);
+        }
+    }
+
+    /// <inheritdoc />
+    public ApplyResult PublishEvent(string eventName, Guid clientEventId)
+    {
+        if (_eventProviders.IsEmpty)
+        {
+            return ApplyResult.Applied;
+        }
+
+        var anyApplied = false;
+        List<Exception>? publishFailures = null;
+        foreach (var workflowId in _eventProviders.Keys.ToArray())
+        {
+            try
+            {
+                if (PublishEvent(workflowId, eventName, clientEventId).IsApplied)
+                {
+                    anyApplied = true;
+                }
+            }
+            catch (Exception exception)
+            {
+                publishFailures ??= new List<Exception>();
+                publishFailures.Add(exception);
+            }
+        }
+
+        if (publishFailures is { Count: > 0 })
+        {
+            throw publishFailures.Count == 1
+                ? publishFailures[0]
+                : new AggregateException(
+                    "One or more workflows failed during PublishEvent broadcast with clientEventId.",
+                    publishFailures);
+        }
+
+        return anyApplied ? ApplyResult.Applied : ApplyResult.AlreadyApplied;
     }
 
     /// <inheritdoc />
@@ -86,6 +172,27 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
             _workflowLog.LogWorkflowCancelRequested(workflowId);
         }
         await Task.CompletedTask.ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<ApplyResult> CancelAsync(string workflowId, Guid clientEventId)
+    {
+        if (!_instances.TryGetValue(workflowId, out var instance))
+        {
+            await Task.CompletedTask.ConfigureAwait(false);
+            return ApplyResult.Applied;
+        }
+
+        if (!instance.TryRegisterCancelClientEventId(clientEventId))
+        {
+            await Task.CompletedTask.ConfigureAwait(false);
+            return ApplyResult.AlreadyApplied;
+        }
+
+        instance.MarkCancelled();
+        _workflowLog.LogWorkflowCancelRequested(workflowId);
+        await Task.CompletedTask.ConfigureAwait(false);
+        return ApplyResult.Applied;
     }
 
     public WorkflowSnapshot? GetSnapshot(string workflowId) =>

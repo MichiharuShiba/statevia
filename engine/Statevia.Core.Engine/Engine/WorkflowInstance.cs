@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.ExecutionGraphs;
 using Statevia.Core.Engine.FSM;
@@ -25,6 +26,8 @@ public sealed class WorkflowInstance
     private readonly Dictionary<string, object?> _stateOutputs = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _activeStates = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
+    private readonly ConcurrentDictionary<Guid, byte> _appliedPublishClientEventIds = new();
+    private readonly ConcurrentDictionary<Guid, byte> _appliedCancelClientEventIds = new();
 
     /// <summary>end 到達で完了したか。</summary>
     public bool IsCompleted { get; private set; }
@@ -41,4 +44,20 @@ public sealed class WorkflowInstance
     public void MarkCompleted() => IsCompleted = true;
     public void MarkCancelled() => IsCancelled = true;
     public void MarkFailed() => IsFailed = true;
+
+    /// <summary>
+    /// <paramref name="clientEventId"/> を Publish 冪等集合へ未登録なら登録し true。既登録なら false。
+    /// </summary>
+    internal bool TryRegisterPublishClientEventId(Guid clientEventId) =>
+        _appliedPublishClientEventIds.TryAdd(clientEventId, 0);
+
+    /// <summary>Publish 冪等集合から <paramref name="clientEventId"/> を取り除く（発行失敗時の巻き戻し用）。</summary>
+    internal void RemovePublishClientEventId(Guid clientEventId) =>
+        _appliedPublishClientEventIds.TryRemove(clientEventId, out _);
+
+    /// <summary>
+    /// <paramref name="clientEventId"/> を Cancel 冪等集合へ未登録なら登録し true。既登録なら false。
+    /// </summary>
+    internal bool TryRegisterCancelClientEventId(Guid clientEventId) =>
+        _appliedCancelClientEventIds.TryAdd(clientEventId, 0);
 }

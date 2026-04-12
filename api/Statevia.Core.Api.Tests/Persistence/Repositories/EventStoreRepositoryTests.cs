@@ -159,5 +159,78 @@ public sealed class EventStoreRepositoryTests
         var max = await repo.GetMaxSeqAsync(wfId, default);
         Assert.Equal(2, max);
     }
+
+    /// <summary>同一 DbContext で同一 client 冪等追記を二度呼ぶと二回目は false となり 1 行のみ保存される。</summary>
+    [Fact]
+    public async Task TryAppendIfAbsentByClientEventAsync_SecondCallInSameContext_ReturnsFalse()
+    {
+        // Arrange
+        using var db = CreateDb();
+        var repo = new EventStoreRepository(db.Factory, new UuidV7Generator());
+        var workflowId = Guid.NewGuid();
+        var clientEventId = Guid.Parse("6ba7b810-9dad-11d1-80b4-00c04fd430c8");
+
+        await using var ctx = new CoreDbContext(db.Options);
+
+        // Act
+        var first = await repo.TryAppendIfAbsentByClientEventAsync(
+            ctx,
+            workflowId,
+            clientEventId,
+            EventStoreEventType.EventPublished,
+            payloadJson: "{\"x\":1}",
+            default);
+        var second = await repo.TryAppendIfAbsentByClientEventAsync(
+            ctx,
+            workflowId,
+            clientEventId,
+            EventStoreEventType.EventPublished,
+            payloadJson: "{\"x\":1}",
+            default);
+
+        await ctx.SaveChangesAsync();
+
+        // Assert
+        Assert.True(first);
+        Assert.False(second);
+        Assert.Equal(1, await ctx.EventStore.AsNoTracking().CountAsync(e => e.WorkflowId == workflowId));
+    }
+
+    /// <summary>保存後に新しいコンテキストで同一 client 冪等追記を呼ぶと false となる。</summary>
+    [Fact]
+    public async Task TryAppendIfAbsentByClientEventAsync_AfterPersist_SecondContext_ReturnsFalse()
+    {
+        // Arrange
+        using var db = CreateDb();
+        var repo = new EventStoreRepository(db.Factory, new UuidV7Generator());
+        var workflowId = Guid.NewGuid();
+        var clientEventId = Guid.Parse("7ba7b810-9dad-11d1-80b4-00c04fd430c8");
+
+        await using (var ctx1 = new CoreDbContext(db.Options))
+        {
+            Assert.True(await repo.TryAppendIfAbsentByClientEventAsync(
+                ctx1,
+                workflowId,
+                clientEventId,
+                EventStoreEventType.WorkflowCancelled,
+                "{}",
+                default));
+            await ctx1.SaveChangesAsync();
+        }
+
+        // Act
+        await using var ctx2 = new CoreDbContext(db.Options);
+        var again = await repo.TryAppendIfAbsentByClientEventAsync(
+            ctx2,
+            workflowId,
+            clientEventId,
+            EventStoreEventType.WorkflowCancelled,
+            "{}",
+            default);
+
+        // Assert
+        Assert.False(again);
+        Assert.Equal(1, await ctx2.EventStore.AsNoTracking().CountAsync(e => e.WorkflowId == workflowId));
+    }
 }
 
