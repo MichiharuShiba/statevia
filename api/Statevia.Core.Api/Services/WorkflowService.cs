@@ -325,6 +325,8 @@ public sealed class WorkflowService : IWorkflowService
         if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(tenantId, uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
+        EnsureEngineRuntimePresentForMutation(uuid.Value, workflow);
+
         var cancelApply = await _engine.CancelAsync(uuid.Value.ToString(), clientEventId).ConfigureAwait(false);
         var skipCancelEventAppend = cancelApply.IsAlreadyApplied;
 
@@ -423,6 +425,8 @@ public sealed class WorkflowService : IWorkflowService
 
         if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(tenantId, uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
+
+        EnsureEngineRuntimePresentForMutation(uuid.Value, workflow);
 
         var publishApply = _engine.PublishEvent(uuid.Value.ToString(), eventName, clientEventId);
         var skipEventAppend = publishApply.IsAlreadyApplied;
@@ -655,6 +659,33 @@ public sealed class WorkflowService : IWorkflowService
         if (snapshot.IsCancelled) return "Cancelled";
         if (snapshot.IsFailed) return "Failed";
         return "Running";
+    }
+
+    /// <summary>
+    /// 投影が終了状態かどうかを、<c>workflows.status</c> の文字列値から判定する。
+    /// </summary>
+    private static bool IsTerminalWorkflowProjectionStatus(string status) =>
+        status is "Completed" or "Cancelled" or "Failed";
+
+    /// <summary>
+    /// キャンセル／イベント発行の適用直前に、当該ワークフローがこのプロセスのエンジンへ読み込まれていることを検証する。
+    /// API 再起動などでインメモリ実行が失われた場合、DB 投影を壊さないよう <see cref="ArgumentException"/> を投げる（HTTP 422）。
+    /// </summary>
+    private void EnsureEngineRuntimePresentForMutation(Guid workflowId, WorkflowRow workflow)
+    {
+        if (_engine.GetSnapshot(workflowId.ToString()) is not null)
+            return;
+
+        if (IsTerminalWorkflowProjectionStatus(workflow.Status))
+        {
+            throw new ArgumentException(
+                "The workflow is already in a terminal state in the database projection, but there is no in-memory instance in this API process. Cancel or event delivery cannot be applied.",
+                paramName: null);
+        }
+
+        throw new ArgumentException(
+            "The workflow execution state is not loaded in this API process (for example after a restart). Commands cannot be applied while the in-memory runtime is missing.",
+            paramName: null);
     }
 
     private async Task UpdateProjectionAsync(Guid workflowId, CancellationToken ct)

@@ -1493,67 +1493,6 @@ public sealed class WorkflowServiceTests
         Assert.Equal(dedupKey.IdempotencyKey, dedupRepo.SavedRows[0].IdempotencyKey);
     }
 
-    /// <summary>実行機構のスナップショットが空値のとき不明状態と空の取消要求で更新する。</summary>
-    [Fact]
-    public async Task CancelAsync_WhenEngineSnapshotIsNull_UsesUnknownStatus_AndNullCancelRequested()
-    {
-        // Arrange
-        var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
-        var defId = Guid.NewGuid();
-
-        var dedupKey = new CommandDedupKey
-        {
-            DedupKey = "k1",
-            Endpoint = "POST /v1/workflows/cancel",
-            IdempotencyKey = "idem"
-        };
-
-        var dedupRepo = new FakeCommandDedupRepository { NextFindValid = null };
-
-        var engine = new FakeWorkflowEngine
-        {
-            SnapshotToReturn = null,
-            GraphJsonToReturn = "{\"nodes\":[]}"
-        };
-
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-
-        var workflowRepo = new FakeWorkflowRepository
-        {
-            ByIdResult = new WorkflowRow
-            {
-                WorkflowId = workflowId,
-                TenantId = tenantId,
-                DefinitionId = defId,
-                Status = "Running",
-                StartedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                CancelRequested = false,
-                RestartLost = false
-            }
-        };
-
-        var eventStore = new FakeEventStoreRepository();
-
-        var sut = MakeSut(
-            dedupService: new FakeCommandDedupService(dedupKey),
-            dedupRepo: dedupRepo,
-            engine: engine,
-            display: display,
-            workflowRepo: workflowRepo,
-            eventStore: eventStore);
-
-        // Act
-        await sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: "idem", method: "POST", path: "/v1/workflows/cancel", CancellationToken.None);
-
-        // Assert
-        Assert.Single(workflowRepo.Updates);
-        Assert.Equal("Unknown", workflowRepo.Updates[0].Status);
-        Assert.Null(workflowRepo.Updates[0].CancelRequested);
-        Assert.Equal(engine.GraphJsonToReturn, workflowRepo.Updates[0].GraphJson);
-    }
-
     /// <summary>イベント追記に失敗したとき巻き戻して例外を再送出する。</summary>
     [Fact]
     public async Task CancelAsync_WhenEventStoreAppendThrows_RollsBackAndRethrows()
@@ -3158,6 +3097,152 @@ public sealed class WorkflowServiceTests
             CancellationToken.None));
 
         Assert.Equal(3, flakyEventDelivery.InsertReceivedCallCount);
+    }
+
+    /// <summary>
+    /// エンジンにインスタンスが無く投影が Running のとき、API 再起動喪失として引数例外（HTTP 422）を投げる。
+    /// </summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenEngineRuntimeMissing_AndWorkflowRunning_ThrowsArgumentException()
+    {
+        // Arrange
+        var tenantId = "t1";
+        var workflowId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+
+        var engine = new FakeWorkflowEngine();
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = tenantId,
+                DefinitionId = defId,
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository(),
+            engine: engine,
+            display: display,
+            workflowRepo: workflowRepo,
+            eventStore: new FakeEventStoreRepository());
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            sut.PublishEventAsync(
+                tenantId,
+                idOrUuid: "X",
+                eventName: "Approve",
+                idempotencyKey: null,
+                method: "POST",
+                path: "/v1/workflows/events",
+                CancellationToken.None));
+
+        Assert.Contains("not loaded in this API process", ex.Message, StringComparison.Ordinal);
+        Assert.Null(engine.PublishEventLastWorkflowId);
+    }
+
+    /// <summary>
+    /// エンジンにインスタンスが無く投影が Running のとき、キャンセルも同様に引数例外（HTTP 422）を投げる。
+    /// </summary>
+    [Fact]
+    public async Task CancelAsync_WhenEngineRuntimeMissing_AndWorkflowRunning_ThrowsArgumentException()
+    {
+        // Arrange
+        var tenantId = "t1";
+        var workflowId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+
+        var engine = new FakeWorkflowEngine();
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = tenantId,
+                DefinitionId = defId,
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository(),
+            engine: engine,
+            display: display,
+            workflowRepo: workflowRepo,
+            eventStore: new FakeEventStoreRepository());
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: null, method: "POST", path: "/v1/workflows/cancel", CancellationToken.None));
+
+        Assert.Contains("not loaded in this API process", ex.Message, StringComparison.Ordinal);
+        Assert.False(engine.CancelCalled);
+    }
+
+    /// <summary>
+    /// エンジンにインスタンスが無く投影が終了済みのとき、終了後コマンド拒否として引数例外（HTTP 422）を投げる。
+    /// </summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenEngineRuntimeMissing_AndWorkflowCompleted_ThrowsArgumentException()
+    {
+        // Arrange
+        var tenantId = "t1";
+        var workflowId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+
+        var engine = new FakeWorkflowEngine();
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = tenantId,
+                DefinitionId = defId,
+                Status = "Completed",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository(),
+            engine: engine,
+            display: display,
+            workflowRepo: workflowRepo,
+            eventStore: new FakeEventStoreRepository());
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            sut.PublishEventAsync(
+                tenantId,
+                idOrUuid: "X",
+                eventName: "Approve",
+                idempotencyKey: null,
+                method: "POST",
+                path: "/v1/workflows/events",
+                CancellationToken.None));
+
+        Assert.Contains("terminal state", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(engine.PublishEventLastWorkflowId);
     }
 
     private static WorkflowService MakeSut(
