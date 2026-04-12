@@ -56,7 +56,7 @@
   - _要件: Requirement 3, Requirement 6_
   - _Prompt: spec `o6-subtickets-manufacturing` のタスクを実装してください。最初に `spec-workflow-guide` を実行し、ワークフローを確認してから着手してください。役割: 可観測性とレジリエンスを担当するバックエンドエンジニア | 作業: timeout を除外した最大3回の段階的バックオフ（jitter 有効）を実装し、再送処理の必須ログキー出力を強制する | 制約: リクエストタイムアウト予算を超えないこと、無制限リトライを導入しないこと、既存ログ形式との互換を保つこと | 活用: 既存の request/engine logging 基盤と options バインディング実装 | 要件: Requirement 3, Requirement 6 | 完了条件: リトライ挙動が設定可能かつ上限付きで、timeout は除外され、必須キーがログに出力される。着手時は tasks.md の当該タスクを `[-]` に変更し、実装後は `log-implementation` を記録して `[x]` に更新する。_
 
-- [ ] 8. API/Engine 統合テストと契約ドキュメントを更新する
+- [x] 8. API/Engine 統合テストと契約ドキュメントを更新する
   - 対象ファイル: `api/Statevia.Core.Api.Tests/*`, `engine/Statevia.Core.Engine.Tests/*`, `docs/statevia-data-integration-contract.md`, `docs/core-api-interface.md`, `.workspace-docs/50_tasks/10_in-progress/v2-ticket-backlog.md`
   - 再送・重複・rollback・再起動喪失時422のケースをテストで担保し、契約ドキュメントとバックログの実装状態を更新する
   - 目的: STV-413〜418 の受け入れを実証し、トレーサビリティを完了させる
