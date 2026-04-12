@@ -1,12 +1,14 @@
 # UI Push API 仕様
 
-Version: 1.0
+Version: 1.1
 Project: 実行型ステートマシン
 
 ---
 
 本ドキュメントは Statevia の ExecutionGraph / 実行状態を
 管理 UI に対して Push 配信するための公式 API 仕様を定義する。
+
+**Version 1.1（2026-04-12）**: Core-API（C#）の実装パスに同期。**SSE** は `GET /v1/workflows/{id}/stream` のみ。**WebSocket は未実装**。REST の実行スナップショットは `GET /v1/workflows/{id}`（および `…/graph`）を正とする。詳細は `docs/statevia-data-integration-contract.md` §5 と `docs/core-api-interface.md` を参照。
 
 本 API は以下の設計方針に基づく:
 
@@ -22,7 +24,7 @@ Project: 実行型ステートマシン
 
 - UI は Pull ではなく Push によって最新状態を受信する
 - ExecutionGraph はスナップショット + 差分更新の両対応
-- API は HTTP + WebSocket/SSE の併用を許可する
+- API は HTTP + SSE を主とする（**WebSocket は現行未実装**）
 - UI 側は常にサーバー状態を正とする
 
 ---
@@ -45,59 +47,65 @@ X-Tenant-Id: <tenant-id>
 
 ## 3. 初期スナップショット取得（REST）
 
-### GET /api/v1/executions/{executionId}
+### GET /v1/workflows/{id}
 
-実行中または完了済み ExecutionGraph の完全スナップショットを取得する。
+実行（ワークフロー）の Read Model を取得する。`{id}` は **display_id** または **resource_id（UUID）**。
 
-#### Response
+- 完全な ExecutionGraph JSON が必要な場合は **`GET /v1/workflows/{id}/graph`** を併用する。
+- UI からは `/api/core/workflows/{id}` 等にプロキシしてもよい（`docs/core-api-interface.md` §5）。
+
+#### Response（例: 一覧と同一の `WorkflowResponse` 形）
 
 ```json
 {
-  "executionId": "exec-123",
+  "displayId": "Ab3Cd9Fg2K",
+  "resourceId": "0198b3e4-0000-7000-8000-000000000001",
   "status": "Running",
-  "graph": { ...ExecutionGraph... },
-  "updatedAt": "2026-02-18T01:20:00Z"
+  "startedAt": "2026-02-18T01:20:00Z",
+  "updatedAt": "2026-02-18T01:20:05Z",
+  "cancelRequested": false,
+  "restartLost": false
 }
-````
+```
 
 ---
 
-## 4. Push 更新（WebSocket or SSE）
+## 4. Push 更新（SSE）
 
-### 接続エンドポイント
+### 接続エンドポイント（Core-API）
 
 ```txt
-GET /api/v1/executions/{executionId}/stream
+GET /v1/workflows/{id}/stream
 ```
 
-- WebSocket または Server-Sent Events (SSE) を使用
-- UI 実装側で選択可能
-- 認証ヘッダは REST と同一
+- **Server-Sent Events (SSE)** のみ（`Content-Type: text/event-stream`）。**WebSocket は未実装**。
+- サーバは投影グラフを約 2 秒周期で比較し、変化時に `data:` 行を 1 件書き込む（長接続）。
+- **テナント**: `X-Tenant-Id`（`EventSource` でヘッダを付けられない場合は `docs/ui-api-auth-tenant-config.md` の `?tenantId=` 経由）。
+- ペイロード形式は §5.1 および `docs/statevia-data-integration-contract.md` §5.1.1 を参照。
 
 ---
 
 ## 5. Push イベント種別
 
+**現行 Core-API の SSE が送出するのは §5.1 `GraphUpdated` のみ**（§5.2 以降は将来拡張・別チャネル用の論理例として残す）。
+
 ### 5.1 GraphUpdated
 
-ExecutionGraph の差分更新
+ExecutionGraph の差分更新（現行 Core-API が SSE で送出する形に準拠）。
 
 ```json
 {
   "type": "GraphUpdated",
-  "executionId": "exec-123",
+  "executionId": "Ab3Cd9Fg2K",
   "patch": {
-    "nodes": [
-      {
-        "nodeId": "TaskB",
-        "status": "Waiting"
-      }
-    ],
-    "edges": []
-  },
-  "at": "2026-02-18T01:20:03Z"
+    "nodes": {}
+  }
 }
 ```
+
+- `executionId`: ワークフローの **display_id**。
+- `patch.nodes`: 実装では **ノード ID → パッチオブジェクト** のマップになることが多い（配列形式の例は論理説明用）。
+- 現行実装の JSON に **`at` は含まれない**（時刻が必要ならクライアント側で受信時刻を付与するか、`GET /v1/workflows/{id}` を再取得する）。
 
 ---
 
