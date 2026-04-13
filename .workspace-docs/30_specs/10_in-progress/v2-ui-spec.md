@@ -1,9 +1,9 @@
 # UI 仕様（v2）
 
-- Version: 1.0.0
-- 更新日: 2026-04-02
+- Version: 1.0.1
+- 更新日: 2026-04-12
 - 対象: v2 スタック向け UI（Core-API C# + Engine C#）
-- 関連: `docs/core-api-interface.md`、`AGENTS.md`
+- 関連: `docs/core-api-interface.md`、`AGENTS.md`、`ui-playground-design.md`、`.spec-workflow/specs/ui-playground/requirements.md`
 
 ---
 
@@ -42,8 +42,8 @@ Statevia UI は、v2 スタック（Core-API C# + Engine C#）向けに、ワー
 
 API 連携（v2）:
 
-- Definitions: `POST /v1/definitions/validate`, `POST /v1/definitions`
-- Workflows: `POST /v1/workflows`, `POST /v1/workflows/{id}/events`, `POST /v1/workflows/{id}/cancel`
+- Definitions: `POST /v1/definitions`（現行 Core-API に **validate 専用エンドポイントはない**。不正 YAML は **400** で検知。Playground の画面分割・フェーズは `ui-playground-design.md`）
+- Workflows: `POST /v1/workflows`, `POST /v1/workflows/{id}/events`, `POST /v1/workflows/{id}/cancel`, `POST /v1/workflows/{id}/nodes/{nodeId}/resume`, `GET /v1/workflows/{id}/stream`（SSE、任意）
 
 ---
 

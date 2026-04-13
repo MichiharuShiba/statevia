@@ -1,0 +1,20 @@
+{
+  "specId": "ui-playground",
+  "title": "UI Playground（Phase 3）",
+  "approvalRequest": {
+    "status": "pending",
+    "requestedAt": "2026-04-12",
+    "summary": "要件・設計・tasks の内容で問題ないか、実装フェーズ P3.0〜 への承認を依頼する。",
+    "humanReadableDoc": ".spec-workflow/specs/ui-playground/approval-request.md",
+    "artifacts": {
+      "requirements": ".spec-workflow/specs/ui-playground/requirements.md",
+      "design": ".spec-workflow/specs/ui-playground/design.md",
+      "tasks": ".spec-workflow/specs/ui-playground/tasks.md",
+      "workspaceDesign": ".workspace-docs/30_specs/10_in-progress/ui-playground-design.md"
+    },
+    "contractReferences": [
+      "docs/core-api-interface.md",
+      "docs/statevia-data-integration-contract.md"
+    ]
+  }
+}

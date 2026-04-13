@@ -1,7 +1,7 @@
 # v2 残タスク チケット一覧
 
-- Version: 1.3.3
-- 更新日: 2026-04-11
+- Version: 1.3.4
+- 更新日: 2026-04-12
 - 対象: `v2-remaining-tasks.md` / `v2-logging-v1-tasks.md` の未完了項目に紐づく実行チケット
 - 関連: `.workspace-docs/50_tasks/10_in-progress/v2-remaining-tasks.md`, `.workspace-docs/50_tasks/10_in-progress/v2-logging-v1-tasks.md`, `.workspace-docs/30_specs/10_in-progress/o6-concerns_decomposition_spec.md`, `.workspace-docs/30_specs/10_in-progress/o6-subtickets_detailed_spec.md`
 
@@ -11,7 +11,7 @@
 
 ---
 
-## 現在の仕分け（2026-04-11）
+## 現在の仕分け（2026-04-12）
 
 - **完了**: `STV-401`～`STV-410`（`STV-401`/`402`: `../20_done/v2-e2e-cancel-idempotency_backlog.md`。`STV-403`: `../20_done/v2-logging-stv403_backlog.md`。`STV-404`: `../20_done/v2-logging-stv404_backlog.md`。`STV-410`: 変更履歴 1.3.0）
 - **完了（補足）**: O6 製造 spec のタスク8（`o6-subtickets-manufacturing`）相当として、イベント／キャンセルのランタイム喪失時 422、`event_delivery_dedup` 周りの契約追記、`WorkflowServiceTests` による回帰を 2026-04-11 に反映。
@@ -190,7 +190,7 @@
 
 - **Sprint A**: ~~`STV-401`, `STV-402`~~ 完了（2026-04-03）
 - **Sprint B**: ~~`STV-403`~~ / ~~`STV-404`~~ / ~~`STV-405`~~ / ~~`STV-406`~~ / ~~`STV-407`~~ / ~~`STV-408`~~ / ~~`STV-409`~~ 完了（〜2026-04-09）
-- **Sprint C**: ~~`STV-410`~~ 完了（2026-04-09）。着手対象: `STV-413`～`STV-418`
+- **Sprint C**: ~~`STV-410`~~ 完了（2026-04-09）。~~`STV-413`～`STV-418`~~ 完了（2026-04-10）
 - **認証エピック連動**: `STV-411`
 - **ポストリリース拡張**: `STV-412`（ユーザー定義マスキング・外部テンプレート）
 
@@ -199,7 +199,8 @@
 ## メモ
 
 - チケット ID は仮番号（`STV-4xx`）。実運用の Issue 番号に置換して利用する。
-- `O6` は実装前に必ず仕様化フェーズを挟む（いきなり実装しない）。
+- **`O6` の計画フェーズは完了**（`STV-410`〜`418`）。今後の大項目も、可能な限り同様に仕様化・チケット分割を挟む。
+- サマリ行の正本は **`v2-remaining-tasks.md`**（O 系・フェーズ表）と相互参照する。
 
 ---
 
@@ -207,6 +208,7 @@
 
 | 版 | 日付 | 内容 |
 |----|------|------|
+| 1.3.4 | 2026-04-12 | `v2-remaining-tasks.md` と相互参照するメモを更新。Sprint C の `STV-413`〜`418` を完了表記に。 |
 | 1.3.3 | 2026-04-10 | `spec-workflow` 承認に基づき `STV-413`〜`STV-418` を完了へ更新。反映先ドキュメント（`docs` / `AGENTS.md` / `v2-nodes-to-states-conversion-spec.md`）を備考に追記。 |
 | 1.3.2 | 2026-04-10 | O6 サブチケットの仕様正本（`o6-subtickets_detailed_spec.md`）を追加。`STV-413`〜`STV-418` の備考を更新。 |
 | 1.3.1 | 2026-04-10 | `STV-412` にマスキングの外部テンプレート化（外部ファイル読込・マージ・運用手順）を追記。 |
