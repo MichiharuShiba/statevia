@@ -16,7 +16,7 @@
   - 実行フォーカス用の動的ルートと相互リンク
   - _要件: Requirement 3, Requirement 4, Requirement 5, Requirement 7_
 
-- [ ] **P3.2** — SSE トグルと UX 仕上げ
+- [x] **P3.2** — SSE トグルと UX 仕上げ
   - `GET /v1/workflows/{id}/stream` のオプトイン、`GraphUpdated` 後のデバウンス GET（`design.md`）
   - テナントクエリ・エラー表示の統一（`ui-api-auth-tenant-config.md`）
   - _要件: Requirement 6, Non-Functional（Performance）_
