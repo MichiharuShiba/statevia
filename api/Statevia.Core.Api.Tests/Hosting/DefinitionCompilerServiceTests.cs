@@ -104,6 +104,33 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
+    /// 組み込み delay5s を参照する定義はコンパイルできる。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_Delay5sBuiltin_Succeeds()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              Slow:
+                action: delay5s
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("W", yaml);
+
+        // Assert
+        Assert.NotNull(compiled);
+        Assert.NotNull(compiled.StateExecutorFactory.GetExecutor("Slow"));
+    }
+
+    /// <summary>
     /// 登録済みカスタムアクションを参照する定義はコンパイルできる。
     /// </summary>
     [Fact]

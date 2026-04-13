@@ -218,6 +218,10 @@ describe("useExecution", () => {
       vi.spyOn(api, "getApiConfig").mockReturnValue({ tenantId: "", authToken: "" });
     });
 
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it("execution 取得後に EventSource が正しい URL で作成される", async () => {
       // Arrange (getApiConfig は beforeEach で空テナントにモック済み)
       const { result } = renderHook(() => useExecution("ex-1"));
@@ -250,6 +254,74 @@ describe("useExecution", () => {
       });
       expect(streamInstances[0]?.url).toBe(
         "/api/core/workflows/ex-1/stream?tenantId=tenant-a"
+      );
+    });
+
+    it("streamEnabled false のとき EventSource は作成されない", async () => {
+      const { result } = renderHook(() => useExecution("ex-1", { streamEnabled: false }));
+
+      await act(async () => {
+        await result.current.loadExecution();
+      });
+
+      expect(streamInstances.length).toBe(0);
+    });
+
+    it("streamEnabled false のとき Running 中はポーリング間隔で再取得する", async () => {
+      vi.useFakeTimers();
+      const { result } = renderHook(() => useExecution("ex-1", { streamEnabled: false }));
+
+      await act(async () => {
+        await result.current.loadExecution();
+      });
+
+      vi.mocked(api.apiGet).mockClear();
+      mockApiGetForWorkflowAndGraph(defaultWorkflow, defaultGraph);
+
+      await act(async () => {
+        vi.advanceTimersByTime(2500);
+      });
+
+      expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1");
+      expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1/graph");
+
+      vi.useRealTimers();
+    });
+
+    it("ストリーム onmessage 後にデバウンス経過で GET が走る", async () => {
+      const { result } = renderHook(() => useExecution("ex-1", { streamRefreshDebounceMs: 50 }));
+
+      await act(async () => {
+        await result.current.loadExecution();
+      });
+
+      await waitFor(() => expect(streamInstances.length).toBe(1));
+
+      vi.mocked(api.apiGet).mockClear();
+      mockApiGetForWorkflowAndGraph(defaultWorkflow, defaultGraph);
+
+      const firstInstance = streamInstances[0];
+      const onmessage = firstInstance?.onmessage;
+      if (!onmessage) throw new Error("expected onmessage");
+
+      const graphUpdated = JSON.stringify({
+        type: "GraphUpdated",
+        executionId: "ex-1",
+        patch: { nodes: [{ nodeId: "n-1", status: "RUNNING" }] }
+      });
+
+      await act(async () => {
+        onmessage({ data: graphUpdated } as MessageEvent<string>);
+      });
+
+      expect(api.apiGet).not.toHaveBeenCalled();
+
+      await waitFor(
+        () => {
+          expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1");
+          expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1/graph");
+        },
+        { timeout: 2000 }
       );
     });
 

@@ -1,6 +1,6 @@
 # Design: UI Playground
 
-> **承認状態**: **依頼中** — [approval-request.md](./approval-request.md)
+> **承認状態**: **承認済み**（2026-04-12） — [approval-request.md](./approval-request.md)
 
 ## 概要
 

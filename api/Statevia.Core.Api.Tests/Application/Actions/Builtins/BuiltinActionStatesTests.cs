@@ -71,5 +71,44 @@ public sealed class BuiltinActionStatesTests
         Assert.Equal(Unit.Value, result);
         Assert.Equal("MyEvent", events.LastEventName);
     }
+
+    /// <summary>
+    /// DelayCompleteState は指定時間後に Unit を返す。
+    /// </summary>
+    [Fact]
+    public async Task DelayCompleteState_ExecuteAsync_AfterDelay_ReturnsUnit()
+    {
+        // Arrange
+        var state = new DelayCompleteState(TimeSpan.FromMilliseconds(20));
+        var events = new FakeEventProvider();
+        var store = new FakeStore();
+
+        // Act
+        var result = await state.ExecuteAsync(MakeContext(events, store), Unit.Value, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(Unit.Value, result);
+        Assert.Null(events.LastEventName);
+    }
+
+    /// <summary>
+    /// DelayCompleteState はキャンセル時に完了前であれば操作キャンセル例外で打ち切られる。
+    /// </summary>
+    [Fact]
+    public async Task DelayCompleteState_ExecuteAsync_WhenCanceledBeforeDelay_Throws()
+    {
+        // Arrange
+        var state = new DelayCompleteState(TimeSpan.FromHours(1));
+        var events = new FakeEventProvider();
+        var store = new FakeStore();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        // Act
+        var act = () => state.ExecuteAsync(MakeContext(events, store), Unit.Value, cts.Token);
+
+        // Assert
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(act);
+    }
 }
 
