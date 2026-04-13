@@ -6,7 +6,7 @@
 
 ---
 
-- [ ] **P3.0** — `/playground` ルートと定義登録・開始の最小フロー
+- [x] **P3.0** — `/playground` ルートと定義登録・開始の最小フロー
   - `services/ui/app/playground/`（または合意したパス）にページを追加し、`POST /v1/definitions` / `POST /v1/workflows` を既存 `api` クライアント経由で呼ぶ
   - 成功時に `displayId` / `resourceId` を表示し、Requirement 1 / 2 を満たす
   - _要件: Requirement 1, Requirement 2, Requirement 3（ルート部分）_

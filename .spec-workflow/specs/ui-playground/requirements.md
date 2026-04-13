@@ -1,6 +1,6 @@
 # Requirements: UI Playground（Phase 3）
 
-> **承認状態**: **依頼中**（2026-04-12）— 依頼文書: [approval-request.md](./approval-request.md)。承認後に「承認済み」へ更新し、`tasks.md` の P3.0 に着手する。
+> **承認状態**: **承認済み**（2026-04-12）— 依頼文書: [approval-request.md](./approval-request.md)。P3.0 実装着手済み。
 
 ## Introduction
 
