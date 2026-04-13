@@ -1,9 +1,10 @@
 # UI Playground 設計（Phase 3）
 
-- Version: 0.1.0
+- Version: 0.1.1
 - 更新日: 2026-04-12
 - 対象: `services/ui` における **Playground**（定義の編集・検証・登録と、実行の開始・操作・可視化を一体で行う開発者向け UI）
 - 関連: `.workspace-docs/40_plans/10_in-progress/v2-roadmap.md`（Phase 3）、`v2-ui-spec.md`、`docs/core-api-interface.md`、`docs/statevia-data-integration-contract.md`、`docs/ui-push-api-spec.md`
+- **spec-workflow**: `.spec-workflow/specs/ui-playground/requirements.md`（要件・受け入れ基準）、`design.md`、`tasks.md`
 - 歴史参照（アーカイブ）: `.workspace-docs/30_specs/30_archived/v2-playground-min-ui-spec.md`、`.workspace-docs/30_specs/30_archived/v2-statevia-playground-spec.md`
 
 ---
@@ -135,6 +136,9 @@
 
 | ドキュメント | 用途 |
 |--------------|------|
+| `.spec-workflow/specs/ui-playground/requirements.md` | 受け入れ可能な要件（EARS） |
+| `.spec-workflow/specs/ui-playground/design.md` | 設計要約（詳細ワイヤーは本書） |
+| `.spec-workflow/specs/ui-playground/tasks.md` | P3.0〜P3.2 実装タスク |
 | `v2-ui-spec.md` | Definition Editor / Runner の機能粒度・表示ルール |
 | `v2-roadmap.md` §Phase 3 | プロダクト上の位置 |
 | `docs/core-api-interface.md` | HTTP 正本 |
@@ -146,4 +150,5 @@
 
 | 版 | 日付 | 内容 |
 |----|------|------|
+| 0.1.1 | 2026-04-12 | spec-workflow `ui-playground`（requirements / design / tasks）への索引を追加。 |
 | 0.1.0 | 2026-04-12 | 初版。現行 UI / Core-API / 契約ドキュメントに整合した MVP 範囲とフェーズ分割。 |

@@ -3,7 +3,7 @@
 - Version: 1.0.1
 - 更新日: 2026-04-12
 - 対象: v2 スタック向け UI（Core-API C# + Engine C#）
-- 関連: `docs/core-api-interface.md`、`AGENTS.md`、`ui-playground-design.md`
+- 関連: `docs/core-api-interface.md`、`AGENTS.md`、`ui-playground-design.md`、`.spec-workflow/specs/ui-playground/requirements.md`
 
 ---
 

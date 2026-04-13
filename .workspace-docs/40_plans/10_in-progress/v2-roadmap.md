@@ -76,7 +76,7 @@ Persistence
 
 Workflow を可視化する。
 
-**設計正本（2026-04-12〜）**: `.workspace-docs/30_specs/10_in-progress/ui-playground-design.md`（ルート構成、API マッピング、MVP フェーズ P3.0〜P3.2）。
+**設計正本（2026-04-12〜）**: `.workspace-docs/30_specs/10_in-progress/ui-playground-design.md`（ルート構成、API マッピング、MVP フェーズ P3.0〜P3.2）。**spec-workflow 要件**: `.spec-workflow/specs/ui-playground/requirements.md`（`design.md` / `tasks.md` 同フォルダ）。
 
 Components
 
