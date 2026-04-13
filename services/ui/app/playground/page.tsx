@@ -74,7 +74,7 @@ export default function PlaygroundPage() {
   }, [definitionId, inputJson]);
 
   return (
-    <div className="space-y-6 py-4">
+    <div className="mx-auto max-w-6xl space-y-6 py-4">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold">Playground</h1>
@@ -182,12 +182,17 @@ export default function PlaygroundPage() {
                 <dt className="text-zinc-500">startedAt</dt>
                 <dd>{lastWorkflow.startedAt}</dd>
               </div>
-              <p className="mt-2 text-zinc-600">
-                実行 UI で詳細を見る場合は{" "}
+              <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-zinc-600">
+                <Link
+                  href={`/playground/run/${encodeURIComponent(lastWorkflow.displayId)}`}
+                  className="font-medium text-blue-700 underline"
+                >
+                  この実行を開く（グラフ・タイムライン）
+                </Link>
+                <span className="text-zinc-400">|</span>
                 <Link href="/" className="text-blue-700 underline">
                   Execution UI
-                </Link>{" "}
-                の実行 ID に <span className="font-mono">{lastWorkflow.displayId}</span> を入力してください。
+                </Link>
               </p>
             </dl>
           )}
