@@ -18,6 +18,9 @@ type ExecutionHeaderProps = {
   /** 比較モード（2実行差分表示） */
   compareMode?: boolean;
   onCompareModeChange?: (enabled: boolean) => void;
+  /** true のとき EventSource で更新。`onStreamEnabledChange` とセットで指定。 */
+  streamEnabled?: boolean;
+  onStreamEnabledChange?: (enabled: boolean) => void;
 };
 
 export function ExecutionHeader({
@@ -31,7 +34,9 @@ export function ExecutionHeader({
   viewMode,
   onViewModeChange,
   compareMode = false,
-  onCompareModeChange
+  onCompareModeChange,
+  streamEnabled = true,
+  onStreamEnabledChange
 }: Readonly<ExecutionHeaderProps>) {
   const status = execution?.status;
   const style = status ? getStatusStyle(status) : null;
@@ -74,7 +79,18 @@ export function ExecutionHeader({
                 onChange={(e) => onCompareModeChange(e.target.checked)}
                 className="rounded border-zinc-300"
               />
-              比較
+              <span>比較</span>
+            </label>
+          )}
+          {onStreamEnabledChange && (
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
+              <input
+                type="checkbox"
+                checked={streamEnabled}
+                onChange={(e) => onStreamEnabledChange(e.target.checked)}
+                className="rounded border-zinc-300"
+              />
+              <span>リアルタイム更新（SSE）</span>
             </label>
           )}
           <ViewToggle value={viewMode} onChange={onViewModeChange} />

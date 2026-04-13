@@ -27,6 +27,8 @@ import type { WorkflowDTO, WorkflowGraphDTO, WorkflowView } from "../../lib/type
 /** executionId ごとの Graph ビューポート（ズーム・パン位置） */
 type GraphViewportByExecutionId = Record<string, GraphViewport>;
 
+const STREAM_PREF_STORAGE_KEY = "statevia.execution.streamEnabled";
+
 export type ExecutionDashboardProps = {
   /** 初期の実行 ID（URL から渡す場合は key と併用） */
   initialExecutionId: string;
@@ -58,10 +60,39 @@ export function ExecutionDashboard({
   const [executionIdB, setExecutionIdB] = useState("");
   const [executionB, setExecutionB] = useState<WorkflowView | null>(null);
   const [loadingB, setLoadingB] = useState(false);
+  const [streamEnabled, setStreamEnabled] = useState(true);
 
   useEffect(() => {
     setExecutionId(initialExecutionId);
   }, [initialExecutionId]);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(STREAM_PREF_STORAGE_KEY);
+      if (raw === "0") setStreamEnabled(false);
+      else if (raw === "1") setStreamEnabled(true);
+    } catch {
+      // sessionStorage 不可時は既定のまま
+    }
+  }, []);
+
+  const handleStreamEnabledChange = useCallback((enabled: boolean) => {
+    setStreamEnabled(enabled);
+    try {
+      sessionStorage.setItem(STREAM_PREF_STORAGE_KEY, enabled ? "1" : "0");
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const executionHookOptions = useMemo(
+    () => ({
+      onError: (err: unknown) => setToast(toToastError(err)),
+      onCancelSuccess: () => setToast({ tone: "success", message: "CancelExecution accepted" }),
+      streamEnabled
+    }),
+    [streamEnabled]
+  );
 
   const {
     execution,
@@ -72,10 +103,7 @@ export function ExecutionDashboard({
     cancelExecution,
     selectedNodeId,
     setSelectedNodeId
-  } = useExecution(executionId, {
-    onError: (err) => setToast(toToastError(err)),
-    onCancelSuccess: () => setToast({ tone: "success", message: "CancelExecution accepted" })
-  });
+  } = useExecution(executionId, executionHookOptions);
 
   const loadExecutionRef = useRef(loadExecution);
   loadExecutionRef.current = loadExecution;
@@ -233,6 +261,8 @@ export function ExecutionDashboard({
             onViewModeChange={setViewMode}
             compareMode={compareMode}
             onCompareModeChange={setCompareMode}
+            streamEnabled={streamEnabled}
+            onStreamEnabledChange={handleStreamEnabledChange}
           />
 
           {compareMode && showExecutionPanels && (
