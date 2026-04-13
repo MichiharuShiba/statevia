@@ -172,9 +172,14 @@ export default function Page() {
         <>
           <header className="flex items-center justify-between">
             <h1 className="text-xl font-bold">Execution UI</h1>
-            <a className="text-xs text-zinc-600 hover:underline" href="/health">
-              health
-            </a>
+            <div className="flex items-center gap-3 text-xs">
+              <a className="text-zinc-600 hover:underline" href="/playground">
+                Playground
+              </a>
+              <a className="text-zinc-600 hover:underline" href="/health">
+                health
+              </a>
+            </div>
           </header>
 
           <Toast toast={toast} onClose={() => setToast(null)} />
