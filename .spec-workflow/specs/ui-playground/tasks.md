@@ -11,7 +11,7 @@
   - 成功時に `displayId` / `resourceId` を表示し、Requirement 1 / 2 を満たす
   - _要件: Requirement 1, Requirement 2, Requirement 3（ルート部分）_
 
-- [ ] **P3.1** — 実行ビューの埋め込みと `/playground/run/[displayId]`
+- [x] **P3.1** — 実行ビューの埋め込みと `/playground/run/[displayId]`
   - 既存 `useExecution`・グラフ・タイムライン・Cancel/Event/Resume を Playground レイアウトに組み込む
   - 実行フォーカス用の動的ルートと相互リンク
   - _要件: Requirement 3, Requirement 4, Requirement 5, Requirement 7_
