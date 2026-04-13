@@ -67,5 +67,8 @@ public sealed class DefinitionCompilerService : IDefinitionCompilerService
     {
         ArgumentNullException.ThrowIfNull(registry);
         registry.Register(WellKnownActionIds.NoOp, DefaultStateExecutor.Create(new NoOpState()));
+        registry.Register(
+            WellKnownActionIds.Delay5s,
+            DefaultStateExecutor.Create(new DelayCompleteState(TimeSpan.FromSeconds(5))));
     }
 }
