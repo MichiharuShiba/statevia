@@ -5,6 +5,8 @@
 `v2-modification-plan.md` の懸念 **C2 / C7 / C11 / C13 / C14** に対応する実行チケット（`STV-413`〜`STV-418`）について、**現状実装の正**と **U1 将来実装時の契約**を一文書で固定する。  
 詳細な表・シーケンス図・用語定義の正本は `.workspace-docs/30_specs/10_in-progress/o6-subtickets_detailed_spec.md` とする。本 spec は spec-workflow 上の追跡・承認用に要件を構造化する。
 
+**ノード完了投影（STV-413 の具体化）**: `.spec-workflow/specs/workflow-projection-node-completion/requirements.md` を参照（契約正本は `docs/statevia-data-integration-contract.md` §3.3）。
+
 **紐づくチケット**: `v2-ticket-backlog.md` の `STV-413`〜`STV-418`。親: `STV-410`（`concern-o6-decomposition`）。
 
 ## Alignment with Product Vision
