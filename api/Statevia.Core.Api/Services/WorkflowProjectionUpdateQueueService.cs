@@ -14,6 +14,18 @@ namespace Statevia.Core.Api.Services;
 public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IWorkflowProjectionUpdateQueue
 {
     /// <summary>
+    /// 再試行上限に達して退避したワークフロー情報。
+    /// </summary>
+    private sealed class DeadLetterEntry
+    {
+        internal required Guid WorkflowId { get; init; }
+        internal required DateTime DeadLetteredAtUtc { get; init; }
+        internal required int RetryCount { get; init; }
+        internal required string ErrorType { get; init; }
+        internal required string ErrorMessage { get; init; }
+    }
+
+    /// <summary>
     /// workflow 単位の局所状態。
     /// </summary>
     private sealed class WorkflowQueueState
@@ -26,16 +38,24 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
         internal bool IsProcessing { get; set; }
         // デバウンス判定用の最終 enqueue 時刻。
         internal DateTime LastEnqueuedAtUtc { get; set; } = DateTime.UtcNow;
+        // 連続失敗回数（成功で 0 に戻す）。
+        internal int ConsecutiveFailureCount { get; set; }
+        // dead-letter 退避済みかどうか。
+        internal bool IsDeadLettered { get; set; }
         // drain 待ちの同期に使う。idle になったら完了させる。
         internal TaskCompletionSource<bool> IdleSignal { get; set; } = CreateCompletedSignal();
     }
 
     private readonly Channel<Guid> _globalQueue;
     private readonly ConcurrentDictionary<Guid, WorkflowQueueState> _states = new();
+    private readonly ConcurrentDictionary<Guid, DeadLetterEntry> _deadLetters = new();
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IWorkflowEngine _workflowEngine;
     private readonly ILogger<WorkflowProjectionUpdateQueueService> _logger;
     private readonly int _debounceMs;
+    private readonly int _maxRetryAttempts;
+    private readonly int _retryBaseDelayMs;
+    private readonly int _retryMaxDelayMs;
 
     public WorkflowProjectionUpdateQueueService(
         IServiceScopeFactory scopeFactory,
@@ -50,11 +70,20 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
             throw new ArgumentException("WorkflowProjectionQueue:MaxGlobalQueueSize must be >= 1");
         if (queueOptions.ProjectionFlushDebounceMs is < 0 or > 250)
             throw new ArgumentException("WorkflowProjectionQueue:ProjectionFlushDebounceMs must be between 0 and 250");
+        if (queueOptions.MaxRetryAttempts < 1)
+            throw new ArgumentException("WorkflowProjectionQueue:MaxRetryAttempts must be >= 1");
+        if (queueOptions.RetryBaseDelayMs < 0)
+            throw new ArgumentException("WorkflowProjectionQueue:RetryBaseDelayMs must be >= 0");
+        if (queueOptions.RetryMaxDelayMs < queueOptions.RetryBaseDelayMs)
+            throw new ArgumentException("WorkflowProjectionQueue:RetryMaxDelayMs must be >= RetryBaseDelayMs");
 
         _scopeFactory = scopeFactory;
         _workflowEngine = workflowEngine;
         _logger = logger;
         _debounceMs = queueOptions.ProjectionFlushDebounceMs;
+        _maxRetryAttempts = queueOptions.MaxRetryAttempts;
+        _retryBaseDelayMs = queueOptions.RetryBaseDelayMs;
+        _retryMaxDelayMs = queueOptions.RetryMaxDelayMs;
 
         // global queue は有界。満杯時は WriteAsync が待機し、ドロップしない。
         _globalQueue = Channel.CreateBounded<Guid>(new BoundedChannelOptions(queueOptions.MaxGlobalQueueSize)
@@ -73,6 +102,13 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
 
         lock (state.Gate)
         {
+            if (state.IsDeadLettered)
+            {
+                // dead-letter 済みの workflow は自動再開しない（手動オペレーション対象）。
+                _logger.LogWarning("Skip enqueue because workflow is dead-lettered WorkflowId={WorkflowId}", workflowId);
+                return;
+            }
+
             state.LastEnqueuedAtUtc = DateTime.UtcNow;
             if (!state.IsQueued && !state.IsProcessing)
             {
@@ -189,6 +225,7 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
                     }
 
                     // 完全に idle へ戻す。drain 待ちを解放。
+                    state.ConsecutiveFailureCount = 0;
                     state.IsProcessing = false;
                     state.IdleSignal.TrySetResult(true);
                     return;
@@ -206,16 +243,62 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Projection queue processing failed for workflow {WorkflowId}", workflowId);
+            var retryDelayMs = 0;
+            var shouldRetry = false;
+            var retryCount = 0;
+
             lock (state.Gate)
             {
+                state.ConsecutiveFailureCount += 1;
+                retryCount = state.ConsecutiveFailureCount;
                 state.IsProcessing = false;
-                state.IsQueued = true;
-                if (state.IdleSignal.Task.IsCompleted)
-                    state.IdleSignal = CreatePendingSignal();
+
+                if (state.ConsecutiveFailureCount >= _maxRetryAttempts)
+                {
+                    state.IsQueued = false;
+                    state.IsDeadLettered = true;
+                    state.IdleSignal.TrySetResult(true);
+                }
+                else
+                {
+                    state.IsQueued = true;
+                    shouldRetry = true;
+                    retryDelayMs = GetRetryDelayMs(state.ConsecutiveFailureCount, _retryBaseDelayMs, _retryMaxDelayMs);
+                    if (state.IdleSignal.Task.IsCompleted)
+                        state.IdleSignal = CreatePendingSignal();
+                }
             }
-            // 失敗しても workflow 単位で再投入して再試行する。
-            await _globalQueue.Writer.WriteAsync(workflowId, stoppingToken).ConfigureAwait(false);
+
+            if (!shouldRetry)
+            {
+                var deadLetterEntry = new DeadLetterEntry
+                {
+                    WorkflowId = workflowId,
+                    DeadLetteredAtUtc = DateTime.UtcNow,
+                    RetryCount = retryCount,
+                    ErrorType = exception.GetType().Name,
+                    ErrorMessage = exception.Message
+                };
+                // NOTE: 現状はプロセス内メモリへ退避するのみ。永続 DLQ（DB/外部キュー）は未対応。
+                _deadLetters[workflowId] = deadLetterEntry;
+
+                _logger.LogError(
+                    exception,
+                    "Projection queue moved workflow to dead-letter WorkflowId={WorkflowId} RetryCount={RetryCount}",
+                    workflowId,
+                    retryCount);
+                return;
+            }
+
+            _logger.LogWarning(
+                exception,
+                "Projection queue processing failed. Retry scheduled WorkflowId={WorkflowId} Attempt={Attempt}/{MaxAttempts} DelayMs={DelayMs}",
+                workflowId,
+                retryCount,
+                _maxRetryAttempts,
+                retryDelayMs);
+
+            await ScheduleRetryAsync(workflowId, retryDelayMs, stoppingToken).ConfigureAwait(false);
         }
     }
 
@@ -247,6 +330,40 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
         using var scope = _scopeFactory.CreateScope();
         var workflowService = scope.ServiceProvider.GetRequiredService<IWorkflowService>();
         await workflowService.UpdateProjectionFromEngineAsync(workflowId, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// バックオフ待機後に同一 workflow をキューへ再投入する。
+    /// </summary>
+    private async Task ScheduleRetryAsync(Guid workflowId, int delayMs, CancellationToken ct)
+    {
+        if (delayMs > 0)
+            await Task.Delay(delayMs, ct).ConfigureAwait(false);
+
+        if (!_states.TryGetValue(workflowId, out var state))
+            return;
+
+        lock (state.Gate)
+        {
+            if (state.IsDeadLettered || state.IsProcessing)
+                return;
+        }
+
+        await _globalQueue.Writer.WriteAsync(workflowId, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 連続失敗回数に基づく指数バックオフ遅延（ms）を計算する。
+    /// </summary>
+    private static int GetRetryDelayMs(int failureCount, int baseMs, int maxMs)
+    {
+        if (baseMs <= 0)
+            return 0;
+
+        var exponent = Math.Max(0, failureCount - 1);
+        var growth = Math.Pow(2, exponent);
+        var delay = (int)Math.Min(int.MaxValue, baseMs * growth);
+        return Math.Min(maxMs, Math.Max(baseMs, delay));
     }
 
     /// <summary>
