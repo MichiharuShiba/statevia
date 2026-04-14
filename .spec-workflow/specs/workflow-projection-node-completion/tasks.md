@@ -49,14 +49,14 @@
   - `Program.cs` に options / queue / worker の DI 登録を追加する
   - _要件: Requirement 3, Requirement 5_
 
-- [ ] **T9** — リトライ制御と dead-letter 退避
+- [x] **T9** — リトライ制御と dead-letter 退避
   - 投影更新失敗時の **retry 上限**（例: `MaxRetryAttempts`）を導入する
   - retry 間隔に **バックオフ**（固定/指数のいずれかを設計で確定）を導入する
   - 上限到達時は対象 `workflow_id` を **dead-letter**（永続テーブルまたは運用キュー）へ退避し、再試行ループから外す
   - dead-letter 退避時は構造化ログとメトリクスを出力し、手動リカバリ手順をドキュメント化する
   - _要件: Requirement 3, Requirement 5, Non-Functional（可観測性）_
 
-- [ ] **T10** — テスト（Engine / API）
+- [-] **T10** — テスト（Engine / API）
   - Engine 通知発火（通常・Join）を単体テストで追加する
   - Queue の coalesce・満杯ブロック・デバウンス 0/50ms を単体テストで追加する
   - retry 上限・バックオフ・dead-letter 遷移の単体/統合テストを追加する
