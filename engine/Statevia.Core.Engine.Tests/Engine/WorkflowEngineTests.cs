@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Collections.Generic;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
@@ -202,6 +203,60 @@ public class WorkflowEngineTests
         // Assert
         Assert.NotNull(snapshot);
         Assert.True(snapshot.IsFailed);
+    }
+
+    /// <summary>通常ステートの完了時にノード完了通知ハンドラが呼び出されることを検証する。</summary>
+    [Fact]
+    public async Task SetNodeCompletedHandler_InvokesHandler_WhenNormalStateCompleted()
+    {
+        // Arrange
+        var def = CreateMinimalDefinition();
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var callCount = 0;
+        var called = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        engine.SetNodeCompletedHandler(workflowId =>
+        {
+            Interlocked.Increment(ref callCount);
+            called.TrySetResult(true);
+            return Task.CompletedTask;
+        });
+
+        // Act
+        engine.Start(def);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        await called.Task.WaitAsync(timeout.Token);
+
+        // Assert
+        Assert.True(callCount >= 1);
+    }
+
+    /// <summary>Join 合成ノードの完了時にもノード完了通知ハンドラが呼び出されることを検証する。</summary>
+    [Fact]
+    public async Task SetNodeCompletedHandler_InvokesHandler_WhenJoinStateCompleted()
+    {
+        // Arrange
+        var def = CreateDefinitionWithForkJoin();
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 2 });
+        var callCount = 0;
+        var calledAtJoin = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        engine.SetNodeCompletedHandler(workflowId =>
+        {
+            var current = Interlocked.Increment(ref callCount);
+            if (current >= 4)
+                calledAtJoin.TrySetResult(true);
+            return Task.CompletedTask;
+        });
+
+        // Act
+        var workflowId = engine.Start(def);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        await calledAtJoin.Task.WaitAsync(timeout.Token);
+        var snapshot = engine.GetSnapshot(workflowId);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+        Assert.True(callCount >= 4);
     }
 
     /// <summary>Fork 遷移で複数状態が並列実行され、Join 後に完了することを検証する。</summary>

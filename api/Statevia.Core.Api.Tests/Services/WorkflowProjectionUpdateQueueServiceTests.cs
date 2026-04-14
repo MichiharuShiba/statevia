@@ -64,6 +64,11 @@ public sealed class WorkflowProjectionUpdateQueueServiceTests
             _failuresBeforeSuccess = failuresBeforeSuccess;
         }
 
+        internal void SetFailuresBeforeSuccess(int failuresBeforeSuccess)
+        {
+            _failuresBeforeSuccess = failuresBeforeSuccess;
+        }
+
         public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct)
         {
             UpdateProjectionCallCount += 1;
@@ -185,6 +190,48 @@ public sealed class WorkflowProjectionUpdateQueueServiceTests
             // Assert
             Assert.Equal(2, workflowService.UpdateProjectionCallCount);
             Assert.True(elapsed >= TimeSpan.FromMilliseconds(100));
+        }
+        finally
+        {
+            await queue.StopAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>
+    /// 一度成功した後は連続失敗回数がリセットされ、次回失敗でも再試行できることを確認する。
+    /// </summary>
+    [Fact]
+    public async Task EmitNodeCompletedAsync_WhenUpdateEventuallySucceeds_ResetsFailureCountForNextAttempt()
+    {
+        // Arrange
+        var workflowId = Guid.NewGuid();
+        var workflowEngine = new FakeWorkflowEngine();
+        var workflowService = new FakeWorkflowService(failuresBeforeSuccess: 1);
+        await using var serviceProvider = BuildServiceProvider(workflowService);
+        var queue = BuildQueueService(workflowEngine, serviceProvider, new WorkflowProjectionQueueOptions
+        {
+            MaxGlobalQueueSize = 10,
+            ProjectionFlushDebounceMs = 0,
+            MaxRetryAttempts = 2,
+            RetryBaseDelayMs = 0,
+            RetryMaxDelayMs = 0
+        });
+        await queue.StartAsync(CancellationToken.None);
+
+        try
+        {
+            // Act
+            await workflowEngine.EmitNodeCompletedAsync(workflowId);
+            using var firstDrainTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await queue.DrainAsync(workflowId, firstDrainTimeout.Token);
+
+            workflowService.SetFailuresBeforeSuccess(1);
+            await workflowEngine.EmitNodeCompletedAsync(workflowId);
+            using var secondDrainTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await queue.DrainAsync(workflowId, secondDrainTimeout.Token);
+
+            // Assert
+            Assert.Equal(4, workflowService.UpdateProjectionCallCount);
         }
         finally
         {
