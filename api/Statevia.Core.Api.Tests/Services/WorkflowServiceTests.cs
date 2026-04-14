@@ -170,6 +170,32 @@ public sealed class WorkflowServiceTests
         }
     }
 
+    private sealed class FakeProjectionUpdateQueue : IWorkflowProjectionUpdateQueue
+    {
+        public int DrainCalls { get; private set; }
+        public int EnqueueCalls { get; private set; }
+        public Guid? LastDrainWorkflowId { get; private set; }
+        public Guid? LastEnqueueWorkflowId { get; private set; }
+        public Exception? DrainException { get; set; }
+
+        public Task EnqueueAsync(Guid workflowId, CancellationToken ct)
+        {
+            EnqueueCalls += 1;
+            LastEnqueueWorkflowId = workflowId;
+            return Task.CompletedTask;
+        }
+
+        public Task DrainAsync(Guid workflowId, CancellationToken ct)
+        {
+            DrainCalls += 1;
+            LastDrainWorkflowId = workflowId;
+            if (DrainException is not null)
+                return Task.FromException(DrainException);
+
+            return Task.CompletedTask;
+        }
+    }
+
     private sealed class FakeEventDeliveryDedupRepository : IEventDeliveryDedupRepository
     {
         private readonly ConcurrentDictionary<(string TenantId, Guid WorkflowId, Guid ClientEventId), EventDeliveryDedupRow> _rows = new();
@@ -1353,6 +1379,62 @@ public sealed class WorkflowServiceTests
         Assert.Empty(dedupRepo.SavedRows);
     }
 
+    /// <summary>取消要求でドレインが失敗したとき、エンジン変異へ進まず例外を返す。</summary>
+    [Fact]
+    public async Task CancelAsync_WhenDrainFails_ThrowsAndSkipsEngineMutation()
+    {
+        // Arrange
+        var workflowId = Guid.NewGuid();
+        var engine = new FakeWorkflowEngine
+        {
+            SnapshotToReturn = new WorkflowSnapshot
+            {
+                WorkflowId = workflowId.ToString("D"),
+                WorkflowName = "wf",
+                ActiveStates = Array.Empty<string>(),
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn = "{\"nodes\":[]}"
+        };
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = "t1",
+                DefinitionId = Guid.NewGuid(),
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+        var projectionQueue = new FakeProjectionUpdateQueue
+        {
+            DrainException = new InvalidOperationException("drain failed")
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository(),
+            engine: engine,
+            display: display,
+            workflowRepo: workflowRepo,
+            eventStore: new FakeEventStoreRepository(),
+            projectionQueue: projectionQueue);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: null, method: "POST", path: "/v1/workflows/cancel", CancellationToken.None));
+        Assert.Equal(1, projectionQueue.DrainCalls);
+        Assert.Equal(workflowId, projectionQueue.LastDrainWorkflowId);
+        Assert.False(engine.CancelCalled);
+    }
+
     /// <summary>取消時に実行識別子を解決できないとき未検出例外を投げる。</summary>
     [Fact]
     public async Task CancelAsync_WhenWorkflowResolveReturnsNull_ThrowsNotFoundException()
@@ -1689,6 +1771,62 @@ public sealed class WorkflowServiceTests
         Assert.Empty(workflowRepo.Updates);
         Assert.Empty(eventStore.Appended);
         Assert.Empty(dedupRepo.SavedRows);
+    }
+
+    /// <summary>イベント公開でドレインが失敗したとき、エンジン変異へ進まず例外を返す。</summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenDrainFails_ThrowsAndSkipsEngineMutation()
+    {
+        // Arrange
+        var workflowId = Guid.NewGuid();
+        var engine = new FakeWorkflowEngine
+        {
+            SnapshotToReturn = new WorkflowSnapshot
+            {
+                WorkflowId = workflowId.ToString("D"),
+                WorkflowName = "wf",
+                ActiveStates = Array.Empty<string>(),
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn = "{\"nodes\":[]}"
+        };
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = workflowId,
+                TenantId = "t1",
+                DefinitionId = Guid.NewGuid(),
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+        var projectionQueue = new FakeProjectionUpdateQueue
+        {
+            DrainException = new InvalidOperationException("drain failed")
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository(),
+            engine: engine,
+            display: display,
+            workflowRepo: workflowRepo,
+            eventStore: new FakeEventStoreRepository(),
+            projectionQueue: projectionQueue);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.PublishEventAsync("t1", idOrUuid: "X", eventName: "Approve", idempotencyKey: null, method: "POST", path: "/v1/workflows/events", CancellationToken.None));
+        Assert.Equal(1, projectionQueue.DrainCalls);
+        Assert.Equal(workflowId, projectionQueue.LastDrainWorkflowId);
+        Assert.Null(engine.PublishEventLastWorkflowId);
     }
 
     /// <summary>解決後に実行行がないとき未検出例外を投げる。</summary>
@@ -3256,7 +3394,8 @@ public sealed class WorkflowServiceTests
         FakeWorkflowEngine engine,
         FakeDisplayIdService display,
         FakeWorkflowRepository workflowRepo,
-        FakeEventStoreRepository eventStore)
+        FakeEventStoreRepository eventStore,
+        IWorkflowProjectionUpdateQueue? projectionQueue = null)
     {
         var sqlite = new SqliteTestDatabase();
 
@@ -3274,7 +3413,8 @@ public sealed class WorkflowServiceTests
             sqlite.Factory,
             NullLogger<WorkflowService>.Instance,
             DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+            UnitTestHttpContextAccessor(),
+            projectionQueue);
     }
 }
 

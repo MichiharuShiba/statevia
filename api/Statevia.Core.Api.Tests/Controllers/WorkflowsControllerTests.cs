@@ -171,6 +171,9 @@ public sealed class WorkflowsControllerTests
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
         }
+
+        public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) =>
+            throw new NotSupportedException();
     }
 
     private static WorkflowsController CreateController(DefaultHttpContext http, FakeWorkflowService workflows, WorkflowStreamService stream)

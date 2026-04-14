@@ -31,6 +31,7 @@ public sealed class WorkflowStreamServiceTests
         public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
         public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
         public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
+        public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
     }
 
     private sealed class FlakyThenStableWorkflowService : IWorkflowService
@@ -62,6 +63,7 @@ public sealed class WorkflowStreamServiceTests
         public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
         public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
         public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
+        public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
     }
 
     private sealed class ThrowingWorkflowService : IWorkflowService
@@ -78,6 +80,7 @@ public sealed class WorkflowStreamServiceTests
         public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
         public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
         public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
+        public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
     }
 
     private sealed class FakeDisplayIdService : IDisplayIdService
