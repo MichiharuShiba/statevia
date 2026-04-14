@@ -171,7 +171,50 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _workflowEngine.SetNodeCompletedHandler(null);
+        await DrainPendingWorkflowsOnShutdownAsync(cancellationToken).ConfigureAwait(false);
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 正常停止時に既知 workflow の pending / processing を可能な限りドレインする。
+    /// </summary>
+    private async Task DrainPendingWorkflowsOnShutdownAsync(CancellationToken cancellationToken)
+    {
+        var workflowIds = _states.Keys.ToArray();
+        if (workflowIds.Length == 0)
+            return;
+
+        var drainTasks = workflowIds.Select(workflowId => DrainAsync(workflowId, cancellationToken));
+        try
+        {
+            await Task.WhenAll(drainTasks).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            var remainingCount = CountActiveWorkflows();
+            _logger.LogWarning(
+                "Projection queue drain on shutdown timed out RemainingWorkflows={RemainingWorkflows}",
+                remainingCount);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 未ドレイン（queued / processing）状態の workflow 件数を数える。
+    /// </summary>
+    private int CountActiveWorkflows()
+    {
+        var count = 0;
+        foreach (var state in _states.Values)
+        {
+            lock (state.Gate)
+            {
+                if (state.IsQueued || state.IsProcessing)
+                    count += 1;
+            }
+        }
+
+        return count;
     }
 
     /// <summary>

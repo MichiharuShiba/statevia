@@ -239,6 +239,43 @@ public sealed class WorkflowProjectionUpdateQueueServiceTests
         }
     }
 
+    /// <summary>
+    /// 停止要求直前に enqueue された更新が、shutdown ドレインで取りこぼされず 1 回は反映されることを確認する。
+    /// </summary>
+    [Fact]
+    public async Task StopAsync_WhenPendingUpdateExists_DrainsBeforeStopping()
+    {
+        // Arrange
+        var workflowId = Guid.NewGuid();
+        var workflowEngine = new FakeWorkflowEngine();
+        var workflowService = new FakeWorkflowService(failuresBeforeSuccess: 0);
+        await using var serviceProvider = BuildServiceProvider(workflowService);
+        var queue = BuildQueueService(workflowEngine, serviceProvider, new WorkflowProjectionQueueOptions
+        {
+            MaxGlobalQueueSize = 10,
+            ProjectionFlushDebounceMs = 200,
+            MaxRetryAttempts = 3,
+            RetryBaseDelayMs = 0,
+            RetryMaxDelayMs = 0
+        });
+        await queue.StartAsync(CancellationToken.None);
+
+        try
+        {
+            // Act
+            await workflowEngine.EmitNodeCompletedAsync(workflowId);
+            await queue.StopAsync(CancellationToken.None);
+
+            // Assert
+            Assert.Equal(1, workflowService.UpdateProjectionCallCount);
+        }
+        finally
+        {
+            // 既に Stop 済みでも二重停止は許容されるため、テスト終了時に安全側で呼ぶ。
+            await queue.StopAsync(CancellationToken.None);
+        }
+    }
+
     private static ServiceProvider BuildServiceProvider(FakeWorkflowService workflowService)
     {
         var services = new ServiceCollection();
