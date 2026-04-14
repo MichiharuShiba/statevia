@@ -61,7 +61,7 @@
   - Queue の coalesce・満杯ブロック・デバウンス 0/50ms を単体テストで追加する
   - retry 上限・バックオフ・dead-letter 遷移の単体/統合テストを追加する
   - Cancel/Events との競合防止、shutdown ドレインを統合テストで確認する
-  - 進捗: Engine 通知発火、retry/backoff/dead-letter、Cancel/Events の drain 失敗ケースまで追加済み。残りは shutdown ドレイン統合。
+  - 進捗: Engine 通知発火、retry/backoff/dead-letter、Cancel/Events の drain 失敗、shutdown ドレイン（停止直前 pending を取りこぼさない）テストを追加済み。実行確認は SonarAnalyzer 依存エラー解消後に再実施。
   - _要件: Requirement 1-5, Non-Functional（テスト）_
 
 - [-] **T11** — SSE 非変更の回帰確認
