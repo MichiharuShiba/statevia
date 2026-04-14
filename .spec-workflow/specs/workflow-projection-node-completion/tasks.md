@@ -61,11 +61,13 @@
   - Queue の coalesce・満杯ブロック・デバウンス 0/50ms を単体テストで追加する
   - retry 上限・バックオフ・dead-letter 遷移の単体/統合テストを追加する
   - Cancel/Events との競合防止、shutdown ドレインを統合テストで確認する
+  - 進捗: Engine 通知発火、retry/backoff/dead-letter、Cancel/Events の drain 失敗ケースまで追加済み。残りは shutdown ドレイン統合。
   - _要件: Requirement 1-5, Non-Functional（テスト）_
 
-- [ ] **T11** — SSE 非変更の回帰確認
+- [-] **T11** — SSE 非変更の回帰確認
   - `GET /v1/workflows/{id}/stream` の約 2 秒ポーリング挙動が変わらないことを確認する
   - 必要なら既存テスト（`WorkflowStreamServiceTests`）を補強する
+  - 進捗: 既存 `WorkflowStreamServiceTests` の 2 秒間隔前提ケースを確認し、`IWorkflowService` 変更追従のテスト修正を反映。実行確認は SonarAnalyzer 依存エラーを解消後に継続。
   - _要件: Requirement 6_
 
 - [ ] **T12** — 最終検証とドキュメント同期
