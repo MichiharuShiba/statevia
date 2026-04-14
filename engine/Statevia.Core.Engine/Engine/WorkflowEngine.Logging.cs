@@ -119,6 +119,14 @@ public sealed partial class WorkflowEngine
                     workflowId,
                     stateName,
                     fact));
+
+        /// <summary>ノード完了通知ハンドラの実行失敗（エンジン進行は継続）。</summary>
+        public void LogWarningNodeCompletedHandlerFailed(Exception exception, string workflowId) =>
+            SafeLog(() =>
+                _logger.LogWarning(
+                    exception,
+                    "Node completion handler failed WorkflowId={WorkflowId}",
+                    workflowId));
     }
 
     /// <summary>

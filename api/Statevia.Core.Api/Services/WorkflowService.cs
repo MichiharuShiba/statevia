@@ -58,6 +58,7 @@ public sealed class WorkflowService : IWorkflowService
     private readonly ILogger<WorkflowService> _logger;
     private readonly IOptions<EventDeliveryRetryOptions> _eventDeliveryRetryOptions;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IWorkflowProjectionUpdateQueue _projectionUpdateQueue;
 
     public WorkflowService(
         IWorkflowEngine engine,
@@ -73,7 +74,8 @@ public sealed class WorkflowService : IWorkflowService
         IDbContextFactory<CoreDbContext> dbFactory,
         ILogger<WorkflowService> logger,
         IOptions<EventDeliveryRetryOptions> eventDeliveryRetryOptions,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        IWorkflowProjectionUpdateQueue? projectionUpdateQueue = null)
     {
         _engine = engine;
         _displayIds = displayIds;
@@ -89,6 +91,7 @@ public sealed class WorkflowService : IWorkflowService
         _logger = logger;
         _eventDeliveryRetryOptions = eventDeliveryRetryOptions;
         _httpContextAccessor = httpContextAccessor;
+        _projectionUpdateQueue = projectionUpdateQueue ?? NoopWorkflowProjectionUpdateQueue.Instance;
     }
 
     public async Task<WorkflowResponse> StartAsync(
@@ -320,6 +323,8 @@ public sealed class WorkflowService : IWorkflowService
         if (workflow is null)
             throw new NotFoundException("Workflow not found");
 
+        await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
+
         var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
 
         if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(tenantId, uuid.Value, clientEventId, ct).ConfigureAwait(false))
@@ -420,6 +425,8 @@ public sealed class WorkflowService : IWorkflowService
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (workflow is null)
             throw new NotFoundException("Workflow not found");
+
+        await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
         var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
 
@@ -688,9 +695,12 @@ public sealed class WorkflowService : IWorkflowService
             paramName: null);
     }
 
-    private async Task UpdateProjectionAsync(Guid workflowId, CancellationToken ct)
+    public async Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct)
     {
-        var (status, cancelRequested, graphJson) = BuildProjectionFromEngine(workflowId);
+        var (status, cancelRequested, graphJson) = BuildProjectionFromEngineForQueue(workflowId);
+        if (status is null || graphJson is null)
+            return;
+
         await _workflows.UpdateWorkflowAndSnapshotAsync(
             workflowId,
             status,
@@ -699,6 +709,9 @@ public sealed class WorkflowService : IWorkflowService
             ct).ConfigureAwait(false);
     }
 
+    private Task UpdateProjectionAsync(Guid workflowId, CancellationToken ct) =>
+        UpdateProjectionFromEngineAsync(workflowId, ct);
+
     private (string Status, bool? CancelRequested, string GraphJson) BuildProjectionFromEngine(Guid workflowId)
     {
         var engineId = workflowId.ToString();
@@ -706,6 +719,30 @@ public sealed class WorkflowService : IWorkflowService
         var graphJson = _engine.ExportExecutionGraph(engineId);
         var status = MapStatus(snapshot);
         return (status, snapshot?.IsCancelled, graphJson);
+    }
+
+    private (string? status, bool? cancelRequested, string? graphJson) BuildProjectionFromEngineForQueue(Guid workflowId)
+    {
+        var engineId = workflowId.ToString();
+        var snapshot = _engine.GetSnapshot(engineId);
+        if (snapshot is null)
+        {
+            _logger.LogDebug("Skip projection queue update because runtime is missing for workflow {WorkflowId}", workflowId);
+            return (null, null, null);
+        }
+
+        var graphJson = _engine.ExportExecutionGraph(engineId);
+        var status = MapStatus(snapshot);
+        return (status, snapshot.IsCancelled, graphJson);
+    }
+
+    private sealed class NoopWorkflowProjectionUpdateQueue : IWorkflowProjectionUpdateQueue
+    {
+        internal static readonly NoopWorkflowProjectionUpdateQueue Instance = new();
+
+        public Task EnqueueAsync(Guid workflowId, CancellationToken ct) => Task.CompletedTask;
+
+        public Task DrainAsync(Guid workflowId, CancellationToken ct) => Task.CompletedTask;
     }
 
     /// <summary>

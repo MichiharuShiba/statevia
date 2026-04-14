@@ -163,6 +163,11 @@ public sealed class WorkflowServiceTests
         public WorkflowSnapshot? GetSnapshot(string workflowId) => SnapshotToReturn;
 
         public string ExportExecutionGraph(string workflowId) => GraphJsonToReturn;
+
+        public void SetNodeCompletedHandler(Func<string, Task>? handler)
+        {
+            // no-op for tests
+        }
     }
 
     private sealed class FakeEventDeliveryDedupRepository : IEventDeliveryDedupRepository

@@ -24,4 +24,9 @@ public interface IWorkflowService
     Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, string method, string path, CancellationToken ct);
     Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct);
     Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct);
+
+    /// <summary>
+    /// エンジンの現在状態を読み取り、投影（workflows / execution_graph_snapshots）を更新する。
+    /// </summary>
+    Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct);
 }

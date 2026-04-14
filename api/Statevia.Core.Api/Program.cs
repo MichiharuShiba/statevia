@@ -82,6 +82,13 @@ builder.Services.AddScoped<IEventDeliveryDedupRepository, EventDeliveryDedupRepo
 builder.Services.AddScoped<IEventStoreRepository, EventStoreRepository>();
 builder.Services.AddScoped<IDefinitionService, DefinitionService>();
 builder.Services.AddScoped<IWorkflowService, WorkflowService>();
+builder.Services.AddOptions<WorkflowProjectionQueueOptions>()
+    .Bind(builder.Configuration.GetSection("WorkflowProjectionQueue"))
+    .Validate(o => o.MaxGlobalQueueSize >= 1, "WorkflowProjectionQueue:MaxGlobalQueueSize must be >= 1.")
+    .Validate(o => o.ProjectionFlushDebounceMs is >= 0 and <= 250, "WorkflowProjectionQueue:ProjectionFlushDebounceMs must be between 0 and 250.");
+builder.Services.AddSingleton<WorkflowProjectionUpdateQueueService>();
+builder.Services.AddSingleton<IWorkflowProjectionUpdateQueue>(sp => sp.GetRequiredService<WorkflowProjectionUpdateQueueService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<WorkflowProjectionUpdateQueueService>());
 builder.Services.AddScoped<WorkflowStreamService>();
 builder.Services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
 builder.Services.AddSingleton<IActionRegistry>(_ =>

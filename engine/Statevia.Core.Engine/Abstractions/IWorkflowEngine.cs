@@ -47,4 +47,13 @@ public interface IWorkflowEngine
 
     /// <summary>実行グラフを JSON としてエクスポートします（デバッグ・可視化用）。</summary>
     string ExportExecutionGraph(string workflowId);
+
+    /// <summary>
+    /// ノード完了（通常ステート / Join 合成ノード）通知ハンドラを登録または解除します。
+    /// 引数はワークフロー ID です。
+    /// </summary>
+    /// <remarks>
+    /// 直近の登録で上書きされます。<paramref name="handler"/> に <c>null</c> を渡すと解除します。
+    /// </remarks>
+    void SetNodeCompletedHandler(Func<string, Task>? handler);
 }

@@ -24,6 +24,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
     private readonly WorkflowExecutionLogger _workflowLog;
     private readonly ConcurrentDictionary<string, WorkflowInstance> _instances = new();
     private readonly ConcurrentDictionary<string, EventProvider> _eventProviders = new();
+    private Func<string, Task>? _nodeCompletedHandler;
 
     public WorkflowEngine(WorkflowEngineOptions? options = null)
     {
@@ -202,6 +203,12 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
     public string ExportExecutionGraph(string workflowId) =>
         _instances.TryGetValue(workflowId, out var instance) ? instance.Graph.ExportJson() : "{}";
 
+    /// <inheritdoc />
+    public void SetNodeCompletedHandler(Func<string, Task>? handler)
+    {
+        _nodeCompletedHandler = handler;
+    }
+
     private async Task RunWorkflowAsync(WorkflowInstance instance, EventProvider eventProvider, object? workflowInput)
     {
         var initialInput = ApplyStateInput(instance, instance.Definition.InitialState, workflowInput);
@@ -259,6 +266,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
                 var o = await executor.ExecuteAsync(ctx, input, ct).ConfigureAwait(false);
                 instance.SetOutput(stateName, o);
                 instance.Graph.CompleteNode(nodeId, Fact.Completed, o);
+                await NotifyNodeCompletedAsync(instance.WorkflowId).ConfigureAwait(false);
                 sw.Stop();
                 _workflowLog.LogStateCompleted(instance.WorkflowId, stateName, nodeId, Fact.Completed, sw.ElapsedMilliseconds);
                 return (Fact.Completed, o);
@@ -266,6 +274,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
             catch (OperationCanceledException)
             {
                 instance.Graph.CompleteNode(nodeId, Fact.Cancelled, null);
+                await NotifyNodeCompletedAsync(instance.WorkflowId).ConfigureAwait(false);
                 sw.Stop();
                 _workflowLog.LogStateCompleted(instance.WorkflowId, stateName, nodeId, Fact.Cancelled, sw.ElapsedMilliseconds);
                 return (Fact.Cancelled, (object?)null);
@@ -274,6 +283,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
             catch (Exception ex)
             {
                 instance.Graph.CompleteNode(nodeId, Fact.Failed, null);
+                await NotifyNodeCompletedAsync(instance.WorkflowId).ConfigureAwait(false);
                 sw.Stop();
                 _workflowLog.LogStateExecuteFailed(ex, instance.WorkflowId, stateName, nodeId, ex.GetType().Name);
                 _workflowLog.LogStateCompleted(instance.WorkflowId, stateName, nodeId, Fact.Failed, sw.ElapsedMilliseconds);
@@ -298,6 +308,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         _workflowLog.LogJoinStateScheduled(instance.WorkflowId, joinStateName, nodeId);
 
         instance.Graph.CompleteNode(nodeId, Fact.Joined, null);
+        await NotifyNodeCompletedAsync(instance.WorkflowId).ConfigureAwait(false);
 
         _workflowLog.LogJoinStateCompleted(instance.WorkflowId, joinStateName, nodeId, Fact.Joined);
 
@@ -315,6 +326,27 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         else
         {
             _workflowLog.LogWarningNoTransition(instance.WorkflowId, joinStateName, Fact.Joined);
+        }
+    }
+
+    /// <summary>
+    /// ノード完了通知ハンドラへベストエフォートで通知する。
+    /// </summary>
+    private async Task NotifyNodeCompletedAsync(string workflowId)
+    {
+        var handler = _nodeCompletedHandler;
+        if (handler is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await handler(workflowId).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            _workflowLog.LogWarningNodeCompletedHandlerFailed(exception, workflowId);
         }
     }
 
