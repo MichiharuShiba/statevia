@@ -49,18 +49,26 @@
   - `Program.cs` に options / queue / worker の DI 登録を追加する
   - _要件: Requirement 3, Requirement 5_
 
-- [ ] **T9** — テスト（Engine / API）
+- [ ] **T9** — リトライ制御と dead-letter 退避
+  - 投影更新失敗時の **retry 上限**（例: `MaxRetryAttempts`）を導入する
+  - retry 間隔に **バックオフ**（固定/指数のいずれかを設計で確定）を導入する
+  - 上限到達時は対象 `workflow_id` を **dead-letter**（永続テーブルまたは運用キュー）へ退避し、再試行ループから外す
+  - dead-letter 退避時は構造化ログとメトリクスを出力し、手動リカバリ手順をドキュメント化する
+  - _要件: Requirement 3, Requirement 5, Non-Functional（可観測性）_
+
+- [ ] **T10** — テスト（Engine / API）
   - Engine 通知発火（通常・Join）を単体テストで追加する
   - Queue の coalesce・満杯ブロック・デバウンス 0/50ms を単体テストで追加する
+  - retry 上限・バックオフ・dead-letter 遷移の単体/統合テストを追加する
   - Cancel/Events との競合防止、shutdown ドレインを統合テストで確認する
   - _要件: Requirement 1-5, Non-Functional（テスト）_
 
-- [ ] **T10** — SSE 非変更の回帰確認
+- [ ] **T11** — SSE 非変更の回帰確認
   - `GET /v1/workflows/{id}/stream` の約 2 秒ポーリング挙動が変わらないことを確認する
   - 必要なら既存テスト（`WorkflowStreamServiceTests`）を補強する
   - _要件: Requirement 6_
 
-- [ ] **T11** — 最終検証とドキュメント同期
+- [ ] **T12** — 最終検証とドキュメント同期
   - `dotnet test`（該当範囲）と必要な型チェックを実施する
   - `docs/statevia-data-integration-contract.md` と実装差分がないか確認し、差分があれば doc を更新する
   - _要件: Non-Functional（ドキュメント）_
