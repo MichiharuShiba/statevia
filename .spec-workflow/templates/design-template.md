@@ -1,110 +1,124 @@
-# Design Document
+# 設計書
 
-## Overview
+## 概要
 
-[High-level description of the feature and its place in the overall system]
+[機能の全体像と、システム内での位置づけを記載]
 
-## Steering Document Alignment
+## ステアリング文書との整合
 
-### Technical Standards (tech.md)
+### 技術標準（`tech.md`）
 
-[How the design follows documented technical patterns and standards]
+[既存の技術方針・標準にどう準拠するかを記載]
 
-### Project Structure (structure.md)
+### プロジェクト構成（`structure.md`）
 
-[How the implementation will follow project organization conventions]
+[ディレクトリ構成・責務分割の方針にどう合わせるかを記載]
 
-## Code Reuse Analysis
+## 既存資産の再利用分析
 
-[What existing code will be leveraged, extended, or integrated with this feature]
+[既存コードの流用・拡張・統合方針を記載]
 
-### Existing Components to Leverage
+### 再利用する既存要素
 
-- **[Component/Utility Name]**: [How it will be used]
-- **[Service/Helper Name]**: [How it will be extended]
+- **[コンポーネント/ユーティリティ名]**: [利用方法]
+- **[サービス/ヘルパー名]**: [拡張方法]
 
-### Integration Points
+### 統合ポイント
 
-- **[Existing System/API]**: [How the new feature will integrate]
-- **[Database/Storage]**: [How data will connect to existing schemas]
+- **[既存システム/API]**: [統合方法]
+- **[DB/ストレージ]**: [既存スキーマとの接続方法]
 
-## Architecture
+## アーキテクチャ
 
-[Describe the overall architecture and design patterns used]
+[採用する設計パターンと構成を記載]
 
-### Modular Design Principles
+### モジュール設計の原則
 
-- **Single File Responsibility**: Each file should handle one specific concern or domain
-- **Component Isolation**: Create small, focused components rather than large monolithic files
-- **Service Layer Separation**: Separate data access, business logic, and presentation layers
-- **Utility Modularity**: Break utilities into focused, single-purpose modules
+- **単一責任**: 各ファイルの責務を1つに保つ
+- **コンポーネント分離**: 大きな実装より小さく独立した要素を優先する
+- **レイヤー分離**: データアクセス/業務ロジック/表示を分離する
+- **ユーティリティ分割**: 目的ごとに小さく分割する
+
+## 処理フロー図（重要）
+
+- 仕様が単純でない場合、文章だけでなく**処理の具体的な流れが分かる図**を必ず記載する
+- 以下を含む場合は図を必須とする
+  - 状態遷移
+  - 複数サービス連携
+  - 非同期ジョブ
+  - 例外処理/リトライ
+- 可能な限り、通常系と異常系を同じ図または関連図で示す
 
 ```mermaid
-graph TD
-    A[Component A] --> B[Component B]
-    B --> C[Component C]
+flowchart TD
+    A[入力] --> B{バリデーション}
+    B -->|OK| C[業務処理]
+    B -->|NG| D[エラー応答]
+    C --> E{外部連携}
+    E -->|成功| F[結果保存]
+    E -->|失敗| G[リトライ/補償]
 ```
 
-## Components and Interfaces
+## コンポーネントとインターフェース
 
-### Component 1
+### コンポーネント1
 
-- **Purpose:** [What this component does]
-- **Interfaces:** [Public methods/APIs]
-- **Dependencies:** [What it depends on]
-- **Reuses:** [Existing components/utilities it builds upon]
+- **目的**: [この要素が担う責務]
+- **公開インターフェース**: [公開メソッド/API]
+- **依存先**: [依存対象]
+- **再利用要素**: [既存資産]
 
-### Component 2
+### コンポーネント2
 
-- **Purpose:** [What this component does]
-- **Interfaces:** [Public methods/APIs]
-- **Dependencies:** [What it depends on]
-- **Reuses:** [Existing components/utilities it builds upon]
+- **目的**: [この要素が担う責務]
+- **公開インターフェース**: [公開メソッド/API]
+- **依存先**: [依存対象]
+- **再利用要素**: [既存資産]
 
-## Data Models
+## データモデル
 
-### Model 1
+### モデル1
 
-```
-[Define the structure of Model1 in your language]
-- id: [unique identifier type]
-- name: [string/text type]
-- [Additional properties as needed]
-```
-
-### Model 2
-
-```
-[Define the structure of Model2 in your language]
-- id: [unique identifier type]
-- [Additional properties as needed]
+```text
+[Model1 の構造を言語に合わせて記載]
+- id: [識別子型]
+- name: [文字列型]
+- [必要な追加項目]
 ```
 
-## Error Handling
+### モデル2
 
-### Error Scenarios
+```text
+[Model2 の構造を言語に合わせて記載]
+- id: [識別子型]
+- [必要な追加項目]
+```
 
-1. **Scenario 1:** [Description]
-   - **Handling:** [How to handle]
-   - **User Impact:** [What user sees]
+## エラーハンドリング
 
-2. **Scenario 2:** [Description]
-   - **Handling:** [How to handle]
-   - **User Impact:** [What user sees]
+### エラーシナリオ
 
-## Testing Strategy
+1. **シナリオ1**: [説明]
+   - **対処方法**: [リトライ/フォールバック/通知など]
+   - **ユーザー影響**: [表示・体験への影響]
 
-### Unit Testing
+2. **シナリオ2**: [説明]
+   - **対処方法**: [リトライ/フォールバック/通知など]
+   - **ユーザー影響**: [表示・体験への影響]
 
-- [Unit testing approach]
-- [Key components to test]
+## テスト戦略
 
-### Integration Testing
+### 単体テスト
 
-- [Integration testing approach]
-- [Key flows to test]
+- [アプローチ]
+- [重点対象]
 
-### End-to-End Testing
+### 結合テスト
 
-- [E2E testing approach]
-- [User scenarios to test]
+- [アプローチ]
+- [検証する主要フロー]
+
+### E2Eテスト
+
+- [アプローチ]
+- [ユーザーシナリオ]
