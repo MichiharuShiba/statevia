@@ -1,119 +1,130 @@
-# Technology Stack
+# 技術スタック
 
-## Project Type
+## プロジェクト種別
 
-[Describe what kind of project this is: web application, CLI tool, desktop application, mobile app, library, API service, embedded system, game, etc.]
+[このプロジェクトの種類を記載: Webアプリ / CLI / デスクトップ / モバイル / ライブラリ / APIサービス など]
 
-## Core Technologies
+## コア技術
 
-### Primary Language(s)
+### 主要言語
 
-- **Language**: [e.g., Python 3.11, Go 1.21, TypeScript, Rust, C++]
-- **Runtime/Compiler**: [if applicable]
-- **Language-specific tools**: [package managers, build tools, etc.]
+- **言語**: [例: Python 3.11, Go 1.21, TypeScript, Rust, C++]
+- **ランタイム/コンパイラ**: [必要に応じて記載]
+- **言語別ツール**: [パッケージ管理・ビルドツールなど]
 
-### Key Dependencies/Libraries
+### 主要ライブラリ/フレームワーク
 
-[List the main libraries and frameworks your project depends on]
+[プロジェクトの中心となる依存関係を記載]
 
-- **[Library/Framework name]**: [Purpose and version]
-- **[Library/Framework name]**: [Purpose and version]
+- **[ライブラリ名/FW名]**: [用途とバージョン]
+- **[ライブラリ名/FW名]**: [用途とバージョン]
 
-### Application Architecture
+### アーキテクチャ
 
-[Describe how your application is structured - this could be MVC, event-driven, plugin-based, client-server, standalone, microservices, monolithic, etc.]
+[構成方針を記載: MVC / イベント駆動 / プラグイン型 / クライアント-サーバー / モノリス / マイクロサービス など]
 
-### Data Storage (if applicable)
+### データ保存（該当する場合）
 
-- **Primary storage**: [e.g., PostgreSQL, files, in-memory, cloud storage]
-- **Caching**: [e.g., Redis, in-memory, disk cache]
-- **Data formats**: [e.g., JSON, Protocol Buffers, XML, binary]
+- **主ストレージ**: [例: PostgreSQL, ファイル, インメモリ, クラウドストレージ]
+- **キャッシュ**: [例: Redis, インメモリ, ディスクキャッシュ]
+- **データ形式**: [例: JSON, Protocol Buffers, XML, Binary]
 
-### External Integrations (if applicable)
+### 外部連携（該当する場合）
 
-- **APIs**: [External services you integrate with]
-- **Protocols**: [e.g., HTTP/REST, gRPC, WebSocket, TCP/IP]
-- **Authentication**: [e.g., OAuth, API keys, certificates]
+- **API**: [連携する外部サービス]
+- **通信プロトコル**: [例: HTTP/REST, gRPC, WebSocket, TCP/IP]
+- **認証方式**: [例: OAuth, APIキー, 証明書]
 
-### Monitoring & Dashboard Technologies (if applicable)
+### 監視/ダッシュボード技術（該当する場合）
 
-- **Dashboard Framework**: [e.g., React, Vue, vanilla JS, terminal UI]
-- **Real-time Communication**: [e.g., WebSocket, Server-Sent Events, polling]
-- **Visualization Libraries**: [e.g., Chart.js, D3, terminal graphs]
-- **State Management**: [e.g., Redux, Vuex, file system as source of truth]
+- **ダッシュボード基盤**: [例: React, Vue, Vanilla JS, Terminal UI]
+- **リアルタイム通信**: [例: WebSocket, SSE, ポーリング]
+- **可視化ライブラリ**: [例: Chart.js, D3]
+- **状態管理**: [例: Redux, Vuex]
 
-## Development Environment
+## 開発環境
 
-### Build & Development Tools
+### ビルド/開発ツール
 
-- **Build System**: [e.g., Make, CMake, Gradle, npm scripts, cargo]
-- **Package Management**: [e.g., pip, npm, cargo, go mod, apt, brew]
-- **Development workflow**: [e.g., hot reload, watch mode, REPL]
+- **ビルドシステム**: [例: Make, CMake, Gradle, npm scripts, cargo]
+- **パッケージ管理**: [例: pip, npm, cargo, go mod]
+- **開発フロー**: [例: hot reload, watch mode, REPL]
 
-### Code Quality Tools
+### コード品質ツール
 
-- **Static Analysis**: [Tools for code quality and correctness]
-- **Formatting**: [Code style enforcement tools]
-- **Testing Framework**: [Unit, integration, and/or end-to-end testing tools]
-- **Documentation**: [Documentation generation tools]
+- **静的解析**: [品質/正確性確認ツール]
+- **フォーマッタ**: [コード整形ツール]
+- **テスト基盤**: [単体/結合/E2E]
+- **ドキュメント生成**: [必要に応じて]
 
-### Version Control & Collaboration
+### バージョン管理/コラボレーション
 
-- **VCS**: [e.g., Git, Mercurial, SVN]
-- **Branching Strategy**: [e.g., Git Flow, GitHub Flow, trunk-based]
-- **Code Review Process**: [How code reviews are conducted]
+- **VCS**: [例: Git]
+- **ブランチ戦略**: [例: GitHub Flow, trunk-based]
+- **レビュー運用**: [レビューの進め方]
 
-### Dashboard Development (if applicable)
+## デプロイ/配布（該当する場合）
 
-- **Live Reload**: [e.g., Hot module replacement, file watchers]
-- **Port Management**: [e.g., Dynamic allocation, configurable ports]
-- **Multi-Instance Support**: [e.g., Running multiple dashboards simultaneously]
+- **対象環境**: [クラウド / オンプレ / デスクトップ / モバイル など]
+- **配布方式**: [SaaS / パッケージ配布 / App Store など]
+- **導入要件**: [前提条件・必要環境]
+- **更新方式**: [アップデート手段]
 
-## Deployment & Distribution (if applicable)
+## 技術要件と制約
 
-- **Target Platform(s)**: [Where/how the project runs: cloud, on-premise, desktop, mobile, embedded]
-- **Distribution Method**: [How users get your software: download, package manager, app store, SaaS]
-- **Installation Requirements**: [Prerequisites, system requirements]
-- **Update Mechanism**: [How updates are delivered]
+### 性能要件
 
-## Technical Requirements & Constraints
+- [例: 応答時間, スループット, メモリ使用量, 起動時間]
+- [具体的な目標値]
 
-### Performance Requirements
+### 互換性要件
 
-- [e.g., response time, throughput, memory usage, startup time]
-- [Specific benchmarks or targets]
+- **プラットフォーム対応**: [OS/アーキテクチャ/バージョン]
+- **依存バージョン範囲**: [最小/最大バージョン]
+- **準拠規格**: [業界標準・仕様]
 
-### Compatibility Requirements
+### セキュリティ/コンプライアンス
 
-- **Platform Support**: [Operating systems, architectures, versions]
-- **Dependency Versions**: [Minimum/maximum versions of dependencies]
-- **Standards Compliance**: [Industry standards, protocols, specifications]
+- **セキュリティ要件**: [認証, 暗号化, データ保護]
+- **準拠要件**: [GDPR, SOC2 など]
+- **脅威モデル**: [主要なリスク]
 
-### Security & Compliance
+### スケーラビリティ/可用性
 
-- **Security Requirements**: [Authentication, encryption, data protection]
-- **Compliance Standards**: [GDPR, HIPAA, SOC2, etc. if applicable]
-- **Threat Model**: [Key security considerations]
+- **想定負荷**: [ユーザー数, リクエスト数, データ量]
+- **可用性目標**: [稼働率, 障害復旧]
+- **成長見込み**: [将来の拡張方針]
 
-### Scalability & Reliability
+## 技術判断と根拠
 
-- **Expected Load**: [Users, requests, data volume]
-- **Availability Requirements**: [Uptime targets, disaster recovery]
-- **Growth Projections**: [How the system needs to scale]
+[主要な技術選定・設計判断と理由を記載]
 
-## Technical Decisions & Rationale
+### 判断ログ
 
-[Document key architectural and technology choices]
+1. **[技術/パターン選定]**: [採用理由と比較した代替案]
+2. **[アーキテクチャ判断]**: [受け入れるトレードオフ]
+3. **[ツール/ライブラリ選定]**: [評価観点と選定理由]
 
-### Decision Log
+## 処理フロー図の記載（必要時は必須）
 
-1. **[Technology/Pattern Choice]**: [Why this was chosen, alternatives considered]
-2. **[Architecture Decision]**: [Rationale, trade-offs accepted]
-3. **[Tool/Library Selection]**: [Reasoning, evaluation criteria]
+- 連携・非同期・状態遷移・複雑な分岐を含む仕様では、文章説明に加えて**処理フロー図**を記載する
+- フロー図は `mermaid`（`flowchart` / `sequenceDiagram`）を推奨する
+- 技術選定の妥当性がフロー依存の場合は、判断ログと図を相互参照できるようにする
 
-## Known Limitations
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as App
+    participant B as Backend
+    U->>A: リクエスト
+    A->>B: API呼び出し
+    B-->>A: レスポンス
+    A-->>U: 結果表示
+```
 
-[Document any technical debt, limitations, or areas for improvement]
+## 既知の制約/課題
 
-- [Limitation 1]: [Impact and potential future solutions]
-- [Limitation 2]: [Why it exists and when it might be addressed]
+[技術的負債、現時点の制約、将来改善案を記載]
+
+- **[制約1]**: [影響と改善案]
+- **[制約2]**: [発生理由と対応時期]
