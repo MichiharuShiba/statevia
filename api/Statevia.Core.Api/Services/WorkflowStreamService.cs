@@ -11,6 +11,11 @@ namespace Statevia.Core.Api.Services;
 /// </summary>
 public sealed class WorkflowStreamService
 {
+    /// <summary>
+    /// 投影済みグラフ JSON の取得・比較ループ間隔（ms）。フェーズ 1 は 2 秒固定（`docs/statevia-data-integration-contract.md` の SSE 節と整合）。
+    /// </summary>
+    internal const int GraphPollingIntervalMilliseconds = 2000;
+
     private readonly IWorkflowService _workflows;
     private readonly IDisplayIdService _displayIds;
 
@@ -48,7 +53,7 @@ public sealed class WorkflowStreamService
             }
             catch
             {
-                await Task.Delay(2000, ct).ConfigureAwait(false);
+                await Task.Delay(GraphPollingIntervalMilliseconds, ct).ConfigureAwait(false);
                 continue;
             }
 
@@ -69,7 +74,7 @@ public sealed class WorkflowStreamService
                 await response.Body.FlushAsync(ct).ConfigureAwait(false);
             }
 
-            await Task.Delay(2000, ct).ConfigureAwait(false);
+            await Task.Delay(GraphPollingIntervalMilliseconds, ct).ConfigureAwait(false);
         }
     }
 }

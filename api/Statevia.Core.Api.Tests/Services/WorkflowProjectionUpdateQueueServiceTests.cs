@@ -115,6 +115,57 @@ public sealed class WorkflowProjectionUpdateQueueServiceTests
             throw new NotSupportedException();
     }
 
+    /// <summary>最初の投影更新だけ完了シグナル待ちでブロックし、グローバルキュー滞留を再現する。</summary>
+    private sealed class BlockFirstProjectionUpdateWorkflowService : IWorkflowService
+    {
+        private readonly TaskCompletionSource<bool> _firstUpdateMayProceed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _updateProjectionCallCount;
+
+        internal int UpdateProjectionCallCount => _updateProjectionCallCount;
+
+        internal void ReleaseFirstUpdate() => _firstUpdateMayProceed.TrySetResult(true);
+
+        public async Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct)
+        {
+            var callNumber = Interlocked.Increment(ref _updateProjectionCallCount);
+            if (callNumber == 1)
+                await _firstUpdateMayProceed.Task.WaitAsync(ct).ConfigureAwait(false);
+        }
+
+        public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, int offset, int limit, string? status, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<WorkflowViewDto> GetWorkflowViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+            throw new NotSupportedException();
+    }
+
     /// <summary>
     /// 連続失敗が上限に達したとき、当該 workflow が再投入されず処理が停止することを確認する。
     /// </summary>
@@ -276,7 +327,62 @@ public sealed class WorkflowProjectionUpdateQueueServiceTests
         }
     }
 
-    private static ServiceProvider BuildServiceProvider(FakeWorkflowService workflowService)
+    /// <summary>
+    /// グローバルキューが満杯のとき、別 workflow の投入がブロックし、スロット解放後に完了することを確認する。
+    /// </summary>
+    [Fact]
+    public async Task EnqueueAsync_WhenGlobalQueueIsFull_BlocksUntilSlotAvailable()
+    {
+        // Arrange
+        var workflowIdFirst = Guid.NewGuid();
+        var workflowIdSecond = Guid.NewGuid();
+        var workflowIdThird = Guid.NewGuid();
+        var workflowEngine = new FakeWorkflowEngine();
+        var workflowService = new BlockFirstProjectionUpdateWorkflowService();
+        await using var serviceProvider = BuildServiceProvider(workflowService);
+        var queue = BuildQueueService(workflowEngine, serviceProvider, new WorkflowProjectionQueueOptions
+        {
+            MaxGlobalQueueSize = 1,
+            ProjectionFlushDebounceMs = 0,
+            MaxRetryAttempts = 3,
+            RetryBaseDelayMs = 0,
+            RetryMaxDelayMs = 0
+        });
+        await queue.StartAsync(CancellationToken.None);
+
+        try
+        {
+            // Act
+            await workflowEngine.EmitNodeCompletedAsync(workflowIdFirst);
+            await Task.Delay(150);
+            Assert.Equal(1, workflowService.UpdateProjectionCallCount);
+
+            await workflowEngine.EmitNodeCompletedAsync(workflowIdSecond);
+            await Task.Delay(50);
+
+            var thirdEnqueue = Task.Run(() => workflowEngine.EmitNodeCompletedAsync(workflowIdThird));
+            var thirdCompletedWithinTimeout = await Task.WhenAny(thirdEnqueue, Task.Delay(200)) == thirdEnqueue;
+            Assert.False(thirdCompletedWithinTimeout);
+
+            workflowService.ReleaseFirstUpdate();
+            await thirdEnqueue;
+
+            using var drainTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await queue.DrainAsync(workflowIdFirst, drainTimeout.Token);
+            await queue.DrainAsync(workflowIdSecond, drainTimeout.Token);
+            await queue.DrainAsync(workflowIdThird, drainTimeout.Token);
+
+            // Assert
+            Assert.True(workflowService.UpdateProjectionCallCount >= 3);
+        }
+        finally
+        {
+            workflowService.ReleaseFirstUpdate();
+            await queue.StopAsync(CancellationToken.None);
+        }
+    }
+
+    private static ServiceProvider BuildServiceProvider(IWorkflowService workflowService)
     {
         var services = new ServiceCollection();
         services.AddScoped<IWorkflowService>(_ => workflowService);

@@ -66,6 +66,63 @@ public sealed class WorkflowStreamServiceTests
         public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
     }
 
+    /// <summary>1 回目は例外、2 回目以降は JSON を返し、呼び出し間隔を記録する（SSE の catch 経路の待機時間検証用）。</summary>
+    private sealed class FailOnceThenStableWithCallSpacingWorkflowService : IWorkflowService
+    {
+        private readonly string _stableJson;
+        private int _getGraphCalls;
+        private DateTime _previousCallStartedAtUtc;
+
+        public FailOnceThenStableWithCallSpacingWorkflowService(string stableJson) => _stableJson = stableJson;
+
+        /// <summary>2 回目以降のグラフ取得呼び出しについて、直前呼び出し開始からの経過時間。</summary>
+        public TimeSpan? TimeSincePreviousGetGraphStarted { get; private set; }
+
+        public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
+
+        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, int offset, int limit, string? status, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
+        {
+            var now = DateTime.UtcNow;
+            if (_getGraphCalls > 0)
+                TimeSincePreviousGetGraphStarted = now - _previousCallStartedAtUtc;
+
+            _previousCallStartedAtUtc = now;
+            _getGraphCalls++;
+            if (_getGraphCalls == 1)
+                return Task.FromException<string>(new InvalidOperationException("transient graph failure"));
+
+            return Task.FromResult(_stableJson);
+        }
+
+        public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+
+        public Task<WorkflowViewDto> GetWorkflowViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
+    }
+
     private sealed class ThrowingWorkflowService : IWorkflowService
     {
         public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct) =>
@@ -172,7 +229,7 @@ public sealed class WorkflowStreamServiceTests
         http.Response.Body = new MemoryStream();
 
         using var cts = new CancellationTokenSource();
-        cts.CancelAfter(1500); // allow first iteration; cancel while waiting for the 2000ms delay
+        cts.CancelAfter(WorkflowStreamService.GraphPollingIntervalMilliseconds - 500); // 1 周目の取得後、次の待機中にキャンセル
 
         // Act
         await Assert.ThrowsAsync<TaskCanceledException>(() => sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", cts.Token));
@@ -202,7 +259,7 @@ public sealed class WorkflowStreamServiceTests
         http.Response.Body = new MemoryStream();
 
         using var cts = new CancellationTokenSource();
-        cts.CancelAfter(2200); // allow 2 iterations (2000ms delay) then cancel during the next delay
+        cts.CancelAfter(WorkflowStreamService.GraphPollingIntervalMilliseconds * 2 + 200); // 2 周のポーリング後、次の待機中にキャンセル
 
         // Act
         await Assert.ThrowsAsync<TaskCanceledException>(() => sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", cts.Token));
@@ -234,7 +291,7 @@ public sealed class WorkflowStreamServiceTests
 
         const string idOrUuid = "client-supplied-id";
         using var cts = new CancellationTokenSource();
-        cts.CancelAfter(1500);
+        cts.CancelAfter(WorkflowStreamService.GraphPollingIntervalMilliseconds - 500);
 
         // Act
         await Assert.ThrowsAsync<TaskCanceledException>(() =>
@@ -265,7 +322,7 @@ public sealed class WorkflowStreamServiceTests
         http.Response.Body = new MemoryStream();
 
         using var cts = new CancellationTokenSource();
-        cts.CancelAfter(4500);
+        cts.CancelAfter(WorkflowStreamService.GraphPollingIntervalMilliseconds * 2 + 500);
 
         // Act
         await Assert.ThrowsAsync<TaskCanceledException>(() =>
@@ -273,6 +330,40 @@ public sealed class WorkflowStreamServiceTests
 
         // Assert
         Assert.True(fakeWorkflows.GetGraphJsonCalls >= 2);
+        var bodyText = System.Text.Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray());
+        Assert.Contains("GraphUpdated", bodyText);
+    }
+
+    /// <summary>グラフ取得が例外のときも、成功時と同じポーリング間隔で再試行する。</summary>
+    [Fact]
+    public async Task WriteStreamAsync_WhenGetGraphJsonThrowsOnce_WaitsGraphPollingIntervalBeforeRetry()
+    {
+        // Arrange
+        var stableJson = "{\"nodes\":[]}";
+        var fakeWorkflows = new FailOnceThenStableWithCallSpacingWorkflowService(stableJson);
+        var display = new FakeDisplayIdService
+        {
+            ResolveResult = Guid.NewGuid(),
+            GetDisplayIdResult = "EXEC-TIMING"
+        };
+
+        var sut = new WorkflowStreamService(fakeWorkflows, display);
+
+        var http = new DefaultHttpContext();
+        http.Response.Body = new MemoryStream();
+
+        using var cts = new CancellationTokenSource();
+        cts.CancelAfter(WorkflowStreamService.GraphPollingIntervalMilliseconds * 2 + 500);
+
+        // Act
+        await Assert.ThrowsAsync<TaskCanceledException>(() =>
+            sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", cts.Token));
+
+        // Assert
+        Assert.NotNull(fakeWorkflows.TimeSincePreviousGetGraphStarted);
+        Assert.True(
+            fakeWorkflows.TimeSincePreviousGetGraphStarted >= TimeSpan.FromMilliseconds(WorkflowStreamService.GraphPollingIntervalMilliseconds - 150),
+            $"Expected spacing >= {WorkflowStreamService.GraphPollingIntervalMilliseconds - 150} ms, was {fakeWorkflows.TimeSincePreviousGetGraphStarted!.Value.TotalMilliseconds} ms");
         var bodyText = System.Text.Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray());
         Assert.Contains("GraphUpdated", bodyText);
     }
