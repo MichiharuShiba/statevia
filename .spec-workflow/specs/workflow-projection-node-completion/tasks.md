@@ -56,23 +56,24 @@
   - dead-letter 退避時は構造化ログとメトリクスを出力し、手動リカバリ手順をドキュメント化する
   - _要件: Requirement 3, Requirement 5, Non-Functional（可観測性）_
 
-- [-] **T10** — テスト（Engine / API）
+- [x] **T10** — テスト（Engine / API）
   - Engine 通知発火（通常・Join）を単体テストで追加する
   - Queue の coalesce・満杯ブロック・デバウンス 0/50ms を単体テストで追加する
   - retry 上限・バックオフ・dead-letter 遷移の単体/統合テストを追加する
   - Cancel/Events との競合防止、shutdown ドレインを統合テストで確認する
-  - 進捗: Engine 通知発火、retry/backoff/dead-letter、Cancel/Events の drain 失敗、shutdown ドレイン（停止直前 pending を取りこぼさない）テストを追加済み。実行確認は SonarAnalyzer 依存エラー解消後に再実施。
+  - 進捗: 上記に加え、グローバルキュー満杯時のブロック、`Directory.Build.targets` による壊れた SonarLint アナライザ除去で `dotnet test` 実行可能に。
   - _要件: Requirement 1-5, Non-Functional（テスト）_
 
-- [-] **T11** — SSE 非変更の回帰確認
+- [x] **T11** — SSE 非変更の回帰確認
   - `GET /v1/workflows/{id}/stream` の約 2 秒ポーリング挙動が変わらないことを確認する
   - 必要なら既存テスト（`WorkflowStreamServiceTests`）を補強する
-  - 進捗: 既存 `WorkflowStreamServiceTests` の 2 秒間隔前提ケースを確認し、`IWorkflowService` 変更追従のテスト修正を反映。実行確認は SonarAnalyzer 依存エラーを解消後に継続。
+  - 進捗: `WorkflowStreamService.GraphPollingIntervalMilliseconds` を単一ソース化し、既存テストのタイムアウトと catch 経路の待機間隔テストを追加。
   - _要件: Requirement 6_
 
-- [ ] **T12** — 最終検証とドキュメント同期
+- [x] **T12** — 最終検証とドキュメント同期
   - `dotnet test`（該当範囲）と必要な型チェックを実施する
   - `docs/statevia-data-integration-contract.md` と実装差分がないか確認し、差分があれば doc を更新する
+  - 進捗: `api/statevia-api.sln` で `dotnet test` 237 件、`engine/statevia-engine.sln` でエンジン系テスト成功。SSE 間隔を `docs/statevia-data-integration-contract.md` の SSE 節に追記。リポジトリ直下 `Directory.Build.targets` で壊れた SonarLint パスのアナライザを除去。
   - _要件: Non-Functional（ドキュメント）_
 
 ---
