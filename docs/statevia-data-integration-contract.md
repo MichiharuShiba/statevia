@@ -230,7 +230,7 @@ SSE でサーバから UI へ「再取得のきっかけ」を送ると、ポー
 
 - **`GET /v1/workflows/{id}/stream`**（`{id}` は **display_id または resource_id（UUID）** のいずれか。`X-Tenant-Id` は他 Read API と同様。UI からは `EventSource` 等でプロキシ URL に接続し、テナントは `docs/ui-api-auth-tenant-config.md` / `ui-push-api-spec.md` に従う）
 - 応答ヘッダ: `Content-Type: text/event-stream`、`Cache-Control: no-cache, no-transform` 等（中間プロキシのバッファリング抑止用ヘッダを付与）
-- **サーバ側挙動（実装準拠）**: 約 **2 秒**間隔で投影済みグラフ JSON を読み、内容の SHA-256 が前回から変わったときだけ **1 行の `data:`** を書き込む。接続はクライアントが閉じるまで継続（長時間ポーリング型 SSE）。
+- **サーバ側挙動（実装準拠）**: 約 **2 秒**間隔で投影済みグラフ JSON を読み、内容の SHA-256 が前回から変わったときだけ **1 行の `data:`** を書き込む。接続はクライアントが閉じるまで継続（長時間ポーリング型 SSE）。実装では当該間隔を `WorkflowStreamService.GraphPollingIntervalMilliseconds`（現在 **2000** ms）に集約している。
 
 #### 5.1.1 `data:` 行の JSON 形（`GraphUpdated`）
 
