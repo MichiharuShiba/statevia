@@ -1,0 +1,18 @@
+<Project>
+  <!--
+    SonarQube for IDE / SonarLint が Temp 配下の .sonarqube に置く Analyzer が
+    壊れたパスを参照すると CS0006 になるため、存在しない Temp 配下エントリのみ除去する。
+    既存ファイルや Temp 以外の Analyzer は除去しない。
+  -->
+  <Target Name="RemoveSonarLintTempAnalyzersWhenPathBroken" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <_MissingTempSonarAnalyzer
+        Include="@(Analyzer)"
+        Condition="
+          $([MSBuild]::ValueOrDefault('%(Analyzer.Identity)', '').Contains('.sonarqube')) and
+          $([MSBuild]::ValueOrDefault('%(Analyzer.Identity)', '').Contains('\AppData\Local\Temp\')) and
+          !Exists('%(Analyzer.Identity)')" />
+      <Analyzer Remove="@(_MissingTempSonarAnalyzer)" />
+    </ItemGroup>
+  </Target>
+</Project>
