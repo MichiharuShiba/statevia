@@ -461,5 +461,96 @@ public class StateWorkflowDefinitionLoaderTests
         var ex = Assert.Throws<ArgumentException>(() => loader.Load(yaml));
         Assert.Contains("invalid input.path", ex.Message, StringComparison.Ordinal);
     }
+
+    /// <summary>`on.&lt;Fact&gt;.cases/default` と `default` ショートハンドをパースできることを検証する。</summary>
+    [Fact]
+    public void Load_ParsesTransitionCasesAndDefaultShorthand()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              Route:
+                on:
+                  Completed:
+                    cases:
+                      - order: 1
+                        when:
+                          path: $.risk.score
+                          op: gt
+                          value: 30
+                        next: Manual
+                      - when:
+                          path: $.risk.band
+                          op: in
+                          value: [1, 2, 3]
+                        next: Auto
+                    default: Auto
+              Manual:
+                on:
+                  Completed:
+                    end: true
+              Auto:
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+        var transition = def.States["Route"].On!["Completed"];
+
+        // Assert
+        Assert.NotNull(transition.Cases);
+        Assert.Equal(2, transition.Cases!.Count);
+        Assert.Equal(1, transition.Cases[0].Order);
+        Assert.Equal("$.risk.score", transition.Cases[0].When.Path);
+        Assert.Equal("gt", transition.Cases[0].When.Op);
+        Assert.Equal("Manual", transition.Cases[0].Transition.Next);
+        Assert.Null(transition.Cases[1].Order);
+        Assert.Equal("in", transition.Cases[1].When.Op);
+        Assert.Equal("Auto", transition.Cases[1].Transition.Next);
+        Assert.NotNull(transition.Default);
+        Assert.Equal("Auto", transition.Default!.Next);
+    }
+
+    /// <summary>`default` オブジェクト形式で `end: true` をパースできることを検証する。</summary>
+    [Fact]
+    public void Load_ParsesTransitionDefaultAsObject()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              Route:
+                on:
+                  Completed:
+                    cases:
+                      - when:
+                          path: $.result.ok
+                          op: eq
+                          value: true
+                        next: Done
+                    default:
+                      end: true
+              Done:
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+        var transition = def.States["Route"].On!["Completed"];
+
+        // Assert
+        Assert.NotNull(transition.Default);
+        Assert.True(transition.Default!.End);
+        Assert.Null(transition.Default.Next);
+    }
 }
 
