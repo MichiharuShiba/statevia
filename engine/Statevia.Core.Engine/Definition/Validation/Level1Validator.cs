@@ -1,3 +1,5 @@
+using Statevia.Core.Engine.Definition;
+
 namespace Statevia.Core.Engine.Definition.Validation;
 
 /// <summary>
@@ -56,25 +58,55 @@ public static class Level1Validator
         foreach (var (_, trans) in stateDef.On)
         {
             ValidateNextTransition(stateName, trans, stateNames, errors);
-            ValidateForkTransition(trans, stateNames, errors);
         }
     }
 
     private static void ValidateNextTransition(string stateName, TransitionDefinition trans, HashSet<string> stateNames, List<string> errors)
     {
-        if (trans.Next == null)
+        ValidateTransitionTree(stateName, trans, stateNames, errors);
+    }
+
+    private static void ValidateTransitionTree(
+        string stateName,
+        TransitionDefinition? trans,
+        HashSet<string> stateNames,
+        List<string> errors)
+    {
+        if (trans is null)
         {
             return;
         }
 
-        if (trans.Next.Equals(stateName, StringComparison.OrdinalIgnoreCase))
+        ValidateNextPointer(stateName, trans.Next, stateNames, errors);
+        ValidateForkTransition(trans, stateNames, errors);
+        ValidateTransitionTree(stateName, trans.Default, stateNames, errors);
+
+        if (trans.Cases is null)
+        {
+            return;
+        }
+
+        foreach (var c in trans.Cases)
+        {
+            ValidateTransitionTree(stateName, c.Transition, stateNames, errors);
+        }
+    }
+
+    private static void ValidateNextPointer(string stateName, string? next, HashSet<string> stateNames, List<string> errors)
+    {
+        if (next == null)
+        {
+            return;
+        }
+
+        if (next.Equals(stateName, StringComparison.OrdinalIgnoreCase))
         {
             errors.Add($"Self-transition not allowed: {stateName} -> {stateName}");
         }
 
-        if (!stateNames.Contains(trans.Next))
+        if (!stateNames.Contains(next))
         {
-            errors.Add($"Reference to unknown state: {trans.Next}");
+            errors.Add($"Reference to unknown state: {next}");
         }
     }
 
@@ -114,7 +146,7 @@ public static class Level1Validator
 
         if (m.Path != null)
         {
-            if (!IsValidSimpleJsonPath(m.Path))
+            if (!SimpleJsonPath.IsValid(m.Path))
             {
                 errors.Add($"input.path is invalid for state '{stateName}': {m.Path}");
             }
@@ -135,42 +167,13 @@ public static class Level1Validator
                 continue;
             }
 
-            if (valueDef.Path != null && !IsValidSimpleJsonPath(valueDef.Path))
+            if (valueDef.Path != null && !SimpleJsonPath.IsValid(valueDef.Path))
             {
                 errors.Add($"input.path is invalid for state '{stateName}' key '{key}': {valueDef.Path}");
             }
         }
     }
 
-    // Supported subset: "$" or "$.a.b" (alnum/_ segments)
-    private static bool IsValidSimpleJsonPath(string path)
-    {
-        if (path == "$")
-        {
-            return true;
-        }
-
-        if (!path.StartsWith("$.", StringComparison.Ordinal) || path.EndsWith('.'))
-        {
-            return false;
-        }
-
-        var segments = path[2..].Split('.', StringSplitOptions.RemoveEmptyEntries);
-        if (segments.Length == 0)
-        {
-            return false;
-        }
-
-        foreach (var seg in segments)
-        {
-            if (seg.Length == 0 || seg.Any(ch => !(char.IsLetterOrDigit(ch) || ch == '_')))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
 }
 
 /// <summary>検証結果。エラー一覧と有効フラグを保持します。</summary>

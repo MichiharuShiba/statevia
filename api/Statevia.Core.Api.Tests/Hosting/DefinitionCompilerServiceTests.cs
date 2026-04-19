@@ -266,6 +266,127 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
+    /// nodes の単一無条件 edges は next と等価に扱われ、next と併記時は同一先のみ受理する。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesSingleUnconditionalEdge_EquivalentToNext_Succeeds()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: EdgeNextEquiv
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                action: noop
+                next: endNode
+                edges:
+                  - to: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("EdgeNextEquiv", yaml);
+
+        // Assert
+        Assert.NotNull(compiled);
+    }
+
+    /// <summary>
+    /// nodes の next と単一無条件 edges の遷移先が不一致のときは ArgumentException。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesNextAndUnconditionalEdgeMismatch_ThrowsArgumentException()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: EdgeNextMismatch
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                action: noop
+                next: endNode
+                edges:
+                  - to: b
+              - id: b
+                type: action
+                action: noop
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("EdgeNextMismatch", yaml));
+
+        Assert.Contains("must match", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// nodes の条件付き edges は on.Completed の cases/default に正規化され Level1 を通過する。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesConditionalEdges_NormalizesToCasesDefault_Succeeds()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: ConditionalEdges
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                action: noop
+                edges:
+                  - to: high
+                    when:
+                      path: $.x
+                      op: gt
+                      value: 0
+                    order: 10
+                  - to: low
+                    when:
+                      path: $.x
+                      op: lte
+                      value: 0
+                    order: 20
+                  - to: low
+              - id: high
+                type: action
+                action: noop
+                next: endNode
+              - id: low
+                type: action
+                action: noop
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("ConditionalEdges", yaml);
+
+        // Assert
+        Assert.NotNull(compiled);
+    }
+
+    /// <summary>
     /// nodes 配列と states オブジェクトの併存は U10 に従い ArgumentException。
     /// </summary>
     [Fact]

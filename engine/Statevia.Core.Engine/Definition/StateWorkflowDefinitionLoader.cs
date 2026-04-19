@@ -162,7 +162,7 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         }
 
         var whenDict = ToStringDict(whenVal);
-        var when = ParseConditionExpression(whenDict);
+        var when = ParseConditionWhen(whenDict);
 
         var transition = ParseTransition(caseDict);
 
@@ -172,31 +172,6 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
             Order = order,
             When = when,
             Transition = transition
-        };
-    }
-
-    private static ConditionExpressionDefinition ParseConditionExpression(Dictionary<string, object?> whenDict)
-    {
-        var path = GetStr(whenDict, "path");
-        var op = GetStr(whenDict, "op");
-
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            throw new ArgumentException("when requires non-empty 'path'.");
-        }
-
-        if (string.IsNullOrWhiteSpace(op))
-        {
-            throw new ArgumentException("when requires non-empty 'op'.");
-        }
-
-        whenDict.TryGetValue("value", out var value);
-
-        return new ConditionExpressionDefinition
-        {
-            Path = path,
-            Op = op,
-            Value = value
         };
     }
 
@@ -219,22 +194,6 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         }
 
         return ParseTransition(defaultDict);
-    }
-
-    private static int? GetNullableInt(Dictionary<string, object?> dict, string key)
-    {
-        if (!dict.TryGetValue(key, out var value) || value is null)
-        {
-            return null;
-        }
-
-        return value switch
-        {
-            int i => i,
-            long l => checked((int)l),
-            string s when int.TryParse(s, out var parsed) => parsed,
-            _ => null
-        };
     }
 
     private static StateInputDefinition ParseStateInput(object inputVal)
