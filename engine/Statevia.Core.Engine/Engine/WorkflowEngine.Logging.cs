@@ -111,6 +111,17 @@ public sealed partial class WorkflowEngine
                     inputKey,
                     reason));
 
+        /// <summary>条件遷移の path 解決警告（パス未解決・不正経路など）。</summary>
+        public void LogWarningConditionPathResolution(string workflowId, string stateName, string fact, string path, string reason) =>
+            SafeLog(() =>
+                _logger.LogWarning(
+                    "Condition path resolution warning WorkflowId={WorkflowId} StateName={StateName} Fact={Fact} Path={Path} Reason={Reason}",
+                    workflowId,
+                    stateName,
+                    fact,
+                    path,
+                    reason));
+
         /// <summary>FSM に次遷移がなく終端でもない停滞（STV-405）。</summary>
         public void LogWarningNoTransition(string workflowId, string stateName, string fact) =>
             SafeLog(() =>

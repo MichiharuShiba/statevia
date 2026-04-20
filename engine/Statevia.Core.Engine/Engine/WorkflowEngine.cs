@@ -312,7 +312,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
 
         _workflowLog.LogJoinStateCompleted(instance.WorkflowId, joinStateName, nodeId, Fact.Joined);
 
-        var transition = instance.Fsm.Evaluate(joinStateName, Fact.Joined);
+        var transition = EvaluateTransition(instance, joinStateName, Fact.Joined, joinInputs);
         if (transition.HasTransition && transition.Next != null)
         {
             var mappedJoinInput = ApplyStateInput(instance, transition.Next, joinInputs);
@@ -366,7 +366,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
             return;
         }
 
-        var transition = instance.Fsm.Evaluate(stateName, fact);
+        var transition = EvaluateTransition(instance, stateName, fact, output);
         if (!transition.HasTransition)
         {
             if (!transition.End)
@@ -415,6 +415,21 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         }
 
         return evaluated.Value;
+    }
+
+    private TransitionResult EvaluateTransition(WorkflowInstance instance, string stateName, string fact, object? output)
+    {
+        if (instance.Definition.ConditionalTransitions.TryGetValue(stateName, out var stateTransitions)
+            && stateTransitions.TryGetValue(fact, out var compiledTransition))
+        {
+            return OutputConditionEvaluator.Evaluate(
+                compiledTransition,
+                output,
+                onPathWarning: (path, reason) =>
+                    _workflowLog.LogWarningConditionPathResolution(instance.WorkflowId, stateName, fact, path, reason));
+        }
+
+        return instance.Fsm.Evaluate(stateName, fact);
     }
 
     /// <inheritdoc />
