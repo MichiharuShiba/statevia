@@ -30,7 +30,7 @@
   - _Requirements: Requirement 2, Requirement 3, Requirement 4_
   - _Definition of Done: 不正定義が登録時に明示的エラーとなり、許可ケースのみ通過する_
 
-- [ ] **T4** — コンパイル済み遷移モデルへ条件情報を反映
+- [x] **T4** — コンパイル済み遷移モデルへ条件情報を反映
   - File: `engine/Statevia.Core.Engine/Definition/DefinitionCompiler.cs`, `engine/Statevia.Core.Engine/Abstractions/CompiledWorkflowDefinition.cs`
   - 内容: `cases/default` を実行時に参照できるコンパイル済み表現へ落とし込み、`order` と記載順を保持し、`states` 形式の複数 `end: true` をそのまま終端遷移として保持する
   - 目的: エンジンが deterministic に条件遷移を評価できる状態を作る
