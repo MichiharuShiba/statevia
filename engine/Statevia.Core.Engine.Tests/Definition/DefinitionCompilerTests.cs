@@ -287,4 +287,115 @@ public class DefinitionCompilerTests
         Assert.Equal(new[] { "A" }, compiled.JoinTable["Join1"]);
         Assert.Equal(new[] { "B" }, compiled.JoinTable["Join2"]);
     }
+
+    /// <summary>cases/default を含む遷移が ConditionalTransitions に保持されることを検証する。</summary>
+    [Fact]
+    public void Compile_ProducesConditionalTransitionTable_WithStableOrder()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Conditional" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["Route"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new TransitionDefinition
+                        {
+                            Cases =
+                            [
+                                new TransitionCaseDefinition
+                                {
+                                    Order = 20,
+                                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 30 },
+                                    Transition = new TransitionDefinition { Next = "Manual" }
+                                },
+                                new TransitionCaseDefinition
+                                {
+                                    Order = 10,
+                                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "lte", Value = 30 },
+                                    Transition = new TransitionDefinition { Next = "Auto" }
+                                },
+                                new TransitionCaseDefinition
+                                {
+                                    When = new ConditionExpressionDefinition { Path = "$.band", Op = "in", Value = new[] { 1, 2, 3 } },
+                                    Transition = new TransitionDefinition { Next = "Auto" }
+                                }
+                            ],
+                            Default = new TransitionDefinition { Next = "Manual" }
+                        }
+                    }
+                },
+                ["Manual"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } },
+                ["Auto"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } }
+            }
+        };
+        var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
+        var compiler = new DefinitionCompiler(factory);
+
+        // Act
+        var compiled = compiler.Compile(def);
+        var factTransition = compiled.ConditionalTransitions["Route"]["Completed"];
+
+        // Assert
+        Assert.NotNull(factTransition);
+        Assert.Null(factTransition.LinearTarget);
+        Assert.NotNull(factTransition.DefaultTarget);
+        Assert.Equal("Manual", factTransition.DefaultTarget!.Next);
+        Assert.Equal(3, factTransition.Cases.Count);
+        Assert.Equal(10, factTransition.Cases[0].Order);
+        Assert.Equal("$.score", factTransition.Cases[0].When.Path);
+        Assert.Equal(20, factTransition.Cases[1].Order);
+        Assert.Equal("$.score", factTransition.Cases[1].When.Path);
+        Assert.Null(factTransition.Cases[2].Order);
+        Assert.Equal("$.band", factTransition.Cases[2].When.Path);
+    }
+
+    /// <summary>states 形式の複数 end: true 遷移がコンパイル後も維持されることを検証する。</summary>
+    [Fact]
+    public void Compile_PreservesMultipleTerminalTransitions()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "MultiTerminal" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["Start"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new TransitionDefinition { Fork = new[] { "A", "B" } }
+                    }
+                },
+                ["A"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new TransitionDefinition { End = true }
+                    }
+                },
+                ["B"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new TransitionDefinition { End = true }
+                    }
+                }
+            }
+        };
+        var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
+        var compiler = new DefinitionCompiler(factory);
+
+        // Act
+        var compiled = compiler.Compile(def);
+
+        // Assert
+        Assert.True(compiled.Transitions["A"]["Completed"].End);
+        Assert.True(compiled.Transitions["B"]["Completed"].End);
+        Assert.True(compiled.ConditionalTransitions["A"]["Completed"].LinearTarget!.End);
+        Assert.True(compiled.ConditionalTransitions["B"]["Completed"].LinearTarget!.End);
+    }
 }
