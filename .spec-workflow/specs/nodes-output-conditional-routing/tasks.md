@@ -38,7 +38,7 @@
   - _Requirements: Requirement 1, Requirement 2, Requirement 4_
   - _Definition of Done: コンパイル結果に条件遷移情報が保持され、既存 next/fork/end も後方互換で維持される_
 
-- [ ] **T5** — Engine の条件遷移評価を実装
+- [x] **T5** — Engine の条件遷移評価を実装
   - File: `engine/Statevia.Core.Engine/Engine/WorkflowEngine.cs`, `engine/Statevia.Core.Engine/FSM/Fact.cs`
   - 内容: `output` に対する `when.path/op/value` 評価、`order` による選択、`first-match wins`、`default` フォールバック、`in` / `between` の評価を実装する
   - 目的: State 実行結果に応じた次 state 選択をエンジンで実現する
