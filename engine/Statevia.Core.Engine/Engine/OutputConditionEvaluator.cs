@@ -69,7 +69,11 @@ internal static class OutputConditionEvaluator
         ConditionExpressionDefinition condition,
         Action<string, string>? onPathWarning)
     {
-        var op = condition.Op.Trim().ToUpperInvariant();
+        if (!ConditionExpressionOperatorNormalizer.TryNormalize(condition.Op, out var op))
+        {
+            return false;
+        }
+
         if (!TryResolvePath(output, condition.Path, out var actualValue, out var hasPath, onPathWarning))
         {
             return false;

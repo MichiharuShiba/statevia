@@ -8,19 +8,6 @@ namespace Statevia.Core.Engine.Definition.Validation;
 /// </summary>
 public static class Level1Validator
 {
-    private static readonly HashSet<string> SupportedConditionOperators =
-    [
-        "EQ",
-        "NE",
-        "GT",
-        "GTE",
-        "LT",
-        "LTE",
-        "EXISTS",
-        "IN",
-        "BETWEEN"
-    ];
-
     /// <summary>ワークフロー定義を検証し、エラー一覧を返します。</summary>
     public static ValidationResult Validate(WorkflowDefinition definition)
     {
@@ -263,8 +250,7 @@ public static class Level1Validator
             return;
         }
 
-        var op = condition.Op.Trim().ToUpperInvariant();
-        if (!SupportedConditionOperators.Contains(op))
+        if (!ConditionExpressionOperatorNormalizer.TryNormalize(condition.Op, out var op))
         {
             errors.Add(
                 $"Transition '{transitionPath}.cases[{caseIndex}]' has unsupported when.op: '{condition.Op}'.");

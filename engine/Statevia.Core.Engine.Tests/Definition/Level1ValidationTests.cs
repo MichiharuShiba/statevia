@@ -69,6 +69,55 @@ public class Level1ValidationTests
         Assert.Contains("unknown", result.Errors[0], StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// when.op に記号（=、==、!=、SQL 風の不等号、大なり、以上、小なり、以下）を使った cases/default 定義も Level1 検証を通過することを検証する。
+    /// </summary>
+    [Theory]
+    [InlineData("=")]
+    [InlineData("==")]
+    [InlineData("!=")]
+    [InlineData("<>")]
+    [InlineData(">")]
+    [InlineData(">=")]
+    [InlineData("<")]
+    [InlineData("<=")]
+    public void Validate_SymbolicConditionOperators_Pass(string op)
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "Test" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new()
+                        {
+                            Cases =
+                            [
+                                new TransitionCaseDefinition
+                                {
+                                    When = new ConditionExpressionDefinition { Path = "$.x", Op = op, Value = 1 },
+                                    Transition = new TransitionDefinition { Next = "B" }
+                                }
+                            ],
+                            Default = new TransitionDefinition { Next = "B" }
+                        }
+                    }
+                },
+                ["B"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new() { End = true } } }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.True(result.IsValid);
+    }
+
     /// <summary>整合性の取れた定義は Level1 検証を通過することを検証する。</summary>
     [Fact]
     public void Validate_ValidDefinition_Passes()
