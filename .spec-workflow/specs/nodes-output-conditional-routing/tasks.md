@@ -6,7 +6,7 @@
 
 ---
 
-- [ ] **T1** — 定義モデルとローダー拡張の基盤追加
+- [x] **T1** — 定義モデルとローダー拡張の基盤追加
   - File: `engine/Statevia.Core.Engine/Definition/WorkflowDefinition.cs`, `engine/Statevia.Core.Engine/Definition/StateWorkflowDefinitionLoader.cs`
   - 内容: `on.<Fact>.cases/default` を表現できる定義モデルを追加し、states 形式の YAML ローダーが `default` ショートハンド、`order`、`when.path/op/value`、`in`、`between` を読み込めるようにする
   - 目的: 条件遷移を既存 `on: <Fact>` 互換のまま保持できるようにする
@@ -14,7 +14,7 @@
   - _Requirements: Requirement 1, Requirement 2, Requirement 3_
   - _Definition of Done: states 形式の定義モデルとローダーで `cases/default` と `default: <State>` を表現できる_
 
-- [ ] **T2** — nodes 形式の互換入力正規化を実装
+- [x] **T2** — nodes 形式の互換入力正規化を実装
   - File: `api/Statevia.Core.Api/Application/Definition/NodesWorkflowDefinitionLoader.cs`
   - 内容: `nodes.next` と単一無条件 `nodes.edges.to.id` を同一セマンティクスとして扱い、条件付き edge を `on.Completed.cases[]`、無条件 edge を `on.Completed.default` に変換する
   - 目的: 既存 `nodes.next` を維持しつつ、新しい条件遷移表現へ段階移行できるようにする
@@ -22,7 +22,7 @@
   - _Requirements: Requirement 1, Requirement 4_
   - _Definition of Done: `nodes.next` と `nodes.edges` の両入力を受理し、期待どおりの states 定義へ正規化される_
 
-- [ ] **T3** — 定義バリデーションを追加
+- [x] **T3** — 定義バリデーションを追加
   - File: `engine/Statevia.Core.Engine/Definition/Validation/Level1Validator.cs`, `api/Statevia.Core.Api/Application/Definition/NodesWorkflowDefinitionLoader.cs`
   - 内容: `next/fork/end` と `cases/default` の混在禁止、`default` 必須、`default` オブジェクトの単一遷移制約、`when.path` の簡易 JSONPath 制約、`in` と `between` の value 形状制約、`nodes.next` と `nodes.edges.to.id` 併記時の一致確認、`nodes` 形式の単一 `type: end` 制約、`states` 形式の終端必須、空遷移禁止、`end: true` と `next/fork` の併記禁止を実装する
   - 目的: 実行前に解釈不能な定義を 422 で拒否する

@@ -299,6 +299,39 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
+    /// start ノードが next ではなく単一無条件 edges のみを持つ場合でも受理される。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesStartWithEdgesOnly_Succeeds()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: StartEdgesOnly
+            nodes:
+              - id: start
+                type: start
+                edges:
+                  - to: a
+              - id: a
+                type: action
+                action: noop
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("StartEdgesOnly", yaml);
+
+        // Assert
+        Assert.NotNull(compiled);
+        Assert.Equal("start", compiled.InitialState, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// nodes の next と単一無条件 edges の遷移先が不一致のときは ArgumentException。
     /// </summary>
     [Fact]

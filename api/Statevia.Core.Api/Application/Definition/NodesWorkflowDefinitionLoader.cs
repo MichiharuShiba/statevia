@@ -150,9 +150,9 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         Dictionary<string, ParsedNode> byId,
         ParsedNode start)
     {
-        if (string.IsNullOrEmpty(start.Next))
+        if (!start.OutNeighborIds().Any())
         {
-            throw new ArgumentException($"Start node '{start.Id}' must have 'next'.");
+            throw new ArgumentException($"Start node '{start.Id}' must have at least one outgoing transition ('next' or 'edges').");
         }
 
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
