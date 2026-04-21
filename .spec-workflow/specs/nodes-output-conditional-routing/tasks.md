@@ -46,7 +46,7 @@
   - _Requirements: Requirement 2, Requirement 3, Requirement 5_
   - _Definition of Done: 条件一致・未一致・default フォールバック・比較演算が仕様どおり動作する_
 
-- [ ] **T6** — エラー可視化とデバッグ返却方針を反映
+- [x] **T6** — エラー可視化とデバッグ返却方針を反映
   - File: `engine/Statevia.Core.Engine/Engine/WorkflowEngine.cs`, `api/Statevia.Core.Api/Services/DefinitionService.cs`, `api/Statevia.Core.Api/Hosting/DefinitionCompilerService.cs`
   - 内容: Engine は既存エラー配列方針を維持しつつ条件評価エラーを返し、API はデバッグ用途で評価対象 case・採用結果・no-match 理由を返却できるようにする
   - 目的: 条件遷移の不一致や評価不能を運用で追跡しやすくする
@@ -78,10 +78,18 @@
   - _Requirements: Non-Functional（Documentation Lifecycle）, Non-Functional（Reliability）_
   - _Definition of Done: 該当テストが通り、実装後に `docs/` へ反映すべき内容が明文化されている_
 
+- [ ] **T10** — JSON 出力命名を camelCase に統一
+  - File: `engine/Statevia.Core.Engine/ExecutionGraph/ExecutionGraph.cs`, `api/Statevia.Core.Api/Hosting/DefinitionCompilerService.cs`, `api/Statevia.Core.Api/Services/WorkflowViewMapper.cs`, 関連テスト
+  - 内容: Engine の `ExportExecutionGraph` と API が返すデバッグ用 JSON（`compiledJson` 含む）で命名ポリシーを camelCase に統一し、既存パーサ依存箇所を移行する
+  - 目的: 出力経路ごとの PascalCase / camelCase 混在を解消し、契約の一貫性を確保する
+  - _Leverage: `engine/Statevia.Core.Engine/ExecutionGraph/ExecutionGraph.cs`, `api/Statevia.Core.Api/Hosting/DefinitionCompilerService.cs`_
+  - _Requirements: Non-Functional（Clarity）, Non-Functional（Observability）_
+  - _Definition of Done: 実行グラフ JSON とコンパイル済み JSON のキー名が camelCase で統一され、回帰テストで固定化されている_
+
 ---
 
 ## 実行メモ
 
 - 着手中は `[ ]` を `[-]`、完了後は `[x]` に更新する。
-- 実装順は `T1 -> T2 -> T3 -> T4 -> T5 -> T6 -> T7 -> T8 -> T9` を基本とする。
+- 実装順は `T1 -> T2 -> T3 -> T4 -> T5 -> T6 -> T7 -> T8 -> T9 -> T10` を基本とする。
 - `docs/` 配下の更新は `T9` 以降、実装とテスト完了後に行う。
