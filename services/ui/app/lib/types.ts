@@ -22,6 +22,7 @@ export type WorkflowGraphNodeDTO = {
   completedAt?: string | null;
   fact?: string | null;
   output?: unknown;
+  conditionRouting?: unknown;
 };
 
 /** v2: GET /v1/workflows/:id/graph の辺（C# ExecutionEdge）。 */
@@ -46,6 +47,7 @@ export type ExecutionNodeDTO = {
   workerId: string | null;
   waitKey: string | null;
   canceledByExecution: boolean;
+  conditionRouting?: unknown;
   error?: { message?: string } | null;
   cancelReason?: string | null;
 };
