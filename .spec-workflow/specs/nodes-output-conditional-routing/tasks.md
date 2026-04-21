@@ -54,7 +54,7 @@
   - _Requirements: Requirement 3, Non-Functional（Observability）_
   - _Definition of Done: Engine と API の返却方針が仕様と一致し、UI が利用できる評価情報が揃う_
 
-- [ ] **T7** — 単体テストを追加
+- [x] **T7** — 単体テストを追加
   - File: `engine/Statevia.Core.Engine.Tests/Definition/StateWorkflowDefinitionLoaderTests.cs`, `engine/Statevia.Core.Engine.Tests/Definition/DefinitionValidatorTests.cs`, `engine/Statevia.Core.Engine.Tests/Definition/DefinitionCompilerTests.cs`, `engine/Statevia.Core.Engine.Tests/Engine/WorkflowEngineTests.cs`
   - 内容: `cases/default`、`default` ショートハンド、`nodes.next` / `nodes.edges` 互換、`in`、`between`、`order`、混在禁止、不正 path、不正 value 形状の単体テストを追加する
   - 目的: 仕様追加による回帰を局所的に防ぐ
