@@ -20,6 +20,7 @@ public sealed class DefinitionCompiler
         {
             Name = definition.Workflow.Name,
             Transitions = BuildTransitionTable(definition),
+            ConditionalTransitions = BuildConditionalTransitionTable(definition),
             ForkTable = BuildForkTable(definition),
             JoinTable = BuildJoinTable(definition),
             WaitTable = BuildWaitTable(definition),
@@ -58,7 +59,7 @@ public sealed class DefinitionCompiler
                 {
                     continue;
                 }
-                var target = new TransitionTarget { Next = trans.Next, Fork = trans.Fork, End = trans.End };
+                var target = ToTransitionTarget(trans);
                 if (target.Next != null || target.Fork != null || target.End)
                 {
                     stateTransitions[fact] = target;
@@ -71,6 +72,72 @@ public sealed class DefinitionCompiler
         }
         return result.ToDictionary(k => k.Key, v => (IReadOnlyDictionary<string, TransitionTarget>)v.Value, StringComparer.OrdinalIgnoreCase);
     }
+
+    private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, CompiledFactTransition>> BuildConditionalTransitionTable(WorkflowDefinition definition)
+    {
+        var result = new Dictionary<string, Dictionary<string, CompiledFactTransition>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (stateName, stateDef) in definition.States)
+        {
+            if (stateDef.On is null)
+            {
+                continue;
+            }
+
+            var stateTransitions = new Dictionary<string, CompiledFactTransition>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (fact, transition) in stateDef.On)
+            {
+                stateTransitions[fact] = CompileFactTransition(transition);
+            }
+
+            if (stateTransitions.Count > 0)
+            {
+                result[stateName] = stateTransitions;
+            }
+        }
+
+        return result.ToDictionary(
+            keySelector: pair => pair.Key,
+            elementSelector: pair => (IReadOnlyDictionary<string, CompiledFactTransition>)pair.Value,
+            comparer: StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static CompiledFactTransition CompileFactTransition(TransitionDefinition transition)
+    {
+        var linearTarget = ToTransitionTarget(transition);
+        var defaultTarget = transition.Default is null ? null : ToTransitionTarget(transition.Default);
+        var orderedCases = CompileCases(transition.Cases);
+
+        return new CompiledFactTransition
+        {
+            LinearTarget = linearTarget is { Next: null, Fork: null, End: false } ? null : linearTarget,
+            Cases = orderedCases,
+            DefaultTarget = defaultTarget is { Next: null, Fork: null, End: false } ? null : defaultTarget
+        };
+    }
+
+    private static IReadOnlyList<CompiledTransitionCase> CompileCases(IReadOnlyList<TransitionCaseDefinition>? cases)
+    {
+        if (cases is null || cases.Count == 0)
+        {
+            return [];
+        }
+
+        return cases
+            .Select((transitionCase, index) => new CompiledTransitionCase
+            {
+                Order = transitionCase.Order,
+                DeclarationIndex = index,
+                When = transitionCase.When,
+                Target = ToTransitionTarget(transitionCase.Transition)
+            })
+            .OrderBy(transitionCase => transitionCase.Order.HasValue ? 0 : 1)
+            .ThenBy(transitionCase => transitionCase.Order ?? int.MaxValue)
+            .ThenBy(transitionCase => transitionCase.DeclarationIndex)
+            .ToList();
+    }
+
+    private static TransitionTarget ToTransitionTarget(TransitionDefinition transition) =>
+        new() { Next = transition.Next, Fork = transition.Fork, End = transition.End };
 
     private static IReadOnlyDictionary<string, IReadOnlyList<string>> BuildForkTable(WorkflowDefinition definition)
     {
@@ -128,17 +195,7 @@ public sealed class DefinitionCompiler
             {
                 foreach (var (_, trans) in stateDef.On)
                 {
-                    if (trans.Next != null)
-                    {
-                        allReferenced.Add(trans.Next);
-                    }
-                    if (trans.Fork != null)
-                    {
-                        foreach (var s in trans.Fork)
-                        {
-                            allReferenced.Add(s);
-                        }
-                    }
+                    CollectTransitionReferences(trans, allReferenced);
                 }
             }
             if (stateDef.Join?.AllOf != null)
@@ -152,5 +209,36 @@ public sealed class DefinitionCompiler
         return definition.States.Keys.FirstOrDefault(s => !allReferenced.Contains(s))
             ?? definition.States.Keys.First()
             ?? throw new InvalidOperationException("No states in definition");
+    }
+
+    private static void CollectTransitionReferences(TransitionDefinition? transition, HashSet<string> allReferenced)
+    {
+        if (transition is null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(transition.Next))
+        {
+            allReferenced.Add(transition.Next);
+        }
+
+        if (transition.Fork is { Count: > 0 })
+        {
+            foreach (var forkTarget in transition.Fork)
+            {
+                allReferenced.Add(forkTarget);
+            }
+        }
+
+        if (transition.Cases is not null)
+        {
+            foreach (var transitionCase in transition.Cases)
+            {
+                CollectTransitionReferences(transitionCase.Transition, allReferenced);
+            }
+        }
+
+        CollectTransitionReferences(transition.Default, allReferenced);
     }
 }

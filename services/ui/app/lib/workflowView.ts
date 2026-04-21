@@ -21,6 +21,9 @@ function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNod
   const fact =
     n.fact ??
     ((n as Record<string, unknown>).Fact as string | null | undefined);
+  const conditionRouting =
+    n.conditionRouting ??
+    (n as Record<string, unknown>).ConditionRouting;
 
   let status: ExecutionNodeDTO["status"] = "RUNNING";
   const factText = String(fact ?? "").toLowerCase();
@@ -36,7 +39,8 @@ function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNod
     attempt: 0,
     workerId: null,
     waitKey: null,
-    canceledByExecution: false
+    canceledByExecution: false,
+    conditionRouting
   };
 }
 

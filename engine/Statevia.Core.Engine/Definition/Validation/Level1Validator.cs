@@ -1,3 +1,6 @@
+using System.Collections;
+using Statevia.Core.Engine.Definition;
+
 namespace Statevia.Core.Engine.Definition.Validation;
 
 /// <summary>
@@ -17,14 +20,20 @@ public static class Level1Validator
         }
 
         var stateNames = new HashSet<string>(definition.States.Keys, StringComparer.OrdinalIgnoreCase);
+        var terminalTransitionCount = 0;
 
         foreach (var (stateName, stateDef) in definition.States)
         {
             ValidateStateName(stateName, errors);
             ValidateActionAndWait(stateName, stateDef, errors);
-            ValidateTransitions(stateName, stateDef, stateNames, errors);
+            ValidateTransitions(stateName, stateDef, stateNames, errors, ref terminalTransitionCount);
             ValidateJoin(stateDef, stateNames, errors);
             ValidateStateInput(stateName, stateDef, errors);
+        }
+
+        if (terminalTransitionCount == 0)
+        {
+            errors.Add("At least one terminal transition (end: true) is required.");
         }
 
         return new ValidationResult(errors);
@@ -46,49 +55,249 @@ public static class Level1Validator
         }
     }
 
-    private static void ValidateTransitions(string stateName, StateDefinition stateDef, HashSet<string> stateNames, List<string> errors)
+    private static void ValidateTransitions(
+        string stateName,
+        StateDefinition stateDef,
+        HashSet<string> stateNames,
+        List<string> errors,
+        ref int terminalTransitionCount)
     {
         if (stateDef.On == null)
         {
             return;
         }
 
-        foreach (var (_, trans) in stateDef.On)
+        foreach (var (fact, trans) in stateDef.On)
         {
-            ValidateNextTransition(stateName, trans, stateNames, errors);
-            ValidateForkTransition(trans, stateNames, errors);
+            ValidateTransitionTree(
+                stateName,
+                $"on.{fact}",
+                trans,
+                stateNames,
+                errors,
+                isDefaultTransition: false,
+                ref terminalTransitionCount);
         }
     }
 
-    private static void ValidateNextTransition(string stateName, TransitionDefinition trans, HashSet<string> stateNames, List<string> errors)
+    private static void ValidateTransitionTree(
+        string stateName,
+        string transitionPath,
+        TransitionDefinition? trans,
+        HashSet<string> stateNames,
+        List<string> errors,
+        bool isDefaultTransition,
+        ref int terminalTransitionCount)
     {
-        if (trans.Next == null)
+        if (trans is null)
         {
             return;
         }
 
-        if (trans.Next.Equals(stateName, StringComparison.OrdinalIgnoreCase))
+        var hasNext = !string.IsNullOrWhiteSpace(trans.Next);
+        var hasFork = trans.Fork is { Count: > 0 };
+        var hasEnd = trans.End;
+        var hasCases = trans.Cases is { Count: > 0 };
+        var hasDefault = trans.Default is not null;
+        var usesLinearForm = hasNext || trans.Fork is not null || hasEnd;
+        var usesConditionalForm = trans.Cases is not null || hasDefault;
+        var linearCount = (hasNext ? 1 : 0) + (hasFork ? 1 : 0) + (hasEnd ? 1 : 0);
+
+        if (hasEnd)
+        {
+            terminalTransitionCount++;
+        }
+
+        if (trans.Fork is { Count: 0 })
+        {
+            errors.Add($"Transition '{transitionPath}' has empty fork target list.");
+        }
+
+        if (trans.Cases is { Count: 0 })
+        {
+            errors.Add($"Transition '{transitionPath}' has empty cases list.");
+        }
+
+        if (isDefaultTransition)
+        {
+            if (usesConditionalForm)
+            {
+                errors.Add($"Transition '{transitionPath}' must not include cases/default inside default transition.");
+            }
+
+            if (linearCount != 1)
+            {
+                errors.Add($"Transition '{transitionPath}' must define exactly one of next/fork/end.");
+            }
+        }
+        else
+        {
+            if (usesLinearForm && usesConditionalForm)
+            {
+                errors.Add($"Transition '{transitionPath}' cannot mix next/fork/end with cases/default.");
+            }
+
+            if (!usesLinearForm && !usesConditionalForm)
+            {
+                errors.Add($"Transition '{transitionPath}' must define next/fork/end or cases/default.");
+            }
+
+            if (usesLinearForm && !usesConditionalForm && linearCount != 1)
+            {
+                errors.Add($"Transition '{transitionPath}' must define exactly one of next/fork/end.");
+            }
+
+            if (hasCases && !hasDefault)
+            {
+                errors.Add($"Transition '{transitionPath}' requires default when cases are defined.");
+            }
+
+            if (!hasCases && hasDefault)
+            {
+                errors.Add($"Transition '{transitionPath}' cannot define default without cases.");
+            }
+
+            if (hasEnd && (hasNext || hasFork))
+            {
+                errors.Add($"Transition '{transitionPath}' cannot combine end: true with next/fork.");
+            }
+        }
+
+        if (hasNext)
+        {
+            ValidateNextPointer(stateName, trans.Next, stateNames, errors);
+        }
+
+        if (trans.Fork is not null)
+        {
+            ValidateForkTransition(transitionPath, trans.Fork, stateNames, errors);
+        }
+
+        if (trans.Cases is not null)
+        {
+            for (var i = 0; i < trans.Cases.Count; i++)
+            {
+                var transitionCase = trans.Cases[i];
+                ValidateCondition(transitionPath, i, transitionCase.When, errors);
+                ValidateTransitionTree(
+                    stateName,
+                    $"{transitionPath}.cases[{i}]",
+                    transitionCase.Transition,
+                    stateNames,
+                    errors,
+                    isDefaultTransition: false,
+                    ref terminalTransitionCount);
+            }
+        }
+
+        if (trans.Default is not null)
+        {
+            ValidateTransitionTree(
+                stateName,
+                $"{transitionPath}.default",
+                trans.Default,
+                stateNames,
+                errors,
+                isDefaultTransition: true,
+                ref terminalTransitionCount);
+        }
+    }
+
+    private static void ValidateNextPointer(string stateName, string? next, HashSet<string> stateNames, List<string> errors)
+    {
+        if (next == null)
+        {
+            return;
+        }
+
+        if (next.Equals(stateName, StringComparison.OrdinalIgnoreCase))
         {
             errors.Add($"Self-transition not allowed: {stateName} -> {stateName}");
         }
 
-        if (!stateNames.Contains(trans.Next))
+        if (!stateNames.Contains(next))
         {
-            errors.Add($"Reference to unknown state: {trans.Next}");
+            errors.Add($"Reference to unknown state: {next}");
         }
     }
 
-    private static void ValidateForkTransition(TransitionDefinition trans, HashSet<string> stateNames, List<string> errors)
+    private static void ValidateForkTransition(
+        string transitionPath,
+        IReadOnlyList<string> forkStates,
+        HashSet<string> stateNames,
+        List<string> errors)
     {
-        if (trans.Fork == null)
+        foreach (var forkState in forkStates.Where(fs => !stateNames.Contains(fs)))
         {
+            errors.Add($"Fork references unknown state: {forkState} (transition '{transitionPath}')");
+        }
+    }
+
+    private static void ValidateCondition(
+        string transitionPath,
+        int caseIndex,
+        ConditionExpressionDefinition condition,
+        List<string> errors)
+    {
+        if (string.IsNullOrWhiteSpace(condition.Path) || !SimpleJsonPath.IsValid(condition.Path))
+        {
+            errors.Add($"Transition '{transitionPath}.cases[{caseIndex}]' has invalid when.path: {condition.Path}");
+        }
+
+        if (string.IsNullOrWhiteSpace(condition.Op))
+        {
+            errors.Add($"Transition '{transitionPath}.cases[{caseIndex}]' requires non-empty when.op.");
             return;
         }
 
-        foreach (var forkState in trans.Fork.Where(fs => !stateNames.Contains(fs)))
+        if (!ConditionExpressionOperatorNormalizer.TryNormalize(condition.Op, out var op))
         {
-            errors.Add($"Fork references unknown state: {forkState}");
+            errors.Add(
+                $"Transition '{transitionPath}.cases[{caseIndex}]' has unsupported when.op: '{condition.Op}'.");
+            return;
         }
+
+        switch (op)
+        {
+            case "EXISTS":
+                if (condition.Value is not null)
+                {
+                    errors.Add(
+                        $"Transition '{transitionPath}.cases[{caseIndex}]' with op 'exists' must not define value.");
+                }
+
+                break;
+            case "BETWEEN":
+                if (!TryGetCollectionItems(condition.Value, out var range) || range.Count != 2)
+                {
+                    errors.Add($"Transition '{transitionPath}.cases[{caseIndex}]' with op 'between' requires two-element array value.");
+                }
+
+                break;
+            case "IN":
+                if (!TryGetCollectionItems(condition.Value, out _))
+                {
+                    errors.Add($"Transition '{transitionPath}.cases[{caseIndex}]' with op 'in' requires array value.");
+                }
+
+                break;
+        }
+    }
+
+    private static bool TryGetCollectionItems(object? value, out List<object?> items)
+    {
+        items = new List<object?>();
+        if (value is null || value is string || value is not IEnumerable enumerable)
+        {
+            return false;
+        }
+
+        foreach (var item in enumerable)
+        {
+            items.Add(item);
+        }
+
+        return true;
     }
 
     private static void ValidateJoin(StateDefinition stateDef, HashSet<string> stateNames, List<string> errors)
@@ -114,7 +323,7 @@ public static class Level1Validator
 
         if (m.Path != null)
         {
-            if (!IsValidSimpleJsonPath(m.Path))
+            if (!SimpleJsonPath.IsValid(m.Path))
             {
                 errors.Add($"input.path is invalid for state '{stateName}': {m.Path}");
             }
@@ -135,42 +344,13 @@ public static class Level1Validator
                 continue;
             }
 
-            if (valueDef.Path != null && !IsValidSimpleJsonPath(valueDef.Path))
+            if (valueDef.Path != null && !SimpleJsonPath.IsValid(valueDef.Path))
             {
                 errors.Add($"input.path is invalid for state '{stateName}' key '{key}': {valueDef.Path}");
             }
         }
     }
 
-    // Supported subset: "$" or "$.a.b" (alnum/_ segments)
-    private static bool IsValidSimpleJsonPath(string path)
-    {
-        if (path == "$")
-        {
-            return true;
-        }
-
-        if (!path.StartsWith("$.", StringComparison.Ordinal) || path.EndsWith('.'))
-        {
-            return false;
-        }
-
-        var segments = path[2..].Split('.', StringSplitOptions.RemoveEmptyEntries);
-        if (segments.Length == 0)
-        {
-            return false;
-        }
-
-        foreach (var seg in segments)
-        {
-            if (seg.Length == 0 || seg.Any(ch => !(char.IsLetterOrDigit(ch) || ch == '_')))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
 }
 
 /// <summary>検証結果。エラー一覧と有効フラグを保持します。</summary>

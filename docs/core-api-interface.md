@@ -139,12 +139,18 @@ Request:
 
 Response: 200 OK、Content-Type: application/json。Engine の ExecutionGraph を JSON で返す。404 は未存在。
 
+- JSON キー命名は **camelCase**。
+- 条件遷移を評価したノードは `conditionRouting` を含む。
+  - 主要キー: `fact`, `resolution`, `matchedCaseIndex`, `caseEvaluations`, `evaluationErrors`
+  - `resolution` は `linear` / `matched_case` / `default_fallback` / `no_transition`
+
 ### 3.5 状態ビュー（UI）
 
 **GET /v1/workflows/{id}/state?atSeq={seq}**
 
 - **atSeq**: 必須（long）。`event_store` のシーケンスに基づく状態ビュー（`WorkflowViewDto`）。リプレイ用途。
 - Response: 200 OK。404 は未存在。
+- `WorkflowViewDto.nodes[*].conditionRouting` は、実行グラフの `conditionRouting` を API が透過的に返したもの（UI 側で再評価しない）。
 
 ### 3.6 イベントタイムライン（Read）
 
@@ -211,7 +217,12 @@ Request（JSON、省略可）:
 - **Content-Type**: application/json（Body がある場合）
 - **X-Idempotency-Key**: 任意。`POST /v1/workflows` では `definitionId + input` を含むリクエストハッシュで冪等キーを分離する（同一キーでも input が異なれば別リクエスト扱い）。
 
-### 4.2 ステータスコード
+### 4.2 JSON 命名ポリシー（実装準拠）
+
+- Core-API が返す JSON は原則 **camelCase** を採用する。
+- `GET /v1/workflows/{id}/graph`（ExecutionGraph JSON）と、定義コンパイル由来のデバッグ JSON（`compiledJson`）は camelCase で統一済み。
+
+### 4.3 ステータスコード
 
 | 状況               | HTTP |
 | ------------------ | ---- |

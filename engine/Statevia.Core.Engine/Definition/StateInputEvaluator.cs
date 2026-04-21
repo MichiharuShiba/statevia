@@ -2,22 +2,6 @@ using System.Collections;
 
 namespace Statevia.Core.Engine.Definition;
 
-/// <summary>
-/// <c>StateInputEvaluator</c> の Warning ログへ渡す理由文字列（STV-405）。
-/// 条件の基準をコード上で固定する。
-/// </summary>
-internal static class StateInputWarningReasons
-{
-    /// <summary>path が <c>$.</c> で始まらず raw input をそのまま渡すフォールバック。</summary>
-    public const string IgnoredNonDollarDotPath = "IgnoredNonDollarDotPath";
-
-    /// <summary>JSONPath 風セグメントが辞書に存在しない。</summary>
-    public const string PathSegmentMissing = "PathSegmentMissing";
-
-    /// <summary>中間値がマッピング型ではなくトラバース不能。</summary>
-    public const string PathTraversalNotMapping = "PathTraversalNotMapping";
-}
-
 /// <summary>1 件の input 評価警告（同一 <see cref="ApplyWithDiagnostics"/> 呼び出し内の重複は抑制）。</summary>
 internal readonly record struct StateInputWarning(string InputKey, string Reason);
 
@@ -97,42 +81,23 @@ internal static class StateInputEvaluator
             return rawInput;
         }
 
-        if (!path.StartsWith("$.", StringComparison.Ordinal))
+        var resolve = SimpleJsonPathResolver.Resolve(rawInput, path);
+        if (!resolve.IsSupportedPathExpression)
         {
-            Warn(StateInputWarningReasons.IgnoredNonDollarDotPath);
+            if (resolve.WarningReason is not null)
+            {
+                Warn(resolve.WarningReason);
+            }
+
             return rawInput;
         }
 
-        object? current = rawInput;
-        var segments = path[2..].Split('.', StringSplitOptions.RemoveEmptyEntries);
-        foreach (var segment in segments)
+        if (resolve.WarningReason is not null)
         {
-            if (current is IReadOnlyDictionary<string, object?> readOnlyDictionary)
-            {
-                if (!readOnlyDictionary.TryGetValue(segment, out current))
-                {
-                    Warn(StateInputWarningReasons.PathSegmentMissing);
-                    return null;
-                }
-                continue;
-            }
-
-            if (current is IDictionary dictionary)
-            {
-                if (!dictionary.Contains(segment))
-                {
-                    Warn(StateInputWarningReasons.PathSegmentMissing);
-                    return null;
-                }
-                current = dictionary[segment]!;
-                continue;
-            }
-
-            Warn(StateInputWarningReasons.PathTraversalNotMapping);
-            return null;
+            Warn(resolve.WarningReason);
         }
 
-        return current;
+        return resolve.Found ? resolve.Value : null;
     }
 
     private static void SetByDottedKey(Dictionary<string, object?> root, string dottedKey, object? value)

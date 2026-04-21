@@ -40,17 +40,7 @@ public static class Level2Validator
             {
                 foreach (var (_, trans) in stateDef.On)
                 {
-                    if (trans.Next != null)
-                    {
-                        referenced.Add(trans.Next);
-                    }
-                    if (trans.Fork != null)
-                    {
-                        foreach (var s in trans.Fork)
-                        {
-                            referenced.Add(s);
-                        }
-                    }
+                    CollectReferencedStatesCore(trans, referenced);
                 }
             }
             if (stateDef.Join?.AllOf != null)
@@ -95,16 +85,72 @@ public static class Level2Validator
 
         foreach (var (_, trans) in stateDef.On)
         {
-            ProcessNextTransition(trans, reachable, queue);
-            ProcessForkTransition(trans, reachable, queue);
+            ProcessTransitionTreeCore(trans, reachable, queue);
         }
     }
 
-    private static void ProcessNextTransition(TransitionDefinition trans, HashSet<string> reachable, Queue<string> queue)
+    private static void CollectReferencedStatesCore(TransitionDefinition trans, HashSet<string> referenced)
     {
-        if (trans.Next != null && reachable.Add(trans.Next))
+        AddReferencedNext(trans.Next, referenced);
+        if (trans.Fork != null)
         {
-            queue.Enqueue(trans.Next);
+            foreach (var s in trans.Fork)
+            {
+                referenced.Add(s);
+            }
+        }
+
+        if (trans.Default is not null)
+        {
+            CollectReferencedStatesCore(trans.Default, referenced);
+        }
+
+        if (trans.Cases is null)
+        {
+            return;
+        }
+
+        foreach (var c in trans.Cases)
+        {
+            CollectReferencedStatesCore(c.Transition, referenced);
+        }
+    }
+
+    private static void AddReferencedNext(string? next, HashSet<string> referenced)
+    {
+        if (next is null)
+        {
+            return;
+        }
+
+        referenced.Add(next);
+    }
+
+    private static void ProcessTransitionTreeCore(TransitionDefinition trans, HashSet<string> reachable, Queue<string> queue)
+    {
+        EnqueueNext(trans.Next, reachable, queue);
+        ProcessForkTransition(trans, reachable, queue);
+        if (trans.Default is not null)
+        {
+            ProcessTransitionTreeCore(trans.Default, reachable, queue);
+        }
+
+        if (trans.Cases is null)
+        {
+            return;
+        }
+
+        foreach (var c in trans.Cases)
+        {
+            ProcessTransitionTreeCore(c.Transition, reachable, queue);
+        }
+    }
+
+    private static void EnqueueNext(string? next, HashSet<string> reachable, Queue<string> queue)
+    {
+        if (next != null && reachable.Add(next))
+        {
+            queue.Enqueue(next);
         }
     }
 

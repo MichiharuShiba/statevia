@@ -1,3 +1,5 @@
+using System.Collections;
+
 namespace Statevia.Core.Engine.Definition;
 
 /// <summary>
@@ -115,8 +117,84 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
     {
         Next = GetStr(dict, "next"),
         Fork = GetStrList(dict, "fork"),
-        End = GetBool(dict, "end")
+        End = GetBool(dict, "end"),
+        Cases = ParseCases(dict),
+        Default = ParseDefaultTransition(dict)
     };
+
+    private static IReadOnlyList<TransitionCaseDefinition>? ParseCases(Dictionary<string, object?> dict)
+    {
+        if (!dict.TryGetValue("cases", out var casesVal) || casesVal is null)
+        {
+            return null;
+        }
+
+        if (casesVal is not IEnumerable enumerable || casesVal is string)
+        {
+            return null;
+        }
+
+        var result = new List<TransitionCaseDefinition>();
+        foreach (var rawCase in enumerable)
+        {
+            if (rawCase is null)
+            {
+                continue;
+            }
+
+            var caseDict = ToStringDict(rawCase);
+            if (caseDict.Count == 0)
+            {
+                continue;
+            }
+
+            result.Add(ParseCase(caseDict));
+        }
+
+        return result.Count == 0 ? null : result;
+    }
+
+    private static TransitionCaseDefinition ParseCase(Dictionary<string, object?> caseDict)
+    {
+        if (!caseDict.TryGetValue("when", out var whenVal) || whenVal is null)
+        {
+            throw new ArgumentException("case requires 'when'.");
+        }
+
+        var whenDict = ToStringDict(whenVal);
+        var when = ParseConditionWhen(whenDict);
+
+        var transition = ParseTransition(caseDict);
+
+        var order = GetNullableInt(caseDict, "order");
+        return new TransitionCaseDefinition
+        {
+            Order = order,
+            When = when,
+            Transition = transition
+        };
+    }
+
+    private static TransitionDefinition? ParseDefaultTransition(Dictionary<string, object?> dict)
+    {
+        if (!dict.TryGetValue("default", out var defaultVal) || defaultVal is null)
+        {
+            return null;
+        }
+
+        if (defaultVal is string defaultNextState)
+        {
+            return new TransitionDefinition { Next = defaultNextState };
+        }
+
+        var defaultDict = ToStringDict(defaultVal);
+        if (defaultDict.Count == 0)
+        {
+            return null;
+        }
+
+        return ParseTransition(defaultDict);
+    }
 
     private static StateInputDefinition ParseStateInput(object inputVal)
         => ParseStrictInputMapping(inputVal)

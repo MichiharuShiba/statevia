@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Collections.Generic;
 using Statevia.Core.Engine.Abstractions;
@@ -277,6 +279,178 @@ public class WorkflowEngineTests
         Assert.True(snapshot.IsCompleted);
     }
 
+    /// <summary>条件遷移は order 昇順で評価され、最初に一致したケースが採用されることを検証する。</summary>
+    [Fact]
+    public async Task Start_ConditionalTransition_UsesOrderAndFirstMatchWins()
+    {
+        // Arrange
+        string? selectedState = null;
+        var def = CreateDefinitionWithConditionalRoute(
+            routeOutput: new Dictionary<string, object?> { ["score"] = 40 },
+            cases:
+            [
+                new CompiledTransitionCase
+                {
+                    Order = 20,
+                    DeclarationIndex = 0,
+                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 30 },
+                    Target = new TransitionTarget { Next = "Manual" }
+                },
+                new CompiledTransitionCase
+                {
+                    Order = 10,
+                    DeclarationIndex = 1,
+                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "exists" },
+                    Target = new TransitionTarget { Next = "Auto" }
+                }
+            ],
+            defaultTarget: new TransitionTarget { Next = "Fallback" },
+            onTerminalStateExecuted: stateName => selectedState = stateName);
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+
+        // Act
+        var id = engine.Start(def);
+        await Task.Delay(300);
+        var snapshot = engine.GetSnapshot(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+        Assert.Equal("Auto", selectedState);
+    }
+
+    /// <summary>条件不一致時に default 遷移へフォールバックすることを検証する。</summary>
+    [Fact]
+    public async Task Start_ConditionalTransition_UsesDefaultFallback()
+    {
+        // Arrange
+        string? selectedState = null;
+        var def = CreateDefinitionWithConditionalRoute(
+            routeOutput: new Dictionary<string, object?> { ["score"] = 5 },
+            cases:
+            [
+                new CompiledTransitionCase
+                {
+                    Order = 1,
+                    DeclarationIndex = 0,
+                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 10 },
+                    Target = new TransitionTarget { Next = "Manual" }
+                }
+            ],
+            defaultTarget: new TransitionTarget { Next = "Fallback" },
+            onTerminalStateExecuted: stateName => selectedState = stateName);
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+
+        // Act
+        var id = engine.Start(def);
+        await Task.Delay(300);
+        var snapshot = engine.GetSnapshot(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+        Assert.Equal("Fallback", selectedState);
+    }
+
+    /// <summary>条件遷移の診断が実行グラフ JSON の該当ノードに含まれることを検証する（T6 可観測性）。</summary>
+    [Fact]
+    public async Task Start_ConditionalTransition_ExportsRoutingDiagnosticsOnGraph()
+    {
+        // Arrange
+        var def = CreateDefinitionWithConditionalRoute(
+            routeOutput: new Dictionary<string, object?> { ["score"] = 5 },
+            cases:
+            [
+                new CompiledTransitionCase
+                {
+                    Order = 1,
+                    DeclarationIndex = 0,
+                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 10 },
+                    Target = new TransitionTarget { Next = "Manual" }
+                }
+            ],
+            defaultTarget: new TransitionTarget { Next = "Fallback" },
+            onTerminalStateExecuted: _ => { });
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+
+        // Act
+        var id = engine.Start(def);
+        await Task.Delay(300);
+        var graphJson = engine.ExportExecutionGraph(id);
+
+        // Assert
+        using var doc = JsonDocument.Parse(graphJson);
+        var routeNode = doc.RootElement.GetProperty("nodes").EnumerateArray()
+            .First(node =>
+            {
+                return node.TryGetProperty("stateName", out var s1)
+                    && string.Equals(s1.GetString(), "Route", StringComparison.Ordinal);
+            });
+        Assert.False(routeNode.TryGetProperty("ConditionRouting", out _));
+        var routing = routeNode.GetProperty("conditionRouting");
+        Assert.Equal("Completed", routing.GetProperty("fact").GetString());
+        Assert.Equal("default_fallback", routing.GetProperty("resolution").GetString());
+        var matchedIdx = routing.GetProperty("matchedCaseIndex");
+        Assert.Equal(JsonValueKind.Null, matchedIdx.ValueKind);
+        var evaluations = routing.GetProperty("caseEvaluations").EnumerateArray().ToList();
+        Assert.Single(evaluations);
+        Assert.False(evaluations[0].GetProperty("matched").GetBoolean());
+        Assert.Equal("condition_false", evaluations[0].GetProperty("reasonCode").GetString());
+    }
+
+    /// <summary>in と between の条件演算子で遷移先を選択できることを検証する。</summary>
+    [Fact]
+    public async Task Start_ConditionalTransition_SupportsInAndBetween()
+    {
+        // Arrange
+        string? selectedByIn = null;
+        string? selectedByBetween = null;
+        var inDefinition = CreateDefinitionWithConditionalRoute(
+            routeOutput: new Dictionary<string, object?> { ["band"] = 2 },
+            cases:
+            [
+                new CompiledTransitionCase
+                {
+                    Order = 1,
+                    DeclarationIndex = 0,
+                    When = new ConditionExpressionDefinition { Path = "$.band", Op = "in", Value = new[] { 1, 2, 3 } },
+                    Target = new TransitionTarget { Next = "Auto" }
+                }
+            ],
+            defaultTarget: new TransitionTarget { Next = "Fallback" },
+            onTerminalStateExecuted: stateName => selectedByIn = stateName);
+        var betweenDefinition = CreateDefinitionWithConditionalRoute(
+            routeOutput: new Dictionary<string, object?> { ["score"] = 15 },
+            cases:
+            [
+                new CompiledTransitionCase
+                {
+                    Order = 1,
+                    DeclarationIndex = 0,
+                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "between", Value = new[] { 10, 20 } },
+                    Target = new TransitionTarget { Next = "Manual" }
+                }
+            ],
+            defaultTarget: new TransitionTarget { Next = "Fallback" },
+            onTerminalStateExecuted: stateName => selectedByBetween = stateName);
+        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+
+        // Act
+        var inWorkflowId = engine.Start(inDefinition);
+        var betweenWorkflowId = engine.Start(betweenDefinition);
+        await Task.Delay(400);
+        var inSnapshot = engine.GetSnapshot(inWorkflowId);
+        var betweenSnapshot = engine.GetSnapshot(betweenWorkflowId);
+
+        // Assert
+        Assert.NotNull(inSnapshot);
+        Assert.NotNull(betweenSnapshot);
+        Assert.True(inSnapshot.IsCompleted);
+        Assert.True(betweenSnapshot.IsCompleted);
+        Assert.Equal("Auto", selectedByIn);
+        Assert.Equal("Manual", selectedByBetween);
+    }
+
     /// <summary>Store.TryGetOutput が状態実行中に利用される経路を検証する。</summary>
     [Fact]
     public async Task Start_StateCanReadOtherStateOutputViaStore()
@@ -407,6 +581,64 @@ public class WorkflowEngineTests
             ["B"] = DefaultStateExecutor.Create(new StoreReaderState())
         })
     };
+
+    private static CompiledWorkflowDefinition CreateDefinitionWithConditionalRoute(
+        object? routeOutput,
+        IReadOnlyList<CompiledTransitionCase> cases,
+        TransitionTarget defaultTarget,
+        Action<string> onTerminalStateExecuted)
+    {
+        var orderedCases = cases
+            .OrderBy(transitionCase => transitionCase.Order.HasValue ? 0 : 1)
+            .ThenBy(transitionCase => transitionCase.Order ?? int.MaxValue)
+            .ThenBy(transitionCase => transitionCase.DeclarationIndex)
+            .ToList();
+
+        return new CompiledWorkflowDefinition
+        {
+            Name = "ConditionalRoute",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+            {
+                ["Manual"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } },
+                ["Auto"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } },
+                ["Fallback"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } }
+            },
+            ConditionalTransitions = new Dictionary<string, IReadOnlyDictionary<string, CompiledFactTransition>>
+            {
+                ["Route"] = new Dictionary<string, CompiledFactTransition>
+                {
+                    ["Completed"] = new CompiledFactTransition
+                    {
+                        Cases = orderedCases,
+                        DefaultTarget = defaultTarget
+                    }
+                }
+            },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
+            JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+            WaitTable = new Dictionary<string, string>(),
+            InitialState = "Route",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
+            {
+                ["Route"] = new DefaultStateExecutor((_, _, _) => Task.FromResult(routeOutput)),
+                ["Manual"] = new DefaultStateExecutor((_, _, _) =>
+                {
+                    onTerminalStateExecuted("Manual");
+                    return Task.FromResult<object?>(Unit.Value);
+                }),
+                ["Auto"] = new DefaultStateExecutor((_, _, _) =>
+                {
+                    onTerminalStateExecuted("Auto");
+                    return Task.FromResult<object?>(Unit.Value);
+                }),
+                ["Fallback"] = new DefaultStateExecutor((_, _, _) =>
+                {
+                    onTerminalStateExecuted("Fallback");
+                    return Task.FromResult<object?>(Unit.Value);
+                })
+            })
+        };
+    }
 
     private sealed class ThrowingState : IState<Unit, Unit>
     {

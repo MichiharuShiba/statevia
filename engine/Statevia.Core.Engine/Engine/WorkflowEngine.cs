@@ -312,7 +312,12 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
 
         _workflowLog.LogJoinStateCompleted(instance.WorkflowId, joinStateName, nodeId, Fact.Joined);
 
-        var transition = instance.Fsm.Evaluate(joinStateName, Fact.Joined);
+        var (transition, routingDiag) = EvaluateTransition(instance, joinStateName, Fact.Joined, joinInputs);
+        if (routingDiag is not null)
+        {
+            instance.Graph.SetNodeConditionRouting(nodeId, routingDiag);
+        }
+
         if (transition.HasTransition && transition.Next != null)
         {
             var mappedJoinInput = ApplyStateInput(instance, transition.Next, joinInputs);
@@ -366,7 +371,12 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
             return;
         }
 
-        var transition = instance.Fsm.Evaluate(stateName, fact);
+        var (transition, routingDiag) = EvaluateTransition(instance, stateName, fact, output);
+        if (routingDiag is not null)
+        {
+            instance.Graph.SetNodeConditionRouting(nodeId, routingDiag);
+        }
+
         if (!transition.HasTransition)
         {
             if (!transition.End)
@@ -415,6 +425,27 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         }
 
         return evaluated.Value;
+    }
+
+    private (TransitionResult Transition, ConditionRoutingDiagnostics? RoutingDiagnostics) EvaluateTransition(
+        WorkflowInstance instance,
+        string stateName,
+        string fact,
+        object? output)
+    {
+        if (instance.Definition.ConditionalTransitions.TryGetValue(stateName, out var stateTransitions)
+            && stateTransitions.TryGetValue(fact, out var compiledTransition))
+        {
+            var (transition, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
+                compiledTransition,
+                fact,
+                output,
+                onPathWarning: (path, reason) =>
+                    _workflowLog.LogWarningConditionPathResolution(instance.WorkflowId, stateName, fact, path, reason));
+            return (transition, diagnostics);
+        }
+
+        return (instance.Fsm.Evaluate(stateName, fact), null);
     }
 
     /// <inheritdoc />

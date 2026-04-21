@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Statevia.Core.Api.Contracts;
 
 /// <summary>UI <c>WorkflowView</c> に近い形（camelCase JSON）。GET …/state 等で返す。</summary>
@@ -23,6 +25,8 @@ public sealed class WorkflowViewNodeDto
     public string? WorkerId { get; init; }
     public string? WaitKey { get; init; }
     public bool CanceledByExecution { get; init; }
+    /// <summary>条件遷移の評価情報（ExecutionGraph の conditionRouting をそのまま透過）。</summary>
+    public JsonElement? ConditionRouting { get; init; }
 }
 
 /// <summary>GET …/events のレスポンス（UI <c>ExecutionEventsResponse</c>）。</summary>

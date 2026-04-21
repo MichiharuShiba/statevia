@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Core.Engine.ExecutionGraphs;
 
@@ -8,7 +9,11 @@ namespace Statevia.Core.Engine.ExecutionGraphs;
 /// </summary>
 public sealed class ExecutionGraph
 {
-    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions s_jsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
     private readonly List<ExecutionNode> _nodes = [];
     private readonly List<ExecutionEdge> _edges = [];
     private readonly object _lock = new();
@@ -33,6 +38,21 @@ public sealed class ExecutionGraph
         {
             var node = _nodes.FirstOrDefault(n => n.NodeId == nodeId);
             if (node != null) { node.CompletedAt = DateTime.UtcNow; node.Fact = fact; node.Output = output; }
+        }
+    }
+
+    /// <summary>
+    /// ノードに output 条件遷移の診断を付与する（同一ノードへの再呼び出しで上書き可能）。
+    /// </summary>
+    public void SetNodeConditionRouting(string nodeId, ConditionRoutingDiagnostics? diagnostics)
+    {
+        lock (_lock)
+        {
+            var node = _nodes.FirstOrDefault(n => n.NodeId == nodeId);
+            if (node is not null)
+            {
+                node.ConditionRouting = diagnostics;
+            }
         }
     }
 

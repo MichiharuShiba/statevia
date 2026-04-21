@@ -63,6 +63,10 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         };
     }
 
+    /// <summary>
+    /// nodes 形式のバージョン互換を検証する。
+    /// 現在は <c>version: 1</c> のみ受理する。
+    /// </summary>
     private static void ValidateVersion(Dictionary<string, object?> root)
     {
         if (!root.TryGetValue("version", out var v) || v == null)
@@ -83,6 +87,9 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         }
     }
 
+    /// <summary>
+    /// workflow.name を優先し、未指定時は workflow.id、どちらも無ければ Unnamed を使う。
+    /// </summary>
     private static string ResolveWorkflowName(Dictionary<string, object?> workflowDict)
     {
         var name = GetStr(workflowDict, "name");
@@ -95,6 +102,9 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         return !string.IsNullOrWhiteSpace(id) ? id : "Unnamed";
     }
 
+    /// <summary>
+    /// ノード集合の構造制約（ID一意性、start/end 個数、参照整合）を検証する。
+    /// </summary>
     private static void ValidateStructure(IReadOnlyList<ParsedNode> nodes)
     {
         var byId = new Dictionary<string, ParsedNode>(StringComparer.OrdinalIgnoreCase);
@@ -132,14 +142,17 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         ValidateReachability(nodes, byId, starts[0]);
     }
 
+    /// <summary>
+    /// start からの到達可能性を幅優先探索で検証する。
+    /// </summary>
     private static void ValidateReachability(
         IReadOnlyList<ParsedNode> nodes,
         Dictionary<string, ParsedNode> byId,
         ParsedNode start)
     {
-        if (string.IsNullOrEmpty(start.Next))
+        if (!start.OutNeighborIds().Any())
         {
-            throw new ArgumentException($"Start node '{start.Id}' must have 'next'.");
+            throw new ArgumentException($"Start node '{start.Id}' must have at least one outgoing transition ('next' or 'edges').");
         }
 
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -173,6 +186,9 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         }
     }
 
+    /// <summary>
+    /// nodes を states へ正規化し、状態名（node.id）をキーにした辞書を構築する。
+    /// </summary>
     private static IReadOnlyDictionary<string, StateDefinition> BuildStates(IReadOnlyList<ParsedNode> nodes)
     {
         var byId = nodes.ToDictionary(n => n.Id, n => n, StringComparer.OrdinalIgnoreCase);
@@ -237,17 +253,25 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         return candidates[0].Branches;
     }
 
+    /// <summary>
+    /// nodes[] の単一要素を正規化した内部表現。
+    /// 構文検証と states 変換の両方で使う。
+    /// </summary>
     private sealed class ParsedNode
     {
         public required string Id { get; init; }
         public required NodeKind Kind { get; init; }
         public required Dictionary<string, object?> Raw { get; init; }
         public string? Next { get; init; }
+        public IReadOnlyList<NodeEdgeDefinition>? Edges { get; init; }
         public string? ActionId { get; init; }
         public string? WaitEvent { get; init; }
         public IReadOnlyList<string>? Branches { get; init; }
         public object? InputRaw { get; init; }
 
+        /// <summary>
+        /// 生のノード辞書を型付き表現へ変換する。
+        /// </summary>
         public static ParsedNode FromDict(Dictionary<string, object?> dict)
         {
             var id = GetStr(dict, "id");
@@ -273,6 +297,7 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
             var ev = GetStr(dict, "event");
             var branches = GetStrList(dict, "branches");
             dict.TryGetValue("input", out var inputVal);
+            var edges = ParseEdges(id, dict);
 
             return new ParsedNode
             {
@@ -280,6 +305,7 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
                 Kind = kind,
                 Raw = dict,
                 Next = next,
+                Edges = edges,
                 ActionId = action,
                 WaitEvent = ev,
                 Branches = branches,
@@ -287,6 +313,9 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
             };
         }
 
+        /// <summary>
+        /// 到達性検証に使う隣接ノード ID を列挙する。
+        /// </summary>
         public IEnumerable<string> OutNeighborIds()
         {
             switch (Kind)
@@ -298,6 +327,17 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
                     if (!string.IsNullOrEmpty(Next))
                     {
                         yield return Next;
+                    }
+
+                    if (Edges != null)
+                    {
+                        foreach (var e in Edges)
+                        {
+                            if (!string.IsNullOrWhiteSpace(e.ToId))
+                            {
+                                yield return e.ToId;
+                            }
+                        }
                     }
 
                     break;
@@ -318,6 +358,9 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
             }
         }
 
+        /// <summary>
+        /// MVP で未対応のノード属性を拒否する。
+        /// </summary>
         public void ValidateForbiddenMvp(Dictionary<string, ParsedNode> byId)
         {
             switch (Kind)
@@ -328,9 +371,21 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
                         throw new ArgumentException($"Node '{Id}': 'type: end' must not have 'next' (§3.1).");
                     }
 
+                    if (Edges is { Count: > 0 })
+                    {
+                        throw new ArgumentException($"Node '{Id}': 'type: end' must not have 'edges' (§3.1).");
+                    }
+
                     break;
                 case NodeKind.Action:
                     ForbidKeys(Id, Raw, "onError", "output");
+                    break;
+                case NodeKind.Fork:
+                    if (Edges is { Count: > 0 })
+                    {
+                        throw new ArgumentException($"Fork node '{Id}': 'edges' is not supported in MVP.");
+                    }
+
                     break;
                 case NodeKind.Wait:
                     ForbidKeys(Id, Raw, "timeout", "onTimeout");
@@ -349,6 +404,9 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
             }
         }
 
+        /// <summary>
+        /// ノード種別ごとの必須属性と参照先 ID の存在を検証する。
+        /// </summary>
         public void ValidateReferences(Dictionary<string, ParsedNode> byId)
         {
             void MustExist(string? refId, string role)
@@ -367,12 +425,24 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
             switch (Kind)
             {
                 case NodeKind.Start:
-                    if (string.IsNullOrWhiteSpace(Next))
+                    if (string.IsNullOrWhiteSpace(Next) && (Edges == null || Edges.Count == 0))
                     {
-                        throw new ArgumentException($"Start node '{Id}' must have 'next'.");
+                        throw new ArgumentException($"Start node '{Id}' must have 'next' or 'edges'.");
                     }
 
-                    MustExist(Next, "next");
+                    if (!string.IsNullOrWhiteSpace(Next))
+                    {
+                        MustExist(Next, "next");
+                    }
+
+                    if (Edges != null)
+                    {
+                        foreach (var e in Edges)
+                        {
+                            MustExist(e.ToId, "edges.to");
+                        }
+                    }
+
                     break;
                 case NodeKind.Action:
                     if (string.IsNullOrWhiteSpace(ActionId))
@@ -380,12 +450,24 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
                         throw new ArgumentException($"Action node '{Id}' must have 'action'.");
                     }
 
-                    if (string.IsNullOrWhiteSpace(Next))
+                    if (string.IsNullOrWhiteSpace(Next) && (Edges == null || Edges.Count == 0))
                     {
-                        throw new ArgumentException($"Action node '{Id}' must have 'next'.");
+                        throw new ArgumentException($"Action node '{Id}' must have 'next' or 'edges'.");
                     }
 
-                    MustExist(Next, "next");
+                    if (!string.IsNullOrWhiteSpace(Next))
+                    {
+                        MustExist(Next, "next");
+                    }
+
+                    if (Edges != null)
+                    {
+                        foreach (var e in Edges)
+                        {
+                            MustExist(e.ToId, "edges.to");
+                        }
+                    }
+
                     break;
                 case NodeKind.Wait:
                     if (string.IsNullOrWhiteSpace(WaitEvent))
@@ -393,12 +475,24 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
                         throw new ArgumentException($"Wait node '{Id}' must have 'event'.");
                     }
 
-                    if (string.IsNullOrWhiteSpace(Next))
+                    if (string.IsNullOrWhiteSpace(Next) && (Edges == null || Edges.Count == 0))
                     {
-                        throw new ArgumentException($"Wait node '{Id}' must have 'next'.");
+                        throw new ArgumentException($"Wait node '{Id}' must have 'next' or 'edges'.");
                     }
 
-                    MustExist(Next, "next");
+                    if (!string.IsNullOrWhiteSpace(Next))
+                    {
+                        MustExist(Next, "next");
+                    }
+
+                    if (Edges != null)
+                    {
+                        foreach (var e in Edges)
+                        {
+                            MustExist(e.ToId, "edges.to");
+                        }
+                    }
+
                     break;
                 case NodeKind.Fork:
                     if (Branches == null || Branches.Count < 2)
@@ -413,12 +507,24 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
 
                     break;
                 case NodeKind.Join:
-                    if (string.IsNullOrWhiteSpace(Next))
+                    if (string.IsNullOrWhiteSpace(Next) && (Edges == null || Edges.Count == 0))
                     {
-                        throw new ArgumentException($"Join node '{Id}' must have 'next'.");
+                        throw new ArgumentException($"Join node '{Id}' must have 'next' or 'edges'.");
                     }
 
-                    MustExist(Next, "next");
+                    if (!string.IsNullOrWhiteSpace(Next))
+                    {
+                        MustExist(Next, "next");
+                    }
+
+                    if (Edges != null)
+                    {
+                        foreach (var e in Edges)
+                        {
+                            MustExist(e.ToId, "edges.to");
+                        }
+                    }
+
                     break;
                 case NodeKind.End:
                     break;
@@ -427,6 +533,9 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
             }
         }
 
+        /// <summary>
+        /// ノード種別ごとに StateDefinition へ変換する。
+        /// </summary>
         public StateDefinition ToStateDefinition(IReadOnlyDictionary<string, ParsedNode> byId, ParsedNode self)
         {
             switch (Kind)
@@ -437,7 +546,7 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
                         Action = null,
                         On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                         {
-                            ["Completed"] = new TransitionDefinition { Next = Next }
+                            ["Completed"] = BuildLinearTransitionForFact(Id, Next, Edges)
                         }
                     };
                 case NodeKind.End:
@@ -457,7 +566,7 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
                         Input = ParseActionInput(Id, InputRaw),
                         On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                         {
-                            ["Completed"] = new TransitionDefinition { Next = Next }
+                            ["Completed"] = BuildLinearTransitionForFact(Id, Next, Edges)
                         }
                     };
                 case NodeKind.Wait:
@@ -466,7 +575,7 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
                         Wait = new WaitDefinition { Event = WaitEvent! },
                         On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                         {
-                            ["Completed"] = new TransitionDefinition { Next = Next }
+                            ["Completed"] = BuildLinearTransitionForFact(Id, Next, Edges)
                         }
                     };
                 case NodeKind.Fork:
@@ -484,12 +593,124 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
                         Join = new JoinDefinition { AllOf = ResolveJoinAllOf(self, byId).ToList() },
                         On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                         {
-                            ["Joined"] = new TransitionDefinition { Next = Next }
+                            ["Joined"] = BuildLinearTransitionForFact(Id, Next, Edges)
                         }
                     };
                 default:
                     throw new InvalidOperationException($"Unhandled node kind: {Kind}");
             }
+        }
+
+        /// <summary>
+        /// ノード定義の edges を読み取り、条件遷移の素材となる内部モデルへ変換する。
+        /// </summary>
+        private static IReadOnlyList<NodeEdgeDefinition>? ParseEdges(string? nodeIdForErrors, Dictionary<string, object?> dict)
+        {
+            if (!dict.TryGetValue("edges", out var edgesVal) || edgesVal is null)
+            {
+                return null;
+            }
+
+            if (edgesVal is not IList edgesList)
+            {
+                throw new ArgumentException(Format(nodeIdForErrors, "'edges' must be a list."));
+            }
+
+            if (edgesList.Count == 0)
+            {
+                throw new ArgumentException(Format(nodeIdForErrors, "'edges' must be non-empty when present."));
+            }
+
+            var result = new List<NodeEdgeDefinition>(edgesList.Count);
+            foreach (var raw in edgesList)
+            {
+                if (raw is null)
+                {
+                    throw new ArgumentException(Format(nodeIdForErrors, "'edges' must not contain null entries."));
+                }
+
+                var edgeDict = ToStringDict(raw, StringComparer.OrdinalIgnoreCase);
+                result.Add(NodeEdgeDefinition.Parse(nodeIdForErrors, edgeDict));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// next / edges を統合し、on.&lt;Fact&gt; 用の遷移を組み立てる。
+        /// 条件 edge がある場合は cases/default へ正規化する。
+        /// </summary>
+        private static TransitionDefinition BuildLinearTransitionForFact(
+            string nodeId,
+            string? next,
+            IReadOnlyList<NodeEdgeDefinition>? edges)
+        {
+            if (edges is null || edges.Count == 0)
+            {
+                if (string.IsNullOrWhiteSpace(next))
+                {
+                    throw new ArgumentException($"Node '{nodeId}': missing 'next'.");
+                }
+
+                return new TransitionDefinition { Next = next };
+            }
+
+            // edges のみ、または next と併記（単一無条件のみ）を受理する。
+            var unconditional = edges.Where(e => e.IsUnconditional).ToList();
+            var conditional = edges.Where(e => !e.IsUnconditional).ToList();
+
+            if (conditional.Count == 0)
+            {
+                if (unconditional.Count != 1)
+                {
+                    throw new ArgumentException(
+                        $"Node '{nodeId}': when using unconditional 'edges', exactly one edge is required (found {unconditional.Count}).");
+                }
+
+                var onlyTo = unconditional[0].ToId;
+                if (!string.IsNullOrWhiteSpace(next)
+                    && !string.Equals(next, onlyTo, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new ArgumentException(
+                        $"Node '{nodeId}': 'next' and unconditional 'edges[0].to' must match when both are set.");
+                }
+
+                return new TransitionDefinition { Next = onlyTo };
+            }
+
+            // 条件付き edges がある場合は cases/default へ正規化する。
+            var defaultEdges = edges.Where(e => e.IsDefaultEdge || e.IsUnconditional).ToList();
+            if (defaultEdges.Count != 1)
+            {
+                throw new ArgumentException(
+                    $"Node '{nodeId}': conditional 'edges' require exactly one default/unconditional edge (found {defaultEdges.Count}).");
+            }
+
+            var defaultTo = defaultEdges[0].ToId;
+            if (!string.IsNullOrWhiteSpace(next)
+                && !string.Equals(next, defaultTo, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException(
+                    $"Node '{nodeId}': 'next' must match the default/unconditional edge target when conditional 'edges' are present.");
+            }
+
+            var cases = new List<TransitionCaseDefinition>(conditional.Count);
+            foreach (var e in conditional)
+            {
+                cases.Add(
+                    new TransitionCaseDefinition
+                    {
+                        Order = e.Order,
+                        When = e.When ?? throw new InvalidOperationException($"Node '{nodeId}': internal error: conditional edge missing when."),
+                        Transition = new TransitionDefinition { Next = e.ToId }
+                    });
+            }
+
+            return new TransitionDefinition
+            {
+                Cases = cases,
+                Default = new TransitionDefinition { Next = defaultTo }
+            };
         }
 
         private static void ForbidKeys(string nodeId, Dictionary<string, object?> raw, params string[] keys)
@@ -506,6 +727,86 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
 
         private static StateInputDefinition? ParseActionInput(string nodeId, object? inputVal) =>
             ParseStrictInputMapping(inputVal, nodeId);
+    }
+
+    /// <summary>
+    /// nodes.edges の 1 要素を表す内部モデル。
+    /// </summary>
+    private readonly record struct NodeEdgeDefinition(
+        string ToId,
+        ConditionExpressionDefinition? When,
+        int? Order,
+        bool IsDefaultEdge)
+    {
+        public bool IsUnconditional => When is null;
+
+        /// <summary>
+        /// edge 定義を検証しつつ内部モデルへ変換する。
+        /// </summary>
+        public static NodeEdgeDefinition Parse(string? nodeId, Dictionary<string, object?> edgeDict)
+        {
+            var toId = ResolveEdgeTargetId(nodeId, edgeDict);
+
+            edgeDict.TryGetValue("when", out var whenRaw);
+            ConditionExpressionDefinition? when = null;
+            if (whenRaw is not null)
+            {
+                var whenDict = ToStringDict(whenRaw, StringComparer.OrdinalIgnoreCase);
+                when = ParseConditionWhen(whenDict, nodeId);
+            }
+
+            var order = GetNullableInt(edgeDict, "order");
+
+            var isDefaultEdge = false;
+            if (edgeDict.TryGetValue("default", out var defaultRaw) && defaultRaw is not null)
+            {
+                switch (defaultRaw)
+                {
+                    case bool b:
+                        isDefaultEdge = b;
+                        break;
+                    case string s when bool.TryParse(s, out var pb):
+                        isDefaultEdge = pb;
+                        break;
+                    default:
+                        throw new ArgumentException(
+                            Format(nodeId, "edge 'default' must be boolean true/false (use 'to' for the transition target)."));
+                }
+            }
+
+            if (when is not null && isDefaultEdge)
+            {
+                throw new ArgumentException(Format(nodeId, "edge cannot specify both 'when' and 'default: true'."));
+            }
+
+            if (string.IsNullOrWhiteSpace(toId))
+            {
+                throw new ArgumentException(Format(nodeId, "edge requires non-empty 'to' (or 'to.id')."));
+            }
+
+            return new NodeEdgeDefinition(toId, when, order, isDefaultEdge);
+        }
+
+        /// <summary>
+        /// edge.to（文字列 or オブジェクト）から遷移先ノード ID を解決する。
+        /// </summary>
+        private static string ResolveEdgeTargetId(string? nodeId, Dictionary<string, object?> edgeDict)
+        {
+            if (!edgeDict.TryGetValue("to", out var toRaw) || toRaw is null)
+            {
+                throw new ArgumentException(Format(nodeId, "edge requires 'to'."));
+            }
+
+            if (toRaw is string s)
+            {
+                return s;
+            }
+
+            var toDict = ToStringDict(toRaw, StringComparer.OrdinalIgnoreCase);
+            var id = GetStr(toDict, "id");
+            return id ?? "";
+        }
+
     }
 
     private enum NodeKind

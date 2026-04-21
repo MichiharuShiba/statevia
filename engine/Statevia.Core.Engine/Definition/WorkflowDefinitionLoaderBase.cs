@@ -58,7 +58,7 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
             RejectTemplate(ownerLabel, s);
             if (IsPathExpression(s))
             {
-                if (!IsValidSimpleJsonPath(s))
+                if (!SimpleJsonPath.IsValid(s))
                 {
                     throw new ArgumentException(Format(ownerLabel, $"invalid input path: '{s}'."));
                 }
@@ -83,7 +83,7 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
             RejectTemplate(ownerLabel, onlyPath);
             if (IsPathExpression(onlyPath))
             {
-                if (!IsValidSimpleJsonPath(onlyPath))
+                if (!SimpleJsonPath.IsValid(onlyPath))
                 {
                     throw new ArgumentException(Format(ownerLabel, $"invalid input.path: '{onlyPath}'."));
                 }
@@ -100,7 +100,7 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
                 RejectTemplate(ownerLabel, str);
                 if (IsPathExpression(str))
                 {
-                    if (!IsValidSimpleJsonPath(str))
+                    if (!SimpleJsonPath.IsValid(str))
                     {
                         throw new ArgumentException(Format(ownerLabel, $"invalid input path for key '{key}': '{str}'."));
                     }
@@ -119,6 +119,46 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         }
 
         return new StateInputDefinition { Values = values };
+    }
+
+    /// <summary>
+    /// YAML の <c>when</c> オブジェクト（<c>path</c> / <c>op</c> / <c>value</c>）から条件式を構築する。
+    /// <c>path</c> は <see cref="SimpleJsonPath.IsValid"/> で検証する。
+    /// </summary>
+    /// <param name="whenDict"><c>when</c> の辞書。</param>
+    /// <param name="ownerLabel">エラーメッセージ用（例: nodes のノード id）。省略時はメッセージのみ。</param>
+    /// <returns>構築した条件式。</returns>
+    protected static ConditionExpressionDefinition ParseConditionWhen(
+        Dictionary<string, object?> whenDict,
+        string? ownerLabel = null)
+    {
+        ArgumentNullException.ThrowIfNull(whenDict);
+
+        var path = GetStr(whenDict, "path");
+        var op = GetStr(whenDict, "op");
+
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            throw new ArgumentException(Format(ownerLabel, "when requires non-empty 'path'."));
+        }
+
+        if (!SimpleJsonPath.IsValid(path))
+        {
+            throw new ArgumentException(Format(ownerLabel, $"invalid when.path: '{path}'."));
+        }
+
+        if (string.IsNullOrWhiteSpace(op))
+        {
+            throw new ArgumentException(Format(ownerLabel, "when requires non-empty 'op'."));
+        }
+
+        whenDict.TryGetValue("value", out var value);
+        return new ConditionExpressionDefinition
+        {
+            Path = path,
+            Op = op,
+            Value = value
+        };
     }
 
     protected static Dictionary<string, object?> GetChildDict(
@@ -187,6 +227,29 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         return string.Equals(v.ToString(), "true", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// 辞書の値を <see cref="int"/> に変換する。未設定・非対応型・パース不能のときは null。
+    /// </summary>
+    /// <param name="dict">キーと値の辞書。</param>
+    /// <param name="key">読み取るキー。</param>
+    /// <returns>変換できた整数、または null。</returns>
+    protected static int? GetNullableInt(Dictionary<string, object?> dict, string key)
+    {
+        ArgumentNullException.ThrowIfNull(dict);
+        if (!dict.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            int i => i,
+            long l => checked((int)l),
+            string s when int.TryParse(s, out var parsed) => parsed,
+            _ => null
+        };
+    }
+
     protected static IReadOnlyList<string>? GetStrList(Dictionary<string, object?> dict, string key)
     {
         ArgumentNullException.ThrowIfNull(dict);
@@ -212,35 +275,6 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
     private static bool IsPathExpression(string s) =>
         s == "$" || s.StartsWith("$.", StringComparison.Ordinal);
 
-    private static bool IsValidSimpleJsonPath(string path)
-    {
-        if (path == "$")
-        {
-            return true;
-        }
-
-        if (!path.StartsWith("$.", StringComparison.Ordinal) || path.EndsWith('.'))
-        {
-            return false;
-        }
-
-        var segments = path[2..].Split('.', StringSplitOptions.RemoveEmptyEntries);
-        if (segments.Length == 0)
-        {
-            return false;
-        }
-
-        foreach (var seg in segments)
-        {
-            if (seg.Length == 0 || seg.Any(ch => !(char.IsLetterOrDigit(ch) || ch == '_')))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     private static void RejectTemplate(string? ownerLabel, string value)
     {
         if (!value.StartsWith("${", StringComparison.Ordinal))
@@ -251,6 +285,9 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         throw new ArgumentException(Format(ownerLabel, "'${...}' input templates are not supported; use $. paths only."));
     }
 
-    private static string Format(string? ownerLabel, string message) =>
+    /// <summary>
+    /// ローダー由来の例外メッセージにオーナー文脈（ノード id 等）を付与する。
+    /// </summary>
+    protected static string Format(string? ownerLabel, string message) =>
         string.IsNullOrWhiteSpace(ownerLabel) ? message : $"Node '{ownerLabel}': {message}";
 }

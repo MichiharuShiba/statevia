@@ -386,3 +386,27 @@ Nodes 形式は、実行前に **states 形式の CompiledWorkflowDefinition に
 - 明示的依存関係の強制
 
 Nodes 形式の検証は、変換後の states に対して同様のレベルを適用するか、変換前の nodes 用ルールを別途定義する。
+
+---
+
+## 5. `compiledJson` デバッグ返却契約
+
+`compiledJson`（`DefinitionCompilerService.ValidateAndCompile`）は定義のデバッグ確認用途として、少なくとも次のキーを含む。
+
+- `name`
+- `initialState`
+- `transitions`
+- `conditionalTransitions`
+- `forkTable`
+- `joinTable`
+- `waitTable`
+- `stateInputs`
+
+`conditionalTransitions` は `cases/default` をコンパイルした遷移情報、`stateInputs` は `states.<name>.input` のコンパイル済み情報を表す。
+
+JSON キー命名は **camelCase** とする。
+
+## 6. 関連仕様への参照
+
+- 実行グラフ JSON（`ExportExecutionGraph`）および `conditionRouting` の詳細は `docs/core-engine-execution-graph-spec.md` を正とする。
+- API/UI 境界での `conditionRouting` の透過返却は `docs/core-api-interface.md` を参照する。

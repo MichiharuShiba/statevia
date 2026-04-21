@@ -44,6 +44,32 @@ public sealed class TransitionDefinition
     public IReadOnlyList<string>? Fork { get; init; }
     /// <summary>ワークフロー終了かどうか。</summary>
     public bool End { get; init; }
+    /// <summary>output 条件で評価するケース一覧。</summary>
+    public IReadOnlyList<TransitionCaseDefinition>? Cases { get; init; }
+    /// <summary>条件不一致時のフォールバック遷移。</summary>
+    public TransitionDefinition? Default { get; init; }
+}
+
+/// <summary>条件遷移のケース定義。</summary>
+public sealed class TransitionCaseDefinition
+{
+    /// <summary>評価順（小さい値が先）。未指定時は定義順で評価される。</summary>
+    public int? Order { get; init; }
+    /// <summary>ケースを成立させる条件式。</summary>
+    public required ConditionExpressionDefinition When { get; init; }
+    /// <summary>条件一致時の遷移先。</summary>
+    public required TransitionDefinition Transition { get; init; }
+}
+
+/// <summary>条件式（path / op / value）の定義。</summary>
+public sealed class ConditionExpressionDefinition
+{
+    /// <summary>評価対象の JSONPath（$ または $.a.b）。</summary>
+    public required string Path { get; init; }
+    /// <summary>比較演算子（eq / ne / gt / gte / lt / lte / exists / in / between）。</summary>
+    public required string Op { get; init; }
+    /// <summary>比較対象値。exists 以外で使用する。</summary>
+    public object? Value { get; init; }
 }
 
 /// <summary>Wait で待機するイベントの定義。</summary>
