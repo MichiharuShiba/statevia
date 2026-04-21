@@ -62,7 +62,7 @@
   - _Requirements: Requirement 1-5, Non-Functional（Reliability）_
   - _Definition of Done: 正常系・異常系の主要ケースがテスト化され、変更範囲の回帰を検出できる_
 
-- [ ] **T8** — API 経路の統合確認と UI 表示契約確認
+- [x] **T8** — API 経路の統合確認と UI 表示契約確認
   - File: `api/Statevia.Core.Api.Tests/`, `services/ui/` 関連実装またはテスト
   - 内容: 定義登録 API の 422 応答、デバッグ返却、UI が API 返却値を再評価せず表示する契約を確認し、必要に応じてテストや最小実装を追加する
   - 目的: Engine だけでなく API / UI 境界でも仕様を崩さないようにする
