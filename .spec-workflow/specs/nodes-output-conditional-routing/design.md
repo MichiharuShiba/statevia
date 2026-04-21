@@ -391,6 +391,13 @@ states:
 - **API**: デバッグ用途では、評価対象 case、採用 case、no-match 理由を返却可能とする。
 - **UI**: API の評価結果を表示し、UI 側で条件再評価は行わない。
 
+### 実装同期メモ（T9）
+
+- **Engine 実装**: `ExecutionGraph` ノードに `ConditionRouting` を保持し、`OutputConditionEvaluator.EvaluateDetailed` の結果（`resolution`, `matchedCaseIndex`, `caseEvaluations`, `evaluationErrors`）を `ExportExecutionGraph` に含める。
+- **API 実装**: `DefinitionCompilerService` の `compiledJson` に `conditionalTransitions` と `stateInputs` を含める。
+- **API/UI 境界実装**: `WorkflowViewMapper` はグラフ JSON の `conditionRouting` を `WorkflowViewNodeDto.ConditionRouting` へ透過し、UI は `buildWorkflowView` でその値を再評価せず保持する。
+- **命名ポリシー注意**: JSON キーは現状 PascalCase/camelCase が混在しているため、統一は `T10`（camelCase 統一）で実施する。
+
 ## Test Strategy
 
 ### Unit Tests

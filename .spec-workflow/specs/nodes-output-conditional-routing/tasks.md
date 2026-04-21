@@ -70,13 +70,27 @@
   - _Requirements: Requirement 3, Non-Functional（Observability）_
   - _Definition of Done: API と UI の境界で条件評価結果の扱いが仕様どおり確認できる_
 
-- [ ] **T9** — 最終検証と docs 同期準備
+- [x] **T9** — 最終検証と docs 同期準備
   - File: `docs/core-engine-definition-spec.md`（実装後同期）, `.spec-workflow/specs/nodes-output-conditional-routing/*.md`
   - 内容: `dotnet test` の該当範囲を実行し、実装差分を spec に反映したうえで、実装完了後に `docs/` へ同期する差分一覧を整理する
   - 目的: spec を正にしつつ、実装完了後の docs 更新を漏れなく行えるようにする
   - _Leverage: `docs/core-engine-definition-spec.md`, `.spec-workflow/specs/nodes-output-conditional-routing/requirements.md`, `.spec-workflow/specs/nodes-output-conditional-routing/design.md`_
   - _Requirements: Non-Functional（Documentation Lifecycle）, Non-Functional（Reliability）_
   - _Definition of Done: 該当テストが通り、実装後に `docs/` へ反映すべき内容が明文化されている_
+
+## T9 実施結果（2026-04-21）
+
+- 実行テスト:
+  - `dotnet test .\\engine\\statevia-engine.sln --filter "FullyQualifiedName~StateWorkflowDefinitionLoaderTests|FullyQualifiedName~Level1ValidationTests|FullyQualifiedName~DefinitionValidatorTests|FullyQualifiedName~DefinitionCompilerTests|FullyQualifiedName~WorkflowEngineTests|FullyQualifiedName~WorkflowEngineLoggingTests"`（合格: 91）
+  - `dotnet test .\\api\\statevia-api.sln --filter "FullyQualifiedName~DefinitionCompilerServiceTests|FullyQualifiedName~WorkflowsControllerTests.GetState_ReturnsOkWorkflowView"`（合格: 17）
+  - `npm run test:run -- tests/lib/workflowView.test.ts tests/features/execution/useExecution.test.ts`（合格: 29）
+- spec 反映:
+  - `design.md` の Error Visibility Policy 配下に実装同期メモを追加（Engine/API/UI の実装到達点と T10 への残課題を明記）
+- docs 同期（`docs/core-engine-definition-spec.md` 予定差分）:
+  - `conditionRouting` の実行グラフ返却仕様（キー、意味、no-match 時の扱い）
+  - `compiledJson` に `conditionalTransitions` / `stateInputs` を含めるデバッグ契約
+  - UI が `conditionRouting` を再評価せず透過表示する境界契約
+  - JSON キー命名は T10 で camelCase 統一予定である旨
 
 - [ ] **T10** — JSON 出力命名を camelCase に統一
   - File: `engine/Statevia.Core.Engine/ExecutionGraph/ExecutionGraph.cs`, `api/Statevia.Core.Api/Hosting/DefinitionCompilerService.cs`, `api/Statevia.Core.Api/Services/WorkflowViewMapper.cs`, 関連テスト
