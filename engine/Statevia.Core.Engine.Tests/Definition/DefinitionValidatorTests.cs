@@ -86,4 +86,60 @@ public class DefinitionValidatorTests
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => validator.Validate(null!));
     }
+
+    /// <summary>
+    /// 条件遷移（cases/default）でのみ参照される状態も到達可能として扱われ、検証が通過することを検証する。
+    /// </summary>
+    [Fact]
+    public void Validate_WhenConditionalReferencesExist_ReturnsValidResult()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Workflow = new WorkflowMetadata { Name = "ConditionalReachable" },
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["Route"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new TransitionDefinition
+                        {
+                            Cases =
+                            [
+                                new TransitionCaseDefinition
+                                {
+                                    When = new ConditionExpressionDefinition { Path = "$.x", Op = "gt", Value = 0 },
+                                    Transition = new TransitionDefinition { Next = "High" }
+                                }
+                            ],
+                            Default = new TransitionDefinition { Next = "Low" }
+                        }
+                    }
+                },
+                ["High"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new TransitionDefinition { End = true }
+                    }
+                },
+                ["Low"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new TransitionDefinition { End = true }
+                    }
+                }
+            }
+        };
+        var validator = new DefinitionValidator();
+
+        // Act
+        var result = validator.Validate(def);
+
+        // Assert
+        Assert.True(result.IsValid);
+        Assert.Empty(result.Errors);
+    }
 }
