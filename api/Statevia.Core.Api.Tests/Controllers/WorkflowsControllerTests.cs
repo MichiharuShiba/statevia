@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Controllers;
@@ -439,7 +440,23 @@ public sealed class WorkflowsControllerTests
                 RestartLost = false,
                 Nodes = new List<WorkflowViewNodeDto>
                 {
-                    new WorkflowViewNodeDto { NodeId = "n1", NodeType = "Task", Status = "RUNNING", Attempt = 1, WorkerId = null, WaitKey = null, CanceledByExecution = false }
+                    new WorkflowViewNodeDto
+                    {
+                        NodeId = "n1",
+                        NodeType = "Task",
+                        Status = "RUNNING",
+                        Attempt = 1,
+                        WorkerId = null,
+                        WaitKey = null,
+                        CanceledByExecution = false,
+                        ConditionRouting = JsonDocument.Parse("""
+                            {
+                              "fact": "Completed",
+                              "resolution": "matched_case",
+                              "matchedCaseIndex": 0
+                            }
+                            """).RootElement.Clone()
+                    }
                 }
             }
         };
@@ -453,6 +470,10 @@ public sealed class WorkflowsControllerTests
         var model = Assert.IsType<WorkflowViewDto>(ok.Value);
         Assert.Single(model.Nodes);
         Assert.Equal("n1", model.Nodes[0].NodeId);
+        Assert.True(model.Nodes[0].ConditionRouting.HasValue);
+        Assert.Equal(
+            "matched_case",
+            model.Nodes[0].ConditionRouting!.Value.GetProperty("resolution").GetString());
     }
 
     /// <summary>
