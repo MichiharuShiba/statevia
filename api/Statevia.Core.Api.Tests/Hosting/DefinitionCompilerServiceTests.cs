@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Application.Actions.Abstractions;
 using Statevia.Core.Api.Application.Actions.Registry;
@@ -417,6 +418,64 @@ public sealed class DefinitionCompilerServiceTests
 
         // Assert
         Assert.NotNull(compiled);
+    }
+
+    /// <summary>
+    /// コンパイル結果 JSON に conditionalTransitions と stateInputs が含まれる（T6 デバッグ返却）。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_CompiledJson_IncludesConditionalTransitionsAndStateInputs()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: ConditionalEdges
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                action: noop
+                edges:
+                  - to: high
+                    when:
+                      path: $.x
+                      op: gt
+                      value: 0
+                    order: 10
+                  - to: low
+                    when:
+                      path: $.x
+                      op: lte
+                      value: 0
+                    order: 20
+                  - to: low
+              - id: high
+                type: action
+                action: noop
+                next: endNode
+              - id: low
+                type: action
+                action: noop
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var (_, json) = svc.ValidateAndCompile("ConditionalEdges", yaml);
+
+        // Assert
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        Assert.True(root.TryGetProperty("conditionalTransitions", out var ct) || root.TryGetProperty("ConditionalTransitions", out ct));
+        Assert.Equal(JsonValueKind.Object, ct.ValueKind);
+        Assert.True(ct.EnumerateObject().Any());
+        Assert.True(root.TryGetProperty("stateInputs", out var si) || root.TryGetProperty("StateInputs", out si));
+        Assert.Equal(JsonValueKind.Object, si.ValueKind);
     }
 
     /// <summary>

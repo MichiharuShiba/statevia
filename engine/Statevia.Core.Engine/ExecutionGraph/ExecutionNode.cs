@@ -1,3 +1,5 @@
+using Statevia.Core.Engine.Abstractions;
+
 namespace Statevia.Core.Engine.ExecutionGraphs;
 
 /// <summary>
@@ -18,4 +20,9 @@ public sealed class ExecutionNode
     public string? Fact { get; set; }
     /// <summary>状態の出力。Join で参照可能。</summary>
     public object? Output { get; set; }
+
+    /// <summary>
+    /// 事実遷移が output 条件（<c>cases</c> / <c>default</c>）で解決されたときの診断。FSM のみのときは null。
+    /// </summary>
+    public ConditionRoutingDiagnostics? ConditionRouting { get; set; }
 }

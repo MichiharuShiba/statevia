@@ -15,33 +15,99 @@ internal static class OutputConditionEvaluator
     /// <summary>
     /// コンパイル済みの事実遷移を output で評価し、遷移結果を返す。
     /// </summary>
-    /// <param name="compiledTransition">評価対象のコンパイル済み遷移。</param>
-    /// <param name="output">状態実行の output。</param>
-    /// <param name="onPathWarning">path 解決警告の通知先（path, reason）。</param>
     public static TransitionResult Evaluate(
         CompiledFactTransition compiledTransition,
         object? output,
-        Action<string, string>? onPathWarning = null)
+        Action<string, string>? onPathWarning = null) =>
+        EvaluateDetailed(compiledTransition, string.Empty, output, onPathWarning).Transition;
+
+    /// <summary>
+    /// コンパイル済みの事実遷移を評価し、遷移結果と観測用診断を返す。
+    /// </summary>
+    public static (TransitionResult Transition, ConditionRoutingDiagnostics Diagnostics) EvaluateDetailed(
+        CompiledFactTransition compiledTransition,
+        string fact,
+        object? output,
+        Action<string, string>? onPathWarning)
     {
+        var evaluationErrors = new List<string>();
+
         if (compiledTransition.LinearTarget is { } linearTarget)
         {
-            return ToTransitionResult(linearTarget);
+            return (
+                ToTransitionResult(linearTarget),
+                new ConditionRoutingDiagnostics
+                {
+                    Fact = fact,
+                    Resolution = "linear",
+                    MatchedCaseIndex = null,
+                    CaseEvaluations = Array.Empty<ConditionCaseEvaluationRecord>(),
+                    EvaluationErrors = evaluationErrors
+                });
         }
 
+        var caseEvaluations = new List<ConditionCaseEvaluationRecord>();
+        var caseIndex = 0;
         foreach (var transitionCase in compiledTransition.Cases)
         {
-            if (EvaluateConditionExpression(output, transitionCase.When, onPathWarning))
+            var (matched, reasonCode, reasonDetail) = EvaluateConditionExpressionDetail(
+                output,
+                transitionCase.When,
+                onPathWarning,
+                evaluationErrors);
+
+            caseEvaluations.Add(new ConditionCaseEvaluationRecord
             {
-                return ToTransitionResult(transitionCase.Target);
+                CaseIndex = caseIndex,
+                DeclarationIndex = transitionCase.DeclarationIndex,
+                Order = transitionCase.Order,
+                Matched = matched,
+                ReasonCode = matched ? null : reasonCode,
+                ReasonDetail = matched ? null : reasonDetail
+            });
+
+            if (matched)
+            {
+                return (
+                    ToTransitionResult(transitionCase.Target),
+                    new ConditionRoutingDiagnostics
+                    {
+                        Fact = fact,
+                        Resolution = "matched_case",
+                        MatchedCaseIndex = caseIndex,
+                        CaseEvaluations = caseEvaluations,
+                        EvaluationErrors = evaluationErrors
+                    });
             }
+
+            caseIndex++;
         }
 
         if (compiledTransition.DefaultTarget is { } defaultTarget)
         {
-            return ToTransitionResult(defaultTarget);
+            return (
+                ToTransitionResult(defaultTarget),
+                new ConditionRoutingDiagnostics
+                {
+                    Fact = fact,
+                    Resolution = "default_fallback",
+                    MatchedCaseIndex = null,
+                    CaseEvaluations = caseEvaluations,
+                    EvaluationErrors = evaluationErrors
+                });
         }
 
-        return TransitionResult.None;
+        evaluationErrors.Add("No case matched and compiled transition has no default target.");
+        return (
+            TransitionResult.None,
+            new ConditionRoutingDiagnostics
+            {
+                Fact = fact,
+                Resolution = "no_transition",
+                MatchedCaseIndex = null,
+                CaseEvaluations = caseEvaluations,
+                EvaluationErrors = evaluationErrors
+            });
     }
 
     private static TransitionResult ToTransitionResult(TransitionTarget transitionTarget)
@@ -64,40 +130,120 @@ internal static class OutputConditionEvaluator
         return TransitionResult.None;
     }
 
-    private static bool EvaluateConditionExpression(
+    /// <summary>
+    /// 条件式の真偽と、偽のときの理由コードを返す。
+    /// </summary>
+    private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateConditionExpressionDetail(
         object? output,
         ConditionExpressionDefinition condition,
-        Action<string, string>? onPathWarning)
+        Action<string, string>? onPathWarning,
+        List<string> evaluationErrors)
     {
         if (!ConditionExpressionOperatorNormalizer.TryNormalize(condition.Op, out var op))
         {
-            return false;
+            var msg = $"Unsupported when.op: '{condition.Op}'.";
+            evaluationErrors.Add(msg);
+            return (false, "unsupported_op", msg);
         }
 
-        if (!TryResolvePath(output, condition.Path, out var actualValue, out var hasPath, onPathWarning))
+        if (!TryResolvePath(output, condition.Path, out var actualValue, out var hasPath, onPathWarning, evaluationErrors))
         {
-            return false;
+            return (false, "path_resolution_failed", condition.Path);
         }
 
         return op switch
         {
-            "EXISTS" => hasPath,
-            "EQ" => hasPath && ValuesEqual(actualValue, condition.Value),
-            "NE" => hasPath && !ValuesEqual(actualValue, condition.Value),
-            "GT" => hasPath && TryCompare(actualValue, condition.Value, out var gt) && gt > 0,
-            "GTE" => hasPath && TryCompare(actualValue, condition.Value, out var gte) && gte >= 0,
-            "LT" => hasPath && TryCompare(actualValue, condition.Value, out var lt) && lt < 0,
-            "LTE" => hasPath && TryCompare(actualValue, condition.Value, out var lte) && lte <= 0,
-            "IN" => hasPath && TryEnumerate(condition.Value, out var inValues) && inValues.Any(candidate => ValuesEqual(actualValue, candidate)),
-            "BETWEEN" => hasPath
-                && TryEnumerate(condition.Value, out var rangeValues)
-                && rangeValues.Count == 2
-                && TryCompare(actualValue, rangeValues[0], out var lower)
-                && TryCompare(actualValue, rangeValues[1], out var upper)
-                && lower >= 0
-                && upper <= 0,
-            _ => false
+            "EXISTS" => hasPath
+                ? (true, null, null)
+                : (false, "exists_absent", null),
+            "EQ" => !hasPath
+                ? (false, "path_not_found", null)
+                : ValuesEqual(actualValue, condition.Value)
+                    ? (true, null, null)
+                    : (false, "condition_false", null),
+            "NE" => !hasPath
+                ? (false, "path_not_found", null)
+                : !ValuesEqual(actualValue, condition.Value)
+                    ? (true, null, null)
+                    : (false, "condition_false", null),
+            "GT" => !hasPath
+                ? (false, "path_not_found", null)
+                : EvaluateOrdered(actualValue, condition.Value, static c => c > 0),
+            "GTE" => !hasPath
+                ? (false, "path_not_found", null)
+                : EvaluateOrdered(actualValue, condition.Value, static c => c >= 0),
+            "LT" => !hasPath
+                ? (false, "path_not_found", null)
+                : EvaluateOrdered(actualValue, condition.Value, static c => c < 0),
+            "LTE" => !hasPath
+                ? (false, "path_not_found", null)
+                : EvaluateOrdered(actualValue, condition.Value, static c => c <= 0),
+            "IN" => !hasPath
+                ? (false, "path_not_found", null)
+                : EvaluateIn(actualValue, condition.Value),
+            "BETWEEN" => !hasPath
+                ? (false, "path_not_found", null)
+                : EvaluateBetween(actualValue, condition.Value),
+            _ => (false, "unsupported_op", op)
         };
+    }
+
+    private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateOrdered(
+        object? actualValue,
+        object? expectedValue,
+        Func<int, bool> predicate)
+    {
+        if (actualValue is null || expectedValue is null)
+        {
+            return (false, "compare_operand_null", null);
+        }
+
+        if (!TryCompare(actualValue, expectedValue, out var comparison))
+        {
+            return (false, "compare_unsupported", null);
+        }
+
+        return predicate(comparison)
+            ? (true, null, null)
+            : (false, "condition_false", null);
+    }
+
+    private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateIn(
+        object? actualValue,
+        object? expectedValue)
+    {
+        if (!TryEnumerate(expectedValue, out var inValues))
+        {
+            return (false, "in_operand_not_collection", null);
+        }
+
+        return inValues.Any(candidate => ValuesEqual(actualValue, candidate))
+            ? (true, null, null)
+            : (false, "condition_false", null);
+    }
+
+    private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateBetween(
+        object? actualValue,
+        object? expectedValue)
+    {
+        if (!TryEnumerate(expectedValue, out var rangeValues) || rangeValues.Count != 2)
+        {
+            return (false, "between_operand_invalid", null);
+        }
+
+        if (!TryCompare(actualValue, rangeValues[0], out var lower))
+        {
+            return (false, "compare_unsupported", null);
+        }
+
+        if (!TryCompare(actualValue, rangeValues[1], out var upper))
+        {
+            return (false, "compare_unsupported", null);
+        }
+
+        return lower >= 0 && upper <= 0
+            ? (true, null, null)
+            : (false, "condition_false", null);
     }
 
     private static bool TryResolvePath(
@@ -105,13 +251,15 @@ internal static class OutputConditionEvaluator
         string path,
         out object? value,
         out bool found,
-        Action<string, string>? onPathWarning)
+        Action<string, string>? onPathWarning,
+        List<string> evaluationErrors)
     {
         value = null;
         found = false;
 
         if (string.IsNullOrWhiteSpace(path))
         {
+            evaluationErrors.Add("when.path is empty or whitespace.");
             return false;
         }
 
@@ -121,6 +269,11 @@ internal static class OutputConditionEvaluator
             if (resolve.WarningReason is not null)
             {
                 onPathWarning?.Invoke(path, resolve.WarningReason);
+                evaluationErrors.Add($"Path '{path}': {resolve.WarningReason}");
+            }
+            else
+            {
+                evaluationErrors.Add($"Path '{path}': unsupported path expression.");
             }
 
             return false;
@@ -129,6 +282,7 @@ internal static class OutputConditionEvaluator
         if (resolve.WarningReason is not null)
         {
             onPathWarning?.Invoke(path, resolve.WarningReason);
+            evaluationErrors.Add($"Path '{path}': {resolve.WarningReason}");
         }
 
         value = resolve.Value;

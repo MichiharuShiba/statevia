@@ -1,7 +1,8 @@
 using System;
+using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Collections.Generic;
-using System.Linq;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Engine;
@@ -349,6 +350,62 @@ public class WorkflowEngineTests
         Assert.NotNull(snapshot);
         Assert.True(snapshot.IsCompleted);
         Assert.Equal("Fallback", selectedState);
+    }
+
+    /// <summary>条件遷移の診断が実行グラフ JSON の該当ノードに含まれることを検証する（T6 可観測性）。</summary>
+    [Fact]
+    public async Task Start_ConditionalTransition_ExportsRoutingDiagnosticsOnGraph()
+    {
+        // Arrange
+        var def = CreateDefinitionWithConditionalRoute(
+            routeOutput: new Dictionary<string, object?> { ["score"] = 5 },
+            cases:
+            [
+                new CompiledTransitionCase
+                {
+                    Order = 1,
+                    DeclarationIndex = 0,
+                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 10 },
+                    Target = new TransitionTarget { Next = "Manual" }
+                }
+            ],
+            defaultTarget: new TransitionTarget { Next = "Fallback" },
+            onTerminalStateExecuted: _ => { });
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+
+        // Act
+        var id = engine.Start(def);
+        await Task.Delay(300);
+        var graphJson = engine.ExportExecutionGraph(id);
+
+        // Assert
+        using var doc = JsonDocument.Parse(graphJson);
+        var routeNode = doc.RootElement.GetProperty("nodes").EnumerateArray()
+            .First(node =>
+            {
+                if (node.TryGetProperty("stateName", out var s1))
+                {
+                    return string.Equals(s1.GetString(), "Route", StringComparison.Ordinal);
+                }
+
+                return node.TryGetProperty("StateName", out var s2)
+                    && string.Equals(s2.GetString(), "Route", StringComparison.Ordinal);
+            });
+        var routing = routeNode.TryGetProperty("conditionRouting", out var camelRouting)
+            ? camelRouting
+            : routeNode.GetProperty("ConditionRouting");
+        Assert.Equal("Completed", routing.TryGetProperty("fact", out var f) ? f.GetString() : routing.GetProperty("Fact").GetString());
+        var resolution = routing.TryGetProperty("resolution", out var res) ? res.GetString() : routing.GetProperty("Resolution").GetString();
+        Assert.Equal("default_fallback", resolution);
+        var matchedIdx = routing.TryGetProperty("matchedCaseIndex", out var mi) ? mi : routing.GetProperty("MatchedCaseIndex");
+        Assert.Equal(JsonValueKind.Null, matchedIdx.ValueKind);
+        var evalProp = routing.TryGetProperty("caseEvaluations", out var ce) ? ce : routing.GetProperty("CaseEvaluations");
+        var evaluations = evalProp.EnumerateArray().ToList();
+        Assert.Single(evaluations);
+        var m0 = evaluations[0].TryGetProperty("matched", out var m) ? m : evaluations[0].GetProperty("Matched");
+        Assert.False(m0.GetBoolean());
+        var rc = evaluations[0].TryGetProperty("reasonCode", out var r) ? r : evaluations[0].GetProperty("ReasonCode");
+        Assert.Equal("condition_false", rc.GetString());
     }
 
     /// <summary>in と between の条件演算子で遷移先を選択できることを検証する。</summary>

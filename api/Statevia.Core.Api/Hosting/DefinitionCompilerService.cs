@@ -10,7 +10,10 @@ using Statevia.Core.Engine.Execution;
 
 namespace Statevia.Core.Api.Hosting;
 
-/// <summary>YAML を検証・コンパイルして CompiledWorkflowDefinition を返す。Action Registry で action を検証・解決する。</summary>
+/// <summary>
+/// YAML を検証・コンパイルして CompiledWorkflowDefinition を返す。Action Registry で action を検証・解決する。
+/// <see cref="ValidateAndCompile"/> の JSON には <c>transitions</c> に加え <c>conditionalTransitions</c>・<c>stateInputs</c> を含め、条件遷移のデバッグ・UI 表示に利用できる。
+/// </summary>
 public sealed class DefinitionCompilerService : IDefinitionCompilerService
 {
     private readonly IDefinitionLoadStrategy _definitionLoadStrategy;
@@ -42,9 +45,11 @@ public sealed class DefinitionCompilerService : IDefinitionCompilerService
             compiled.Name,
             initialState = compiled.InitialState,
             transitions = compiled.Transitions,
+            conditionalTransitions = compiled.ConditionalTransitions,
             forkTable = compiled.ForkTable,
             joinTable = compiled.JoinTable,
-            waitTable = compiled.WaitTable
+            waitTable = compiled.WaitTable,
+            stateInputs = compiled.StateInputs
         });
         return (compiled, compiledJson);
     }
