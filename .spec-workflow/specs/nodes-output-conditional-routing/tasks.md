@@ -92,13 +92,24 @@
   - UI が `conditionRouting` を再評価せず透過表示する境界契約
   - JSON キー命名は T10 で camelCase 統一予定である旨
 
-- [ ] **T10** — JSON 出力命名を camelCase に統一
+- [x] **T10** — JSON 出力命名を camelCase に統一
   - File: `engine/Statevia.Core.Engine/ExecutionGraph/ExecutionGraph.cs`, `api/Statevia.Core.Api/Hosting/DefinitionCompilerService.cs`, `api/Statevia.Core.Api/Services/WorkflowViewMapper.cs`, 関連テスト
   - 内容: Engine の `ExportExecutionGraph` と API が返すデバッグ用 JSON（`compiledJson` 含む）で命名ポリシーを camelCase に統一し、既存パーサ依存箇所を移行する
   - 目的: 出力経路ごとの PascalCase / camelCase 混在を解消し、契約の一貫性を確保する
   - _Leverage: `engine/Statevia.Core.Engine/ExecutionGraph/ExecutionGraph.cs`, `api/Statevia.Core.Api/Hosting/DefinitionCompilerService.cs`_
   - _Requirements: Non-Functional（Clarity）, Non-Functional（Observability）_
   - _Definition of Done: 実行グラフ JSON とコンパイル済み JSON のキー名が camelCase で統一され、回帰テストで固定化されている_
+
+## T10 実施結果（2026-04-21）
+
+- 実装:
+  - `ExecutionGraph.ExportJson` の `JsonSerializerOptions` に `PropertyNamingPolicy = JsonNamingPolicy.CamelCase` を適用
+  - `DefinitionCompilerService.ValidateAndCompile` の `compiledJson` 生成に camelCase ポリシーを適用
+  - `WorkflowViewMapper` の実行グラフ JSON パーサを camelCase 契約に寄せるため、`JsonPropertyName` 属性で受け口を明示
+- 回帰テスト:
+  - `dotnet test .\\engine\\statevia-engine.sln --filter "FullyQualifiedName~Start_ConditionalTransition_ExportsRoutingDiagnosticsOnGraph"`（合格: 1）
+  - `dotnet test .\\api\\statevia-api.sln --filter "FullyQualifiedName~DefinitionCompilerServiceTests.ValidateAndCompile_CompiledJson_IncludesConditionalTransitionsAndStateInputs|FullyQualifiedName~WorkflowsControllerTests.GetState_ReturnsOkWorkflowView"`（合格: 2）
+  - `npm run test:run -- tests/lib/workflowView.test.ts`（合格: 1）
 
 ---
 
