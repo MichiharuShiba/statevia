@@ -64,7 +64,8 @@ internal static class WorkflowViewMapper
                 Attempt = 1,
                 WorkerId = null,
                 WaitKey = null,
-                CanceledByExecution = canceledByExecution
+                CanceledByExecution = canceledByExecution,
+                ConditionRouting = n.ConditionRouting
             });
         }
 
@@ -111,5 +112,6 @@ internal static class WorkflowViewMapper
         public DateTime StartedAt { get; set; }
         public DateTime? CompletedAt { get; set; }
         public string? Fact { get; set; }
+        public JsonElement? ConditionRouting { get; set; }
     }
 }
