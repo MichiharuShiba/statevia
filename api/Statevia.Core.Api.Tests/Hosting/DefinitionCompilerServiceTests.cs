@@ -471,10 +471,15 @@ public sealed class DefinitionCompilerServiceTests
         // Assert
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
-        Assert.True(root.TryGetProperty("conditionalTransitions", out var ct) || root.TryGetProperty("ConditionalTransitions", out ct));
+        Assert.True(root.TryGetProperty("name", out var name));
+        Assert.False(root.TryGetProperty("Name", out _));
+        Assert.Equal("ConditionalEdges", name.GetString());
+        Assert.True(root.TryGetProperty("conditionalTransitions", out var ct));
+        Assert.False(root.TryGetProperty("ConditionalTransitions", out _));
         Assert.Equal(JsonValueKind.Object, ct.ValueKind);
         Assert.True(ct.EnumerateObject().Any());
-        Assert.True(root.TryGetProperty("stateInputs", out var si) || root.TryGetProperty("StateInputs", out si));
+        Assert.True(root.TryGetProperty("stateInputs", out var si));
+        Assert.False(root.TryGetProperty("StateInputs", out _));
         Assert.Equal(JsonValueKind.Object, si.ValueKind);
     }
 

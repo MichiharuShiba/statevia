@@ -383,29 +383,19 @@ public class WorkflowEngineTests
         var routeNode = doc.RootElement.GetProperty("nodes").EnumerateArray()
             .First(node =>
             {
-                if (node.TryGetProperty("stateName", out var s1))
-                {
-                    return string.Equals(s1.GetString(), "Route", StringComparison.Ordinal);
-                }
-
-                return node.TryGetProperty("StateName", out var s2)
-                    && string.Equals(s2.GetString(), "Route", StringComparison.Ordinal);
+                return node.TryGetProperty("stateName", out var s1)
+                    && string.Equals(s1.GetString(), "Route", StringComparison.Ordinal);
             });
-        var routing = routeNode.TryGetProperty("conditionRouting", out var camelRouting)
-            ? camelRouting
-            : routeNode.GetProperty("ConditionRouting");
-        Assert.Equal("Completed", routing.TryGetProperty("fact", out var f) ? f.GetString() : routing.GetProperty("Fact").GetString());
-        var resolution = routing.TryGetProperty("resolution", out var res) ? res.GetString() : routing.GetProperty("Resolution").GetString();
-        Assert.Equal("default_fallback", resolution);
-        var matchedIdx = routing.TryGetProperty("matchedCaseIndex", out var mi) ? mi : routing.GetProperty("MatchedCaseIndex");
+        Assert.False(routeNode.TryGetProperty("ConditionRouting", out _));
+        var routing = routeNode.GetProperty("conditionRouting");
+        Assert.Equal("Completed", routing.GetProperty("fact").GetString());
+        Assert.Equal("default_fallback", routing.GetProperty("resolution").GetString());
+        var matchedIdx = routing.GetProperty("matchedCaseIndex");
         Assert.Equal(JsonValueKind.Null, matchedIdx.ValueKind);
-        var evalProp = routing.TryGetProperty("caseEvaluations", out var ce) ? ce : routing.GetProperty("CaseEvaluations");
-        var evaluations = evalProp.EnumerateArray().ToList();
+        var evaluations = routing.GetProperty("caseEvaluations").EnumerateArray().ToList();
         Assert.Single(evaluations);
-        var m0 = evaluations[0].TryGetProperty("matched", out var m) ? m : evaluations[0].GetProperty("Matched");
-        Assert.False(m0.GetBoolean());
-        var rc = evaluations[0].TryGetProperty("reasonCode", out var r) ? r : evaluations[0].GetProperty("ReasonCode");
-        Assert.Equal("condition_false", rc.GetString());
+        Assert.False(evaluations[0].GetProperty("matched").GetBoolean());
+        Assert.Equal("condition_false", evaluations[0].GetProperty("reasonCode").GetString());
     }
 
     /// <summary>in と between の条件演算子で遷移先を選択できることを検証する。</summary>

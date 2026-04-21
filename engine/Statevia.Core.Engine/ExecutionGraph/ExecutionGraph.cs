@@ -9,7 +9,11 @@ namespace Statevia.Core.Engine.ExecutionGraphs;
 /// </summary>
 public sealed class ExecutionGraph
 {
-    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions s_jsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
     private readonly List<ExecutionNode> _nodes = [];
     private readonly List<ExecutionEdge> _edges = [];
     private readonly object _lock = new();

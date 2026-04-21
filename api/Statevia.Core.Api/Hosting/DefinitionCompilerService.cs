@@ -16,6 +16,11 @@ namespace Statevia.Core.Api.Hosting;
 /// </summary>
 public sealed class DefinitionCompilerService : IDefinitionCompilerService
 {
+    private static readonly System.Text.Json.JsonSerializerOptions s_compiledJsonOptions = new()
+    {
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+    };
+
     private readonly IDefinitionLoadStrategy _definitionLoadStrategy;
     private readonly IActionRegistry _actionRegistry;
 
@@ -50,7 +55,7 @@ public sealed class DefinitionCompilerService : IDefinitionCompilerService
             joinTable = compiled.JoinTable,
             waitTable = compiled.WaitTable,
             stateInputs = compiled.StateInputs
-        });
+        }, s_compiledJsonOptions);
         return (compiled, compiledJson);
     }
 
