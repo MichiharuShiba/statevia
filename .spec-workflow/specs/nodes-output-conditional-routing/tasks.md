@@ -86,11 +86,11 @@
   - `npm run test:run -- tests/lib/workflowView.test.ts tests/features/execution/useExecution.test.ts`（合格: 29）
 - spec 反映:
   - `design.md` の Error Visibility Policy 配下に実装同期メモを追加（Engine/API/UI の実装到達点と T10 への残課題を明記）
-- docs 同期（`docs/core-engine-definition-spec.md` 予定差分）:
+- docs 同期（`docs/core-engine-definition-spec.md`、2026-04-21 反映済み）:
   - `conditionRouting` の実行グラフ返却仕様（キー、意味、no-match 時の扱い）
   - `compiledJson` に `conditionalTransitions` / `stateInputs` を含めるデバッグ契約
   - UI が `conditionRouting` を再評価せず透過表示する境界契約
-  - JSON キー命名は T10 で camelCase 統一予定である旨
+  - JSON キー命名の camelCase 統一
 
 - [x] **T10** — JSON 出力命名を camelCase に統一
   - File: `engine/Statevia.Core.Engine/ExecutionGraph/ExecutionGraph.cs`, `api/Statevia.Core.Api/Hosting/DefinitionCompilerService.cs`, `api/Statevia.Core.Api/Services/WorkflowViewMapper.cs`, 関連テスト
