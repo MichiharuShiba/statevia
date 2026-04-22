@@ -58,6 +58,9 @@ export function DashboardPageClient() {
           )}
         </div>
         <div className="flex flex-wrap gap-3 text-sm">
+          <Link className="text-blue-700 underline hover:text-blue-900" href="/definitions">
+            Definition 一覧
+          </Link>
           <Link className="text-blue-700 underline hover:text-blue-900" href="/playground">
             Playground
           </Link>
@@ -83,8 +86,13 @@ export function DashboardPageClient() {
           <p className="mt-2 text-zinc-600">次の導線から操作を開始できます。</p>
           <ul className="mt-3 list-inside list-disc space-y-1">
             <li>
+              <Link className="text-blue-700 underline" href="/definitions">
+                Definition 一覧
+              </Link>
+            </li>
+            <li>
               <Link className="text-blue-700 underline" href="/playground">
-                定義一覧・登録（Playground）
+                定義登録（Playground）
               </Link>
             </li>
             <li>

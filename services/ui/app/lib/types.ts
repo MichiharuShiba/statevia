@@ -77,6 +77,7 @@ export type ApiError = {
 
 export type GraphPatchNode = {
   nodeId: string;
+  nodeType?: string;
   status?: NodeStatus;
   attempt?: number;
   waitKey?: string | null;
@@ -151,3 +152,13 @@ export type PagedResult<T> = {
 };
 
 export type PagedWorkflows = PagedResult<WorkflowDTO>;
+
+/** GET /v1/definitions の要素（Core-API `DefinitionResponse`）。 */
+export type DefinitionDTO = {
+  displayId: string;
+  resourceId: string;
+  name: string;
+  createdAt: string;
+};
+
+export type PagedDefinitions = PagedResult<DefinitionDTO>;
