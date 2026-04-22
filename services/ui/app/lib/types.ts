@@ -140,3 +140,14 @@ export type ExecutionEventsResponse = {
   events: ExecutionEventWithSeq[];
   hasMore?: boolean;
 };
+
+/** GET /v1/workflows?limit=&offset= のページング結果（Core-API `PagedResult<T>`）。 */
+export type PagedResult<T> = {
+  items: T[];
+  totalCount: number;
+  offset: number;
+  limit: number;
+  hasMore: boolean;
+};
+
+export type PagedWorkflows = PagedResult<WorkflowDTO>;

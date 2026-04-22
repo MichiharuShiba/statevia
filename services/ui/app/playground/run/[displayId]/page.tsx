@@ -35,8 +35,8 @@ export default function PlaygroundRunPage() {
           <Link className="text-zinc-600 hover:underline" href="/playground">
             ← Playground
           </Link>
-          <Link className="text-zinc-600 hover:underline" href="/">
-            Execution UI
+          <Link className="text-zinc-600 hover:underline" href="/dashboard">
+            ダッシュボード
           </Link>
           <a className="text-zinc-600 hover:underline" href="/health">
             health

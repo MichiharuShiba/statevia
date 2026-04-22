@@ -80,8 +80,8 @@ export default function PlaygroundPage() {
           <h1 className="text-xl font-bold">Playground</h1>
           <p className="text-sm text-zinc-600">YAML で定義を登録し、Core-API 上でワークフローを開始します。</p>
         </div>
-        <Link className="text-sm text-blue-700 hover:underline" href="/">
-          ← Execution UI
+        <Link className="text-sm text-blue-700 hover:underline" href="/dashboard">
+          ← ダッシュボード
         </Link>
       </header>
 
@@ -190,8 +190,8 @@ export default function PlaygroundPage() {
                   この実行を開く（グラフ・タイムライン）
                 </Link>
                 <span className="text-zinc-400">|</span>
-                <Link href="/" className="text-blue-700 underline">
-                  Execution UI
+                <Link href="/dashboard" className="text-blue-700 underline">
+                  ダッシュボード
                 </Link>
               </p>
             </dl>
