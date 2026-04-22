@@ -2,6 +2,7 @@ using System;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Hosting;
@@ -221,11 +222,24 @@ public class PublishEventRequest
 
 public class WorkflowResponse
 {
+    [JsonPropertyName("displayId")]
     public string DisplayId { get; set; } = "";
+
+    [JsonPropertyName("resourceId")]
     public Guid ResourceId { get; set; }
+
+    [JsonPropertyName("status")]
     public string Status { get; set; } = "";
+
+    [JsonPropertyName("startedAt")]
     public DateTime StartedAt { get; set; }
+
+    [JsonPropertyName("updatedAt")]
     public DateTime? UpdatedAt { get; set; }
+
+    [JsonPropertyName("cancelRequested")]
     public bool CancelRequested { get; set; }
+
+    [JsonPropertyName("restartLost")]
     public bool RestartLost { get; set; }
 }
