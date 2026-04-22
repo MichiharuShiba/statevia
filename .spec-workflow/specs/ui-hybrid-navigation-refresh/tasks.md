@@ -22,11 +22,11 @@
   - _Requirements: Requirement 2_
   - _Definition of Done: 10件表示/空状態/詳細遷移が動作する_
 
-- [ ] **T3** — Definition一覧ページの追加
-  - File: `services/ui/app/definitions/page.tsx`, `services/ui/app/lib/api.ts`
+- [x] **T3** — Definition一覧ページの追加
+  - File: `services/ui/app/definitions/page.tsx`, `services/ui/app/definitions/DefinitionsPageClient.tsx`, `services/ui/app/lib/types.ts`
   - 内容: Definition一覧（検索・ページング）と `DefinitionDetail` への遷移導線を追加する
   - 目的: 定義起点の導線を確立する
-  - _Leverage: `services/ui/app/playground/page.tsx` の定義取得処理_
+  - _Leverage: `services/ui/app/lib/api.ts`, `services/ui/app/playground/page.tsx` の定義取得処理_
   - _Requirements: Requirement 1, Requirement 3_
   - _Definition of Done: Definition一覧から対象詳細へ遷移できる_
 
