@@ -6,19 +6,19 @@
 
 ---
 
-- [ ] **T1** — ルートリダイレクトの導入
+- [x] **T1** — ルートリダイレクトの導入
   - File: `services/ui/app/page.tsx`
-  - 内容: `app/page.tsx` を `redirect("/dashbord")` のみを担うルートに変更する
-  - 目的: TOP導線を `/dashbord` に統一し、入口を一本化する
+  - 内容: `app/page.tsx` を `redirect("/dashboard")` のみを担うルートに変更する
+  - 目的: TOP導線を `/dashboard` に統一し、入口を一本化する
   - _Leverage: `next/navigation` の `redirect`_
   - _Requirements: Requirement 2_
-  - _Definition of Done: `/` 直アクセスで `/dashbord` へ遷移し、旧Execution UI直描画が行われない_
+  - _Definition of Done: `/` 直アクセスで `/dashboard` へ遷移し、旧Execution UI直描画が行われない_
 
-- [ ] **T2** — TOPダッシュボード画面の新設
-  - File: `services/ui/app/dashbord/page.tsx`, `services/ui/app/lib/api.ts`
+- [x] **T2** — TOPダッシュボード画面の新設
+  - File: `services/ui/app/dashboard/page.tsx`, `services/ui/app/dashboard/DashboardPageClient.tsx`, `services/ui/app/lib/types.ts`
   - 内容: 直近WorkflowDetail 10件を取得して表示するダッシュボードを実装し、0件時の空状態を追加する
   - 目的: 日常運用の再開を最短化する
-  - _Leverage: `services/ui/app/lib/statusStyle.ts`, `services/ui/app/components/execution/ExecutionStatusBanner.tsx`_
+  - _Leverage: `services/ui/app/lib/api.ts`, `services/ui/app/lib/statusStyle.ts`, `services/ui/app/components/execution/TenantMissingBanner.tsx`, `services/ui/app/components/Toast.tsx`_
   - _Requirements: Requirement 2_
   - _Definition of Done: 10件表示/空状態/詳細遷移が動作する_
 
