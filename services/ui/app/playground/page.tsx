@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { Toast } from "../components/Toast";
 import { apiPost } from "../lib/api";
 import { toToastError, type ToastState } from "../lib/errors";
@@ -15,7 +16,8 @@ type DefinitionCreateResponse = {
   createdAt: string;
 };
 
-export default function PlaygroundPage() {
+function PlaygroundPageContent() {
+  const searchParams = useSearchParams();
   const [definitionName, setDefinitionName] = useState("playground-def");
   const [yaml, setYaml] = useState(defaultPlaygroundYaml);
   const [definitionId, setDefinitionId] = useState("");
@@ -24,6 +26,13 @@ export default function PlaygroundPage() {
   const [lastWorkflow, setLastWorkflow] = useState<WorkflowDTO | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [busy, setBusy] = useState<"register" | "start" | null>(null);
+
+  // `?definitionId=`（例: 定義詳細 → Playground）のとき実行パネル用の欄に反映する。
+  useEffect(() => {
+    const fromQuery = searchParams.get("definitionId")?.trim() ?? "";
+    if (!fromQuery) return;
+    setDefinitionId((prev) => (prev === fromQuery ? prev : fromQuery));
+  }, [searchParams]);
 
   const registerDefinition = useCallback(async () => {
     setBusy("register");
@@ -199,5 +208,22 @@ export default function PlaygroundPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+/**
+ * YAML 登録と `POST /workflows` による実行開始。クエリ `definitionId` があると実行欄に初期値を入れる。
+ */
+export default function PlaygroundPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-6 text-sm text-zinc-500" aria-live="polite">
+          読み込み中…
+        </div>
+      }
+    >
+      <PlaygroundPageContent />
+    </Suspense>
   );
 }

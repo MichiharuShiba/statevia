@@ -96,9 +96,9 @@ export function DashboardPageClient() {
               </Link>
             </li>
             <li>
-              <span className="text-zinc-600">
-                ワークフロー一覧（検索・ページング）は別タスクで <code className="rounded bg-zinc-200 px-1">/workflows</code> に追加予定です。
-              </span>
+              <Link className="text-blue-700 underline" href="/workflows">
+                ワークフロー一覧（/workflows）
+              </Link>
             </li>
           </ul>
         </section>
