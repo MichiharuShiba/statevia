@@ -30,7 +30,7 @@
   - _Requirements: Requirement 1, Requirement 3_
   - _Definition of Done: Definition一覧から対象詳細へ遷移できる_
 
-- [ ] **T4** — Definition詳細ページの追加
+- [x] **T4** — Definition詳細ページの追加
   - File: `services/ui/app/definitions/[definitionId]/page.tsx`
   - 内容: Definitionメタ情報、関連Workflow導線、編集導線、実行開始導線を実装する
   - 目的: Definitionをハブとして運用導線を接続する
