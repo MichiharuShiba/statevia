@@ -44,6 +44,10 @@ export type ExecutionDashboardProps = {
   comparisonEnabled?: boolean;
   /** false のとき Cancel / Resume / Event などの実行操作を無効化する。 */
   operationsEnabled?: boolean;
+  /** 初期の表示モード。 */
+  initialViewMode?: ViewMode;
+  /** true のとき View モード切り替えを固定し、UI から変更不可にする。 */
+  lockViewMode?: boolean;
 };
 
 type ExecutionDashboardViewProps = {
@@ -63,6 +67,7 @@ type ExecutionDashboardViewProps = {
   execution: WorkflowView | null;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
+  showViewToggle: boolean;
   compareMode: boolean;
   onCompareModeChange: (compareMode: boolean) => void;
   comparisonEnabled: boolean;
@@ -112,10 +117,12 @@ export function ExecutionDashboard({
   headerTitle = "実行の詳細",
   executionIdEditable = true,
   comparisonEnabled = true,
-  operationsEnabled = true
+  operationsEnabled = true,
+  initialViewMode = "list",
+  lockViewMode = false
 }: Readonly<ExecutionDashboardProps>) {
   const [executionId, setExecutionId] = useState(initialExecutionId);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
   const [graphFullscreen, setGraphFullscreen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [graphViewportByExecutionId, setGraphViewportByExecutionId] = useState<GraphViewportByExecutionId>({});
@@ -129,6 +136,10 @@ export function ExecutionDashboard({
   useEffect(() => {
     setExecutionId(initialExecutionId);
   }, [initialExecutionId]);
+
+  useEffect(() => {
+    if (lockViewMode) setViewMode(initialViewMode);
+  }, [initialViewMode, lockViewMode]);
 
   useEffect(() => {
     try {
@@ -332,7 +343,11 @@ export function ExecutionDashboard({
       onPublishEvent={publishEvent}
       execution={execution}
       viewMode={viewMode}
-      onViewModeChange={setViewMode}
+      onViewModeChange={(mode) => {
+        if (lockViewMode) return;
+        setViewMode(mode);
+      }}
+      showViewToggle={!lockViewMode}
       compareMode={compareMode}
       onCompareModeChange={setCompareMode}
       comparisonEnabled={comparisonEnabled}
@@ -390,6 +405,7 @@ function ExecutionDashboardView({
   execution,
   viewMode,
   onViewModeChange,
+  showViewToggle,
   compareMode,
   onCompareModeChange,
   comparisonEnabled,
@@ -471,6 +487,7 @@ function ExecutionDashboardView({
             execution={execution}
             viewMode={viewMode}
             onViewModeChange={onViewModeChange}
+            showViewToggle={showViewToggle}
             compareMode={compareMode}
             onCompareModeChange={comparisonEnabled ? onCompareModeChange : undefined}
             streamEnabled={streamEnabled}

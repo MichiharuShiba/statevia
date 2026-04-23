@@ -38,6 +38,12 @@ export default function WorkflowDetailPage() {
       operationsEnabled={false}
       headerNav={
         <div className="flex flex-wrap items-center gap-3 text-xs">
+          <Link className="text-zinc-600 hover:underline" href={`/workflows/${encodeURIComponent(workflowId)}/graph`}>
+            グラフ
+          </Link>
+          <Link className="text-zinc-600 hover:underline" href={`/workflows/${encodeURIComponent(workflowId)}/run`}>
+            実行
+          </Link>
           <Link className="text-zinc-600 hover:underline" href="/workflows">
             一覧
           </Link>

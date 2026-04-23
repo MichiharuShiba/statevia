@@ -25,6 +25,8 @@ type ExecutionHeaderProps = {
   executionIdEditable?: boolean;
   /** false のとき Cancel ボタンを表示しない。 */
   showCancelAction?: boolean;
+  /** false のとき ViewToggle を表示しない。 */
+  showViewToggle?: boolean;
 };
 
 export function ExecutionHeader({
@@ -42,7 +44,8 @@ export function ExecutionHeader({
   streamEnabled = true,
   onStreamEnabledChange,
   executionIdEditable = true,
-  showCancelAction = true
+  showCancelAction = true,
+  showViewToggle = true
 }: Readonly<ExecutionHeaderProps>) {
   const status = execution?.status;
   const style = status ? getStatusStyle(status) : null;
@@ -114,7 +117,7 @@ export function ExecutionHeader({
               <span>リアルタイム更新（SSE）</span>
             </label>
           )}
-          <ViewToggle value={viewMode} onChange={onViewModeChange} />
+          {showViewToggle && <ViewToggle value={viewMode} onChange={onViewModeChange} />}
         </div>
       </div>
 
