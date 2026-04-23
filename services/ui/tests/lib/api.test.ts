@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { apiGet, apiPost, getApiConfig, getApiHeaders } from "../../app/lib/api";
+import { apiGet, apiPost, buildWorkflowsListPath, getApiConfig, getApiHeaders } from "../../app/lib/api";
 
 describe("apiGet", () => {
   beforeEach(() => {
@@ -226,6 +226,21 @@ describe("api (境界値)", () => {
       "/api/core/test",
       expect.objectContaining({ body: "{}" })
     );
+  });
+});
+
+describe("buildWorkflowsListPath", () => {
+  it("空の値は除き、limit/offset 必須、フィルタは name / definitionId / status を含める", () => {
+    // Act
+    const a = buildWorkflowsListPath({
+      limit: 20,
+      offset: 40,
+      status: "Running",
+      name: "x",
+      definitionId: "def-1"
+    });
+    // Assert
+    expect(a).toBe("/workflows?limit=20&offset=40&status=Running&name=x&definitionId=def-1");
   });
 });
 
