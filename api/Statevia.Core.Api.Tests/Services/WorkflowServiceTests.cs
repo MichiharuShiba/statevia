@@ -400,7 +400,13 @@ public sealed class WorkflowServiceTests
         }
 
         public async Task<(int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
-            string tenantId, int offset, int limit, string? statusFilter, CancellationToken ct)
+            string tenantId,
+            int offset,
+            int limit,
+            string? statusFilter,
+            Guid? definitionIdFilter,
+            string? nameContains,
+            CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             return ListWithDisplayIdsPageResult;
@@ -2615,7 +2621,7 @@ public sealed class WorkflowServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var page = await sut.ListPagedAsync(tenantId, offset: 0, limit: 2, status: null, CancellationToken.None);
+        var page = await sut.ListPagedAsync(tenantId, offset: 0, limit: 2, status: null, null, null, CancellationToken.None);
 
         // Assert
         Assert.Equal(3, page.TotalCount);
@@ -2625,11 +2631,38 @@ public sealed class WorkflowServiceTests
         workflowRepo.ListWithDisplayIdsPageResult = (2, new List<(WorkflowRow Workflow, string? DisplayId)> { (w1, null), (w2, null) });
 
         // Act
-        var page2 = await sut.ListPagedAsync(tenantId, offset: 0, limit: 2, status: null, CancellationToken.None);
+        var page2 = await sut.ListPagedAsync(tenantId, offset: 0, limit: 2, status: null, null, null, CancellationToken.None);
 
         // Assert
         Assert.Equal(2, page2.TotalCount);
         Assert.False(page2.HasMore);
+    }
+
+    /// <summary>定義 id が解決できない場合は件数 0（一覧用フィルタ）。</summary>
+    [Fact]
+    public async Task ListPagedAsync_UnknownDefinitionId_ReturnsEmptyPage_WithoutQueryingPage()
+    {
+        // Arrange
+        var display = new FakeDisplayIdService { ResolveResultDefinition = null };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ListWithDisplayIdsPageResult = (5, new List<(WorkflowRow Workflow, string? DisplayId)> { })
+        };
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository(),
+            engine: new FakeWorkflowEngine(),
+            display: display,
+            workflowRepo: workflowRepo,
+            eventStore: new FakeEventStoreRepository());
+
+        // Act
+        var page = await sut.ListPagedAsync("t1", offset: 0, limit: 10, null, "no-such-def", null, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(0, page.TotalCount);
+        Assert.Empty(page.Items);
+        Assert.False(page.HasMore);
     }
 
     /// <summary>グラフ文字列からノード種別と状態と補完識別子を組み立てる。</summary>

@@ -50,13 +50,16 @@ public class WorkflowsController : ControllerBase
 
     /// <summary>
     /// GET /v1/workflows — 一覧（U4）。クエリなしは従来どおり配列。
-    /// <c>?limit=&amp;offset=&amp;status=</c> で <see cref="PagedResult{T}"/>（O1/O2）。
+    /// <c>?limit=&amp;offset=&amp;status=&amp;definitionId=&amp;name=</c> で <see cref="PagedResult{T}"/>（O1/O2）。
+    /// <c>definitionId</c> は定義の display / UUID。 <c>name</c> は workflow の <c>displayId</c> 部分一致、または workflow の UUID 完全一致で絞り込み。
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> List(
         [FromQuery] int? limit,
         [FromQuery] int offset = 0,
         [FromQuery] string? status = null,
+        [FromQuery] string? definitionId = null,
+        [FromQuery] string? name = null,
         [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
@@ -72,7 +75,9 @@ public class WorkflowsController : ControllerBase
         if (limit.Value > 500)
             throw new ArgumentException("limit must be at most 500");
 
-        var paged = await _workflows.ListPagedAsync(tenantId, offset, limit.Value, status, ct).ConfigureAwait(false);
+        var paged = await _workflows
+            .ListPagedAsync(tenantId, offset, limit.Value, status, definitionId, name, ct)
+            .ConfigureAwait(false);
         return Ok(paged);
     }
 

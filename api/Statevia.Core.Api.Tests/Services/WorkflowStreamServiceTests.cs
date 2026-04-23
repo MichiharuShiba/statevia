@@ -18,7 +18,9 @@ public sealed class WorkflowStreamServiceTests
         public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
-        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, int offset, int limit, string? status, CancellationToken ct) => throw new NotSupportedException();
+        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
+            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, CancellationToken ct) =>
+            throw new NotSupportedException();
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
         {
@@ -46,7 +48,9 @@ public sealed class WorkflowStreamServiceTests
         public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
-        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, int offset, int limit, string? status, CancellationToken ct) => throw new NotSupportedException();
+        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
+            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, CancellationToken ct) =>
+            throw new NotSupportedException();
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
 
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
@@ -83,7 +87,8 @@ public sealed class WorkflowStreamServiceTests
 
         public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
 
-        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, int offset, int limit, string? status, CancellationToken ct) =>
+        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
+            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
@@ -128,7 +133,9 @@ public sealed class WorkflowStreamServiceTests
         public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
-        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, int offset, int limit, string? status, CancellationToken ct) => throw new NotSupportedException();
+        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
+            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, CancellationToken ct) =>
+            throw new NotSupportedException();
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
