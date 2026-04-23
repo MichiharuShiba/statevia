@@ -70,7 +70,7 @@
   - _Requirements: Requirement 4_
   - _Definition of Done: run画面だけで主要操作が完結する_
 
-- [ ] **T9** — WorkflowGraph専用ページの分離
+- [x] **T9** — WorkflowGraph専用ページの分離
   - File: `services/ui/app/workflows/[workflowId]/graph/page.tsx`, `services/ui/app/features/graph/useGraphData.ts`
   - 内容: グラフ表示を専用画面化し、Run/Detailからの遷移導線と戻り導線を実装する
   - 目的: 可視化体験を独立させ、運用時の探索性を高める
