@@ -62,7 +62,7 @@
   - _Requirements: Requirement 1, Requirement 4_
   - _Definition of Done: DefinitionList起点で新規開始からrun画面表示まで完結する_
 
-- [ ] **T8** — WorkflowRun専用ページの分離
+- [x] **T8** — WorkflowRun専用ページの分離
   - File: `services/ui/app/workflows/[workflowId]/run/page.tsx`, `services/ui/app/features/nodes/useNodeCommands.ts`
   - 内容: run画面に Cancel/Resume/Event を集約し、実行系操作を詳細画面から分離する
   - 目的: 画面責務を明確化し誤操作を減らす
