@@ -86,7 +86,7 @@
   - _Requirements: Requirement 1, Requirement 4_
   - _Definition of Done: DefinitionListから編集に遷移し、保存成否が視覚的に判別できる_
 
-- [ ] **T11** — 互換導線の整備
+- [x] **T11** — 互換導線の整備
   - File: `services/ui/app/playground/page.tsx`, `services/ui/app/playground/run/[displayId]/page.tsx`
   - 内容: 旧導線に新URLへの案内を実装し、移行期間の利用者迷子を防ぐ
   - 目的: 無停止移行を実現する
