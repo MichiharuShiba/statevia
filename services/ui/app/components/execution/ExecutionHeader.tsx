@@ -23,6 +23,8 @@ type ExecutionHeaderProps = {
   onStreamEnabledChange?: (enabled: boolean) => void;
   /** false のとき executionId の手入力を無効化し、表示のみ行う。 */
   executionIdEditable?: boolean;
+  /** false のとき Cancel ボタンを表示しない。 */
+  showCancelAction?: boolean;
 };
 
 export function ExecutionHeader({
@@ -39,7 +41,8 @@ export function ExecutionHeader({
   onCompareModeChange,
   streamEnabled = true,
   onStreamEnabledChange,
-  executionIdEditable = true
+  executionIdEditable = true,
+  showCancelAction = true
 }: Readonly<ExecutionHeaderProps>) {
   const status = execution?.status;
   const style = status ? getStatusStyle(status) : null;
@@ -80,13 +83,15 @@ export function ExecutionHeader({
               {loading ? "Loading..." : "Load"}
             </button>
           )}
-          <button
-            className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-            onClick={onCancel}
-            disabled={!canCancel || loading}
-          >
-            Cancel
-          </button>
+          {showCancelAction && (
+            <button
+              className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              onClick={onCancel}
+              disabled={!canCancel || loading}
+            >
+              Cancel
+            </button>
+          )}
           {onCompareModeChange && (
             <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
               <input

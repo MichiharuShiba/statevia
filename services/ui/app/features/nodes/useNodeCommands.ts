@@ -12,8 +12,10 @@ function isTerminalExecution(status: WorkflowView["status"]): boolean {
 
 export function getResumeDisabledReason(
   execution: WorkflowView | null,
-  node: ExecutionNodeDTO | null
+  node: ExecutionNodeDTO | null,
+  commandsEnabled = true
 ): string | null {
+  if (!commandsEnabled) return "Run 画面でのみ Resume できます";
   if (!execution) return "Execution が未読込です";
   if (!node) return "Node を選択してください";
   if (isTerminalExecution(execution.status)) return "Executionは終了しています";
@@ -26,16 +28,18 @@ export function getResumeDisabledReason(
 export type UseNodeCommandsOptions = {
   onSuccess?: () => void;
   onError?: (error: unknown) => void;
+  commandsEnabled?: boolean;
 };
 
 export function useNodeCommands(
   execution: WorkflowView | null,
   options: UseNodeCommandsOptions = {}
 ) {
-  const { onSuccess, onError } = options;
+  const { onSuccess, onError, commandsEnabled = true } = options;
   const [loading, setLoading] = useState(false);
 
   async function resumeNode(nodeId: string) {
+    if (!commandsEnabled) return;
     if (!execution) return;
     const node = execution.nodes.find((n) => n.nodeId === nodeId);
     if (!node) return;

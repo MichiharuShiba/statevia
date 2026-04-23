@@ -26,6 +26,7 @@ function isTerminalExecution(status: WorkflowView["status"]): boolean {
 export type UseExecutionOptions = {
   onError?: (error: unknown) => void;
   onCancelSuccess?: () => void;
+  onPublishSuccess?: () => void;
   /** false のとき EventSource を開かず、Running 中はポーリングで更新する。既定 true。 */
   streamEnabled?: boolean;
   /** SSE イベント後のフル GET に使うデバウンス（ms）。既定 `DEFAULT_STREAM_REFRESH_DEBOUNCE_MS`。 */
@@ -36,6 +37,7 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
   const {
     onError,
     onCancelSuccess,
+    onPublishSuccess,
     streamEnabled = true,
     streamRefreshDebounceMs = DEFAULT_STREAM_REFRESH_DEBOUNCE_MS
   } = options;
@@ -222,6 +224,29 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
     }
   }
 
+  async function publishEvent(eventName: string) {
+    if (!execution) return;
+    const displayId = execution.displayId;
+    const name = eventName.trim();
+    if (!name) return;
+    setLoading(true);
+    let posted = false;
+    try {
+      await apiPost<CommandAccepted>(`/workflows/${displayId}/events`, { name });
+      posted = true;
+      await refreshExecutionSnapshot(displayId);
+      onPublishSuccess?.();
+    } catch (error) {
+      onErrorRef.current?.(error);
+      if (posted) {
+        setExecution(null);
+        setSelectedNodeId(null);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return {
     execution,
     loading,
@@ -229,6 +254,7 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
     terminal,
     loadExecution,
     cancelExecution,
+    publishEvent,
     selectedNodeId,
     setSelectedNodeId
   };

@@ -35,6 +35,7 @@ export default function WorkflowDetailPage() {
       headerTitle="ワークフロー詳細"
       executionIdEditable={false}
       comparisonEnabled={false}
+      operationsEnabled={false}
       headerNav={
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <Link className="text-zinc-600 hover:underline" href="/workflows">

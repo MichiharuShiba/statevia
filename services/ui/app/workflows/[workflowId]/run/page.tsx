@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { ExecutionDashboard } from "../../../components/execution/ExecutionDashboard";
 
 /**
- * Run 専用ページ（T8 で実行操作の集約を拡張予定）。
+ * Run 専用ページ。実行操作（Cancel / Resume / Event 送信）をここに集約する。
  */
 export default function WorkflowRunPage() {
   const params = useParams();
@@ -37,6 +37,7 @@ export default function WorkflowRunPage() {
       headerTitle="ワークフロー実行"
       executionIdEditable={false}
       comparisonEnabled={false}
+      operationsEnabled={true}
       headerNav={
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <Link className="text-zinc-600 hover:underline" href={`/workflows/${encodeURIComponent(workflowId)}`}>

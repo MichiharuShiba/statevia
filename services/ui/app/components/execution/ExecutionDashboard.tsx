@@ -42,6 +42,8 @@ export type ExecutionDashboardProps = {
   executionIdEditable?: boolean;
   /** false のとき比較モード UI を出さない。 */
   comparisonEnabled?: boolean;
+  /** false のとき Cancel / Resume / Event などの実行操作を無効化する。 */
+  operationsEnabled?: boolean;
 };
 
 type ExecutionDashboardViewProps = {
@@ -57,12 +59,14 @@ type ExecutionDashboardViewProps = {
   onCancelExecution: () => void;
   loading: boolean;
   canCancel: boolean;
+  onPublishEvent: (eventName: string) => void;
   execution: WorkflowView | null;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   compareMode: boolean;
   onCompareModeChange: (compareMode: boolean) => void;
   comparisonEnabled: boolean;
+  operationsEnabled: boolean;
   streamEnabled: boolean;
   onStreamEnabledChange: (enabled: boolean) => void;
   showExecutionPanels: boolean;
@@ -107,7 +111,8 @@ export function ExecutionDashboard({
   headerNav,
   headerTitle = "実行の詳細",
   executionIdEditable = true,
-  comparisonEnabled = true
+  comparisonEnabled = true,
+  operationsEnabled = true
 }: Readonly<ExecutionDashboardProps>) {
   const [executionId, setExecutionId] = useState(initialExecutionId);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -148,6 +153,7 @@ export function ExecutionDashboard({
     () => ({
       onError: (err: unknown) => setToast(toToastError(err)),
       onCancelSuccess: () => setToast({ tone: "success", message: "CancelExecution accepted" }),
+      onPublishSuccess: () => setToast({ tone: "success", message: "PublishEvent accepted" }),
       streamEnabled
     }),
     [streamEnabled]
@@ -160,6 +166,7 @@ export function ExecutionDashboard({
     terminal,
     loadExecution,
     cancelExecution,
+    publishEvent,
     selectedNodeId,
     setSelectedNodeId
   } = useExecution(executionId, executionHookOptions);
@@ -202,6 +209,7 @@ export function ExecutionDashboard({
   const graphData = useGraphData(displayExecution, graphDefinition);
 
   const { resumeNode, loading: nodeLoading } = useNodeCommands(execution, {
+    commandsEnabled: operationsEnabled,
     onSuccess: () => {
       setToast({ tone: "success", message: "ResumeNode accepted" });
       loadExecution();
@@ -243,7 +251,7 @@ export function ExecutionDashboard({
 
   const selectedResumeDisabledReason = isReplaying
     ? "リプレイ表示中は実行できません"
-    : getResumeDisabledReason(execution, selectedNode);
+    : getResumeDisabledReason(execution, selectedNode, operationsEnabled);
 
   const resumeEventName = useMemo(() => {
     if (!selectedNodeId || !graphData?.edges) return null;
@@ -290,9 +298,9 @@ export function ExecutionDashboard({
       const node = getNodeWithFallback(displayExecution, graphData, nodeId);
       return isReplaying
         ? "リプレイ表示中は実行できません"
-        : getResumeDisabledReason(execution, node);
+        : getResumeDisabledReason(execution, node, operationsEnabled);
     },
-    [displayExecution, graphData, isReplaying, execution]
+    [displayExecution, graphData, isReplaying, execution, operationsEnabled]
   );
 
   const handleToggleGraphFullscreen = useCallback(() => {
@@ -321,12 +329,14 @@ export function ExecutionDashboard({
       onCancelExecution={cancelExecution}
       loading={loading}
       canCancel={canCancel}
+      onPublishEvent={publishEvent}
       execution={execution}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
       compareMode={compareMode}
       onCompareModeChange={setCompareMode}
       comparisonEnabled={comparisonEnabled}
+      operationsEnabled={operationsEnabled}
       streamEnabled={streamEnabled}
       onStreamEnabledChange={handleStreamEnabledChange}
       showExecutionPanels={showExecutionPanels}
@@ -376,12 +386,14 @@ function ExecutionDashboardView({
   onCancelExecution,
   loading,
   canCancel,
+  onPublishEvent,
   execution,
   viewMode,
   onViewModeChange,
   compareMode,
   onCompareModeChange,
   comparisonEnabled,
+  operationsEnabled,
   streamEnabled,
   onStreamEnabledChange,
   showExecutionPanels,
@@ -415,6 +427,7 @@ function ExecutionDashboardView({
   selectedResumeDisabledReason,
   resumeEventName
 }: Readonly<ExecutionDashboardViewProps>) {
+  const [eventName, setEventName] = useState("");
   const defaultHeaderNav = (
     <div className="flex items-center gap-3 text-xs">
       <a className="text-zinc-600 hover:underline" href="/dashboard">
@@ -462,7 +475,40 @@ function ExecutionDashboardView({
             onCompareModeChange={comparisonEnabled ? onCompareModeChange : undefined}
             streamEnabled={streamEnabled}
             onStreamEnabledChange={onStreamEnabledChange}
+            showCancelAction={operationsEnabled}
           />
+
+          {operationsEnabled && showExecutionPanels && (
+            <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-zinc-800">実行操作</h2>
+              <div className="mt-3 flex flex-wrap items-end gap-2">
+                <label className="block min-w-[14rem] flex-1 text-xs text-zinc-600">
+                  <span>Event 名（POST /events）</span>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                    value={eventName}
+                    onChange={(event) => setEventName(event.target.value)}
+                    placeholder="event-name"
+                    autoComplete="off"
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="rounded-xl border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-50"
+                  disabled={loading || !eventName.trim() || !execution || terminal}
+                  onClick={() => {
+                    onPublishEvent(eventName.trim());
+                    setEventName("");
+                  }}
+                >
+                  Event 送信
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-zinc-500">
+                Cancel / Resume / Event 送信は Run 画面に集約しています。
+              </p>
+            </section>
+          )}
 
           {comparisonEnabled && compareMode && showExecutionPanels && (
             <ExecutionComparisonBar
@@ -558,6 +604,7 @@ function ExecutionDashboardView({
               onResume={() => !isReplaying && selectedNodeId && onResumeNode(selectedNodeId)}
               resumeDisabledReason={selectedResumeDisabledReason}
               resumeEventName={resumeEventName}
+              showResumeAction={operationsEnabled}
               className={graphFullscreen ? "h-full min-h-0 overflow-auto" : undefined}
             />
           </main>
