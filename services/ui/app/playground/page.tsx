@@ -94,6 +94,27 @@ function PlaygroundPageContent() {
         </Link>
       </header>
 
+      <section className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+        <p className="font-medium">新UIへの移行案内</p>
+        <p className="mt-1">
+          定義起点の運用は <code>/definitions</code> から開始できます。新規実行は
+          {" "}
+          <code>/definitions/[definitionId]/run</code>、実行の参照は
+          {" "}
+          <code>/workflows/[workflowId]</code> / <code>/workflows/[workflowId]/run</code> /
+          {" "}
+          <code>/workflows/[workflowId]/graph</code> を利用してください。
+        </p>
+        <p className="mt-2 flex flex-wrap items-center gap-3">
+          <Link className="text-blue-800 underline hover:text-blue-950" href="/definitions">
+            Definition 一覧
+          </Link>
+          <Link className="text-blue-800 underline hover:text-blue-950" href="/workflows">
+            Workflow 一覧
+          </Link>
+        </p>
+      </section>
+
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -193,10 +214,22 @@ function PlaygroundPageContent() {
               </div>
               <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-zinc-600">
                 <Link
-                  href={`/playground/run/${encodeURIComponent(lastWorkflow.displayId)}`}
+                  href={`/workflows/${encodeURIComponent(lastWorkflow.displayId)}/run`}
                   className="font-medium text-blue-700 underline"
                 >
-                  この実行を開く（グラフ・タイムライン）
+                  Run 画面を開く（新導線）
+                </Link>
+                <span className="text-zinc-400">|</span>
+                <Link href={`/workflows/${encodeURIComponent(lastWorkflow.displayId)}`} className="text-blue-700 underline">
+                  詳細
+                </Link>
+                <span className="text-zinc-400">|</span>
+                <Link href={`/workflows/${encodeURIComponent(lastWorkflow.displayId)}/graph`} className="text-blue-700 underline">
+                  グラフ
+                </Link>
+                <span className="text-zinc-400">|</span>
+                <Link href={`/playground/run/${encodeURIComponent(lastWorkflow.displayId)}`} className="text-zinc-600 underline">
+                  旧導線（互換）
                 </Link>
                 <span className="text-zinc-400">|</span>
                 <Link href="/dashboard" className="text-blue-700 underline">
