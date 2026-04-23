@@ -38,7 +38,7 @@
   - _Requirements: Requirement 1, Requirement 4_
   - _Definition of Done: Workflow一覧・Editor・Run開始へ遷移可能_
 
-- [ ] **T5** — Workflow一覧ページの追加
+- [x] **T5** — Workflow一覧ページの追加
   - File: `services/ui/app/workflows/page.tsx`, `services/ui/app/lib/api.ts`
   - 内容: status/name/filter と limit/offset を扱うWorkflow一覧を実装し、Definition文脈フィルタを受け取れるようにする
   - 目的: ID手入力依存を解消して一覧起点参照を可能にする
