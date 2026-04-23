@@ -46,7 +46,7 @@
   - _Requirements: Requirement 1, Requirement 3_
   - _Definition of Done: 一覧から `WorkflowDetail` へURL遷移でき、再読込で状態が復元される_
 
-- [ ] **T6** — Workflow詳細ページのURL主導化
+- [x] **T6** — Workflow詳細ページのURL主導化
   - File: `services/ui/app/workflows/[workflowId]/page.tsx`, `services/ui/app/components/execution/ExecutionHeader.tsx`
   - 内容: 手入力ID中心UIを廃止し、URLパラメータで対象実行をロードする詳細ページへ再構成する
   - 目的: 共有可能な詳細参照を実現する
