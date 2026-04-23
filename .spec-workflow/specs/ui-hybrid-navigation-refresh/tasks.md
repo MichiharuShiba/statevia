@@ -54,7 +54,7 @@
   - _Requirements: Requirement 1, Requirement 3_
   - _Definition of Done: URLのみで詳細表示が成立し、存在しないIDで適切な案内が表示される_
 
-- [ ] **T7** — Definition起点のRun開始ページを追加
+- [x] **T7** — Definition起点のRun開始ページを追加
   - File: `services/ui/app/definitions/[definitionId]/run/page.tsx`
   - 内容: Definition選択から新規Workflow開始（`POST /v1/workflows`）を実行し、開始後に `WorkflowRunPage` へ遷移する
   - 目的: 定義起点実行フローを固定する
