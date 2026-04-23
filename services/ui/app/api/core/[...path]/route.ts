@@ -49,9 +49,18 @@ function authAndTenantHeaders(req: NextRequest, pathParts: string[]): Record<str
   return out;
 }
 
-async function forward(req: NextRequest, method: string, pathParts: string[]) {
+/**
+ * Core-API への転送先 URL を組み立てる。
+ * `limit` / `offset` / `name` / `status` 等はクエリに載るため、`req.nextUrl.search` を必ず付与する。
+ */
+function buildBackendUrl(req: NextRequest, pathParts: string[]): string {
   const backendPath = pathForBackend(pathParts);
-  const url = joinUrl(backendPath);
+  const baseUrl = joinUrl(backendPath);
+  return `${baseUrl}${req.nextUrl.search}`;
+}
+
+async function forward(req: NextRequest, method: string, pathParts: string[]) {
+  const url = buildBackendUrl(req, pathParts);
   const headers: Record<string, string> = {
     Accept: req.headers.get("accept") ?? "application/json",
     "X-Idempotency-Key": req.headers.get("x-idempotency-key") ?? crypto.randomUUID(),

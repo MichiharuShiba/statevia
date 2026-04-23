@@ -3,7 +3,8 @@ import { buildGraphEdges } from "../../app/lib/buildGraphEdges";
 import type { PositionedEdge } from "../../app/lib/graphLayout";
 
 function edge(overrides: Partial<PositionedEdge> & { id: string; from: string; to: string }): PositionedEdge {
-  return { id: overrides.id, from: overrides.from, to: overrides.to, ...overrides };
+  const { id, from, to, ...rest } = overrides;
+  return { id, from, to, ...rest };
 }
 
 describe("buildGraphEdges", () => {

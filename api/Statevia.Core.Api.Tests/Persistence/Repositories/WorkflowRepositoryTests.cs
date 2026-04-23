@@ -131,10 +131,122 @@ public sealed class WorkflowRepositoryTests
         }
 
         // Assert
-        var (total, items) = await repo.ListWithDisplayIdsPageAsync(tenantId, offset: 0, limit: 10, statusFilter: "Completed", default);
+        var (total, items) = await repo.ListWithDisplayIdsPageAsync(
+            tenantId, offset: 0, limit: 10, statusFilter: "Completed", definitionIdFilter: null, nameContains: null, default);
         Assert.Equal(1, total);
         Assert.Single(items);
         Assert.Equal("Completed", items[0].Workflow.Status);
+    }
+
+    /// <summary>definitionId で 1 件に絞り込む。</summary>
+    [Fact]
+    public async Task ListWithDisplayIdsPageAsync_FiltersByDefinitionId()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var repo = new WorkflowRepository(db.Factory);
+        var tenantId = "t1";
+        var def1 = Guid.NewGuid();
+        var def2 = Guid.NewGuid();
+        var wf1 = Guid.NewGuid();
+        var wf2 = Guid.NewGuid();
+        var started = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            ctx.Workflows.AddRange(
+                new WorkflowRow
+                {
+                    WorkflowId = wf1,
+                    TenantId = tenantId,
+                    DefinitionId = def1,
+                    Status = "Running",
+                    StartedAt = started,
+                    UpdatedAt = started,
+                    CancelRequested = false,
+                    RestartLost = false
+                },
+                new WorkflowRow
+                {
+                    WorkflowId = wf2,
+                    TenantId = tenantId,
+                    DefinitionId = def2,
+                    Status = "Running",
+                    StartedAt = started.AddDays(1),
+                    UpdatedAt = started.AddDays(1),
+                    CancelRequested = false,
+                    RestartLost = false
+                });
+            await ctx.SaveChangesAsync();
+        }
+
+        // Act
+        var (total, items) = await repo.ListWithDisplayIdsPageAsync(
+            tenantId, offset: 0, limit: 10, statusFilter: null, definitionIdFilter: def1, nameContains: null, default);
+
+        // Assert
+        Assert.Equal(1, total);
+        Assert.Single(items);
+        Assert.Equal(wf1, items[0].Workflow.WorkflowId);
+    }
+
+    /// <summary>name に displayId の部分一致のワークフローのみ含める。</summary>
+    [Fact]
+    public async Task ListWithDisplayIdsPageAsync_FiltersByNameDisplayIdContains()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var repo = new WorkflowRepository(db.Factory);
+        var tenantId = "t1";
+        var defId = Guid.NewGuid();
+        var wfId = Guid.NewGuid();
+        var started = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            ctx.Workflows.Add(
+                new WorkflowRow
+                {
+                    WorkflowId = wfId,
+                    TenantId = tenantId,
+                    DefinitionId = defId,
+                    Status = "Running",
+                    StartedAt = started,
+                    UpdatedAt = started,
+                    CancelRequested = false,
+                    RestartLost = false
+                });
+            ctx.DisplayIds.Add(new DisplayIdRow
+            {
+                Kind = "workflow",
+                DisplayId = "acme-orders-99",
+                ResourceId = wfId,
+                CreatedAt = started
+            });
+            var otherWf = Guid.NewGuid();
+            ctx.Workflows.Add(
+                new WorkflowRow
+                {
+                    WorkflowId = otherWf,
+                    TenantId = tenantId,
+                    DefinitionId = defId,
+                    Status = "Running",
+                    StartedAt = started.AddDays(1),
+                    UpdatedAt = started.AddDays(1),
+                    CancelRequested = false,
+                    RestartLost = false
+                });
+            await ctx.SaveChangesAsync();
+        }
+
+        // Act
+        var (total, items) = await repo.ListWithDisplayIdsPageAsync(
+            tenantId, offset: 0, limit: 10, statusFilter: null, definitionIdFilter: null, nameContains: "orders", default);
+
+        // Assert
+        Assert.Equal(1, total);
+        Assert.Single(items);
+        Assert.Equal(wfId, items[0].Workflow.WorkflowId);
     }
 
     /// <summary>

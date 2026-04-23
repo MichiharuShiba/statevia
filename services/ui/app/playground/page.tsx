@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { Toast } from "../components/Toast";
 import { apiPost } from "../lib/api";
 import { toToastError, type ToastState } from "../lib/errors";
@@ -15,7 +16,8 @@ type DefinitionCreateResponse = {
   createdAt: string;
 };
 
-export default function PlaygroundPage() {
+function PlaygroundPageContent() {
+  const searchParams = useSearchParams();
   const [definitionName, setDefinitionName] = useState("playground-def");
   const [yaml, setYaml] = useState(defaultPlaygroundYaml);
   const [definitionId, setDefinitionId] = useState("");
@@ -24,6 +26,13 @@ export default function PlaygroundPage() {
   const [lastWorkflow, setLastWorkflow] = useState<WorkflowDTO | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [busy, setBusy] = useState<"register" | "start" | null>(null);
+
+  // `?definitionId=`（例: 定義詳細 → Playground）のとき実行パネル用の欄に反映する。
+  useEffect(() => {
+    const fromQuery = searchParams.get("definitionId")?.trim() ?? "";
+    if (!fromQuery) return;
+    setDefinitionId((prev) => (prev === fromQuery ? prev : fromQuery));
+  }, [searchParams]);
 
   const registerDefinition = useCallback(async () => {
     setBusy("register");
@@ -80,10 +89,31 @@ export default function PlaygroundPage() {
           <h1 className="text-xl font-bold">Playground</h1>
           <p className="text-sm text-zinc-600">YAML で定義を登録し、Core-API 上でワークフローを開始します。</p>
         </div>
-        <Link className="text-sm text-blue-700 hover:underline" href="/">
-          ← Execution UI
+        <Link className="text-sm text-blue-700 hover:underline" href="/dashboard">
+          ← ダッシュボード
         </Link>
       </header>
+
+      <section className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+        <p className="font-medium">新UIへの移行案内</p>
+        <p className="mt-1">
+          定義起点の運用は <code>/definitions</code> から開始できます。新規実行は
+          {" "}
+          <code>/definitions/[definitionId]/run</code>、実行の参照は
+          {" "}
+          <code>/workflows/[workflowId]</code> / <code>/workflows/[workflowId]/run</code> /
+          {" "}
+          <code>/workflows/[workflowId]/graph</code> を利用してください。
+        </p>
+        <p className="mt-2 flex flex-wrap items-center gap-3">
+          <Link className="text-blue-800 underline hover:text-blue-950" href="/definitions">
+            Definition 一覧
+          </Link>
+          <Link className="text-blue-800 underline hover:text-blue-950" href="/workflows">
+            Workflow 一覧
+          </Link>
+        </p>
+      </section>
 
       <Toast toast={toast} onClose={() => setToast(null)} />
 
@@ -184,14 +214,26 @@ export default function PlaygroundPage() {
               </div>
               <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-zinc-600">
                 <Link
-                  href={`/playground/run/${encodeURIComponent(lastWorkflow.displayId)}`}
+                  href={`/workflows/${encodeURIComponent(lastWorkflow.displayId)}/run`}
                   className="font-medium text-blue-700 underline"
                 >
-                  この実行を開く（グラフ・タイムライン）
+                  Run 画面を開く（新導線）
                 </Link>
                 <span className="text-zinc-400">|</span>
-                <Link href="/" className="text-blue-700 underline">
-                  Execution UI
+                <Link href={`/workflows/${encodeURIComponent(lastWorkflow.displayId)}`} className="text-blue-700 underline">
+                  詳細
+                </Link>
+                <span className="text-zinc-400">|</span>
+                <Link href={`/workflows/${encodeURIComponent(lastWorkflow.displayId)}/graph`} className="text-blue-700 underline">
+                  グラフ
+                </Link>
+                <span className="text-zinc-400">|</span>
+                <Link href={`/playground/run/${encodeURIComponent(lastWorkflow.displayId)}`} className="text-zinc-600 underline">
+                  旧導線（互換）
+                </Link>
+                <span className="text-zinc-400">|</span>
+                <Link href="/dashboard" className="text-blue-700 underline">
+                  ダッシュボード
                 </Link>
               </p>
             </dl>
@@ -199,5 +241,22 @@ export default function PlaygroundPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+/**
+ * YAML 登録と `POST /workflows` による実行開始。クエリ `definitionId` があると実行欄に初期値を入れる。
+ */
+export default function PlaygroundPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-6 text-sm text-zinc-500" aria-live="polite">
+          読み込み中…
+        </div>
+      }
+    >
+      <PlaygroundPageContent />
+    </Suspense>
   );
 }

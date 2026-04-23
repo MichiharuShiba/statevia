@@ -38,20 +38,91 @@ export type ExecutionDashboardProps = {
   headerNav?: ReactNode;
   /** メイン見出し */
   headerTitle?: string;
+  /** false のとき executionId を URL 固定として編集させない。 */
+  executionIdEditable?: boolean;
+  /** false のとき比較モード UI を出さない。 */
+  comparisonEnabled?: boolean;
+  /** false のとき Cancel / Resume / Event などの実行操作を無効化する。 */
+  operationsEnabled?: boolean;
+  /** 初期の表示モード。 */
+  initialViewMode?: ViewMode;
+  /** true のとき View モード切り替えを固定し、UI から変更不可にする。 */
+  lockViewMode?: boolean;
+};
+
+type ExecutionDashboardViewProps = {
+  graphFullscreen: boolean;
+  headerTitle: string;
+  headerNav?: ReactNode;
+  toast: ToastState | null;
+  onCloseToast: () => void;
+  executionId: string;
+  executionIdEditable: boolean;
+  onExecutionIdChange: (executionId: string) => void;
+  onLoadExecution: () => void;
+  onCancelExecution: () => void;
+  loading: boolean;
+  canCancel: boolean;
+  onPublishEvent: (eventName: string) => void;
+  execution: WorkflowView | null;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
+  showViewToggle: boolean;
+  compareMode: boolean;
+  onCompareModeChange: (compareMode: boolean) => void;
+  comparisonEnabled: boolean;
+  operationsEnabled: boolean;
+  streamEnabled: boolean;
+  onStreamEnabledChange: (enabled: boolean) => void;
+  showExecutionPanels: boolean;
+  executionB: WorkflowView | null;
+  executionIdB: string;
+  onExecutionIdBChange: (executionId: string) => void;
+  onLoadExecutionB: () => void;
+  loadingB: boolean;
+  executionDiff: ReturnType<typeof computeExecutionDiff>;
+  onSelectNode: (nodeId: string | null) => void;
+  terminal: boolean;
+  isReplaying: boolean;
+  onBackToCurrent: () => void;
+  timelineEvents: ReturnType<typeof useExecutionEvents>["events"];
+  timelineLoading: boolean;
+  timelineError: ReturnType<typeof useExecutionEvents>["error"];
+  replayAtSeq: number | null;
+  onSelectSeq: (seq: number | null) => void;
+  timelineHasMore: boolean;
+  timelineLoadingMore: boolean;
+  onTimelineLoadMore: () => void;
+  displayExecution: WorkflowView | null;
+  selectedNodeId: string | null;
+  graphData: ReturnType<typeof useGraphData>;
+  onToggleGraphFullscreen: () => void;
+  onResumeNode: (nodeId: string) => void;
+  getResumeDisabledReasonForNode: (nodeId: string) => string | null;
+  savedGraphViewport?: GraphViewport;
+  onGraphViewportChange: (viewport: GraphViewport) => void;
+  selectedNode: ReturnType<typeof getNodeWithFallback>;
+  selectedResumeDisabledReason: string | null;
+  resumeEventName: string | null;
 };
 
 /**
  * 実行一覧・グラフ・タイムライン・ノード操作の共通ダッシュボード。
- * `/` と `/playground/run/[displayId]` から利用する。
+ * `/dashboard` や `/playground/run/[displayId]` から利用する。
  */
 export function ExecutionDashboard({
   initialExecutionId,
   autoLoadOnMount = false,
   headerNav,
-  headerTitle = "Execution UI"
+  headerTitle = "実行の詳細",
+  executionIdEditable = true,
+  comparisonEnabled = true,
+  operationsEnabled = true,
+  initialViewMode = "list",
+  lockViewMode = false
 }: Readonly<ExecutionDashboardProps>) {
   const [executionId, setExecutionId] = useState(initialExecutionId);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
   const [graphFullscreen, setGraphFullscreen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [graphViewportByExecutionId, setGraphViewportByExecutionId] = useState<GraphViewportByExecutionId>({});
@@ -65,6 +136,10 @@ export function ExecutionDashboard({
   useEffect(() => {
     setExecutionId(initialExecutionId);
   }, [initialExecutionId]);
+
+  useEffect(() => {
+    if (lockViewMode) setViewMode(initialViewMode);
+  }, [initialViewMode, lockViewMode]);
 
   useEffect(() => {
     try {
@@ -89,6 +164,7 @@ export function ExecutionDashboard({
     () => ({
       onError: (err: unknown) => setToast(toToastError(err)),
       onCancelSuccess: () => setToast({ tone: "success", message: "CancelExecution accepted" }),
+      onPublishSuccess: () => setToast({ tone: "success", message: "PublishEvent accepted" }),
       streamEnabled
     }),
     [streamEnabled]
@@ -101,6 +177,7 @@ export function ExecutionDashboard({
     terminal,
     loadExecution,
     cancelExecution,
+    publishEvent,
     selectedNodeId,
     setSelectedNodeId
   } = useExecution(executionId, executionHookOptions);
@@ -143,6 +220,7 @@ export function ExecutionDashboard({
   const graphData = useGraphData(displayExecution, graphDefinition);
 
   const { resumeNode, loading: nodeLoading } = useNodeCommands(execution, {
+    commandsEnabled: operationsEnabled,
     onSuccess: () => {
       setToast({ tone: "success", message: "ResumeNode accepted" });
       loadExecution();
@@ -184,7 +262,7 @@ export function ExecutionDashboard({
 
   const selectedResumeDisabledReason = isReplaying
     ? "リプレイ表示中は実行できません"
-    : getResumeDisabledReason(execution, selectedNode);
+    : getResumeDisabledReason(execution, selectedNode, operationsEnabled);
 
   const resumeEventName = useMemo(() => {
     if (!selectedNodeId || !graphData?.edges) return null;
@@ -226,9 +304,151 @@ export function ExecutionDashboard({
   }, [graphFullscreen]);
 
   const showExecutionPanels = !!execution;
+  const getResumeDisabledReasonForNode = useCallback(
+    (nodeId: string) => {
+      const node = getNodeWithFallback(displayExecution, graphData, nodeId);
+      return isReplaying
+        ? "リプレイ表示中は実行できません"
+        : getResumeDisabledReason(execution, node, operationsEnabled);
+    },
+    [displayExecution, graphData, isReplaying, execution, operationsEnabled]
+  );
 
+  const handleToggleGraphFullscreen = useCallback(() => {
+    setGraphFullscreen((value) => !value);
+  }, []);
+
+  const handleCloseToast = useCallback(() => {
+    setToast(null);
+  }, []);
+
+  const handleBackToCurrent = useCallback(() => {
+    setReplayAtSeq(null);
+  }, []);
+
+  return (
+    <ExecutionDashboardView
+      graphFullscreen={graphFullscreen}
+      headerTitle={headerTitle}
+      headerNav={headerNav}
+      toast={toast}
+      onCloseToast={handleCloseToast}
+      executionId={executionId}
+      executionIdEditable={executionIdEditable}
+      onExecutionIdChange={setExecutionId}
+      onLoadExecution={loadExecution}
+      onCancelExecution={cancelExecution}
+      loading={loading}
+      canCancel={canCancel}
+      onPublishEvent={publishEvent}
+      execution={execution}
+      viewMode={viewMode}
+      onViewModeChange={(mode) => {
+        if (lockViewMode) return;
+        setViewMode(mode);
+      }}
+      showViewToggle={!lockViewMode}
+      compareMode={compareMode}
+      onCompareModeChange={setCompareMode}
+      comparisonEnabled={comparisonEnabled}
+      operationsEnabled={operationsEnabled}
+      streamEnabled={streamEnabled}
+      onStreamEnabledChange={handleStreamEnabledChange}
+      showExecutionPanels={showExecutionPanels}
+      executionB={executionB}
+      executionIdB={executionIdB}
+      onExecutionIdBChange={setExecutionIdB}
+      onLoadExecutionB={loadExecutionB}
+      loadingB={loadingB}
+      executionDiff={executionDiff}
+      onSelectNode={setSelectedNodeId}
+      terminal={terminal}
+      isReplaying={isReplaying}
+      onBackToCurrent={handleBackToCurrent}
+      timelineEvents={timelineEvents}
+      timelineLoading={timelineLoading}
+      timelineError={timelineError}
+      replayAtSeq={replayAtSeq}
+      onSelectSeq={setReplayAtSeq}
+      timelineHasMore={timelineHasMore}
+      timelineLoadingMore={timelineLoadingMore}
+      onTimelineLoadMore={timelineLoadMore}
+      displayExecution={displayExecution}
+      selectedNodeId={selectedNodeId}
+      graphData={graphData}
+      onToggleGraphFullscreen={handleToggleGraphFullscreen}
+      onResumeNode={resumeNode}
+      getResumeDisabledReasonForNode={getResumeDisabledReasonForNode}
+      savedGraphViewport={savedGraphViewport}
+      onGraphViewportChange={handleGraphViewportChange}
+      selectedNode={selectedNode}
+      selectedResumeDisabledReason={selectedResumeDisabledReason}
+      resumeEventName={resumeEventName}
+    />
+  );
+}
+
+function ExecutionDashboardView({
+  graphFullscreen,
+  headerTitle,
+  headerNav,
+  toast,
+  onCloseToast,
+  executionId,
+  executionIdEditable,
+  onExecutionIdChange,
+  onLoadExecution,
+  onCancelExecution,
+  loading,
+  canCancel,
+  onPublishEvent,
+  execution,
+  viewMode,
+  onViewModeChange,
+  showViewToggle,
+  compareMode,
+  onCompareModeChange,
+  comparisonEnabled,
+  operationsEnabled,
+  streamEnabled,
+  onStreamEnabledChange,
+  showExecutionPanels,
+  executionB,
+  executionIdB,
+  onExecutionIdBChange,
+  onLoadExecutionB,
+  loadingB,
+  executionDiff,
+  onSelectNode,
+  terminal,
+  isReplaying,
+  onBackToCurrent,
+  timelineEvents,
+  timelineLoading,
+  timelineError,
+  replayAtSeq,
+  onSelectSeq,
+  timelineHasMore,
+  timelineLoadingMore,
+  onTimelineLoadMore,
+  displayExecution,
+  selectedNodeId,
+  graphData,
+  onToggleGraphFullscreen,
+  onResumeNode,
+  getResumeDisabledReasonForNode,
+  savedGraphViewport,
+  onGraphViewportChange,
+  selectedNode,
+  selectedResumeDisabledReason,
+  resumeEventName
+}: Readonly<ExecutionDashboardViewProps>) {
+  const [eventName, setEventName] = useState("");
   const defaultHeaderNav = (
     <div className="flex items-center gap-3 text-xs">
+      <a className="text-zinc-600 hover:underline" href="/dashboard">
+        ダッシュボード
+      </a>
       <a className="text-zinc-600 hover:underline" href="/playground">
         Playground
       </a>
@@ -237,6 +457,13 @@ export function ExecutionDashboard({
       </a>
     </div>
   );
+
+  const graphWrapperClassName = graphFullscreen ? "fixed inset-0 z-50 bg-zinc-50 p-4" : "";
+  const graphMainClassName = graphFullscreen
+    ? "mx-auto grid h-full max-w-[1600px] gap-4 lg:grid-cols-[minmax(0,1.8fr)_380px]"
+    : "grid gap-4 lg:grid-cols-[1.6fr_1fr]";
+  const graphSectionClassName = graphFullscreen ? "min-h-0" : "";
+  const graphContainerClassName = `space-y-2 ${graphFullscreen ? "flex h-full min-h-0 flex-col" : ""}`;
 
   return (
     <div className={graphFullscreen ? "" : "space-y-4"}>
@@ -247,42 +474,83 @@ export function ExecutionDashboard({
             {headerNav ?? defaultHeaderNav}
           </header>
 
-          <Toast toast={toast} onClose={() => setToast(null)} />
+          <Toast toast={toast} onClose={onCloseToast} />
 
           <ExecutionHeader
             executionId={executionId}
-            onExecutionIdChange={setExecutionId}
-            onLoad={loadExecution}
-            onCancel={cancelExecution}
+            executionIdEditable={executionIdEditable}
+            onExecutionIdChange={onExecutionIdChange}
+            onLoad={onLoadExecution}
+            onCancel={onCancelExecution}
             loading={loading}
             canCancel={canCancel}
             execution={execution}
             viewMode={viewMode}
-            onViewModeChange={setViewMode}
+            onViewModeChange={onViewModeChange}
+            showViewToggle={showViewToggle}
             compareMode={compareMode}
-            onCompareModeChange={setCompareMode}
+            onCompareModeChange={comparisonEnabled ? onCompareModeChange : undefined}
             streamEnabled={streamEnabled}
-            onStreamEnabledChange={handleStreamEnabledChange}
+            onStreamEnabledChange={onStreamEnabledChange}
+            showCancelAction={operationsEnabled}
           />
 
-          {compareMode && showExecutionPanels && (
+          {operationsEnabled && showExecutionPanels && (
+            <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-zinc-800">実行操作</h2>
+              <div className="mt-3 flex flex-wrap items-end gap-2">
+                <label className="block min-w-[14rem] flex-1 text-xs text-zinc-600">
+                  <span>Event 名（POST /events）</span>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                    value={eventName}
+                    onChange={(event) => setEventName(event.target.value)}
+                    placeholder="event-name"
+                    autoComplete="off"
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="rounded-xl border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-50"
+                  disabled={loading || !eventName.trim() || !execution || terminal}
+                  onClick={() => {
+                    onPublishEvent(eventName.trim());
+                    setEventName("");
+                  }}
+                >
+                  Event 送信
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-zinc-500">
+                Cancel / Resume / Event 送信は Run 画面に集約しています。
+              </p>
+            </section>
+          )}
+
+          {comparisonEnabled && compareMode && showExecutionPanels && (
             <ExecutionComparisonBar
               executionLeft={execution}
               executionRight={executionB}
               executionIdRight={executionIdB}
-              onExecutionIdRightChange={setExecutionIdB}
-              onLoadRight={loadExecutionB}
+              onExecutionIdRightChange={onExecutionIdBChange}
+              onLoadRight={onLoadExecutionB}
               loadingRight={loadingB}
               diff={executionDiff}
-              onSelectDiffNode={setSelectedNodeId}
+              onSelectDiffNode={onSelectNode}
             />
           )}
 
           <TenantMissingBanner />
           <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequested} terminal={terminal} />
 
+          {!loading && !showExecutionPanels && (
+            <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              指定されたワークフローが見つかりませんでした。ID とテナントを確認してください。
+            </section>
+          )}
+
           {showExecutionPanels && isReplaying && (
-            <ReplayBanner onBackToCurrent={() => setReplayAtSeq(null)} />
+            <ReplayBanner onBackToCurrent={onBackToCurrent} />
           )}
 
           {showExecutionPanels && (
@@ -291,39 +559,33 @@ export function ExecutionDashboard({
               loading={timelineLoading}
               error={timelineError}
               selectedSeq={replayAtSeq}
-              onSelectSeq={setReplayAtSeq}
-              onBackToCurrent={() => setReplayAtSeq(null)}
+              onSelectSeq={onSelectSeq}
+              onBackToCurrent={onBackToCurrent}
               isReplaying={isReplaying}
               hasMore={timelineHasMore}
               loadingMore={timelineLoadingMore}
-              onLoadMore={timelineLoadMore}
+              onLoadMore={onTimelineLoadMore}
             />
           )}
         </>
       )}
 
       {showExecutionPanels && (
-        <div className={graphFullscreen ? "fixed inset-0 z-50 bg-zinc-50 p-4" : ""}>
-          <main
-            className={
-              graphFullscreen
-                ? "mx-auto grid h-full max-w-[1600px] gap-4 lg:grid-cols-[minmax(0,1.8fr)_380px]"
-                : "grid gap-4 lg:grid-cols-[1.6fr_1fr]"
-            }
-          >
-            <section className={graphFullscreen ? "min-h-0" : ""}>
+        <div className={graphWrapperClassName}>
+          <main className={graphMainClassName}>
+            <section className={graphSectionClassName}>
               {viewMode === "list" ? (
                 <NodeListView
                   nodes={displayExecution?.nodes ?? []}
                   selectedNodeId={selectedNodeId}
-                  onSelectNode={(id) => setSelectedNodeId(id)}
+                  onSelectNode={onSelectNode}
                 />
               ) : (
-                <div className={`space-y-2 ${graphFullscreen ? "flex h-full min-h-0 flex-col" : ""}`}>
+                <div className={graphContainerClassName}>
                   <div className="flex justify-end">
                     <button
                       className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
-                      onClick={() => setGraphFullscreen((v) => !v)}
+                      onClick={onToggleGraphFullscreen}
                     >
                       {graphFullscreen ? "全画面終了 (Esc)" : "全画面表示"}
                     </button>
@@ -339,16 +601,11 @@ export function ExecutionDashboard({
                       edges={graphData.edges}
                       groups={graphData.groups}
                       selectedNodeId={selectedNodeId}
-                      onSelectNode={setSelectedNodeId}
-                      onResumeNode={(nodeId) => resumeNode(nodeId)}
-                      getResumeDisabledReason={(nodeId) => {
-                        const node = getNodeWithFallback(displayExecution, graphData, nodeId);
-                        return isReplaying
-                          ? "リプレイ表示中は実行できません"
-                          : getResumeDisabledReason(execution, node);
-                      }}
+                      onSelectNode={onSelectNode}
+                      onResumeNode={onResumeNode}
+                      getResumeDisabledReason={getResumeDisabledReasonForNode}
                       defaultViewport={savedGraphViewport}
-                      onViewportChange={handleGraphViewportChange}
+                      onViewportChange={onGraphViewportChange}
                       heightClassName={graphFullscreen ? "h-full min-h-[360px]" : undefined}
                       nodeDiffHighlight={compareMode ? executionDiff?.nodeHighlights : undefined}
                     />
@@ -361,9 +618,10 @@ export function ExecutionDashboard({
               execution={displayExecution ?? execution}
               node={selectedNode}
               loading={loading}
-              onResume={() => !isReplaying && selectedNodeId && resumeNode(selectedNodeId)}
+              onResume={() => !isReplaying && selectedNodeId && onResumeNode(selectedNodeId)}
               resumeDisabledReason={selectedResumeDisabledReason}
               resumeEventName={resumeEventName}
+              showResumeAction={operationsEnabled}
               className={graphFullscreen ? "h-full min-h-0 overflow-auto" : undefined}
             />
           </main>

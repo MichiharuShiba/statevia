@@ -94,7 +94,14 @@ public sealed class WorkflowsControllerTests
             return ListResult;
         }
 
-        public async Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, int offset, int limit, string? status, CancellationToken ct)
+        public async Task<PagedResult<WorkflowResponse>> ListPagedAsync(
+            string tenantId,
+            int offset,
+            int limit,
+            string? status,
+            string? definitionId,
+            string? nameContains,
+            CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;

@@ -1,6 +1,7 @@
 using System;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Hosting;
@@ -76,8 +77,15 @@ public class CreateDefinitionRequest
 
 public class DefinitionResponse
 {
+    [JsonPropertyName("displayId")]
     public string DisplayId { get; set; } = "";
+
+    [JsonPropertyName("resourceId")]
     public Guid ResourceId { get; set; }
+
+    [JsonPropertyName("name")]
     public string Name { get; set; } = "";
+
+    [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
 }

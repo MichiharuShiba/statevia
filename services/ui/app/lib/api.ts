@@ -79,6 +79,28 @@ async function fetchAndParse<T>(path: string, init?: RequestInit): Promise<T> {
   return json as T;
 }
 
+/** `GET /v1/workflows?limit&offset&status&name&definitionId` 向け（Core-API）。 */
+export type WorkflowsListQuery = {
+  limit: number;
+  offset: number;
+  status?: string;
+  name?: string;
+  definitionId?: string;
+};
+
+/**
+ * ワークフロー一覧用の相対 API パス `...?...` を組み立てる。空のフィルタは含めない。
+ */
+export function buildWorkflowsListPath(params: WorkflowsListQuery): string {
+  const query = new URLSearchParams();
+  query.set("limit", String(params.limit));
+  query.set("offset", String(params.offset));
+  if (params.status?.trim()) query.set("status", params.status.trim());
+  if (params.name?.trim()) query.set("name", params.name.trim());
+  if (params.definitionId?.trim()) query.set("definitionId", params.definitionId.trim());
+  return `/workflows?${query.toString()}`;
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   return fetchAndParse<T>(path);
 }

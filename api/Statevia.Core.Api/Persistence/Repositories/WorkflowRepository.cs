@@ -42,6 +42,8 @@ public sealed class WorkflowRepository : IWorkflowRepository
         int offset,
         int limit,
         string? statusFilter,
+        Guid? definitionIdFilter,
+        string? nameContains,
         CancellationToken ct)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
@@ -49,6 +51,23 @@ public sealed class WorkflowRepository : IWorkflowRepository
 
         if (!string.IsNullOrWhiteSpace(statusFilter))
             joinQuery = joinQuery.Where(x => x.Workflow.Status == statusFilter);
+
+        if (definitionIdFilter is not null)
+            joinQuery = joinQuery.Where(x => x.Workflow.DefinitionId == definitionIdFilter.Value);
+
+        if (!string.IsNullOrWhiteSpace(nameContains))
+        {
+            var needle = nameContains.Trim();
+            if (Guid.TryParse(needle, out var workflowGuid))
+            {
+                joinQuery = joinQuery.Where(
+                    x => (x.DisplayId != null && x.DisplayId.Contains(needle)) || x.Workflow.WorkflowId == workflowGuid);
+            }
+            else
+            {
+                joinQuery = joinQuery.Where(x => x.DisplayId != null && x.DisplayId.Contains(needle));
+            }
+        }
 
         var total = await joinQuery.CountAsync(ct).ConfigureAwait(false);
         var page = await joinQuery

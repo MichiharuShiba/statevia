@@ -13,8 +13,15 @@ public interface IWorkflowService
         string path,
         CancellationToken ct);
     Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct);
-    /// <summary>ページング・status フィルタ付き一覧（O1/O2）。</summary>
-    Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, int offset, int limit, string? status, CancellationToken ct);
+    /// <summary>ページング。status および任意の definition（display/UUID 解決）、<paramref name="nameContains"/>（displayId 部分一致または workflow UUID 完全一致）。</summary>
+    Task<PagedResult<WorkflowResponse>> ListPagedAsync(
+        string tenantId,
+        int offset,
+        int limit,
+        string? status,
+        string? definitionId,
+        string? nameContains,
+        CancellationToken ct);
     /// <summary>単一取得（一覧 <see cref="WorkflowResponse"/> と同一形。UI の WorkflowDTO 向け）。</summary>
     Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct);
     Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct);

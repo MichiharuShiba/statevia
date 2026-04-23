@@ -11,6 +11,8 @@ type NodeDetailProps = {
   resumeDisabledReason: string | null;
   /** WAITING ノードの Resume に必要なイベント名（グラフ定義の Resume エッジから取得） */
   resumeEventName?: string | null;
+  /** false のとき Resume ボタンを表示しない。 */
+  showResumeAction?: boolean;
   className?: string;
 };
 
@@ -21,6 +23,7 @@ export function NodeDetail({
   onResume,
   resumeDisabledReason,
   resumeEventName,
+  showResumeAction = true,
   className
 }: Readonly<NodeDetailProps>) {
   const baseClassName = "rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm";
@@ -107,16 +110,18 @@ export function NodeDetail({
           )}
         </div>
       </div>
-      <div className="mt-3 space-y-2">
-        <button
-          className="w-full rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={!canResume || loading}
-          onClick={onResume}
-        >
-          Resume
-        </button>
-        {resumeDisabledReason && <p className="text-xs text-zinc-600">{resumeDisabledReason}</p>}
-      </div>
+      {showResumeAction && (
+        <div className="mt-3 space-y-2">
+          <button
+            className="w-full rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!canResume || loading}
+            onClick={onResume}
+          >
+            Resume
+          </button>
+          {resumeDisabledReason && <p className="text-xs text-zinc-600">{resumeDisabledReason}</p>}
+        </div>
+      )}
     </aside>
   );
 }

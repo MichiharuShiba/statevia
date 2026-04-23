@@ -235,9 +235,32 @@ public sealed class WorkflowService : IWorkflowService
         int offset,
         int limit,
         string? status,
+        string? definitionId,
+        string? nameContains,
         CancellationToken ct)
     {
-        var (total, pairs) = await _workflows.ListWithDisplayIdsPageAsync(tenantId, offset, limit, status, ct).ConfigureAwait(false);
+        Guid? definitionIdFilter = null;
+        if (!string.IsNullOrWhiteSpace(definitionId))
+        {
+            var defUuid = await _displayIds.ResolveAsync("definition", definitionId!.Trim(), ct).ConfigureAwait(false);
+            if (defUuid is null)
+            {
+                return new PagedResult<WorkflowResponse>
+                {
+                    Items = new List<WorkflowResponse>(),
+                    TotalCount = 0,
+                    Offset = offset,
+                    Limit = limit,
+                    HasMore = false
+                };
+            }
+            definitionIdFilter = defUuid;
+        }
+
+        var name = string.IsNullOrWhiteSpace(nameContains) ? null : nameContains.Trim();
+        var (total, pairs) = await _workflows
+            .ListWithDisplayIdsPageAsync(tenantId, offset, limit, status, definitionIdFilter, name, ct)
+            .ConfigureAwait(false);
         var items = pairs.Select(p => new WorkflowResponse
         {
             DisplayId = p.DisplayId ?? p.Workflow.WorkflowId.ToString(),

@@ -64,7 +64,7 @@
 
 ```mermaid
 flowchart LR
-    rootPath[Access slash] --> redirectRoot[redirect to dashbord]
+    rootPath[Access slash] --> redirectRoot[redirect to dashboard]
     redirectRoot --> topDashboard[TopDashboard]
     topDashboard --> definitionList[DefinitionList]
     topDashboard --> workflowDetail[WorkflowDetail]
