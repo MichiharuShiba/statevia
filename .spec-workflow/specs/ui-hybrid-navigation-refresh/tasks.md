@@ -78,7 +78,7 @@
   - _Requirements: Requirement 1, Requirement 4_
   - _Definition of Done: run/detail から graph へ往復可能で状態表示が維持される_
 
-- [ ] **T10** — DefinitionEditor専用ページの分離
+- [x] **T10** — DefinitionEditor専用ページの分離
   - File: `services/ui/app/definitions/[definitionId]/edit/page.tsx`, `services/ui/app/playground/defaultYaml.ts`
   - 内容: Playground簡易編集を分離し、DefinitionEditorで検証・保存・エラー表示の導線を整備する
   - 目的: 定義編集責務を専用画面に集約する
