@@ -58,6 +58,9 @@ export function DashboardPageClient() {
           )}
         </div>
         <div className="flex flex-wrap gap-3 text-sm">
+          <Link className="text-blue-700 underline hover:text-blue-900" href="/workflows">
+            Workflow 一覧
+          </Link>
           <Link className="text-blue-700 underline hover:text-blue-900" href="/definitions">
             Definition 一覧
           </Link>
@@ -125,7 +128,7 @@ export function DashboardPageClient() {
                   </div>
                   <Link
                     className="shrink-0 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
-                    href={`/playground/run/${encodeURIComponent(workflow.displayId)}`}
+                    href={`/workflows/${encodeURIComponent(workflow.displayId)}`}
                   >
                     詳細を開く
                   </Link>

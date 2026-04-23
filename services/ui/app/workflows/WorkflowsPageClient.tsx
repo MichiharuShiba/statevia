@@ -1,16 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
 import { Toast } from "../components/Toast";
-import { apiGet } from "../lib/api";
+import { apiGet, buildWorkflowsListPath, type WorkflowsListQuery } from "../lib/api";
 import { toToastError, type ToastState } from "../lib/errors";
 import { getStatusStyle, type StatusLike } from "../lib/statusStyle";
 import type { PagedWorkflows, WorkflowDTO } from "../lib/types";
 import { TenantMissingBanner } from "../components/execution/TenantMissingBanner";
 
-const PAGE_SIZE = 20;
+const DEFAULT_LIMIT = 20;
+const MAX_LIMIT = 500;
+type StatusFilter = "" | "Running" | "Completed" | "Cancelled" | "Failed";
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -20,28 +22,67 @@ function formatDateTime(iso: string | null | undefined): string {
 }
 
 /**
- * ページング付きでワークフロー一覧を表示し、詳細（現行: Playground run 画面）へ遷移する。
- * `definitionId` クエリは T5 で API 連携のフィルタに接続予定。現状は当該定義の文脈表示のみ行う。
+ * クエリから一覧の取得条件を正規化する。無効な値は既定に寄せる。
+ */
+function readListQuery(searchParams: { get: (name: string) => string | null }): WorkflowsListQuery {
+  const limitRaw = Number.parseInt(searchParams.get("limit") ?? "", 10);
+  const limit = Number.isFinite(limitRaw) ? Math.min(MAX_LIMIT, Math.max(1, limitRaw)) : DEFAULT_LIMIT;
+  const offsetRaw = Number.parseInt(searchParams.get("offset") ?? "0", 10);
+  const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
+  const statusRaw = searchParams.get("status")?.trim() ?? "";
+  const asStatus: WorkflowsListQuery["status"] =
+    statusRaw === "Running" || statusRaw === "Completed" || statusRaw === "Cancelled" || statusRaw === "Failed" ? statusRaw : undefined;
+  const name = searchParams.get("name")?.trim() ?? "";
+  const definitionId = searchParams.get("definitionId")?.trim() ?? "";
+  return {
+    limit,
+    offset,
+    status: asStatus,
+    name: name || undefined,
+    definitionId: definitionId || undefined
+  };
+}
+
+/**
+ * ページング・フィルタ（URL 同期）付きのワークフロー一覧。詳細は <code>/workflows/[id]</code> へ遷移する（T5）。
  */
 function WorkflowsPageClientInner() {
   const searchParams = useSearchParams();
-  const definitionIdFromContext = searchParams.get("definitionId");
-  const [currentPage, setCurrentPage] = useState(1);
+  const router = useRouter();
+
   const [items, setItems] = useState<WorkflowDTO[] | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<ToastState | null>(null);
 
-  const offset = useMemo(() => (currentPage - 1) * PAGE_SIZE, [currentPage]);
-  const hasPrev = currentPage > 1;
-  const hasNext = totalCount !== null && offset + (items?.length ?? 0) < totalCount;
+  const [nameDraft, setNameDraft] = useState("");
+  const [definitionDraft, setDefinitionDraft] = useState("");
+
+  const listQuery = useMemo(() => readListQuery(searchParams), [searchParams]);
+
+  useEffect(() => {
+    setNameDraft(listQuery.name ?? "");
+    setDefinitionDraft(listQuery.definitionId ?? "");
+  }, [listQuery.name, listQuery.definitionId]);
+
+  const currentStatus = (listQuery.status ?? "") as StatusFilter;
+
+  const currentPage1Based = useMemo(() => Math.floor(listQuery.offset / listQuery.limit) + 1, [listQuery.offset, listQuery.limit]);
+  const hasPrev = listQuery.offset > 0;
+  const hasNext = totalCount !== null && listQuery.offset + (items?.length ?? 0) < totalCount;
 
   const load = useCallback(async () => {
     setLoading(true);
     setToast(null);
     try {
-      const q = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
-      const page = await apiGet<PagedWorkflows>(`/workflows?${q.toString()}`);
+      const path = buildWorkflowsListPath({
+        limit: listQuery.limit,
+        offset: listQuery.offset,
+        status: listQuery.status,
+        name: listQuery.name,
+        definitionId: listQuery.definitionId
+      });
+      const page = await apiGet<PagedWorkflows>(path);
       setItems(page.items);
       setTotalCount(page.totalCount);
     } catch (e) {
@@ -51,21 +92,39 @@ function WorkflowsPageClientInner() {
     } finally {
       setLoading(false);
     }
-  }, [offset]);
+  }, [listQuery]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const goTo = useCallback(
+    (query: WorkflowsListQuery) => {
+      router.replace(buildWorkflowsListPath(query), { scroll: false });
+    },
+    [router]
+  );
+
+  const handleFilterSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    goTo({
+      limit: listQuery.limit,
+      offset: 0,
+      status: (currentStatus || undefined) as WorkflowsListQuery["status"],
+      name: nameDraft || undefined,
+      definitionId: definitionDraft || undefined
+    });
+  };
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-5 p-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-zinc-900">Workflow 一覧</h1>
-          <p className="mt-1 text-sm text-zinc-600">Core-API のページング（limit/offset）で取得します（T5 で定義文脈フィルタ等を拡充予定）。</p>
-          {totalCount !== null && (
-            <p className="mt-1 text-xs text-zinc-500">合計件数: {totalCount}</p>
-          )}
+          <p className="mt-1 text-sm text-zinc-600">
+            条件は URL に反映され、再読み込みしても同じ表示に戻ります。Core-API: <code className="text-xs">limit, offset, status, name, definitionId</code>。
+          </p>
+          {totalCount !== null && <p className="mt-1 text-xs text-zinc-500">合計件数: {totalCount}</p>}
         </div>
         <div className="flex flex-wrap gap-3 text-sm">
           <Link className="text-blue-700 underline hover:text-blue-900" href="/dashboard">
@@ -77,11 +136,86 @@ function WorkflowsPageClientInner() {
         </div>
       </header>
 
-      {definitionIdFromContext && (
+      {listQuery.definitionId && (
         <output className="block rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900" aria-live="polite">
-          定義文脈: <span className="font-mono break-all">{definitionIdFromContext}</span>
+          <span className="text-sky-800">定義文脈（フィルタ中）: </span>
+          <span className="font-mono break-all">{listQuery.definitionId}</span>
+          <button
+            type="button"
+            className="ml-2 text-sky-950 underline hover:no-underline"
+            onClick={() => {
+              setDefinitionDraft("");
+              goTo({
+                limit: listQuery.limit,
+                offset: 0,
+                status: (currentStatus || undefined) as WorkflowsListQuery["status"],
+                name: nameDraft || undefined
+              });
+            }}
+          >
+            定義条件を外す
+          </button>
         </output>
       )}
+
+      <form onSubmit={handleFilterSubmit} className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-medium text-zinc-900">フィルタ</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm text-zinc-800">
+            <span className="text-zinc-600">status</span>
+            <select
+              className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm"
+              value={currentStatus}
+              onChange={(e) => {
+                const v = e.target.value as StatusFilter;
+                goTo({
+                  limit: listQuery.limit,
+                  offset: 0,
+                  status: v || undefined,
+                  name: nameDraft || undefined,
+                  definitionId: definitionDraft || undefined
+                });
+              }}
+            >
+              <option value="">（すべて）</option>
+              <option value="Running">Running</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
+              <option value="Failed">Failed</option>
+            </select>
+          </label>
+          <label className="block text-sm text-zinc-800">
+            <span className="text-zinc-600">definitionId（定義 display / UUID）</span>
+            <input
+              className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-sm"
+              value={definitionDraft}
+              onChange={(e) => setDefinitionDraft(e.target.value)}
+              placeholder="例: def-…"
+              autoComplete="off"
+            />
+          </label>
+        </div>
+        <label className="block text-sm text-zinc-800">
+          <span className="text-zinc-600">name（workflow displayId 部分一致、または workflow UUID 完全一致）</span>
+          <input
+            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-sm"
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            autoComplete="off"
+          />
+        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="submit"
+            className="rounded bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800"
+          >
+            検索（1 ページ目に戻す）
+          </button>
+        </div>
+        <p className="text-xs text-zinc-500">
+          1 ページあたり: {listQuery.limit} 件。 offset: {listQuery.offset}（page ≈ {currentPage1Based}）
+        </p>
+      </form>
 
       <TenantMissingBanner />
       <Toast toast={toast} onClose={() => setToast(null)} />
@@ -93,7 +227,10 @@ function WorkflowsPageClientInner() {
       )}
 
       {!loading && items !== null && items.length > 0 && (
-        <ul className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm" aria-label="ワークフロー一覧">
+        <ul
+          className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
+          aria-label="ワークフロー一覧"
+        >
           {items.map((workflow) => {
             const st = getStatusStyle(workflow.status as StatusLike);
             const updated = workflow.updatedAt ?? workflow.startedAt;
@@ -112,9 +249,9 @@ function WorkflowsPageClientInner() {
                 </div>
                 <Link
                   className="shrink-0 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
-                  href={`/playground/run/${encodeURIComponent(workflow.displayId)}`}
+                  href={`/workflows/${encodeURIComponent(workflow.displayId)}`}
                 >
-                  開く
+                  詳細
                 </Link>
               </li>
             );
@@ -123,7 +260,9 @@ function WorkflowsPageClientInner() {
       )}
 
       {!loading && items !== null && items.length === 0 && (
-        <p className="rounded border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm text-zinc-700">ワークフローがありません。</p>
+        <p className="rounded border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm text-zinc-700">
+          条件に合うワークフローはありません。
+        </p>
       )}
 
       {!loading && !toast && items === null && (
@@ -135,17 +274,27 @@ function WorkflowsPageClientInner() {
           <button
             type="button"
             className="rounded border border-zinc-300 bg-white px-2 py-1.5 text-zinc-800 hover:bg-zinc-50 disabled:opacity-40"
-            onClick={() => setCurrentPage((n) => Math.max(1, n - 1))}
             disabled={!hasPrev}
+            onClick={() =>
+              goTo({
+                ...listQuery,
+                offset: Math.max(0, listQuery.offset - listQuery.limit)
+              })
+            }
           >
             前のページ
           </button>
-          <span>ページ: {currentPage}</span>
+          <span>ページ: {currentPage1Based}</span>
           <button
             type="button"
             className="rounded border border-zinc-300 bg-white px-2 py-1.5 text-zinc-800 hover:bg-zinc-50 disabled:opacity-40"
-            onClick={() => setCurrentPage((n) => n + 1)}
             disabled={!hasNext}
+            onClick={() =>
+              goTo({
+                ...listQuery,
+                offset: listQuery.offset + listQuery.limit
+              })
+            }
           >
             次のページ
           </button>
