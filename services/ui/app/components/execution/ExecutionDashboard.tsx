@@ -38,6 +38,10 @@ export type ExecutionDashboardProps = {
   headerNav?: ReactNode;
   /** メイン見出し */
   headerTitle?: string;
+  /** false のとき executionId を URL 固定として編集させない。 */
+  executionIdEditable?: boolean;
+  /** false のとき比較モード UI を出さない。 */
+  comparisonEnabled?: boolean;
 };
 
 type ExecutionDashboardViewProps = {
@@ -47,6 +51,7 @@ type ExecutionDashboardViewProps = {
   toast: ToastState | null;
   onCloseToast: () => void;
   executionId: string;
+  executionIdEditable: boolean;
   onExecutionIdChange: (executionId: string) => void;
   onLoadExecution: () => void;
   onCancelExecution: () => void;
@@ -57,6 +62,7 @@ type ExecutionDashboardViewProps = {
   onViewModeChange: (mode: ViewMode) => void;
   compareMode: boolean;
   onCompareModeChange: (compareMode: boolean) => void;
+  comparisonEnabled: boolean;
   streamEnabled: boolean;
   onStreamEnabledChange: (enabled: boolean) => void;
   showExecutionPanels: boolean;
@@ -99,7 +105,9 @@ export function ExecutionDashboard({
   initialExecutionId,
   autoLoadOnMount = false,
   headerNav,
-  headerTitle = "実行の詳細"
+  headerTitle = "実行の詳細",
+  executionIdEditable = true,
+  comparisonEnabled = true
 }: Readonly<ExecutionDashboardProps>) {
   const [executionId, setExecutionId] = useState(initialExecutionId);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -307,6 +315,7 @@ export function ExecutionDashboard({
       toast={toast}
       onCloseToast={handleCloseToast}
       executionId={executionId}
+      executionIdEditable={executionIdEditable}
       onExecutionIdChange={setExecutionId}
       onLoadExecution={loadExecution}
       onCancelExecution={cancelExecution}
@@ -317,6 +326,7 @@ export function ExecutionDashboard({
       onViewModeChange={setViewMode}
       compareMode={compareMode}
       onCompareModeChange={setCompareMode}
+      comparisonEnabled={comparisonEnabled}
       streamEnabled={streamEnabled}
       onStreamEnabledChange={handleStreamEnabledChange}
       showExecutionPanels={showExecutionPanels}
@@ -360,6 +370,7 @@ function ExecutionDashboardView({
   toast,
   onCloseToast,
   executionId,
+  executionIdEditable,
   onExecutionIdChange,
   onLoadExecution,
   onCancelExecution,
@@ -370,6 +381,7 @@ function ExecutionDashboardView({
   onViewModeChange,
   compareMode,
   onCompareModeChange,
+  comparisonEnabled,
   streamEnabled,
   onStreamEnabledChange,
   showExecutionPanels,
@@ -437,6 +449,7 @@ function ExecutionDashboardView({
 
           <ExecutionHeader
             executionId={executionId}
+            executionIdEditable={executionIdEditable}
             onExecutionIdChange={onExecutionIdChange}
             onLoad={onLoadExecution}
             onCancel={onCancelExecution}
@@ -446,12 +459,12 @@ function ExecutionDashboardView({
             viewMode={viewMode}
             onViewModeChange={onViewModeChange}
             compareMode={compareMode}
-            onCompareModeChange={onCompareModeChange}
+            onCompareModeChange={comparisonEnabled ? onCompareModeChange : undefined}
             streamEnabled={streamEnabled}
             onStreamEnabledChange={onStreamEnabledChange}
           />
 
-          {compareMode && showExecutionPanels && (
+          {comparisonEnabled && compareMode && showExecutionPanels && (
             <ExecutionComparisonBar
               executionLeft={execution}
               executionRight={executionB}
@@ -466,6 +479,12 @@ function ExecutionDashboardView({
 
           <TenantMissingBanner />
           <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequested} terminal={terminal} />
+
+          {!loading && !showExecutionPanels && (
+            <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              指定されたワークフローが見つかりませんでした。ID とテナントを確認してください。
+            </section>
+          )}
 
           {showExecutionPanels && isReplaying && (
             <ReplayBanner onBackToCurrent={onBackToCurrent} />

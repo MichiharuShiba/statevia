@@ -21,6 +21,8 @@ type ExecutionHeaderProps = {
   /** true のとき EventSource で更新。`onStreamEnabledChange` とセットで指定。 */
   streamEnabled?: boolean;
   onStreamEnabledChange?: (enabled: boolean) => void;
+  /** false のとき executionId の手入力を無効化し、表示のみ行う。 */
+  executionIdEditable?: boolean;
 };
 
 export function ExecutionHeader({
@@ -36,7 +38,8 @@ export function ExecutionHeader({
   compareMode = false,
   onCompareModeChange,
   streamEnabled = true,
-  onStreamEnabledChange
+  onStreamEnabledChange,
+  executionIdEditable = true
 }: Readonly<ExecutionHeaderProps>) {
   const status = execution?.status;
   const style = status ? getStatusStyle(status) : null;
@@ -45,25 +48,38 @@ export function ExecutionHeader({
     <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex-1">
-          <label htmlFor="execution-id-input" className="block text-xs font-semibold text-zinc-700">
-            Execution ID
-          </label>
-          <input
-            id="execution-id-input"
-            className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
-            value={executionId}
-            onChange={(event) => onExecutionIdChange(event.target.value)}
-            placeholder="ex-1"
-          />
+          {executionIdEditable ? (
+            <>
+              <label htmlFor="execution-id-input" className="block text-xs font-semibold text-zinc-700">
+                Execution ID
+              </label>
+              <input
+                id="execution-id-input"
+                className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                value={executionId}
+                onChange={(event) => onExecutionIdChange(event.target.value)}
+                placeholder="ex-1"
+              />
+            </>
+          ) : (
+            <>
+              <span className="block text-xs font-semibold text-zinc-700">Execution ID</span>
+              <p className="mt-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-sm text-zinc-900">
+                {executionId}
+              </p>
+            </>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            className="rounded-xl border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-50"
-            onClick={onLoad}
-            disabled={loading}
-          >
-            {loading ? "Loading..." : "Load"}
-          </button>
+          {executionIdEditable && (
+            <button
+              className="rounded-xl border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-50"
+              onClick={onLoad}
+              disabled={loading}
+            >
+              {loading ? "Loading..." : "Load"}
+            </button>
+          )}
           <button
             className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
             onClick={onCancel}

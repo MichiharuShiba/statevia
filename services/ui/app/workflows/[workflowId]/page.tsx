@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { ExecutionDashboard } from "../../components/execution/ExecutionDashboard";
 
 /**
- * ワークフロー単体（URL 表示 ID 確定）の参照画面。T6 では手入力欄廃止などヘッダーを主導に整える予定。
+ * ワークフロー単体（URL 表示 ID 確定）の参照画面。
  */
 export default function WorkflowDetailPage() {
   const params = useParams();
@@ -33,6 +33,8 @@ export default function WorkflowDetailPage() {
       initialExecutionId={workflowId}
       autoLoadOnMount
       headerTitle="ワークフロー詳細"
+      executionIdEditable={false}
+      comparisonEnabled={false}
       headerNav={
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <Link className="text-zinc-600 hover:underline" href="/workflows">
