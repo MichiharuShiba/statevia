@@ -6,13 +6,13 @@
 
 ---
 
-- [ ] **T1** — 共通 UI 規約の確定
+- [x] **T1** — 共通 UI 規約の確定
   - File: `.spec-workflow/specs/ui-design-unification/requirements.md`, `.spec-workflow/specs/ui-design-unification/design.md`
   - 内容: ヘッダー構成、余白、状態表示、CTA 優先度、導線ラベル規約、レイアウトパネル（Header/Main/Side/Action）規約を文書化して固定する
   - 目的: 実装前に画面間の判断基準を統一する
   - _Leverage: `.spec-workflow/specs/ui-hybrid-navigation-refresh/requirements.md`, `.spec-workflow/specs/ui-hybrid-navigation-refresh/design.md`_
-  - _Requirements: Requirement 1, Requirement 2, Requirement 3, Requirement 4_
-  - _Definition of Done: 規約が requirements/design の双方に反映され、レビューで追跡できる_
+  - _Requirements: Requirement 1, Requirement 2, Requirement 3, Requirement 4, Requirement 6_
+  - _Definition of Done: 規約が requirements/design の双方に反映され、レビューで追跡できる（完了: 2026-04-24）_
 
 - [ ] **T2** — 共通コンポーネントの追加
   - File: `services/ui/app/components/layout/PageShell.tsx`, `services/ui/app/components/layout/PageState.tsx`, `services/ui/app/components/layout/ActionLinkGroup.tsx`, `services/ui/app/components/common/StatusBadge.tsx`
