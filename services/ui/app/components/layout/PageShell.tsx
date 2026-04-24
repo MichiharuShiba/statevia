@@ -27,24 +27,27 @@ export function PageShell({
   secondaryActions,
   className
 }: Readonly<PageShellProps>) {
-  const shellClassName = className
-    ? `mx-auto flex w-full max-w-5xl flex-col gap-6 p-6 ${className}`
-    : "mx-auto flex w-full max-w-5xl flex-col gap-6 p-6";
+  const shellClassName = [
+    "mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:gap-6 sm:p-6",
+    className
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className={shellClassName}>
-      <header className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-[var(--tone-border)] bg-[var(--tone-surface-bg)] px-5 py-4">
+      <header className="flex flex-col items-start gap-3 rounded-2xl border border-[var(--tone-border)] bg-[var(--tone-surface-bg)] px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-5 sm:py-4">
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-semibold text-[var(--tone-fg-strong)]">{title}</h1>
           {description ? <p className="mt-1 text-sm text-[var(--tone-fg-muted)]">{description}</p> : null}
         </div>
-        {primaryActions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{primaryActions}</div> : null}
+        {primaryActions ? <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">{primaryActions}</div> : null}
       </header>
 
       <section className="flex flex-col gap-4">{children}</section>
 
       {secondaryActions ? (
-        <footer className="flex flex-wrap items-center gap-3 border-t border-[var(--tone-border)] pt-3 text-sm text-[var(--tone-fg-muted)]">
+        <footer className="flex flex-col items-start gap-2 border-t border-[var(--tone-border)] pt-3 text-sm text-[var(--tone-fg-muted)] sm:flex-row sm:items-center sm:gap-3">
           {secondaryActions}
         </footer>
       ) : null}

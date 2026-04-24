@@ -467,12 +467,10 @@ function ExecutionDashboardView({
     <div className={graphFullscreen ? "" : "space-y-4"}>
       {!graphFullscreen && (
         <>
-          <header className="flex items-center justify-between rounded-2xl border border-[var(--tone-border)] bg-[var(--tone-surface-bg)] px-4 py-3">
+          <header className="flex flex-col items-start gap-3 rounded-2xl border border-[var(--tone-border)] bg-[var(--tone-surface-bg)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-xl font-bold text-[var(--tone-fg-strong)]">{headerTitle}</h1>
             {headerNav ?? defaultHeaderNav}
           </header>
-
-          <Toast toast={toast} onClose={onCloseToast} />
 
           <ExecutionHeader
             executionId={executionId}
@@ -492,6 +490,8 @@ function ExecutionDashboardView({
             onStreamEnabledChange={onStreamEnabledChange}
             showCancelAction={operationsEnabled}
           />
+
+          <Toast toast={toast} onClose={onCloseToast} />
 
           {operationsEnabled && showExecutionPanels && (
             <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">

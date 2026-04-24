@@ -114,7 +114,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="rounded bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800 disabled:opacity-50"
+            className="w-full rounded bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
             onClick={() => void handleSave()}
             disabled={saving}
           >
@@ -122,7 +122,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
           </button>
           <button
             type="button"
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
+            className="w-full rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50 sm:w-auto"
             onClick={() => setYaml(defaultPlaygroundYaml)}
             disabled={saving}
           >
