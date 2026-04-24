@@ -54,13 +54,13 @@
   - _Requirements: Requirement 5_
   - _Definition of Done: ハブ・詳細・専用画面で `playground` 依存の主要導線が存在しない（完了: 2026-04-24）_
 
-- [ ] **T7** — テストと品質確認
+- [x] **T7** — テストと品質確認
   - File: `services/ui/tests/**`, `services/ui/app/**` 変更対象
   - 内容: 共通骨格、状態表示、導線ラベル、SP 表示順序のテストを追加/更新し、型検査を実施する
   - 目的: 共通化による UI 回帰を防ぐ
   - _Leverage: 既存 UI テスト基盤_
   - _Requirements: Requirement 1, Requirement 2, Requirement 3, Requirement 4, Requirement 5_
-  - _Definition of Done: `npm run test:run` と `tsc --noEmit` が変更範囲で通過する_
+  - _Definition of Done: `npm run test:run` と `tsc --noEmit` が変更範囲で通過する（完了: 2026-04-24）_
 
 - [ ] **T8** — 共通ヘッダーのブランドアイコン表示仕様を反映
   - File: `.spec-workflow/specs/ui-design-unification/requirements.md`, `.spec-workflow/specs/ui-design-unification/design.md`, `services/ui/app/layout.tsx`
