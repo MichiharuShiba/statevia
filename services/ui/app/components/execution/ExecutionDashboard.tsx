@@ -7,6 +7,8 @@ import { ExecutionStatusBanner } from "./ExecutionStatusBanner";
 import { ExecutionTimeline } from "./ExecutionTimeline";
 import { ReplayBanner } from "./ReplayBanner";
 import { TenantMissingBanner } from "./TenantMissingBanner";
+import { ActionLinkGroup } from "../layout/ActionLinkGroup";
+import { PageState } from "../layout/PageState";
 import { NodeDetail } from "../nodes/NodeDetail";
 import { NodeGraphView, type GraphViewport } from "../nodes/NodeGraphView";
 import { NodeListView } from "../nodes/NodeListView";
@@ -445,17 +447,13 @@ function ExecutionDashboardView({
 }: Readonly<ExecutionDashboardViewProps>) {
   const [eventName, setEventName] = useState("");
   const defaultHeaderNav = (
-    <div className="flex items-center gap-3 text-xs">
-      <a className="text-zinc-600 hover:underline" href="/dashboard">
-        ダッシュボード
-      </a>
-      <a className="text-zinc-600 hover:underline" href="/playground">
-        Playground
-      </a>
-      <a className="text-zinc-600 hover:underline" href="/health">
-        health
-      </a>
-    </div>
+    <ActionLinkGroup
+      links={[
+        { label: "ダッシュボード", href: "/dashboard", priority: "primary" },
+        { label: "Workflow 一覧", href: "/workflows" },
+        { label: "health", href: "/health" }
+      ]}
+    />
   );
 
   const graphWrapperClassName = graphFullscreen ? "fixed inset-0 z-50 bg-zinc-50 p-4" : "";
@@ -469,8 +467,8 @@ function ExecutionDashboardView({
     <div className={graphFullscreen ? "" : "space-y-4"}>
       {!graphFullscreen && (
         <>
-          <header className="flex items-center justify-between">
-            <h1 className="text-xl font-bold">{headerTitle}</h1>
+          <header className="flex items-center justify-between rounded-2xl border border-[var(--tone-border)] bg-[var(--tone-surface-bg)] px-4 py-3">
+            <h1 className="text-xl font-bold text-[var(--tone-fg-strong)]">{headerTitle}</h1>
             {headerNav ?? defaultHeaderNav}
           </header>
 
@@ -544,9 +542,7 @@ function ExecutionDashboardView({
           <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequested} terminal={terminal} />
 
           {!loading && !showExecutionPanels && (
-            <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              指定されたワークフローが見つかりませんでした。ID とテナントを確認してください。
-            </section>
+            <PageState state="error" message="指定されたワークフローが見つかりませんでした。ID を確認してください。" />
           )}
 
           {showExecutionPanels && isReplaying && (

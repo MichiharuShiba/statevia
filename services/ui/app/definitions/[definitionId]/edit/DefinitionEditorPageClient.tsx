@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { ActionLinkGroup } from "../../../components/layout/ActionLinkGroup";
+import { PageShell } from "../../../components/layout/PageShell";
+import { PageState } from "../../../components/layout/PageState";
 import { Toast } from "../../../components/Toast";
 import { apiGet, apiPost } from "../../../lib/api";
 import { toToastError, type ToastState } from "../../../lib/errors";
@@ -23,6 +26,10 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
   const [toast, setToast] = useState<ToastState | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedDefinition, setSavedDefinition] = useState<DefinitionDTO | null>(null);
+  const actionLinks = [
+    { label: "定義の詳細へ戻る", href: `/definitions/${encodeURIComponent(definitionId)}`, priority: "primary" as const },
+    { label: "Definition 一覧", href: "/definitions" }
+  ];
 
   const loadDefinition = useCallback(async () => {
     setLoadingMeta(true);
@@ -70,20 +77,17 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
   }, [definitionName, yaml]);
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-5 p-6">
-      <header className="space-y-1">
-        <h1 className="text-xl font-semibold text-zinc-900">Definition Editor</h1>
-        <p className="text-sm text-zinc-600">
-          編集対象: <span className="font-mono break-all">{definitionId}</span>
-        </p>
-      </header>
+    <PageShell
+      title="Definition Editor"
+      description={`編集対象: ${definitionId}`}
+      primaryActions={<ActionLinkGroup links={actionLinks} />}
+      secondaryActions={<ActionLinkGroup links={actionLinks} />}
+    >
 
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       {loadingMeta && (
-        <output className="text-sm text-zinc-500" aria-live="polite">
-          定義メタ情報を読み込み中...
-        </output>
+        <PageState state="loading" message="定義メタ情報を読み込み中..." />
       )}
 
       <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
@@ -150,15 +154,6 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
           </div>
         </section>
       )}
-
-      <nav className="flex flex-wrap gap-3 text-sm">
-        <Link className="text-blue-700 underline hover:text-blue-900" href={`/definitions/${encodeURIComponent(definitionId)}`}>
-          定義の詳細へ戻る
-        </Link>
-        <Link className="text-blue-700 underline hover:text-blue-900" href="/definitions">
-          Definition 一覧
-        </Link>
-      </nav>
-    </main>
+    </PageShell>
   );
 }
