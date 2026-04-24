@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import { StatusBadge } from "../components/common/StatusBadge";
 import { Toast } from "../components/Toast";
+import { ActionLinkGroup } from "../components/layout/ActionLinkGroup";
+import { PageShell } from "../components/layout/PageShell";
+import { PageState } from "../components/layout/PageState";
 import { apiGet, buildWorkflowsListPath, type WorkflowsListQuery } from "../lib/api";
 import { toToastError, type ToastState } from "../lib/errors";
-import { getStatusStyle, type StatusLike } from "../lib/statusStyle";
 import type { PagedWorkflows, WorkflowDTO } from "../lib/types";
 import { TenantMissingBanner } from "../components/execution/TenantMissingBanner";
 
@@ -115,26 +118,18 @@ function WorkflowsPageClientInner() {
       definitionId: definitionDraft || undefined
     });
   };
+  const actionLinks = [
+    { label: "ダッシュボード", href: "/dashboard" },
+    { label: "Definition 一覧", href: "/definitions" }
+  ];
+  const totalCountLabel = totalCount == null ? null : <p className="text-xs">合計件数: {totalCount}</p>;
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-5 p-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Workflow 一覧</h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            条件は URL に反映され、再読み込みしても同じ表示に戻ります。Core-API: <code className="text-xs">limit, offset, status, name, definitionId</code>。
-          </p>
-          {totalCount !== null && <p className="mt-1 text-xs text-zinc-500">合計件数: {totalCount}</p>}
-        </div>
-        <div className="flex flex-wrap gap-3 text-sm">
-          <Link className="text-blue-700 underline hover:text-blue-900" href="/dashboard">
-            ダッシュボード
-          </Link>
-          <Link className="text-blue-700 underline hover:text-blue-900" href="/definitions">
-            Definition 一覧
-          </Link>
-        </div>
-      </header>
+    <PageShell
+      title="Workflow 一覧"
+      primaryActions={<ActionLinkGroup links={actionLinks} />}
+      secondaryActions={totalCountLabel}
+    >
 
       {listQuery.definitionId && (
         <output className="block rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900" aria-live="polite">
@@ -221,9 +216,7 @@ function WorkflowsPageClientInner() {
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       {loading && (
-        <output className="text-sm text-zinc-500" aria-live="polite">
-          読み込み中…
-        </output>
+        <PageState state="loading" message="ワークフロー一覧を読み込み中です。" />
       )}
 
       {!loading && items !== null && items.length > 0 && (
@@ -232,15 +225,12 @@ function WorkflowsPageClientInner() {
           aria-label="ワークフロー一覧"
         >
           {items.map((workflow) => {
-            const st = getStatusStyle(workflow.status as StatusLike);
             const updated = workflow.updatedAt ?? workflow.startedAt;
             return (
               <li key={workflow.displayId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${st.badgeClass}`}>
-                      {workflow.status}
-                    </span>
+                    <StatusBadge status={workflow.status} />
                     <span className="truncate font-mono text-sm text-zinc-900" title={workflow.displayId}>
                       {workflow.displayId}
                     </span>
@@ -260,13 +250,15 @@ function WorkflowsPageClientInner() {
       )}
 
       {!loading && items !== null && items.length === 0 && (
-        <p className="rounded border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm text-zinc-700">
-          条件に合うワークフローはありません。
-        </p>
+        <PageState state="empty" message="条件に合うワークフローはありません。" />
       )}
 
       {!loading && !toast && items === null && (
-        <p className="text-sm text-zinc-600">取得に失敗しました。テナント設定を確認するか、再試行してください。</p>
+        <PageState
+          state="error"
+          message="取得に失敗しました。時間をおいて再試行してください。"
+          onRetry={() => void load()}
+        />
       )}
 
       {items !== null && (hasPrev || hasNext) && (
@@ -308,7 +300,7 @@ function WorkflowsPageClientInner() {
       >
         再読み込み
       </button>
-    </div>
+    </PageShell>
   );
 }
 

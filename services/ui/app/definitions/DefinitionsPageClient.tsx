@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ActionLinkGroup } from "../components/layout/ActionLinkGroup";
+import { PageShell } from "../components/layout/PageShell";
+import { PageState } from "../components/layout/PageState";
 import { Toast } from "../components/Toast";
 import { apiGet } from "../lib/api";
 import { toToastError, type ToastState } from "../lib/errors";
@@ -67,23 +70,17 @@ export function DefinitionsPageClient() {
   );
 
   const empty = !loading && items !== null && items.length === 0;
+  const actionLinks = [
+    { label: "ダッシュボード", href: "/dashboard" },
+    { label: "Workflow 一覧", href: "/workflows" }
+  ];
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Definition 一覧</h1>
-          <p className="mt-1 text-sm text-zinc-600">定義の検索とページングを行い、詳細画面へ遷移します。</p>
-        </div>
-        <div className="flex gap-3 text-sm">
-          <Link href="/dashboard" className="text-blue-700 underline hover:text-blue-900">
-            ダッシュボード
-          </Link>
-          <Link href="/playground" className="text-blue-700 underline hover:text-blue-900">
-            Playground
-          </Link>
-        </div>
-      </header>
+    <PageShell
+      title="Definition 一覧"
+      description="定義の検索とページングを行い、詳細画面へ遷移します。"
+      primaryActions={<ActionLinkGroup links={actionLinks} />}
+    >
 
       <Toast toast={toast} onClose={() => setToast(null)} />
 
@@ -119,9 +116,7 @@ export function DefinitionsPageClient() {
       </form>
 
       {loading && (
-        <output className="block text-sm text-zinc-500" aria-live="polite">
-          定義一覧を読み込み中…
-        </output>
+        <PageState state="loading" message="定義一覧を読み込み中です。" />
       )}
 
       {!loading && items !== null && (
@@ -132,12 +127,10 @@ export function DefinitionsPageClient() {
       )}
 
       {empty && (
-        <section className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-6 text-sm text-zinc-700">
-          <p className="font-medium text-zinc-800">該当する Definition はありません。</p>
-          <p className="mt-2">
-            検索条件を変更するか、<Link href="/playground" className="text-blue-700 underline">Playground</Link> で新規登録してください。
-          </p>
-        </section>
+        <PageState
+          state="empty"
+          message="該当する Definition はありません。検索条件を変更するか、条件をクリアして再検索してください。"
+        />
       )}
 
       {!loading && items !== null && items.length > 0 && (
@@ -166,7 +159,7 @@ export function DefinitionsPageClient() {
       )}
 
       {!loading && items === null && !toast && (
-        <p className="text-sm text-zinc-600">定義一覧を取得できませんでした。</p>
+        <PageState state="error" message="定義一覧を取得できませんでした。" onRetry={() => void loadDefinitions()} />
       )}
 
       {!loading && items !== null && (
@@ -190,6 +183,6 @@ export function DefinitionsPageClient() {
           </button>
         </nav>
       )}
-    </div>
+    </PageShell>
   );
 }
