@@ -22,13 +22,13 @@
   - _Requirements: Requirement 1, Requirement 2, Requirement 3_
   - _Definition of Done: 各共通コンポーネントが作成され、型検査を通過する（完了: 2026-04-24）_
 
-- [ ] **T3** — ハブ画面への適用
+- [x] **T3** — ハブ画面への適用
   - File: `services/ui/app/dashboard/DashboardPageClient.tsx`, `services/ui/app/definitions/DefinitionsPageClient.tsx`, `services/ui/app/workflows/page.tsx`（必要に応じて client 分離含む）
   - 内容: ハブ画面を PageShell/PageState/StatusBadge ベースへ置換し、導線表現を統一する
   - 目的: 利用頻度の高い入口画面から一貫性を確立する
   - _Leverage: `services/ui/app/lib/api.ts`, `services/ui/app/lib/types.ts`_
   - _Requirements: Requirement 1, Requirement 2, Requirement 3_
-  - _Definition of Done: ハブ画面で共通骨格と状態表示の規約が満たされる_
+  - _Definition of Done: ハブ画面で共通骨格と状態表示の規約が満たされる（完了: 2026-04-24）_
 
 - [ ] **T4** — 詳細・専用画面への適用
   - File: `services/ui/app/workflows/[workflowId]/page.tsx`, `services/ui/app/workflows/[workflowId]/run/page.tsx`, `services/ui/app/workflows/[workflowId]/graph/page.tsx`, `services/ui/app/definitions/[definitionId]/edit/page.tsx`, `services/ui/app/components/execution/ExecutionDashboard.tsx`, `services/ui/app/components/execution/ExecutionHeader.tsx`
