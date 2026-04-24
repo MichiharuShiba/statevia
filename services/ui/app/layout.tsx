@@ -1,11 +1,36 @@
 import "./globals.css";
+import Image from "next/image";
+import Link from "next/link";
+import appIcon from "./icon.png";
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ja">
-      <body className="min-h-screen bg-zinc-50 text-zinc-900">
+      <body className="min-h-screen bg-[var(--tone-page-bg)] text-[var(--tone-fg-strong)]">
+        <header className="border-b border-[var(--tone-border)] bg-[var(--tone-header-bg)] text-[var(--tone-header-fg)]">
+          <div className="mx-auto flex max-w-[min(1400px,calc(100%-2rem))] flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <Link href="/dashboard" className="inline-flex items-center gap-2">
+              <Image src={appIcon} alt="statevia" className="h-8 w-8 rounded-md border border-white/20 object-cover" priority />
+              <span className="text-lg font-semibold tracking-wide sm:text-xl">
+                <span>state</span>
+                <span className="text-emerald-400">via</span>
+              </span>
+            </Link>
+            <nav className="flex flex-wrap items-center gap-3 text-sm text-[var(--tone-header-fg-muted)]">
+              <Link href="/dashboard" className="hover:text-[var(--tone-header-fg)] hover:underline">
+                Dashboard
+              </Link>
+              <Link href="/definitions" className="hover:text-[var(--tone-header-fg)] hover:underline">
+                Definitions
+              </Link>
+              <Link href="/workflows" className="hover:text-[var(--tone-header-fg)] hover:underline">
+                Workflows
+              </Link>
+            </nav>
+          </div>
+        </header>
         <div className="mx-auto max-w-[min(1400px,calc(100%-2rem))] px-4 py-6">{children}</div>
       </body>
     </html>
