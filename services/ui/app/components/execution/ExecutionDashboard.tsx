@@ -36,7 +36,7 @@ export type ExecutionDashboardProps = {
   initialExecutionId: string;
   /** true のときマウント直後に Load を実行する */
   autoLoadOnMount?: boolean;
-  /** ヘッダ右側のナビ（未指定時は Playground + health） */
+  /** ヘッダ右側のナビ（未指定時は dashboard/workflows/health） */
   headerNav?: ReactNode;
   /** メイン見出し */
   headerTitle?: string;
@@ -110,7 +110,7 @@ type ExecutionDashboardViewProps = {
 
 /**
  * 実行一覧・グラフ・タイムライン・ノード操作の共通ダッシュボード。
- * `/dashboard` や `/playground/run/[displayId]` から利用する。
+ * `/dashboard` や `/workflows/[workflowId]` から利用する。
  */
 export function ExecutionDashboard({
   initialExecutionId,

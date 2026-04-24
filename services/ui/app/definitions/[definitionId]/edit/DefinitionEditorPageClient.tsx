@@ -7,9 +7,9 @@ import { PageShell } from "../../../components/layout/PageShell";
 import { PageState } from "../../../components/layout/PageState";
 import { Toast } from "../../../components/Toast";
 import { apiGet, apiPost } from "../../../lib/api";
+import { defaultDefinitionYaml } from "../../../lib/defaultDefinitionYaml";
 import { toToastError, type ToastState } from "../../../lib/errors";
 import type { DefinitionDTO } from "../../../lib/types";
-import { defaultPlaygroundYaml } from "../../../playground/defaultYaml";
 
 type DefinitionEditorPageClientProps = {
   definitionId: string;
@@ -22,7 +22,7 @@ type DefinitionEditorPageClientProps = {
 export function DefinitionEditorPageClient({ definitionId }: Readonly<DefinitionEditorPageClientProps>) {
   const [loadingMeta, setLoadingMeta] = useState(true);
   const [definitionName, setDefinitionName] = useState("");
-  const [yaml, setYaml] = useState(defaultPlaygroundYaml);
+  const [yaml, setYaml] = useState(defaultDefinitionYaml);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedDefinition, setSavedDefinition] = useState<DefinitionDTO | null>(null);
@@ -123,7 +123,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
           <button
             type="button"
             className="w-full rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50 sm:w-auto"
-            onClick={() => setYaml(defaultPlaygroundYaml)}
+            onClick={() => setYaml(defaultDefinitionYaml)}
             disabled={saving}
           >
             テンプレートに戻す

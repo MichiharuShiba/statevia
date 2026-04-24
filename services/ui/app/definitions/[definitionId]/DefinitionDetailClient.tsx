@@ -44,10 +44,6 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
     void load();
   }, [load]);
 
-  const playQuery = new URLSearchParams();
-  if (definitionId) playQuery.set("definitionId", definitionId);
-  const playHref = `/playground?${playQuery.toString()}`;
-
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5 p-6">
       <header className="space-y-1">
@@ -106,11 +102,6 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
           <li>
             <Link className="text-blue-700 underline hover:text-blue-900" href={`/definitions/${encodeURIComponent(definitionId)}/edit`}>
               定義の編集（T10: 専用 Editor へ拡張予定）
-            </Link>
-          </li>
-          <li>
-            <Link className="text-blue-700 underline hover:text-blue-900" href={playHref}>
-              Playground で開く（definitionId を反映）
             </Link>
           </li>
           <li>
