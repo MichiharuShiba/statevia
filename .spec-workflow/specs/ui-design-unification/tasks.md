@@ -46,13 +46,13 @@
   - _Requirements: Requirement 4_
   - _Definition of Done: SP 表示で規定順序が維持され、主要 CTA が画面上部で認識できる（完了: 2026-04-24）_
 
-- [ ] **T6** — `playground` 導線整理
+- [x] **T6** — `playground` 導線整理
   - File: `services/ui/app/**`（ナビゲーションリンク定義箇所）, `.spec-workflow/specs/ui-hybrid-navigation-refresh/*.md`（必要に応じて注記）
   - 内容: 新 UI 導線上の `playground` リンク/案内を整理し、主要導線から除外する
   - 目的: 遷移導線を一本化し、利用者の判断負荷を下げる
   - _Leverage: 既存の route 構成_
   - _Requirements: Requirement 5_
-  - _Definition of Done: ハブ・詳細・専用画面で `playground` 依存の主要導線が存在しない_
+  - _Definition of Done: ハブ・詳細・専用画面で `playground` 依存の主要導線が存在しない（完了: 2026-04-24）_
 
 - [ ] **T7** — テストと品質確認
   - File: `services/ui/tests/**`, `services/ui/app/**` 変更対象
