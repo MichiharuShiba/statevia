@@ -38,13 +38,13 @@
   - _Requirements: Requirement 1, Requirement 2, Requirement 3_
   - _Definition of Done: 専用画面で共通導線・共通状態表示が機能し、既存操作を阻害しない（完了: 2026-04-24）_
 
-- [ ] **T5** — SP レイアウト適用
+- [x] **T5** — SP レイアウト適用
   - File: `services/ui/app/**`（上記対象画面の className / レイアウト定義）
   - 内容: SP での単一カラム順序（Header -> ContextSummary -> Feedback -> Main -> SubActions）を適用する
   - 目的: PC/SP で意味構造を揃え、モバイル運用時の迷いを減らす
   - _Leverage: `services/ui/app/layout.tsx`, 既存 Tailwind utility class_
   - _Requirements: Requirement 4_
-  - _Definition of Done: SP 表示で規定順序が維持され、主要 CTA が画面上部で認識できる_
+  - _Definition of Done: SP 表示で規定順序が維持され、主要 CTA が画面上部で認識できる（完了: 2026-04-24）_
 
 - [ ] **T6** — `playground` 導線整理
   - File: `services/ui/app/**`（ナビゲーションリンク定義箇所）, `.spec-workflow/specs/ui-hybrid-navigation-refresh/*.md`（必要に応じて注記）
