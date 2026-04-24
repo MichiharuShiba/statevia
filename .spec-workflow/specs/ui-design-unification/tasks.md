@@ -30,13 +30,13 @@
   - _Requirements: Requirement 1, Requirement 2, Requirement 3_
   - _Definition of Done: ハブ画面で共通骨格と状態表示の規約が満たされる（完了: 2026-04-24）_
 
-- [ ] **T4** — 詳細・専用画面への適用
+- [x] **T4** — 詳細・専用画面への適用
   - File: `services/ui/app/workflows/[workflowId]/page.tsx`, `services/ui/app/workflows/[workflowId]/run/page.tsx`, `services/ui/app/workflows/[workflowId]/graph/page.tsx`, `services/ui/app/definitions/[definitionId]/edit/page.tsx`, `services/ui/app/components/execution/ExecutionDashboard.tsx`, `services/ui/app/components/execution/ExecutionHeader.tsx`
   - 内容: detail/run/graph/edit のヘッダー・戻り導線・状態表示を共通ルールに揃える
   - 目的: ハブ外の画面でも同じ操作感を担保する
   - _Leverage: `services/ui/app/components/execution/ExecutionDashboard.tsx`, `services/ui/app/components/nodes/NodeGraphView.tsx`_
   - _Requirements: Requirement 1, Requirement 2, Requirement 3_
-  - _Definition of Done: 専用画面で共通導線・共通状態表示が機能し、既存操作を阻害しない_
+  - _Definition of Done: 専用画面で共通導線・共通状態表示が機能し、既存操作を阻害しない（完了: 2026-04-24）_
 
 - [ ] **T5** — SP レイアウト適用
   - File: `services/ui/app/**`（上記対象画面の className / レイアウト定義）
