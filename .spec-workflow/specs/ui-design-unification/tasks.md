@@ -14,13 +14,13 @@
   - _Requirements: Requirement 1, Requirement 2, Requirement 3, Requirement 4, Requirement 6_
   - _Definition of Done: 規約が requirements/design の双方に反映され、レビューで追跡できる（完了: 2026-04-24）_
 
-- [ ] **T2** — 共通コンポーネントの追加
+- [x] **T2** — 共通コンポーネントの追加
   - File: `services/ui/app/components/layout/PageShell.tsx`, `services/ui/app/components/layout/PageState.tsx`, `services/ui/app/components/layout/ActionLinkGroup.tsx`, `services/ui/app/components/common/StatusBadge.tsx`
   - 内容: 共通レイアウト・状態表示・導線・ステータス表示コンポーネントを実装する
   - 目的: 画面間の見た目と操作ルールを部品レベルで統一する
   - _Leverage: `services/ui/app/components/Toast.tsx`, `services/ui/app/components/execution/TenantMissingBanner.tsx`, `services/ui/app/lib/statusStyle.ts`_
   - _Requirements: Requirement 1, Requirement 2, Requirement 3_
-  - _Definition of Done: 各共通コンポーネントが作成され、型検査を通過する_
+  - _Definition of Done: 各共通コンポーネントが作成され、型検査を通過する（完了: 2026-04-24）_
 
 - [ ] **T3** — ハブ画面への適用
   - File: `services/ui/app/dashboard/DashboardPageClient.tsx`, `services/ui/app/definitions/DefinitionsPageClient.tsx`, `services/ui/app/workflows/page.tsx`（必要に応じて client 分離含む）
