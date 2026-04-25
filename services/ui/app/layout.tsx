@@ -1,7 +1,14 @@
 import "./globals.css";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import appIcon from "./icon.png";
+
+export const metadata: Metadata = {
+  icons: {
+    icon: "/brand/icon-mark.png",
+    apple: "/brand/icon-mark.png",
+  },
+};
 
 export default function RootLayout({
   children,
@@ -12,8 +19,15 @@ export default function RootLayout({
         <header className="border-b border-[var(--tone-border)] bg-[var(--tone-header-bg)] text-[var(--tone-header-fg)]">
           <div className="mx-auto flex max-w-[min(1400px,calc(100%-2rem))] flex-wrap items-center justify-between gap-3 px-4 py-3">
             <Link href="/dashboard" className="inline-flex items-center gap-2">
-              <Image src={appIcon} alt="statevia" className="h-8 w-8 rounded-md border border-white/20 object-cover" priority />
-              <span className="text-lg font-semibold tracking-wide sm:text-xl">
+              <Image
+                src="/brand/icon-mark.png"
+                alt="statevia"
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-md border border-white/20 object-cover"
+                priority
+              />
+              <span className="text-[1.75rem] font-semibold tracking-wide leading-none">
                 <span>state</span>
                 <span className="text-emerald-400">via</span>
               </span>
