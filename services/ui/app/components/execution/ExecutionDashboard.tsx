@@ -6,7 +6,6 @@ import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionStatusBanner } from "./ExecutionStatusBanner";
 import { ExecutionTimeline } from "./ExecutionTimeline";
 import { ReplayBanner } from "./ReplayBanner";
-import { TenantMissingBanner } from "./TenantMissingBanner";
 import { ActionLinkGroup } from "../layout/ActionLinkGroup";
 import { PageState } from "../layout/PageState";
 import { NodeDetail } from "../nodes/NodeDetail";
@@ -538,7 +537,6 @@ function ExecutionDashboardView({
             />
           )}
 
-          <TenantMissingBanner />
           <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequested} terminal={terminal} />
 
           {!loading && !showExecutionPanels && (
