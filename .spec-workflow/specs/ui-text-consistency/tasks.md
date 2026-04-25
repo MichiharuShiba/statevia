@@ -38,13 +38,13 @@
   - _Requirements: Requirement 1, Requirement 2_
   - _Definition of Done: 主要画面で統一語彙が適用される（完了: 2026-04-26）_
 
-- [-] **T5** — テスト更新と回帰確認
+- [x] **T5** — テスト更新と回帰確認
   - File: `services/ui/tests/components/**`, `services/ui/tests/lib/errors.test.ts`, `services/ui/e2e/**`
   - 内容: 文言アサーションを更新し、テスト実行で回帰を確認する
   - 目的: 文言統一の継続的な品質担保を行う
   - _Leverage: 既存 UI テスト基盤_
   - _Requirements: Requirement 1, Requirement 2, Requirement 3, Requirement 4_
-  - _Definition of Done: `npm run test:run` と `tsc --noEmit` が変更範囲で通過する（進捗: 変更関連のコンポーネントテスト実行・通過済み）_
+  - _Definition of Done: `npm run test:run` と `tsc --noEmit` が変更範囲で通過する（完了: 2026-04-26）_
 
 ---
 
