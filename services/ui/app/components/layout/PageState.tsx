@@ -1,3 +1,5 @@
+import { uiText } from "../../lib/uiText";
+
 type PageStateKind = "loading" | "empty" | "error";
 
 type PageStateProps = {
@@ -18,9 +20,9 @@ const STATE_STYLE_MAP: Record<PageStateKind, string> = {
 };
 
 const STATE_TITLE_MAP: Record<PageStateKind, string> = {
-  loading: "読み込み中…",
-  error: "データの取得に失敗しました。",
-  empty: "表示できるデータがありません。"
+  loading: uiText.pageState.loading,
+  error: uiText.pageState.error,
+  empty: uiText.pageState.empty
 };
 
 function getStateStyle(state: PageStateKind): string {
@@ -38,7 +40,7 @@ export function PageState({
   state,
   message,
   onRetry,
-  retryLabel = "再試行"
+  retryLabel = uiText.actions.retry
 }: Readonly<PageStateProps>) {
   const showRetryButton = state === "error" && typeof onRetry === "function";
   const content = (

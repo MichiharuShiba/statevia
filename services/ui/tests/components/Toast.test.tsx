@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { Toast } from "../../app/components/Toast";
+import { uiText } from "../../app/lib/uiText";
 
 describe("Toast", () => {
   it("toast が null のとき null を返す", () => {
@@ -51,7 +52,7 @@ describe("Toast", () => {
         onClose={onClose}
       />
     );
-    const button = screen.getByRole("button", { name: "close toast" });
+    const button = screen.getByRole("button", { name: uiText.actions.closeToast });
 
     // Act
     fireEvent.click(button);
@@ -100,6 +101,6 @@ describe("Toast", () => {
     render(<Toast {...props} />);
 
     // Assert
-    expect(screen.getByRole("button", { name: "close toast" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: uiText.actions.closeToast })).toBeInTheDocument();
   });
 });

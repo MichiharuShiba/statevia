@@ -1,4 +1,5 @@
 import type { ApiError } from "./types";
+import { uiText } from "./uiText";
 
 export type ToastState = {
   tone: "success" | "error" | "info";
@@ -21,19 +22,19 @@ export function toToastError(error: unknown): ToastState {
   const message = isApiError(error) ? error.error?.message ?? "Unknown error" : "Unknown error";
 
   if (status === 401) {
-    return { tone: "error", message: `401 認証が必要です: ${message}` };
+    return { tone: "error", message: `${uiText.errorPrefixes.unauthorized401}: ${message}` };
   }
   if (status === 403) {
-    return { tone: "error", message: `403 権限不足またはテナント未指定: ${message}` };
+    return { tone: "error", message: `${uiText.errorPrefixes.forbidden403}: ${message}` };
   }
   if (status === 409) {
-    return { tone: "error", message: `409 状態競合: ${code} - ${message}` };
+    return { tone: "error", message: `${uiText.errorPrefixes.conflict409}: ${code} - ${message}` };
   }
   if (status === 422) {
-    return { tone: "error", message: `422 入力不正: ${code} - ${message}` };
+    return { tone: "error", message: `${uiText.errorPrefixes.unprocessable422}: ${code} - ${message}` };
   }
   if (status === 500) {
-    return { tone: "error", message: `500 サーバーエラー: ${code} - ${message}` };
+    return { tone: "error", message: `${uiText.errorPrefixes.server500}: ${code} - ${message}` };
   }
   return { tone: "error", message: `${code}: ${message}` };
 }
