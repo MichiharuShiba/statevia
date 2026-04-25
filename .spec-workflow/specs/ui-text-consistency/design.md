@@ -155,6 +155,74 @@ UiTextModel
 | P2 | `services/ui/app/definitions/[definitionId]/edit/DefinitionEditorPageClient.tsx` | `定義名を入力してください。`, `YAML を入力してください。`, `定義メタ情報を読み込み中...`, `保存中...` | `definitionEditor.validation.nameRequired`, `definitionEditor.validation.yamlRequired`, `definitionEditor.loading.meta`, `definitionEditor.actions.saving` |
 | P2 | `services/ui/app/definitions/[definitionId]/run/page.tsx` | `定義起点で実行`, `開始中...`, `ワークフロー開始`, `開始後は Run 画面...` | `definitionRunPage.title`, `definitionRunPage.actions.starting`, `definitionRunPage.actions.startWorkflow`, `definitionRunPage.help.redirectAfterStart` |
 
+### Remaining Targets Checklist（実装前最終版）
+
+以下は、合意済みポリシー適用後も辞書化が必要な表示文言の残対象。
+
+| 優先 | ファイル | 未辞書化文言（代表） | キー候補 |
+| --- | --- | --- | --- |
+| P0 | `services/ui/app/components/layout/ActionLinkGroup.tsx` | `画面導線`（aria-label） | `actionLinks.aria.navigation` |
+| P0 | `services/ui/app/components/execution/ExecutionDashboard.tsx` | `実行の詳細` | `executionDashboard.header.titleDefault` |
+| P0 | `services/ui/app/components/execution/ExecutionDashboard.tsx` | `実行操作` | `executionDashboard.actions.sectionTitle` |
+| P0 | `services/ui/app/components/execution/ExecutionDashboard.tsx` | `イベント名` | `executionDashboard.actions.eventNameLabel` |
+| P0 | `services/ui/app/components/execution/ExecutionDashboard.tsx` | `全画面表示` | `executionDashboard.graph.fullscreenEnter` |
+| P0 | `services/ui/app/components/execution/ExecutionDashboard.tsx` | `全画面終了 (Esc)` | `executionDashboard.graph.fullscreenExit` |
+| P0 | `services/ui/app/components/execution/ExecutionDashboard.tsx` | `指定されたワークフローが見つかりませんでした。ID を確認してください。` | `executionDashboard.errors.workflowNotFound` |
+| P0 | `services/ui/app/components/execution/ExecutionTimeline.tsx` | `実行履歴タイムライン` | `executionTimeline.title` |
+| P0 | `services/ui/app/components/execution/ExecutionTimeline.tsx` | `現在に戻る` | `executionTimeline.backToCurrent` |
+| P0 | `services/ui/app/components/execution/ExecutionTimeline.tsx` | `イベントがありません` | `executionTimeline.empty` |
+| P0 | `services/ui/app/components/execution/ExecutionTimeline.tsx` | `続きを読み込む` | `executionTimeline.loadMore` |
+| P0 | `services/ui/app/components/execution/ExecutionComparisonBar.tsx` | `2実行の比較` | `executionComparison.title` |
+| P0 | `services/ui/app/components/execution/ExecutionComparisonBar.tsx` | `A のみ` | `executionComparison.kind.onlyLeft` |
+| P0 | `services/ui/app/components/execution/ExecutionComparisonBar.tsx` | `B のみ` | `executionComparison.kind.onlyRight` |
+| P0 | `services/ui/app/components/execution/ExecutionComparisonBar.tsx` | `差分` | `executionComparison.kind.diff` |
+| P0 | `services/ui/app/components/execution/ExecutionComparisonBar.tsx` | `未読み込み` | `executionComparison.state.notLoaded` |
+| P0 | `services/ui/app/components/execution/ExecutionComparisonBar.tsx` | `差分サマリ` | `executionComparison.summary.title` |
+| P0 | `services/ui/app/components/execution/ExecutionComparisonBar.tsx` | `ノード差分なし` | `executionComparison.summary.noDiff` |
+| P0 | `services/ui/app/components/nodes/NodeDetail.tsx` | `待機中 (Wait)` | `nodeDetail.waiting.title` |
+| P0 | `services/ui/app/components/nodes/NodeDetail.tsx` | `失敗情報` | `nodeDetail.failure.title` |
+| P0 | `services/ui/app/components/nodes/NodeDetail.tsx` | `（メッセージなし）` | `nodeDetail.failure.noMessage` |
+| P0 | `services/ui/app/components/nodes/GraphLegend.tsx` | `Next` | `graphLegend.edge.next` |
+| P0 | `services/ui/app/components/nodes/GraphLegend.tsx` | `グラフ凡例`（aria） | `graphLegend.aria.root` |
+| P0 | `services/ui/app/components/nodes/GraphLegend.tsx` | `ノードステータス凡例`（aria） | `graphLegend.aria.nodeStatus` |
+| P0 | `services/ui/app/components/nodes/GraphLegend.tsx` | `エッジ種別凡例`（aria） | `graphLegend.aria.edgeType` |
+| P1 | `services/ui/app/workflows/WorkflowsPageClient.tsx` | `定義文脈（フィルタ中）` | `workflowsPage.filter.contextActive` |
+| P1 | `services/ui/app/workflows/WorkflowsPageClient.tsx` | `定義条件を外す` | `workflowsPage.filter.clearDefinition` |
+| P1 | `services/ui/app/workflows/WorkflowsPageClient.tsx` | `フィルタ` | `workflowsPage.filter.title` |
+| P1 | `services/ui/app/workflows/WorkflowsPageClient.tsx` | `（すべて）` | `workflowsPage.filter.all` |
+| P1 | `services/ui/app/workflows/WorkflowsPageClient.tsx` | `条件に合うワークフローはありません。` | `workflowsPage.empty.filtered` |
+| P1 | `services/ui/app/workflows/WorkflowsPageClient.tsx` | `取得に失敗しました。時間をおいて再試行してください。` | `workflowsPage.error.fetchFailed` |
+| P1 | `services/ui/app/definitions/DefinitionsPageClient.tsx` | `定義の検索とページングを行い、詳細画面へ遷移します。` | `definitionsPage.description` |
+| P1 | `services/ui/app/definitions/DefinitionsPageClient.tsx` | `名前検索（部分一致）` | `definitionsPage.search.label` |
+| P1 | `services/ui/app/definitions/DefinitionsPageClient.tsx` | `定義一覧を読み込み中です。` | `definitionsPage.loading` |
+| P1 | `services/ui/app/definitions/DefinitionsPageClient.tsx` | `定義一覧を取得できませんでした。` | `definitionsPage.error.fetchFailed` |
+| P1 | `services/ui/app/dashboard/DashboardPageClient.tsx` | `直近のワークフロー（最大 10 件）です。` | `dashboard.descriptionRecent` |
+| P1 | `services/ui/app/dashboard/DashboardPageClient.tsx` | `直近のワークフローを取得しています。` | `dashboard.loadingRecent` |
+| P1 | `services/ui/app/dashboard/DashboardPageClient.tsx` | `合計件数: --` | `dashboard.totalCountFallback` |
+| P1 | `services/ui/app/dashboard/DashboardPageClient.tsx` | `データを取得できませんでした。` | `dashboard.error.fetchFailed` |
+| P2 | `services/ui/app/definitions/[definitionId]/DefinitionDetailClient.tsx` | `定義を取得できませんでした。` | `definitionDetail.error.fetchFailed` |
+| P2 | `services/ui/app/definitions/[definitionId]/DefinitionDetailClient.tsx` | `名前` | `definitionDetail.meta.name` |
+| P2 | `services/ui/app/definitions/[definitionId]/DefinitionDetailClient.tsx` | `登録日時` | `definitionDetail.meta.createdAt` |
+| P2 | `services/ui/app/definitions/[definitionId]/DefinitionDetailClient.tsx` | `関連ワークフロー` | `definitionDetail.relatedWorkflows.title` |
+| P2 | `services/ui/app/definitions/[definitionId]/DefinitionDetailClient.tsx` | `編集・実行` | `definitionDetail.actions.title` |
+| P2 | `services/ui/app/definitions/[definitionId]/edit/DefinitionEditorPageClient.tsx` | `定義名を入力してください。` | `definitionEditor.validation.nameRequired` |
+| P2 | `services/ui/app/definitions/[definitionId]/edit/DefinitionEditorPageClient.tsx` | `YAML を入力してください。` | `definitionEditor.validation.yamlRequired` |
+| P2 | `services/ui/app/definitions/[definitionId]/edit/DefinitionEditorPageClient.tsx` | `定義メタ情報を読み込み中...` | `definitionEditor.loading.meta` |
+| P2 | `services/ui/app/definitions/[definitionId]/edit/DefinitionEditorPageClient.tsx` | `保存中...` | `definitionEditor.actions.saving` |
+| P2 | `services/ui/app/definitions/[definitionId]/edit/DefinitionEditorPageClient.tsx` | `保存（POST /definitions）` | `definitionEditor.actions.saveWithApiHint` |
+| P2 | `services/ui/app/definitions/[definitionId]/run/page.tsx` | `定義を実行` | `definitionRunPage.title` |
+| P2 | `services/ui/app/definitions/[definitionId]/run/page.tsx` | `開始中...` | `definitionRunPage.actions.starting` |
+| P2 | `services/ui/app/definitions/[definitionId]/run/page.tsx` | `ワークフロー開始` | `definitionRunPage.actions.startWorkflow` |
+| P2 | `services/ui/app/definitions/[definitionId]/run/page.tsx` | `開始後は実行画面` | `definitionRunPage.help.redirectAfterStart` |
+
+### Dictionary Completion Criteria（完了判定）
+
+- `services/ui/app/**/*.tsx` で、可視テキスト/`aria-label`/`placeholder` の直書きが以下を除いて残っていないこと。
+  - 合意済み非辞書化対象（イベント種別、ステータス値）
+  - 動的データ（ID値、日時、API由来メッセージ本文など）
+- 新規追加の辞書キーは `Key Namespace Rules` に従うこと。
+- 主要画面の文言アサーションが回帰テストで通過すること。
+
 ### Key Namespace Rules（合意用）
 
 - 共有語彙: `common.*`, `navigation.*`, `actions.*`, `labels.*`
