@@ -68,21 +68,21 @@ describe("NodeDetail", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} />);
       expect(screen.getByText("待機中 (Wait)")).toBeInTheDocument();
-      expect(screen.getByText(/理由: waitKey により Resume 待ち/)).toBeInTheDocument();
+      expect(screen.getByText(/理由: waitKey により 再開 待ち/)).toBeInTheDocument();
     });
 
-    it("status が WAITING で resumeEventName を渡すと「Resume イベント名」を表示する", () => {
+    it("status が WAITING で resumeEventName を渡すと「再開 イベント名」を表示する", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} resumeEventName="DoneC" />);
       expect(screen.getByText("待機中 (Wait)")).toBeInTheDocument();
-      expect(screen.getByText(/Resume イベント名: DoneC/)).toBeInTheDocument();
+      expect(screen.getByText(/再開 イベント名: DoneC/)).toBeInTheDocument();
     });
 
     it("status が WAITING で resumeEventName が空のときイベント名行を表示しない", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} resumeEventName="" />);
       expect(screen.getByText("待機中 (Wait)")).toBeInTheDocument();
-      expect(screen.queryByText(/Resume イベント名:/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/再開 イベント名:/)).not.toBeInTheDocument();
     });
 
     it("status が RUNNING のとき「待機中」を表示しない", () => {
@@ -92,7 +92,7 @@ describe("NodeDetail", () => {
   });
 
   describe("Cancel 詳細", () => {
-    it("status が CANCELED で cancelReason ありのとき「Cancel 詳細」と reason を表示する", () => {
+    it("status が CANCELED で cancelReason ありのとき「キャンセル 詳細」と reason を表示する", () => {
       const node: ExecutionNodeDTO = {
         ...baseNode,
         status: "CANCELED",
@@ -100,24 +100,24 @@ describe("NodeDetail", () => {
         cancelReason: "user"
       };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("Cancel 詳細")).toBeInTheDocument();
+      expect(screen.getByText("キャンセル 詳細")).toBeInTheDocument();
       expect(screen.getByText(/reason: user/)).toBeInTheDocument();
     });
 
-    it("status が CANCELED で canceledByExecution が true のとき「Execution Cancel により収束」を表示する", () => {
+    it("status が CANCELED で canceledByExecution が true のとき「実行 キャンセル により収束」を表示する", () => {
       const node: ExecutionNodeDTO = {
         ...baseNode,
         status: "CANCELED",
         canceledByExecution: true
       };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("Cancel 詳細")).toBeInTheDocument();
-      expect(screen.getByText("Execution Cancel により収束")).toBeInTheDocument();
+      expect(screen.getByText("キャンセル 詳細")).toBeInTheDocument();
+      expect(screen.getByText("実行 キャンセル により収束")).toBeInTheDocument();
     });
 
-    it("status が RUNNING のとき「Cancel 詳細」を表示しない", () => {
+    it("status が RUNNING のとき「キャンセル 詳細」を表示しない", () => {
       render(<NodeDetail {...defaultProps} />);
-      expect(screen.queryByText("Cancel 詳細")).not.toBeInTheDocument();
+      expect(screen.queryByText("キャンセル 詳細")).not.toBeInTheDocument();
     });
   });
 

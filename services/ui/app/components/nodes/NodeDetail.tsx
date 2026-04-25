@@ -73,9 +73,9 @@ export function NodeDetail({
             <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/80 p-2">
               <div className="font-medium text-amber-900">待機中 (Wait)</div>
               <div className="mt-1 text-amber-800">
-                <div>理由: waitKey により Resume 待ち</div>
+                <div>理由: waitKey により {uiText.actions.resume} 待ち</div>
                 {resumeEventName != null && resumeEventName !== "" && (
-                  <div className="mt-0.5 font-medium">Resume イベント名: {resumeEventName}</div>
+                  <div className="mt-0.5 font-medium">{uiText.actions.resume} イベント名: {resumeEventName}</div>
                 )}
               </div>
             </div>
@@ -84,13 +84,13 @@ export function NodeDetail({
           {/* Cancel 詳細 */}
           {isCanceled && (
             <div className="mt-2 rounded-lg border border-red-200 bg-red-50/80 p-2">
-              <div className="font-medium text-red-900">Cancel 詳細</div>
+              <div className="font-medium text-red-900">{uiText.actions.cancel} 詳細</div>
               <div className="mt-1 space-y-0.5 text-red-800">
                 {node.cancelReason != null && node.cancelReason !== "" && (
                   <div>reason: {node.cancelReason}</div>
                 )}
                 {node.canceledByExecution && (
-                  <div className="rounded bg-red-100 px-2 py-1">Execution Cancel により収束</div>
+                  <div className="rounded bg-red-100 px-2 py-1">{uiText.entities.execution} {uiText.actions.cancel} により収束</div>
                 )}
               </div>
             </div>
