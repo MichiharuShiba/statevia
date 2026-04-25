@@ -46,9 +46,25 @@
   - _Requirements: Requirement 1, Requirement 2, Requirement 3, Requirement 4_
   - _Definition of Done: `npm run test:run` と `tsc --noEmit` が変更範囲で通過する（完了: 2026-04-26）_
 
+- [x] **T6** — 全UI辞書化の対象一覧を合意
+  - File: `.spec-workflow/specs/ui-text-consistency/design.md`, `.spec-workflow/specs/ui-text-consistency/requirements.md`
+  - 内容: 未辞書化文言の棚卸し結果（優先度、対象ファイル、文言候補、キー案）を仕様に反映し、レビューで合意する
+  - 目的: 次フェーズの多言語化に向けて、辞書化対象の境界と実施順を固定する
+  - _Leverage: `services/ui/app/**`, 既存 `uiText.ts`, `Confirmed Mapping Table`_
+  - _Requirements: Requirement 5_
+  - _Definition of Done: `Dictionary Agreement Scope` と `Open Dictionary Candidates` が仕様に反映され、レビュー可能な状態である（完了: 2026-04-26）_
+
+- [x] **T7** — 辞書キー命名規約と未決定事項の合意
+  - File: `.spec-workflow/specs/ui-text-consistency/design.md`
+  - 内容: `Key Namespace Rules` と `Open Questions` を確定し、辞書実装時の判断基準を固定する
+  - 目的: 実装フェーズでキー命名のぶれや再設計を防ぐ
+  - _Leverage: `services/ui/app/lib/uiText.ts`_
+  - _Requirements: Requirement 5_
+  - _Definition of Done: 未決定事項の扱い（イベント種別、ステータス値、技術語翻訳）が合意されている（完了: 2026-04-26）_
+
 ---
 
 ## 実行メモ
 
 - 着手中は `[ ]` を `[-]`、完了後は `[x]` に更新する。
-- 推奨実装順は `T1 -> T2 -> T3 -> T4 -> T5`。
+- 推奨実装順は `T1 -> T2 -> T3 -> T4 -> T5 -> T6 -> T7`。
