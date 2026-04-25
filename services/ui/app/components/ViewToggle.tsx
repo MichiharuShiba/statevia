@@ -1,5 +1,7 @@
 "use client";
 
+import { uiText } from "../lib/uiText";
+
 export type ViewMode = "list" | "graph";
 
 type ViewToggleProps = {
@@ -7,20 +9,20 @@ type ViewToggleProps = {
   onChange: (mode: ViewMode) => void;
 };
 
-export function ViewToggle({ value, onChange }: ViewToggleProps) {
+export function ViewToggle({ value, onChange }: Readonly<ViewToggleProps>) {
   return (
     <div className="inline-flex rounded-xl border border-zinc-200 p-1">
       <button
         className={`rounded-lg px-3 py-1.5 text-sm ${value === "list" ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100"}`}
         onClick={() => onChange("list")}
       >
-        List
+        {uiText.actions.viewList}
       </button>
       <button
         className={`rounded-lg px-3 py-1.5 text-sm ${value === "graph" ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100"}`}
         onClick={() => onChange("graph")}
       >
-        Graph
+        {uiText.actions.viewGraph}
       </button>
     </div>
   );

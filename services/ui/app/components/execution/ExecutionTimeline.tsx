@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ExecutionEventWithSeq } from "../../lib/types";
+import { uiText } from "../../lib/uiText";
 
 function formatAt(at: string | undefined): string {
   if (!at) return "—";
@@ -112,7 +113,7 @@ export function ExecutionTimeline({
       ) : null}
 
       {loading && (
-        <p className="mt-2 text-xs text-zinc-500">読み込み中…</p>
+        <p className="mt-2 text-xs text-zinc-500">{uiText.actions.loading}</p>
       )}
 
       {!loading && !error && events.length === 0 && (
@@ -151,7 +152,7 @@ export function ExecutionTimeline({
                 disabled={loadingMore}
                 className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-xs text-zinc-600 hover:bg-zinc-100 disabled:opacity-50"
               >
-                {loadingMore ? "読み込み中…" : "続きを読み込む"}
+                {loadingMore ? uiText.actions.loading : "続きを読み込む"}
               </button>
             </div>
           )}

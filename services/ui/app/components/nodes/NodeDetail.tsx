@@ -2,6 +2,7 @@
 
 import type { ExecutionNodeDTO, WorkflowView } from "../../lib/types";
 import { getStatusStyle } from "../../lib/statusStyle";
+import { uiText } from "../../lib/uiText";
 
 type NodeDetailProps = {
   execution: WorkflowView | null;
@@ -32,7 +33,7 @@ export function NodeDetail({
   if (!execution) {
     return (
       <aside className={asideClassName}>
-        <p className="text-sm text-zinc-600">Execution を読み込んでください。</p>
+        <p className="text-sm text-zinc-600">{uiText.entities.execution} を読み込んでください。</p>
       </aside>
     );
   }
@@ -40,7 +41,7 @@ export function NodeDetail({
   if (!node) {
     return (
       <aside className={asideClassName}>
-        <p className="text-sm text-zinc-600">Node を選択してください。</p>
+        <p className="text-sm text-zinc-600">{uiText.entities.node} を選択してください。</p>
       </aside>
     );
   }
@@ -53,7 +54,7 @@ export function NodeDetail({
 
   return (
     <aside className={asideClassName}>
-      <h2 className="text-sm font-semibold">Node Detail</h2>
+      <h2 className="text-sm font-semibold">{uiText.entities.node} Detail</h2>
       <div className={`mt-3 rounded-xl border p-3 ${style.borderClass} ${style.bgClass}`}>
         <div className="flex items-center justify-between">
           <div className="font-mono text-xs">{node.nodeId}</div>
@@ -117,7 +118,7 @@ export function NodeDetail({
             disabled={!canResume || loading}
             onClick={onResume}
           >
-            Resume
+            {uiText.actions.resume}
           </button>
           {resumeDisabledReason && <p className="text-xs text-zinc-600">{resumeDisabledReason}</p>}
         </div>

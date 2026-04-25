@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { NodeDetail } from "../../../app/components/nodes/NodeDetail";
+import { uiText } from "../../../app/lib/uiText";
 import type { ExecutionNodeDTO, WorkflowView } from "../../../app/lib/types";
 
 const baseExecution: WorkflowView = {
@@ -33,7 +34,7 @@ const defaultProps = {
 };
 
 describe("NodeDetail", () => {
-  it("execution が null のとき「Execution を読み込んでください」を表示する", () => {
+  it("execution が null のとき実行の読み込み案内を表示する", () => {
     render(
       <NodeDetail
         {...defaultProps}
@@ -41,10 +42,10 @@ describe("NodeDetail", () => {
         node={baseNode}
       />
     );
-    expect(screen.getByText("Execution を読み込んでください。")).toBeInTheDocument();
+    expect(screen.getByText(`${uiText.entities.execution} を読み込んでください。`)).toBeInTheDocument();
   });
 
-  it("node が null のとき「Node を選択してください」を表示する", () => {
+  it("node が null のときノード選択案内を表示する", () => {
     render(
       <NodeDetail
         {...defaultProps}
@@ -52,12 +53,12 @@ describe("NodeDetail", () => {
         node={null}
       />
     );
-    expect(screen.getByText("Node を選択してください。")).toBeInTheDocument();
+    expect(screen.getByText(`${uiText.entities.node} を選択してください。`)).toBeInTheDocument();
   });
 
-  it("node が選択されているとき Node Detail と nodeId を表示する", () => {
+  it("node が選択されているとき詳細見出しと nodeId を表示する", () => {
     render(<NodeDetail {...defaultProps} />);
-    expect(screen.getByText("Node Detail")).toBeInTheDocument();
+    expect(screen.getByText(`${uiText.entities.node} Detail`)).toBeInTheDocument();
     expect(screen.getByText("n-1")).toBeInTheDocument();
     expect(screen.getByText("RUNNING")).toBeInTheDocument();
   });
@@ -157,10 +158,10 @@ describe("NodeDetail", () => {
   });
 
   describe("Resume ボタン", () => {
-    it("resumeDisabledReason が null のとき Resume ボタンが有効", () => {
+    it("resumeDisabledReason が null のとき再開ボタンが有効", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} />);
-      const button = screen.getByRole("button", { name: "Resume" });
+      const button = screen.getByRole("button", { name: uiText.actions.resume });
       expect(button).not.toBeDisabled();
     });
 
@@ -174,15 +175,15 @@ describe("NodeDetail", () => {
         />
       );
       expect(screen.getByText(/WAITING 状態のノードのみ/)).toBeInTheDocument();
-      const button = screen.getByRole("button", { name: "Resume" });
+      const button = screen.getByRole("button", { name: uiText.actions.resume });
       expect(button).toBeDisabled();
     });
 
-    it("Resume クリックで onResume が呼ばれる", () => {
+    it("再開ボタンクリックで onResume が呼ばれる", () => {
       const onResume = vi.fn();
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} onResume={onResume} />);
-      fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+      fireEvent.click(screen.getByRole("button", { name: uiText.actions.resume }));
       expect(onResume).toHaveBeenCalledTimes(1);
     });
   });
