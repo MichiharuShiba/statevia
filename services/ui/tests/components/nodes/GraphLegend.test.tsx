@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { GraphLegend } from "../../../app/components/nodes/GraphLegend";
+import { uiText } from "../../../app/lib/uiText";
 
 describe("GraphLegend", () => {
   it("ノードステータス凡例の見出しを表示する", () => {
@@ -24,8 +25,8 @@ describe("GraphLegend", () => {
   it("全エッジ種別を表示する", () => {
     render(<GraphLegend />);
     expect(screen.getByText("Next")).toBeInTheDocument();
-    expect(screen.getByText("Resume")).toBeInTheDocument();
-    expect(screen.getByText("Cancel")).toBeInTheDocument();
+    expect(screen.getByText(uiText.actions.resume)).toBeInTheDocument();
+    expect(screen.getByText(uiText.actions.cancel)).toBeInTheDocument();
   });
 
   it("グラフ凡例としてアクセシブルである", () => {

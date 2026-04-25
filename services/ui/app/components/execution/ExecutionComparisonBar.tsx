@@ -82,7 +82,7 @@ export function ExecutionComparisonBar({
       <div className="mb-3 text-sm font-semibold text-zinc-800">2実行の比較</div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
-          <div className="text-xs font-semibold text-zinc-500">Execution A（基準）</div>
+          <div className="text-xs font-semibold text-zinc-500">{uiText.entities.execution} A（基準）</div>
           {executionLeft ? (
             <div className="mt-1 rounded-lg bg-zinc-50 px-2 py-1.5 font-mono text-xs text-zinc-700">
               {executionLeft.displayId}
@@ -94,7 +94,7 @@ export function ExecutionComparisonBar({
         </div>
         <div>
           <label htmlFor="execution-b-id" className="block text-xs font-semibold text-zinc-500">
-            Execution B
+            {uiText.entities.execution} B
           </label>
           <div className="mt-1 flex gap-2">
             <input
@@ -126,7 +126,7 @@ export function ExecutionComparisonBar({
               {failureOrCancelDiffs.length > 0 && (
                 <div className="border-b border-zinc-200 px-2 py-1.5">
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-red-600">
-                    Failed / Canceled
+                    失敗 / キャンセル
                   </div>
                   {failureOrCancelDiffs.map((item) => (
                     <DiffRow

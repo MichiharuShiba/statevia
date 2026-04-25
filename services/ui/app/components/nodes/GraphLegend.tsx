@@ -2,6 +2,7 @@
 
 import type { NodeStatus } from "../../lib/types";
 import { getStatusStyle } from "../../lib/statusStyle";
+import { uiText } from "../../lib/uiText";
 
 const NODE_STATUSES: NodeStatus[] = [
   "IDLE",
@@ -15,8 +16,8 @@ const NODE_STATUSES: NodeStatus[] = [
 
 const EDGE_ITEMS: { type: string; label: string; stroke: string; strokeWidth: number; dash?: string }[] = [
   { type: "Next", label: "Next", stroke: "#d4d4d8", strokeWidth: 1.2 },
-  { type: "Resume", label: "Resume", stroke: "#78716c", strokeWidth: 1.2, dash: "8 4" },
-  { type: "Cancel", label: "Cancel", stroke: "#b91c1c", strokeWidth: 2.5 }
+  { type: "Resume", label: uiText.actions.resume, stroke: "#78716c", strokeWidth: 1.2, dash: "8 4" },
+  { type: "Cancel", label: uiText.actions.cancel, stroke: "#b91c1c", strokeWidth: 2.5 }
 ];
 
 export function GraphLegend() {

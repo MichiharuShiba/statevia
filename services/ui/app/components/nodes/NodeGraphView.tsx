@@ -20,6 +20,7 @@ import type { MergedGraphNode } from "../../lib/mergeGraph";
 import { getNodeAppearance } from "../../lib/nodeAppearance";
 import { getStatusStyle } from "../../lib/statusStyle";
 import type { NodeStatus } from "../../lib/types";
+import { uiText } from "../../lib/uiText";
 import { GraphLegend } from "./GraphLegend";
 
 export type NodeDiffHighlight = Record<string, { isFailureOrCancel: boolean }>;
@@ -88,7 +89,7 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
             }}
             disabled={!!data.resumeDisabledReason}
           >
-            Resume
+            {uiText.actions.resume}
           </button>
           {data.resumeDisabledReason && <p className="mt-1 text-[10px] text-zinc-600">{data.resumeDisabledReason}</p>}
         </div>
