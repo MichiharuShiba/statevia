@@ -29,7 +29,7 @@ export default function DefinitionRunStartPage() {
   const handleStart = async () => {
     const id = definitionId.trim();
     if (!id) {
-      setToast({ tone: "error", message: "definitionId が指定されていません。" });
+      setToast({ tone: "error", message: `${uiText.labels.definitionId} が指定されていません。` });
       return;
     }
 
