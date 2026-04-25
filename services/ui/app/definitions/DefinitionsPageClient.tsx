@@ -9,6 +9,7 @@ import { Toast } from "../components/Toast";
 import { apiGet } from "../lib/api";
 import { toToastError, type ToastState } from "../lib/errors";
 import type { DefinitionDTO, PagedDefinitions } from "../lib/types";
+import { uiText } from "../lib/uiText";
 
 const PAGE_SIZE = 20;
 
@@ -72,7 +73,7 @@ export function DefinitionsPageClient() {
   const empty = !loading && items !== null && items.length === 0;
   const paginationNav = (
     <ListPagination
-      ariaLabel="Definition 一覧ページネーション"
+      ariaLabel={`${uiText.lists.definitions}ページネーション`}
       currentPageLabel={`${currentPage} ページ目`}
       hasPrev={hasPrev}
       hasNext={hasNext}
@@ -83,7 +84,7 @@ export function DefinitionsPageClient() {
 
   return (
     <PageShell
-      title="Definition 一覧"
+      title={uiText.lists.definitions}
       description="定義の検索とページングを行い、詳細画面へ遷移します。"
     >
 
@@ -127,12 +128,12 @@ export function DefinitionsPageClient() {
       {empty && (
         <PageState
           state="empty"
-          message="該当する Definition はありません。検索条件を変更するか、条件をクリアして再検索してください。"
+          message={`該当する${uiText.entities.definition}はありません。検索条件を変更するか、条件をクリアして再検索してください。`}
         />
       )}
 
       {!loading && items !== null && items.length > 0 && (
-        <section aria-label="Definition 一覧">
+        <section aria-label={uiText.lists.definitions}>
           <div className="mb-2 flex items-center justify-between gap-3">
             <p className="text-xs text-zinc-500">
               {submittedSearch ? `検索: "${submittedSearch}" / ` : ""}
@@ -148,7 +149,7 @@ export function DefinitionsPageClient() {
                     {definition.name}
                   </p>
                   <p className="mt-1 text-xs text-zinc-500">
-                    displayId: <span className="font-mono">{definition.displayId}</span> / 作成: {formatDateTime(definition.createdAt)}
+                    {uiText.labels.displayId}: <span className="font-mono">{definition.displayId}</span> / 作成: {formatDateTime(definition.createdAt)}
                   </p>
                 </div>
                 <Link

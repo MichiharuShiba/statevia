@@ -1,6 +1,7 @@
 "use client";
 
 import type { WorkflowView } from "../../lib/types";
+import { uiText } from "../../lib/uiText";
 import { StatusBadge } from "../common/StatusBadge";
 import type { ViewMode } from "../ViewToggle";
 import { ViewToggle } from "../ViewToggle";
@@ -56,7 +57,7 @@ export function ExecutionHeader({
           {executionIdEditable ? (
             <>
               <label htmlFor="execution-id-input" className="block text-xs font-semibold text-zinc-700">
-                Execution ID
+                {uiText.entities.execution} ID
               </label>
               <input
                 id="execution-id-input"
@@ -68,7 +69,7 @@ export function ExecutionHeader({
             </>
           ) : (
             <>
-              <span className="block text-xs font-semibold text-zinc-700">Execution ID</span>
+              <span className="block text-xs font-semibold text-zinc-700">{uiText.entities.execution} ID</span>
               <p className="mt-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-sm text-zinc-900">
                 {executionId}
               </p>
@@ -82,7 +83,7 @@ export function ExecutionHeader({
               onClick={onLoad}
               disabled={loading}
             >
-              {loading ? "Loading..." : "Load"}
+              {loading ? uiText.actions.loading : uiText.actions.load}
             </button>
           )}
           {showCancelAction && (
@@ -91,7 +92,7 @@ export function ExecutionHeader({
               onClick={onCancel}
               disabled={!canCancel || loading}
             >
-              Cancel
+              {uiText.actions.cancel}
             </button>
           )}
           {onCompareModeChange && (
@@ -123,14 +124,14 @@ export function ExecutionHeader({
       {execution && (
         <div className="mt-4 rounded-xl bg-zinc-50 p-3 text-xs text-zinc-700">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold">Execution</div>
+            <div className="text-sm font-semibold">{uiText.entities.execution}</div>
             {status && (
               <StatusBadge status={status} className="rounded-full px-2 py-0.5 font-semibold" />
             )}
           </div>
           <div className="mt-2 grid gap-1 sm:grid-cols-2">
             <div>
-              graphId: <span className="font-mono">{execution.graphId}</span>
+              {uiText.labels.graphId}: <span className="font-mono">{execution.graphId}</span>
             </div>
             <div>
               cancelRequested: <span className="font-mono">{execution.cancelRequested ? "true" : "false"}</span>

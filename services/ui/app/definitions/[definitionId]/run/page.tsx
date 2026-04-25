@@ -7,6 +7,7 @@ import { Toast } from "../../../components/Toast";
 import { apiPost } from "../../../lib/api";
 import { toToastError, type ToastState } from "../../../lib/errors";
 import type { WorkflowDTO } from "../../../lib/types";
+import { uiText } from "../../../lib/uiText";
 
 /**
  * Definition 起点で新規ワークフローを開始する。
@@ -37,7 +38,7 @@ export default function DefinitionRunStartPage() {
       try {
         body.input = JSON.parse(inputJson) as unknown;
       } catch {
-        setToast({ tone: "error", message: "workflow input の JSON が不正です。" });
+        setToast({ tone: "error", message: `${uiText.labels.workflowInput} の JSON が不正です。` });
         return;
       }
     }
@@ -60,7 +61,7 @@ export default function DefinitionRunStartPage() {
       <header className="space-y-1">
         <h1 className="text-xl font-semibold text-zinc-900">定義起点で実行</h1>
         <p className="text-sm text-zinc-600">
-          definitionId: <span className="font-mono break-all">{definitionId || "（未指定）"}</span>
+          {uiText.labels.definitionId}: <span className="font-mono break-all">{definitionId || "（未指定）"}</span>
         </p>
       </header>
 
@@ -68,7 +69,7 @@ export default function DefinitionRunStartPage() {
 
       <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
         <label className="block text-sm">
-          <span className="text-zinc-600">workflow input（任意・JSON）</span>
+          <span className="text-zinc-600">{uiText.labels.workflowInput}（任意・JSON）</span>
           <textarea
             className="mt-1 h-28 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-xs"
             value={inputJson}
@@ -95,7 +96,7 @@ export default function DefinitionRunStartPage() {
           定義の詳細へ戻る
         </Link>
         <Link className="text-blue-700 underline hover:text-blue-900" href="/workflows">
-          Workflow 一覧
+          {uiText.lists.workflows}
         </Link>
       </nav>
     </main>

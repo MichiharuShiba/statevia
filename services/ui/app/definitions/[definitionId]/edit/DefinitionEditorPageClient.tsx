@@ -10,6 +10,7 @@ import { apiGet, apiPost } from "../../../lib/api";
 import { defaultDefinitionYaml } from "../../../lib/defaultDefinitionYaml";
 import { toToastError, type ToastState } from "../../../lib/errors";
 import type { DefinitionDTO } from "../../../lib/types";
+import { uiText } from "../../../lib/uiText";
 
 type DefinitionEditorPageClientProps = {
   definitionId: string;
@@ -28,7 +29,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
   const [savedDefinition, setSavedDefinition] = useState<DefinitionDTO | null>(null);
   const actionLinks = [
     { label: "定義の詳細へ戻る", href: `/definitions/${encodeURIComponent(definitionId)}`, priority: "primary" as const },
-    { label: "Definition 一覧", href: "/definitions" }
+    { label: uiText.lists.definitions, href: "/definitions" }
   ];
 
   const loadDefinition = useCallback(async () => {
@@ -67,7 +68,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
       setSavedDefinition(created);
       setToast({
         tone: "success",
-        message: `定義を保存しました（displayId: ${created.displayId}）`
+        message: `定義を保存しました（${uiText.labels.displayId}: ${created.displayId}）`
       });
     } catch (error) {
       setToast(toToastError(error));
@@ -78,7 +79,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
 
   return (
     <PageShell
-      title="Definition Editor"
+      title={uiText.labels.definitionEditor}
       description={`編集対象: ${definitionId}`}
       primaryActions={<ActionLinkGroup links={actionLinks} />}
       secondaryActions={<ActionLinkGroup links={actionLinks} />}

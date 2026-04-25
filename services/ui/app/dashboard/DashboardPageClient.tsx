@@ -10,6 +10,7 @@ import { Toast } from "../components/Toast";
 import { apiGet } from "../lib/api";
 import { toToastError, type ToastState } from "../lib/errors";
 import type { PagedWorkflows, WorkflowDTO } from "../lib/types";
+import { uiText } from "../lib/uiText";
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -64,7 +65,7 @@ export function DashboardPageClient() {
       )}
 
       {empty && (
-        <PageState state="empty" message="Definition 一覧または Workflow 一覧から操作を開始できます。" />
+        <PageState state="empty" message={`${uiText.lists.definitions}または${uiText.lists.workflows}から操作を開始できます。`} />
       )}
 
       {!loading && items !== null && items.length > 0 && (
@@ -76,7 +77,7 @@ export function DashboardPageClient() {
               className="self-start text-sm text-blue-700 underline hover:text-blue-900"
               onClick={() => void load()}
             >
-              再読み込み
+              {uiText.actions.reload}
             </button>
           </div>
           <ul className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">

@@ -3,6 +3,7 @@
 import type { WorkflowView } from "../../lib/types";
 import type { ExecutionDiffResult, NodeDiffItem } from "../../lib/executionDiff";
 import { getStatusStyle } from "../../lib/statusStyle";
+import { uiText } from "../../lib/uiText";
 
 type ExecutionComparisonBarProps = {
   executionLeft: WorkflowView | null;
@@ -109,7 +110,7 @@ export function ExecutionComparisonBar({
               onClick={onLoadRight}
               disabled={loadingRight}
             >
-              {loadingRight ? "Loading..." : "Load"}
+              {loadingRight ? uiText.actions.loading : uiText.actions.load}
             </button>
           </div>
           {executionRight && (

@@ -6,6 +6,7 @@ import { ExecutionDashboard } from "../../../components/execution/ExecutionDashb
 import { ActionLinkGroup } from "../../../components/layout/ActionLinkGroup";
 import { PageShell } from "../../../components/layout/PageShell";
 import { PageState } from "../../../components/layout/PageState";
+import { uiText } from "../../../lib/uiText";
 
 /**
  * Run 専用ページ。実行操作（Cancel / Resume / Event 送信）をここに集約する。
@@ -22,7 +23,7 @@ export default function WorkflowRunPage() {
     return (
       <PageShell
         title="ワークフロー実行"
-        primaryActions={<ActionLinkGroup links={[{ label: "Workflow 一覧", href: "/workflows", priority: "primary" }]} />}
+        primaryActions={<ActionLinkGroup links={[{ label: uiText.lists.workflows, href: "/workflows", priority: "primary" }]} />}
       >
         <PageState state="error" message="ワークフロー ID が指定されていません。" />
       </PageShell>
@@ -43,8 +44,8 @@ export default function WorkflowRunPage() {
           links={[
             { label: "詳細", href: `/workflows/${encodeURIComponent(workflowId)}`, priority: "primary" },
             { label: "グラフ", href: `/workflows/${encodeURIComponent(workflowId)}/graph` },
-            { label: "Workflow 一覧", href: "/workflows" },
-            { label: "ダッシュボード", href: "/dashboard" }
+            { label: uiText.lists.workflows, href: "/workflows" },
+            { label: uiText.navigation.dashboard, href: "/dashboard" }
           ]}
         />
       }

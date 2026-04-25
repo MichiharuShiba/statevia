@@ -22,6 +22,7 @@ import { getResumeDisabledReason, useNodeCommands } from "../../features/nodes/u
 import { computeExecutionDiff } from "../../lib/executionDiff";
 import { apiGet } from "../../lib/api";
 import { toToastError, type ToastState } from "../../lib/errors";
+import { uiText } from "../../lib/uiText";
 import { buildWorkflowView } from "../../lib/workflowView";
 import type { WorkflowDTO, WorkflowGraphDTO, WorkflowView } from "../../lib/types";
 
@@ -448,9 +449,9 @@ function ExecutionDashboardView({
   const defaultHeaderNav = (
     <ActionLinkGroup
       links={[
-        { label: "ダッシュボード", href: "/dashboard", priority: "primary" },
-        { label: "Workflow 一覧", href: "/workflows" },
-        { label: "health", href: "/health" }
+        { label: uiText.navigation.dashboard, href: "/dashboard", priority: "primary" },
+        { label: uiText.lists.workflows, href: "/workflows" },
+        { label: uiText.navigation.health, href: "/health" }
       ]}
     />
   );
@@ -515,11 +516,11 @@ function ExecutionDashboardView({
                     setEventName("");
                   }}
                 >
-                  Event 送信
+                  {uiText.actions.sendEvent}
                 </button>
               </div>
               <p className="mt-2 text-xs text-zinc-500">
-                Cancel / Resume / Event 送信は Run 画面に集約しています。
+                {uiText.actions.cancel} / {uiText.actions.resume} / {uiText.actions.sendEvent} は Run 画面に集約しています。
               </p>
             </section>
           )}
@@ -586,7 +587,7 @@ function ExecutionDashboardView({
                   </div>
                   {graphData && !graphData.definitionBased && !graphFullscreen && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                      graphId: {graphData.graphId} の定義が未登録のため、仮エッジ表示です。
+                      {uiText.labels.graphId}: {graphData.graphId} の定義が未登録のため、仮エッジ表示です。
                     </div>
                   )}
                   {graphData && (
