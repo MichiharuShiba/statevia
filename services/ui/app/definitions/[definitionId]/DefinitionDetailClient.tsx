@@ -6,6 +6,7 @@ import { Toast } from "../../components/Toast";
 import { apiGet } from "../../lib/api";
 import { toToastError, type ToastState } from "../../lib/errors";
 import type { DefinitionDTO } from "../../lib/types";
+import { uiText } from "../../lib/uiText";
 
 function formatDateTime(iso: string): string {
   const parsed = new Date(iso);
@@ -47,7 +48,7 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5 p-6">
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold text-zinc-900">Definition 詳細</h1>
+        <h1 className="text-xl font-semibold text-zinc-900">{uiText.entities.definition} 詳細</h1>
         <p className="text-sm text-zinc-600">
           URL: <span className="font-mono">{definitionId}</span>
         </p>
@@ -57,7 +58,7 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
 
       {loading && (
         <output className="block text-sm text-zinc-500" aria-live="polite">
-          読み込み中…
+          {uiText.actions.loading}
         </output>
       )}
 
@@ -71,7 +72,7 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
           <dl className="grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-3 gap-y-2">
             <dt className="text-zinc-500">名前</dt>
             <dd className="font-medium">{row.name}</dd>
-            <dt className="text-zinc-500">displayId</dt>
+            <dt className="text-zinc-500">{uiText.labels.displayId}</dt>
             <dd className="font-mono break-all">{row.displayId}</dd>
             <dt className="text-zinc-500">resourceId</dt>
             <dd className="font-mono break-all">{row.resourceId}</dd>
@@ -114,10 +115,10 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
 
       <nav className="flex flex-wrap gap-3 text-sm">
         <Link className="text-blue-700 underline hover:text-blue-900" href="/definitions">
-          Definition 一覧へ戻る
+          {uiText.lists.definitions}へ戻る
         </Link>
         <Link className="text-blue-700 underline hover:text-blue-900" href="/dashboard">
-          ダッシュボード
+          {uiText.navigation.dashboard}
         </Link>
       </nav>
     </div>
