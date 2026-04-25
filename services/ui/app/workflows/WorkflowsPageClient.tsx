@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import { StatusBadge } from "../components/common/StatusBadge";
+import { ListPagination } from "../components/layout/ListPagination";
 import { Toast } from "../components/Toast";
+import { PageShell } from "../components/layout/PageShell";
+import { PageState } from "../components/layout/PageState";
 import { apiGet, buildWorkflowsListPath, type WorkflowsListQuery } from "../lib/api";
 import { toToastError, type ToastState } from "../lib/errors";
-import { getStatusStyle, type StatusLike } from "../lib/statusStyle";
 import type { PagedWorkflows, WorkflowDTO } from "../lib/types";
-import { TenantMissingBanner } from "../components/execution/TenantMissingBanner";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 500;
@@ -115,26 +117,31 @@ function WorkflowsPageClientInner() {
       definitionId: definitionDraft || undefined
     });
   };
+  const pagination = (
+    <ListPagination
+      ariaLabel="Workflow 一覧ページネーション"
+      currentPageLabel={`${currentPage1Based} ページ目`}
+      hasPrev={hasPrev}
+      hasNext={hasNext}
+      prevLabel="前へ"
+      nextLabel="次へ"
+      onPrev={() =>
+        goTo({
+          ...listQuery,
+          offset: Math.max(0, listQuery.offset - listQuery.limit)
+        })
+      }
+      onNext={() =>
+        goTo({
+          ...listQuery,
+          offset: listQuery.offset + listQuery.limit
+        })
+      }
+    />
+  );
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-5 p-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Workflow 一覧</h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            条件は URL に反映され、再読み込みしても同じ表示に戻ります。Core-API: <code className="text-xs">limit, offset, status, name, definitionId</code>。
-          </p>
-          {totalCount !== null && <p className="mt-1 text-xs text-zinc-500">合計件数: {totalCount}</p>}
-        </div>
-        <div className="flex flex-wrap gap-3 text-sm">
-          <Link className="text-blue-700 underline hover:text-blue-900" href="/dashboard">
-            ダッシュボード
-          </Link>
-          <Link className="text-blue-700 underline hover:text-blue-900" href="/definitions">
-            Definition 一覧
-          </Link>
-        </div>
-      </header>
+    <PageShell title="Workflow 一覧">
 
       {listQuery.definitionId && (
         <output className="block rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900" aria-live="polite">
@@ -195,21 +202,37 @@ function WorkflowsPageClientInner() {
             />
           </label>
         </div>
-        <label className="block text-sm text-zinc-800">
-          <span className="text-zinc-600">name（workflow displayId 部分一致、または workflow UUID 完全一致）</span>
-          <input
-            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-sm"
-            value={nameDraft}
-            onChange={(e) => setNameDraft(e.target.value)}
-            autoComplete="off"
-          />
-        </label>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="min-w-[260px] flex-1 text-sm text-zinc-800">
+            <span className="text-zinc-600">name（workflow displayId 部分一致、または workflow UUID 完全一致）</span>
+            <input
+              className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-sm"
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
           <button
             type="submit"
-            className="rounded bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800"
+            className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            disabled={loading}
           >
-            検索（1 ページ目に戻す）
+            検索
+          </button>
+          <button
+            type="button"
+            className="rounded border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+            onClick={() => {
+              setNameDraft("");
+              setDefinitionDraft("");
+              goTo({
+                limit: listQuery.limit,
+                offset: 0
+              });
+            }}
+            disabled={loading && !currentStatus && !nameDraft && !definitionDraft}
+          >
+            クリア
           </button>
         </div>
         <p className="text-xs text-zinc-500">
@@ -217,98 +240,64 @@ function WorkflowsPageClientInner() {
         </p>
       </form>
 
-      <TenantMissingBanner />
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       {loading && (
-        <output className="text-sm text-zinc-500" aria-live="polite">
-          読み込み中…
-        </output>
+        <PageState state="loading" message="ワークフロー一覧を読み込み中です。" />
       )}
 
       {!loading && items !== null && items.length > 0 && (
-        <ul
-          className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
-          aria-label="ワークフロー一覧"
-        >
-          {items.map((workflow) => {
-            const st = getStatusStyle(workflow.status as StatusLike);
-            const updated = workflow.updatedAt ?? workflow.startedAt;
-            return (
-              <li key={workflow.displayId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${st.badgeClass}`}>
-                      {workflow.status}
-                    </span>
-                    <span className="truncate font-mono text-sm text-zinc-900" title={workflow.displayId}>
-                      {workflow.displayId}
-                    </span>
+        <section aria-label="ワークフロー一覧">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="text-xs text-zinc-500">合計 {totalCount ?? 0} 件（{currentPage1Based} ページ目）</p>
+            {pagination}
+          </div>
+          <ul
+            className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
+            aria-label="ワークフロー一覧"
+          >
+            {items.map((workflow) => {
+              const updated = workflow.updatedAt ?? workflow.startedAt;
+              return (
+                <li key={workflow.displayId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge status={workflow.status} />
+                      <span className="truncate font-mono text-sm text-zinc-900" title={workflow.displayId}>
+                        {workflow.displayId}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-500">更新: {formatDateTime(updated)}</p>
                   </div>
-                  <p className="mt-1 text-xs text-zinc-500">更新: {formatDateTime(updated)}</p>
-                </div>
-                <Link
-                  className="shrink-0 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
-                  href={`/workflows/${encodeURIComponent(workflow.displayId)}`}
-                >
-                  詳細
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                  <Link
+                    className="shrink-0 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
+                    href={`/workflows/${encodeURIComponent(workflow.displayId)}`}
+                  >
+                    詳細
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="mt-2 flex justify-end">
+            {pagination}
+          </div>
+        </section>
       )}
 
       {!loading && items !== null && items.length === 0 && (
-        <p className="rounded border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm text-zinc-700">
-          条件に合うワークフローはありません。
-        </p>
+        <PageState state="empty" message="条件に合うワークフローはありません。" />
       )}
 
       {!loading && !toast && items === null && (
-        <p className="text-sm text-zinc-600">取得に失敗しました。テナント設定を確認するか、再試行してください。</p>
+        <PageState
+          state="error"
+          message="取得に失敗しました。時間をおいて再試行してください。"
+          onRetry={() => void load()}
+        />
       )}
 
-      {items !== null && (hasPrev || hasNext) && (
-        <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-800">
-          <button
-            type="button"
-            className="rounded border border-zinc-300 bg-white px-2 py-1.5 text-zinc-800 hover:bg-zinc-50 disabled:opacity-40"
-            disabled={!hasPrev}
-            onClick={() =>
-              goTo({
-                ...listQuery,
-                offset: Math.max(0, listQuery.offset - listQuery.limit)
-              })
-            }
-          >
-            前のページ
-          </button>
-          <span>ページ: {currentPage1Based}</span>
-          <button
-            type="button"
-            className="rounded border border-zinc-300 bg-white px-2 py-1.5 text-zinc-800 hover:bg-zinc-50 disabled:opacity-40"
-            disabled={!hasNext}
-            onClick={() =>
-              goTo({
-                ...listQuery,
-                offset: listQuery.offset + listQuery.limit
-              })
-            }
-          >
-            次のページ
-          </button>
-        </div>
-      )}
-
-      <button
-        type="button"
-        className="w-fit self-start text-sm text-blue-700 underline hover:text-blue-900"
-        onClick={() => void load()}
-      >
-        再読み込み
-      </button>
-    </div>
+    </PageShell>
   );
 }
 

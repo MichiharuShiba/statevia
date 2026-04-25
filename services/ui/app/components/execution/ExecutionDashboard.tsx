@@ -6,7 +6,8 @@ import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionStatusBanner } from "./ExecutionStatusBanner";
 import { ExecutionTimeline } from "./ExecutionTimeline";
 import { ReplayBanner } from "./ReplayBanner";
-import { TenantMissingBanner } from "./TenantMissingBanner";
+import { ActionLinkGroup } from "../layout/ActionLinkGroup";
+import { PageState } from "../layout/PageState";
 import { NodeDetail } from "../nodes/NodeDetail";
 import { NodeGraphView, type GraphViewport } from "../nodes/NodeGraphView";
 import { NodeListView } from "../nodes/NodeListView";
@@ -34,7 +35,7 @@ export type ExecutionDashboardProps = {
   initialExecutionId: string;
   /** true のときマウント直後に Load を実行する */
   autoLoadOnMount?: boolean;
-  /** ヘッダ右側のナビ（未指定時は Playground + health） */
+  /** ヘッダ右側のナビ（未指定時は dashboard/workflows/health） */
   headerNav?: ReactNode;
   /** メイン見出し */
   headerTitle?: string;
@@ -108,7 +109,7 @@ type ExecutionDashboardViewProps = {
 
 /**
  * 実行一覧・グラフ・タイムライン・ノード操作の共通ダッシュボード。
- * `/dashboard` や `/playground/run/[displayId]` から利用する。
+ * `/dashboard` や `/workflows/[workflowId]` から利用する。
  */
 export function ExecutionDashboard({
   initialExecutionId,
@@ -445,17 +446,13 @@ function ExecutionDashboardView({
 }: Readonly<ExecutionDashboardViewProps>) {
   const [eventName, setEventName] = useState("");
   const defaultHeaderNav = (
-    <div className="flex items-center gap-3 text-xs">
-      <a className="text-zinc-600 hover:underline" href="/dashboard">
-        ダッシュボード
-      </a>
-      <a className="text-zinc-600 hover:underline" href="/playground">
-        Playground
-      </a>
-      <a className="text-zinc-600 hover:underline" href="/health">
-        health
-      </a>
-    </div>
+    <ActionLinkGroup
+      links={[
+        { label: "ダッシュボード", href: "/dashboard", priority: "primary" },
+        { label: "Workflow 一覧", href: "/workflows" },
+        { label: "health", href: "/health" }
+      ]}
+    />
   );
 
   const graphWrapperClassName = graphFullscreen ? "fixed inset-0 z-50 bg-zinc-50 p-4" : "";
@@ -469,12 +466,10 @@ function ExecutionDashboardView({
     <div className={graphFullscreen ? "" : "space-y-4"}>
       {!graphFullscreen && (
         <>
-          <header className="flex items-center justify-between">
-            <h1 className="text-xl font-bold">{headerTitle}</h1>
+          <header className="flex flex-col items-start gap-3 rounded-2xl border border-[var(--tone-border)] bg-[var(--tone-surface-bg)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="text-xl font-bold text-[var(--tone-fg-strong)]">{headerTitle}</h1>
             {headerNav ?? defaultHeaderNav}
           </header>
-
-          <Toast toast={toast} onClose={onCloseToast} />
 
           <ExecutionHeader
             executionId={executionId}
@@ -494,6 +489,8 @@ function ExecutionDashboardView({
             onStreamEnabledChange={onStreamEnabledChange}
             showCancelAction={operationsEnabled}
           />
+
+          <Toast toast={toast} onClose={onCloseToast} />
 
           {operationsEnabled && showExecutionPanels && (
             <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -540,13 +537,10 @@ function ExecutionDashboardView({
             />
           )}
 
-          <TenantMissingBanner />
           <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequested} terminal={terminal} />
 
           {!loading && !showExecutionPanels && (
-            <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              指定されたワークフローが見つかりませんでした。ID とテナントを確認してください。
-            </section>
+            <PageState state="error" message="指定されたワークフローが見つかりませんでした。ID を確認してください。" />
           )}
 
           {showExecutionPanels && isReplaying && (

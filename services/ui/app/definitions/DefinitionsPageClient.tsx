@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ListPagination } from "../components/layout/ListPagination";
+import { PageShell } from "../components/layout/PageShell";
+import { PageState } from "../components/layout/PageState";
 import { Toast } from "../components/Toast";
 import { apiGet } from "../lib/api";
 import { toToastError, type ToastState } from "../lib/errors";
@@ -67,23 +70,22 @@ export function DefinitionsPageClient() {
   );
 
   const empty = !loading && items !== null && items.length === 0;
+  const paginationNav = (
+    <ListPagination
+      ariaLabel="Definition 一覧ページネーション"
+      currentPageLabel={`${currentPage} ページ目`}
+      hasPrev={hasPrev}
+      hasNext={hasNext}
+      onPrev={() => setCurrentPage((page) => Math.max(1, page - 1))}
+      onNext={() => setCurrentPage((page) => page + 1)}
+    />
+  );
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Definition 一覧</h1>
-          <p className="mt-1 text-sm text-zinc-600">定義の検索とページングを行い、詳細画面へ遷移します。</p>
-        </div>
-        <div className="flex gap-3 text-sm">
-          <Link href="/dashboard" className="text-blue-700 underline hover:text-blue-900">
-            ダッシュボード
-          </Link>
-          <Link href="/playground" className="text-blue-700 underline hover:text-blue-900">
-            Playground
-          </Link>
-        </div>
-      </header>
+    <PageShell
+      title="Definition 一覧"
+      description="定義の検索とページングを行い、詳細画面へ遷移します。"
+    >
 
       <Toast toast={toast} onClose={() => setToast(null)} />
 
@@ -119,29 +121,25 @@ export function DefinitionsPageClient() {
       </form>
 
       {loading && (
-        <output className="block text-sm text-zinc-500" aria-live="polite">
-          定義一覧を読み込み中…
-        </output>
-      )}
-
-      {!loading && items !== null && (
-        <p className="text-xs text-zinc-500">
-          {submittedSearch ? `検索: "${submittedSearch}" / ` : ""}
-          合計 {totalCount ?? 0} 件（{currentPage} ページ目）
-        </p>
+        <PageState state="loading" message="定義一覧を読み込み中です。" />
       )}
 
       {empty && (
-        <section className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-6 text-sm text-zinc-700">
-          <p className="font-medium text-zinc-800">該当する Definition はありません。</p>
-          <p className="mt-2">
-            検索条件を変更するか、<Link href="/playground" className="text-blue-700 underline">Playground</Link> で新規登録してください。
-          </p>
-        </section>
+        <PageState
+          state="empty"
+          message="該当する Definition はありません。検索条件を変更するか、条件をクリアして再検索してください。"
+        />
       )}
 
       {!loading && items !== null && items.length > 0 && (
         <section aria-label="Definition 一覧">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="text-xs text-zinc-500">
+              {submittedSearch ? `検索: "${submittedSearch}" / ` : ""}
+              合計 {totalCount ?? 0} 件（{currentPage} ページ目）
+            </p>
+            {paginationNav}
+          </div>
           <ul className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
             {items.map((definition) => (
               <li key={definition.displayId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -162,34 +160,16 @@ export function DefinitionsPageClient() {
               </li>
             ))}
           </ul>
+          <div className="mt-2 flex justify-end">
+            {paginationNav}
+          </div>
         </section>
       )}
 
       {!loading && items === null && !toast && (
-        <p className="text-sm text-zinc-600">定義一覧を取得できませんでした。</p>
+        <PageState state="error" message="定義一覧を取得できませんでした。" onRetry={() => void loadDefinitions()} />
       )}
 
-      {!loading && items !== null && (
-        <nav className="flex items-center gap-2 text-sm" aria-label="Definition 一覧ページネーション">
-          <button
-            type="button"
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            disabled={!hasPrev}
-          >
-            前へ
-          </button>
-          <span className="text-zinc-600">{currentPage} ページ目</span>
-          <button
-            type="button"
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => setCurrentPage((page) => page + 1)}
-            disabled={!hasNext}
-          >
-            次へ
-          </button>
-        </nav>
-      )}
-    </div>
+    </PageShell>
   );
 }

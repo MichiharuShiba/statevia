@@ -7,10 +7,14 @@ type ToastProps = {
   onClose: () => void;
 };
 
+const TOAST_TONE_CLASS_MAP: Record<ToastState["tone"], string> = {
+  error: "border-red-200 bg-red-50 text-red-900",
+  success: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  info: "border-zinc-200 bg-white text-zinc-900"
+};
+
 function getToneClass(tone: ToastState["tone"]): string {
-  if (tone === "error") return "border-red-200 bg-red-50 text-red-900";
-  if (tone === "success") return "border-emerald-200 bg-emerald-50 text-emerald-900";
-  return "border-zinc-200 bg-white text-zinc-900";
+  return TOAST_TONE_CLASS_MAP[tone];
 }
 
 export function Toast({ toast, onClose }: Readonly<ToastProps>) {

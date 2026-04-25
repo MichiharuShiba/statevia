@@ -1,9 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
 import { ExecutionDashboard } from "../../../components/execution/ExecutionDashboard";
+import { ActionLinkGroup } from "../../../components/layout/ActionLinkGroup";
+import { PageShell } from "../../../components/layout/PageShell";
+import { PageState } from "../../../components/layout/PageState";
 
 /**
  * Graph 専用ページ。可視化体験を中心に表示し、詳細/実行画面と往復できる。
@@ -18,14 +20,12 @@ export default function WorkflowGraphPage() {
 
   if (!workflowId.trim()) {
     return (
-      <main className="mx-auto max-w-2xl p-6">
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          ワークフロー ID が指定されていません。
-        </p>
-        <Link className="mt-3 inline-block text-sm text-blue-700 underline" href="/workflows">
-          一覧に戻る
-        </Link>
-      </main>
+      <PageShell
+        title="ワークフローグラフ"
+        primaryActions={<ActionLinkGroup links={[{ label: "Workflow 一覧", href: "/workflows", priority: "primary" }]} />}
+      >
+        <PageState state="error" message="ワークフロー ID が指定されていません。" />
+      </PageShell>
     );
   }
 
@@ -41,20 +41,14 @@ export default function WorkflowGraphPage() {
       initialViewMode="graph"
       lockViewMode={true}
       headerNav={
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          <Link className="text-zinc-600 hover:underline" href={`/workflows/${encodeURIComponent(workflowId)}`}>
-            詳細
-          </Link>
-          <Link className="text-zinc-600 hover:underline" href={`/workflows/${encodeURIComponent(workflowId)}/run`}>
-            実行
-          </Link>
-          <Link className="text-zinc-600 hover:underline" href="/workflows">
-            一覧
-          </Link>
-          <Link className="text-zinc-600 hover:underline" href="/dashboard">
-            ダッシュボード
-          </Link>
-        </div>
+        <ActionLinkGroup
+          links={[
+            { label: "詳細", href: `/workflows/${encodeURIComponent(workflowId)}`, priority: "primary" },
+            { label: "実行", href: `/workflows/${encodeURIComponent(workflowId)}/run` },
+            { label: "Workflow 一覧", href: "/workflows" },
+            { label: "ダッシュボード", href: "/dashboard" }
+          ]}
+        />
       }
     />
   );

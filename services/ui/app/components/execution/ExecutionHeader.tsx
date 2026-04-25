@@ -1,7 +1,7 @@
 "use client";
 
 import type { WorkflowView } from "../../lib/types";
-import { getStatusStyle } from "../../lib/statusStyle";
+import { StatusBadge } from "../common/StatusBadge";
 import type { ViewMode } from "../ViewToggle";
 import { ViewToggle } from "../ViewToggle";
 
@@ -48,7 +48,6 @@ export function ExecutionHeader({
   showViewToggle = true
 }: Readonly<ExecutionHeaderProps>) {
   const status = execution?.status;
-  const style = status ? getStatusStyle(status) : null;
 
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -125,10 +124,8 @@ export function ExecutionHeader({
         <div className="mt-4 rounded-xl bg-zinc-50 p-3 text-xs text-zinc-700">
           <div className="flex items-center justify-between">
             <div className="text-sm font-semibold">Execution</div>
-            {status && style && (
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${style.badgeClass}`}>
-                {status}
-              </span>
+            {status && (
+              <StatusBadge status={status} className="rounded-full px-2 py-0.5 font-semibold" />
             )}
           </div>
           <div className="mt-2 grid gap-1 sm:grid-cols-2">

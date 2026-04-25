@@ -3,4 +3,22 @@
 @tailwind utilities;
 :root {
     color-scheme: light;
+    --tone-header-bg: #0a1a2f;
+    --tone-header-fg: #f8fafc;
+    --tone-header-fg-muted: #c6d3e6;
+    --tone-surface-bg: #ffffff;
+    --tone-page-bg: #f5f7fb;
+    --tone-border: #d9e1ec;
+    --tone-fg-strong: #0f172a;
+    --tone-fg-muted: #475569;
+    --tone-accent: #2563eb;
+    --tone-accent-soft: #eff6ff;
+    --tone-accent-soft-hover: #dbeafe;
+    --tone-accent-strong: #1d4ed8;
+    --tone-accent-strong-hover: #1e40af;
+}
+
+html {
+    scrollbar-gutter: auto;
+    overflow-y: scroll;
 }

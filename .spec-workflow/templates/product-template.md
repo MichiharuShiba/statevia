@@ -1,60 +1,51 @@
-# プロダクト概要
+# Product Overview
 
-## プロダクトの目的
+## Product Purpose
+[Describe the core purpose of this product/project. What problem does it solve?]
 
-[このプロダクト/プロジェクトが解決する課題と、提供する価値を記載]
+## Target Users
+[Who are the primary users of this product? What are their needs and pain points?]
 
-## 対象ユーザー
+## Key Features
+[List the main features that deliver value to users]
 
-[主な利用者、利用シーン、抱えている課題を記載]
+1. **Feature 1**: [Description]
+2. **Feature 2**: [Description]
+3. **Feature 3**: [Description]
 
-## 主要機能
+## Business Objectives
+[What are the business goals this product aims to achieve?]
 
-[ユーザー価値に直結する機能を列挙]
+- [Objective 1]
+- [Objective 2]
+- [Objective 3]
 
-1. **機能1**: [説明]
-2. **機能2**: [説明]
-3. **機能3**: [説明]
+## Success Metrics
+[How will we measure the success of this product?]
 
-## ビジネス目標
+- [Metric 1]: [Target]
+- [Metric 2]: [Target]
+- [Metric 3]: [Target]
 
-[このプロダクトで達成したい事業上の目標を記載]
+## Product Principles
+[Core principles that guide product decisions]
 
-- [目標1]
-- [目標2]
-- [目標3]
+1. **[Principle 1]**: [Explanation]
+2. **[Principle 2]**: [Explanation]
+3. **[Principle 3]**: [Explanation]
 
-## 成功指標（KPI）
+## Monitoring & Visibility (if applicable)
+[How do users track progress and monitor the system?]
 
-[成功をどのように測定するかを記載]
+- **Dashboard Type**: [e.g., Web-based, CLI, Desktop app]
+- **Real-time Updates**: [e.g., WebSocket, polling, push notifications]
+- **Key Metrics Displayed**: [What information is most important to surface]
+- **Sharing Capabilities**: [e.g., read-only links, exports, reports]
 
-- **[指標1]**: [目標値]
-- **[指標2]**: [目標値]
-- **[指標3]**: [目標値]
+## Future Vision
+[Where do we see this product evolving in the future?]
 
-## プロダクト原則
-
-[意思決定の基準となる原則を記載]
-
-1. **[原則1]**: [説明]
-2. **[原則2]**: [説明]
-3. **[原則3]**: [説明]
-
-## 監視・可視化（該当する場合）
-
-[利用者が進捗や状態を確認する方法を記載]
-
-- **ダッシュボード種別**: [例: Web, CLI, デスクトップアプリ]
-- **リアルタイム更新方式**: [例: WebSocket, ポーリング, Push通知]
-- **表示する主要指標**: [最重要の可視化項目]
-- **共有方法**: [例: 閲覧専用リンク, エクスポート, レポート]
-
-## 将来ビジョン
-
-[中長期でどのように発展させるかを記載]
-
-### 将来的な拡張案
-
-- **リモートアクセス**: [例: 関係者共有のためのトンネル機能]
-- **分析機能**: [例: 履歴トレンド, 性能分析]
-- **コラボレーション**: [例: 複数ユーザー対応, コメント機能]
+### Potential Enhancements
+- **Remote Access**: [e.g., Tunnel features for sharing dashboards with stakeholders]
+- **Analytics**: [e.g., Historical trends, performance metrics]
+- **Collaboration**: [e.g., Multi-user support, commenting]

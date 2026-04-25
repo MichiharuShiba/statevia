@@ -9,7 +9,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json /app/package-lock.json ./
 COPY next.config.mjs tailwind.config.ts postcss.config.js tsconfig.json next-env.d.ts ./
 COPY app ./app
-RUN mkdir -p public
+COPY public ./public
 RUN npm run build
 
 FROM node:20-alpine AS runner

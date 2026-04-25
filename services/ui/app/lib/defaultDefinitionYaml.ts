@@ -1,7 +1,7 @@
-/** Playground 初期テンプレート（delay5s → fork/join → end）。 */
-export const defaultPlaygroundYaml = `version: 1
+/** Definition Editor 初期テンプレート（delay5s → fork/join → end）。 */
+export const defaultDefinitionYaml = `version: 1
 workflow:
-  name: PlaygroundMinimal
+  name: DefinitionMinimal
 nodes:
   - id: start
     type: start
