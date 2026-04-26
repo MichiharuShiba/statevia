@@ -29,7 +29,7 @@ export default function DefinitionRunStartPage() {
   const handleStart = async () => {
     const id = definitionId.trim();
     if (!id) {
-      setToast({ tone: "error", message: `${uiText.labels.definitionId} が指定されていません。` });
+      setToast({ tone: "error", message: uiText.definitionRunPage.toasts.definitionIdRequired(uiText.labels.definitionId) });
       return;
     }
 
@@ -38,7 +38,7 @@ export default function DefinitionRunStartPage() {
       try {
         body.input = JSON.parse(inputJson) as unknown;
       } catch {
-        setToast({ tone: "error", message: `${uiText.labels.workflowInput} の JSON が不正です。` });
+        setToast({ tone: "error", message: uiText.definitionRunPage.toasts.invalidWorkflowInputJson(uiText.labels.workflowInput) });
         return;
       }
     }
@@ -47,7 +47,7 @@ export default function DefinitionRunStartPage() {
     setToast(null);
     try {
       const created = await apiPost<WorkflowDTO>("/workflows", body);
-      setToast({ tone: "success", message: `ワークフローを開始しました: ${created.displayId}` });
+      setToast({ tone: "success", message: uiText.definitionRunPage.toasts.workflowStarted(created.displayId) });
       router.push(`/workflows/${encodeURIComponent(created.displayId)}/run`);
     } catch (error) {
       setToast(toToastError(error));
@@ -74,7 +74,7 @@ export default function DefinitionRunStartPage() {
 
       <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
         <label className="block text-sm">
-          <span className="text-zinc-600">{uiText.labels.workflowInput}（任意・JSON）</span>
+          <span className="text-zinc-600">{uiText.definitionRunPage.workflowInputLabelWithHint(uiText.labels.workflowInput)}</span>
           <textarea
             className="mt-1 h-28 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-xs"
             value={inputJson}
@@ -98,7 +98,7 @@ export default function DefinitionRunStartPage() {
 
       <nav className="flex flex-wrap gap-3 text-sm">
         <Link className="text-blue-700 underline hover:text-blue-900" href={`/definitions/${encodeURIComponent(definitionId)}`}>
-          定義の詳細へ戻る
+          {uiText.definitionRunPage.nav.backToDefinitionDetail}
         </Link>
         <Link className="text-blue-700 underline hover:text-blue-900" href="/workflows">
           {uiText.lists.workflows}

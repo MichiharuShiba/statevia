@@ -166,7 +166,16 @@ export type UiText = {
     title: string;
     unspecifiedDefinitionId: string;
     definitionIdLine: (definitionIdLabel: string, definitionId: string) => string;
+    workflowInputLabelWithHint: (workflowInputLabel: string) => string;
     inputJsonPlaceholder: string;
+    toasts: {
+      definitionIdRequired: (definitionIdLabel: string) => string;
+      invalidWorkflowInputJson: (workflowInputLabel: string) => string;
+      workflowStarted: (workflowDisplayId: string) => string;
+    };
+    nav: {
+      backToDefinitionDetail: string;
+    };
     actions: {
       starting: string;
       startWorkflow: string;
@@ -278,6 +287,7 @@ export type UiText = {
   };
   definitionEditor: {
     backToDetail: string;
+    descriptionEditingTarget: (definitionId: string) => string;
     loadingMeta: string;
     validation: {
       nameRequired: string;
@@ -503,7 +513,16 @@ export const uiText: UiText = {
     title: "定義を実行",
     unspecifiedDefinitionId: "（未指定）",
     definitionIdLine: (definitionIdLabel: string, definitionId: string) => `${definitionIdLabel}: ${definitionId}`,
+    workflowInputLabelWithHint: (workflowInputLabel: string) => `${workflowInputLabel}（任意・JSON）`,
     inputJsonPlaceholder: '例: {"orderId":"123"}',
+    toasts: {
+      definitionIdRequired: (definitionIdLabel: string) => `${definitionIdLabel} が指定されていません。`,
+      invalidWorkflowInputJson: (workflowInputLabel: string) => `${workflowInputLabel} の JSON が不正です。`,
+      workflowStarted: (workflowDisplayId: string) => `ワークフローを開始しました: ${workflowDisplayId}`,
+    },
+    nav: {
+      backToDefinitionDetail: "定義の詳細へ戻る",
+    },
     actions: {
       starting: "開始中...",
       startWorkflow: "ワークフロー開始",
@@ -618,6 +637,7 @@ export const uiText: UiText = {
   },
   definitionEditor: {
     backToDetail: "定義の詳細へ戻る",
+    descriptionEditingTarget: (definitionId: string) => `編集対象: ${definitionId}`,
     loadingMeta: "定義メタ情報を読み込み中...",
     validation: {
       nameRequired: "定義名を入力してください。",

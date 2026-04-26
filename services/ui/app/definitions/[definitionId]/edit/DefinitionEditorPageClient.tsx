@@ -80,7 +80,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
   return (
     <PageShell
       title={uiText.labels.definitionEditor}
-      description={`編集対象: ${definitionId}`}
+      description={uiText.definitionEditor.descriptionEditingTarget(definitionId)}
       primaryActions={<ActionLinkGroup links={actionLinks} />}
       secondaryActions={<ActionLinkGroup links={actionLinks} />}
     >
