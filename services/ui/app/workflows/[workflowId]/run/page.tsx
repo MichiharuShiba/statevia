@@ -22,10 +22,10 @@ export default function WorkflowRunPage() {
   if (!workflowId.trim()) {
     return (
       <PageShell
-        title="ワークフロー実行"
+        title={uiText.workflowRunPage.title}
         primaryActions={<ActionLinkGroup links={[{ label: uiText.lists.workflows, href: "/workflows", priority: "primary" }]} />}
       >
-        <PageState state="error" message="ワークフロー ID が指定されていません。" />
+        <PageState state="error" message={uiText.workflowRunPage.missingWorkflowId} />
       </PageShell>
     );
   }
@@ -35,15 +35,15 @@ export default function WorkflowRunPage() {
       key={workflowId}
       initialExecutionId={workflowId}
       autoLoadOnMount
-      headerTitle="ワークフロー実行"
+      headerTitle={uiText.workflowRunPage.title}
       executionIdEditable={false}
       comparisonEnabled={false}
       operationsEnabled={true}
       headerNav={
         <ActionLinkGroup
           links={[
-            { label: "詳細", href: `/workflows/${encodeURIComponent(workflowId)}`, priority: "primary" },
-            { label: "グラフ", href: `/workflows/${encodeURIComponent(workflowId)}/graph` },
+            { label: uiText.workflowRunPage.navDetail, href: `/workflows/${encodeURIComponent(workflowId)}`, priority: "primary" },
+            { label: uiText.workflowRunPage.navGraph, href: `/workflows/${encodeURIComponent(workflowId)}/graph` },
             { label: uiText.lists.workflows, href: "/workflows" },
             { label: uiText.navigation.dashboard, href: "/dashboard" }
           ]}

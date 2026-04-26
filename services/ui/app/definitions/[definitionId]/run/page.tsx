@@ -59,9 +59,14 @@ export default function DefinitionRunStartPage() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-5 p-6">
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold text-zinc-900">定義起点で実行</h1>
+        <h1 className="text-xl font-semibold text-zinc-900">{uiText.definitionRunPage.title}</h1>
         <p className="text-sm text-zinc-600">
-          {uiText.labels.definitionId}: <span className="font-mono break-all">{definitionId || "（未指定）"}</span>
+          <span className="font-mono break-all">
+            {uiText.definitionRunPage.definitionIdLine(
+              uiText.labels.definitionId,
+              definitionId || uiText.definitionRunPage.unspecifiedDefinitionId
+            )}
+          </span>
         </p>
       </header>
 
@@ -74,7 +79,7 @@ export default function DefinitionRunStartPage() {
             className="mt-1 h-28 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-xs"
             value={inputJson}
             onChange={(event) => setInputJson(event.target.value)}
-            placeholder='例: {"orderId":"123"}'
+            placeholder={uiText.definitionRunPage.inputJsonPlaceholder}
             spellCheck={false}
           />
         </label>
@@ -84,10 +89,10 @@ export default function DefinitionRunStartPage() {
           onClick={() => void handleStart()}
           disabled={starting || !definitionId.trim()}
         >
-          {starting ? "開始中..." : "ワークフロー開始"}
+          {starting ? uiText.definitionRunPage.actions.starting : uiText.definitionRunPage.actions.startWorkflow}
         </button>
         <p className="text-xs text-zinc-500">
-          開始後は Run 画面（<code>/workflows/[workflowId]/run</code>）へ自動遷移します。
+          {uiText.definitionRunPage.help.redirectAfterStart("/workflows/[workflowId]/run")}
         </p>
       </section>
 

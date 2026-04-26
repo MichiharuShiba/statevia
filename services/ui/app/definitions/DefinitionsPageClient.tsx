@@ -73,8 +73,8 @@ export function DefinitionsPageClient() {
   const empty = !loading && items !== null && items.length === 0;
   const paginationNav = (
     <ListPagination
-      ariaLabel={`${uiText.lists.definitions}ページネーション`}
-      currentPageLabel={`${currentPage} ページ目`}
+      ariaLabel={uiText.definitionsPage.pagination.ariaLabel}
+      currentPageLabel={uiText.definitionsPage.pagination.currentPage(currentPage)}
       hasPrev={hasPrev}
       hasNext={hasNext}
       onPrev={() => setCurrentPage((page) => Math.max(1, page - 1))}
@@ -85,19 +85,19 @@ export function DefinitionsPageClient() {
   return (
     <PageShell
       title={uiText.lists.definitions}
-      description="定義の検索とページングを行い、詳細画面へ遷移します。"
+      description={uiText.definitionsPage.description}
     >
 
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       <form className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-white p-4" onSubmit={handleSubmitSearch}>
         <label className="min-w-[260px] flex-1 text-sm">
-          <span className="text-zinc-600">名前検索（部分一致）</span>
+          <span className="text-zinc-600">{uiText.definitionsPage.search.label}</span>
           <input
             className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 text-sm"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="例: order"
+            placeholder={uiText.definitionsPage.search.placeholder}
           />
         </label>
         <button
@@ -105,7 +105,7 @@ export function DefinitionsPageClient() {
           className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
           disabled={loading}
         >
-          検索
+          {uiText.definitionsPage.search.submit}
         </button>
         <button
           type="button"
@@ -117,18 +117,18 @@ export function DefinitionsPageClient() {
           }}
           disabled={loading && !submittedSearch}
         >
-          クリア
+          {uiText.definitionsPage.search.clear}
         </button>
       </form>
 
       {loading && (
-        <PageState state="loading" message="定義一覧を読み込み中です。" />
+        <PageState state="loading" message={uiText.definitionsPage.loading} />
       )}
 
       {empty && (
         <PageState
           state="empty"
-          message={`該当する${uiText.entities.definition}はありません。検索条件を変更するか、条件をクリアして再検索してください。`}
+          message={uiText.definitionsPage.emptyNoMatch}
         />
       )}
 
@@ -136,8 +136,8 @@ export function DefinitionsPageClient() {
         <section aria-label={uiText.lists.definitions}>
           <div className="mb-2 flex items-center justify-between gap-3">
             <p className="text-xs text-zinc-500">
-              {submittedSearch ? `検索: "${submittedSearch}" / ` : ""}
-              合計 {totalCount ?? 0} 件（{currentPage} ページ目）
+              {submittedSearch ? uiText.definitionsPage.searchSummaryPrefix(submittedSearch) : ""}
+              {uiText.definitionsPage.listSummary(totalCount ?? 0, currentPage)}
             </p>
             {paginationNav}
           </div>
@@ -149,14 +149,18 @@ export function DefinitionsPageClient() {
                     {definition.name}
                   </p>
                   <p className="mt-1 text-xs text-zinc-500">
-                    {uiText.labels.displayId}: <span className="font-mono">{definition.displayId}</span> / 作成: {formatDateTime(definition.createdAt)}
+                    {uiText.definitionsPage.displayIdAndCreatedAt(
+                      uiText.labels.displayId,
+                      definition.displayId,
+                      uiText.definitionsPage.createdAt(formatDateTime(definition.createdAt))
+                    )}
                   </p>
                 </div>
                 <Link
                   href={`/definitions/${encodeURIComponent(definition.displayId)}`}
                   className="shrink-0 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
                 >
-                  詳細を開く
+                  {uiText.definitionsPage.actions.openDetail}
                 </Link>
               </li>
             ))}
@@ -168,7 +172,7 @@ export function DefinitionsPageClient() {
       )}
 
       {!loading && items === null && !toast && (
-        <PageState state="error" message="定義一覧を取得できませんでした。" onRetry={() => void loadDefinitions()} />
+        <PageState state="error" message={uiText.definitionsPage.error} onRetry={() => void loadDefinitions()} />
       )}
 
     </PageShell>

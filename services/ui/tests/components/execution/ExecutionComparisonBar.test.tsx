@@ -65,7 +65,7 @@ describe("ExecutionComparisonBar", () => {
         diff={null}
       />
     );
-    expect(screen.getByText("未読み込み")).toBeInTheDocument();
+    expect(screen.getByText(uiText.executionComparison.state.notLoaded)).toBeInTheDocument();
   });
 
   it("diff が null のとき「A と B を読み込むと表示されます」を表示する", () => {
@@ -150,6 +150,6 @@ describe("ExecutionComparisonBar", () => {
         diff={diff!}
       />
     );
-    expect(screen.getByText("ノード差分なし")).toBeInTheDocument();
+    expect(screen.getByText(uiText.executionComparison.summary.noDiff)).toBeInTheDocument();
   });
 });

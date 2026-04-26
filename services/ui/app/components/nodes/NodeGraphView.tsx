@@ -75,9 +75,9 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
       </div>
       <div className="mt-2 space-y-1 text-xs">
         <div className="font-mono">{data.label}</div>
-        <div className="text-zinc-600">type: {data.nodeType}</div>
-        <div className="text-zinc-600">attempt: {data.attempt}</div>
-        {data.waitKey && <div className="text-zinc-600">waitKey: {data.waitKey}</div>}
+        <div className="text-zinc-600">{uiText.nodeGraph.meta.type(data.nodeType)}</div>
+        <div className="text-zinc-600">{uiText.nodeGraph.meta.attempt(data.attempt)}</div>
+        {data.waitKey && <div className="text-zinc-600">{uiText.nodeGraph.meta.waitKey(data.waitKey)}</div>}
       </div>
       {data.status === "WAITING" && (
         <div className="mt-3">

@@ -116,7 +116,7 @@ export function ExecutionDashboard({
   initialExecutionId,
   autoLoadOnMount = false,
   headerNav,
-  headerTitle = "実行の詳細",
+  headerTitle = uiText.executionDashboard.header.titleDefault,
   executionIdEditable = true,
   comparisonEnabled = true,
   operationsEnabled = true,
@@ -165,8 +165,8 @@ export function ExecutionDashboard({
   const executionHookOptions = useMemo(
     () => ({
       onError: (err: unknown) => setToast(toToastError(err)),
-      onCancelSuccess: () => setToast({ tone: "success", message: "CancelExecution accepted" }),
-      onPublishSuccess: () => setToast({ tone: "success", message: "PublishEvent accepted" }),
+      onCancelSuccess: () => setToast({ tone: "success", message: uiText.executionDashboard.toasts.cancelAccepted }),
+      onPublishSuccess: () => setToast({ tone: "success", message: uiText.executionDashboard.toasts.publishAccepted }),
       streamEnabled
     }),
     [streamEnabled]
@@ -224,7 +224,7 @@ export function ExecutionDashboard({
   const { resumeNode, loading: nodeLoading } = useNodeCommands(execution, {
     commandsEnabled: operationsEnabled,
     onSuccess: () => {
-      setToast({ tone: "success", message: "ResumeNode accepted" });
+      setToast({ tone: "success", message: uiText.executionDashboard.toasts.resumeAccepted });
       loadExecution();
     },
     onError: (err) => setToast(toToastError(err))
@@ -263,7 +263,7 @@ export function ExecutionDashboard({
   );
 
   const selectedResumeDisabledReason = isReplaying
-    ? "リプレイ表示中は実行できません"
+    ? uiText.executionDashboard.replayDisabledReason
     : getResumeDisabledReason(execution, selectedNode, operationsEnabled);
 
   const resumeEventName = useMemo(() => {
@@ -310,7 +310,7 @@ export function ExecutionDashboard({
     (nodeId: string) => {
       const node = getNodeWithFallback(displayExecution, graphData, nodeId);
       return isReplaying
-        ? "リプレイ表示中は実行できません"
+        ? uiText.executionDashboard.replayDisabledReason
         : getResumeDisabledReason(execution, node, operationsEnabled);
     },
     [displayExecution, graphData, isReplaying, execution, operationsEnabled]
@@ -495,15 +495,15 @@ function ExecutionDashboardView({
 
           {operationsEnabled && showExecutionPanels && (
             <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-zinc-800">実行操作</h2>
+              <h2 className="text-sm font-semibold text-zinc-800">{uiText.executionDashboard.actions.sectionTitle}</h2>
               <div className="mt-3 flex flex-wrap items-end gap-2">
                 <label className="block min-w-[14rem] flex-1 text-xs text-zinc-600">
-                  <span>Event 名（POST /events）</span>
+                  <span>{uiText.executionDashboard.actions.eventNameLabel}</span>
                   <input
                     className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
                     value={eventName}
                     onChange={(event) => setEventName(event.target.value)}
-                    placeholder="event-name"
+                    placeholder={uiText.executionDashboard.actions.eventNamePlaceholder}
                     autoComplete="off"
                   />
                 </label>
@@ -520,7 +520,11 @@ function ExecutionDashboardView({
                 </button>
               </div>
               <p className="mt-2 text-xs text-zinc-500">
-                {uiText.actions.cancel} / {uiText.actions.resume} / {uiText.actions.sendEvent} は Run 画面に集約しています。
+                {uiText.executionDashboard.operationsAggregatedInRun(
+                  uiText.actions.cancel,
+                  uiText.actions.resume,
+                  uiText.actions.sendEvent
+                )}
               </p>
             </section>
           )}
@@ -541,7 +545,7 @@ function ExecutionDashboardView({
           <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequested} terminal={terminal} />
 
           {!loading && !showExecutionPanels && (
-            <PageState state="error" message="指定されたワークフローが見つかりませんでした。ID を確認してください。" />
+            <PageState state="error" message={uiText.executionDashboard.errors.workflowNotFound} />
           )}
 
           {showExecutionPanels && isReplaying && (
@@ -582,12 +586,14 @@ function ExecutionDashboardView({
                       className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
                       onClick={onToggleGraphFullscreen}
                     >
-                      {graphFullscreen ? "全画面終了 (Esc)" : "全画面表示"}
+                      {graphFullscreen
+                        ? uiText.executionDashboard.graph.fullscreenExit
+                        : uiText.executionDashboard.graph.fullscreenEnter}
                     </button>
                   </div>
                   {graphData && !graphData.definitionBased && !graphFullscreen && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                      {uiText.labels.graphId}: {graphData.graphId} の定義が未登録のため、仮エッジ表示です。
+                      {uiText.executionDashboard.graph.definitionMissingFallback(graphData.graphId)}
                     </div>
                   )}
                   {graphData && (

@@ -28,7 +28,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
   const [saving, setSaving] = useState(false);
   const [savedDefinition, setSavedDefinition] = useState<DefinitionDTO | null>(null);
   const actionLinks = [
-    { label: "定義の詳細へ戻る", href: `/definitions/${encodeURIComponent(definitionId)}`, priority: "primary" as const },
+    { label: uiText.definitionEditor.backToDetail, href: `/definitions/${encodeURIComponent(definitionId)}`, priority: "primary" as const },
     { label: uiText.lists.definitions, href: "/definitions" }
   ];
 
@@ -52,11 +52,11 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
     const name = definitionName.trim();
     const yamlText = yaml.trim();
     if (!name) {
-      setToast({ tone: "error", message: "定義名を入力してください。" });
+      setToast({ tone: "error", message: uiText.definitionEditor.validation.nameRequired });
       return;
     }
     if (!yamlText) {
-      setToast({ tone: "error", message: "YAML を入力してください。" });
+      setToast({ tone: "error", message: uiText.definitionEditor.validation.yamlRequired });
       return;
     }
 
@@ -68,7 +68,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
       setSavedDefinition(created);
       setToast({
         tone: "success",
-        message: `定義を保存しました（${uiText.labels.displayId}: ${created.displayId}）`
+        message: uiText.definitionEditor.toasts.savedWithDisplayId(uiText.labels.displayId, created.displayId)
       });
     } catch (error) {
       setToast(toToastError(error));
@@ -88,12 +88,12 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       {loadingMeta && (
-        <PageState state="loading" message="定義メタ情報を読み込み中..." />
+        <PageState state="loading" message={uiText.definitionEditor.loadingMeta} />
       )}
 
       <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
         <label className="block text-sm">
-          <span className="text-zinc-600">定義名（name）</span>
+          <span className="text-zinc-600">{uiText.definitionEditor.labels.name}</span>
           <input
             className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
             value={definitionName}
@@ -103,7 +103,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
         </label>
 
         <label className="block text-sm">
-          <span className="text-zinc-600">YAML</span>
+          <span className="text-zinc-600">{uiText.definitionEditor.labels.yaml}</span>
           <textarea
             className="mt-1 h-[26rem] w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-xs"
             value={yaml}
@@ -119,7 +119,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
             onClick={() => void handleSave()}
             disabled={saving}
           >
-            {saving ? "保存中..." : "保存（POST /definitions）"}
+            {saving ? uiText.definitionEditor.actions.saving : uiText.definitionEditor.actions.saveWithApiHint}
           </button>
           <button
             type="button"
@@ -127,30 +127,30 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
             onClick={() => setYaml(defaultDefinitionYaml)}
             disabled={saving}
           >
-            テンプレートに戻す
+            {uiText.definitionEditor.actions.resetTemplate}
           </button>
         </div>
 
         <p className="text-xs text-zinc-500">
-          MVP では既存定義の更新 API がないため、保存は新規 Definition として登録されます。入力不正時は 422 をそのまま表示します。
+          {uiText.definitionEditor.noteMvp}
         </p>
       </section>
 
       {savedDefinition && (
         <section className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
-          <p className="font-medium">保存完了: {savedDefinition.displayId}</p>
+          <p className="font-medium">{uiText.definitionEditor.saved.complete(savedDefinition.displayId)}</p>
           <div className="flex flex-wrap gap-3">
             <Link
               className="text-blue-800 underline hover:text-blue-950"
               href={`/definitions/${encodeURIComponent(savedDefinition.displayId)}`}
             >
-              新しい定義の詳細へ
+              {uiText.definitionEditor.saved.openNewDetail}
             </Link>
             <Link
               className="text-blue-800 underline hover:text-blue-950"
               href={`/definitions/${encodeURIComponent(savedDefinition.displayId)}/run`}
             >
-              この定義で実行開始
+              {uiText.definitionEditor.saved.runWithThisDefinition}
             </Link>
           </div>
         </section>

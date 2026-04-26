@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { TenantMissingBanner } from "../../../app/components/execution/TenantMissingBanner";
 import * as api from "../../../app/lib/api";
+import { uiText } from "../../../app/lib/uiText";
 
 vi.mock("../../../app/lib/api", () => ({
   getApiConfig: vi.fn()
@@ -16,7 +17,7 @@ describe("TenantMissingBanner", () => {
     render(<TenantMissingBanner />);
 
     // Assert
-    expect(screen.getByRole("alert")).toHaveTextContent("テナントが未指定です");
+    expect(screen.getByRole("alert")).toHaveTextContent(uiText.tenantMissingBanner.missingTenantPrefix);
     expect(screen.getByText(/NEXT_PUBLIC_TENANT_ID/)).toBeInTheDocument();
     expect(screen.getByText(/CORE_API_TENANT_ID/)).toBeInTheDocument();
   });

@@ -64,7 +64,7 @@ export function ExecutionHeader({
                 className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
                 value={executionId}
                 onChange={(event) => onExecutionIdChange(event.target.value)}
-                placeholder="ex-1"
+                placeholder={uiText.executionHeader.placeholderExecutionId}
               />
             </>
           ) : (
@@ -103,7 +103,7 @@ export function ExecutionHeader({
                 onChange={(e) => onCompareModeChange(e.target.checked)}
                 className="rounded border-zinc-300"
               />
-              <span>比較</span>
+              <span>{uiText.executionHeader.compareLabel}</span>
             </label>
           )}
           {onStreamEnabledChange && (
@@ -114,7 +114,7 @@ export function ExecutionHeader({
                 onChange={(e) => onStreamEnabledChange(e.target.checked)}
                 className="rounded border-zinc-300"
               />
-              <span>リアルタイム更新（SSE）</span>
+              <span>{uiText.executionHeader.realtimeSseLabel}</span>
             </label>
           )}
           {showViewToggle && <ViewToggle value={viewMode} onChange={onViewModeChange} />}
@@ -131,10 +131,17 @@ export function ExecutionHeader({
           </div>
           <div className="mt-2 grid gap-1 sm:grid-cols-2">
             <div>
-              {uiText.labels.graphId}: <span className="font-mono">{execution.graphId}</span>
+              <span className="font-mono">
+                {uiText.executionHeader.graphIdLine(uiText.labels.graphId, execution.graphId)}
+              </span>
             </div>
             <div>
-              cancelRequested: <span className="font-mono">{execution.cancelRequested ? "true" : "false"}</span>
+              <span className="font-mono">
+                {uiText.executionHeader.cancelRequestedLine(
+                  uiText.executionHeader.cancelRequestedLabel,
+                  execution.cancelRequested
+                )}
+              </span>
             </div>
           </div>
         </div>

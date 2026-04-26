@@ -67,27 +67,27 @@ describe("NodeDetail", () => {
     it("status が WAITING のとき「待機中 (Wait)」と理由を表示する", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("待機中 (Wait)")).toBeInTheDocument();
-      expect(screen.getByText(/理由: waitKey により 再開 待ち/)).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.waiting.title)).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.waiting.reasonWaitByWaitKeyAndResumeWait)).toBeInTheDocument();
     });
 
     it("status が WAITING で resumeEventName を渡すと「再開 イベント名」を表示する", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} resumeEventName="DoneC" />);
-      expect(screen.getByText("待機中 (Wait)")).toBeInTheDocument();
-      expect(screen.getByText(/再開 イベント名: DoneC/)).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.waiting.title)).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.waiting.resumeEventName("DoneC"))).toBeInTheDocument();
     });
 
     it("status が WAITING で resumeEventName が空のときイベント名行を表示しない", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} resumeEventName="" />);
-      expect(screen.getByText("待機中 (Wait)")).toBeInTheDocument();
-      expect(screen.queryByText(/再開 イベント名:/)).not.toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.waiting.title)).toBeInTheDocument();
+      expect(screen.queryByText(new RegExp(`^${uiText.nodeDetail.waiting.resumeEventName("")}`))).not.toBeInTheDocument();
     });
 
     it("status が RUNNING のとき「待機中」を表示しない", () => {
       render(<NodeDetail {...defaultProps} />);
-      expect(screen.queryByText("待機中 (Wait)")).not.toBeInTheDocument();
+      expect(screen.queryByText(uiText.nodeDetail.waiting.title)).not.toBeInTheDocument();
     });
   });
 
@@ -112,7 +112,7 @@ describe("NodeDetail", () => {
       };
       render(<NodeDetail {...defaultProps} node={node} />);
       expect(screen.getByText("キャンセル 詳細")).toBeInTheDocument();
-      expect(screen.getByText("実行 キャンセル により収束")).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.cancel.convergedByExecutionCancel)).toBeInTheDocument();
     });
 
     it("status が RUNNING のとき「キャンセル 詳細」を表示しない", () => {
@@ -129,7 +129,7 @@ describe("NodeDetail", () => {
         error: { message: "Something went wrong" }
       };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("失敗情報")).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.failure.title)).toBeInTheDocument();
       expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     });
 
@@ -140,20 +140,20 @@ describe("NodeDetail", () => {
         error: { message: "" }
       };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("失敗情報")).toBeInTheDocument();
-      expect(screen.getByText("（メッセージなし）")).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.failure.title)).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.failure.noMessage)).toBeInTheDocument();
     });
 
     it("status が FAILED で error がないとき「（メッセージなし）」を表示する", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "FAILED" };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("失敗情報")).toBeInTheDocument();
-      expect(screen.getByText("（メッセージなし）")).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.failure.title)).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.failure.noMessage)).toBeInTheDocument();
     });
 
     it("status が RUNNING のとき「失敗情報」を表示しない", () => {
       render(<NodeDetail {...defaultProps} />);
-      expect(screen.queryByText("失敗情報")).not.toBeInTheDocument();
+      expect(screen.queryByText(uiText.nodeDetail.failure.title)).not.toBeInTheDocument();
     });
   });
 

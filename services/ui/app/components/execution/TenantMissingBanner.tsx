@@ -16,11 +16,14 @@ export function TenantMissingBanner() {
       className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
       role="alert"
     >
-      テナントが未指定です。{uiText.actions.load} / {uiText.actions.cancel} / {uiText.actions.resume} が失敗する場合は{" "}
+      {uiText.tenantMissingBanner.missingTenantPrefix}
+      {uiText.tenantMissingBanner.failureHintActions(uiText.actions.load, uiText.actions.cancel, uiText.actions.resume)}{" "}
       <code className="mx-1 rounded bg-amber-100 px-1">NEXT_PUBLIC_TENANT_ID</code>
-      {" "}を設定するか、サーバーで{" "}
+      {" "}
+      {uiText.tenantMissingBanner.setOrServer}{" "}
       <code className="mx-1 rounded bg-amber-100 px-1">CORE_API_TENANT_ID</code>
-      {" "}を設定してください。
+      {" "}
+      {uiText.tenantMissingBanner.setPlease}
     </div>
   );
 }

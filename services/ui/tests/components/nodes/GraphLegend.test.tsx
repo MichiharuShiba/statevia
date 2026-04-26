@@ -6,12 +6,12 @@ import { uiText } from "../../../app/lib/uiText";
 describe("GraphLegend", () => {
   it("ノードステータス凡例の見出しを表示する", () => {
     render(<GraphLegend />);
-    expect(screen.getByRole("heading", { name: /ノードステータス/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: uiText.graphLegend.heading.nodeStatus })).toBeInTheDocument();
   });
 
   it("エッジ種別凡例の見出しを表示する", () => {
     render(<GraphLegend />);
-    expect(screen.getByRole("heading", { name: /エッジ種別/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: uiText.graphLegend.heading.edgeType })).toBeInTheDocument();
   });
 
   it("全ノードステータスを表示する", () => {
@@ -24,13 +24,13 @@ describe("GraphLegend", () => {
 
   it("全エッジ種別を表示する", () => {
     render(<GraphLegend />);
-    expect(screen.getByText("Next")).toBeInTheDocument();
-    expect(screen.getByText(uiText.actions.resume)).toBeInTheDocument();
-    expect(screen.getByText(uiText.actions.cancel)).toBeInTheDocument();
+    expect(screen.getByText(uiText.status.edgeTypeNext)).toBeInTheDocument();
+    expect(screen.getByText(uiText.status.edgeTypeResume)).toBeInTheDocument();
+    expect(screen.getByText(uiText.status.edgeTypeCancel)).toBeInTheDocument();
   });
 
   it("グラフ凡例としてアクセシブルである", () => {
     render(<GraphLegend />);
-    expect(screen.getByRole("region", { name: "グラフ凡例" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: uiText.graphLegend.aria.root })).toBeInTheDocument();
   });
 });

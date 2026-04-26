@@ -26,9 +26,9 @@ function DiffRow({
   const styleLeft = item.statusLeft ? getStatusStyle(item.statusLeft) : null;
   const styleRight = item.statusRight ? getStatusStyle(item.statusRight) : null;
   let label: string;
-  if (item.kind === "only_in_left") label = "A のみ";
-  else if (item.kind === "only_in_right") label = "B のみ";
-  else label = "差分";
+  if (item.kind === "only_in_left") label = uiText.executionComparison.kind.onlyLeft;
+  else if (item.kind === "only_in_right") label = uiText.executionComparison.kind.onlyRight;
+  else label = uiText.executionComparison.kind.diff;
 
   return (
     <button
@@ -79,7 +79,7 @@ export function ExecutionComparisonBar({
 
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 text-sm font-semibold text-zinc-800">2実行の比較</div>
+      <div className="mb-3 text-sm font-semibold text-zinc-800">{uiText.executionComparison.title}</div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <div className="text-xs font-semibold text-zinc-500">{uiText.entities.execution} A（基準）</div>
@@ -89,7 +89,7 @@ export function ExecutionComparisonBar({
               <span className="ml-2 text-zinc-500">({executionLeft.status})</span>
             </div>
           ) : (
-            <div className="mt-1 text-xs text-zinc-500">未読み込み</div>
+            <div className="mt-1 text-xs text-zinc-500">{uiText.executionComparison.state.notLoaded}</div>
           )}
         </div>
         <div>
@@ -102,7 +102,7 @@ export function ExecutionComparisonBar({
               className="flex-1 rounded-lg border border-zinc-200 px-2 py-1.5 font-mono text-xs outline-none focus:border-zinc-400"
               value={executionIdRight}
               onChange={(e) => onExecutionIdRightChange(e.target.value)}
-              placeholder="ex-2"
+              placeholder={uiText.executionComparison.executionIdPlaceholder}
             />
             <button
               type="button"
@@ -120,7 +120,7 @@ export function ExecutionComparisonBar({
           )}
         </div>
         <div className="sm:col-span-2 lg:col-span-1">
-          <div className="text-xs font-semibold text-zinc-500">差分サマリ</div>
+          <div className="text-xs font-semibold text-zinc-500">{uiText.executionComparison.summary.title}</div>
           {diff ? (
             <div className="mt-1 max-h-48 overflow-y-auto rounded-lg border border-zinc-100 bg-zinc-50/50">
               {failureOrCancelDiffs.length > 0 && (
@@ -153,7 +153,7 @@ export function ExecutionComparisonBar({
               )}
               {diff.nodeDiffs.length === 0 && (
                 <div className="px-2 py-3 text-center text-xs text-zinc-500">
-                  ノード差分なし
+                  {uiText.executionComparison.summary.noDiff}
                 </div>
               )}
             </div>

@@ -2,6 +2,7 @@
 
 import type { ExecutionNodeDTO } from "../../lib/types";
 import { getNodeSortWeight, getStatusStyle } from "../../lib/statusStyle";
+import { uiText } from "../../lib/uiText";
 
 type NodeListViewProps = {
   nodes: ExecutionNodeDTO[];
@@ -15,16 +16,16 @@ export function NodeListView({ nodes, selectedNodeId, onSelectNode }: Readonly<N
   return (
     <div className="overflow-auto rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Nodes</h2>
-        <span className="text-xs text-zinc-500">{nodes.length} nodes</span>
+        <h2 className="text-sm font-semibold">{uiText.nodeList.title}</h2>
+        <span className="text-xs text-zinc-500">{uiText.nodeList.nodeCount(nodes.length)}</span>
       </div>
       <table className="w-full text-left text-sm">
         <thead className="text-xs text-zinc-600">
           <tr>
-            <th className="py-2 pr-2">nodeId</th>
-            <th className="py-2 pr-2">type</th>
-            <th className="py-2 pr-2">status</th>
-            <th className="py-2 pr-2">waitKey</th>
+            <th className="py-2 pr-2">{uiText.nodeList.columns.nodeId}</th>
+            <th className="py-2 pr-2">{uiText.nodeList.columns.type}</th>
+            <th className="py-2 pr-2">{uiText.nodeList.columns.status}</th>
+            <th className="py-2 pr-2">{uiText.nodeList.columns.waitKey}</th>
           </tr>
         </thead>
         <tbody>

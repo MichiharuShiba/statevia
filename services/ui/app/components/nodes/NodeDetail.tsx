@@ -71,11 +71,13 @@ export function NodeDetail({
           {/* Wait / Resume 詳細 */}
           {isWaiting && (
             <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/80 p-2">
-              <div className="font-medium text-amber-900">待機中 (Wait)</div>
+              <div className="font-medium text-amber-900">{uiText.nodeDetail.waiting.title}</div>
               <div className="mt-1 text-amber-800">
-                <div>理由: waitKey により {uiText.actions.resume} 待ち</div>
+                <div>{uiText.nodeDetail.waiting.reasonWaitByWaitKeyAndResumeWait}</div>
                 {resumeEventName != null && resumeEventName !== "" && (
-                  <div className="mt-0.5 font-medium">{uiText.actions.resume} イベント名: {resumeEventName}</div>
+                  <div className="mt-0.5 font-medium">
+                    {uiText.nodeDetail.waiting.resumeEventName(resumeEventName)}
+                  </div>
                 )}
               </div>
             </div>
@@ -90,7 +92,9 @@ export function NodeDetail({
                   <div>reason: {node.cancelReason}</div>
                 )}
                 {node.canceledByExecution && (
-                  <div className="rounded bg-red-100 px-2 py-1">{uiText.entities.execution} {uiText.actions.cancel} により収束</div>
+                  <div className="rounded bg-red-100 px-2 py-1">
+                    {uiText.nodeDetail.cancel.convergedByExecutionCancel}
+                  </div>
                 )}
               </div>
             </div>
@@ -99,12 +103,12 @@ export function NodeDetail({
           {/* 失敗情報 */}
           {isFailed && (
             <div className="mt-2 rounded-lg border border-red-300 bg-red-50 p-2">
-              <div className="font-medium text-red-900">失敗情報</div>
+              <div className="font-medium text-red-900">{uiText.nodeDetail.failure.title}</div>
               <div className="mt-1 text-red-800">
                 {node.error?.message != null && node.error.message !== "" ? (
                   <div className="break-words">{node.error.message}</div>
                 ) : (
-                  <div className="text-red-600">（メッセージなし）</div>
+                  <div className="text-red-600">{uiText.nodeDetail.failure.noMessage}</div>
                 )}
               </div>
             </div>
