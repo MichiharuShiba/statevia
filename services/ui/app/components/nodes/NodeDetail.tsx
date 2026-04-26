@@ -63,10 +63,10 @@ export function NodeDetail({
           </span>
         </div>
         <div className="mt-2 space-y-1 text-xs text-zinc-700">
-          <div>type: {node.nodeType}</div>
-          <div>attempt: {node.attempt}</div>
-          <div>waitKey: {node.waitKey ?? "—"}</div>
-          <div>canceledByExecution: {String(node.canceledByExecution)}</div>
+          <div>{uiText.nodeDetail.meta.type(node.nodeType)}</div>
+          <div>{uiText.nodeDetail.meta.attempt(node.attempt)}</div>
+          <div>{uiText.nodeDetail.meta.waitKey(node.waitKey ?? "—")}</div>
+          <div>{uiText.nodeDetail.meta.canceledByExecution(node.canceledByExecution)}</div>
 
           {/* Wait / Resume 詳細 */}
           {isWaiting && (

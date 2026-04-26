@@ -115,6 +115,12 @@ export type UiText = {
     };
   };
   nodeDetail: {
+    meta: {
+      type: (nodeType: string) => string;
+      attempt: (attempt: number) => string;
+      waitKey: (waitKey: string) => string;
+      canceledByExecution: (canceledByExecution: boolean) => string;
+    };
     waiting: {
       title: string;
       reasonWaitByWaitKeyAndResumeWait: string;
@@ -446,6 +452,12 @@ export const uiText: UiText = {
     },
   },
   nodeDetail: {
+    meta: {
+      type: (nodeType: string) => `種別: ${nodeType}`,
+      attempt: (attempt: number) => `試行回数: ${attempt}`,
+      waitKey: (waitKey: string) => `Wait キー: ${waitKey}`,
+      canceledByExecution: (canceledByExecution: boolean) => `実行起点キャンセル: ${String(canceledByExecution)}`,
+    },
     waiting: {
       title: "待機中 (Wait)",
       reasonWaitByWaitKeyAndResumeWait: "理由: Wait キー により 再開 待ち",
