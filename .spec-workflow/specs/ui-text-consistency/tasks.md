@@ -62,6 +62,14 @@
   - _Requirements: Requirement 5_
   - _Definition of Done: 未決定事項の扱い（イベント種別、ステータス値、技術語翻訳）が合意されている（完了: 2026-04-26）_
 
+- [x] **T8** — 全UI文言の辞書化実装と残件解消
+  - File: `services/ui/app/lib/uiText.ts`, `services/ui/app/**/*.tsx`, `services/ui/e2e/core-api-ui-workflow.spec.ts`, `.spec-workflow/specs/ui-text-consistency/design.md`
+  - 内容: `design.md` の `Remaining Targets Checklist` に列挙された placeholder/toast を辞書化し、句読点・全角括弧を含む連結文言を関数キーへ寄せる。あわせて E2E の固定文言参照を辞書参照に統一する
+  - 目的: 次フェーズの多言語化前提として、UI表示文言の参照元を `uiText` に一本化する
+  - _Leverage: `services/ui/app/lib/uiText.ts`, `.spec-workflow/specs/ui-text-consistency/design.md`_
+  - _Requirements: Requirement 5_
+  - _Definition of Done: `Remaining Targets Checklist` が「残対象なし」になり、`tsc --noEmit` と関連テストが通過している（完了: 2026-04-26）_
+
 ---
 
 ## 実行メモ
