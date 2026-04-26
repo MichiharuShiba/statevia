@@ -68,7 +68,7 @@ describe("ExecutionComparisonBar", () => {
     expect(screen.getByText(uiText.executionComparison.state.notLoaded)).toBeInTheDocument();
   });
 
-  it("diff が null のとき「A と B を読み込むと表示されます」を表示する", () => {
+  it("diff が null のとき読み込み案内を表示する", () => {
     render(
       <ExecutionComparisonBar
         executionLeft={null}
@@ -80,7 +80,7 @@ describe("ExecutionComparisonBar", () => {
         diff={null}
       />
     );
-    expect(screen.getByText(/A と B を読み込むと表示されます/)).toBeInTheDocument();
+    expect(screen.getByText(uiText.executionComparison.summary.loadBothToShow)).toBeInTheDocument();
   });
 
   it("diff があるとき失敗/キャンセルとその他を表示する", () => {
@@ -106,8 +106,8 @@ describe("ExecutionComparisonBar", () => {
         diff={diff!}
       />
     );
-    expect(screen.getByText("失敗 / キャンセル")).toBeInTheDocument();
-    expect(screen.getByText("その他")).toBeInTheDocument();
+    expect(screen.getByText(uiText.executionComparison.summary.failedOrCancelled)).toBeInTheDocument();
+    expect(screen.getByText(uiText.executionComparison.summary.others)).toBeInTheDocument();
     expect(screen.getByText("n2")).toBeInTheDocument();
     expect(screen.getByText("n3")).toBeInTheDocument();
   });

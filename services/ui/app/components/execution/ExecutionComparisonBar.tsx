@@ -126,7 +126,7 @@ export function ExecutionComparisonBar({
               {failureOrCancelDiffs.length > 0 && (
                 <div className="border-b border-zinc-200 px-2 py-1.5">
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-red-600">
-                    失敗 / キャンセル
+                    {uiText.executionComparison.summary.failedOrCancelled}
                   </div>
                   {failureOrCancelDiffs.map((item) => (
                     <DiffRow
@@ -140,7 +140,7 @@ export function ExecutionComparisonBar({
               {otherDiffs.length > 0 && (
                 <div className="px-2 py-1.5">
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-                    その他
+                    {uiText.executionComparison.summary.others}
                   </div>
                   {otherDiffs.map((item) => (
                     <DiffRow
@@ -159,7 +159,7 @@ export function ExecutionComparisonBar({
             </div>
           ) : (
             <div className="mt-1 text-xs text-zinc-500">
-              A と B を読み込むと表示されます
+              {uiText.executionComparison.summary.loadBothToShow}
             </div>
           )}
         </div>

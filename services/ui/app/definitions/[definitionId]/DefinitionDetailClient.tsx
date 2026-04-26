@@ -74,7 +74,7 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
             <dd className="font-medium">{row.name}</dd>
             <dt className="text-zinc-500">{uiText.labels.displayId}</dt>
             <dd className="font-mono break-all">{row.displayId}</dd>
-            <dt className="text-zinc-500">resourceId</dt>
+            <dt className="text-zinc-500">{uiText.labels.resourceId}</dt>
             <dd className="font-mono break-all">{row.resourceId}</dd>
             <dt className="text-zinc-500">{uiText.definitionDetail.meta.createdAt}</dt>
             <dd>{formatDateTime(row.createdAt)}</dd>

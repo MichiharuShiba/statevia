@@ -44,6 +44,7 @@ export type UiText = {
     nodeId: string;
     definitionId: string;
     displayId: string;
+    resourceId: string;
     graphId: string;
     workflowInput: string;
     definitionEditor: string;
@@ -94,6 +95,7 @@ export type UiText = {
   executionTimeline: {
     title: string;
     backToCurrent: string;
+    replayingPastStateMessage: string;
     empty: string;
     loadMore: string;
     errorUnknown: string;
@@ -111,7 +113,10 @@ export type UiText = {
     };
     summary: {
       title: string;
+      failedOrCancelled: string;
+      others: string;
       noDiff: string;
+      loadBothToShow: string;
     };
   };
   nodeDetail: {
@@ -398,6 +403,7 @@ export const uiText: UiText = {
     nodeId: "ノードID",
     definitionId: "定義ID",
     displayId: "表示ID",
+    resourceId: "resourceId",
     graphId: "グラフID",
     workflowInput: "入力データ",
     definitionEditor: "定義エディタ",
@@ -451,6 +457,7 @@ export const uiText: UiText = {
   executionTimeline: {
     title: "実行履歴タイムライン",
     backToCurrent: "現在に戻る",
+    replayingPastStateMessage: "過去の時点を表示中です。「現在に戻る」で最新の状態に戻せます。",
     empty: "イベントがありません",
     loadMore: "続きを読み込む",
     errorUnknown: "不明なエラーが発生しました。",
@@ -468,7 +475,10 @@ export const uiText: UiText = {
     },
     summary: {
       title: "差分サマリ",
+      failedOrCancelled: "失敗 / キャンセル",
+      others: "その他",
       noDiff: "ノード差分なし",
+      loadBothToShow: "A と B を読み込むと表示されます",
     },
   },
   nodeDetail: {
