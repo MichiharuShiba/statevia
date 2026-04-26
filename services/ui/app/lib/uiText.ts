@@ -340,6 +340,16 @@ export type UiText = {
       waitKey: (waitKey: string) => string;
     };
   };
+  nodeCommands: {
+    resumeDisabledReason: {
+      runOnly: string;
+      executionNotLoaded: string;
+      nodeNotSelected: string;
+      executionTerminal: string;
+      cancelRequested: string;
+      waitingOnly: string;
+    };
+  };
 };
 
 export const uiText: UiText = {
@@ -692,6 +702,16 @@ export const uiText: UiText = {
       type: (nodeType: string) => `種別: ${nodeType}`,
       attempt: (attempt: number) => `試行回数: ${attempt}`,
       waitKey: (waitKey: string) => `Wait キー: ${waitKey}`,
+    },
+  },
+  nodeCommands: {
+    resumeDisabledReason: {
+      runOnly: "Run 画面でのみ Resume できます",
+      executionNotLoaded: "Execution が未読込です",
+      nodeNotSelected: "Node を選択してください",
+      executionTerminal: "Executionは終了しています",
+      cancelRequested: "Cancel要求済みのため、Resumeなど進行系操作はできません",
+      waitingOnly: "WAITING 状態のノードのみ Resume できます",
     },
   },
 };

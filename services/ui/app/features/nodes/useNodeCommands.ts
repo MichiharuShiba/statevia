@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { apiPost } from "../../lib/api";
 import type { CommandAccepted, ExecutionNodeDTO, WorkflowView } from "../../lib/types";
+import { uiText } from "../../lib/uiText";
 
 const TERMINAL_STATUSES = new Set<string>(["Completed", "Cancelled", "Failed"]);
 
@@ -15,13 +16,13 @@ export function getResumeDisabledReason(
   node: ExecutionNodeDTO | null,
   commandsEnabled = true
 ): string | null {
-  if (!commandsEnabled) return "Run 画面でのみ Resume できます";
-  if (!execution) return "Execution が未読込です";
-  if (!node) return "Node を選択してください";
-  if (isTerminalExecution(execution.status)) return "Executionは終了しています";
+  if (!commandsEnabled) return uiText.nodeCommands.resumeDisabledReason.runOnly;
+  if (!execution) return uiText.nodeCommands.resumeDisabledReason.executionNotLoaded;
+  if (!node) return uiText.nodeCommands.resumeDisabledReason.nodeNotSelected;
+  if (isTerminalExecution(execution.status)) return uiText.nodeCommands.resumeDisabledReason.executionTerminal;
   if (execution.cancelRequested)
-    return "Cancel要求済みのため、Resumeなど進行系操作はできません";
-  if (node.status !== "WAITING") return "WAITING 状態のノードのみ Resume できます";
+    return uiText.nodeCommands.resumeDisabledReason.cancelRequested;
+  if (node.status !== "WAITING") return uiText.nodeCommands.resumeDisabledReason.waitingOnly;
   return null;
 }
 

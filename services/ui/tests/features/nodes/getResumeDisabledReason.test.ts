@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getResumeDisabledReason } from "../../../app/features/nodes/useNodeCommands";
 import type { ExecutionNodeDTO, WorkflowView } from "../../../app/lib/types";
+import { uiText } from "../../../app/lib/uiText";
 
 function execution(overrides: Partial<WorkflowView> = {}): WorkflowView {
   return {
@@ -50,7 +51,7 @@ describe("getResumeDisabledReason", () => {
     const result = getResumeDisabledReason(null, n);
 
     // Assert
-    expect(result).toBe("Execution が未読込です");
+    expect(result).toBe(uiText.nodeCommands.resumeDisabledReason.executionNotLoaded);
   });
 
   it("node が null のときメッセージを返す", () => {
@@ -61,7 +62,7 @@ describe("getResumeDisabledReason", () => {
     const result = getResumeDisabledReason(exec, null);
 
     // Assert
-    expect(result).toBe("Node を選択してください");
+    expect(result).toBe(uiText.nodeCommands.resumeDisabledReason.nodeNotSelected);
   });
 
   it("execution が終了状態 (Completed) のときメッセージを返す", () => {
@@ -73,7 +74,7 @@ describe("getResumeDisabledReason", () => {
     const result = getResumeDisabledReason(exec, n);
 
     // Assert
-    expect(result).toBe("Executionは終了しています");
+    expect(result).toBe(uiText.nodeCommands.resumeDisabledReason.executionTerminal);
   });
 
   it("execution が終了状態 (Failed) のときメッセージを返す", () => {
@@ -85,7 +86,7 @@ describe("getResumeDisabledReason", () => {
     const result = getResumeDisabledReason(exec, n);
 
     // Assert
-    expect(result).toBe("Executionは終了しています");
+    expect(result).toBe(uiText.nodeCommands.resumeDisabledReason.executionTerminal);
   });
 
   it("cancel が要求済みのときメッセージを返す", () => {
@@ -97,7 +98,7 @@ describe("getResumeDisabledReason", () => {
     const result = getResumeDisabledReason(exec, n);
 
     // Assert
-    expect(result).toBe("Cancel要求済みのため、Resumeなど進行系操作はできません");
+    expect(result).toBe(uiText.nodeCommands.resumeDisabledReason.cancelRequested);
   });
 
   it("node が WAITING でないときメッセージを返す", () => {
@@ -109,7 +110,7 @@ describe("getResumeDisabledReason", () => {
     const result = getResumeDisabledReason(exec, n);
 
     // Assert
-    expect(result).toBe("WAITING 状態のノードのみ Resume できます");
+    expect(result).toBe(uiText.nodeCommands.resumeDisabledReason.waitingOnly);
   });
 
   it("execution が終了状態 (Cancelled) のときメッセージを返す", () => {
@@ -121,7 +122,7 @@ describe("getResumeDisabledReason", () => {
     const result = getResumeDisabledReason(exec, n);
 
     // Assert
-    expect(result).toBe("Executionは終了しています");
+    expect(result).toBe(uiText.nodeCommands.resumeDisabledReason.executionTerminal);
   });
 
   it("node status が IDLE のときメッセージを返す", () => {
@@ -133,7 +134,7 @@ describe("getResumeDisabledReason", () => {
     const result = getResumeDisabledReason(exec, n);
 
     // Assert
-    expect(result).toBe("WAITING 状態のノードのみ Resume できます");
+    expect(result).toBe(uiText.nodeCommands.resumeDisabledReason.waitingOnly);
   });
 
   it("node status が SUCCEEDED のときメッセージを返す", () => {
@@ -145,7 +146,7 @@ describe("getResumeDisabledReason", () => {
     const result = getResumeDisabledReason(exec, n);
 
     // Assert
-    expect(result).toBe("WAITING 状態のノードのみ Resume できます");
+    expect(result).toBe(uiText.nodeCommands.resumeDisabledReason.waitingOnly);
   });
 });
 
