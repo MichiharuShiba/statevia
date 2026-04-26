@@ -50,7 +50,9 @@ describe("ExecutionComparisonBar", () => {
       />
     );
     expect(screen.getByText("ex-a")).toBeInTheDocument();
-    expect(screen.getByText(`${uiText.entities.execution} B`)).toBeInTheDocument();
+    expect(
+      screen.getByText(uiText.executionComparison.executionBLabel(uiText.entities.execution))
+    ).toBeInTheDocument();
   });
 
   it("実行 A が null のとき「未読み込み」を表示する", () => {

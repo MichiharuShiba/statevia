@@ -42,7 +42,7 @@ describe("NodeDetail", () => {
         node={baseNode}
       />
     );
-    expect(screen.getByText(`${uiText.entities.execution} を読み込んでください。`)).toBeInTheDocument();
+    expect(screen.getByText(uiText.nodeDetail.prompts.loadExecution(uiText.entities.execution))).toBeInTheDocument();
   });
 
   it("node が null のときノード選択案内を表示する", () => {
@@ -53,12 +53,12 @@ describe("NodeDetail", () => {
         node={null}
       />
     );
-    expect(screen.getByText(`${uiText.entities.node} を選択してください。`)).toBeInTheDocument();
+    expect(screen.getByText(uiText.nodeDetail.prompts.selectNode(uiText.entities.node))).toBeInTheDocument();
   });
 
   it("node が選択されているとき詳細見出しと nodeId を表示する", () => {
     render(<NodeDetail {...defaultProps} />);
-    expect(screen.getByText(`${uiText.entities.node} Detail`)).toBeInTheDocument();
+    expect(screen.getByText(uiText.nodeDetail.title(uiText.entities.node))).toBeInTheDocument();
     expect(screen.getByText("n-1")).toBeInTheDocument();
     expect(screen.getByText("RUNNING")).toBeInTheDocument();
   });
@@ -100,7 +100,7 @@ describe("NodeDetail", () => {
         cancelReason: "user"
       };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("キャンセル 詳細")).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.cancel.detailTitle(uiText.actions.cancel))).toBeInTheDocument();
       expect(screen.getByText(/reason: user/)).toBeInTheDocument();
     });
 
@@ -111,13 +111,13 @@ describe("NodeDetail", () => {
         canceledByExecution: true
       };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("キャンセル 詳細")).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.cancel.detailTitle(uiText.actions.cancel))).toBeInTheDocument();
       expect(screen.getByText(uiText.nodeDetail.cancel.convergedByExecutionCancel)).toBeInTheDocument();
     });
 
     it("status が RUNNING のとき「キャンセル 詳細」を表示しない", () => {
       render(<NodeDetail {...defaultProps} />);
-      expect(screen.queryByText("キャンセル 詳細")).not.toBeInTheDocument();
+      expect(screen.queryByText(uiText.nodeDetail.cancel.detailTitle(uiText.actions.cancel))).not.toBeInTheDocument();
     });
   });
 

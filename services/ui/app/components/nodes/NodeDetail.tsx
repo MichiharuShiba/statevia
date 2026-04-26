@@ -33,7 +33,7 @@ export function NodeDetail({
   if (!execution) {
     return (
       <aside className={asideClassName}>
-        <p className="text-sm text-zinc-600">{uiText.entities.execution} を読み込んでください。</p>
+        <p className="text-sm text-zinc-600">{uiText.nodeDetail.prompts.loadExecution(uiText.entities.execution)}</p>
       </aside>
     );
   }
@@ -41,7 +41,7 @@ export function NodeDetail({
   if (!node) {
     return (
       <aside className={asideClassName}>
-        <p className="text-sm text-zinc-600">{uiText.entities.node} を選択してください。</p>
+        <p className="text-sm text-zinc-600">{uiText.nodeDetail.prompts.selectNode(uiText.entities.node)}</p>
       </aside>
     );
   }
@@ -54,7 +54,7 @@ export function NodeDetail({
 
   return (
     <aside className={asideClassName}>
-      <h2 className="text-sm font-semibold">{uiText.entities.node} Detail</h2>
+      <h2 className="text-sm font-semibold">{uiText.nodeDetail.title(uiText.entities.node)}</h2>
       <div className={`mt-3 rounded-xl border p-3 ${style.borderClass} ${style.bgClass}`}>
         <div className="flex items-center justify-between">
           <div className="font-mono text-xs">{node.nodeId}</div>
@@ -86,7 +86,7 @@ export function NodeDetail({
           {/* Cancel 詳細 */}
           {isCanceled && (
             <div className="mt-2 rounded-lg border border-red-200 bg-red-50/80 p-2">
-              <div className="font-medium text-red-900">{uiText.actions.cancel} 詳細</div>
+              <div className="font-medium text-red-900">{uiText.nodeDetail.cancel.detailTitle(uiText.actions.cancel)}</div>
               <div className="mt-1 space-y-0.5 text-red-800">
                 {node.cancelReason != null && node.cancelReason !== "" && (
                   <div>reason: {node.cancelReason}</div>

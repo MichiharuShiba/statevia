@@ -103,6 +103,8 @@ export type UiText = {
   executionComparison: {
     title: string;
     executionIdPlaceholder: string;
+    executionABaselineLabel: (executionLabel: string) => string;
+    executionBLabel: (executionLabel: string) => string;
     kind: {
       onlyLeft: string;
       onlyRight: string;
@@ -120,6 +122,11 @@ export type UiText = {
     };
   };
   nodeDetail: {
+    prompts: {
+      loadExecution: (executionLabel: string) => string;
+      selectNode: (nodeLabel: string) => string;
+    };
+    title: (nodeLabel: string) => string;
     meta: {
       type: (nodeType: string) => string;
       attempt: (attempt: number) => string;
@@ -132,6 +139,7 @@ export type UiText = {
       resumeEventName: (eventName: string) => string;
     };
     cancel: {
+      detailTitle: (cancelLabel: string) => string;
       convergedByExecutionCancel: string;
     };
     failure: {
@@ -191,6 +199,7 @@ export type UiText = {
   };
   executionHeader: {
     placeholderExecutionId: string;
+    executionIdLabel: (executionLabel: string) => string;
     compareLabel: string;
     realtimeSseLabel: string;
     cancelRequestedLabel: string;
@@ -465,6 +474,8 @@ export const uiText: UiText = {
   executionComparison: {
     title: "2実行の比較",
     executionIdPlaceholder: "ex-2",
+    executionABaselineLabel: (executionLabel: string) => `${executionLabel} A（基準）`,
+    executionBLabel: (executionLabel: string) => `${executionLabel} B`,
     kind: {
       onlyLeft: "A のみ",
       onlyRight: "B のみ",
@@ -482,6 +493,11 @@ export const uiText: UiText = {
     },
   },
   nodeDetail: {
+    prompts: {
+      loadExecution: (executionLabel: string) => `${executionLabel} を読み込んでください。`,
+      selectNode: (nodeLabel: string) => `${nodeLabel} を選択してください。`,
+    },
+    title: (nodeLabel: string) => `${nodeLabel} Detail`,
     meta: {
       type: (nodeType: string) => `種別: ${nodeType}`,
       attempt: (attempt: number) => `試行回数: ${attempt}`,
@@ -494,6 +510,7 @@ export const uiText: UiText = {
       resumeEventName: (eventName: string) => `再開 イベント名: ${eventName}`,
     },
     cancel: {
+      detailTitle: (cancelLabel: string) => `${cancelLabel} 詳細`,
       convergedByExecutionCancel: "実行 キャンセル により収束",
     },
     failure: {
@@ -553,6 +570,7 @@ export const uiText: UiText = {
   },
   executionHeader: {
     placeholderExecutionId: "ex-1",
+    executionIdLabel: (executionLabel: string) => `${executionLabel} ID`,
     compareLabel: "比較",
     realtimeSseLabel: "リアルタイム更新（SSE）",
     cancelRequestedLabel: "cancelRequested",
