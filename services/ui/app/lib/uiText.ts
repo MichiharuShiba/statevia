@@ -456,7 +456,7 @@ export const uiText: UiText = {
       type: (nodeType: string) => `種別: ${nodeType}`,
       attempt: (attempt: number) => `試行回数: ${attempt}`,
       waitKey: (waitKey: string) => `Wait キー: ${waitKey}`,
-      canceledByExecution: (canceledByExecution: boolean) => `実行起点キャンセル: ${String(canceledByExecution)}`,
+      canceledByExecution: (canceledByExecution: boolean) => `キャンセル: ${String(canceledByExecution)}`,
     },
     waiting: {
       title: "待機中 (Wait)",
