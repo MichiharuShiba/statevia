@@ -24,7 +24,7 @@
 ### Reuse Existing Elements
 
 - **`services/ui/app/layout.tsx`**: ルートコンテナ幅・背景設定の基盤として再利用する。
-- **`services/ui/app/icon.png`**: 共通ヘッダーに表示するブランドアイコンの原典として再利用する。
+- **`services/ui/public/brand/logo-original.png`**: 共通ヘッダーに表示するブランドアイコンの原典として再利用する。
 - **`services/ui/app/components/Toast.tsx`**: 成功/失敗通知の共通部品として利用する。
 - **`services/ui/app/components/execution/TenantMissingBanner.tsx`**: 共通フィードバック領域に統合する。
 - **`services/ui/app/components/execution/ExecutionDashboard.tsx`**: run/detail/graph の既存差分を吸収する対象として再利用する。
@@ -157,14 +157,14 @@ flowchart TD
 - **目的**: ブランドアイコンと画面タイトルを共通表示し、画面間のブランド一貫性を担保する。
 - **公開インターフェース**: `iconSrc`, `productName`, `title`, `primaryActions`。
 - **依存先**: Next.js `Image`（または同等の画像表示手段）。
-- **再利用要素**: `services/ui/app/icon.png`。
+- **再利用要素**: `services/ui/public/brand/icon-mark.png`。
 
 ### 1.2) Tone Tokens（PageShell / globals）
 
 - **目的**: ヘッダー背景・本文背景・境界色・アクセント色をトークン化し、全画面で同一トーンを適用する。
 - **公開インターフェース**: `--tone-header-bg`, `--tone-surface-bg`, `--tone-border`, `--tone-accent`（名称は実装時に調整可）。
 - **依存先**: `globals.css`, Tailwind utility class。
-- **再利用要素**: `icon.png` の配色（ダークネイビー + ブルー/グリーン系）。
+- **再利用要素**: `logo-original.png` の配色（ダークネイビー + ブルー/グリーン系）。
 
 ### 2) PageState
 
@@ -270,4 +270,4 @@ BrandToneModel
 - 共通化の優先軸は「一貫性」とする。
 - 共通化対象はハブ画面 + 専用画面（`playground` 除外）とする。
 - SP は単一カラム順序規約（Header -> ContextSummary -> Feedback -> Main -> SubActions）を採用する。
-- 共通ヘッダーにブランドアイコンを表示し、全画面の配色トーンは `icon.png` に整合する方向で統一する。
+- 共通ヘッダーにブランドアイコンを表示し、全画面の配色トーンは `logo-original.png` に整合する方向で統一する。
