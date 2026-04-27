@@ -1,151 +1,150 @@
-# Design: Definition作成導線改修とエディタインテリジェンス
+# 設計書
 
-## Overview
+## 概要
 
-本設計は、Definition一覧から新規作成へ直接遷移できる UI 導線を追加し、定義エディタを CodeMirror 化して補完・Lint・保存制御を導入する。
-また、`nodes` 形式スキーマを API から配布し、UI が補完/Lint の源泉として利用できる構成にする。
+Definition 一覧からの新規作成導線を追加し、定義エディタを CodeMirror ベースに置換する。
+UI では補完・インライン Lint・保存事前制御を担い、API では `nodes` スキーマ配布と最終検証を担う二段構えで設計する。
 
-## Alignment with Steering Documents
+## ステアリング文書との整合
 
 ### 技術標準（`tech.md`）
 
-- UI は Next.js App Router 構成を維持し、既存画面の責務を崩さない。
-- Definition 保存時の最終検証は API 側で実施し、UI は早期フィードバックに専念する。
+- Next.js App Router の構成を維持し、既存画面コンポーネントを拡張する。
+- 最終的な保存可否判定は API で実施し、UI 判定は補助的な早期フィードバックとする。
 
 ### プロジェクト構成（`structure.md`）
 
-- UI 実装は `services/ui/app/definitions/` 配下を中心に変更する。
-- API スキーマ配布は `api/Statevia.Core.Api/Controllers/` と `Application/Definition/` に実装する。
+- UI変更は `services/ui/app/definitions/` 配下に閉じる。
+- スキーマ配布と最終検証の API 拡張は `api/Statevia.Core.Api` 配下に集約する。
 
-## Reuse Analysis
+## 既存資産の再利用分析
 
-### Reuse Existing Elements
+既存の定義一覧、定義エディタ、API の定義コンパイル経路を再利用し、全面作り直しを避ける。
 
-- **`DefinitionsPageClient`**: 一覧UIに新規作成導線を追加する。
-- **`DefinitionEditorPageClient`**: 既存の保存処理・トースト表示を再利用し、エディタ部を置換する。
-- **`NodesWorkflowDefinitionLoader`**: `nodes` 仕様の実質的な正として再利用する。
-- **`DefinitionService` / `DefinitionCompilerService`**: 保存時検証経路の正として再利用する。
+### 再利用する既存要素
 
-### Integration Points
+- **`DefinitionsPageClient`**: 新規作成導線の追加先として再利用する。
+- **`DefinitionEditorPageClient`**: 保存処理と通知表示を再利用し、エディタ領域のみ置換する。
+- **`NodesWorkflowDefinitionLoader`**: `nodes` 仕様の実装上の正として参照する。
+- **`DefinitionService` / `DefinitionCompilerService`**: API 最終検証と保存処理を再利用する。
 
-- **UI導線**: `services/ui/app/definitions/DefinitionsPageClient.tsx`
-- **エディタ**: `services/ui/app/definitions/[definitionId]/edit/DefinitionEditorPageClient.tsx`
-- **新規作成ルート**: `services/ui/app/definitions/new/*`
-- **スキーマAPI**: `api/Statevia.Core.Api/Controllers/DefinitionsController.cs` または専用 Controller
+### 統合ポイント
 
-## Architecture
+- **UIルーティング**: `/definitions/new` を追加し一覧から遷移させる。
+- **定義保存API**: `POST /v1/definitions` の 422 診断を UI へ接続する。
+- **スキーマ配布API**: `GET /v1/definitions/schema/nodes` を追加し UI 補完/Lint 源泉にする。
 
-### 編集・保存フロー
+## アーキテクチャ
+
+UI（補完/Lint/事前ガード）と API（配布スキーマ/最終検証）を分離する構成を採用する。
+
+### モジュール設計の原則
+
+- **単一責任**: 一覧導線、エディタ拡張、スキーマ取得、診断表示を分離する。
+- **コンポーネント分離**: CodeMirror 設定を画面本体から分割可能な実装にする。
+- **レイヤー分離**: UI 表示ロジックと API 契約依存ロジックを分離する。
+- **ユーティリティ分割**: スキーマ→補完候補生成と 422→診断マッピングを分ける。
+
+## 処理フロー図（重要）
 
 ```mermaid
 flowchart TD
-  definitionsList[DefinitionsListPage] --> createLink[GoToDefinitionNew]
-  createLink --> editorPage[DefinitionEditorPage]
-  editorPage --> fetchSchema[FetchNodesSchemaApi]
-  fetchSchema --> cmAssist[CodeMirrorCompletionAndLint]
-  cmAssist -->|HasError| disableSave[DisableSave]
-  cmAssist -->|NoError| saveRequest[PostDefinitionsApi]
-  saveRequest --> apiValidation[ApiValidateAndCompile]
-  apiValidation -->|Invalid422| diagnostics[ReturnDiagnostics]
-  apiValidation -->|Valid| created[DefinitionCreated]
-  diagnostics --> cmAssist
+    A[Definition一覧] --> B[新規作成導線押下]
+    B --> C[DefinitionEditor表示]
+    C --> D[NodesSchemaAPI取得]
+    D -->|成功| E[CodeMirror補完Lint初期化]
+    D -->|失敗| F[ローカル最小候補で初期化]
+    E --> G{Lintエラー有無}
+    F --> G
+    G -->|エラーあり| H[保存無効化]
+    G -->|エラーなし| I[保存要求]
+    I --> J{API最終検証}
+    J -->|OK| K[保存成功]
+    J -->|NG| L[422診断を下線表示]
 ```
 
-### 責務分離
+## コンポーネントとインターフェース
 
-1. **UI責務**
-   - 新規作成導線表示
-   - 入力中補完・軽量Lint・下線表示
-   - 保存可否の事前制御
-2. **API責務**
-   - `nodes` スキーマ配布
-   - 定義の最終検証と保存可否判定
-   - 422 診断の構造化返却
+### コンポーネント1: DefinitionCreateEntry
 
-## Components and Interfaces
+- **目的**: 定義一覧から新規作成への直接導線を提供する。
+- **公開インターフェース**: 一覧画面上のボタン（`/definitions/new`）。
+- **依存先**: `uiText`（ja/en 文言）、Next.js ルーティング。
+- **再利用要素**: `DefinitionsPageClient`。
 
-### 1) DefinitionCreateEntry（一覧導線）
+### コンポーネント2: DefinitionEditorIntelligence
 
-- **変更先**: `DefinitionsPageClient`
-- **追加内容**:
-  - 新規作成ボタン（`/definitions/new`）
-  - 文言辞書キー追加（ja/en）
+- **目的**: CodeMirror 補完/Lint と保存事前制御を提供する。
+- **公開インターフェース**: `yaml` 入出力、診断表示、保存可否フラグ。
+- **依存先**: NodesSchema API、CodeMirror 拡張、保存 API。
+- **再利用要素**: `DefinitionEditorPageClient` 既存保存処理。
 
-### 2) DefinitionEditor（CodeMirror）
+### コンポーネント3: NodesSchemaProviderApi
 
-- **変更先**: `DefinitionEditorPageClient`
-- **追加内容**:
-  - `textarea` を CodeMirror へ置換
-  - APIスキーマを使った補完候補
-  - エラー箇所の下線 + 診断ヒント表示
-  - エラー存在時の保存無効化
+- **目的**: UI 向け `nodes` スキーマを配布する。
+- **公開インターフェース**: `GET /v1/definitions/schema/nodes`。
+- **依存先**: `NodesWorkflowDefinitionLoader`、スキーマ供給ロジック。
+- **再利用要素**: 既存 Definition API のコントローラ/サービス層。
 
-### 3) NodesSchema API
+## データモデル
 
-- **候補エンドポイント**: `GET /v1/definitions/schema/nodes`
-- **レスポンス案**:
-  - `schemaVersion: string`
-  - `nodesVersion: number`
-  - `schema: object`
-  - `examples: object[]`（任意）
-- **方針**:
-  - 取得結果は UI 側でキャッシュ
-  - 取得失敗時はローカル最小スキーマへフォールバック
+### モデル1: NodesSchemaResponse
 
-### 4) Validation Error Contract
+```text
+NodesSchemaResponse
+- schemaVersion: string
+- nodesVersion: number
+- schema: object
+- examples: object[] (optional)
+```
 
-- **保存 API**: `POST /v1/definitions`
-- **エラー時**:
-  - HTTP 422
-  - 位置情報を含む診断配列（line/column/message 相当）
-- **UI処理**:
-  - 診断を CodeMirror の lint source にマッピング
-  - トーストは補助表示、主表示はインライン診断
+### モデル2: DefinitionValidationDiagnostic
 
-## Future Extensibility
+```text
+DefinitionValidationDiagnostic
+- line: number
+- column: number
+- severity: string
+- message: string
+- code: string (optional)
+```
 
-### 短期（今回）
+## エラーハンドリング
 
-- API配布スキーマ + API最終検証を導入し、UI依存の仕様ハードコードを減らす。
-
-### 中期
-
-- API内に `nodes` 入力契約DTOを導入し、DTOから JSON Schema を生成する。
-- 手書きスキーマの運用を段階的に縮小する。
-
-### 長期
-
-- `nodesVersion` ごとのスキーマ配布（`?version=1` など）を提供し、後方互換を維持する。
-- スキーマ生成は起動時またはビルド時に固定し、リクエスト毎生成を禁止する。
-
-## Error Handling
+### エラーシナリオ
 
 1. **スキーマ取得失敗**
-   - **検知**: スキーマ API が失敗またはタイムアウト
-   - **対処**: ローカル最小候補で継続、保存時に API で最終検証
-2. **UI Lintエラー**
-   - **検知**: CodeMirror 診断が Error レベル
-   - **対処**: 保存ボタン無効 + エディタ下線表示
-3. **API 検証エラー**
-   - **検知**: 422 レスポンス
-   - **対処**: 診断をエディタへ反映し、修正導線を強調
+   - **対処方法**: ローカル最小候補へフォールバックし編集継続、保存時に API 最終検証で担保する。
+   - **ユーザー影響**: 補完精度は下がる可能性があるが、編集不能にはならない。
 
-## Test Strategy
+2. **UI Lintエラー残存**
+   - **対処方法**: エラー下線とヒントを表示し、保存ボタンを無効化する。
+   - **ユーザー影響**: その場で修正ポイントが分かり、誤保存を防げる。
 
-### Unit Tests
+3. **API 最終検証エラー（422）**
+   - **対処方法**: 422 診断をエディタへ再マッピングし、該当箇所に表示する。
+   - **ユーザー影響**: UI と API の判定差分を可視化して再修正できる。
 
-- 補完候補生成（スキーマ入力 → 候補一覧）の検証
-- 診断マッピング（422 → CodeMirror diagnostics）の検証
+## テスト戦略
 
-### Integration Tests
+### 単体テスト
 
-- Definition一覧から新規作成画面へ遷移できること
-- Lintエラー時に保存が無効化されること
-- 422 診断が下線表示されること
-- スキーマ取得失敗時フォールバックが機能すること
+- スキーマから補完候補を構築するロジックを検証する。
+- 422 診断を CodeMirror 診断へ変換するロジックを検証する。
 
-### API Tests
+### 結合テスト
 
-- `GET /v1/definitions/schema/nodes` が期待レスポンスを返すこと
-- `schemaVersion` / `nodesVersion` の整合
-- 不正定義保存時に 422 構造化エラーを返すこと
+- 一覧から新規作成へ遷移できることを検証する。
+- Lint エラー時に保存不可になることを検証する。
+- 422 診断がインライン表示されることを検証する。
+
+### E2Eテスト
+
+- スキーマ取得成功時の補完と保存成功フローを検証する。
+- スキーマ取得失敗フォールバック時も編集と保存検証が成立することを検証する。
+
+## 将来拡張方針
+
+- **短期**: API配布スキーマを正として UI 補完/Lint を接続する。
+- **中期**: API 内の `nodes` 入力 DTO から JSON Schema を生成し、手修正コストを下げる。
+- **長期**: `nodesVersion` 指定取得（例: `?version=1`）で後方互換運用を可能にする。
