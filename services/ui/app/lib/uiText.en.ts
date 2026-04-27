@@ -169,7 +169,7 @@ export const uiTextEn: UiText = {
     placeholderExecutionId: "ex-1",
     executionIdLabel: (executionLabel: string) => `${executionLabel} ID`,
     compareLabel: "Compare",
-    realtimeSseLabel: "Realtime updates (SSE)",
+    realtimeSseLabel: "Realtime updates",
     cancelRequestedLabel: "cancelRequested",
     graphIdLine: (graphIdLabel: string, graphId: string) => `${graphIdLabel}: ${graphId}`,
     cancelRequestedLine: (cancelRequestedLabel: string, cancelRequested: boolean) =>

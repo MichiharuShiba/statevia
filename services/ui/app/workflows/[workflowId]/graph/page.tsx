@@ -46,9 +46,7 @@ export default function WorkflowGraphPage() {
         <ActionLinkGroup
           links={[
             { label: uiText.workflowGraphPage.navDetail, href: `/workflows/${encodeURIComponent(workflowId)}`, priority: "primary" },
-            { label: uiText.workflowGraphPage.navRun, href: `/workflows/${encodeURIComponent(workflowId)}/run` },
-            { label: uiText.lists.workflows, href: "/workflows" },
-            { label: uiText.navigation.dashboard, href: "/dashboard" }
+            { label: uiText.workflowGraphPage.navRun, href: `/workflows/${encodeURIComponent(workflowId)}/run` }
           ]}
         />
       }
