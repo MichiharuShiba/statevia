@@ -1,145 +1,151 @@
-# Project Structure
+# プロジェクト構成
 
-## Directory Organization
+## ディレクトリ構成
 
-```
-[Define your project's directory structure. Examples below - adapt to your project type]
+```text
+[プロジェクトのディレクトリ構成を定義]
 
-Example for a library/package:
+ライブラリ/パッケージの例:
 project-root/
-├── src/                    # Source code
-├── tests/                  # Test files  
-├── docs/                   # Documentation
-├── examples/               # Usage examples
-└── [build/dist/out]        # Build output
+├── src/                    # ソースコード
+├── tests/                  # テスト
+├── docs/                   # ドキュメント
+├── examples/               # 使用例
+└── [build/dist/out]        # ビルド成果物
 
-Example for an application:
+アプリケーションの例:
 project-root/
-├── [src/app/lib]           # Main source code
-├── [assets/resources]      # Static resources
-├── [config/settings]       # Configuration
-├── [scripts/tools]         # Build/utility scripts
-└── [tests/spec]            # Test files
-
-Common patterns:
-- Group by feature/module
-- Group by layer (UI, business logic, data)
-- Group by type (models, controllers, views)
-- Flat structure for simple projects
+├── [src/app/lib]           # メインコード
+├── [assets/resources]      # 静的リソース
+├── [config/settings]       # 設定
+├── [scripts/tools]         # 補助スクリプト
+└── [tests/spec]            # テスト
 ```
 
-## Naming Conventions
+### 構成方針（選択）
 
-### Files
-- **Components/Modules**: [e.g., `PascalCase`, `snake_case`, `kebab-case`]
-- **Services/Handlers**: [e.g., `UserService`, `user_service`, `user-service`]
-- **Utilities/Helpers**: [e.g., `dateUtils`, `date_utils`, `date-utils`]
-- **Tests**: [e.g., `[filename]_test`, `[filename].test`, `[filename]Test`]
+- 機能/モジュール単位で分割
+- レイヤー単位（UI/業務ロジック/データ）で分割
+- 種別単位（models/controllers/views）で分割
+- 小規模ならフラット構成
 
-### Code
-- **Classes/Types**: [e.g., `PascalCase`, `CamelCase`, `snake_case`]
-- **Functions/Methods**: [e.g., `camelCase`, `snake_case`, `PascalCase`]
-- **Constants**: [e.g., `UPPER_SNAKE_CASE`, `SCREAMING_CASE`, `PascalCase`]
-- **Variables**: [e.g., `camelCase`, `snake_case`, `lowercase`]
+## 命名規約
 
-## Import Patterns
+### ファイル名
 
-### Import Order
-1. External dependencies
-2. Internal modules
-3. Relative imports
-4. Style imports
+- **コンポーネント/モジュール**: [例: `PascalCase`, `snake_case`, `kebab-case`]
+- **サービス/ハンドラー**: [例: `UserService`, `user_service`, `user-service`]
+- **ユーティリティ/ヘルパー**: [例: `dateUtils`, `date_utils`, `date-utils`]
+- **テスト**: [例: `[filename]_test`, `[filename].test`, `[filename]Test`]
 
-### Module/Package Organization
-```
-[Describe your project's import/include patterns]
-Examples:
-- Absolute imports from project root
-- Relative imports within modules
-- Package/namespace organization
-- Dependency management approach
-```
+### コード要素名
 
-## Code Structure Patterns
+- **クラス/型**: [例: `PascalCase`, `CamelCase`, `snake_case`]
+- **関数/メソッド**: [例: `camelCase`, `snake_case`, `PascalCase`]
+- **定数**: [例: `UPPER_SNAKE_CASE`, `SCREAMING_CASE`, `PascalCase`]
+- **変数**: [例: `camelCase`, `snake_case`, `lowercase`]
 
-[Define common patterns for organizing code within files. Below are examples - choose what applies to your project]
+## インポート規約
 
-### Module/Class Organization
-```
-Example patterns:
-1. Imports/includes/dependencies
-2. Constants and configuration
-3. Type/interface definitions
-4. Main implementation
-5. Helper/utility functions
-6. Exports/public API
+### インポート順序
+
+1. 外部依存
+2. 内部モジュール
+3. 相対パス
+4. スタイル関連
+
+### モジュール/パッケージ設計
+
+```text
+[インポート/依存の方針を記載]
+例:
+- プロジェクトルートからの絶対インポート
+- モジュール内では相対インポート
+- パッケージ/名前空間設計
+- 依存方向のルール
 ```
 
-### Function/Method Organization
-```
-Example patterns:
-- Input validation first
-- Core logic in the middle
-- Error handling throughout
-- Clear return points
-```
+## コード構造パターン
 
-### File Organization Principles
-```
-Choose what works for your project:
-- One class/module per file
-- Related functionality grouped together
-- Public API at the top/bottom
-- Implementation details hidden
+### モジュール/クラスの基本順序
+
+```text
+1. imports/includes/dependencies
+2. 定数・設定
+3. 型・インターフェース
+4. メイン実装
+5. ヘルパー関数
+6. exports/public API
 ```
 
-## Code Organization Principles
+### 関数/メソッドの基本順序
 
-1. **Single Responsibility**: Each file should have one clear purpose
-2. **Modularity**: Code should be organized into reusable modules
-3. **Testability**: Structure code to be easily testable
-4. **Consistency**: Follow patterns established in the codebase
-
-## Module Boundaries
-[Define how different parts of your project interact and maintain separation of concerns]
-
-Examples of boundary patterns:
-- **Core vs Plugins**: Core functionality vs extensible plugins
-- **Public API vs Internal**: What's exposed vs implementation details  
-- **Platform-specific vs Cross-platform**: OS-specific code isolation
-- **Stable vs Experimental**: Production code vs experimental features
-- **Dependencies direction**: Which modules can depend on which
-
-## Code Size Guidelines
-[Define your project's guidelines for file and function sizes]
-
-Suggested guidelines:
-- **File size**: [Define maximum lines per file]
-- **Function/Method size**: [Define maximum lines per function]
-- **Class/Module complexity**: [Define complexity limits]
-- **Nesting depth**: [Maximum nesting levels]
-
-## Dashboard/Monitoring Structure (if applicable)
-[How dashboard or monitoring components are organized]
-
-### Example Structure:
+```text
+- 先に入力検証
+- 中央で主要ロジック
+- 必要な箇所でエラーハンドリング
+- 戻り値を分かりやすくする
 ```
+
+### ファイル設計原則
+
+```text
+- 原則1ファイル1責務
+- 関連機能は近接配置
+- Public API の見つけやすさを重視
+- 実装詳細は外部公開しない
+```
+
+## コード整理の原則
+
+1. **単一責任**: 各ファイルに明確な目的を持たせる
+2. **モジュール性**: 再利用しやすい単位に分割する
+3. **テスト容易性**: テストしやすい境界で設計する
+4. **一貫性**: 既存コードのパターンに合わせる
+
+## モジュール境界
+
+[各モジュールの責務と依存方向を記載]
+
+例:
+
+- **Core vs Plugins**: コア機能と拡張機能の分離
+- **Public API vs Internal**: 公開範囲と内部実装の分離
+- **Platform-specific vs Cross-platform**: OS依存コードの隔離
+- **Stable vs Experimental**: 本番機能と実験機能の分離
+
+## コードサイズ目安
+
+[ファイル/関数/複雑度の目安を記載]
+
+- **ファイル行数**: [上限目安]
+- **関数/メソッド行数**: [上限目安]
+- **クラス/モジュール複雑度**: [制約]
+- **ネスト深さ**: [上限]
+
+## ダッシュボード/監視構成（該当する場合）
+
+[監視機能やダッシュボードの構造を記載]
+
+```text
 src/
-└── dashboard/          # Self-contained dashboard subsystem
-    ├── server/        # Backend server components
-    ├── client/        # Frontend assets
-    ├── shared/        # Shared types/utilities
-    └── public/        # Static assets
+└── dashboard/          # ダッシュボードサブシステム
+    ├── server/        # バックエンド
+    ├── client/        # フロントエンド
+    ├── shared/        # 共有型・共通処理
+    └── public/        # 静的アセット
 ```
 
-### Separation of Concerns
-- Dashboard isolated from core business logic
-- Own CLI entry point for independent operation
-- Minimal dependencies on main application
-- Can be disabled without affecting core functionality
+### 分離方針
 
-## Documentation Standards
-- All public APIs must have documentation
-- Complex logic should include inline comments
-- README files for major modules
-- Follow language-specific documentation conventions
+- ダッシュボードはコア業務ロジックから分離する
+- 単独起動可能なエントリーポイントを持つ
+- メインアプリへの依存を最小化する
+- 無効化してもコア機能に影響しない設計にする
+
+## ドキュメント標準
+
+- 公開APIには必ず説明を付与する
+- 複雑な処理には意図を示すコメントを付与する
+- 主要モジュールには `README` を用意する
+- 言語/フレームワークの規約に従う

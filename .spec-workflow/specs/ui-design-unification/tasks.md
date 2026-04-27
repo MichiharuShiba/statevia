@@ -64,17 +64,17 @@
 
 - [x] **T8** — 共通ヘッダーのブランドアイコン表示仕様を反映
   - File: `.spec-workflow/specs/ui-design-unification/requirements.md`, `.spec-workflow/specs/ui-design-unification/design.md`, `services/ui/app/layout.tsx`
-  - 内容: `icon-mark.png` を共通ヘッダーへ表示する仕様とインターフェースを確定し、実装対象を明文化する
+  - 内容: `icon.png` を共通ヘッダーへ表示する仕様とインターフェースを確定し、実装対象を明文化する
   - 目的: 画面遷移時のブランド一貫性を担保する
-  - _Leverage: `services/ui/public/brand/icon-mark.png`, `services/ui/app/layout.tsx`_
+  - _Leverage: `services/ui/app/icon.png`, `services/ui/app/layout.tsx`_
   - _Requirements: Requirement 6_
   - _Definition of Done: 要件・設計・実装対象が一致し、ヘッダーへの適用方針がレビュー可能な状態になる（完了: 2026-04-25）_
 
 - [x] **T9** — 画面全体トーン（配色）規約の定義と適用計画
   - File: `.spec-workflow/specs/ui-design-unification/design.md`, `services/ui/app/globals.css`, `services/ui/app/layout.tsx`
-  - 内容: `logo-original.png` と整合するトーントークン（ヘッダー、背景、境界、アクセント）を定義し、全画面適用の手順を整理する
+  - 内容: `icon.png` と整合するトーントークン（ヘッダー、背景、境界、アクセント）を定義し、全画面適用の手順を整理する
   - 目的: アイコンが浮かず、全画面で一体感のある視覚体験を実現する
-  - _Leverage: `services/ui/public/brand/logo-original.png`, `services/ui/app/globals.css`, 既存 Tailwind utility class_
+  - _Leverage: `services/ui/app/icon.png`, `services/ui/app/globals.css`, 既存 Tailwind utility class_
   - _Requirements: Requirement 6_
   - _Definition of Done: トーン規約と適用対象が明文化され、可読性検証ポイントが定義されている（完了: 2026-04-25）_
 

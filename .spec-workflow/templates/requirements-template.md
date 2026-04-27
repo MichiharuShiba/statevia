@@ -1,50 +1,78 @@
-# Requirements Document
+# 要件定義書
 
-## Introduction
+## 背景と目的
 
-[Provide a brief overview of the feature, its purpose, and its value to users]
+[機能の背景、目的、ユーザーに提供する価値を簡潔に記載]
 
-## Alignment with Product Vision
+## プロダクト方針との整合
 
-[Explain how this feature supports the goals outlined in product.md]
+[この機能が `product.md` の目標や原則にどう貢献するかを記載]
 
-## Requirements
+## 機能要件
 
-### Requirement 1
+### 要件1
 
-**User Story:** As a [role], I want [feature], so that [benefit]
+**ユーザーストーリー:** [役割]として、[機能]をしたい。なぜなら、[価値/便益]を得たいから。
 
-#### Acceptance Criteria
+#### 受け入れ基準（要件1）
 
-1. WHEN [event] THEN [system] SHALL [response]
-2. IF [precondition] THEN [system] SHALL [response]
-3. WHEN [event] AND [condition] THEN [system] SHALL [response]
+| No | アクター | きっかけ（ユースケース） | 期待される結果 |
+| --- | --- | --- | --- |
+| 1 | [役割] | [きっかけ] | [期待動作] |
+| 2 | [役割] | [きっかけ] | [期待動作] |
+| 3 | [役割] | [きっかけ] | [期待動作] |
 
-### Requirement 2
+### 要件2
 
-**User Story:** As a [role], I want [feature], so that [benefit]
+**ユーザーストーリー:** [役割]として、[機能]をしたい。なぜなら、[価値/便益]を得たいから。
 
-#### Acceptance Criteria
+#### 受け入れ基準（要件2）
 
-1. WHEN [event] THEN [system] SHALL [response]
-2. IF [precondition] THEN [system] SHALL [response]
+| No | アクター | きっかけ（ユースケース） | 期待される結果 |
+| --- | --- | --- | --- |
+| 1 | [役割] | [きっかけ] | [期待動作] |
+| 2 | [役割] | [きっかけ] | [期待動作] |
 
-## Non-Functional Requirements
+## フロー図の記載方針（重要）
 
-### Code Architecture and Modularity
-- **Single Responsibility Principle**: Each file should have a single, well-defined purpose
-- **Modular Design**: Components, utilities, and services should be isolated and reusable
-- **Dependency Management**: Minimize interdependencies between modules
-- **Clear Interfaces**: Define clean contracts between components and layers
+- 仕様が複雑な場合は、文章だけでなく**処理の具体的な流れが分かる図**を必ず記載する
+- 特に以下に該当する場合は図の記載を必須とする
+  - 条件分岐が多い
+  - 非同期処理や外部連携がある
+  - 例外系やリトライを含む
+  - 状態遷移がある
+- 図は `mermaid` のフローチャートまたはシーケンス図を推奨する
 
-### Performance
-- [Performance requirements]
+```mermaid
+flowchart TD
+    A[入力/イベント] --> B{条件判定}
+    B -->|Yes| C[処理A]
+    B -->|No| D[処理B]
+    C --> E[結果]
+    D --> E
+```
 
-### Security
-- [Security requirements]
+## 非機能要件
 
-### Reliability
-- [Reliability requirements]
+### コード構成とモジュール性
 
-### Usability
-- [Usability requirements]
+- **単一責任**: 1ファイル1責務を意識し、目的を明確にする
+- **モジュール設計**: コンポーネント/ユーティリティ/サービスを分離し再利用可能にする
+- **依存関係管理**: モジュール間の過剰な相互依存を避ける
+- **インターフェースの明確化**: レイヤー間の契約を明文化する
+
+### パフォーマンス
+
+- [性能要件]
+
+### セキュリティ
+
+- [セキュリティ要件]
+
+### 信頼性
+
+- [信頼性要件]
+
+### ユーザビリティ
+
+- [使いやすさに関する要件]
