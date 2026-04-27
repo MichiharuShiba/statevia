@@ -3,7 +3,7 @@
 import type { WorkflowView } from "../../lib/types";
 import type { ExecutionDiffResult, NodeDiffItem } from "../../lib/executionDiff";
 import { getStatusStyle } from "../../lib/statusStyle";
-import { uiText } from "../../lib/uiText";
+import { useUiText } from "../../lib/uiTextContext";
 
 type ExecutionComparisonBarProps = {
   executionLeft: WorkflowView | null;
@@ -23,6 +23,7 @@ function DiffRow({
   item: NodeDiffItem;
   onSelect?: (nodeId: string) => void;
 }>) {
+  const uiText = useUiText();
   const styleLeft = item.statusLeft ? getStatusStyle(item.statusLeft) : null;
   const styleRight = item.statusRight ? getStatusStyle(item.statusRight) : null;
   let label: string;
@@ -74,6 +75,7 @@ export function ExecutionComparisonBar({
   diff,
   onSelectDiffNode
 }: Readonly<ExecutionComparisonBarProps>) {
+  const uiText = useUiText();
   const failureOrCancelDiffs = diff?.nodeDiffs.filter((d) => d.isFailureOrCancel) ?? [];
   const otherDiffs = diff?.nodeDiffs.filter((d) => !d.isFailureOrCancel) ?? [];
 

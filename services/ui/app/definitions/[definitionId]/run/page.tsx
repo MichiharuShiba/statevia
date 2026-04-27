@@ -7,13 +7,14 @@ import { Toast } from "../../../components/Toast";
 import { apiPost } from "../../../lib/api";
 import { toToastError, type ToastState } from "../../../lib/errors";
 import type { WorkflowDTO } from "../../../lib/types";
-import { uiText } from "../../../lib/uiText";
+import { useUiText } from "../../../lib/uiTextContext";
 
 /**
  * Definition 起点で新規ワークフローを開始する。
  * 開始成功時は `/workflows/[workflowId]/run` へ遷移する。
  */
 export default function DefinitionRunStartPage() {
+  const uiText = useUiText();
   const params = useParams();
   const router = useRouter();
   const definitionId = useMemo(() => {

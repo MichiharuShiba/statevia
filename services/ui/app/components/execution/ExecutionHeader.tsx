@@ -1,7 +1,7 @@
 "use client";
 
 import type { WorkflowView } from "../../lib/types";
-import { uiText } from "../../lib/uiText";
+import { useUiText } from "../../lib/uiTextContext";
 import { StatusBadge } from "../common/StatusBadge";
 import type { ViewMode } from "../ViewToggle";
 import { ViewToggle } from "../ViewToggle";
@@ -48,6 +48,7 @@ export function ExecutionHeader({
   showCancelAction = true,
   showViewToggle = true
 }: Readonly<ExecutionHeaderProps>) {
+  const uiText = useUiText();
   const status = execution?.status;
 
   return (

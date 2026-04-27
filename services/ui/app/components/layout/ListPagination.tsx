@@ -1,4 +1,6 @@
-import { uiText } from "../../lib/uiText";
+"use client";
+
+import { useUiText } from "../../lib/uiTextContext";
 
 type ListPaginationProps = {
   currentPageLabel: string;
@@ -22,10 +24,13 @@ export function ListPagination({
   onPrev,
   onNext,
   ariaLabel,
-  prevLabel = uiText.pagination.prev,
-  nextLabel = uiText.pagination.next,
+  prevLabel,
+  nextLabel,
   className
 }: Readonly<ListPaginationProps>) {
+  const uiText = useUiText();
+  const effectivePrevLabel = prevLabel ?? uiText.pagination.prev;
+  const effectiveNextLabel = nextLabel ?? uiText.pagination.next;
   const navClassName = [
     "flex items-center gap-2 text-sm",
     className
@@ -41,7 +46,7 @@ export function ListPagination({
         onClick={onPrev}
         disabled={!hasPrev}
       >
-        {prevLabel}
+        {effectivePrevLabel}
       </button>
       <span className="text-zinc-600">{currentPageLabel}</span>
       <button
@@ -50,7 +55,7 @@ export function ListPagination({
         onClick={onNext}
         disabled={!hasNext}
       >
-        {nextLabel}
+        {effectiveNextLabel}
       </button>
     </nav>
   );

@@ -1,4 +1,6 @@
-import { uiText } from "../../lib/uiText";
+"use client";
+
+import { useUiText } from "../../lib/uiTextContext";
 
 type PageStateKind = "loading" | "empty" | "error";
 
@@ -19,18 +21,8 @@ const STATE_STYLE_MAP: Record<PageStateKind, string> = {
   empty: "border-zinc-300 bg-zinc-50 text-zinc-700"
 };
 
-const STATE_TITLE_MAP: Record<PageStateKind, string> = {
-  loading: uiText.pageState.loading,
-  error: uiText.pageState.error,
-  empty: uiText.pageState.empty
-};
-
 function getStateStyle(state: PageStateKind): string {
   return STATE_STYLE_MAP[state];
-}
-
-function getStateTitle(state: PageStateKind): string {
-  return STATE_TITLE_MAP[state];
 }
 
 /**
@@ -40,12 +32,19 @@ export function PageState({
   state,
   message,
   onRetry,
-  retryLabel = uiText.actions.retry
+  retryLabel
 }: Readonly<PageStateProps>) {
+  const uiText = useUiText();
+  const stateTitleMap: Record<PageStateKind, string> = {
+    loading: uiText.pageState.loading,
+    error: uiText.pageState.error,
+    empty: uiText.pageState.empty
+  };
+  const effectiveRetryLabel = retryLabel ?? uiText.actions.retry;
   const showRetryButton = state === "error" && typeof onRetry === "function";
   const content = (
     <>
-      <p className="font-medium">{getStateTitle(state)}</p>
+      <p className="font-medium">{stateTitleMap[state]}</p>
       {message ? <p className="mt-1">{message}</p> : null}
       {showRetryButton ? (
         <button
@@ -53,7 +52,7 @@ export function PageState({
           className="mt-3 rounded-md border border-current/30 bg-white/70 px-3 py-1.5 text-sm font-medium hover:bg-white"
           onClick={onRetry}
         >
-          {retryLabel}
+          {effectiveRetryLabel}
         </button>
       ) : null}
     </>

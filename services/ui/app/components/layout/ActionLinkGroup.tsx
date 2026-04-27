@@ -1,5 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import { uiText } from "../../lib/uiText";
+import { useUiText } from "../../lib/uiTextContext";
 
 type ActionLinkPriority = "primary" | "secondary";
 
@@ -29,6 +31,7 @@ function getLinkClass(priority: ActionLinkPriority): string {
  * 一覧遷移・戻り・関連導線をまとめて描画するリンクグループ。
  */
 export function ActionLinkGroup({ links, className }: Readonly<ActionLinkGroupProps>) {
+  const uiText = useUiText();
   if (links.length === 0) return null;
 
   return (

@@ -1,13 +1,14 @@
 "use client";
 
 import { getApiConfig } from "../../lib/api";
-import { uiText } from "../../lib/uiText";
+import { useUiText } from "../../lib/uiTextContext";
 
 /**
  * テナント未指定時に表示するバナー。
  * 認証必須環境では X-Tenant-Id が必要なため、クライアントで未設定の場合は注意を促す。
  */
 export function TenantMissingBanner() {
+  const uiText = useUiText();
   const { tenantId } = getApiConfig();
   if (tenantId) return null;
   const noticeParts = uiText.tenantMissingBanner.noticeParts(

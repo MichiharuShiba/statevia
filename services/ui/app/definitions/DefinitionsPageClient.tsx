@@ -7,22 +7,20 @@ import { PageShell } from "../components/layout/PageShell";
 import { PageState } from "../components/layout/PageState";
 import { Toast } from "../components/Toast";
 import { apiGet } from "../lib/api";
+import { formatDateTimeLocalized } from "../lib/dateTime";
 import { toToastError, type ToastState } from "../lib/errors";
+import { getDateTimeLocale } from "../lib/i18n";
 import type { DefinitionDTO, PagedDefinitions } from "../lib/types";
-import { uiText } from "../lib/uiText";
+import { useI18n } from "../lib/uiTextContext";
 
 const PAGE_SIZE = 20;
-
-function formatDateTime(iso: string): string {
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" });
-}
 
 /**
  * Definition 一覧（検索・ページング）を表示する。
  */
 export function DefinitionsPageClient() {
+  const { uiText, locale } = useI18n();
+  const dateTimeLocale = getDateTimeLocale(locale);
   const [searchInput, setSearchInput] = useState("");
   const [submittedSearch, setSubmittedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -152,7 +150,7 @@ export function DefinitionsPageClient() {
                     {uiText.definitionsPage.displayIdAndCreatedAt(
                       uiText.labels.displayId,
                       definition.displayId,
-                      uiText.definitionsPage.createdAt(formatDateTime(definition.createdAt))
+                      uiText.definitionsPage.createdAt(formatDateTimeLocalized(definition.createdAt, dateTimeLocale))
                     )}
                   </p>
                 </div>

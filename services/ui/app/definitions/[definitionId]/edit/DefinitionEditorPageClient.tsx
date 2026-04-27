@@ -10,7 +10,7 @@ import { apiGet, apiPost } from "../../../lib/api";
 import { defaultDefinitionYaml } from "../../../lib/defaultDefinitionYaml";
 import { toToastError, type ToastState } from "../../../lib/errors";
 import type { DefinitionDTO } from "../../../lib/types";
-import { uiText } from "../../../lib/uiText";
+import { useUiText } from "../../../lib/uiTextContext";
 
 type DefinitionEditorPageClientProps = {
   definitionId: string;
@@ -21,6 +21,7 @@ type DefinitionEditorPageClientProps = {
  * MVP では既存定義の YAML 取得 API が無いため、既存 name を初期値にしつつ保存は新規登録（POST /definitions）で行う。
  */
 export function DefinitionEditorPageClient({ definitionId }: Readonly<DefinitionEditorPageClientProps>) {
+  const uiText = useUiText();
   const [loadingMeta, setLoadingMeta] = useState(true);
   const [definitionName, setDefinitionName] = useState("");
   const [yaml, setYaml] = useState(defaultDefinitionYaml);

@@ -2,7 +2,7 @@
 
 import type { ExecutionNodeDTO, WorkflowView } from "../../lib/types";
 import { getStatusStyle } from "../../lib/statusStyle";
-import { uiText } from "../../lib/uiText";
+import { useUiText } from "../../lib/uiTextContext";
 
 type NodeDetailProps = {
   execution: WorkflowView | null;
@@ -27,6 +27,7 @@ export function NodeDetail({
   showResumeAction = true,
   className
 }: Readonly<NodeDetailProps>) {
+  const uiText = useUiText();
   const baseClassName = "rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm";
   const asideClassName = className ? `${baseClassName} ${className}` : baseClassName;
 

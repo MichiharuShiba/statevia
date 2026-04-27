@@ -1,12 +1,13 @@
 "use client";
 
-import { uiText } from "../../lib/uiText";
+import { useUiText } from "../../lib/uiTextContext";
 
 type ReplayBannerProps = {
   onBackToCurrent: () => void;
 };
 
 export function ReplayBanner({ onBackToCurrent }: Readonly<ReplayBannerProps>) {
+  const uiText = useUiText();
   return (
     <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900 flex items-center justify-between gap-2 flex-wrap">
       <span>{uiText.executionTimeline.replayingPastStateMessage}</span>

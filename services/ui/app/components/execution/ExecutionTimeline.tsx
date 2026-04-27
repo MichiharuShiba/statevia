@@ -1,24 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { formatDateTimeLocalized } from "../../lib/dateTime";
+import { getDateTimeLocale } from "../../lib/i18n";
 import type { ExecutionEventWithSeq } from "../../lib/types";
-import { uiText } from "../../lib/uiText";
-
-function formatAt(at: string | undefined): string {
-  if (!at) return "—";
-  try {
-    const d = new Date(at);
-    return d.toLocaleString(undefined, {
-      month: "numeric",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit"
-    });
-  } catch {
-    return at;
-  }
-}
+import { useI18n } from "../../lib/uiTextContext";
 
 function eventLabel(event: ExecutionEventWithSeq): string {
   switch (event.type) {
@@ -37,13 +23,13 @@ function eventLabel(event: ExecutionEventWithSeq): string {
   }
 }
 
-function toErrorMessage(error: unknown): string {
+function toErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   if (typeof error === "object" && error !== null && "message" in error) {
     return String((error as { message: unknown }).message);
   }
-  return uiText.executionTimeline.errorUnknown;
+  return fallbackMessage;
 }
 
 type ExecutionTimelineProps = {
@@ -71,6 +57,8 @@ export function ExecutionTimeline({
   loadingMore = false,
   onLoadMore
 }: Readonly<ExecutionTimelineProps>) {
+  const { uiText, locale } = useI18n();
+  const dateTimeLocale = getDateTimeLocale(locale);
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -113,7 +101,7 @@ export function ExecutionTimeline({
       >
       {error ? (
         <p className="mt-2 text-xs text-red-600" role="alert">
-          {toErrorMessage(error)}
+          {toErrorMessage(error, uiText.executionTimeline.errorUnknown)}
         </p>
       ) : null}
 
@@ -142,7 +130,13 @@ export function ExecutionTimeline({
                     }`}
                   >
                     <span className="font-mono text-zinc-500">#{ev.seq}</span>
-                    <span className="ml-2">{formatAt(ev.at)}</span>
+                    <span className="ml-2">
+                      {formatDateTimeLocalized(
+                        ev.at,
+                        dateTimeLocale,
+                        { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }
+                      )}
+                    </span>
                     <span className="ml-2">{eventLabel(ev)}</span>
                   </button>
                 </li>

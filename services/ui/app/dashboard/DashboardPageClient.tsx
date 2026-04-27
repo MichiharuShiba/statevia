@@ -8,21 +8,18 @@ import { PageShell } from "../components/layout/PageShell";
 import { PageState } from "../components/layout/PageState";
 import { Toast } from "../components/Toast";
 import { apiGet } from "../lib/api";
+import { formatDateTimeLocalized } from "../lib/dateTime";
 import { toToastError, type ToastState } from "../lib/errors";
+import { getDateTimeLocale } from "../lib/i18n";
 import type { PagedWorkflows, WorkflowDTO } from "../lib/types";
-import { uiText } from "../lib/uiText";
-
-function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" });
-}
+import { useI18n } from "../lib/uiTextContext";
 
 /**
  * 直近ワークフロー 10 件のダッシュボード（一覧取得・空状態・詳細への導線）。
  */
 export function DashboardPageClient() {
+  const { uiText, locale } = useI18n();
+  const dateTimeLocale = getDateTimeLocale(locale);
   const [items, setItems] = useState<WorkflowDTO[] | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,7 +89,7 @@ export function DashboardPageClient() {
                         {workflow.displayId}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500">{uiText.dashboard.updatedAt(formatDateTime(updated))}</p>
+                    <p className="mt-1 text-xs text-zinc-500">{uiText.dashboard.updatedAt(formatDateTimeLocalized(updated, dateTimeLocale))}</p>
                   </div>
                   <Link
                     className="shrink-0 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
