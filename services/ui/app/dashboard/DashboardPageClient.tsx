@@ -10,6 +10,7 @@ import { Toast } from "../components/Toast";
 import { apiGet } from "../lib/api";
 import { toToastError, type ToastState } from "../lib/errors";
 import type { PagedWorkflows, WorkflowDTO } from "../lib/types";
+import { uiText } from "../lib/uiText";
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -48,27 +49,27 @@ export function DashboardPageClient() {
   }, [load]);
 
   const empty = !loading && items !== null && items.length === 0;
-  const totalCountLabel = totalCount == null ? "合計件数: --" : `合計件数: ${totalCount}`;
+  const totalCountLabel = uiText.dashboard.totalCount(totalCount);
 
   return (
     <PageShell
-      title="ダッシュボード"
-      description="直近のワークフロー（最大 10 件）です。"
+      title={uiText.dashboard.title}
+      description={uiText.dashboard.descriptionRecent}
     >
       <TenantMissingBanner />
 
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       {loading && (
-        <PageState state="loading" message="直近ワークフローを取得しています。" />
+        <PageState state="loading" message={uiText.dashboard.loadingRecent} />
       )}
 
       {empty && (
-        <PageState state="empty" message="Definition 一覧または Workflow 一覧から操作を開始できます。" />
+        <PageState state="empty" message={uiText.dashboard.emptyStartFromDefinitionsOrWorkflows} />
       )}
 
       {!loading && items !== null && items.length > 0 && (
-        <section aria-label="直近ワークフロー一覧">
+        <section aria-label={uiText.dashboard.aria.recentWorkflowsList}>
           <div className="mb-2 flex items-center justify-between gap-3 text-sm">
             <p className="text-xs text-zinc-500">{totalCountLabel}</p>
             <button
@@ -76,7 +77,7 @@ export function DashboardPageClient() {
               className="self-start text-sm text-blue-700 underline hover:text-blue-900"
               onClick={() => void load()}
             >
-              再読み込み
+              {uiText.actions.reload}
             </button>
           </div>
           <ul className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
@@ -91,13 +92,13 @@ export function DashboardPageClient() {
                         {workflow.displayId}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500">更新: {formatDateTime(updated)}</p>
+                    <p className="mt-1 text-xs text-zinc-500">{uiText.dashboard.updatedAt(formatDateTime(updated))}</p>
                   </div>
                   <Link
                     className="shrink-0 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
                     href={`/workflows/${encodeURIComponent(workflow.displayId)}`}
                   >
-                    詳細を開く
+                    {uiText.dashboard.actions.openDetail}
                   </Link>
                 </li>
               );
@@ -107,7 +108,7 @@ export function DashboardPageClient() {
       )}
 
       {!loading && items === null && !toast && (
-        <PageState state="error" message="データを取得できませんでした。" onRetry={() => void load()} />
+        <PageState state="error" message={uiText.dashboard.error.fetchFailed} onRetry={() => void load()} />
       )}
     </PageShell>
   );

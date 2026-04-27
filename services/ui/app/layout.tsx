@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { uiText } from "./lib/uiText";
 
 export const metadata: Metadata = {
   icons: {
@@ -34,13 +35,13 @@ export default function RootLayout({
             </Link>
             <nav className="flex flex-wrap items-center gap-3 text-sm text-[var(--tone-header-fg-muted)]">
               <Link href="/dashboard" className="hover:text-[var(--tone-header-fg)] hover:underline">
-                Dashboard
+                {uiText.navigation.dashboard}
               </Link>
               <Link href="/definitions" className="hover:text-[var(--tone-header-fg)] hover:underline">
-                Definitions
+                {uiText.navigation.definitions}
               </Link>
               <Link href="/workflows" className="hover:text-[var(--tone-header-fg)] hover:underline">
-                Workflows
+                {uiText.navigation.workflows}
               </Link>
             </nav>
           </div>

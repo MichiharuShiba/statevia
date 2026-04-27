@@ -11,6 +11,7 @@ import { PageState } from "../components/layout/PageState";
 import { apiGet, buildWorkflowsListPath, type WorkflowsListQuery } from "../lib/api";
 import { toToastError, type ToastState } from "../lib/errors";
 import type { PagedWorkflows, WorkflowDTO } from "../lib/types";
+import { uiText } from "../lib/uiText";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 500;
@@ -119,12 +120,12 @@ function WorkflowsPageClientInner() {
   };
   const pagination = (
     <ListPagination
-      ariaLabel="Workflow 一覧ページネーション"
-      currentPageLabel={`${currentPage1Based} ページ目`}
+      ariaLabel={uiText.workflowsPage.pagination.ariaLabel}
+      currentPageLabel={uiText.workflowsPage.pagination.currentPage(currentPage1Based)}
       hasPrev={hasPrev}
       hasNext={hasNext}
-      prevLabel="前へ"
-      nextLabel="次へ"
+      prevLabel={uiText.workflowsPage.pagination.prev}
+      nextLabel={uiText.workflowsPage.pagination.next}
       onPrev={() =>
         goTo({
           ...listQuery,
@@ -141,11 +142,11 @@ function WorkflowsPageClientInner() {
   );
 
   return (
-    <PageShell title="Workflow 一覧">
+    <PageShell title={uiText.lists.workflows}>
 
       {listQuery.definitionId && (
         <output className="block rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900" aria-live="polite">
-          <span className="text-sky-800">定義文脈（フィルタ中）: </span>
+          <span className="text-sky-800">{uiText.workflowsPage.filter.contextActivePrefix} </span>
           <span className="font-mono break-all">{listQuery.definitionId}</span>
           <button
             type="button"
@@ -160,16 +161,16 @@ function WorkflowsPageClientInner() {
               });
             }}
           >
-            定義条件を外す
+            {uiText.workflowsPage.filter.clearDefinition}
           </button>
         </output>
       )}
 
       <form onSubmit={handleFilterSubmit} className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-medium text-zinc-900">フィルタ</h2>
+        <h2 className="text-sm font-medium text-zinc-900">{uiText.workflowsPage.filter.title}</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-sm text-zinc-800">
-            <span className="text-zinc-600">status</span>
+            <span className="text-zinc-600">{uiText.labels.status}</span>
             <select
               className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm"
               value={currentStatus}
@@ -184,7 +185,7 @@ function WorkflowsPageClientInner() {
                 });
               }}
             >
-              <option value="">（すべて）</option>
+              <option value="">{uiText.workflowsPage.filter.all}</option>
               <option value="Running">Running</option>
               <option value="Completed">Completed</option>
               <option value="Cancelled">Cancelled</option>
@@ -192,19 +193,19 @@ function WorkflowsPageClientInner() {
             </select>
           </label>
           <label className="block text-sm text-zinc-800">
-            <span className="text-zinc-600">definitionId（定義 display / UUID）</span>
+            <span className="text-zinc-600">{uiText.workflowsPage.filter.definitionLabelWithHint(uiText.labels.definitionId)}</span>
             <input
               className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-sm"
               value={definitionDraft}
               onChange={(e) => setDefinitionDraft(e.target.value)}
-              placeholder="例: def-…"
+              placeholder={uiText.workflowsPage.filter.definitionPlaceholder}
               autoComplete="off"
             />
           </label>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <label className="min-w-[260px] flex-1 text-sm text-zinc-800">
-            <span className="text-zinc-600">name（workflow displayId 部分一致、または workflow UUID 完全一致）</span>
+            <span className="text-zinc-600">{uiText.workflowsPage.filter.nameInputHint}</span>
             <input
               className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-sm"
               value={nameDraft}
@@ -217,7 +218,7 @@ function WorkflowsPageClientInner() {
             className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
             disabled={loading}
           >
-            検索
+            {uiText.workflowsPage.filter.search}
           </button>
           <button
             type="button"
@@ -232,29 +233,29 @@ function WorkflowsPageClientInner() {
             }}
             disabled={loading && !currentStatus && !nameDraft && !definitionDraft}
           >
-            クリア
+            {uiText.workflowsPage.filter.clear}
           </button>
         </div>
         <p className="text-xs text-zinc-500">
-          1 ページあたり: {listQuery.limit} 件。 offset: {listQuery.offset}（page ≈ {currentPage1Based}）
+          {uiText.workflowsPage.filter.pageInfo(listQuery.limit, listQuery.offset, currentPage1Based)}
         </p>
       </form>
 
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       {loading && (
-        <PageState state="loading" message="ワークフロー一覧を読み込み中です。" />
+        <PageState state="loading" message={uiText.workflowsPage.loading} />
       )}
 
       {!loading && items !== null && items.length > 0 && (
-        <section aria-label="ワークフロー一覧">
+        <section aria-label={uiText.lists.workflows}>
           <div className="mb-2 flex items-center justify-between gap-3">
-            <p className="text-xs text-zinc-500">合計 {totalCount ?? 0} 件（{currentPage1Based} ページ目）</p>
+            <p className="text-xs text-zinc-500">{uiText.workflowsPage.listSummary(totalCount ?? 0, currentPage1Based)}</p>
             {pagination}
           </div>
           <ul
             className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
-            aria-label="ワークフロー一覧"
+            aria-label={uiText.lists.workflows}
           >
             {items.map((workflow) => {
               const updated = workflow.updatedAt ?? workflow.startedAt;
@@ -267,13 +268,13 @@ function WorkflowsPageClientInner() {
                         {workflow.displayId}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500">更新: {formatDateTime(updated)}</p>
+                    <p className="mt-1 text-xs text-zinc-500">{uiText.workflowsPage.updatedAt(formatDateTime(updated))}</p>
                   </div>
                   <Link
                     className="shrink-0 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
                     href={`/workflows/${encodeURIComponent(workflow.displayId)}`}
                   >
-                    詳細
+                    {uiText.workflowsPage.actions.openDetail}
                   </Link>
                 </li>
               );
@@ -286,13 +287,13 @@ function WorkflowsPageClientInner() {
       )}
 
       {!loading && items !== null && items.length === 0 && (
-        <PageState state="empty" message="条件に合うワークフローはありません。" />
+        <PageState state="empty" message={uiText.workflowsPage.empty} />
       )}
 
       {!loading && !toast && items === null && (
         <PageState
           state="error"
-          message="取得に失敗しました。時間をおいて再試行してください。"
+          message={uiText.workflowsPage.error}
           onRetry={() => void load()}
         />
       )}
@@ -309,7 +310,7 @@ export function WorkflowsPageClient() {
     <Suspense
       fallback={
         <div className="p-6 text-sm text-zinc-500" aria-live="polite">
-          読み込み中…
+          {uiText.actions.loading}
         </div>
       }
     >

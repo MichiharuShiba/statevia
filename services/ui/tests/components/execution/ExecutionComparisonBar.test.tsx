@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { ExecutionComparisonBar } from "../../../app/components/execution/ExecutionComparisonBar";
 import type { WorkflowView } from "../../../app/lib/types";
 import { computeExecutionDiff } from "../../../app/lib/executionDiff";
+import { uiText } from "../../../app/lib/uiText";
 
 function exec(
   displayId: string,
@@ -35,7 +36,7 @@ const node = (
 });
 
 describe("ExecutionComparisonBar", () => {
-  it("A のみのとき Execution A（基準）を表示する", () => {
+  it("A のみのとき実行 A（基準）を表示する", () => {
     const left = exec("ex-a", [node("n1", "SUCCEEDED")]);
     render(
       <ExecutionComparisonBar
@@ -49,10 +50,12 @@ describe("ExecutionComparisonBar", () => {
       />
     );
     expect(screen.getByText("ex-a")).toBeInTheDocument();
-    expect(screen.getByText("Execution B")).toBeInTheDocument();
+    expect(
+      screen.getByText(uiText.executionComparison.executionBLabel(uiText.entities.execution))
+    ).toBeInTheDocument();
   });
 
-  it("Execution A が null のとき「未読み込み」を表示する", () => {
+  it("実行 A が null のとき「未読み込み」を表示する", () => {
     render(
       <ExecutionComparisonBar
         executionLeft={null}
@@ -64,10 +67,10 @@ describe("ExecutionComparisonBar", () => {
         diff={null}
       />
     );
-    expect(screen.getByText("未読み込み")).toBeInTheDocument();
+    expect(screen.getByText(uiText.executionComparison.state.notLoaded)).toBeInTheDocument();
   });
 
-  it("diff が null のとき「A と B を読み込むと表示されます」を表示する", () => {
+  it("diff が null のとき読み込み案内を表示する", () => {
     render(
       <ExecutionComparisonBar
         executionLeft={null}
@@ -79,10 +82,10 @@ describe("ExecutionComparisonBar", () => {
         diff={null}
       />
     );
-    expect(screen.getByText(/A と B を読み込むと表示されます/)).toBeInTheDocument();
+    expect(screen.getByText(uiText.executionComparison.summary.loadBothToShow)).toBeInTheDocument();
   });
 
-  it("diff があるとき Failed/Canceled とその他を表示する", () => {
+  it("diff があるとき失敗/キャンセルとその他を表示する", () => {
     const left = exec("ex-a", [
       node("n1", "SUCCEEDED"),
       node("n2", "FAILED"),
@@ -105,8 +108,8 @@ describe("ExecutionComparisonBar", () => {
         diff={diff!}
       />
     );
-    expect(screen.getByText("Failed / Canceled")).toBeInTheDocument();
-    expect(screen.getByText("その他")).toBeInTheDocument();
+    expect(screen.getByText(uiText.executionComparison.summary.failedOrCancelled)).toBeInTheDocument();
+    expect(screen.getByText(uiText.executionComparison.summary.others)).toBeInTheDocument();
     expect(screen.getByText("n2")).toBeInTheDocument();
     expect(screen.getByText("n3")).toBeInTheDocument();
   });
@@ -149,6 +152,6 @@ describe("ExecutionComparisonBar", () => {
         diff={diff!}
       />
     );
-    expect(screen.getByText("ノード差分なし")).toBeInTheDocument();
+    expect(screen.getByText(uiText.executionComparison.summary.noDiff)).toBeInTheDocument();
   });
 });

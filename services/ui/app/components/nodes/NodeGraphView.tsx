@@ -20,6 +20,7 @@ import type { MergedGraphNode } from "../../lib/mergeGraph";
 import { getNodeAppearance } from "../../lib/nodeAppearance";
 import { getStatusStyle } from "../../lib/statusStyle";
 import type { NodeStatus } from "../../lib/types";
+import { uiText } from "../../lib/uiText";
 import { GraphLegend } from "./GraphLegend";
 
 export type NodeDiffHighlight = Record<string, { isFailureOrCancel: boolean }>;
@@ -74,9 +75,9 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
       </div>
       <div className="mt-2 space-y-1 text-xs">
         <div className="font-mono">{data.label}</div>
-        <div className="text-zinc-600">type: {data.nodeType}</div>
-        <div className="text-zinc-600">attempt: {data.attempt}</div>
-        {data.waitKey && <div className="text-zinc-600">waitKey: {data.waitKey}</div>}
+        <div className="text-zinc-600">{uiText.nodeGraph.meta.type(data.nodeType)}</div>
+        <div className="text-zinc-600">{uiText.nodeGraph.meta.attempt(data.attempt)}</div>
+        {data.waitKey && <div className="text-zinc-600">{uiText.nodeGraph.meta.waitKey(data.waitKey)}</div>}
       </div>
       {data.status === "WAITING" && (
         <div className="mt-3">
@@ -88,7 +89,7 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
             }}
             disabled={!!data.resumeDisabledReason}
           >
-            Resume
+            {uiText.actions.resume}
           </button>
           {data.resumeDisabledReason && <p className="mt-1 text-[10px] text-zinc-600">{data.resumeDisabledReason}</p>}
         </div>

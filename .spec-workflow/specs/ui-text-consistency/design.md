@@ -126,6 +126,64 @@ UiTextModel
 | health | ヘルスチェック | ナビゲーション文言を日本語化 |
 | 再読み込み | リロード | 再取得操作の表記を統一 |
 
+## Dictionary Agreement Scope
+
+次フェーズの多言語化を見据えて、以下を「辞書化対象」に含める。
+
+- 画面上に可視表示される文言（見出し、本文、ボタン、トースト、バナー）
+- アクセシビリティ文言（`aria-label` など）
+- 入力補助文言（`placeholder`）
+
+次は対象外とする。
+
+- コメント、型名、識別子（ただし表示用途で使っている場合は対象）
+- API内部イベントの生値そのもの（表示ラベル方針が未合意の場合）
+
+### Open Dictionary Candidates（未辞書化の合意対象）
+
+| 優先度 | ファイル | 文言候補（抜粋） | 推奨キー案 |
+| --- | --- | --- | --- |
+| P0 | `services/ui/app/components/execution/ExecutionDashboard.tsx` | `実行の詳細`, `実行操作`, `Event 名（POST /events）`, `全画面表示`, `全画面終了 (Esc)`, `指定されたワークフローが見つかりませんでした。ID を確認してください。` | `executionDashboard.header.titleDefault`, `executionDashboard.actions.sectionTitle`, `executionDashboard.actions.eventNameLabel`, `executionDashboard.graph.fullscreenEnter`, `executionDashboard.graph.fullscreenExit`, `executionDashboard.errors.workflowNotFound` |
+| P0 | `services/ui/app/components/execution/ExecutionTimeline.tsx` | `実行履歴タイムライン`, `現在に戻る`, `イベントがありません`, `続きを読み込む`, `Unknown` | `executionTimeline.title`, `executionTimeline.backToCurrent`, `executionTimeline.empty`, `executionTimeline.loadMore`, `executionTimeline.event.unknown` |
+| P0 | `services/ui/app/components/execution/ExecutionComparisonBar.tsx` | `2実行の比較`, `A のみ`, `B のみ`, `差分`, `未読み込み`, `差分サマリ`, `ノード差分なし` | `executionComparison.title`, `executionComparison.kind.onlyLeft`, `executionComparison.kind.onlyRight`, `executionComparison.kind.diff`, `executionComparison.state.notLoaded`, `executionComparison.summary.title`, `executionComparison.summary.noDiff` |
+| P0 | `services/ui/app/components/nodes/NodeDetail.tsx` | `待機中 (Wait)`, `失敗情報`, `（メッセージなし）` | `nodeDetail.waiting.title`, `nodeDetail.failure.title`, `nodeDetail.failure.noMessage` |
+| P0 | `services/ui/app/components/layout/ActionLinkGroup.tsx` | `画面導線`（aria） | `actionLinks.aria.navigation` |
+| P1 | `services/ui/app/workflows/WorkflowsPageClient.tsx` | `定義文脈（フィルタ中）`, `定義条件を外す`, `フィルタ`, `（すべて）`, `詳細`, `条件に合うワークフローはありません。` | `workflowsPage.filter.contextActive`, `workflowsPage.filter.clearDefinition`, `workflowsPage.filter.title`, `workflowsPage.filter.all`, `common.detail`, `workflowsPage.empty.filtered` |
+| P1 | `services/ui/app/definitions/DefinitionsPageClient.tsx` | `定義の検索とページングを行い、詳細画面へ遷移します。`, `名前検索（部分一致）`, `定義一覧を読み込み中です。` | `definitionsPage.description`, `definitionsPage.search.label`, `definitionsPage.loading` |
+| P1 | `services/ui/app/dashboard/DashboardPageClient.tsx` | `直近のワークフロー（最大 10 件）です。`, `直近ワークフローを取得しています。`, `データを取得できませんでした。` | `dashboard.descriptionRecent`, `dashboard.loadingRecent`, `dashboard.error.fetchFailed` |
+| P2 | `services/ui/app/definitions/[definitionId]/DefinitionDetailClient.tsx` | `定義を取得できませんでした。`, `名前`, `登録日時`, `関連ワークフロー`, `編集・実行` | `definitionDetail.error.fetchFailed`, `definitionDetail.meta.name`, `definitionDetail.meta.createdAt`, `definitionDetail.relatedWorkflows.title`, `definitionDetail.actions.title` |
+| P2 | `services/ui/app/definitions/[definitionId]/edit/DefinitionEditorPageClient.tsx` | `定義名を入力してください。`, `YAML を入力してください。`, `定義メタ情報を読み込み中...`, `保存中...` | `definitionEditor.validation.nameRequired`, `definitionEditor.validation.yamlRequired`, `definitionEditor.loading.meta`, `definitionEditor.actions.saving` |
+| P2 | `services/ui/app/definitions/[definitionId]/run/page.tsx` | `定義起点で実行`, `開始中...`, `ワークフロー開始`, `開始後は Run 画面...` | `definitionRunPage.title`, `definitionRunPage.actions.starting`, `definitionRunPage.actions.startWorkflow`, `definitionRunPage.help.redirectAfterStart` |
+
+### Remaining Targets Checklist（最新）
+
+以下は、合意済みポリシー適用後も辞書化が必要な表示文言の残対象。
+
+| 優先 | ファイル | 未辞書化文言（代表） | キー候補 |
+| --- | --- | --- | --- |
+| - | - | 現時点の残対象なし（直近の placeholder / toast / 連結文言を辞書化済み） | - |
+
+### Dictionary Completion Criteria（完了判定）
+
+- `services/ui/app/**/*.tsx` で、可視テキスト/`aria-label`/`placeholder` の直書きが以下を除いて残っていないこと。
+  - 合意済み非辞書化対象（イベント種別、ステータス値）
+  - 動的データ（ID値、日時、API由来メッセージ本文など）
+- 新規追加の辞書キーは `Key Namespace Rules` に従うこと。
+- 主要画面の文言アサーションが回帰テストで通過すること。
+
+### Key Namespace Rules（合意用）
+
+- 共有語彙: `common.*`, `navigation.*`, `actions.*`, `labels.*`
+- 共通部品: `execution*.*`, `node*.*`, `graphLegend.*`, `actionLinks.*`
+- 画面固有: `dashboard.*`, `workflowsPage.*`, `definitionsPage.*`, `definitionDetail.*`, `definitionEditor.*`, `definitionRunPage.*`
+- キーは英語名、値は当面 `ja` 固定で管理する。
+
+### Resolved Policies（合意済み）
+
+1. `ExecutionTimeline` のイベント種別（`GraphUpdated` など）は日本語辞書化しない。
+2. ステータス値（`Running`, `Completed`, `Cancelled` など）は辞書変換しない。
+3. 技術文言（例: `POST /events`, `SSE`）は基本的にUI上へ直接表記しない。必要な場合のみ実装時に個別検討し、レビューで明示する。
+
 ## Error Handling
 
 1. **直書き文言の取りこぼし**

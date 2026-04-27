@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ExecutionEventWithSeq } from "../../lib/types";
+import { uiText } from "../../lib/uiText";
 
 function formatAt(at: string | undefined): string {
   if (!at) return "—";
@@ -34,6 +35,15 @@ function eventLabel(event: ExecutionEventWithSeq): string {
       return e.type ?? "Unknown";
     }
   }
+}
+
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return uiText.executionTimeline.errorUnknown;
 }
 
 type ExecutionTimelineProps = {
@@ -81,7 +91,7 @@ export function ExecutionTimeline({
             ▶
           </span>
           <h2 id="execution-timeline-heading-text" className="text-sm font-semibold text-zinc-800">
-            実行履歴タイムライン
+            {uiText.executionTimeline.title}
           </h2>
         </button>
         {isReplaying && (
@@ -90,7 +100,7 @@ export function ExecutionTimeline({
             onClick={onBackToCurrent}
             className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 shrink-0"
           >
-            現在に戻る
+            {uiText.executionTimeline.backToCurrent}
           </button>
         )}
       </div>
@@ -103,20 +113,16 @@ export function ExecutionTimeline({
       >
       {error ? (
         <p className="mt-2 text-xs text-red-600" role="alert">
-          {error instanceof Error
-            ? error.message
-            : typeof error === "object" && error !== null && "message" in error
-              ? String((error as { message: unknown }).message)
-              : String(error)}
+          {toErrorMessage(error)}
         </p>
       ) : null}
 
       {loading && (
-        <p className="mt-2 text-xs text-zinc-500">読み込み中…</p>
+        <p className="mt-2 text-xs text-zinc-500">{uiText.actions.loading}</p>
       )}
 
       {!loading && !error && events.length === 0 && (
-        <p className="mt-2 text-xs text-zinc-500">イベントがありません</p>
+        <p className="mt-2 text-xs text-zinc-500">{uiText.executionTimeline.empty}</p>
       )}
 
       {!loading && events.length > 0 && (
@@ -151,7 +157,7 @@ export function ExecutionTimeline({
                 disabled={loadingMore}
                 className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-xs text-zinc-600 hover:bg-zinc-100 disabled:opacity-50"
               >
-                {loadingMore ? "読み込み中…" : "続きを読み込む"}
+                {loadingMore ? uiText.actions.loading : uiText.executionTimeline.loadMore}
               </button>
             </div>
           )}

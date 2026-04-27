@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { NodeDetail } from "../../../app/components/nodes/NodeDetail";
+import { uiText } from "../../../app/lib/uiText";
 import type { ExecutionNodeDTO, WorkflowView } from "../../../app/lib/types";
 
 const baseExecution: WorkflowView = {
@@ -33,7 +34,7 @@ const defaultProps = {
 };
 
 describe("NodeDetail", () => {
-  it("execution が null のとき「Execution を読み込んでください」を表示する", () => {
+  it("execution が null のとき実行の読み込み案内を表示する", () => {
     render(
       <NodeDetail
         {...defaultProps}
@@ -41,10 +42,10 @@ describe("NodeDetail", () => {
         node={baseNode}
       />
     );
-    expect(screen.getByText("Execution を読み込んでください。")).toBeInTheDocument();
+    expect(screen.getByText(uiText.nodeDetail.prompts.loadExecution(uiText.entities.execution))).toBeInTheDocument();
   });
 
-  it("node が null のとき「Node を選択してください」を表示する", () => {
+  it("node が null のときノード選択案内を表示する", () => {
     render(
       <NodeDetail
         {...defaultProps}
@@ -52,12 +53,12 @@ describe("NodeDetail", () => {
         node={null}
       />
     );
-    expect(screen.getByText("Node を選択してください。")).toBeInTheDocument();
+    expect(screen.getByText(uiText.nodeDetail.prompts.selectNode(uiText.entities.node))).toBeInTheDocument();
   });
 
-  it("node が選択されているとき Node Detail と nodeId を表示する", () => {
+  it("node が選択されているとき詳細見出しと nodeId を表示する", () => {
     render(<NodeDetail {...defaultProps} />);
-    expect(screen.getByText("Node Detail")).toBeInTheDocument();
+    expect(screen.getByText(uiText.nodeDetail.title(uiText.entities.node))).toBeInTheDocument();
     expect(screen.getByText("n-1")).toBeInTheDocument();
     expect(screen.getByText("RUNNING")).toBeInTheDocument();
   });
@@ -66,32 +67,32 @@ describe("NodeDetail", () => {
     it("status が WAITING のとき「待機中 (Wait)」と理由を表示する", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("待機中 (Wait)")).toBeInTheDocument();
-      expect(screen.getByText(/理由: waitKey により Resume 待ち/)).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.waiting.title)).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.waiting.reasonWaitByWaitKeyAndResumeWait)).toBeInTheDocument();
     });
 
-    it("status が WAITING で resumeEventName を渡すと「Resume イベント名」を表示する", () => {
+    it("status が WAITING で resumeEventName を渡すと「再開 イベント名」を表示する", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} resumeEventName="DoneC" />);
-      expect(screen.getByText("待機中 (Wait)")).toBeInTheDocument();
-      expect(screen.getByText(/Resume イベント名: DoneC/)).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.waiting.title)).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.waiting.resumeEventName("DoneC"))).toBeInTheDocument();
     });
 
     it("status が WAITING で resumeEventName が空のときイベント名行を表示しない", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} resumeEventName="" />);
-      expect(screen.getByText("待機中 (Wait)")).toBeInTheDocument();
-      expect(screen.queryByText(/Resume イベント名:/)).not.toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.waiting.title)).toBeInTheDocument();
+      expect(screen.queryByText(new RegExp(`^${uiText.nodeDetail.waiting.resumeEventName("")}`))).not.toBeInTheDocument();
     });
 
     it("status が RUNNING のとき「待機中」を表示しない", () => {
       render(<NodeDetail {...defaultProps} />);
-      expect(screen.queryByText("待機中 (Wait)")).not.toBeInTheDocument();
+      expect(screen.queryByText(uiText.nodeDetail.waiting.title)).not.toBeInTheDocument();
     });
   });
 
   describe("Cancel 詳細", () => {
-    it("status が CANCELED で cancelReason ありのとき「Cancel 詳細」と reason を表示する", () => {
+    it("status が CANCELED で cancelReason ありのとき「キャンセル 詳細」と reason を表示する", () => {
       const node: ExecutionNodeDTO = {
         ...baseNode,
         status: "CANCELED",
@@ -99,24 +100,24 @@ describe("NodeDetail", () => {
         cancelReason: "user"
       };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("Cancel 詳細")).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.cancel.detailTitle(uiText.actions.cancel))).toBeInTheDocument();
       expect(screen.getByText(/reason: user/)).toBeInTheDocument();
     });
 
-    it("status が CANCELED で canceledByExecution が true のとき「Execution Cancel により収束」を表示する", () => {
+    it("status が CANCELED で canceledByExecution が true のとき「実行 キャンセル により収束」を表示する", () => {
       const node: ExecutionNodeDTO = {
         ...baseNode,
         status: "CANCELED",
         canceledByExecution: true
       };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("Cancel 詳細")).toBeInTheDocument();
-      expect(screen.getByText("Execution Cancel により収束")).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.cancel.detailTitle(uiText.actions.cancel))).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.cancel.convergedByExecutionCancel)).toBeInTheDocument();
     });
 
-    it("status が RUNNING のとき「Cancel 詳細」を表示しない", () => {
+    it("status が RUNNING のとき「キャンセル 詳細」を表示しない", () => {
       render(<NodeDetail {...defaultProps} />);
-      expect(screen.queryByText("Cancel 詳細")).not.toBeInTheDocument();
+      expect(screen.queryByText(uiText.nodeDetail.cancel.detailTitle(uiText.actions.cancel))).not.toBeInTheDocument();
     });
   });
 
@@ -128,7 +129,7 @@ describe("NodeDetail", () => {
         error: { message: "Something went wrong" }
       };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("失敗情報")).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.failure.title)).toBeInTheDocument();
       expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     });
 
@@ -139,28 +140,28 @@ describe("NodeDetail", () => {
         error: { message: "" }
       };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("失敗情報")).toBeInTheDocument();
-      expect(screen.getByText("（メッセージなし）")).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.failure.title)).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.failure.noMessage)).toBeInTheDocument();
     });
 
     it("status が FAILED で error がないとき「（メッセージなし）」を表示する", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "FAILED" };
       render(<NodeDetail {...defaultProps} node={node} />);
-      expect(screen.getByText("失敗情報")).toBeInTheDocument();
-      expect(screen.getByText("（メッセージなし）")).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.failure.title)).toBeInTheDocument();
+      expect(screen.getByText(uiText.nodeDetail.failure.noMessage)).toBeInTheDocument();
     });
 
     it("status が RUNNING のとき「失敗情報」を表示しない", () => {
       render(<NodeDetail {...defaultProps} />);
-      expect(screen.queryByText("失敗情報")).not.toBeInTheDocument();
+      expect(screen.queryByText(uiText.nodeDetail.failure.title)).not.toBeInTheDocument();
     });
   });
 
   describe("Resume ボタン", () => {
-    it("resumeDisabledReason が null のとき Resume ボタンが有効", () => {
+    it("resumeDisabledReason が null のとき再開ボタンが有効", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} />);
-      const button = screen.getByRole("button", { name: "Resume" });
+      const button = screen.getByRole("button", { name: uiText.actions.resume });
       expect(button).not.toBeDisabled();
     });
 
@@ -174,15 +175,15 @@ describe("NodeDetail", () => {
         />
       );
       expect(screen.getByText(/WAITING 状態のノードのみ/)).toBeInTheDocument();
-      const button = screen.getByRole("button", { name: "Resume" });
+      const button = screen.getByRole("button", { name: uiText.actions.resume });
       expect(button).toBeDisabled();
     });
 
-    it("Resume クリックで onResume が呼ばれる", () => {
+    it("再開ボタンクリックで onResume が呼ばれる", () => {
       const onResume = vi.fn();
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} onResume={onResume} />);
-      fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+      fireEvent.click(screen.getByRole("button", { name: uiText.actions.resume }));
       expect(onResume).toHaveBeenCalledTimes(1);
     });
   });

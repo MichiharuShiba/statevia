@@ -6,6 +6,7 @@ import { ExecutionDashboard } from "../../../components/execution/ExecutionDashb
 import { ActionLinkGroup } from "../../../components/layout/ActionLinkGroup";
 import { PageShell } from "../../../components/layout/PageShell";
 import { PageState } from "../../../components/layout/PageState";
+import { uiText } from "../../../lib/uiText";
 
 /**
  * Run 専用ページ。実行操作（Cancel / Resume / Event 送信）をここに集約する。
@@ -21,10 +22,10 @@ export default function WorkflowRunPage() {
   if (!workflowId.trim()) {
     return (
       <PageShell
-        title="ワークフロー実行"
-        primaryActions={<ActionLinkGroup links={[{ label: "Workflow 一覧", href: "/workflows", priority: "primary" }]} />}
+        title={uiText.workflowRunPage.title}
+        primaryActions={<ActionLinkGroup links={[{ label: uiText.lists.workflows, href: "/workflows", priority: "primary" }]} />}
       >
-        <PageState state="error" message="ワークフロー ID が指定されていません。" />
+        <PageState state="error" message={uiText.workflowRunPage.missingWorkflowId} />
       </PageShell>
     );
   }
@@ -34,17 +35,17 @@ export default function WorkflowRunPage() {
       key={workflowId}
       initialExecutionId={workflowId}
       autoLoadOnMount
-      headerTitle="ワークフロー実行"
+      headerTitle={uiText.workflowRunPage.title}
       executionIdEditable={false}
       comparisonEnabled={false}
       operationsEnabled={true}
       headerNav={
         <ActionLinkGroup
           links={[
-            { label: "詳細", href: `/workflows/${encodeURIComponent(workflowId)}`, priority: "primary" },
-            { label: "グラフ", href: `/workflows/${encodeURIComponent(workflowId)}/graph` },
-            { label: "Workflow 一覧", href: "/workflows" },
-            { label: "ダッシュボード", href: "/dashboard" }
+            { label: uiText.workflowRunPage.navDetail, href: `/workflows/${encodeURIComponent(workflowId)}`, priority: "primary" },
+            { label: uiText.workflowRunPage.navGraph, href: `/workflows/${encodeURIComponent(workflowId)}/graph` },
+            { label: uiText.lists.workflows, href: "/workflows" },
+            { label: uiText.navigation.dashboard, href: "/dashboard" }
           ]}
         />
       }

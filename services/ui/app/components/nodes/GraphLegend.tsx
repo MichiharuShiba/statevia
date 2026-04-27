@@ -2,6 +2,7 @@
 
 import type { NodeStatus } from "../../lib/types";
 import { getStatusStyle } from "../../lib/statusStyle";
+import { uiText } from "../../lib/uiText";
 
 const NODE_STATUSES: NodeStatus[] = [
   "IDLE",
@@ -14,20 +15,20 @@ const NODE_STATUSES: NodeStatus[] = [
 ];
 
 const EDGE_ITEMS: { type: string; label: string; stroke: string; strokeWidth: number; dash?: string }[] = [
-  { type: "Next", label: "Next", stroke: "#d4d4d8", strokeWidth: 1.2 },
-  { type: "Resume", label: "Resume", stroke: "#78716c", strokeWidth: 1.2, dash: "8 4" },
-  { type: "Cancel", label: "Cancel", stroke: "#b91c1c", strokeWidth: 2.5 }
+  { type: "Next", label: uiText.status.edgeTypeNext, stroke: "#d4d4d8", strokeWidth: 1.2 },
+  { type: "Resume", label: uiText.status.edgeTypeResume, stroke: "#78716c", strokeWidth: 1.2, dash: "8 4" },
+  { type: "Cancel", label: uiText.status.edgeTypeCancel, stroke: "#b91c1c", strokeWidth: 2.5 }
 ];
 
 export function GraphLegend() {
   return (
     <section
-      aria-label="グラフ凡例"
+      aria-label={uiText.graphLegend.aria.root}
       className="absolute bottom-3 left-3 z-10 flex max-h-[min(50vh,280px)] flex-col gap-3 overflow-auto rounded-xl border border-zinc-200 bg-white/95 px-3 py-2.5 shadow-md backdrop-blur-sm sm:bottom-4 sm:left-4 sm:gap-4 sm:px-4 sm:py-3"
     >
-      <section aria-label="ノードステータス凡例" className="flex flex-col gap-1">
+      <section aria-label={uiText.graphLegend.aria.nodeStatus} className="flex flex-col gap-1">
         <h3 className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500">
-          ノードステータス
+          {uiText.graphLegend.heading.nodeStatus}
         </h3>
         <ul className="flex flex-wrap gap-1">
           {NODE_STATUSES.map((status) => {
@@ -46,9 +47,9 @@ export function GraphLegend() {
           })}
         </ul>
       </section>
-      <section aria-label="エッジ種別凡例" className="flex flex-col gap-1">
+      <section aria-label={uiText.graphLegend.aria.edgeType} className="flex flex-col gap-1">
         <h3 className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500">
-          エッジ種別
+          {uiText.graphLegend.heading.edgeType}
         </h3>
         <ul className="flex flex-wrap items-center gap-1">
           {EDGE_ITEMS.map((item) => (

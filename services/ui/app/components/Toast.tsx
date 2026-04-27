@@ -1,6 +1,7 @@
 "use client";
 
 import type { ToastState } from "../lib/errors";
+import { uiText } from "../lib/uiText";
 
 type ToastProps = {
   toast: ToastState | null;
@@ -31,7 +32,7 @@ export function Toast({ toast, onClose }: Readonly<ToastProps>) {
     >
       <div className="flex items-start justify-between gap-4">
         <p>{toast.message}</p>
-        <button className="text-zinc-500 hover:text-zinc-900" onClick={onClose} aria-label="close toast">
+        <button className="text-zinc-500 hover:text-zinc-900" onClick={onClose} aria-label={uiText.actions.closeToast}>
           ✕
         </button>
       </div>

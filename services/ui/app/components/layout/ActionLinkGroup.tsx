@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { uiText } from "../../lib/uiText";
 
 type ActionLinkPriority = "primary" | "secondary";
 
@@ -32,7 +33,7 @@ export function ActionLinkGroup({ links, className }: Readonly<ActionLinkGroupPr
 
   return (
     <nav
-      aria-label="画面導線"
+      aria-label={uiText.actionLinks.aria.navigation}
       className={className ? `flex flex-wrap items-center gap-3 ${className}` : "flex flex-wrap items-center gap-3"}
     >
       {links.map((link) => {

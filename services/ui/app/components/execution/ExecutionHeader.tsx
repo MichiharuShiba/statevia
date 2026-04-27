@@ -1,6 +1,7 @@
 "use client";
 
 import type { WorkflowView } from "../../lib/types";
+import { uiText } from "../../lib/uiText";
 import { StatusBadge } from "../common/StatusBadge";
 import type { ViewMode } from "../ViewToggle";
 import { ViewToggle } from "../ViewToggle";
@@ -56,19 +57,21 @@ export function ExecutionHeader({
           {executionIdEditable ? (
             <>
               <label htmlFor="execution-id-input" className="block text-xs font-semibold text-zinc-700">
-                Execution ID
+                {uiText.executionHeader.executionIdLabel(uiText.entities.execution)}
               </label>
               <input
                 id="execution-id-input"
                 className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
                 value={executionId}
                 onChange={(event) => onExecutionIdChange(event.target.value)}
-                placeholder="ex-1"
+                placeholder={uiText.executionHeader.placeholderExecutionId}
               />
             </>
           ) : (
             <>
-              <span className="block text-xs font-semibold text-zinc-700">Execution ID</span>
+              <span className="block text-xs font-semibold text-zinc-700">
+                {uiText.executionHeader.executionIdLabel(uiText.entities.execution)}
+              </span>
               <p className="mt-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-sm text-zinc-900">
                 {executionId}
               </p>
@@ -82,7 +85,7 @@ export function ExecutionHeader({
               onClick={onLoad}
               disabled={loading}
             >
-              {loading ? "Loading..." : "Load"}
+              {loading ? uiText.actions.loading : uiText.actions.load}
             </button>
           )}
           {showCancelAction && (
@@ -91,7 +94,7 @@ export function ExecutionHeader({
               onClick={onCancel}
               disabled={!canCancel || loading}
             >
-              Cancel
+              {uiText.actions.cancel}
             </button>
           )}
           {onCompareModeChange && (
@@ -102,7 +105,7 @@ export function ExecutionHeader({
                 onChange={(e) => onCompareModeChange(e.target.checked)}
                 className="rounded border-zinc-300"
               />
-              <span>比較</span>
+              <span>{uiText.executionHeader.compareLabel}</span>
             </label>
           )}
           {onStreamEnabledChange && (
@@ -113,7 +116,7 @@ export function ExecutionHeader({
                 onChange={(e) => onStreamEnabledChange(e.target.checked)}
                 className="rounded border-zinc-300"
               />
-              <span>リアルタイム更新（SSE）</span>
+              <span>{uiText.executionHeader.realtimeSseLabel}</span>
             </label>
           )}
           {showViewToggle && <ViewToggle value={viewMode} onChange={onViewModeChange} />}
@@ -123,17 +126,24 @@ export function ExecutionHeader({
       {execution && (
         <div className="mt-4 rounded-xl bg-zinc-50 p-3 text-xs text-zinc-700">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold">Execution</div>
+            <div className="text-sm font-semibold">{uiText.entities.execution}</div>
             {status && (
               <StatusBadge status={status} className="rounded-full px-2 py-0.5 font-semibold" />
             )}
           </div>
           <div className="mt-2 grid gap-1 sm:grid-cols-2">
             <div>
-              graphId: <span className="font-mono">{execution.graphId}</span>
+              <span className="font-mono">
+                {uiText.executionHeader.graphIdLine(uiText.labels.graphId, execution.graphId)}
+              </span>
             </div>
             <div>
-              cancelRequested: <span className="font-mono">{execution.cancelRequested ? "true" : "false"}</span>
+              <span className="font-mono">
+                {uiText.executionHeader.cancelRequestedLine(
+                  uiText.executionHeader.cancelRequestedLabel,
+                  execution.cancelRequested
+                )}
+              </span>
             </div>
           </div>
         </div>

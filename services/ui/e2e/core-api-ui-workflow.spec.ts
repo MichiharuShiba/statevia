@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { ExecutionPage } from "./pages/ExecutionPage";
 import { e2eWaitWorkflowYaml } from "./fixtures/e2eWaitWorkflowYaml";
+import { uiText } from "../app/lib/uiText";
 
 /**
  * Core-API 実体 + Next プロキシ経由の UI E2E（STV-401/402 の UI 側）。
@@ -46,9 +47,10 @@ test.describe("Core API + UI (real)", () => {
 
     await executionPage.cancelButton.click();
     // status ロールのアクセシブルネームは子テキストに依存しないことがあるため、name + フォールバックの両方に耐える。
+    const cancelAcceptedText = uiText.executionDashboard.toasts.cancelAccepted;
     const successToast = page
-      .getByRole("status", { name: "CancelExecution accepted" })
-      .or(page.getByRole("status").filter({ hasText: "CancelExecution accepted" }));
+      .getByRole("status", { name: cancelAcceptedText })
+      .or(page.getByRole("status").filter({ hasText: cancelAcceptedText }));
     await expect(successToast).toBeVisible({ timeout: 60_000 });
     await executionPage.waitForExecutionStatus("Cancelled", { timeout: 30_000 });
   });

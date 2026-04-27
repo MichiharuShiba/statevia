@@ -1,3 +1,5 @@
+import { uiText } from "../../lib/uiText";
+
 type ListPaginationProps = {
   currentPageLabel: string;
   hasPrev: boolean;
@@ -20,8 +22,8 @@ export function ListPagination({
   onPrev,
   onNext,
   ariaLabel,
-  prevLabel = "前へ",
-  nextLabel = "次へ",
+  prevLabel = uiText.pagination.prev,
+  nextLabel = uiText.pagination.next,
   className
 }: Readonly<ListPaginationProps>) {
   const navClassName = [

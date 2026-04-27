@@ -22,6 +22,6 @@ describe("StatusBadge", () => {
     render(<StatusBadge {...props} />);
 
     // Assert
-    expect(screen.getByText("Completed").parentElement).toHaveClass("rounded-full");
+    expect(screen.getByText("Completed")).toHaveClass("rounded-full");
   });
 });
