@@ -328,10 +328,15 @@ export type UiText = {
     };
   };
   tenantMissingBanner: {
-    missingTenantPrefix: string;
-    failureHintActions: (loadLabel: string, cancelLabel: string, resumeLabel: string) => string;
-    setOrServer: string;
-    setPlease: string;
+    noticeParts: (
+      loadLabel: string,
+      cancelLabel: string,
+      resumeLabel: string
+    ) => {
+      beforePrimaryEnv: string;
+      betweenEnvs: string;
+      afterSecondaryEnv: string;
+    };
   };
   executionStatusBanner: {
     cancelRequestedNotice: (cancelLabel: string, resumeLabel: string) => string;
@@ -704,11 +709,11 @@ export const uiText: UiText = {
     },
   },
   tenantMissingBanner: {
-    missingTenantPrefix: "テナントが未指定です。",
-    failureHintActions: (loadLabel: string, cancelLabel: string, resumeLabel: string) =>
-      `${loadLabel} / ${cancelLabel} / ${resumeLabel} が失敗する場合は`,
-    setOrServer: "を設定するか、サーバーで",
-    setPlease: "を設定してください。",
+    noticeParts: (loadLabel: string, cancelLabel: string, resumeLabel: string) => ({
+      beforePrimaryEnv: `テナントが未指定です。${loadLabel} / ${cancelLabel} / ${resumeLabel} が失敗する場合は `,
+      betweenEnvs: " を設定するか、サーバーで ",
+      afterSecondaryEnv: " を設定してください。",
+    }),
   },
   executionStatusBanner: {
     cancelRequestedNotice: (cancelLabel: string, resumeLabel: string) =>

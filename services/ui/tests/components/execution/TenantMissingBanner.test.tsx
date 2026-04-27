@@ -15,9 +15,14 @@ describe("TenantMissingBanner", () => {
 
     // Act
     render(<TenantMissingBanner />);
+    const noticeParts = uiText.tenantMissingBanner.noticeParts(
+      uiText.actions.load,
+      uiText.actions.cancel,
+      uiText.actions.resume
+    );
 
     // Assert
-    expect(screen.getByRole("alert")).toHaveTextContent(uiText.tenantMissingBanner.missingTenantPrefix);
+    expect(screen.getByRole("alert")).toHaveTextContent(noticeParts.beforePrimaryEnv.trim());
     expect(screen.getByText(/NEXT_PUBLIC_TENANT_ID/)).toBeInTheDocument();
     expect(screen.getByText(/CORE_API_TENANT_ID/)).toBeInTheDocument();
   });
