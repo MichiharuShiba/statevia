@@ -9,20 +9,15 @@ import { Toast } from "../components/Toast";
 import { PageShell } from "../components/layout/PageShell";
 import { PageState } from "../components/layout/PageState";
 import { apiGet, buildWorkflowsListPath, type WorkflowsListQuery } from "../lib/api";
+import { formatDateTimeLocalized } from "../lib/dateTime";
 import { toToastError, type ToastState } from "../lib/errors";
+import { getDateTimeLocale } from "../lib/i18n";
 import type { PagedWorkflows, WorkflowDTO } from "../lib/types";
-import { uiText } from "../lib/uiText";
+import { useI18n, useUiText } from "../lib/uiTextContext";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 500;
 type StatusFilter = "" | "Running" | "Completed" | "Cancelled" | "Failed";
-
-function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" });
-}
 
 /**
  * クエリから一覧の取得条件を正規化する。無効な値は既定に寄せる。
@@ -50,6 +45,8 @@ function readListQuery(searchParams: { get: (name: string) => string | null }): 
  * ページング・フィルタ（URL 同期）付きのワークフロー一覧。詳細は <code>/workflows/[id]</code> へ遷移する（T5）。
  */
 function WorkflowsPageClientInner() {
+  const { uiText, locale } = useI18n();
+  const dateTimeLocale = getDateTimeLocale(locale);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -268,7 +265,7 @@ function WorkflowsPageClientInner() {
                         {workflow.displayId}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500">{uiText.workflowsPage.updatedAt(formatDateTime(updated))}</p>
+                    <p className="mt-1 text-xs text-zinc-500">{uiText.workflowsPage.updatedAt(formatDateTimeLocalized(updated, dateTimeLocale))}</p>
                   </div>
                   <Link
                     className="shrink-0 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
@@ -306,6 +303,7 @@ function WorkflowsPageClientInner() {
  * ページング付き workflow 一覧（検索パラメータ用に `useSearchParams` 利用箇所を `Suspense` で包む）。
  */
 export function WorkflowsPageClient() {
+  const uiText = useUiText();
   return (
     <Suspense
       fallback={

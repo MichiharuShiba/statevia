@@ -2,7 +2,7 @@
 
 import type { NodeStatus } from "../../lib/types";
 import { getStatusStyle } from "../../lib/statusStyle";
-import { uiText } from "../../lib/uiText";
+import { useUiText } from "../../lib/uiTextContext";
 
 const NODE_STATUSES: NodeStatus[] = [
   "IDLE",
@@ -14,13 +14,14 @@ const NODE_STATUSES: NodeStatus[] = [
   "CANCELED"
 ];
 
-const EDGE_ITEMS: { type: string; label: string; stroke: string; strokeWidth: number; dash?: string }[] = [
-  { type: "Next", label: uiText.status.edgeTypeNext, stroke: "#d4d4d8", strokeWidth: 1.2 },
-  { type: "Resume", label: uiText.status.edgeTypeResume, stroke: "#78716c", strokeWidth: 1.2, dash: "8 4" },
-  { type: "Cancel", label: uiText.status.edgeTypeCancel, stroke: "#b91c1c", strokeWidth: 2.5 }
-];
-
 export function GraphLegend() {
+  const uiText = useUiText();
+  const edgeItems: { type: string; label: string; stroke: string; strokeWidth: number; dash?: string }[] = [
+    { type: "Next", label: uiText.status.edgeTypeNext, stroke: "#d4d4d8", strokeWidth: 1.2 },
+    { type: "Resume", label: uiText.status.edgeTypeResume, stroke: "#78716c", strokeWidth: 1.2, dash: "8 4" },
+    { type: "Cancel", label: uiText.status.edgeTypeCancel, stroke: "#b91c1c", strokeWidth: 2.5 }
+  ];
+
   return (
     <section
       aria-label={uiText.graphLegend.aria.root}
@@ -52,7 +53,7 @@ export function GraphLegend() {
           {uiText.graphLegend.heading.edgeType}
         </h3>
         <ul className="flex flex-wrap items-center gap-1">
-          {EDGE_ITEMS.map((item) => (
+          {edgeItems.map((item) => (
             <li key={item.type} className="flex items-center gap-1">
               <svg
                 width={28}

@@ -6,12 +6,13 @@ import { ExecutionDashboard } from "../../../components/execution/ExecutionDashb
 import { ActionLinkGroup } from "../../../components/layout/ActionLinkGroup";
 import { PageShell } from "../../../components/layout/PageShell";
 import { PageState } from "../../../components/layout/PageState";
-import { uiText } from "../../../lib/uiText";
+import { useUiText } from "../../../lib/uiTextContext";
 
 /**
  * Run 専用ページ。実行操作（Cancel / Resume / Event 送信）をここに集約する。
  */
 export default function WorkflowRunPage() {
+  const uiText = useUiText();
   const params = useParams();
   const workflowId = useMemo(() => {
     const raw = params.workflowId;

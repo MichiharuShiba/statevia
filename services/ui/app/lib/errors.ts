@@ -1,5 +1,6 @@
 import type { ApiError } from "./types";
-import { uiText } from "./uiText";
+import { DEFAULT_LOCALE, type Locale } from "./i18n";
+import { getUiText } from "./uiTextLocale";
 
 export type ToastState = {
   tone: "success" | "error" | "info";
@@ -16,7 +17,8 @@ function isApiError(value: unknown): value is ApiError {
   );
 }
 
-export function toToastError(error: unknown): ToastState {
+export function toToastError(error: unknown, locale: Locale = DEFAULT_LOCALE): ToastState {
+  const uiText = getUiText(locale);
   const status = isApiError(error) ? error.status : undefined;
   const code = isApiError(error) ? error.error?.code ?? "UNKNOWN" : "UNKNOWN";
   const message = isApiError(error) ? error.error?.message ?? "Unknown error" : "Unknown error";

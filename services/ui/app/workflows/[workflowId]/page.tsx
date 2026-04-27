@@ -6,12 +6,13 @@ import { ExecutionDashboard } from "../../components/execution/ExecutionDashboar
 import { ActionLinkGroup } from "../../components/layout/ActionLinkGroup";
 import { PageShell } from "../../components/layout/PageShell";
 import { PageState } from "../../components/layout/PageState";
-import { uiText } from "../../lib/uiText";
+import { useUiText } from "../../lib/uiTextContext";
 
 /**
  * ワークフロー単体（URL 表示 ID 確定）の参照画面。
  */
 export default function WorkflowDetailPage() {
+  const uiText = useUiText();
   const params = useParams();
   const workflowId = useMemo(() => {
     const raw = params.workflowId;

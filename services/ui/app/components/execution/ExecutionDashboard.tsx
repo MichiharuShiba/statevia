@@ -22,7 +22,7 @@ import { getResumeDisabledReason, useNodeCommands } from "../../features/nodes/u
 import { computeExecutionDiff } from "../../lib/executionDiff";
 import { apiGet } from "../../lib/api";
 import { toToastError, type ToastState } from "../../lib/errors";
-import { uiText } from "../../lib/uiText";
+import { useI18n, useUiText } from "../../lib/uiTextContext";
 import { buildWorkflowView } from "../../lib/workflowView";
 import type { WorkflowDTO, WorkflowGraphDTO, WorkflowView } from "../../lib/types";
 
@@ -116,13 +116,15 @@ export function ExecutionDashboard({
   initialExecutionId,
   autoLoadOnMount = false,
   headerNav,
-  headerTitle = uiText.executionDashboard.header.titleDefault,
+  headerTitle,
   executionIdEditable = true,
   comparisonEnabled = true,
   operationsEnabled = true,
   initialViewMode = "list",
   lockViewMode = false
 }: Readonly<ExecutionDashboardProps>) {
+  const { uiText, locale } = useI18n();
+  const effectiveHeaderTitle = headerTitle ?? uiText.executionDashboard.header.titleDefault;
   const [executionId, setExecutionId] = useState(initialExecutionId);
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
   const [graphFullscreen, setGraphFullscreen] = useState(false);
@@ -264,7 +266,7 @@ export function ExecutionDashboard({
 
   const selectedResumeDisabledReason = isReplaying
     ? uiText.executionDashboard.replayDisabledReason
-    : getResumeDisabledReason(execution, selectedNode, operationsEnabled);
+    : getResumeDisabledReason(execution, selectedNode, operationsEnabled, locale);
 
   const resumeEventName = useMemo(() => {
     if (!selectedNodeId || !graphData?.edges) return null;
@@ -311,9 +313,9 @@ export function ExecutionDashboard({
       const node = getNodeWithFallback(displayExecution, graphData, nodeId);
       return isReplaying
         ? uiText.executionDashboard.replayDisabledReason
-        : getResumeDisabledReason(execution, node, operationsEnabled);
+        : getResumeDisabledReason(execution, node, operationsEnabled, locale);
     },
-    [displayExecution, graphData, isReplaying, execution, operationsEnabled]
+    [displayExecution, graphData, isReplaying, execution, operationsEnabled, locale]
   );
 
   const handleToggleGraphFullscreen = useCallback(() => {
@@ -331,7 +333,7 @@ export function ExecutionDashboard({
   return (
     <ExecutionDashboardView
       graphFullscreen={graphFullscreen}
-      headerTitle={headerTitle}
+      headerTitle={effectiveHeaderTitle}
       headerNav={headerNav}
       toast={toast}
       onCloseToast={handleCloseToast}
@@ -445,6 +447,7 @@ function ExecutionDashboardView({
   selectedResumeDisabledReason,
   resumeEventName
 }: Readonly<ExecutionDashboardViewProps>) {
+  const uiText = useUiText();
   const [eventName, setEventName] = useState("");
   const defaultHeaderNav = (
     <ActionLinkGroup

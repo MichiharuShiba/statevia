@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { apiPost } from "../../lib/api";
+import { DEFAULT_LOCALE, type Locale } from "../../lib/i18n";
 import type { CommandAccepted, ExecutionNodeDTO, WorkflowView } from "../../lib/types";
-import { uiText } from "../../lib/uiText";
+import { getUiText } from "../../lib/uiTextLocale";
 
 const TERMINAL_STATUSES = new Set<string>(["Completed", "Cancelled", "Failed"]);
 
@@ -14,8 +15,10 @@ function isTerminalExecution(status: WorkflowView["status"]): boolean {
 export function getResumeDisabledReason(
   execution: WorkflowView | null,
   node: ExecutionNodeDTO | null,
-  commandsEnabled = true
+  commandsEnabled = true,
+  locale: Locale = DEFAULT_LOCALE
 ): string | null {
+  const uiText = getUiText(locale);
   if (!commandsEnabled) return uiText.nodeCommands.resumeDisabledReason.runOnly;
   if (!execution) return uiText.nodeCommands.resumeDisabledReason.executionNotLoaded;
   if (!node) return uiText.nodeCommands.resumeDisabledReason.nodeNotSelected;

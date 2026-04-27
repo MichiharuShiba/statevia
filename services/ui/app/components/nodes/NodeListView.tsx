@@ -2,7 +2,7 @@
 
 import type { ExecutionNodeDTO } from "../../lib/types";
 import { getNodeSortWeight, getStatusStyle } from "../../lib/statusStyle";
-import { uiText } from "../../lib/uiText";
+import { useUiText } from "../../lib/uiTextContext";
 
 type NodeListViewProps = {
   nodes: ExecutionNodeDTO[];
@@ -11,6 +11,7 @@ type NodeListViewProps = {
 };
 
 export function NodeListView({ nodes, selectedNodeId, onSelectNode }: Readonly<NodeListViewProps>) {
+  const uiText = useUiText();
   const sorted = [...nodes].sort((a, b) => getNodeSortWeight(a.status) - getNodeSortWeight(b.status));
 
   return (

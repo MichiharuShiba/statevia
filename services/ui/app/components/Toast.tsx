@@ -1,7 +1,7 @@
 "use client";
 
 import type { ToastState } from "../lib/errors";
-import { uiText } from "../lib/uiText";
+import { useUiText } from "../lib/uiTextContext";
 
 type ToastProps = {
   toast: ToastState | null;
@@ -19,6 +19,7 @@ function getToneClass(tone: ToastState["tone"]): string {
 }
 
 export function Toast({ toast, onClose }: Readonly<ToastProps>) {
+  const uiText = useUiText();
   if (!toast) return null;
 
   const toneClass = getToneClass(toast.tone);

@@ -749,6 +749,8 @@ export const uiText: UiText = {
   },
 };
 
+export const uiTextJa: UiText = uiText;
+
 export type MappingEntry = {
   source: string;
   target: string;

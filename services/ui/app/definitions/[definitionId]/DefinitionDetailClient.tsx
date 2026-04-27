@@ -4,15 +4,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Toast } from "../../components/Toast";
 import { apiGet } from "../../lib/api";
+import { formatDateTimeLocalized } from "../../lib/dateTime";
 import { toToastError, type ToastState } from "../../lib/errors";
+import { getDateTimeLocale } from "../../lib/i18n";
 import type { DefinitionDTO } from "../../lib/types";
-import { uiText } from "../../lib/uiText";
-
-function formatDateTime(iso: string): string {
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" });
-}
+import { useI18n } from "../../lib/uiTextContext";
 
 type DefinitionDetailClientProps = {
   definitionId: string;
@@ -22,6 +18,8 @@ type DefinitionDetailClientProps = {
  * Definition 詳細（API のメタ情報、Workflow 一覧・編集・実行開始への導線）を表示する。
  */
 export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDetailClientProps>) {
+  const { uiText, locale } = useI18n();
+  const dateTimeLocale = getDateTimeLocale(locale);
   const [row, setRow] = useState<DefinitionDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -77,7 +75,7 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
             <dt className="text-zinc-500">{uiText.labels.resourceId}</dt>
             <dd className="font-mono break-all">{row.resourceId}</dd>
             <dt className="text-zinc-500">{uiText.definitionDetail.meta.createdAt}</dt>
-            <dd>{formatDateTime(row.createdAt)}</dd>
+            <dd>{formatDateTimeLocalized(row.createdAt, dateTimeLocale)}</dd>
           </dl>
         </section>
       )}

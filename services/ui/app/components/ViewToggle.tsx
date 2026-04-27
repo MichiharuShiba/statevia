@@ -1,6 +1,6 @@
 "use client";
 
-import { uiText } from "../lib/uiText";
+import { useUiText } from "../lib/uiTextContext";
 
 export type ViewMode = "list" | "graph";
 
@@ -10,6 +10,7 @@ type ViewToggleProps = {
 };
 
 export function ViewToggle({ value, onChange }: Readonly<ViewToggleProps>) {
+  const uiText = useUiText();
   return (
     <div className="inline-flex rounded-xl border border-zinc-200 p-1">
       <button

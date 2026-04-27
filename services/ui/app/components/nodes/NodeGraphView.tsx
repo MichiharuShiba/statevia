@@ -20,7 +20,7 @@ import type { MergedGraphNode } from "../../lib/mergeGraph";
 import { getNodeAppearance } from "../../lib/nodeAppearance";
 import { getStatusStyle } from "../../lib/statusStyle";
 import type { NodeStatus } from "../../lib/types";
-import { uiText } from "../../lib/uiText";
+import { useUiText } from "../../lib/uiTextContext";
 import { GraphLegend } from "./GraphLegend";
 
 export type NodeDiffHighlight = Record<string, { isFailureOrCancel: boolean }>;
@@ -45,6 +45,7 @@ type GroupNodeData = {
 };
 
 function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
+  const uiText = useUiText();
   const style = getStatusStyle(data.status);
   const appearance = getNodeAppearance(data.nodeType);
   const isRunning = data.status === "RUNNING";
