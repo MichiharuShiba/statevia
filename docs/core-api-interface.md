@@ -5,7 +5,7 @@ Project: 実行型ステートマシン
 
 Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
 
-**Version 1.1（2026-04-12）**: Graph Definition、`GET …/state` / `GET …/events` / `GET …/stream`（SSE）、`POST …/nodes/.../resume` を一覧・本文に追加。
+**Version 1.2（2026-04-28）**: `GET /v1/definitions/schema/nodes` を追加。Definition 登録の検証エラーを 422（details 付き）へ明確化。
 
 - **Base path**: `/v1`
 - **Policy**: 終端の優先順位はエンジン内で保証
@@ -21,6 +21,7 @@ Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
 | POST     | /v1/definitions           | 定義登録                      |
 | GET      | /v1/definitions           | 定義一覧                      |
 | GET      | /v1/definitions/{id}      | 定義取得                      |
+| GET      | /v1/definitions/schema/nodes | nodes 入力スキーマ取得     |
 | GET      | /v1/graphs/{graphId}      | Graph Definition（nodes/edges） |
 | POST     | /v1/workflows             | ワークフロー開始              |
 | GET      | /v1/workflows             | ワークフロー一覧              |
@@ -61,7 +62,7 @@ Response: 201 Created
 }
 ```
 
-- `name` / `yaml` 必須。検証・コンパイルして保存。不正時は 400。
+- `name` / `yaml` 必須。検証・コンパイルして保存。不正時は 422（`error.details` に field/message を含む）。
 
 ### 2.2 定義一覧
 
@@ -85,6 +86,21 @@ Response: 201 Created
 - **X-Tenant-Id**: 任意。省略時 `"default"`。
 - Response: 200 OK、`GraphDefinitionResponse`（`graphId`, `nodes[]`, `edges[]` 等。詳細は実装の `GraphDefinitionResponse`）。
 - 404: 定義が存在しない、または当該テナントに無い。
+
+### 2.5 nodes スキーマ取得
+
+**GET /v1/definitions/schema/nodes**
+
+- UI の補完/Lint 源泉として利用する入力スキーマを返す。
+- Response: 200 OK
+
+```json
+{
+  "schemaVersion": "1.0.0",
+  "nodesVersion": 1,
+  "schema": {}
+}
+```
 
 ---
 
@@ -229,10 +245,10 @@ Request（JSON、省略可）:
 | 成功（作成）       | 201  |
 | 成功（取得・一覧） | 200  |
 | 成功（No Content） | 204  |
-| 入力不正           | 400  |
+| 入力不正           | 422  |
 | 存在しない         | 404  |
 | 冪等キー再利用（別リクエスト本文） | 409 。`error.code` は `IDEMPOTENCY_KEY_CONFLICT`（`POST /v1/workflows` のみ） |
-| コマンド適用不可（例: Engine にワークフローが無い） | 422 。`ArgumentException` がマッピングされる（データ連携契約のセクション7） |
+| コマンド適用不可（例: Engine にワークフローが無い） | 422 。`ArgumentException` / `ApiValidationException` がマッピングされる（`ApiValidationException` は `details` 付き） |
 
 ---
 
