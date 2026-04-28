@@ -5,7 +5,7 @@ import { lintGutter, linter, type Diagnostic } from "@codemirror/lint";
 import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { yaml as yamlLanguage } from "@codemirror/lang-yaml";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { useEffect, useMemo, useRef } from "react";
 import { parseDocument } from "yaml";
 
@@ -204,7 +204,8 @@ export function YamlCodeEditor({
       // Undo / Redo 履歴管理。
       history(),
       // 主要キーバインド（編集系 + history 操作）を有効化。
-      keymap.of([...defaultKeymap, ...historyKeymap]),
+      // 先頭に indentWithTab を入れて、Tab でフォーカス移動ではなくインデントさせる。
+      keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
       // YAML の言語サポート（トークン化・構文認識）。
       yamlLanguage(),
       // 長い行を折り返して表示（横スクロール依存を軽減）。
