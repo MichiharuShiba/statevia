@@ -255,6 +255,7 @@ export type UiText = {
     displayIdAndCreatedAt: (displayIdLabel: string, displayId: string, createdAtLabel: string) => string;
     actions: {
       openDetail: string;
+      createNew: string;
     };
     error: string;
   };
@@ -301,11 +302,13 @@ export type UiText = {
   };
   definitionEditor: {
     backToDetail: string;
+    descriptionCreating: string;
     descriptionEditingTarget: (definitionId: string) => string;
     loadingMeta: string;
     validation: {
       nameRequired: string;
       yamlRequired: string;
+      yamlLintInvalid: string;
     };
     labels: {
       name: string;
@@ -325,6 +328,9 @@ export type UiText = {
     };
     toasts: {
       savedWithDisplayId: (displayIdLabel: string, displayId: string) => string;
+    };
+    hints: {
+      title: string;
     };
   };
   tenantMissingBanner: {
@@ -634,6 +640,7 @@ export const uiText: UiText = {
       `${displayIdLabel}: ${displayId} / ${createdAtLabel}`,
     actions: {
       openDetail: "詳細を開く",
+      createNew: "新しい定義を作成",
     },
     error: "定義一覧を取得できませんでした。",
   },
@@ -680,11 +687,13 @@ export const uiText: UiText = {
   },
   definitionEditor: {
     backToDetail: "定義の詳細へ戻る",
+    descriptionCreating: "新しい定義を作成します。",
     descriptionEditingTarget: (definitionId: string) => `編集対象: ${definitionId}`,
     loadingMeta: "定義メタ情報を読み込み中...",
     validation: {
       nameRequired: "定義名を入力してください。",
       yamlRequired: "YAML を入力してください。",
+      yamlLintInvalid: "YAML の構文エラーを修正してください。",
     },
     labels: {
       name: "定義名（name）",
@@ -706,6 +715,9 @@ export const uiText: UiText = {
     toasts: {
       savedWithDisplayId: (displayIdLabel: string, displayId: string) =>
         `定義を保存しました（${displayIdLabel}: ${displayId}）`,
+    },
+    hints: {
+      title: "修正ヒント",
     },
   },
   tenantMissingBanner: {
