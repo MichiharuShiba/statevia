@@ -44,6 +44,19 @@ public sealed class DefinitionServiceTests
         }
     }
 
+    private sealed class ThrowingCompiler : IDefinitionCompilerService
+    {
+        private readonly Exception _exception;
+
+        public ThrowingCompiler(Exception exception)
+        {
+            _exception = exception;
+        }
+
+        public (Statevia.Core.Engine.Abstractions.CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(string name, string yaml)
+            => throw _exception;
+    }
+
     private sealed class StubDisplayIdService : IDisplayIdService
     {
         public string? AllocateValue { get; init; }
@@ -265,6 +278,53 @@ public sealed class DefinitionServiceTests
         var res = await sut.GetAsync("t1", guid.ToString(), CancellationToken.None);
         Assert.Equal(guid.ToString(), res.DisplayId);
         Assert.Equal("def", res.Name);
+    }
+
+    /// <summary>
+    /// 名前未指定で作成要求したとき、422 用の検証例外を返す。
+    /// </summary>
+    [Fact]
+    public async Task CreateAsync_WhenNameMissing_ThrowsApiValidationExceptionWithNameDetails()
+    {
+        // Arrange
+        using var inDb = new InMemoryTestDatabase();
+        var definitionsRepo = new DefinitionRepository(inDb.Factory);
+        var display = new StubDisplayIdService();
+        var compiler = new StubCompiler("{}");
+        var idGen = new FixedIdGenerator(Guid.NewGuid());
+        var sut = new DefinitionService(display, compiler, definitionsRepo, idGen);
+        var request = new CreateDefinitionRequest { Name = " ", Yaml = "workflow:\n  name: x" };
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() => sut.CreateAsync("t1", request, CancellationToken.None));
+
+        // Assert
+        Assert.Equal("Definition name is required.", ex.Message);
+        Assert.NotNull(ex.Details);
+    }
+
+    /// <summary>
+    /// コンパイル失敗時に、422 用の検証例外へラップして返す。
+    /// </summary>
+    [Fact]
+    public async Task CreateAsync_WhenCompilerThrowsArgumentException_WrapsToApiValidationException()
+    {
+        // Arrange
+        using var inDb = new InMemoryTestDatabase();
+        var definitionsRepo = new DefinitionRepository(inDb.Factory);
+        var display = new StubDisplayIdService();
+        var compiler = new ThrowingCompiler(new ArgumentException("yaml parse failed"));
+        var idGen = new FixedIdGenerator(Guid.NewGuid());
+        var sut = new DefinitionService(display, compiler, definitionsRepo, idGen);
+        var request = new CreateDefinitionRequest { Name = "def", Yaml = "invalid: [" };
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() => sut.CreateAsync("t1", request, CancellationToken.None));
+
+        // Assert
+        Assert.Equal("Definition validation failed.", ex.Message);
+        Assert.NotNull(ex.Details);
+        Assert.IsType<ArgumentException>(ex.InnerException);
     }
 }
 
