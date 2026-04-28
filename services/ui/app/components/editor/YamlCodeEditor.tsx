@@ -39,6 +39,13 @@ const DEFAULT_KEYWORDS = [
   "default"
 ] as const;
 
+const WORKFLOW_KEYWORDS = ["name"] as const;
+const NODE_KEYWORDS = ["id", "type", "next", "action", "event", "branches", "mode", "edges"] as const;
+const EDGE_KEYWORDS = ["to", "when", "order", "default"] as const;
+const WHEN_KEYWORDS = ["path", "op", "value"] as const;
+
+type CompletionScope = "root" | "workflow" | "nodesItem" | "edgeItem" | "whenObject";
+
 /**
  * YAML パースエラーを CodeMirror の Diagnostic へ変換する。
  * - yaml パーサは line/col ベースなので、CodeMirror が要求する from/to オフセットへ変換する。
@@ -92,12 +99,14 @@ function lineColToOffset(sourceText: string, line: number, column: number): numb
  * - 入力中トークンの前方一致で絞り込む（軽量な補完戦略）。
  */
 function completionSourceFactory(keywords: readonly string[]) {
-  const uniqueKeywords = [...new Set([...DEFAULT_KEYWORDS, ...keywords])];
-  const completions: Completion[] = uniqueKeywords.map((keyword) => ({
-    label: keyword,
-    type: "property",
-    apply: `${keyword}: `
-  }));
+  const rootKeywords = [...new Set([...DEFAULT_KEYWORDS, ...keywords])];
+  const completionMap: Record<CompletionScope, Completion[]> = {
+    root: rootKeywords.map((keyword) => toPropertyCompletion(keyword)),
+    workflow: WORKFLOW_KEYWORDS.map((keyword) => toPropertyCompletion(keyword)),
+    nodesItem: NODE_KEYWORDS.map((keyword) => toPropertyCompletion(keyword)),
+    edgeItem: EDGE_KEYWORDS.map((keyword) => toPropertyCompletion(keyword)),
+    whenObject: WHEN_KEYWORDS.map((keyword) => toPropertyCompletion(keyword))
+  };
 
   return (context: CompletionContext) => {
     // カーソル直前の英数字/ハイフン/アンダースコアを補完対象トークンとして扱う。
@@ -110,13 +119,66 @@ function completionSourceFactory(keywords: readonly string[]) {
       return null;
     }
 
+    const scope = detectCompletionScope(context);
+    const scopedCompletions = completionMap[scope];
+
     return {
       // 現在トークンの開始位置から補完候補を差し込む。
       from: token.from,
       // 軽量な前方一致。必要になれば fuzzy 検索へ拡張可能。
-      options: completions.filter((completion) => completion.label.startsWith(token.text))
+      options: scopedCompletions.filter((completion) => completion.label.startsWith(token.text))
     };
   };
+}
+
+function toPropertyCompletion(keyword: string): Completion {
+  return {
+    label: keyword,
+    type: "property",
+    apply: `${keyword}: `
+  };
+}
+
+/**
+ * カーソル手前の行スタックから補完スコープを推定する。
+ * 厳密な AST 解析ではなく、インデントとキー名から実用的に判定する。
+ */
+function detectCompletionScope(context: CompletionContext): CompletionScope {
+  const beforeCursor = context.state.sliceDoc(0, context.pos);
+  const lines = beforeCursor.split("\n");
+  type StackEntry = { key: string; indent: number };
+  const stack: StackEntry[] = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.replaceAll("\t", "  ");
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+    const indent = line.length - line.trimStart().length;
+    while (stack.length > 0 && (stack.at(-1)?.indent ?? -1) >= indent) {
+      stack.pop();
+    }
+
+    const key = extractYamlKey(trimmed);
+    if (key) {
+      stack.push({ key, indent });
+    }
+  }
+
+  const keyPath = new Set(stack.map((entry) => entry.key));
+  if (keyPath.has("when")) return "whenObject";
+  if (keyPath.has("edges")) return "edgeItem";
+  if (keyPath.has("nodes")) return "nodesItem";
+  if (keyPath.has("workflow")) return "workflow";
+  return "root";
+}
+
+function extractYamlKey(trimmedLine: string): string | null {
+  const target = trimmedLine.startsWith("- ") ? trimmedLine.slice(2).trimStart() : trimmedLine;
+  const keyPattern = /^([A-Za-z0-9_-]+)\s*:/;
+  const match = keyPattern.exec(target);
+  return match?.[1] ?? null;
 }
 
 /**
