@@ -340,7 +340,7 @@ export const uiTextEn: UiText = {
     },
     actions: {
       saving: "Saving...",
-      saveWithApiHint: "Save (POST /definitions)",
+      saveWithApiHint: "Save",
       resetTemplate: "Reset to template",
     },
     noteMvp:

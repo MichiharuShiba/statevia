@@ -192,7 +192,6 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
           : uiText.definitionEditor.descriptionEditingTarget(definitionId)
       }
       primaryActions={<ActionLinkGroup links={actionLinks} />}
-      secondaryActions={<ActionLinkGroup links={actionLinks} />}
     >
 
       <Toast toast={toast} onClose={() => setToast(null)} />
@@ -247,7 +246,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
           </button>
           <button
             type="button"
-            className="w-full rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50 sm:w-auto"
+            className="w-full rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50 sm:ml-auto sm:w-auto"
             onClick={() => setYaml(defaultDefinitionYaml)}
             disabled={saving}
           >

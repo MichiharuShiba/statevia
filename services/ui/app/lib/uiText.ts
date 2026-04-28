@@ -701,7 +701,7 @@ export const uiText: UiText = {
     },
     actions: {
       saving: "保存中...",
-      saveWithApiHint: "保存（POST /definitions）",
+      saveWithApiHint: "保存",
       resetTemplate: "テンプレートに戻す",
     },
     noteMvp:
