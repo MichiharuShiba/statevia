@@ -64,6 +64,7 @@ public class DefinitionsController : ControllerBase
         var row = await _definitions.GetAsync(tenantId, id, ct).ConfigureAwait(false);
         return Ok(row);
     }
+
 }
 
 public class CreateDefinitionRequest
@@ -89,3 +90,4 @@ public class DefinitionResponse
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
 }
+

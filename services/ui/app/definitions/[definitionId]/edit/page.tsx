@@ -1,4 +1,4 @@
-import { DefinitionEditorPageClient } from "./DefinitionEditorPageClient";
+import { DefinitionEditorPageClient } from "../../DefinitionEditorPageClient";
 
 type DefinitionEditPageProps = {
   params: Promise<{

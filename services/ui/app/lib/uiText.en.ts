@@ -253,6 +253,7 @@ export const uiTextEn: UiText = {
     },
     actions: {
       openDetail: "Open details",
+      createNew: "Create new definition",
     },
   },
   workflowDetailPage: {
@@ -325,11 +326,13 @@ export const uiTextEn: UiText = {
   definitionEditor: {
     ...uiTextJa.definitionEditor,
     backToDetail: "Back to definition detail",
+    descriptionCreating: "Create a new definition.",
     descriptionEditingTarget: (definitionId: string) => `Editing target: ${definitionId}`,
     loadingMeta: "Loading definition metadata...",
     validation: {
       nameRequired: "Please enter a definition name.",
       yamlRequired: "Please enter YAML.",
+      yamlLintInvalid: "Please fix YAML syntax errors.",
     },
     labels: {
       name: "Definition name (name)",
@@ -337,7 +340,7 @@ export const uiTextEn: UiText = {
     },
     actions: {
       saving: "Saving...",
-      saveWithApiHint: "Save (POST /definitions)",
+      saveWithApiHint: "Save",
       resetTemplate: "Reset to template",
     },
     noteMvp:
@@ -351,6 +354,9 @@ export const uiTextEn: UiText = {
     toasts: {
       savedWithDisplayId: (displayIdLabel: string, displayId: string) =>
         `Definition saved (${displayIdLabel}: ${displayId})`,
+    },
+    hints: {
+      title: "Fix hints",
     },
   },
   tenantMissingBanner: {

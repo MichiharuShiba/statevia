@@ -17,6 +17,7 @@ public sealed class ApiExceptionFilter : IExceptionFilter
 
         var result = root switch
         {
+            ApiValidationException validation => ApiErrorResult.ValidationError(validation.Message, validation.Details),
             NotFoundException nf => ApiErrorResult.NotFound(nf.Message),
             IdempotencyConflictException idem => ApiErrorResult.Conflict("IDEMPOTENCY_KEY_CONFLICT", idem.Message),
             ArgumentException arg => ApiErrorResult.ValidationError(arg.Message),
