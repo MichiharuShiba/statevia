@@ -25,8 +25,42 @@ type ApiErrorLike = {
   };
 };
 
+type ValidationDetailItem = {
+  field?: string;
+  message?: string;
+};
+
 function isApiErrorLike(value: unknown): value is ApiErrorLike {
   return typeof value === "object" && value !== null && "error" in value;
+}
+
+function toValidationDetailItem(value: unknown): ValidationDetailItem | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  return {
+    field: typeof record.field === "string" ? record.field : undefined,
+    message: typeof record.message === "string" ? record.message : undefined
+  };
+}
+
+function extractApiValidationDetails(error: unknown): ValidationDetailItem[] {
+  if (!isApiErrorLike(error) || error.status !== 422) {
+    return [];
+  }
+  const details = error.error?.details;
+  if (Array.isArray(details)) {
+    return details
+      .map((item) => {
+        if (typeof item === "string") {
+          return { message: item };
+        }
+        return toValidationDetailItem(item);
+      })
+      .filter((detail): detail is ValidationDetailItem => detail !== null && typeof detail.message === "string");
+  }
+  return [];
 }
 
 function extractApiDiagnosticMessages(error: unknown): string[] {
@@ -37,10 +71,12 @@ function extractApiDiagnosticMessages(error: unknown): string[] {
   if (Array.isArray(details)) {
     return details
       .map((item) => {
-        if (typeof item === "string") return item;
-        if (typeof item === "object" && item !== null && "message" in item) {
-          const message = (item as { message?: unknown }).message;
-          return typeof message === "string" ? message : null;
+        if (typeof item === "string") {
+          return item;
+        }
+        const parsed = toValidationDetailItem(item);
+        if (parsed?.message) {
+          return parsed.field ? `[${parsed.field}] ${parsed.message}` : parsed.message;
         }
         return null;
       })
@@ -70,7 +106,9 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
   const [yamlHasLintErrors, setYamlHasLintErrors] = useState(false);
   // YAML パーサ由来の診断メッセージ。
   const [yamlDiagnostics, setYamlDiagnostics] = useState<string[]>([]);
-  // API 422 由来の診断メッセージ。存在する場合はこちらを優先表示する。
+  // API 422 由来の構造化診断。field ごとに表示位置を分離する。
+  const [apiValidationDetails, setApiValidationDetails] = useState<ValidationDetailItem[]>([]);
+  // API 422 由来の診断メッセージ（fallback 用）。
   const [apiDiagnostics, setApiDiagnostics] = useState<string[]>([]);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [saving, setSaving] = useState(false);
@@ -80,12 +118,23 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
   // 空文字 or lint エラーを保存禁止条件として統一する。
   const hasYamlError = useMemo(() => !yaml.trim() || yamlHasLintErrors, [yaml, yamlHasLintErrors]);
   // UI診断とAPI診断の二段構え。保存後の再修正では API 診断を先に見せる。
+  const apiNameMessages = useMemo(
+    () => apiValidationDetails.filter((detail) => detail.field === "name").map((detail) => detail.message!).filter(Boolean),
+    [apiValidationDetails]
+  );
+  const apiYamlMessages = useMemo(
+    () => apiValidationDetails.filter((detail) => detail.field === "yaml").map((detail) => detail.message!).filter(Boolean),
+    [apiValidationDetails]
+  );
   const hintMessages = useMemo(() => {
+    if (apiYamlMessages.length > 0) {
+      return apiYamlMessages;
+    }
     if (apiDiagnostics.length > 0) {
       return apiDiagnostics;
     }
     return yamlDiagnostics;
-  }, [apiDiagnostics, yamlDiagnostics]);
+  }, [apiDiagnostics, apiYamlMessages, yamlDiagnostics]);
   const actionLinks = useMemo(
     () =>
       isCreateMode
@@ -165,6 +214,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
     setSaving(true);
     setToast(null);
     setSavedDefinition(null);
+    setApiValidationDetails([]);
     // 直前の API 診断は保存試行ごとにクリアする。
     setApiDiagnostics([]);
     try {
@@ -176,6 +226,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
       });
     } catch (error) {
       // API が返す 422 詳細をヒント領域へ反映する。
+      setApiValidationDetails(extractApiValidationDetails(error));
       setApiDiagnostics(extractApiDiagnosticMessages(error));
       setToast(toToastError(error));
     } finally {
@@ -210,6 +261,9 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
             autoComplete="off"
           />
         </label>
+        {apiNameMessages.length > 0 && (
+          <p className="text-xs text-rose-600">{apiNameMessages[0]}</p>
+        )}
 
         <label className="block text-sm">
           <span className="text-zinc-600">{uiText.definitionEditor.labels.yaml}</span>
