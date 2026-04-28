@@ -60,6 +60,30 @@ public sealed class ApiExceptionFilterTests
     }
 
     /// <summary>
+    /// ApiValidationException を details 付き 422 として返す。
+    /// </summary>
+    [Fact]
+    public void OnException_MapsApiValidationExceptionTo422WithDetails()
+    {
+        // Arrange
+        var http = new DefaultHttpContext();
+        var filter = new ApiExceptionFilter();
+        var details = new[] { new { message = "yaml invalid", field = "yaml" } };
+        var ctx = CreateContext(http, new ApiValidationException("validation failed", details));
+
+        // Act
+        filter.OnException(ctx);
+
+        // Assert
+        Assert.True(ctx.ExceptionHandled);
+        var result = Assert.IsType<ObjectResult>(ctx.Result);
+        Assert.Equal(StatusCodes.Status422UnprocessableEntity, result.StatusCode);
+        var payload = Assert.IsType<ErrorResponse>(result.Value);
+        Assert.Equal("VALIDATION_ERROR", payload.Error.Code);
+        Assert.NotNull(payload.Error.Details);
+    }
+
+    /// <summary>
     /// その他の例外を500の内部エラーとして返す。
     /// </summary>
     [Fact]
