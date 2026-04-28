@@ -81,6 +81,7 @@ builder.Services.AddScoped<ICommandDedupRepository, CommandDedupRepository>();
 builder.Services.AddScoped<IEventDeliveryDedupRepository, EventDeliveryDedupRepository>();
 builder.Services.AddScoped<IEventStoreRepository, EventStoreRepository>();
 builder.Services.AddScoped<IDefinitionService, DefinitionService>();
+builder.Services.AddSingleton<IDefinitionSchemaService, DefinitionSchemaService>();
 builder.Services.AddScoped<IWorkflowService, WorkflowService>();
 builder.Services.AddOptions<WorkflowProjectionQueueOptions>()
     .Bind(builder.Configuration.GetSection("WorkflowProjectionQueue"))

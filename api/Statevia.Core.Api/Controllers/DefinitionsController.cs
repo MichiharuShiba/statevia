@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Statevia.Core.Api.Abstractions.Services;
-using Statevia.Core.Api.Application.Definition;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Hosting;
 
@@ -66,20 +65,6 @@ public class DefinitionsController : ControllerBase
         return Ok(row);
     }
 
-    /// <summary>
-    /// GET /v1/definitions/schema/nodes — nodes 形式の入力スキーマを返す。
-    /// UI の補完/Lint 源泉として利用する。
-    /// </summary>
-    [HttpGet("schema/nodes")]
-    public ActionResult<DefinitionNodesSchemaResponse> GetNodesSchema()
-    {
-        return Ok(new DefinitionNodesSchemaResponse
-        {
-            SchemaVersion = NodesSchemaDefinition.SchemaVersion,
-            NodesVersion = NodesSchemaDefinition.NodesVersion,
-            Schema = NodesSchemaDefinition.CreateSchemaDocument()
-        });
-    }
 }
 
 public class CreateDefinitionRequest
@@ -106,14 +91,3 @@ public class DefinitionResponse
     public DateTime CreatedAt { get; set; }
 }
 
-public class DefinitionNodesSchemaResponse
-{
-    [JsonPropertyName("schemaVersion")]
-    public string SchemaVersion { get; set; } = "";
-
-    [JsonPropertyName("nodesVersion")]
-    public int NodesVersion { get; set; }
-
-    [JsonPropertyName("schema")]
-    public object Schema { get; set; } = new { };
-}
