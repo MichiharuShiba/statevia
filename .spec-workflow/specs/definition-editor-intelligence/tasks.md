@@ -57,7 +57,7 @@
   - _Requirements: 要件4_
   - _Definition of Done: UIが配布スキーマを取得して利用できる_
 
-- [ ] 7. 将来拡張に向けたスキーマ生成移行余地を設計する
+- [x] 7. 将来拡張に向けたスキーマ生成移行余地を設計する
   - File: `api/Statevia.Core.Api/Application/Definition/*`, `api/Statevia.Core.Api/Abstractions/*`, `.spec-workflow/specs/definition-editor-intelligence/design.md`
   - 内容: DTO起点スキーマ生成へ移行可能な責務境界を定義し設計へ反映する
   - 目的: `nodes` 拡張時の手修正コストを抑える

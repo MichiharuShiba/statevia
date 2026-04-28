@@ -83,8 +83,9 @@ flowchart TD
 
 - **目的**: UI 向け `nodes` スキーマを配布する。
 - **公開インターフェース**: `GET /v1/definitions/schema/nodes`。
-- **依存先**: `NodesWorkflowDefinitionLoader`、スキーマ供給ロジック。
+- **依存先**: `IDefinitionSchemaService`（実装: `DefinitionSchemaService`）、`NodesWorkflowDefinitionLoader`、スキーマ供給ロジック。
 - **再利用要素**: 既存 Definition API のコントローラ/サービス層。
+- **拡張境界**: 将来 DTO 起点スキーマ生成へ移行する際は、`IDefinitionSchemaService` の実装差し替えで対応する。
 
 ## データモデル
 
