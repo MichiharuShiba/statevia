@@ -43,6 +43,7 @@ const WORKFLOW_KEYWORDS = ["name"] as const;
 const NODE_KEYWORDS = ["id", "type", "next", "action", "event", "branches", "mode", "edges"] as const;
 const EDGE_KEYWORDS = ["to", "when", "order", "default"] as const;
 const WHEN_KEYWORDS = ["path", "op", "value"] as const;
+const GITHUB_MONO_FONT_FAMILY = "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace";
 
 type CompletionScope = "root" | "workflow" | "nodesItem" | "edgeItem" | "whenObject";
 
@@ -208,6 +209,28 @@ export function YamlCodeEditor({
       keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
       // YAML の言語サポート（トークン化・構文認識）。
       yamlLanguage(),
+      // GitHub のコード表示に近いモノスペースフォントスタックを適用。
+      EditorView.theme({
+        "&": {
+          fontFamily: GITHUB_MONO_FONT_FAMILY,
+          fontSize: "12px"
+        },
+        ".cm-content, .cm-gutters": {
+          fontFamily: GITHUB_MONO_FONT_FAMILY,
+          lineHeight: "1.45"
+        },
+        ".cm-content": {
+          padding: "8px 0"
+        },
+        ".cm-line": {
+          padding: "0 8px"
+        },
+        ".cm-gutters": {
+          color: "#656d76",
+          backgroundColor: "#f6f8fa",
+          borderRight: "1px solid #d0d7de"
+        }
+      }),
       // 長い行を折り返して表示（横スクロール依存を軽減）。
       EditorView.lineWrapping,
       // ドキュメント更新時に React 側 state と診断表示を同期。
