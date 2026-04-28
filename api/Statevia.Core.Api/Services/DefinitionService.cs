@@ -28,8 +28,33 @@ public sealed class DefinitionService : IDefinitionService
 
     public async Task<DefinitionResponse> CreateAsync(string tenantId, CreateDefinitionRequest request, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            throw new ApiValidationException("Definition name is required.", new[]
+            {
+                new { message = "Definition name is required.", field = "name" }
+            });
+        }
+        if (string.IsNullOrWhiteSpace(request.Yaml))
+        {
+            throw new ApiValidationException("Definition YAML is required.", new[]
+            {
+                new { message = "Definition YAML is required.", field = "yaml" }
+            });
+        }
+
         string compiledJson;
-        (_, compiledJson) = _compiler.ValidateAndCompile(request.Name!, request.Yaml!);
+        try
+        {
+            (_, compiledJson) = _compiler.ValidateAndCompile(request.Name!, request.Yaml!);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new ApiValidationException("Definition validation failed.", new[]
+            {
+                new { message = ex.Message, field = "yaml" }
+            }, ex);
+        }
 
         var id = _idGenerator.NewGuid();
         var displayId = await _displayIds.AllocateAsync("definition", id, ct).ConfigureAwait(false);

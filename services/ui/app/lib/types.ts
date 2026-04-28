@@ -162,3 +162,9 @@ export type DefinitionDTO = {
 };
 
 export type PagedDefinitions = PagedResult<DefinitionDTO>;
+
+export type DefinitionSchemaResponse = {
+  schemaVersion: string;
+  nodesVersion: number;
+  schema: Record<string, unknown>;
+};
