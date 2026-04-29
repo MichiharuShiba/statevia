@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { NAVIGATION_BUTTON_CLASS } from "../../../components/layout/navigationButtonClass";
 import { Toast } from "../../../components/Toast";
 import { apiPost } from "../../../lib/api";
 import { toToastError, type ToastState } from "../../../lib/errors";
@@ -98,12 +98,20 @@ export default function DefinitionRunStartPage() {
       </section>
 
       <nav className="flex flex-wrap gap-3 text-sm">
-        <Link className="text-[var(--md-sys-color-primary)] underline hover:opacity-90" href={`/definitions/${encodeURIComponent(definitionId)}`}>
+        <button
+          type="button"
+          className={NAVIGATION_BUTTON_CLASS}
+          onClick={() => router.push(`/definitions/${encodeURIComponent(definitionId)}`)}
+        >
           {uiText.definitionRunPage.nav.backToDefinitionDetail}
-        </Link>
-        <Link className="text-[var(--md-sys-color-primary)] underline hover:opacity-90" href="/workflows">
+        </button>
+        <button
+          type="button"
+          className={NAVIGATION_BUTTON_CLASS}
+          onClick={() => router.push("/workflows")}
+        >
           {uiText.lists.workflows}
-        </Link>
+        </button>
       </nav>
     </main>
   );

@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { YamlCodeEditor } from "../components/editor/YamlCodeEditor";
 import { ActionLinkGroup } from "../components/layout/ActionLinkGroup";
+import { NAVIGATION_BUTTON_CLASS } from "../components/layout/navigationButtonClass";
 import { PageShell } from "../components/layout/PageShell";
 import { PageState } from "../components/layout/PageState";
 import { Toast } from "../components/Toast";
@@ -96,6 +97,7 @@ function extractApiDiagnosticMessages(error: unknown): string[] {
  */
 export function DefinitionEditorPageClient({ definitionId }: Readonly<DefinitionEditorPageClientProps>) {
   const uiText = useUiText();
+  const router = useRouter();
   const isCreateMode = !definitionId;
   // 編集対象のメタ情報（名前など）ロード中フラグ。新規作成では不要。
   const [loadingMeta, setLoadingMeta] = useState(!isCreateMode);
@@ -317,18 +319,20 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
         <section className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
           <p className="font-medium">{uiText.definitionEditor.saved.complete(savedDefinition.displayId)}</p>
           <div className="flex flex-wrap gap-3">
-            <Link
-              className="text-[var(--md-sys-color-primary)] underline hover:opacity-90"
-              href={`/definitions/${encodeURIComponent(savedDefinition.displayId)}`}
+            <button
+              type="button"
+              className={NAVIGATION_BUTTON_CLASS}
+              onClick={() => router.push(`/definitions/${encodeURIComponent(savedDefinition.displayId)}`)}
             >
               {uiText.definitionEditor.saved.openNewDetail}
-            </Link>
-            <Link
-              className="text-[var(--md-sys-color-primary)] underline hover:opacity-90"
-              href={`/definitions/${encodeURIComponent(savedDefinition.displayId)}/run`}
+            </button>
+            <button
+              type="button"
+              className={NAVIGATION_BUTTON_CLASS}
+              onClick={() => router.push(`/definitions/${encodeURIComponent(savedDefinition.displayId)}/run`)}
             >
               {uiText.definitionEditor.saved.runWithThisDefinition}
-            </Link>
+            </button>
           </div>
         </section>
       )}

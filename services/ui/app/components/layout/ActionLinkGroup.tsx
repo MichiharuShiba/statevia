@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { NAVIGATION_BUTTON_CLASS } from "./navigationButtonClass";
 import { useUiText } from "../../lib/uiTextContext";
 
 type ActionLinkPriority = "primary" | "secondary";
@@ -19,8 +20,7 @@ type ActionLinkGroupProps = {
 const ACTION_LINK_CLASS_MAP: Record<ActionLinkPriority, string> = {
   primary:
     "rounded-md border-2 border-[var(--brand-cta-border)] bg-[var(--brand-cta-bg)] px-3 py-1.5 text-sm font-medium text-[var(--brand-cta-fg)] hover:bg-[var(--brand-cta-bg-hover)]",
-  secondary:
-    "text-sm text-[var(--md-sys-color-primary)] underline underline-offset-2 hover:text-[var(--md-sys-color-primary)]"
+  secondary: NAVIGATION_BUTTON_CLASS
 };
 
 function getLinkClass(priority: ActionLinkPriority): string {
@@ -32,6 +32,7 @@ function getLinkClass(priority: ActionLinkPriority): string {
  */
 export function ActionLinkGroup({ links, className }: Readonly<ActionLinkGroupProps>) {
   const uiText = useUiText();
+  const router = useRouter();
   if (links.length === 0) return null;
 
   return (
@@ -42,9 +43,14 @@ export function ActionLinkGroup({ links, className }: Readonly<ActionLinkGroupPr
       {links.map((link) => {
         const priority = link.priority ?? "secondary";
         return (
-          <Link key={`${link.href}:${link.label}`} href={link.href} className={getLinkClass(priority)}>
+          <button
+            key={`${link.href}:${link.label}`}
+            type="button"
+            className={getLinkClass(priority)}
+            onClick={() => router.push(link.href)}
+          >
             {link.label}
-          </Link>
+          </button>
         );
       })}
     </nav>

@@ -423,7 +423,7 @@ export const uiText: UiText = {
     nodeId: "ノードID",
     definitionId: "定義ID",
     displayId: "表示ID",
-    resourceId: "resourceId",
+    resourceId: "リソースID",
     graphId: "グラフID",
     workflowInput: "入力データ",
     definitionEditor: "定義エディタ",
@@ -584,10 +584,10 @@ export const uiText: UiText = {
     executionIdLabel: (executionLabel: string) => `${executionLabel} ID`,
     compareLabel: "比較",
     realtimeSseLabel: "リアルタイム更新",
-    cancelRequestedLabel: "cancelRequested",
+    cancelRequestedLabel: "キャンセル要求",
     graphIdLine: (graphIdLabel: string, graphId: string) => `${graphIdLabel}: ${graphId}`,
     cancelRequestedLine: (cancelRequestedLabel: string, cancelRequested: boolean) =>
-      `${cancelRequestedLabel}: ${cancelRequested ? "true" : "false"}`,
+      `${cancelRequestedLabel}: ${cancelRequested ? "あり" : "なし"}`,
   },
   workflowsPage: {
     pagination: {
@@ -673,13 +673,13 @@ export const uiText: UiText = {
     },
     relatedWorkflows: {
       title: "関連ワークフロー",
-      description: "この定義に紐づく実行の一覧（フィルタは T5 予定）へ進みます。",
+      description: "この定義に紐づく実行の一覧へ進みます。",
       openList: "ワークフロー一覧を開く",
     },
     actions: {
       title: "編集・実行",
-      edit: "定義の編集（T10: 専用 Editor へ拡張予定）",
-      run: "新規実行を開始（T7: 専用 Run 画面へ拡張予定）",
+      edit: "定義の編集",
+      run: "新規実行を開始",
     },
     nav: {
       backToDefinitions: "定義一覧へ戻る",
