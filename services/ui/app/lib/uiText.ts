@@ -584,10 +584,10 @@ export const uiText: UiText = {
     executionIdLabel: (executionLabel: string) => `${executionLabel} ID`,
     compareLabel: "比較",
     realtimeSseLabel: "リアルタイム更新",
-    cancelRequestedLabel: "cancelRequested",
+    cancelRequestedLabel: "キャンセル要求",
     graphIdLine: (graphIdLabel: string, graphId: string) => `${graphIdLabel}: ${graphId}`,
     cancelRequestedLine: (cancelRequestedLabel: string, cancelRequested: boolean) =>
-      `${cancelRequestedLabel}: ${cancelRequested ? "true" : "false"}`,
+      `${cancelRequestedLabel}: ${cancelRequested ? "あり" : "なし"}`,
   },
   workflowsPage: {
     pagination: {
