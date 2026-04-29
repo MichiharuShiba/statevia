@@ -25,10 +25,10 @@ export function GraphLegend() {
   return (
     <section
       aria-label={uiText.graphLegend.aria.root}
-      className="absolute bottom-3 left-3 z-10 flex max-h-[min(50vh,280px)] flex-col gap-3 overflow-auto rounded-xl border border-zinc-200 bg-white/95 px-3 py-2.5 shadow-md backdrop-blur-sm sm:bottom-4 sm:left-4 sm:gap-4 sm:px-4 sm:py-3"
+      className="absolute bottom-3 left-14 z-10 flex max-h-[min(50vh,280px)] flex-col gap-3 overflow-auto rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]/95 px-3 py-2.5 shadow-md backdrop-blur-sm sm:bottom-4 sm:left-16 sm:gap-4 sm:px-4 sm:py-3"
     >
       <section aria-label={uiText.graphLegend.aria.nodeStatus} className="flex flex-col gap-1">
-        <h3 className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="text-[9px] font-semibold uppercase tracking-wide text-[var(--md-sys-color-on-surface-variant)]">
           {uiText.graphLegend.heading.nodeStatus}
         </h3>
         <ul className="flex flex-wrap gap-1">
@@ -49,7 +49,7 @@ export function GraphLegend() {
         </ul>
       </section>
       <section aria-label={uiText.graphLegend.aria.edgeType} className="flex flex-col gap-1">
-        <h3 className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="text-[9px] font-semibold uppercase tracking-wide text-[var(--md-sys-color-on-surface-variant)]">
           {uiText.graphLegend.heading.edgeType}
         </h3>
         <ul className="flex flex-wrap items-center gap-1">
@@ -75,7 +75,7 @@ export function GraphLegend() {
                   fill={item.stroke}
                 />
               </svg>
-              <span className="text-[9px] font-medium text-zinc-700">{item.label}</span>
+              <span className="text-[9px] font-medium text-[var(--md-sys-color-on-surface)]">{item.label}</span>
             </li>
           ))}
         </ul>

@@ -142,12 +142,12 @@ function WorkflowsPageClientInner() {
     <PageShell title={uiText.lists.workflows}>
 
       {listQuery.definitionId && (
-        <output className="block rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900" aria-live="polite">
-          <span className="text-sky-800">{uiText.workflowsPage.filter.contextActivePrefix} </span>
+        <output className="block rounded border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] px-3 py-2 text-sm text-[var(--md-sys-color-on-primary-container)]" aria-live="polite">
+          <span className="text-[var(--md-sys-color-on-primary-container)]">{uiText.workflowsPage.filter.contextActivePrefix} </span>
           <span className="font-mono break-all">{listQuery.definitionId}</span>
           <button
             type="button"
-            className="ml-2 text-sky-950 underline hover:no-underline"
+            className="ml-2 text-[var(--md-sys-color-primary)] underline hover:no-underline"
             onClick={() => {
               setDefinitionDraft("");
               goTo({
@@ -163,13 +163,13 @@ function WorkflowsPageClientInner() {
         </output>
       )}
 
-      <form onSubmit={handleFilterSubmit} className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-medium text-zinc-900">{uiText.workflowsPage.filter.title}</h2>
+      <form onSubmit={handleFilterSubmit} className="space-y-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm">
+        <h2 className="text-sm font-medium text-[var(--md-sys-color-on-surface)]">{uiText.workflowsPage.filter.title}</h2>
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block text-sm text-zinc-800">
-            <span className="text-zinc-600">{uiText.labels.status}</span>
+          <label className="block text-sm text-[var(--md-sys-color-on-surface)]">
+            <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.labels.status}</span>
             <select
-              className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm"
+              className="mt-1 w-full rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-2 py-1.5 text-sm text-[var(--md-sys-color-on-surface)]"
               value={currentStatus}
               onChange={(e) => {
                 const v = e.target.value as StatusFilter;
@@ -189,10 +189,10 @@ function WorkflowsPageClientInner() {
               <option value="Failed">Failed</option>
             </select>
           </label>
-          <label className="block text-sm text-zinc-800">
-            <span className="text-zinc-600">{uiText.workflowsPage.filter.definitionLabelWithHint(uiText.labels.definitionId)}</span>
+          <label className="block text-sm text-[var(--md-sys-color-on-surface)]">
+            <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.workflowsPage.filter.definitionLabelWithHint(uiText.labels.definitionId)}</span>
             <input
-              className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-sm"
+              className="mt-1 w-full rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-2 py-1.5 font-mono text-sm text-[var(--md-sys-color-on-surface)]"
               value={definitionDraft}
               onChange={(e) => setDefinitionDraft(e.target.value)}
               placeholder={uiText.workflowsPage.filter.definitionPlaceholder}
@@ -201,10 +201,10 @@ function WorkflowsPageClientInner() {
           </label>
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          <label className="min-w-[260px] flex-1 text-sm text-zinc-800">
-            <span className="text-zinc-600">{uiText.workflowsPage.filter.nameInputHint}</span>
+          <label className="min-w-[260px] flex-1 text-sm text-[var(--md-sys-color-on-surface)]">
+            <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.workflowsPage.filter.nameInputHint}</span>
             <input
-              className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-sm"
+              className="mt-1 w-full rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-2 py-1.5 font-mono text-sm text-[var(--md-sys-color-on-surface)]"
               value={nameDraft}
               onChange={(e) => setNameDraft(e.target.value)}
               autoComplete="off"
@@ -212,14 +212,14 @@ function WorkflowsPageClientInner() {
           </label>
           <button
             type="submit"
-            className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            className="rounded border-2 border-[var(--brand-cta-border)] bg-[var(--brand-cta-bg)] px-4 py-2 text-sm font-medium text-[var(--brand-cta-fg)] hover:bg-[var(--brand-cta-bg-hover)]"
             disabled={loading}
           >
             {uiText.workflowsPage.filter.search}
           </button>
           <button
             type="button"
-            className="rounded border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+            className="rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-4 py-2 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"
             onClick={() => {
               setNameDraft("");
               setDefinitionDraft("");
@@ -233,7 +233,7 @@ function WorkflowsPageClientInner() {
             {uiText.workflowsPage.filter.clear}
           </button>
         </div>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
           {uiText.workflowsPage.filter.pageInfo(listQuery.limit, listQuery.offset, currentPage1Based)}
         </p>
       </form>
@@ -247,11 +247,11 @@ function WorkflowsPageClientInner() {
       {!loading && items !== null && items.length > 0 && (
         <section aria-label={uiText.lists.workflows}>
           <div className="mb-2 flex items-center justify-between gap-3">
-            <p className="text-xs text-zinc-500">{uiText.workflowsPage.listSummary(totalCount ?? 0, currentPage1Based)}</p>
+            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{uiText.workflowsPage.listSummary(totalCount ?? 0, currentPage1Based)}</p>
             {pagination}
           </div>
           <ul
-            className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
+            className="divide-y divide-[var(--md-sys-color-outline)] overflow-hidden rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-sm"
             aria-label={uiText.lists.workflows}
           >
             {items.map((workflow) => {
@@ -261,14 +261,14 @@ function WorkflowsPageClientInner() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge status={workflow.status} />
-                      <span className="truncate font-mono text-sm text-zinc-900" title={workflow.displayId}>
+                      <span className="truncate font-mono text-sm text-[var(--md-sys-color-on-surface)]" title={workflow.displayId}>
                         {workflow.displayId}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500">{uiText.workflowsPage.updatedAt(formatDateTimeLocalized(updated, dateTimeLocale))}</p>
+                    <p className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">{uiText.workflowsPage.updatedAt(formatDateTimeLocalized(updated, dateTimeLocale))}</p>
                   </div>
                   <Link
-                    className="shrink-0 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
+                    className="shrink-0 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"
                     href={`/workflows/${encodeURIComponent(workflow.displayId)}`}
                   >
                     {uiText.workflowsPage.actions.openDetail}
@@ -307,7 +307,7 @@ export function WorkflowsPageClient() {
   return (
     <Suspense
       fallback={
-        <div className="p-6 text-sm text-zinc-500" aria-live="polite">
+        <div className="p-6 text-sm text-[var(--md-sys-color-on-surface-variant)]" aria-live="polite">
           {uiText.actions.loading}
         </div>
       }

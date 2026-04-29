@@ -14,7 +14,7 @@ export function ReplayBanner({ onBackToCurrent }: Readonly<ReplayBannerProps>) {
       <button
         type="button"
         onClick={onBackToCurrent}
-        className="shrink-0 rounded-lg border border-sky-300 bg-white px-2 py-1 font-medium text-sky-800 hover:bg-sky-100"
+        className="shrink-0 rounded-lg border border-[var(--md-sys-color-info)] bg-[var(--md-sys-color-info-container)] px-2 py-1 font-medium text-[var(--md-sys-color-on-info-container)] hover:opacity-90"
       >
         {uiText.executionTimeline.backToCurrent}
       </button>

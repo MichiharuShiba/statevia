@@ -88,11 +88,11 @@ export function DefinitionsPageClient() {
 
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <form className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-white p-4" onSubmit={handleSubmitSearch}>
+      <form className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4" onSubmit={handleSubmitSearch}>
         <label className="min-w-[260px] flex-1 text-sm">
-          <span className="text-zinc-600">{uiText.definitionsPage.search.label}</span>
+          <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionsPage.search.label}</span>
           <input
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-2 text-sm text-[var(--md-sys-color-on-surface)]"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             placeholder={uiText.definitionsPage.search.placeholder}
@@ -100,14 +100,14 @@ export function DefinitionsPageClient() {
         </label>
         <button
           type="submit"
-          className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+          className="rounded border-2 border-[var(--brand-cta-border)] bg-[var(--brand-cta-bg)] px-4 py-2 text-sm font-medium text-[var(--brand-cta-fg)] hover:bg-[var(--brand-cta-bg-hover)]"
           disabled={loading}
         >
           {uiText.definitionsPage.search.submit}
         </button>
         <button
           type="button"
-          className="rounded border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+          className="rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-4 py-2 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"
           onClick={() => {
             setSearchInput("");
             setSubmittedSearch("");
@@ -119,7 +119,7 @@ export function DefinitionsPageClient() {
         </button>
         <Link
           href="/definitions/new"
-          className="rounded bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
+          className="rounded border-2 border-[var(--brand-cta-border)] bg-[var(--brand-cta-bg)] px-4 py-2 text-sm font-medium text-[var(--brand-cta-fg)] hover:bg-[var(--brand-cta-bg-hover)]"
         >
           {uiText.definitionsPage.actions.createNew}
         </Link>
@@ -139,20 +139,20 @@ export function DefinitionsPageClient() {
       {!loading && items !== null && items.length > 0 && (
         <section aria-label={uiText.lists.definitions}>
           <div className="mb-2 flex items-center justify-between gap-3">
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
               {submittedSearch ? uiText.definitionsPage.searchSummaryPrefix(submittedSearch) : ""}
               {uiText.definitionsPage.listSummary(totalCount ?? 0, currentPage)}
             </p>
             {paginationNav}
           </div>
-          <ul className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+          <ul className="divide-y divide-[var(--md-sys-color-outline)] overflow-hidden rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-sm">
             {items.map((definition) => (
               <li key={definition.displayId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-zinc-900" title={definition.name}>
+                  <p className="truncate font-medium text-[var(--md-sys-color-on-surface)]" title={definition.name}>
                     {definition.name}
                   </p>
-                  <p className="mt-1 text-xs text-zinc-500">
+                  <p className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
                     {uiText.definitionsPage.displayIdAndCreatedAt(
                       uiText.labels.displayId,
                       definition.displayId,
@@ -162,7 +162,7 @@ export function DefinitionsPageClient() {
                 </div>
                 <Link
                   href={`/definitions/${encodeURIComponent(definition.displayId)}`}
-                  className="shrink-0 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
+                  className="shrink-0 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"
                 >
                   {uiText.definitionsPage.actions.openDetail}
                 </Link>

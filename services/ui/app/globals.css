@@ -1,24 +1,110 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 :root {
     color-scheme: light;
-    --tone-header-bg: #0a1a2f;
-    --tone-header-fg: #f8fafc;
-    --tone-header-fg-muted: #c6d3e6;
-    --tone-surface-bg: #ffffff;
-    --tone-page-bg: #f5f7fb;
-    --tone-border: #d9e1ec;
-    --tone-fg-strong: #0f172a;
-    --tone-fg-muted: #475569;
-    --tone-accent: #2563eb;
-    --tone-accent-soft: #eff6ff;
-    --tone-accent-soft-hover: #dbeafe;
-    --tone-accent-strong: #1d4ed8;
-    --tone-accent-strong-hover: #1e40af;
+    /* Brand (keep custom identity) */
+    --brand-header-bg: #0a1a2f;
+    --brand-header-fg: #f8fafc;
+    --brand-header-fg-muted: #c6d3e6;
+    --brand-cta-bg: #0a1a2f;
+    --brand-cta-fg: #f8fafc;
+    --brand-cta-border: #0a1a2f;
+    --brand-cta-bg-hover: #132947;
+
+    /* Material Design 3 tone-inspired semantic tokens */
+    --md-sys-color-primary: #2563eb;
+    --md-sys-color-on-primary: #ffffff;
+    --md-sys-color-primary-container: #eff6ff;
+    --md-sys-color-on-primary-container: #1e3a8a;
+    --md-sys-color-secondary-container: #dbeafe;
+    --md-sys-color-surface: #ffffff;
+    --md-sys-color-surface-container: #fafafa;
+    --md-sys-color-surface-container-high: #f5f7fb;
+    --md-sys-color-on-surface: #0f172a;
+    --md-sys-color-on-surface-variant: #475569;
+    --md-sys-color-outline: #d9e1ec;
+    --md-sys-color-outline-variant: #d4d4d8;
+
+    /* Extended semantic status tokens */
+    --md-sys-color-info: #2563eb;
+    --md-sys-color-on-info: #ffffff;
+    --md-sys-color-info-container: #eff6ff;
+    --md-sys-color-on-info-container: #1e3a8a;
+    --md-sys-color-success: #059669;
+    --md-sys-color-on-success: #ffffff;
+    --md-sys-color-success-container: #ecfdf5;
+    --md-sys-color-on-success-container: #065f46;
+    --md-sys-color-warning: #d97706;
+    --md-sys-color-on-warning: #ffffff;
+    --md-sys-color-warning-container: #fffbeb;
+    --md-sys-color-on-warning-container: #92400e;
+    --md-sys-color-error: #dc2626;
+    --md-sys-color-on-error: #ffffff;
+    --md-sys-color-error-container: #fef2f2;
+    --md-sys-color-on-error-container: #991b1b;
+    --md-sys-color-neutral: #e4e4e7;
+    --md-sys-color-on-neutral: #27272a;
+    --md-sys-color-neutral-container: #fafafa;
+    --md-sys-color-on-neutral-container: #3f3f46;
+
+}
+
+html[data-theme="dark"] {
+    color-scheme: dark;
+    /* Brand stays stable in dark mode */
+    --brand-header-bg: #0b1220;
+    --brand-header-fg: #f8fafc;
+    --brand-header-fg-muted: #d1d5db;
+    --brand-cta-bg: #f8fafc1a;
+    --brand-cta-fg: #93c5fd;
+    --brand-cta-border: #60a5fa;
+    --brand-cta-bg-hover: #f8fafc2b;
+
+    /* Material Design 3 tone-inspired semantic tokens */
+    --md-sys-color-primary: #60a5fa;
+    --md-sys-color-on-primary: #0b1b34;
+    --md-sys-color-primary-container: #1e3a8a;
+    --md-sys-color-on-primary-container: #dbeafe;
+    --md-sys-color-secondary-container: #2a2a2a;
+    --md-sys-color-surface: #262626;
+    --md-sys-color-surface-container: #2f2f2f;
+    --md-sys-color-surface-container-high: #171717;
+    --md-sys-color-on-surface: #f5f5f5;
+    --md-sys-color-on-surface-variant: #a3a3a3;
+    --md-sys-color-outline: #404040;
+    --md-sys-color-outline-variant: #525252;
+
+    /* Extended semantic status tokens */
+    --md-sys-color-info: #3b82f6;
+    --md-sys-color-on-info: #ffffff;
+    --md-sys-color-info-container: #1e3a8a;
+    --md-sys-color-on-info-container: #dbeafe;
+    --md-sys-color-success: #10b981;
+    --md-sys-color-on-success: #052e1a;
+    --md-sys-color-success-container: #064e3b;
+    --md-sys-color-on-success-container: #d1fae5;
+    --md-sys-color-warning: #f59e0b;
+    --md-sys-color-on-warning: #422006;
+    --md-sys-color-warning-container: #78350f;
+    --md-sys-color-on-warning-container: #fef3c7;
+    --md-sys-color-error: #ef4444;
+    --md-sys-color-on-error: #450a0a;
+    --md-sys-color-error-container: #7f1d1d;
+    --md-sys-color-on-error-container: #fee2e2;
+    --md-sys-color-neutral: #737373;
+    --md-sys-color-on-neutral: #f5f5f5;
+    --md-sys-color-neutral-container: #262626;
+    --md-sys-color-on-neutral-container: #e5e5e5;
+
 }
 
 html {
     scrollbar-gutter: auto;
     overflow-y: scroll;
+}
+
+body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }

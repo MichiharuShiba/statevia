@@ -36,10 +36,10 @@ export function PageShell({
 
   return (
     <div className={shellClassName}>
-      <header className="flex flex-col items-start gap-3 rounded-2xl border border-[var(--tone-border)] bg-[var(--tone-surface-bg)] px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-5 sm:py-4">
+      <header className="flex flex-col items-start gap-3 rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-5 sm:py-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold text-[var(--tone-fg-strong)]">{title}</h1>
-          {description ? <p className="mt-1 text-sm text-[var(--tone-fg-muted)]">{description}</p> : null}
+          <h1 className="text-xl font-semibold text-[var(--md-sys-color-on-surface)]">{title}</h1>
+          {description ? <p className="mt-1 text-sm text-[var(--md-sys-color-on-surface-variant)]">{description}</p> : null}
         </div>
         {primaryActions ? <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">{primaryActions}</div> : null}
       </header>
@@ -47,7 +47,7 @@ export function PageShell({
       <section className="flex flex-col gap-4">{children}</section>
 
       {secondaryActions ? (
-        <footer className="flex flex-col items-start gap-2 border-t border-[var(--tone-border)] pt-3 text-sm text-[var(--tone-fg-muted)] sm:flex-row sm:items-center sm:gap-3">
+        <footer className="flex flex-col items-start gap-2 border-t border-[var(--md-sys-color-outline)] pt-3 text-sm text-[var(--md-sys-color-on-surface-variant)] sm:flex-row sm:items-center sm:gap-3">
           {secondaryActions}
         </footer>
       ) : null}

@@ -52,17 +52,17 @@ export function ExecutionHeader({
   const status = execution?.status;
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <section className="rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex-1">
           {executionIdEditable ? (
             <>
-              <label htmlFor="execution-id-input" className="block text-xs font-semibold text-zinc-700">
+              <label htmlFor="execution-id-input" className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)]">
                 {uiText.executionHeader.executionIdLabel(uiText.entities.execution)}
               </label>
               <input
                 id="execution-id-input"
-                className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                className="mt-1 w-full rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-2 text-sm text-[var(--md-sys-color-on-surface)] outline-none focus:border-[var(--md-sys-color-primary)]"
                 value={executionId}
                 onChange={(event) => onExecutionIdChange(event.target.value)}
                 placeholder={uiText.executionHeader.placeholderExecutionId}
@@ -70,10 +70,10 @@ export function ExecutionHeader({
             </>
           ) : (
             <>
-              <span className="block text-xs font-semibold text-zinc-700">
+              <span className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)]">
                 {uiText.executionHeader.executionIdLabel(uiText.entities.execution)}
               </span>
-              <p className="mt-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-sm text-zinc-900">
+              <p className="mt-1 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-2 font-mono text-sm text-[var(--md-sys-color-on-surface)]">
                 {executionId}
               </p>
             </>
@@ -82,7 +82,7 @@ export function ExecutionHeader({
         <div className="flex flex-wrap items-center gap-2">
           {executionIdEditable && (
             <button
-              className="rounded-xl border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-50"
+              className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-2 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] disabled:opacity-50"
               onClick={onLoad}
               disabled={loading}
             >
@@ -99,23 +99,23 @@ export function ExecutionHeader({
             </button>
           )}
           {onCompareModeChange && (
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--md-sys-color-on-surface)]">
               <input
                 type="checkbox"
                 checked={compareMode}
                 onChange={(e) => onCompareModeChange(e.target.checked)}
-                className="rounded border-zinc-300"
+                className="rounded border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]"
               />
               <span>{uiText.executionHeader.compareLabel}</span>
             </label>
           )}
           {onStreamEnabledChange && (
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--md-sys-color-on-surface)]">
               <input
                 type="checkbox"
                 checked={streamEnabled}
                 onChange={(e) => onStreamEnabledChange(e.target.checked)}
-                className="rounded border-zinc-300"
+                className="rounded border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]"
               />
               <span>{uiText.executionHeader.realtimeSseLabel}</span>
             </label>
@@ -125,7 +125,7 @@ export function ExecutionHeader({
       </div>
 
       {execution && (
-        <div className="mt-4 rounded-xl bg-zinc-50 p-3 text-xs text-zinc-700">
+        <div className="mt-4 rounded-xl bg-[var(--md-sys-color-surface-container)] p-3 text-xs text-[var(--md-sys-color-on-surface)]">
           <div className="flex items-center justify-between">
             <div className="text-sm font-semibold">{uiText.entities.execution}</div>
             {status && (

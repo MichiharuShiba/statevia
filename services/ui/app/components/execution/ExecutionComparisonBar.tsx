@@ -34,19 +34,19 @@ function DiffRow({
   return (
     <button
       type="button"
-      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-zinc-100"
+      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[var(--md-sys-color-surface-container-high)]"
       onClick={() => onSelect?.(item.nodeId)}
     >
       <span
         className={
           item.isFailureOrCancel
             ? "font-semibold text-red-700"
-            : "font-medium text-zinc-700"
+            : "font-medium text-[var(--md-sys-color-on-surface)]"
         }
       >
         {item.nodeId}
       </span>
-      <span className="text-zinc-500">{label}</span>
+      <span className="text-[var(--md-sys-color-on-surface-variant)]">{label}</span>
       {item.statusLeft != null && styleLeft && (
         <span
           className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold ${styleLeft.badgeClass}`}
@@ -80,37 +80,37 @@ export function ExecutionComparisonBar({
   const otherDiffs = diff?.nodeDiffs.filter((d) => !d.isFailureOrCancel) ?? [];
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 text-sm font-semibold text-zinc-800">{uiText.executionComparison.title}</div>
+    <section className="rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm">
+      <div className="mb-3 text-sm font-semibold text-[var(--md-sys-color-on-surface)]">{uiText.executionComparison.title}</div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
-          <div className="text-xs font-semibold text-zinc-500">
+          <div className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
             {uiText.executionComparison.executionABaselineLabel(uiText.entities.execution)}
           </div>
           {executionLeft ? (
-            <div className="mt-1 rounded-lg bg-zinc-50 px-2 py-1.5 font-mono text-xs text-zinc-700">
+            <div className="mt-1 rounded-lg bg-[var(--md-sys-color-surface-container)] px-2 py-1.5 font-mono text-xs text-[var(--md-sys-color-on-surface)]">
               {executionLeft.displayId}
-              <span className="ml-2 text-zinc-500">({executionLeft.status})</span>
+              <span className="ml-2 text-[var(--md-sys-color-on-surface-variant)]">({executionLeft.status})</span>
             </div>
           ) : (
-            <div className="mt-1 text-xs text-zinc-500">{uiText.executionComparison.state.notLoaded}</div>
+            <div className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">{uiText.executionComparison.state.notLoaded}</div>
           )}
         </div>
         <div>
-          <label htmlFor="execution-b-id" className="block text-xs font-semibold text-zinc-500">
+          <label htmlFor="execution-b-id" className="block text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
             {uiText.executionComparison.executionBLabel(uiText.entities.execution)}
           </label>
           <div className="mt-1 flex gap-2">
             <input
               id="execution-b-id"
-              className="flex-1 rounded-lg border border-zinc-200 px-2 py-1.5 font-mono text-xs outline-none focus:border-zinc-400"
+              className="flex-1 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-2 py-1.5 font-mono text-xs text-[var(--md-sys-color-on-surface)] outline-none focus:border-[var(--md-sys-color-primary)]"
               value={executionIdRight}
               onChange={(e) => onExecutionIdRightChange(e.target.value)}
               placeholder={uiText.executionComparison.executionIdPlaceholder}
             />
             <button
               type="button"
-              className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium hover:bg-zinc-50 disabled:opacity-50"
+              className="rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-1.5 text-xs font-medium text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] disabled:opacity-50"
               onClick={onLoadRight}
               disabled={loadingRight}
             >
@@ -118,17 +118,17 @@ export function ExecutionComparisonBar({
             </button>
           </div>
           {executionRight && (
-            <div className="mt-1 text-xs text-zinc-600">
+            <div className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
               {executionRight.displayId} ({executionRight.status})
             </div>
           )}
         </div>
         <div className="sm:col-span-2 lg:col-span-1">
-          <div className="text-xs font-semibold text-zinc-500">{uiText.executionComparison.summary.title}</div>
+          <div className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">{uiText.executionComparison.summary.title}</div>
           {diff ? (
-            <div className="mt-1 max-h-48 overflow-y-auto rounded-lg border border-zinc-100 bg-zinc-50/50">
+            <div className="mt-1 max-h-48 overflow-y-auto rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)]/60">
               {failureOrCancelDiffs.length > 0 && (
-                <div className="border-b border-zinc-200 px-2 py-1.5">
+                <div className="border-b border-[var(--md-sys-color-outline)] px-2 py-1.5">
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-red-600">
                     {uiText.executionComparison.summary.failedOrCancelled}
                   </div>
@@ -143,7 +143,7 @@ export function ExecutionComparisonBar({
               )}
               {otherDiffs.length > 0 && (
                 <div className="px-2 py-1.5">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--md-sys-color-on-surface-variant)]">
                     {uiText.executionComparison.summary.others}
                   </div>
                   {otherDiffs.map((item) => (
@@ -156,13 +156,13 @@ export function ExecutionComparisonBar({
                 </div>
               )}
               {diff.nodeDiffs.length === 0 && (
-                <div className="px-2 py-3 text-center text-xs text-zinc-500">
+                <div className="px-2 py-3 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
                   {uiText.executionComparison.summary.noDiff}
                 </div>
               )}
             </div>
           ) : (
-            <div className="mt-1 text-xs text-zinc-500">
+            <div className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
               {uiText.executionComparison.summary.loadBothToShow}
             </div>
           )}

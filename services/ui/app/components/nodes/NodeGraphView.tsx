@@ -58,7 +58,7 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
         ? "ring-2 ring-red-500 ring-offset-1"
         : "ring-2 ring-amber-400 ring-offset-1";
   }
-  const wrapClass = `${appearance.shapeClass} relative border-2 p-3 shadow-sm ${style.borderClass} ${style.bgClass} ${isRunning ? "opacity-80 text-zinc-600" : ""} ${data.selected ? "outline outline-2 outline-zinc-400" : ""} ${diffRing}`;
+  const wrapClass = `${appearance.shapeClass} relative border-2 p-3 shadow-sm ${style.borderClass} ${style.bgClass} ${isRunning ? "opacity-80 text-[var(--md-sys-color-on-surface-variant)]" : ""} ${data.selected ? "outline outline-2 outline-[var(--md-sys-color-primary)]" : ""} ${diffRing}`;
 
   return (
     <button
@@ -66,9 +66,9 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
       className={`w-full text-left ${wrapClass}`}
       onClick={() => data.onSelect(data.nodeId)}
     >
-      {isFork && <div className="absolute inset-x-0 top-0 h-3 rounded-t-2xl bg-zinc-900/10" />}
-      {isJoin && <div className="absolute inset-x-0 bottom-0 h-3 rounded-b-2xl bg-zinc-900/10" />}
-      <Handle type="target" position={Position.Left} className="h-2 w-2 border-zinc-300 bg-zinc-200" />
+      {isFork && <div className="absolute inset-x-0 top-0 h-3 rounded-t-2xl bg-black/10 dark:bg-white/10" />}
+      {isJoin && <div className="absolute inset-x-0 bottom-0 h-3 rounded-b-2xl bg-black/10 dark:bg-white/10" />}
+      <Handle type="target" position={Position.Left} className="h-2 w-2 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]" />
       <div className={`flex items-center justify-between gap-2 text-xs ${isFork ? "pt-1.5" : ""} ${isJoin ? "pb-1.5" : ""}`}>
         <span>{appearance.icon}</span>
         <span className="font-semibold">{appearance.label}</span>
@@ -76,9 +76,9 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
       </div>
       <div className="mt-2 space-y-1 text-xs">
         <div className="font-mono">{data.label}</div>
-        <div className="text-zinc-600">{uiText.nodeGraph.meta.type(data.nodeType)}</div>
-        <div className="text-zinc-600">{uiText.nodeGraph.meta.attempt(data.attempt)}</div>
-        {data.waitKey && <div className="text-zinc-600">{uiText.nodeGraph.meta.waitKey(data.waitKey)}</div>}
+        <div className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.nodeGraph.meta.type(data.nodeType)}</div>
+        <div className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.nodeGraph.meta.attempt(data.attempt)}</div>
+        {data.waitKey && <div className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.nodeGraph.meta.waitKey(data.waitKey)}</div>}
       </div>
       {data.status === "WAITING" && (
         <div className="mt-3">
@@ -92,18 +92,18 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
           >
             {uiText.actions.resume}
           </button>
-          {data.resumeDisabledReason && <p className="mt-1 text-[10px] text-zinc-600">{data.resumeDisabledReason}</p>}
+          {data.resumeDisabledReason && <p className="mt-1 text-[10px] text-[var(--md-sys-color-on-surface-variant)]">{data.resumeDisabledReason}</p>}
         </div>
       )}
-      <Handle type="source" position={Position.Right} className="h-2 w-2 border-zinc-300 bg-zinc-200" />
+      <Handle type="source" position={Position.Right} className="h-2 w-2 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]" />
     </button>
   );
 }
 
 function GroupNodeComponent({ data }: NodeProps<GroupNodeData>) {
   return (
-    <div className="h-full w-full rounded-2xl border border-dashed border-zinc-200 bg-zinc-100/60 p-2">
-      <span className="rounded bg-zinc-200 px-2 py-0.5 text-[10px] font-semibold text-zinc-700">{data.label}</span>
+    <div className="h-full w-full rounded-2xl border border-dashed border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)]/70 p-2">
+      <span className="rounded bg-[var(--md-sys-color-surface-container-high)] px-2 py-0.5 text-[10px] font-semibold text-[var(--md-sys-color-on-surface)]">{data.label}</span>
     </div>
   );
 }
@@ -184,7 +184,7 @@ export function NodeGraphView({
   const graphHeightClass = heightClassName ?? "h-[620px]";
 
   return (
-    <div className={`relative ${graphHeightClass} overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm`}>
+    <div className={`relative ${graphHeightClass} overflow-hidden rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-sm`}>
       <ReactFlow
         nodes={graphNodes}
         edges={graphEdges}

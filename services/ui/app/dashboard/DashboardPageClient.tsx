@@ -68,16 +68,16 @@ export function DashboardPageClient() {
       {!loading && items !== null && items.length > 0 && (
         <section aria-label={uiText.dashboard.aria.recentWorkflowsList}>
           <div className="mb-2 flex items-center justify-between gap-3 text-sm">
-            <p className="text-xs text-zinc-500">{totalCountLabel}</p>
+            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{totalCountLabel}</p>
             <button
               type="button"
-              className="self-start text-sm text-blue-700 underline hover:text-blue-900"
+              className="self-start text-sm text-[var(--md-sys-color-primary)] underline hover:text-[var(--md-sys-color-primary)]"
               onClick={() => void load()}
             >
               {uiText.actions.reload}
             </button>
           </div>
-          <ul className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+          <ul className="divide-y divide-[var(--md-sys-color-outline)] overflow-hidden rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-sm">
             {items.map((workflow) => {
               const updated = workflow.updatedAt ?? workflow.startedAt;
               return (
@@ -85,14 +85,14 @@ export function DashboardPageClient() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge status={workflow.status} />
-                      <span className="truncate font-mono text-sm text-zinc-900" title={workflow.displayId}>
+                      <span className="truncate font-mono text-sm text-[var(--md-sys-color-on-surface)]" title={workflow.displayId}>
                         {workflow.displayId}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500">{uiText.dashboard.updatedAt(formatDateTimeLocalized(updated, dateTimeLocale))}</p>
+                    <p className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">{uiText.dashboard.updatedAt(formatDateTimeLocalized(updated, dateTimeLocale))}</p>
                   </div>
                   <Link
-                    className="shrink-0 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
+                    className="shrink-0 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"
                     href={`/workflows/${encodeURIComponent(workflow.displayId)}`}
                   >
                     {uiText.dashboard.actions.openDetail}

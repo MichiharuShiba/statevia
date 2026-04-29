@@ -13,100 +13,100 @@ export type StatusStyle = {
 
 const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
   Running: {
-    badgeClass: "bg-blue-600 text-white",
-    borderClass: "border-blue-300",
-    bgClass: "bg-blue-50",
-    textClass: "text-blue-900",
+    badgeClass: "bg-[var(--md-sys-color-info)] text-[var(--md-sys-color-on-info)]",
+    borderClass: "border-[var(--md-sys-color-info)]",
+    bgClass: "bg-[var(--md-sys-color-info-container)]",
+    textClass: "text-[var(--md-sys-color-on-info-container)]",
     icon: "•",
     emphasisRank: 20
   },
   Completed: {
-    badgeClass: "bg-emerald-600 text-white",
-    borderClass: "border-emerald-300",
-    bgClass: "bg-emerald-50",
-    textClass: "text-emerald-900",
+    badgeClass: "bg-[var(--md-sys-color-success)] text-[var(--md-sys-color-on-success)]",
+    borderClass: "border-[var(--md-sys-color-success)]",
+    bgClass: "bg-[var(--md-sys-color-success-container)]",
+    textClass: "text-[var(--md-sys-color-on-success-container)]",
     icon: "✓",
     emphasisRank: 40
   },
   Failed: {
-    badgeClass: "bg-red-500 text-white",
-    borderClass: "border-red-400",
-    bgClass: "bg-red-50",
-    textClass: "text-red-900",
+    badgeClass: "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)]",
+    borderClass: "border-[var(--md-sys-color-error)]",
+    bgClass: "bg-[var(--md-sys-color-error-container)]",
+    textClass: "text-[var(--md-sys-color-on-error-container)]",
     icon: "⚠",
     emphasisRank: 80
   },
   Cancelled: {
-    badgeClass: "bg-red-600 text-white",
-    borderClass: "border-red-600",
-    bgClass: "bg-red-50",
-    textClass: "text-red-900",
+    badgeClass: "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)]",
+    borderClass: "border-[var(--md-sys-color-error)]",
+    bgClass: "bg-[var(--md-sys-color-error-container)]",
+    textClass: "text-[var(--md-sys-color-on-error-container)]",
     icon: "✕",
     emphasisRank: 100
   },
   IDLE: {
-    badgeClass: "bg-zinc-300 text-zinc-800",
-    borderClass: "border-zinc-200",
-    bgClass: "bg-white",
-    textClass: "text-zinc-800",
+    badgeClass: "bg-[var(--md-sys-color-neutral)] text-[var(--md-sys-color-on-neutral)]",
+    borderClass: "border-[var(--md-sys-color-outline-variant)]",
+    bgClass: "bg-[var(--md-sys-color-neutral-container)]",
+    textClass: "text-[var(--md-sys-color-on-neutral-container)]",
     icon: "○",
     emphasisRank: 10
   },
   READY: {
-    badgeClass: "bg-blue-600 text-white",
-    borderClass: "border-blue-300",
-    bgClass: "bg-blue-50",
-    textClass: "text-blue-900",
+    badgeClass: "bg-[var(--md-sys-color-info)] text-[var(--md-sys-color-on-info)]",
+    borderClass: "border-[var(--md-sys-color-info)]",
+    bgClass: "bg-[var(--md-sys-color-info-container)]",
+    textClass: "text-[var(--md-sys-color-on-info-container)]",
     icon: "•",
     emphasisRank: 20
   },
   RUNNING: {
-    badgeClass: "bg-zinc-200 text-zinc-800",
-    borderClass: "border-zinc-200",
-    bgClass: "bg-white",
-    textClass: "text-zinc-600",
+    badgeClass: "bg-[var(--md-sys-color-neutral)] text-[var(--md-sys-color-on-neutral)]",
+    borderClass: "border-[var(--md-sys-color-outline-variant)]",
+    bgClass: "bg-[var(--md-sys-color-neutral-container)]",
+    textClass: "text-[var(--md-sys-color-on-neutral-container)]",
     icon: "▶",
     emphasisRank: 30
   },
   WAITING: {
-    badgeClass: "bg-amber-500 text-white",
-    borderClass: "border-amber-400",
-    bgClass: "bg-amber-50",
-    textClass: "text-amber-900",
+    badgeClass: "bg-[var(--md-sys-color-warning)] text-[var(--md-sys-color-on-warning)]",
+    borderClass: "border-[var(--md-sys-color-warning)]",
+    bgClass: "bg-[var(--md-sys-color-warning-container)]",
+    textClass: "text-[var(--md-sys-color-on-warning-container)]",
     icon: "⏸",
     emphasisRank: 70
   },
   SUCCEEDED: {
-    badgeClass: "bg-emerald-600 text-white",
-    borderClass: "border-emerald-300",
-    bgClass: "bg-emerald-50",
-    textClass: "text-emerald-900",
+    badgeClass: "bg-[var(--md-sys-color-success)] text-[var(--md-sys-color-on-success)]",
+    borderClass: "border-[var(--md-sys-color-success)]",
+    bgClass: "bg-[var(--md-sys-color-success-container)]",
+    textClass: "text-[var(--md-sys-color-on-success-container)]",
     icon: "✓",
     emphasisRank: 40
   },
   FAILED: {
-    badgeClass: "bg-red-500 text-white",
-    borderClass: "border-red-400",
-    bgClass: "bg-red-50",
-    textClass: "text-red-900",
+    badgeClass: "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)]",
+    borderClass: "border-[var(--md-sys-color-error)]",
+    bgClass: "bg-[var(--md-sys-color-error-container)]",
+    textClass: "text-[var(--md-sys-color-on-error-container)]",
     icon: "⚠",
     emphasisRank: 80
   },
   CANCELED: {
-    badgeClass: "bg-red-600 text-white",
-    borderClass: "border-red-600",
-    bgClass: "bg-red-50",
-    textClass: "text-red-900",
+    badgeClass: "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)]",
+    borderClass: "border-[var(--md-sys-color-error)]",
+    bgClass: "bg-[var(--md-sys-color-error-container)]",
+    textClass: "text-[var(--md-sys-color-on-error-container)]",
     icon: "✕",
     emphasisRank: 100
   }
 };
 
 const DEFAULT_STYLE: StatusStyle = {
-  badgeClass: "bg-zinc-300 text-zinc-800",
-  borderClass: "border-zinc-200",
-  bgClass: "bg-white",
-  textClass: "text-zinc-800",
+  badgeClass: "bg-[var(--md-sys-color-neutral)] text-[var(--md-sys-color-on-neutral)]",
+  borderClass: "border-[var(--md-sys-color-outline-variant)]",
+  bgClass: "bg-[var(--md-sys-color-neutral-container)]",
+  textClass: "text-[var(--md-sys-color-on-neutral-container)]",
   icon: "○",
   emphasisRank: 0
 };

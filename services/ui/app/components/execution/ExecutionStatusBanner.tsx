@@ -18,7 +18,7 @@ export function ExecutionStatusBanner({ cancelRequested, terminal }: Readonly<Ex
   }
   if (terminal) {
     return (
-      <div className="rounded-xl border border-zinc-300 bg-zinc-100 px-3 py-2 text-xs text-zinc-800">
+      <div className="rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] px-3 py-2 text-xs text-[var(--md-sys-color-on-surface)]">
         {uiText.executionStatusBanner.terminalNotice(uiText.entities.execution)}
       </div>
     );
