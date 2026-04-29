@@ -212,7 +212,7 @@ function WorkflowsPageClientInner() {
           </label>
           <button
             type="submit"
-            className="rounded bg-[var(--md-sys-color-primary)] px-4 py-2 text-sm font-medium text-[var(--md-sys-color-on-primary)] hover:opacity-90"
+            className="rounded border-2 border-[var(--brand-cta-border)] bg-[var(--brand-cta-bg)] px-4 py-2 text-sm font-medium text-[var(--brand-cta-fg)] hover:bg-[var(--brand-cta-bg-hover)]"
             disabled={loading}
           >
             {uiText.workflowsPage.filter.search}

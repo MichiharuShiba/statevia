@@ -86,7 +86,7 @@ export default function DefinitionRunStartPage() {
         </label>
         <button
           type="button"
-          className="rounded bg-[var(--md-sys-color-primary)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-primary)] hover:opacity-90 disabled:opacity-50"
+          className="rounded border-2 border-[var(--brand-cta-border)] bg-[var(--brand-cta-bg)] px-3 py-1.5 text-sm text-[var(--brand-cta-fg)] hover:bg-[var(--brand-cta-bg-hover)] disabled:opacity-50"
           onClick={() => void handleStart()}
           disabled={starting || !definitionId.trim()}
         >

@@ -8,6 +8,10 @@
     --brand-header-bg: #0a1a2f;
     --brand-header-fg: #f8fafc;
     --brand-header-fg-muted: #c6d3e6;
+    --brand-cta-bg: #0a1a2f;
+    --brand-cta-fg: #f8fafc;
+    --brand-cta-border: #0a1a2f;
+    --brand-cta-bg-hover: #132947;
 
     /* Material Design 3 tone-inspired semantic tokens */
     --md-sys-color-primary: #2563eb;
@@ -53,6 +57,10 @@ html[data-theme="dark"] {
     --brand-header-bg: #0b1220;
     --brand-header-fg: #f8fafc;
     --brand-header-fg-muted: #d1d5db;
+    --brand-cta-bg: #f8fafc1a;
+    --brand-cta-fg: #93c5fd;
+    --brand-cta-border: #60a5fa;
+    --brand-cta-bg-hover: #f8fafc2b;
 
     /* Material Design 3 tone-inspired semantic tokens */
     --md-sys-color-primary: #60a5fa;
@@ -95,4 +103,8 @@ html[data-theme="dark"] {
 html {
     scrollbar-gutter: auto;
     overflow-y: scroll;
+}
+
+body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }

@@ -25,7 +25,7 @@ export function GraphLegend() {
   return (
     <section
       aria-label={uiText.graphLegend.aria.root}
-      className="absolute bottom-3 left-3 z-10 flex max-h-[min(50vh,280px)] flex-col gap-3 overflow-auto rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]/95 px-3 py-2.5 shadow-md backdrop-blur-sm sm:bottom-4 sm:left-4 sm:gap-4 sm:px-4 sm:py-3"
+      className="absolute bottom-3 left-14 z-10 flex max-h-[min(50vh,280px)] flex-col gap-3 overflow-auto rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]/95 px-3 py-2.5 shadow-md backdrop-blur-sm sm:bottom-4 sm:left-16 sm:gap-4 sm:px-4 sm:py-3"
     >
       <section aria-label={uiText.graphLegend.aria.nodeStatus} className="flex flex-col gap-1">
         <h3 className="text-[9px] font-semibold uppercase tracking-wide text-[var(--md-sys-color-on-surface-variant)]">
