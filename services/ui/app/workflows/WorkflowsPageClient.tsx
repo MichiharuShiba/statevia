@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { StatusBadge } from "../components/common/StatusBadge";
 import { ListPagination } from "../components/layout/ListPagination";
+import { NAVIGATION_BUTTON_CLASS, OPERATION_TEXT_BUTTON_CLASS } from "../components/layout/navigationButtonClass";
 import { Toast } from "../components/Toast";
 import { PageShell } from "../components/layout/PageShell";
 import { PageState } from "../components/layout/PageState";
@@ -147,7 +147,7 @@ function WorkflowsPageClientInner() {
           <span className="font-mono break-all">{listQuery.definitionId}</span>
           <button
             type="button"
-            className="ml-2 text-[var(--md-sys-color-primary)] underline hover:no-underline"
+            className={`ml-2 ${OPERATION_TEXT_BUTTON_CLASS}`}
             onClick={() => {
               setDefinitionDraft("");
               goTo({
@@ -267,12 +267,13 @@ function WorkflowsPageClientInner() {
                     </div>
                     <p className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">{uiText.workflowsPage.updatedAt(formatDateTimeLocalized(updated, dateTimeLocale))}</p>
                   </div>
-                  <Link
-                    className="shrink-0 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"
-                    href={`/workflows/${encodeURIComponent(workflow.displayId)}`}
+                  <button
+                    type="button"
+                    className={`shrink-0 ${NAVIGATION_BUTTON_CLASS}`}
+                    onClick={() => router.push(`/workflows/${encodeURIComponent(workflow.displayId)}`)}
                   >
                     {uiText.workflowsPage.actions.openDetail}
-                  </Link>
+                  </button>
                 </li>
               );
             })}

@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { NAVIGATION_BUTTON_CLASS } from "../../components/layout/navigationButtonClass";
 import { Toast } from "../../components/Toast";
 import { apiGet } from "../../lib/api";
 import { formatDateTimeLocalized } from "../../lib/dateTime";
@@ -19,6 +20,7 @@ type DefinitionDetailClientProps = {
  */
 export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDetailClientProps>) {
   const { uiText, locale } = useI18n();
+  const router = useRouter();
   const dateTimeLocale = getDateTimeLocale(locale);
   const [row, setRow] = useState<DefinitionDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,39 +88,34 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
           {uiText.definitionDetail.relatedWorkflows.description}
         </p>
         <p className="mt-2">
-          <Link
-            className="text-[var(--md-sys-color-primary)] underline hover:opacity-90"
-            href={`/workflows?definitionId=${encodeURIComponent(definitionId)}`}
+          <button
+            type="button"
+            className={NAVIGATION_BUTTON_CLASS}
+            onClick={() => router.push(`/workflows?definitionId=${encodeURIComponent(definitionId)}`)}
           >
             {uiText.definitionDetail.relatedWorkflows.openList}
-          </Link>
+          </button>
         </p>
       </section>
 
       <section className="space-y-2 text-sm text-[var(--md-sys-color-on-surface)]">
-        <h2 className="font-medium text-[var(--md-sys-color-on-surface)]">{uiText.definitionDetail.actions.title}</h2>
-        <ul className="list-inside list-disc space-y-1.5 text-[var(--md-sys-color-on-surface-variant)]">
-          <li>
-            <Link className="text-[var(--md-sys-color-primary)] underline hover:opacity-90" href={`/definitions/${encodeURIComponent(definitionId)}/edit`}>
-              {uiText.definitionDetail.actions.edit}
-            </Link>
-          </li>
-          <li>
-            <Link className="text-[var(--md-sys-color-primary)] underline hover:opacity-90" href={`/definitions/${encodeURIComponent(definitionId)}/run`}>
-              {uiText.definitionDetail.actions.run}
-            </Link>
-          </li>
-        </ul>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className={NAVIGATION_BUTTON_CLASS}
+            onClick={() => router.push(`/definitions/${encodeURIComponent(definitionId)}/edit`)}
+          >
+            {uiText.definitionDetail.actions.edit}
+          </button>
+          <button
+            type="button"
+            className="rounded border-2 border-[var(--brand-cta-border)] bg-[var(--brand-cta-bg)] px-3 py-1.5 text-sm font-medium text-[var(--brand-cta-fg)] hover:bg-[var(--brand-cta-bg-hover)]"
+            onClick={() => router.push(`/definitions/${encodeURIComponent(definitionId)}/run`)}
+          >
+            {uiText.definitionDetail.actions.run}
+          </button>
+        </div>
       </section>
-
-      <nav className="flex flex-wrap gap-3 text-sm">
-        <Link className="text-[var(--md-sys-color-primary)] underline hover:opacity-90" href="/definitions">
-          {uiText.definitionDetail.nav.backToDefinitions}
-        </Link>
-        <Link className="text-[var(--md-sys-color-primary)] underline hover:opacity-90" href="/dashboard">
-          {uiText.navigation.dashboard}
-        </Link>
-      </nav>
     </div>
   );
 }

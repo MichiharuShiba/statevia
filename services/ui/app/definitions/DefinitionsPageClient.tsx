@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListPagination } from "../components/layout/ListPagination";
+import { NAVIGATION_BUTTON_CLASS } from "../components/layout/navigationButtonClass";
 import { PageShell } from "../components/layout/PageShell";
 import { PageState } from "../components/layout/PageState";
 import { Toast } from "../components/Toast";
@@ -20,6 +21,7 @@ const PAGE_SIZE = 20;
  */
 export function DefinitionsPageClient() {
   const { uiText, locale } = useI18n();
+  const router = useRouter();
   const dateTimeLocale = getDateTimeLocale(locale);
   const [searchInput, setSearchInput] = useState("");
   const [submittedSearch, setSubmittedSearch] = useState("");
@@ -117,12 +119,13 @@ export function DefinitionsPageClient() {
         >
           {uiText.definitionsPage.search.clear}
         </button>
-        <Link
-          href="/definitions/new"
+        <button
+          type="button"
           className="rounded border-2 border-[var(--brand-cta-border)] bg-[var(--brand-cta-bg)] px-4 py-2 text-sm font-medium text-[var(--brand-cta-fg)] hover:bg-[var(--brand-cta-bg-hover)]"
+          onClick={() => router.push("/definitions/new")}
         >
           {uiText.definitionsPage.actions.createNew}
-        </Link>
+        </button>
       </form>
 
       {loading && (
@@ -160,12 +163,13 @@ export function DefinitionsPageClient() {
                     )}
                   </p>
                 </div>
-                <Link
-                  href={`/definitions/${encodeURIComponent(definition.displayId)}`}
-                  className="shrink-0 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"
+                <button
+                  type="button"
+                  className={`shrink-0 ${NAVIGATION_BUTTON_CLASS}`}
+                  onClick={() => router.push(`/definitions/${encodeURIComponent(definition.displayId)}`)}
                 >
                   {uiText.definitionsPage.actions.openDetail}
-                </Link>
+                </button>
               </li>
             ))}
           </ul>

@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { StatusBadge } from "../components/common/StatusBadge";
 import { TenantMissingBanner } from "../components/execution/TenantMissingBanner";
+import { NAVIGATION_BUTTON_CLASS, OPERATION_TEXT_BUTTON_CLASS } from "../components/layout/navigationButtonClass";
 import { PageShell } from "../components/layout/PageShell";
 import { PageState } from "../components/layout/PageState";
 import { Toast } from "../components/Toast";
@@ -19,6 +20,7 @@ import { useI18n } from "../lib/uiTextContext";
  */
 export function DashboardPageClient() {
   const { uiText, locale } = useI18n();
+  const router = useRouter();
   const dateTimeLocale = getDateTimeLocale(locale);
   const [items, setItems] = useState<WorkflowDTO[] | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
@@ -71,7 +73,7 @@ export function DashboardPageClient() {
             <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{totalCountLabel}</p>
             <button
               type="button"
-              className="self-start text-sm text-[var(--md-sys-color-primary)] underline hover:text-[var(--md-sys-color-primary)]"
+              className={`self-start ${OPERATION_TEXT_BUTTON_CLASS}`}
               onClick={() => void load()}
             >
               {uiText.actions.reload}
@@ -91,12 +93,13 @@ export function DashboardPageClient() {
                     </div>
                     <p className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">{uiText.dashboard.updatedAt(formatDateTimeLocalized(updated, dateTimeLocale))}</p>
                   </div>
-                  <Link
-                    className="shrink-0 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"
-                    href={`/workflows/${encodeURIComponent(workflow.displayId)}`}
+                  <button
+                    type="button"
+                    className={`shrink-0 ${NAVIGATION_BUTTON_CLASS}`}
+                    onClick={() => router.push(`/workflows/${encodeURIComponent(workflow.displayId)}`)}
                   >
                     {uiText.dashboard.actions.openDetail}
-                  </Link>
+                  </button>
                 </li>
               );
             })}
