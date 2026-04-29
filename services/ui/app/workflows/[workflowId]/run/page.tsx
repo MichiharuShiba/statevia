@@ -43,8 +43,7 @@ export default function WorkflowRunPage() {
       headerNav={
         <ActionLinkGroup
           links={[
-            { label: uiText.workflowRunPage.navDetail, href: `/workflows/${encodeURIComponent(workflowId)}`, priority: "primary" },
-            { label: uiText.workflowRunPage.navGraph, href: `/workflows/${encodeURIComponent(workflowId)}/graph` }
+            { label: uiText.workflowRunPage.navDetail, href: `/workflows/${encodeURIComponent(workflowId)}`, priority: "primary" }
           ]}
         />
       }
