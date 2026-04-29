@@ -28,13 +28,13 @@ export function NodeDetail({
   className
 }: Readonly<NodeDetailProps>) {
   const uiText = useUiText();
-  const baseClassName = "rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm";
+  const baseClassName = "rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm";
   const asideClassName = className ? `${baseClassName} ${className}` : baseClassName;
 
   if (!execution) {
     return (
       <aside className={asideClassName}>
-        <p className="text-sm text-zinc-600">{uiText.nodeDetail.prompts.loadExecution(uiText.entities.execution)}</p>
+        <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{uiText.nodeDetail.prompts.loadExecution(uiText.entities.execution)}</p>
       </aside>
     );
   }
@@ -42,7 +42,7 @@ export function NodeDetail({
   if (!node) {
     return (
       <aside className={asideClassName}>
-        <p className="text-sm text-zinc-600">{uiText.nodeDetail.prompts.selectNode(uiText.entities.node)}</p>
+        <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{uiText.nodeDetail.prompts.selectNode(uiText.entities.node)}</p>
       </aside>
     );
   }
@@ -63,7 +63,7 @@ export function NodeDetail({
             {node.status}
           </span>
         </div>
-        <div className="mt-2 space-y-1 text-xs text-zinc-700">
+        <div className="mt-2 space-y-1 text-xs text-[var(--md-sys-color-on-surface)]">
           <div>{uiText.nodeDetail.meta.type(node.nodeType)}</div>
           <div>{uiText.nodeDetail.meta.attempt(node.attempt)}</div>
           <div>{uiText.nodeDetail.meta.waitKey(node.waitKey ?? "—")}</div>
@@ -125,7 +125,7 @@ export function NodeDetail({
           >
             {uiText.actions.resume}
           </button>
-          {resumeDisabledReason && <p className="text-xs text-zinc-600">{resumeDisabledReason}</p>}
+          {resumeDisabledReason && <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{resumeDisabledReason}</p>}
         </div>
       )}
     </aside>

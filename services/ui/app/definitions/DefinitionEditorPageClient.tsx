@@ -251,11 +251,11 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
         <PageState state="loading" message={uiText.definitionEditor.loadingMeta} />
       )}
 
-      <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+      <section className="space-y-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm">
         <label className="block text-sm">
-          <span className="text-zinc-600">{uiText.definitionEditor.labels.name}</span>
+          <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionEditor.labels.name}</span>
           <input
-            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+            className="mt-1 w-full rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-2 py-1.5 text-sm text-[var(--md-sys-color-on-surface)]"
             value={definitionName}
             onChange={(event) => setDefinitionName(event.target.value)}
             autoComplete="off"
@@ -266,7 +266,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
         )}
 
         <label className="block text-sm">
-          <span className="text-zinc-600">{uiText.definitionEditor.labels.yaml}</span>
+          <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionEditor.labels.yaml}</span>
           <YamlCodeEditor
             value={yaml}
             onChange={setYaml}
@@ -292,7 +292,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="w-full rounded bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
+            className="w-full rounded bg-[var(--md-sys-color-primary)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-primary)] hover:opacity-90 disabled:opacity-50 sm:w-auto"
             onClick={() => void handleSave()}
             disabled={saving || hasYamlError}
           >
@@ -300,7 +300,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
           </button>
           <button
             type="button"
-            className="w-full rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50 sm:ml-auto sm:w-auto"
+            className="w-full rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] sm:ml-auto sm:w-auto"
             onClick={() => setYaml(defaultDefinitionYaml)}
             disabled={saving}
           >
@@ -308,7 +308,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
           </button>
         </div>
 
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
           {uiText.definitionEditor.noteMvp}
         </p>
       </section>
@@ -318,13 +318,13 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
           <p className="font-medium">{uiText.definitionEditor.saved.complete(savedDefinition.displayId)}</p>
           <div className="flex flex-wrap gap-3">
             <Link
-              className="text-blue-800 underline hover:text-blue-950"
+              className="text-[var(--md-sys-color-primary)] underline hover:opacity-90"
               href={`/definitions/${encodeURIComponent(savedDefinition.displayId)}`}
             >
               {uiText.definitionEditor.saved.openNewDetail}
             </Link>
             <Link
-              className="text-blue-800 underline hover:text-blue-950"
+              className="text-[var(--md-sys-color-primary)] underline hover:opacity-90"
               href={`/definitions/${encodeURIComponent(savedDefinition.displayId)}/run`}
             >
               {uiText.definitionEditor.saved.runWithThisDefinition}

@@ -12,15 +12,15 @@ type ViewToggleProps = {
 export function ViewToggle({ value, onChange }: Readonly<ViewToggleProps>) {
   const uiText = useUiText();
   return (
-    <div className="inline-flex rounded-xl border border-zinc-200 p-1">
+    <div className="inline-flex rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] p-1">
       <button
-        className={`rounded-lg px-3 py-1.5 text-sm ${value === "list" ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100"}`}
+        className={`rounded-lg px-3 py-1.5 text-sm ${value === "list" ? "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]" : "text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"}`}
         onClick={() => onChange("list")}
       >
         {uiText.actions.viewList}
       </button>
       <button
-        className={`rounded-lg px-3 py-1.5 text-sm ${value === "graph" ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100"}`}
+        className={`rounded-lg px-3 py-1.5 text-sm ${value === "graph" ? "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]" : "text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"}`}
         onClick={() => onChange("graph")}
       >
         {uiText.actions.viewGraph}

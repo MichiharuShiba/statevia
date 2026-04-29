@@ -18,7 +18,7 @@ type PageStateProps = {
 const STATE_STYLE_MAP: Record<PageStateKind, string> = {
   loading: "border-blue-200 bg-blue-50 text-blue-900",
   error: "border-red-200 bg-red-50 text-red-900",
-  empty: "border-zinc-300 bg-zinc-50 text-zinc-700"
+  empty: "border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
 };
 
 function getStateStyle(state: PageStateKind): string {
@@ -49,7 +49,7 @@ export function PageState({
       {showRetryButton ? (
         <button
           type="button"
-          className="mt-3 rounded-md border border-current/30 bg-white/70 px-3 py-1.5 text-sm font-medium hover:bg-white"
+          className="mt-3 rounded-md border border-current/30 bg-[var(--md-sys-color-surface-container)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--md-sys-color-surface-container-high)]"
           onClick={onRetry}
         >
           {effectiveRetryLabel}

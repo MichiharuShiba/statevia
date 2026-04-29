@@ -23,7 +23,7 @@ export function LanguageToggle({ locale }: LanguageToggleProps) {
     <div className="inline-flex items-center gap-1 rounded-md border border-white/20 p-1 text-xs">
       <button
         type="button"
-        className={`rounded px-2 py-1 ${locale === "ja" ? "bg-white/20 text-white" : "text-[var(--tone-header-fg-muted)] hover:text-[var(--tone-header-fg)]"}`}
+        className={`rounded px-2 py-1 ${locale === "ja" ? "bg-white/20 text-white" : "text-[var(--brand-header-fg-muted)] hover:text-[var(--brand-header-fg)]"}`}
         onClick={() => handleChangeLocale("ja")}
         aria-pressed={locale === "ja"}
       >
@@ -31,7 +31,7 @@ export function LanguageToggle({ locale }: LanguageToggleProps) {
       </button>
       <button
         type="button"
-        className={`rounded px-2 py-1 ${locale === "en" ? "bg-white/20 text-white" : "text-[var(--tone-header-fg-muted)] hover:text-[var(--tone-header-fg)]"}`}
+        className={`rounded px-2 py-1 ${locale === "en" ? "bg-white/20 text-white" : "text-[var(--brand-header-fg-muted)] hover:text-[var(--brand-header-fg)]"}`}
         onClick={() => handleChangeLocale("en")}
         aria-pressed={locale === "en"}
       >

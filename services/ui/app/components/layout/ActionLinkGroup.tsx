@@ -18,9 +18,9 @@ type ActionLinkGroupProps = {
 
 const ACTION_LINK_CLASS_MAP: Record<ActionLinkPriority, string> = {
   primary:
-    "rounded-md border border-[var(--tone-accent)] bg-[var(--tone-accent-soft)] px-3 py-1.5 text-sm font-medium text-[var(--tone-accent-strong)] hover:bg-[var(--tone-accent-soft-hover)]",
+    "rounded-md border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] px-3 py-1.5 text-sm font-medium text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-secondary-container)]",
   secondary:
-    "text-sm text-[var(--tone-accent-strong)] underline underline-offset-2 hover:text-[var(--tone-accent-strong-hover)]"
+    "text-sm text-[var(--md-sys-color-primary)] underline underline-offset-2 hover:text-[var(--md-sys-color-primary)]"
 };
 
 function getLinkClass(priority: ActionLinkPriority): string {

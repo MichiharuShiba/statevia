@@ -62,23 +62,23 @@ export function ExecutionTimeline({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-2 border-b border-zinc-100 pb-2">
+    <section className="rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-2 border-b border-[var(--md-sys-color-outline)] pb-2">
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
-          className="flex flex-1 cursor-pointer items-center gap-1.5 rounded-t-lg -mx-1 px-1 py-0.5 text-left hover:bg-zinc-50/80"
+          className="flex flex-1 cursor-pointer items-center gap-1.5 rounded-t-lg -mx-1 px-1 py-0.5 text-left hover:bg-[var(--md-sys-color-surface-container-high)]"
           aria-expanded={expanded}
           aria-controls="execution-timeline-body"
           id="execution-timeline-heading"
         >
           <span
-            className={`text-zinc-400 transition-transform ${expanded ? "rotate-90" : ""}`}
+            className={`text-[var(--md-sys-color-on-surface-variant)] transition-transform ${expanded ? "rotate-90" : ""}`}
             aria-hidden
           >
             ▶
           </span>
-          <h2 id="execution-timeline-heading-text" className="text-sm font-semibold text-zinc-800">
+          <h2 id="execution-timeline-heading-text" className="text-sm font-semibold text-[var(--md-sys-color-on-surface)]">
             {uiText.executionTimeline.title}
           </h2>
         </button>
@@ -86,7 +86,7 @@ export function ExecutionTimeline({
           <button
             type="button"
             onClick={onBackToCurrent}
-            className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 shrink-0"
+            className="shrink-0 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-2 py-1 text-xs font-medium text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"
           >
             {uiText.executionTimeline.backToCurrent}
           </button>
@@ -106,11 +106,11 @@ export function ExecutionTimeline({
       ) : null}
 
       {loading && (
-        <p className="mt-2 text-xs text-zinc-500">{uiText.actions.loading}</p>
+        <p className="mt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">{uiText.actions.loading}</p>
       )}
 
       {!loading && !error && events.length === 0 && (
-        <p className="mt-2 text-xs text-zinc-500">{uiText.executionTimeline.empty}</p>
+        <p className="mt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">{uiText.executionTimeline.empty}</p>
       )}
 
       {!loading && events.length > 0 && (
@@ -125,11 +125,11 @@ export function ExecutionTimeline({
                     onClick={() => onSelectSeq(isSelected ? null : ev.seq)}
                     className={`w-full rounded-lg border px-2 py-1.5 text-left text-xs transition-colors ${
                       isSelected
-                        ? "border-zinc-400 bg-zinc-100 font-medium text-zinc-900"
-                        : "border-transparent text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800"
+                        ? "border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-high)] font-medium text-[var(--md-sys-color-on-surface)]"
+                        : "border-transparent text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)]"
                     }`}
                   >
-                    <span className="font-mono text-zinc-500">#{ev.seq}</span>
+                    <span className="font-mono text-[var(--md-sys-color-on-surface-variant)]">#{ev.seq}</span>
                     <span className="ml-2">
                       {formatDateTimeLocalized(
                         ev.at,
@@ -149,7 +149,7 @@ export function ExecutionTimeline({
                 type="button"
                 onClick={onLoadMore}
                 disabled={loadingMore}
-                className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-xs text-zinc-600 hover:bg-zinc-100 disabled:opacity-50"
+                className="w-full rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-2 py-1.5 text-xs text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] disabled:opacity-50"
               >
                 {loadingMore ? uiText.actions.loading : uiText.executionTimeline.loadMore}
               </button>

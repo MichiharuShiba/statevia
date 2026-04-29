@@ -15,13 +15,13 @@ export function NodeListView({ nodes, selectedNodeId, onSelectNode }: Readonly<N
   const sorted = [...nodes].sort((a, b) => getNodeSortWeight(a.status) - getNodeSortWeight(b.status));
 
   return (
-    <div className="overflow-auto rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <div className="overflow-auto rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold">{uiText.nodeList.title}</h2>
-        <span className="text-xs text-zinc-500">{uiText.nodeList.nodeCount(nodes.length)}</span>
+        <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{uiText.nodeList.nodeCount(nodes.length)}</span>
       </div>
       <table className="w-full text-left text-sm">
-        <thead className="text-xs text-zinc-600">
+        <thead className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
           <tr>
             <th className="py-2 pr-2">{uiText.nodeList.columns.nodeId}</th>
             <th className="py-2 pr-2">{uiText.nodeList.columns.type}</th>
@@ -37,7 +37,7 @@ export function NodeListView({ nodes, selectedNodeId, onSelectNode }: Readonly<N
             return (
               <tr
                 key={node.nodeId}
-                className={`cursor-pointer border-t border-zinc-100 ${style.bgClass} ${runningClass} ${selected ? "outline outline-2 outline-zinc-400" : ""}`}
+                className={`cursor-pointer border-t border-[var(--md-sys-color-outline)] ${style.bgClass} ${runningClass} ${selected ? "outline outline-2 outline-[var(--md-sys-color-primary)]" : ""}`}
                 onClick={() => onSelectNode(node.nodeId)}
               >
                 <td className="py-2 pr-2 font-mono text-xs">{node.nodeId}</td>

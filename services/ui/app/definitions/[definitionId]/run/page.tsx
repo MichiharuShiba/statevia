@@ -60,8 +60,8 @@ export default function DefinitionRunStartPage() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-5 p-6">
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold text-zinc-900">{uiText.definitionRunPage.title}</h1>
-        <p className="text-sm text-zinc-600">
+        <h1 className="text-xl font-semibold text-[var(--md-sys-color-on-surface)]">{uiText.definitionRunPage.title}</h1>
+        <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
           <span className="font-mono break-all">
             {uiText.definitionRunPage.definitionIdLine(
               uiText.labels.definitionId,
@@ -73,11 +73,11 @@ export default function DefinitionRunStartPage() {
 
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+      <section className="space-y-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm">
         <label className="block text-sm">
-          <span className="text-zinc-600">{uiText.definitionRunPage.workflowInputLabelWithHint(uiText.labels.workflowInput)}</span>
+          <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionRunPage.workflowInputLabelWithHint(uiText.labels.workflowInput)}</span>
           <textarea
-            className="mt-1 h-28 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono text-xs"
+            className="mt-1 h-28 w-full rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-2 py-1.5 font-mono text-xs text-[var(--md-sys-color-on-surface)]"
             value={inputJson}
             onChange={(event) => setInputJson(event.target.value)}
             placeholder={uiText.definitionRunPage.inputJsonPlaceholder}
@@ -86,22 +86,22 @@ export default function DefinitionRunStartPage() {
         </label>
         <button
           type="button"
-          className="rounded bg-blue-700 px-3 py-1.5 text-sm text-white hover:bg-blue-600 disabled:opacity-50"
+          className="rounded bg-[var(--md-sys-color-primary)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-primary)] hover:opacity-90 disabled:opacity-50"
           onClick={() => void handleStart()}
           disabled={starting || !definitionId.trim()}
         >
           {starting ? uiText.definitionRunPage.actions.starting : uiText.definitionRunPage.actions.startWorkflow}
         </button>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
           {uiText.definitionRunPage.help.redirectAfterStart("/workflows/[workflowId]/run")}
         </p>
       </section>
 
       <nav className="flex flex-wrap gap-3 text-sm">
-        <Link className="text-blue-700 underline hover:text-blue-900" href={`/definitions/${encodeURIComponent(definitionId)}`}>
+        <Link className="text-[var(--md-sys-color-primary)] underline hover:opacity-90" href={`/definitions/${encodeURIComponent(definitionId)}`}>
           {uiText.definitionRunPage.nav.backToDefinitionDetail}
         </Link>
-        <Link className="text-blue-700 underline hover:text-blue-900" href="/workflows">
+        <Link className="text-[var(--md-sys-color-primary)] underline hover:opacity-90" href="/workflows">
           {uiText.lists.workflows}
         </Link>
       </nav>
