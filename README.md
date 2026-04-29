@@ -1,4 +1,4 @@
-# statevia
+# ![statevia icon](docs/images/icon-mark-32.png) statevia
 
 **statevia** は、
 State / FSM / Fork-Join / Wait / Resume / Cancel を統合した
