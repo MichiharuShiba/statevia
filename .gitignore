@@ -53,10 +53,10 @@ coverage/
 .cursorrules
 .vscode/
 .playwright-mcp/
+.spec-workflow/
+.workspace-docs/
 docs/out
 audit.log
-# spec-workflow 承認メタ・スナップショット（正本は specs/）。配下すべて無視。
-.spec-workflow/approvals/
 
 # MSBuild Binary and Structured Log
 *.binlog
