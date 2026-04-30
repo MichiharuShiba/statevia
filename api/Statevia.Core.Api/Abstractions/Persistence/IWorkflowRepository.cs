@@ -14,11 +14,7 @@ public interface IWorkflowRepository
     /// </summary>
     Task<(int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
         string tenantId,
-        int offset,
-        int limit,
-        string? statusFilter,
-        Guid? definitionIdFilter,
-        string? nameContains,
+        WorkflowListPageQuery query,
         CancellationToken ct);
     Task AddWorkflowAndSnapshotAsync(WorkflowRow workflow, ExecutionGraphSnapshotRow snapshot, CancellationToken ct);
     /// <summary>同一 <see cref="CoreDbContext"/> 上に追加のみ（SaveChanges は呼び出し側）。</summary>

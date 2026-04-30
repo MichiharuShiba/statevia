@@ -34,7 +34,7 @@ public sealed class DefinitionsControllerTests
             return ListResult;
         }
 
-        public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(string tenantId, int offset, int limit, string? nameContains, CancellationToken ct)
+        public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(string tenantId, int offset, int limit, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
@@ -108,7 +108,7 @@ public sealed class DefinitionsControllerTests
         };
 
         // Assert
-        var res = await controller.List(limit: null, offset: 0, name: null, CancellationToken.None);
+        var res = await controller.List(limit: null, offset: 0, name: null, sortBy: null, sortOrder: null, CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(res);
         var list = Assert.IsType<List<DefinitionResponse>>(ok.Value);
         Assert.Single(list);
@@ -139,7 +139,7 @@ public sealed class DefinitionsControllerTests
         };
 
         // Assert
-        var res = await controller.List(limit: null, offset: 0, name: null, CancellationToken.None);
+        var res = await controller.List(limit: null, offset: 0, name: null, sortBy: null, sortOrder: null, CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(res);
         var list = Assert.IsType<List<DefinitionResponse>>(ok.Value);
         Assert.Single(list);
@@ -175,7 +175,7 @@ public sealed class DefinitionsControllerTests
         };
 
         // Assert
-        var res = await controller.List(limit: 1, offset: 0, name: null, CancellationToken.None);
+        var res = await controller.List(limit: 1, offset: 0, name: null, sortBy: null, sortOrder: null, CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(res);
         var paged = Assert.IsType<PagedResult<DefinitionResponse>>(ok.Value);
         Assert.False(paged.HasMore);
@@ -197,7 +197,7 @@ public sealed class DefinitionsControllerTests
             ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = http }
         };
 
-        await Assert.ThrowsAsync<ArgumentException>(() => controller.List(limit: 501, offset: 0, name: null, CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() => controller.List(limit: 501, offset: 0, name: null, sortBy: null, sortOrder: null, CancellationToken.None));
     }
 
     /// <summary>

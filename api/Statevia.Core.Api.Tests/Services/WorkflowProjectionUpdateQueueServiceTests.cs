@@ -88,7 +88,7 @@ public sealed class WorkflowProjectionUpdateQueueServiceTests
             throw new NotSupportedException();
 
         public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
-            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, CancellationToken ct) =>
+            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
@@ -140,7 +140,7 @@ public sealed class WorkflowProjectionUpdateQueueServiceTests
             throw new NotSupportedException();
 
         public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
-            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, CancellationToken ct) =>
+            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>

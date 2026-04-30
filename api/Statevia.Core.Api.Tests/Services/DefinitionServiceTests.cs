@@ -193,7 +193,7 @@ public sealed class DefinitionServiceTests
         var sut = new DefinitionService(display, compiler, definitionsRepo, idGen);
 
         // Assert
-        var page = await sut.ListPagedAsync("t1", offset: 0, limit: 1, nameContains: "order", CancellationToken.None);
+        var page = await sut.ListPagedAsync("t1", offset: 0, limit: 1, nameContains: "order", sortBy: null, sortOrder: null, CancellationToken.None);
         Assert.Equal(2, page.TotalCount);
         Assert.Single(page.Items);
         Assert.True(page.HasMore);

@@ -101,7 +101,7 @@ public sealed class WorkflowsControllerTests
             string? status,
             string? definitionId,
             string? nameContains,
-            CancellationToken ct)
+            string? sortBy, string? sortOrder, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;

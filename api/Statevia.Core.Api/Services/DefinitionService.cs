@@ -96,9 +96,17 @@ public sealed class DefinitionService : IDefinitionService
         int offset,
         int limit,
         string? nameContains,
+        string? sortBy,
+        string? sortOrder,
         CancellationToken ct)
     {
-        var (total, pairs) = await _definitions.ListWithDisplayIdsPageAsync(tenantId, offset, limit, nameContains, ct).ConfigureAwait(false);
+        var query = new DefinitionListPageQuery(
+            Page: new PageQuery(offset, limit),
+            Sort: new SortQuery(sortBy, sortOrder),
+            NameContains: nameContains);
+        var (total, pairs) = await _definitions
+            .ListWithDisplayIdsPageAsync(tenantId, query, ct)
+            .ConfigureAwait(false);
         var items = pairs.Select(p => new DefinitionResponse
         {
             DisplayId = p.DisplayId ?? p.Def.DefinitionId.ToString(),

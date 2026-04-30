@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Persistence.Repositories;
 using Statevia.Core.Api.Tests.Infrastructure;
@@ -132,7 +133,14 @@ public sealed class WorkflowRepositoryTests
 
         // Assert
         var (total, items) = await repo.ListWithDisplayIdsPageAsync(
-            tenantId, offset: 0, limit: 10, statusFilter: "Completed", definitionIdFilter: null, nameContains: null, default);
+            tenantId,
+            new WorkflowListPageQuery(
+                Page: new PageQuery(0, 10),
+                Sort: new SortQuery(null, null),
+                StatusFilter: "Completed",
+                DefinitionIdFilter: null,
+                NameContains: null),
+            default);
         Assert.Equal(1, total);
         Assert.Single(items);
         Assert.Equal("Completed", items[0].Workflow.Status);
@@ -182,7 +190,14 @@ public sealed class WorkflowRepositoryTests
 
         // Act
         var (total, items) = await repo.ListWithDisplayIdsPageAsync(
-            tenantId, offset: 0, limit: 10, statusFilter: null, definitionIdFilter: def1, nameContains: null, default);
+            tenantId,
+            new WorkflowListPageQuery(
+                Page: new PageQuery(0, 10),
+                Sort: new SortQuery(null, null),
+                StatusFilter: null,
+                DefinitionIdFilter: def1,
+                NameContains: null),
+            default);
 
         // Assert
         Assert.Equal(1, total);
@@ -241,7 +256,14 @@ public sealed class WorkflowRepositoryTests
 
         // Act
         var (total, items) = await repo.ListWithDisplayIdsPageAsync(
-            tenantId, offset: 0, limit: 10, statusFilter: null, definitionIdFilter: null, nameContains: "orders", default);
+            tenantId,
+            new WorkflowListPageQuery(
+                Page: new PageQuery(0, 10),
+                Sort: new SortQuery(null, null),
+                StatusFilter: null,
+                DefinitionIdFilter: null,
+                NameContains: "orders"),
+            default);
 
         // Assert
         Assert.Equal(1, total);

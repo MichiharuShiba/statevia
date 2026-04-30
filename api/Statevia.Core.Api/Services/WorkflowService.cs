@@ -237,6 +237,8 @@ public sealed class WorkflowService : IWorkflowService
         string? status,
         string? definitionId,
         string? nameContains,
+        string? sortBy,
+        string? sortOrder,
         CancellationToken ct)
     {
         Guid? definitionIdFilter = null;
@@ -258,8 +260,14 @@ public sealed class WorkflowService : IWorkflowService
         }
 
         var name = string.IsNullOrWhiteSpace(nameContains) ? null : nameContains.Trim();
+        var query = new WorkflowListPageQuery(
+            Page: new PageQuery(offset, limit),
+            Sort: new SortQuery(sortBy, sortOrder),
+            StatusFilter: status,
+            DefinitionIdFilter: definitionIdFilter,
+            NameContains: name);
         var (total, pairs) = await _workflows
-            .ListWithDisplayIdsPageAsync(tenantId, offset, limit, status, definitionIdFilter, name, ct)
+            .ListWithDisplayIdsPageAsync(tenantId, query, ct)
             .ConfigureAwait(false);
         var items = pairs.Select(p => new WorkflowResponse
         {

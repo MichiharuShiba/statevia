@@ -1,3 +1,4 @@
+using System;
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Persistence;
@@ -46,22 +47,21 @@ public sealed class DefinitionRepository : IDefinitionRepository
 
     public async Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
         string tenantId,
-        int offset,
-        int limit,
-        string? nameContains,
+        DefinitionListPageQuery query,
         CancellationToken ct)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         var joinQuery = QueryDefinitionsWithDisplayIds(db, tenantId);
 
-        if (!string.IsNullOrWhiteSpace(nameContains))
-            joinQuery = joinQuery.Where(x => x.Def.Name.Contains(nameContains));
+        if (!string.IsNullOrWhiteSpace(query.NameContains))
+            joinQuery = joinQuery.Where(x => x.Def.Name.Contains(query.NameContains));
+
+        var sortedQuery = ApplyDefinitionsSort(joinQuery, query.Sort.SortBy, query.Sort.SortOrder);
 
         var total = await joinQuery.CountAsync(ct).ConfigureAwait(false);
-        var page = await joinQuery
-            .OrderBy(x => x.Def.CreatedAt)
-            .Skip(offset)
-            .Take(limit)
+        var page = await sortedQuery
+            .Skip(query.Page.Offset)
+            .Take(query.Page.Limit)
             .ToListAsync(ct)
             .ConfigureAwait(false);
 
@@ -79,6 +79,25 @@ public sealed class DefinitionRepository : IDefinitionRepository
             join d in displayIdsForDefinition on def.DefinitionId equals d.ResourceId into dGroup
             from d in dGroup.DefaultIfEmpty()
             select new DefinitionWithDisplay { Def = def, DisplayId = d != null ? d.DisplayId : null };
+    }
+
+    private static IQueryable<DefinitionWithDisplay> ApplyDefinitionsSort(
+        IQueryable<DefinitionWithDisplay> query,
+        string? sortBy,
+        string? sortOrder)
+    {
+        var normalizedSortBy = sortBy?.Trim();
+        var isAsc = !string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+
+        return normalizedSortBy switch
+        {
+            "name" => isAsc
+                ? query.OrderBy(x => x.Def.Name).ThenBy(x => x.Def.CreatedAt)
+                : query.OrderByDescending(x => x.Def.Name).ThenByDescending(x => x.Def.CreatedAt),
+            _ => isAsc
+                ? query.OrderBy(x => x.Def.CreatedAt)
+                : query.OrderByDescending(x => x.Def.CreatedAt)
+        };
     }
 }
 
