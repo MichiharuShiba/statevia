@@ -80,9 +80,28 @@ async function fetchAndParse<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /** `GET /v1/workflows?limit&offset&status&name&definitionId` 向け（Core-API）。 */
-export type WorkflowsListQuery = {
+export type PaginationQuery = {
   limit: number;
   offset: number;
+};
+
+/** ソート方向の共通型。 */
+export type SortOrder = "asc" | "desc";
+
+export type SortQuery = {
+  sortBy?: string;
+  sortOrder?: SortOrder;
+};
+
+export type DefinitionsListQuery = {
+  pagination: PaginationQuery;
+  sort: SortQuery;
+  name?: string;
+};
+
+export type WorkflowsListQuery = {
+  pagination: PaginationQuery;
+  sort: SortQuery;
   status?: string;
   name?: string;
   definitionId?: string;
@@ -93,12 +112,27 @@ export type WorkflowsListQuery = {
  */
 export function buildWorkflowsListPath(params: WorkflowsListQuery): string {
   const query = new URLSearchParams();
-  query.set("limit", String(params.limit));
-  query.set("offset", String(params.offset));
+  query.set("limit", String(params.pagination.limit));
+  query.set("offset", String(params.pagination.offset));
   if (params.status?.trim()) query.set("status", params.status.trim());
   if (params.name?.trim()) query.set("name", params.name.trim());
   if (params.definitionId?.trim()) query.set("definitionId", params.definitionId.trim());
+  if (params.sort.sortBy?.trim()) query.set("sortBy", params.sort.sortBy.trim());
+  if (params.sort.sortOrder) query.set("sortOrder", params.sort.sortOrder);
   return `/workflows?${query.toString()}`;
+}
+
+/**
+ * 定義一覧用の相対 API パス `...?...` を組み立てる。空のフィルタは含めない。
+ */
+export function buildDefinitionsListPath(params: DefinitionsListQuery): string {
+  const query = new URLSearchParams();
+  query.set("limit", String(params.pagination.limit));
+  query.set("offset", String(params.pagination.offset));
+  if (params.name?.trim()) query.set("name", params.name.trim());
+  if (params.sort.sortBy?.trim()) query.set("sortBy", params.sort.sortBy.trim());
+  if (params.sort.sortOrder) query.set("sortOrder", params.sort.sortOrder);
+  return `/definitions?${query.toString()}`;
 }
 
 export async function apiGet<T>(path: string): Promise<T> {

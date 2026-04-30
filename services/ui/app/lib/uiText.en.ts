@@ -76,6 +76,10 @@ export const uiTextEn: UiText = {
       eventNameLabel: "Event name",
       eventNamePlaceholder: "event-name",
     },
+    validation: {
+      eventNameTooLong: "Event name must be within 64 characters.",
+      eventNameInvalidFormat: "Event name must start with an ASCII letter and use only ASCII alphanumerics plus . - _.",
+    },
     graph: {
       fullscreenEnter: "Fullscreen",
       fullscreenExit: "Exit fullscreen (Esc)",
@@ -224,6 +228,14 @@ export const uiTextEn: UiText = {
       nameInputHint: "name (workflow display ID partial match, or workflow UUID exact match)",
       search: "Search",
       clear: "Clear",
+      sortByLabel: "Sort by",
+      sortOrderLabel: "Order",
+      sortByUpdatedAt: "Updated at",
+      sortByDisplayId: "Display ID",
+      sortOrderDesc: "Descending",
+      sortOrderAsc: "Ascending",
+      invalidName: "Name allows only ASCII alphanumerics plus . - _ within 100 characters.",
+      invalidDefinitionId: "Definition ID allows only ASCII alphanumerics plus - _ within 80 characters.",
       pageInfo: (limit: number, offset: number, page: number) =>
         `Items per page: ${limit}. Offset: ${offset} (approx. page ${page})`,
     },
@@ -250,7 +262,14 @@ export const uiTextEn: UiText = {
       placeholder: "e.g. order",
       submit: "Search",
       clear: "Clear",
+      invalidName: "Search keyword allows only ASCII alphanumerics plus . - _ within 100 characters.",
     },
+    sortByLabel: "Sort by",
+    sortOrderLabel: "Order",
+    sortByCreatedAt: "Created at",
+    sortByName: "Name",
+    sortOrderDesc: "Descending",
+    sortOrderAsc: "Ascending",
     actions: {
       openDetail: "Open details",
       createNew: "Create new definition",
@@ -293,6 +312,7 @@ export const uiTextEn: UiText = {
     toasts: {
       definitionIdRequired: (definitionIdLabel: string) => `${definitionIdLabel} is required.`,
       invalidWorkflowInputJson: (workflowInputLabel: string) => `${workflowInputLabel} JSON is invalid.`,
+      workflowInputTooLarge: "Workflow input must be within 65536 bytes (64KiB).",
       workflowStarted: (workflowDisplayId: string) => `Workflow started: ${workflowDisplayId}`,
     },
     help: {
@@ -333,6 +353,8 @@ export const uiTextEn: UiText = {
       nameRequired: "Please enter a definition name.",
       yamlRequired: "Please enter YAML.",
       yamlLintInvalid: "Please fix YAML syntax errors.",
+      nameInvalidFormat: "Definition name must start with an ASCII letter and use only ASCII alphanumerics plus . - _ within 100 characters.",
+      yamlTooLarge: "YAML must be within 256KB (262144 bytes).",
     },
     labels: {
       name: "Definition name (name)",

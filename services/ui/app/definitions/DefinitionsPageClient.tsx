@@ -1,20 +1,40 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListPagination } from "../components/layout/ListPagination";
 import { NAVIGATION_BUTTON_CLASS } from "../components/layout/navigationButtonClass";
 import { PageShell } from "../components/layout/PageShell";
 import { PageState } from "../components/layout/PageState";
 import { Toast } from "../components/Toast";
-import { apiGet } from "../lib/api";
+import { apiGet, buildDefinitionsListPath, type DefinitionsListQuery, type SortOrder } from "../lib/api";
 import { formatDateTimeLocalized } from "../lib/dateTime";
 import { toToastError, type ToastState } from "../lib/errors";
 import { getDateTimeLocale } from "../lib/i18n";
 import type { DefinitionDTO, PagedDefinitions } from "../lib/types";
 import { useI18n } from "../lib/uiTextContext";
+import { matchesPattern } from "../lib/validation/primitives";
+import { SEARCH_NAME_PATTERN } from "../lib/validation/searchRules";
 
 const PAGE_SIZE = 20;
+type DefinitionsSortBy = "createdAt" | "name";
+
+function readListQuery(searchParams: { get: (name: string) => string | null }): DefinitionsListQuery {
+  const limitRaw = Number.parseInt(searchParams.get("limit") ?? "", 10);
+  const limit = Number.isFinite(limitRaw) ? Math.max(1, limitRaw) : PAGE_SIZE;
+  const offsetRaw = Number.parseInt(searchParams.get("offset") ?? "0", 10);
+  const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
+  const name = searchParams.get("name")?.trim() ?? "";
+  const sortByRaw = searchParams.get("sortBy")?.trim() ?? "";
+  const sortOrderRaw = searchParams.get("sortOrder")?.trim() ?? "";
+  const sortBy: DefinitionsSortBy = sortByRaw === "name" ? "name" : "createdAt";
+  const sortOrder: SortOrder = sortOrderRaw === "asc" ? "asc" : "desc";
+  return {
+    pagination: { limit, offset },
+    sort: { sortBy, sortOrder },
+    name: name || undefined
+  };
+}
 
 /**
  * Definition 一覧（検索・ページング）を表示する。
@@ -22,30 +42,34 @@ const PAGE_SIZE = 20;
 export function DefinitionsPageClient() {
   const { uiText, locale } = useI18n();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const dateTimeLocale = getDateTimeLocale(locale);
   const [searchInput, setSearchInput] = useState("");
-  const [submittedSearch, setSubmittedSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
   const [items, setItems] = useState<DefinitionDTO[] | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<ToastState | null>(null);
 
-  const offset = useMemo(() => (currentPage - 1) * PAGE_SIZE, [currentPage]);
-  const hasPrev = currentPage > 1;
-  const hasNext = totalCount !== null && offset + (items?.length ?? 0) < totalCount;
+  const listQuery = useMemo(() => readListQuery(searchParams), [searchParams]);
+  const currentPage = useMemo(
+    () => Math.floor(listQuery.pagination.offset / listQuery.pagination.limit) + 1,
+    [listQuery.pagination.limit, listQuery.pagination.offset]
+  );
+  const hasPrev = listQuery.pagination.offset > 0;
+  const hasNext = totalCount !== null && listQuery.pagination.offset + (items?.length ?? 0) < totalCount;
+  const effectiveSortBy = (listQuery.sort.sortBy ?? "createdAt") as DefinitionsSortBy;
+  const effectiveSortOrder: SortOrder = listQuery.sort.sortOrder ?? "desc";
+
+  useEffect(() => {
+    setSearchInput(listQuery.name ?? "");
+  }, [listQuery.name]);
 
   const loadDefinitions = useCallback(async () => {
     setLoading(true);
     setToast(null);
     try {
-      const query = new URLSearchParams({
-        limit: String(PAGE_SIZE),
-        offset: String(offset)
-      });
-      const keyword = submittedSearch.trim();
-      if (keyword) query.set("name", keyword);
-      const page = await apiGet<PagedDefinitions>(`/definitions?${query.toString()}`);
+      const path = buildDefinitionsListPath(listQuery);
+      const page = await apiGet<PagedDefinitions>(path);
       setItems(page.items);
       setTotalCount(page.totalCount);
     } catch (error) {
@@ -55,19 +79,37 @@ export function DefinitionsPageClient() {
     } finally {
       setLoading(false);
     }
-  }, [offset, submittedSearch]);
+  }, [listQuery]);
 
   useEffect(() => {
     void loadDefinitions();
   }, [loadDefinitions]);
 
+  const goTo = useCallback(
+    (query: DefinitionsListQuery) => {
+      router.replace(buildDefinitionsListPath(query), { scroll: false });
+    },
+    [router]
+  );
+
   const handleSubmitSearch = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      setCurrentPage(1);
-      setSubmittedSearch(searchInput.trim());
+      const trimmedKeyword = searchInput.trim();
+      if (!matchesPattern(trimmedKeyword, SEARCH_NAME_PATTERN)) {
+        setToast({
+          tone: "error",
+          message: uiText.definitionsPage.search.invalidName
+        });
+        return;
+      }
+      goTo({
+        pagination: { ...listQuery.pagination, offset: 0 },
+        sort: listQuery.sort,
+        name: trimmedKeyword || undefined
+      });
     },
-    [searchInput]
+    [goTo, listQuery.pagination, listQuery.sort, searchInput]
   );
 
   const empty = !loading && items !== null && items.length === 0;
@@ -77,8 +119,24 @@ export function DefinitionsPageClient() {
       currentPageLabel={uiText.definitionsPage.pagination.currentPage(currentPage)}
       hasPrev={hasPrev}
       hasNext={hasNext}
-      onPrev={() => setCurrentPage((page) => Math.max(1, page - 1))}
-      onNext={() => setCurrentPage((page) => page + 1)}
+      onPrev={() =>
+        goTo({
+          ...listQuery,
+          pagination: {
+            ...listQuery.pagination,
+            offset: Math.max(0, listQuery.pagination.offset - listQuery.pagination.limit)
+          }
+        })
+      }
+      onNext={() =>
+        goTo({
+          ...listQuery,
+          pagination: {
+            ...listQuery.pagination,
+            offset: listQuery.pagination.offset + listQuery.pagination.limit
+          }
+        })
+      }
     />
   );
 
@@ -112,13 +170,49 @@ export function DefinitionsPageClient() {
           className="rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-4 py-2 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"
           onClick={() => {
             setSearchInput("");
-            setSubmittedSearch("");
-            setCurrentPage(1);
+                goTo({
+                  pagination: { ...listQuery.pagination, offset: 0 },
+                  sort: listQuery.sort
+                });
           }}
-          disabled={loading && !submittedSearch}
+              disabled={loading && !listQuery.name}
         >
           {uiText.definitionsPage.search.clear}
         </button>
+        <label className="text-sm">
+          <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionsPage.sortByLabel}</span>
+          <select
+            className="mt-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-2 text-sm text-[var(--md-sys-color-on-surface)]"
+              value={effectiveSortBy}
+              onChange={(event) =>
+                goTo({
+                  ...listQuery,
+                  pagination: { ...listQuery.pagination, offset: 0 },
+                  sort: { ...listQuery.sort, sortBy: event.target.value as DefinitionsSortBy }
+                })
+              }
+          >
+            <option value="createdAt">{uiText.definitionsPage.sortByCreatedAt}</option>
+            <option value="name">{uiText.definitionsPage.sortByName}</option>
+          </select>
+        </label>
+        <label className="text-sm">
+          <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionsPage.sortOrderLabel}</span>
+          <select
+            className="mt-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-2 text-sm text-[var(--md-sys-color-on-surface)]"
+              value={effectiveSortOrder}
+              onChange={(event) =>
+                goTo({
+                  ...listQuery,
+                  pagination: { ...listQuery.pagination, offset: 0 },
+                  sort: { ...listQuery.sort, sortOrder: event.target.value as SortOrder }
+                })
+              }
+          >
+            <option value="desc">{uiText.definitionsPage.sortOrderDesc}</option>
+            <option value="asc">{uiText.definitionsPage.sortOrderAsc}</option>
+          </select>
+        </label>
         <button
           type="button"
           className="rounded border-2 border-[var(--brand-cta-border)] bg-[var(--brand-cta-bg)] px-4 py-2 text-sm font-medium text-[var(--brand-cta-fg)] hover:bg-[var(--brand-cta-bg-hover)]"
@@ -143,7 +237,7 @@ export function DefinitionsPageClient() {
         <section aria-label={uiText.lists.definitions}>
           <div className="mb-2 flex items-center justify-between gap-3">
             <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-              {submittedSearch ? uiText.definitionsPage.searchSummaryPrefix(submittedSearch) : ""}
+              {listQuery.name ? uiText.definitionsPage.searchSummaryPrefix(listQuery.name) : ""}
               {uiText.definitionsPage.listSummary(totalCount ?? 0, currentPage)}
             </p>
             {paginationNav}

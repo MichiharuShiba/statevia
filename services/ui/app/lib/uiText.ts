@@ -76,6 +76,10 @@ export type UiText = {
       eventNameLabel: string;
       eventNamePlaceholder: string;
     };
+    validation: {
+      eventNameTooLong: string;
+      eventNameInvalidFormat: string;
+    };
     graph: {
       fullscreenEnter: string;
       fullscreenExit: string;
@@ -184,6 +188,7 @@ export type UiText = {
     toasts: {
       definitionIdRequired: (definitionIdLabel: string) => string;
       invalidWorkflowInputJson: (workflowInputLabel: string) => string;
+      workflowInputTooLarge: string;
       workflowStarted: (workflowDisplayId: string) => string;
     };
     nav: {
@@ -224,6 +229,14 @@ export type UiText = {
       nameInputHint: string;
       search: string;
       clear: string;
+      sortByLabel: string;
+      sortOrderLabel: string;
+      sortByUpdatedAt: string;
+      sortByDisplayId: string;
+      sortOrderDesc: string;
+      sortOrderAsc: string;
+      invalidName: string;
+      invalidDefinitionId: string;
       pageInfo: (limit: number, offset: number, page: number) => string;
     };
     loading: string;
@@ -246,7 +259,14 @@ export type UiText = {
       placeholder: string;
       submit: string;
       clear: string;
+      invalidName: string;
     };
+    sortByLabel: string;
+    sortOrderLabel: string;
+    sortByCreatedAt: string;
+    sortByName: string;
+    sortOrderDesc: string;
+    sortOrderAsc: string;
     loading: string;
     emptyNoMatch: string;
     searchSummaryPrefix: (keyword: string) => string;
@@ -309,6 +329,8 @@ export type UiText = {
       nameRequired: string;
       yamlRequired: string;
       yamlLintInvalid: string;
+      nameInvalidFormat: string;
+      yamlTooLarge: string;
     };
     labels: {
       name: string;
@@ -456,6 +478,10 @@ export const uiText: UiText = {
       eventNameLabel: "イベント名",
       eventNamePlaceholder: "event-name",
     },
+    validation: {
+      eventNameTooLong: "イベント名は64文字以内で入力してください。",
+      eventNameInvalidFormat: "イベント名は半角英字開始で、半角英数字と . - _ のみ利用できます。",
+    },
     graph: {
       fullscreenEnter: "全画面表示",
       fullscreenExit: "全画面終了 (Esc)",
@@ -566,6 +592,7 @@ export const uiText: UiText = {
     toasts: {
       definitionIdRequired: (definitionIdLabel: string) => `${definitionIdLabel} が指定されていません。`,
       invalidWorkflowInputJson: (workflowInputLabel: string) => `${workflowInputLabel} の JSON が不正です。`,
+      workflowInputTooLarge: "入力データは65536バイト（64KiB）以内で指定してください。",
       workflowStarted: (workflowDisplayId: string) => `ワークフローを開始しました: ${workflowDisplayId}`,
     },
     nav: {
@@ -607,6 +634,14 @@ export const uiText: UiText = {
       nameInputHint: "name（workflow 表示ID 部分一致、または workflow UUID 完全一致）",
       search: "検索",
       clear: "クリア",
+      sortByLabel: "ソート項目",
+      sortOrderLabel: "順序",
+      sortByUpdatedAt: "更新日時",
+      sortByDisplayId: "表示ID",
+      sortOrderDesc: "降順",
+      sortOrderAsc: "昇順",
+      invalidName: "name は半角英数字と . - _ のみ、100文字以内で入力してください。",
+      invalidDefinitionId: "定義IDは半角英数字と - _ のみ、80文字以内で入力してください。",
       pageInfo: (limit: number, offset: number, page: number) =>
         `1 ページあたり: ${limit} 件。 offset: ${offset}（page ≈ ${page}）`,
     },
@@ -630,7 +665,14 @@ export const uiText: UiText = {
       placeholder: "例: order",
       submit: "検索",
       clear: "クリア",
+      invalidName: "検索キーワードは半角英数字と . - _ のみ、100文字以内で入力してください。",
     },
+    sortByLabel: "ソート項目",
+    sortOrderLabel: "順序",
+    sortByCreatedAt: "作成日時",
+    sortByName: "名前",
+    sortOrderDesc: "降順",
+    sortOrderAsc: "昇順",
     loading: "定義一覧を読み込み中です。",
     emptyNoMatch: "該当する定義はありません。検索条件を変更するか、条件をクリアして再検索してください。",
     searchSummaryPrefix: (keyword: string) => `検索: "${keyword}" / `,
@@ -694,6 +736,8 @@ export const uiText: UiText = {
       nameRequired: "定義名を入力してください。",
       yamlRequired: "YAML を入力してください。",
       yamlLintInvalid: "YAML の構文エラーを修正してください。",
+      nameInvalidFormat: "定義名は半角英字で開始し、半角英数字と . - _ のみ100文字以内で入力してください。",
+      yamlTooLarge: "YAMLは256KB（262144バイト）以内で入力してください。",
     },
     labels: {
       name: "定義名（name）",

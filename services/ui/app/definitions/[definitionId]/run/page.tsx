@@ -8,6 +8,8 @@ import { apiPost } from "../../../lib/api";
 import { toToastError, type ToastState } from "../../../lib/errors";
 import type { WorkflowDTO } from "../../../lib/types";
 import { useUiText } from "../../../lib/uiTextContext";
+import { getUtf8ByteLength } from "../../../lib/validation/primitives";
+import { WORKFLOW_INPUT_MAX_BYTES } from "../../../lib/validation/formRules";
 
 /**
  * Definition 起点で新規ワークフローを開始する。
@@ -35,9 +37,18 @@ export default function DefinitionRunStartPage() {
     }
 
     const body: { definitionId: string; input?: unknown } = { definitionId: id };
-    if (inputJson.trim()) {
+    const trimmedInputJson = inputJson.trim();
+    if (trimmedInputJson) {
+      const inputBytes = getUtf8ByteLength(trimmedInputJson);
+      if (inputBytes > WORKFLOW_INPUT_MAX_BYTES) {
+        setToast({
+          tone: "error",
+          message: uiText.definitionRunPage.toasts.workflowInputTooLarge
+        });
+        return;
+      }
       try {
-        body.input = JSON.parse(inputJson) as unknown;
+        body.input = JSON.parse(trimmedInputJson) as unknown;
       } catch {
         setToast({ tone: "error", message: uiText.definitionRunPage.toasts.invalidWorkflowInputJson(uiText.labels.workflowInput) });
         return;

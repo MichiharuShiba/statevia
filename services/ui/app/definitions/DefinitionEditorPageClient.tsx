@@ -13,6 +13,8 @@ import { defaultDefinitionYaml } from "../lib/defaultDefinitionYaml";
 import { toToastError, type ToastState } from "../lib/errors";
 import type { DefinitionDTO, DefinitionSchemaResponse } from "../lib/types";
 import { useUiText } from "../lib/uiTextContext";
+import { getUtf8ByteLength, matchesPattern } from "../lib/validation/primitives";
+import { DEFINITION_NAME_PATTERN, DEFINITION_YAML_MAX_BYTES } from "../lib/validation/formRules";
 
 type DefinitionEditorPageClientProps = {
   definitionId?: string;
@@ -201,15 +203,39 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
     const name = definitionName.trim();
     const yamlText = yaml.trim();
     if (!name) {
-      setToast({ tone: "error", message: uiText.definitionEditor.validation.nameRequired });
+      setToast({
+        tone: "error",
+        message: uiText.definitionEditor.validation.nameRequired
+      });
       return;
     }
     if (!yamlText) {
-      setToast({ tone: "error", message: uiText.definitionEditor.validation.yamlRequired });
+      setToast({
+        tone: "error",
+        message: uiText.definitionEditor.validation.yamlRequired
+      });
+      return;
+    }
+    if (!matchesPattern(name, DEFINITION_NAME_PATTERN)) {
+      setToast({
+        tone: "error",
+        message: uiText.definitionEditor.validation.nameInvalidFormat
+      });
+      return;
+    }
+    const yamlBytes = getUtf8ByteLength(yamlText);
+    if (yamlBytes > DEFINITION_YAML_MAX_BYTES) {
+      setToast({
+        tone: "error",
+        message: uiText.definitionEditor.validation.yamlTooLarge
+      });
       return;
     }
     if (hasYamlError) {
-      setToast({ tone: "error", message: uiText.definitionEditor.validation.yamlLintInvalid });
+      setToast({
+        tone: "error",
+        message: uiText.definitionEditor.validation.yamlLintInvalid
+      });
       return;
     }
 
@@ -234,7 +260,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
     } finally {
       setSaving(false);
     }
-  }, [definitionName, hasYamlError, uiText.definitionEditor.validation.nameRequired, uiText.definitionEditor.validation.yamlLintInvalid, uiText.definitionEditor.validation.yamlRequired, uiText.definitionEditor.toasts, uiText.labels.displayId, yaml]);
+  }, [definitionName, hasYamlError, uiText.definitionEditor.validation.nameInvalidFormat, uiText.definitionEditor.validation.nameRequired, uiText.definitionEditor.validation.yamlLintInvalid, uiText.definitionEditor.validation.yamlRequired, uiText.definitionEditor.validation.yamlTooLarge, uiText.definitionEditor.toasts, uiText.labels.displayId, yaml]);
 
   return (
     <PageShell
