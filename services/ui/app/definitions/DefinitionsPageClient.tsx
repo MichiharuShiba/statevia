@@ -57,7 +57,7 @@ export function DefinitionsPageClient() {
   );
   const hasPrev = listQuery.pagination.offset > 0;
   const hasNext = totalCount !== null && listQuery.pagination.offset + (items?.length ?? 0) < totalCount;
-  const effectiveSortBy = (listQuery.sort.sortBy ?? "createdAt") as DefinitionsSortBy;
+  const effectiveSortBy: DefinitionsSortBy = listQuery.sort.sortBy === "name" ? "name" : "createdAt";
   const effectiveSortOrder: SortOrder = listQuery.sort.sortOrder ?? "desc";
 
   useEffect(() => {
@@ -170,12 +170,12 @@ export function DefinitionsPageClient() {
           className="rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-4 py-2 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"
           onClick={() => {
             setSearchInput("");
-                goTo({
-                  pagination: { ...listQuery.pagination, offset: 0 },
-                  sort: listQuery.sort
-                });
+            goTo({
+              pagination: { ...listQuery.pagination, offset: 0 },
+              sort: listQuery.sort
+            });
           }}
-              disabled={loading && !listQuery.name}
+          disabled={loading && !listQuery.name}
         >
           {uiText.definitionsPage.search.clear}
         </button>

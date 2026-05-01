@@ -223,6 +223,10 @@ export type UiText = {
       clearDefinition: string;
       title: string;
       all: string;
+      statusRunning: string;
+      statusCompleted: string;
+      statusCancelled: string;
+      statusFailed: string;
       definitionInputHint: string;
       definitionLabelWithHint: (definitionLabel: string) => string;
       definitionPlaceholder: string;
@@ -628,6 +632,10 @@ export const uiText: UiText = {
       clearDefinition: "定義条件を外す",
       title: "フィルタ",
       all: "（すべて）",
+      statusRunning: "Running",
+      statusCompleted: "Completed",
+      statusCancelled: "Cancelled",
+      statusFailed: "Failed",
       definitionInputHint: "定義 表示ID / UUID",
       definitionLabelWithHint: (definitionLabel: string) => `${definitionLabel}（定義 表示ID / UUID）`,
       definitionPlaceholder: "例: def-…",

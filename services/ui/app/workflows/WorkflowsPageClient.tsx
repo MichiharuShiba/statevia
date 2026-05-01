@@ -214,10 +214,10 @@ function WorkflowsPageClientInner() {
               }}
             >
               <option value="">{uiText.workflowsPage.filter.all}</option>
-              <option value="Running">Running</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
-              <option value="Failed">Failed</option>
+              <option value="Running">{uiText.workflowsPage.filter.statusRunning}</option>
+              <option value="Completed">{uiText.workflowsPage.filter.statusCompleted}</option>
+              <option value="Cancelled">{uiText.workflowsPage.filter.statusCancelled}</option>
+              <option value="Failed">{uiText.workflowsPage.filter.statusFailed}</option>
             </select>
           </label>
           <label className="block text-sm text-[var(--md-sys-color-on-surface)]">
