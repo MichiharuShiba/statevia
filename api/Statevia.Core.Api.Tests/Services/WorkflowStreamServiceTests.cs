@@ -19,7 +19,7 @@ public sealed class WorkflowStreamServiceTests
             throw new NotSupportedException();
         public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
         public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
-            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, CancellationToken ct) =>
+            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
@@ -49,7 +49,7 @@ public sealed class WorkflowStreamServiceTests
             throw new NotSupportedException();
         public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
         public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
-            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, CancellationToken ct) =>
+            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
 
@@ -88,7 +88,7 @@ public sealed class WorkflowStreamServiceTests
         public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
 
         public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
-            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, CancellationToken ct) =>
+            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
@@ -134,7 +134,7 @@ public sealed class WorkflowStreamServiceTests
             throw new NotSupportedException();
         public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
         public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
-            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, CancellationToken ct) =>
+            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();

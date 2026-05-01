@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { apiGet, apiPost, getApiConfig } from "../../lib/api";
 import { applyExecutionStreamEvent, parseExecutionStreamEvent } from "../../lib/executionStream";
+import { isWithinMaxLength, matchesPattern } from "../../lib/validation/primitives";
+import { EVENT_NAME_MAX_LENGTH, EVENT_NAME_PATTERN } from "../../lib/validation/formRules";
 import { buildWorkflowView } from "../../lib/workflowView";
 import type { CommandAccepted, WorkflowDTO, WorkflowGraphDTO, WorkflowView } from "../../lib/types";
 
@@ -229,6 +231,7 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
     const displayId = execution.displayId;
     const name = eventName.trim();
     if (!name) return;
+    if (!isWithinMaxLength(name, EVENT_NAME_MAX_LENGTH) || !matchesPattern(name, EVENT_NAME_PATTERN)) return;
     setLoading(true);
     let posted = false;
     try {

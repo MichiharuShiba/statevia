@@ -1,3 +1,4 @@
+using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Persistence.Repositories;
 using Statevia.Core.Api.Tests.Infrastructure;
@@ -166,9 +167,10 @@ public sealed class DefinitionRepositoryTests
 
         var (total, items) = await repo.ListWithDisplayIdsPageAsync(
             tenantId,
-            offset: 0,
-            limit: 1,
-            nameContains: "order",
+            new DefinitionListPageQuery(
+                Page: new PageQuery(0, 1),
+                Sort: new SortQuery(null, null),
+                NameContains: "order"),
             default);
 
         // Assert

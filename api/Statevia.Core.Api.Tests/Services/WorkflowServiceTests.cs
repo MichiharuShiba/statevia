@@ -401,11 +401,7 @@ public sealed class WorkflowServiceTests
 
         public async Task<(int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
             string tenantId,
-            int offset,
-            int limit,
-            string? statusFilter,
-            Guid? definitionIdFilter,
-            string? nameContains,
+            WorkflowListPageQuery query,
             CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
@@ -661,7 +657,10 @@ public sealed class WorkflowServiceTests
         public Task AddAsync(WorkflowDefinitionRow row, CancellationToken ct) => Task.CompletedTask;
         public Task<WorkflowDefinitionRow?> GetByIdAsync(string tenantId, Guid definitionId, CancellationToken ct) => Task.FromResult<WorkflowDefinitionRow?>(null);
         public Task<List<(WorkflowDefinitionRow Def, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct) => Task.FromResult(new List<(WorkflowDefinitionRow, string?)>());
-        public Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(string tenantId, int offset, int limit, string? nameContains, CancellationToken ct) =>
+        public Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
+            string tenantId,
+            DefinitionListPageQuery query,
+            CancellationToken ct) =>
             Task.FromResult((0, new List<(WorkflowDefinitionRow, string?)>()));
     }
 
@@ -885,7 +884,9 @@ public sealed class WorkflowServiceTests
             Task.FromResult(new List<(WorkflowDefinitionRow, string?)>());
 
         public Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
-            string tenantId, int offset, int limit, string? nameContains, CancellationToken ct) =>
+            string tenantId,
+            DefinitionListPageQuery query,
+            CancellationToken ct) =>
             Task.FromResult((0, new List<(WorkflowDefinitionRow, string?)>()));
     }
 
@@ -2621,7 +2622,7 @@ public sealed class WorkflowServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var page = await sut.ListPagedAsync(tenantId, offset: 0, limit: 2, status: null, null, null, CancellationToken.None);
+        var page = await sut.ListPagedAsync(tenantId, offset: 0, limit: 2, status: null, null, null, null, null, CancellationToken.None);
 
         // Assert
         Assert.Equal(3, page.TotalCount);
@@ -2631,7 +2632,7 @@ public sealed class WorkflowServiceTests
         workflowRepo.ListWithDisplayIdsPageResult = (2, new List<(WorkflowRow Workflow, string? DisplayId)> { (w1, null), (w2, null) });
 
         // Act
-        var page2 = await sut.ListPagedAsync(tenantId, offset: 0, limit: 2, status: null, null, null, CancellationToken.None);
+        var page2 = await sut.ListPagedAsync(tenantId, offset: 0, limit: 2, status: null, null, null, null, null, CancellationToken.None);
 
         // Assert
         Assert.Equal(2, page2.TotalCount);
@@ -2657,7 +2658,7 @@ public sealed class WorkflowServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var page = await sut.ListPagedAsync("t1", offset: 0, limit: 10, null, "no-such-def", null, CancellationToken.None);
+        var page = await sut.ListPagedAsync("t1", offset: 0, limit: 10, null, "no-such-def", null, null, null, CancellationToken.None);
 
         // Assert
         Assert.Equal(0, page.TotalCount);

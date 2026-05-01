@@ -5,7 +5,7 @@ Project: 実行型ステートマシン
 
 Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
 
-**Version 1.2（2026-04-28）**: `GET /v1/definitions/schema/nodes` を追加。Definition 登録の検証エラーを 422（details 付き）へ明確化。
+**Version 1.3（2026-05-01）**: Definitions / Workflows 一覧に `sortBy` / `sortOrder` を追加。一覧検索・入力検証に伴う 422 details 契約を更新。
 
 - **Base path**: `/v1`
 - **Policy**: 終端の優先順位はエンジン内で保証
@@ -69,7 +69,11 @@ Response: 201 Created
 **GET /v1/definitions**
 
 - クエリなし: Response 200 OK、`DefinitionResponse[]`（displayId, resourceId, name, createdAt）
-- **`?limit=&offset=&name=`**（いずれか指定時）: 200 OK、`PagedResult<DefinitionResponse>`（`items`, `totalCount`, `offset`, `limit`, `hasMore`）。`name` は名前の部分一致。`limit` は 1〜500、`offset` は 0 以上。
+- **`?limit=&offset=&name=&sortBy=&sortOrder=`**（いずれか指定時）: 200 OK、`PagedResult<DefinitionResponse>`（`items`, `totalCount`, `offset`, `limit`, `hasMore`）。
+  - `name`: 名前の部分一致
+  - `sortBy`: `createdAt` / `name`（未指定時は `createdAt`）
+  - `sortOrder`: `asc` / `desc`（未指定時は `desc`）
+  - `limit`: 1〜500、`offset`: 0 以上
 
 ### 2.3 定義取得
 
@@ -141,7 +145,13 @@ Request:
 **GET /v1/workflows**
 
 - クエリなし: Response 200 OK、`WorkflowResponse[]`（displayId, resourceId, status, startedAt, updatedAt, cancelRequested, restartLost）
-- **`?limit=&offset=&status=`**（いずれか指定時）: 200 OK、`PagedResult<WorkflowResponse>`。`status` は `workflows.status` 列と**完全一致**。`limit` は 1〜500。
+- **`?limit=&offset=&status=&name=&definitionId=&sortBy=&sortOrder=`**（いずれか指定時）: 200 OK、`PagedResult<WorkflowResponse>`。
+  - `status`: `workflows.status` 列と**完全一致**
+  - `name`: `display_id` の部分一致（`Guid` 形式入力時は `workflow_id` 完全一致も許容）
+  - `definitionId`: Definition の displayId または UUID
+  - `sortBy`: `updatedAt` / `displayId`（未指定時は `updatedAt`）
+  - `sortOrder`: `asc` / `desc`（未指定時は `desc`）
+  - `limit`: 1〜500、`offset`: 0 以上
 
 ### 3.3 ワークフロー取得
 
@@ -245,7 +255,7 @@ Request（JSON、省略可）:
 | 成功（作成）       | 201  |
 | 成功（取得・一覧） | 200  |
 | 成功（No Content） | 204  |
-| 入力不正           | 422  |
+| 入力不正           | 422（`error.details` を含む場合あり） |
 | 存在しない         | 404  |
 | 冪等キー再利用（別リクエスト本文） | 409 。`error.code` は `IDEMPOTENCY_KEY_CONFLICT`（`POST /v1/workflows` のみ） |
 | コマンド適用不可（例: Engine にワークフローが無い） | 422 。`ArgumentException` / `ApiValidationException` がマッピングされる（`ApiValidationException` は `details` 付き） |

@@ -23,6 +23,8 @@ import { computeExecutionDiff } from "../../lib/executionDiff";
 import { apiGet } from "../../lib/api";
 import { toToastError, type ToastState } from "../../lib/errors";
 import { useI18n, useUiText } from "../../lib/uiTextContext";
+import { isWithinMaxLength, matchesPattern } from "../../lib/validation/primitives";
+import { EVENT_NAME_MAX_LENGTH, EVENT_NAME_PATTERN } from "../../lib/validation/formRules";
 import { buildWorkflowView } from "../../lib/workflowView";
 import type { WorkflowDTO, WorkflowGraphDTO, WorkflowView } from "../../lib/types";
 
@@ -449,6 +451,17 @@ function ExecutionDashboardView({
 }: Readonly<ExecutionDashboardViewProps>) {
   const uiText = useUiText();
   const [eventName, setEventName] = useState("");
+  const trimmedEventName = eventName.trim();
+  const eventNameValidationMessage = useMemo(() => {
+    if (!trimmedEventName) return null;
+    if (!isWithinMaxLength(trimmedEventName, EVENT_NAME_MAX_LENGTH)) {
+      return uiText.executionDashboard.validation.eventNameTooLong;
+    }
+    if (!matchesPattern(trimmedEventName, EVENT_NAME_PATTERN)) {
+      return uiText.executionDashboard.validation.eventNameInvalidFormat;
+    }
+    return null;
+  }, [trimmedEventName, uiText.executionDashboard.validation.eventNameInvalidFormat, uiText.executionDashboard.validation.eventNameTooLong]);
   const defaultHeaderNav = (
     <ActionLinkGroup
       links={[
@@ -513,15 +526,18 @@ function ExecutionDashboardView({
                 <button
                   type="button"
                   className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-2 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] disabled:opacity-50"
-                  disabled={loading || !eventName.trim() || !execution || terminal}
+                  disabled={loading || !trimmedEventName || !execution || terminal || !!eventNameValidationMessage}
                   onClick={() => {
-                    onPublishEvent(eventName.trim());
+                    onPublishEvent(trimmedEventName);
                     setEventName("");
                   }}
                 >
                   {uiText.actions.sendEvent}
                 </button>
               </div>
+              {eventNameValidationMessage && (
+                <p className="mt-2 text-xs text-rose-600">{eventNameValidationMessage}</p>
+              )}
               <p className="mt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">
                 {uiText.executionDashboard.operationsAggregatedInRun(
                   uiText.actions.cancel,

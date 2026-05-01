@@ -115,6 +115,23 @@ UIが依存してよいレスポンス形を固定する。
 - UIは最終状態確認にこれを使う
 - コマンド直後の UI 更新は、この GET を**短い間隔でポーリング**してもよいし、**§5 の SSE** を併用してから GET で揃えてもよい
 
+#### 一覧 Query 契約（現行）
+
+- `GET /v1/definitions`
+  - `limit` / `offset`（ページング）
+  - `name`（部分一致）
+  - `sortBy`（`createdAt` / `name`）
+  - `sortOrder`（`asc` / `desc`）
+- `GET /v1/workflows`
+  - `limit` / `offset`（ページング）
+  - `status`（完全一致）
+  - `name`（`display_id` 部分一致。Guid 形式時は `workflow_id` 完全一致も許容）
+  - `definitionId`（displayId または UUID）
+  - `sortBy`（`updatedAt` / `displayId`）
+  - `sortOrder`（`asc` / `desc`）
+
+実装上、UI は `limit` / `offset` / `sortBy` / `sortOrder` を URL 同期し、サーバ側で全件対象ソートした結果を受け取る。
+
 #### Definition スキーマ取得（現行）
 
 - **`GET /v1/definitions/schema/nodes`**
@@ -331,7 +348,8 @@ Core-APIはエラーレスポンスに以下を入れる。
 }
 ```
 
-Definition 登録（`POST /v1/definitions`）の 422 では、`error.details` に `field` / `message` を含む構造化診断を返し、UI は `name` と `yaml` の表示位置を分離できる。
+Definition 登録（`POST /v1/definitions`）の 422 では、`error.details` に `field` / `message` を含む構造化診断を返し、UI は `name` と `yaml` の表示位置を分離できる。  
+同様に、実行開始入力（workflow input JSON）・イベント名入力などの入力不正も 422 details で返せる前提とし、UI はフィールド優先で表示する。
 
 ```json
 {

@@ -1,3 +1,4 @@
+using System;
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Persistence;
@@ -39,25 +40,21 @@ public sealed class WorkflowRepository : IWorkflowRepository
 
     public async Task<(int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
         string tenantId,
-        int offset,
-        int limit,
-        string? statusFilter,
-        Guid? definitionIdFilter,
-        string? nameContains,
+        WorkflowListPageQuery query,
         CancellationToken ct)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         var joinQuery = QueryWorkflowsWithDisplayIds(db, tenantId);
 
-        if (!string.IsNullOrWhiteSpace(statusFilter))
-            joinQuery = joinQuery.Where(x => x.Workflow.Status == statusFilter);
+        if (!string.IsNullOrWhiteSpace(query.StatusFilter))
+            joinQuery = joinQuery.Where(x => x.Workflow.Status == query.StatusFilter);
 
-        if (definitionIdFilter is not null)
-            joinQuery = joinQuery.Where(x => x.Workflow.DefinitionId == definitionIdFilter.Value);
+        if (query.DefinitionIdFilter is not null)
+            joinQuery = joinQuery.Where(x => x.Workflow.DefinitionId == query.DefinitionIdFilter.Value);
 
-        if (!string.IsNullOrWhiteSpace(nameContains))
+        if (!string.IsNullOrWhiteSpace(query.NameContains))
         {
-            var needle = nameContains.Trim();
+            var needle = query.NameContains.Trim();
             if (Guid.TryParse(needle, out var workflowGuid))
             {
                 joinQuery = joinQuery.Where(
@@ -69,11 +66,12 @@ public sealed class WorkflowRepository : IWorkflowRepository
             }
         }
 
+        var sortedQuery = ApplyWorkflowsSort(joinQuery, query.Sort.SortBy, query.Sort.SortOrder);
+
         var total = await joinQuery.CountAsync(ct).ConfigureAwait(false);
-        var page = await joinQuery
-            .OrderByDescending(x => x.Workflow.StartedAt)
-            .Skip(offset)
-            .Take(limit)
+        var page = await sortedQuery
+            .Skip(query.Page.Offset)
+            .Take(query.Page.Limit)
             .ToListAsync(ct)
             .ConfigureAwait(false);
 
@@ -91,6 +89,27 @@ public sealed class WorkflowRepository : IWorkflowRepository
             join d in displayIdsForWorkflow on w.WorkflowId equals d.ResourceId into dGroup
             from d in dGroup.DefaultIfEmpty()
             select new WorkflowWithDisplay { Workflow = w, DisplayId = d != null ? d.DisplayId : null };
+    }
+
+    private static IQueryable<WorkflowWithDisplay> ApplyWorkflowsSort(
+        IQueryable<WorkflowWithDisplay> query,
+        string? sortBy,
+        string? sortOrder)
+    {
+        var normalizedSortBy = sortBy?.Trim();
+        var isAsc = string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase);
+
+        return normalizedSortBy switch
+        {
+            "displayId" => isAsc
+                ? query.OrderBy(x => x.DisplayId).ThenBy(x => x.Workflow.StartedAt)
+                : query.OrderByDescending(x => x.DisplayId).ThenByDescending(x => x.Workflow.StartedAt),
+            _ => isAsc
+                ? query.OrderBy(x => x.Workflow.UpdatedAt)
+                    .ThenBy(x => x.Workflow.StartedAt)
+                : query.OrderByDescending(x => x.Workflow.UpdatedAt)
+                    .ThenByDescending(x => x.Workflow.StartedAt)
+        };
     }
 
     public async Task AddWorkflowAndSnapshotAsync(WorkflowRow workflow, ExecutionGraphSnapshotRow snapshot, CancellationToken ct)

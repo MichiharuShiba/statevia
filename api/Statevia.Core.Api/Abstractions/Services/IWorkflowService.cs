@@ -21,6 +21,8 @@ public interface IWorkflowService
         string? status,
         string? definitionId,
         string? nameContains,
+        string? sortBy,
+        string? sortOrder,
         CancellationToken ct);
     /// <summary>単一取得（一覧 <see cref="WorkflowResponse"/> と同一形。UI の WorkflowDTO 向け）。</summary>
     Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct);

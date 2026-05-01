@@ -11,8 +11,6 @@ public interface IDefinitionRepository
     /// <summary>一覧のページング。<paramref name="nameContains"/> は名前の部分一致（O2）。</summary>
     Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
         string tenantId,
-        int offset,
-        int limit,
-        string? nameContains,
+        DefinitionListPageQuery query,
         CancellationToken ct);
 }

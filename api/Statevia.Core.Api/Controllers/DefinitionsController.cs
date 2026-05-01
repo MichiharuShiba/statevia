@@ -31,13 +31,15 @@ public class DefinitionsController : ControllerBase
 
     /// <summary>
     /// GET /v1/definitions — 一覧（U4）。クエリなしは従来どおり配列。
-    /// <c>?limit=&amp;offset=&amp;name=</c> で <see cref="PagedResult{T}"/>（name は部分一致）。
+    /// <c>?limit=&amp;offset=&amp;name=&amp;sortBy=&amp;sortOrder=</c> で <see cref="PagedResult{T}"/>（name は部分一致）。
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> List(
         [FromQuery] int? limit,
         [FromQuery] int offset = 0,
         [FromQuery] string? name = null,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] string? sortOrder = null,
         CancellationToken ct = default)
     {
         var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
@@ -52,7 +54,9 @@ public class DefinitionsController : ControllerBase
         if (limit.Value > 500)
             throw new ArgumentException("limit must be at most 500");
 
-        var paged = await _definitions.ListPagedAsync(tenantId, offset, limit.Value, name, ct).ConfigureAwait(false);
+        var paged = await _definitions
+            .ListPagedAsync(tenantId, offset, limit.Value, name, sortBy, sortOrder, ct)
+            .ConfigureAwait(false);
         return Ok(paged);
     }
 

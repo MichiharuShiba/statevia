@@ -8,16 +8,19 @@ import { NAVIGATION_BUTTON_CLASS, OPERATION_TEXT_BUTTON_CLASS } from "../compone
 import { Toast } from "../components/Toast";
 import { PageShell } from "../components/layout/PageShell";
 import { PageState } from "../components/layout/PageState";
-import { apiGet, buildWorkflowsListPath, type WorkflowsListQuery } from "../lib/api";
+import { apiGet, buildWorkflowsListPath, type SortOrder, type WorkflowsListQuery } from "../lib/api";
 import { formatDateTimeLocalized } from "../lib/dateTime";
 import { toToastError, type ToastState } from "../lib/errors";
 import { getDateTimeLocale } from "../lib/i18n";
 import type { PagedWorkflows, WorkflowDTO } from "../lib/types";
 import { useI18n, useUiText } from "../lib/uiTextContext";
+import { matchesPattern } from "../lib/validation/primitives";
+import { DEFINITION_ID_PATTERN, SEARCH_NAME_PATTERN } from "../lib/validation/searchRules";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 500;
 type StatusFilter = "" | "Running" | "Completed" | "Cancelled" | "Failed";
+type SortBy = "updatedAt" | "displayId";
 
 /**
  * クエリから一覧の取得条件を正規化する。無効な値は既定に寄せる。
@@ -32,9 +35,13 @@ function readListQuery(searchParams: { get: (name: string) => string | null }): 
     statusRaw === "Running" || statusRaw === "Completed" || statusRaw === "Cancelled" || statusRaw === "Failed" ? statusRaw : undefined;
   const name = searchParams.get("name")?.trim() ?? "";
   const definitionId = searchParams.get("definitionId")?.trim() ?? "";
+  const sortByRaw = searchParams.get("sortBy")?.trim() ?? "";
+  const sortOrderRaw = searchParams.get("sortOrder")?.trim() ?? "";
+  const sortBy: SortBy = sortByRaw === "displayId" ? "displayId" : "updatedAt";
+  const sortOrder: SortOrder = sortOrderRaw === "asc" ? "asc" : "desc";
   return {
-    limit,
-    offset,
+    pagination: { limit, offset },
+    sort: { sortBy, sortOrder },
     status: asStatus,
     name: name || undefined,
     definitionId: definitionId || undefined
@@ -66,18 +73,22 @@ function WorkflowsPageClientInner() {
   }, [listQuery.name, listQuery.definitionId]);
 
   const currentStatus = (listQuery.status ?? "") as StatusFilter;
+  const effectiveSortBy = (listQuery.sort.sortBy ?? "updatedAt") as SortBy;
+  const effectiveSortOrder: SortOrder = listQuery.sort.sortOrder ?? "desc";
 
-  const currentPage1Based = useMemo(() => Math.floor(listQuery.offset / listQuery.limit) + 1, [listQuery.offset, listQuery.limit]);
-  const hasPrev = listQuery.offset > 0;
-  const hasNext = totalCount !== null && listQuery.offset + (items?.length ?? 0) < totalCount;
-
+  const currentPage1Based = useMemo(
+    () => Math.floor(listQuery.pagination.offset / listQuery.pagination.limit) + 1,
+    [listQuery.pagination.offset, listQuery.pagination.limit]
+  );
+  const hasPrev = listQuery.pagination.offset > 0;
+  const hasNext = totalCount !== null && listQuery.pagination.offset + (items?.length ?? 0) < totalCount;
   const load = useCallback(async () => {
     setLoading(true);
     setToast(null);
     try {
       const path = buildWorkflowsListPath({
-        limit: listQuery.limit,
-        offset: listQuery.offset,
+        pagination: listQuery.pagination,
+        sort: listQuery.sort,
         status: listQuery.status,
         name: listQuery.name,
         definitionId: listQuery.definitionId
@@ -107,9 +118,23 @@ function WorkflowsPageClientInner() {
 
   const handleFilterSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (!matchesPattern(nameDraft.trim(), SEARCH_NAME_PATTERN)) {
+      setToast({
+        tone: "error",
+        message: uiText.workflowsPage.filter.invalidName
+      });
+      return;
+    }
+    if (!matchesPattern(definitionDraft.trim(), DEFINITION_ID_PATTERN)) {
+      setToast({
+        tone: "error",
+        message: uiText.workflowsPage.filter.invalidDefinitionId
+      });
+      return;
+    }
     goTo({
-      limit: listQuery.limit,
-      offset: 0,
+      pagination: { ...listQuery.pagination, offset: 0 },
+      sort: listQuery.sort,
       status: (currentStatus || undefined) as WorkflowsListQuery["status"],
       name: nameDraft || undefined,
       definitionId: definitionDraft || undefined
@@ -126,13 +151,19 @@ function WorkflowsPageClientInner() {
       onPrev={() =>
         goTo({
           ...listQuery,
-          offset: Math.max(0, listQuery.offset - listQuery.limit)
+          pagination: {
+            ...listQuery.pagination,
+            offset: Math.max(0, listQuery.pagination.offset - listQuery.pagination.limit)
+          }
         })
       }
       onNext={() =>
         goTo({
           ...listQuery,
-          offset: listQuery.offset + listQuery.limit
+          pagination: {
+            ...listQuery.pagination,
+            offset: listQuery.pagination.offset + listQuery.pagination.limit
+          }
         })
       }
     />
@@ -151,8 +182,8 @@ function WorkflowsPageClientInner() {
             onClick={() => {
               setDefinitionDraft("");
               goTo({
-                limit: listQuery.limit,
-                offset: 0,
+                pagination: { ...listQuery.pagination, offset: 0 },
+                sort: listQuery.sort,
                 status: (currentStatus || undefined) as WorkflowsListQuery["status"],
                 name: nameDraft || undefined
               });
@@ -174,8 +205,8 @@ function WorkflowsPageClientInner() {
               onChange={(e) => {
                 const v = e.target.value as StatusFilter;
                 goTo({
-                  limit: listQuery.limit,
-                  offset: 0,
+                  pagination: { ...listQuery.pagination, offset: 0 },
+                  sort: listQuery.sort,
                   status: v || undefined,
                   name: nameDraft || undefined,
                   definitionId: definitionDraft || undefined
@@ -183,10 +214,10 @@ function WorkflowsPageClientInner() {
               }}
             >
               <option value="">{uiText.workflowsPage.filter.all}</option>
-              <option value="Running">Running</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
-              <option value="Failed">Failed</option>
+              <option value="Running">{uiText.workflowsPage.filter.statusRunning}</option>
+              <option value="Completed">{uiText.workflowsPage.filter.statusCompleted}</option>
+              <option value="Cancelled">{uiText.workflowsPage.filter.statusCancelled}</option>
+              <option value="Failed">{uiText.workflowsPage.filter.statusFailed}</option>
             </select>
           </label>
           <label className="block text-sm text-[var(--md-sys-color-on-surface)]">
@@ -217,6 +248,40 @@ function WorkflowsPageClientInner() {
           >
             {uiText.workflowsPage.filter.search}
           </button>
+          <label className="text-sm text-[var(--md-sys-color-on-surface)]">
+            <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.workflowsPage.filter.sortByLabel}</span>
+            <select
+              className="mt-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-2 py-2 text-sm text-[var(--md-sys-color-on-surface)]"
+              value={effectiveSortBy}
+              onChange={(e) =>
+                goTo({
+                  ...listQuery,
+                  pagination: { ...listQuery.pagination, offset: 0 },
+                  sort: { ...listQuery.sort, sortBy: e.target.value as SortBy }
+                })
+              }
+            >
+              <option value="updatedAt">{uiText.workflowsPage.filter.sortByUpdatedAt}</option>
+              <option value="displayId">{uiText.workflowsPage.filter.sortByDisplayId}</option>
+            </select>
+          </label>
+          <label className="text-sm text-[var(--md-sys-color-on-surface)]">
+            <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.workflowsPage.filter.sortOrderLabel}</span>
+            <select
+              className="mt-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-2 py-2 text-sm text-[var(--md-sys-color-on-surface)]"
+              value={effectiveSortOrder}
+              onChange={(e) =>
+                goTo({
+                  ...listQuery,
+                  pagination: { ...listQuery.pagination, offset: 0 },
+                  sort: { ...listQuery.sort, sortOrder: e.target.value as SortOrder }
+                })
+              }
+            >
+              <option value="desc">{uiText.workflowsPage.filter.sortOrderDesc}</option>
+              <option value="asc">{uiText.workflowsPage.filter.sortOrderAsc}</option>
+            </select>
+          </label>
           <button
             type="button"
             className="rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-4 py-2 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"
@@ -224,8 +289,8 @@ function WorkflowsPageClientInner() {
               setNameDraft("");
               setDefinitionDraft("");
               goTo({
-                limit: listQuery.limit,
-                offset: 0
+                pagination: { ...listQuery.pagination, offset: 0 },
+                sort: listQuery.sort
               });
             }}
             disabled={loading && !currentStatus && !nameDraft && !definitionDraft}
@@ -234,7 +299,11 @@ function WorkflowsPageClientInner() {
           </button>
         </div>
         <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-          {uiText.workflowsPage.filter.pageInfo(listQuery.limit, listQuery.offset, currentPage1Based)}
+          {uiText.workflowsPage.filter.pageInfo(
+            listQuery.pagination.limit,
+            listQuery.pagination.offset,
+            currentPage1Based
+          )}
         </p>
       </form>
 
