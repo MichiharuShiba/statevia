@@ -76,5 +76,5 @@ statevia/
 ```
 
 - **Core-Engine**: `engine/`。定義駆動 FSM / Fork-Join / ExecutionGraph。API から同一プロセスで参照（IWorkflowEngine）。
-- **Core-API**: `api/`。v1/definitions・v1/workflows・v1/health。PostgreSQL は EF Core マイグレーションで管理。
+- **Core-API**: `api/`。v1/definitions（POST 登録・PUT 更新・GET）・v1/workflows・v1/health。PostgreSQL は EF Core マイグレーションで管理。
 - **UI**: `services/ui/`。Next.js。`/api/core/*` で Core-API（C#）にプロキシ。

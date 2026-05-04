@@ -1,7 +1,9 @@
 # アーキテクチャ
 
-Version: 1.0
+Version: 1.1
 Project: 実行型ステートマシン
+
+**Version 1.1（2026-05-05）**: v1/definitions に定義更新（PUT）と `updatedAt` を反映。
 
 ---
 
@@ -68,7 +70,7 @@ flowchart LR
 
 ### 2.2 Core-API（C# / DB 所有者）
 
-- **v1/definitions**: 定義の登録・一覧・取得（YAML 検証・コンパイル済み JSON 保存）
+- **v1/definitions**: 定義の登録・更新・一覧・取得（YAML 検証・コンパイル済み JSON 保存、`workflow_definitions.updated_at` を更新）
 - **v1/workflows**: ワークフロー開始（definitionId 指定）・一覧・取得・グラフ取得・キャンセル・イベント発行
 - **v1/health**: 死活
 - 永続化: EF Core（workflow_definitions, workflows, execution_graph_snapshots, display_ids 等）

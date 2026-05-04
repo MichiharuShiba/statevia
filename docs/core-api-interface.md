@@ -1,11 +1,13 @@
 # Core API 契約（HTTP）
 
-Version: 1.1
+Version: 1.4
 Project: 実行型ステートマシン
 
 Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
 
 **Version 1.3（2026-05-01）**: Definitions / Workflows 一覧に `sortBy` / `sortOrder` を追加。一覧検索・入力検証に伴う 422 details 契約を更新。
+
+**Version 1.4（2026-05-05）**: `PUT /v1/definitions/{id}`（定義更新）を追記。`DefinitionResponse` に `updatedAt` を追加（一覧・ページング・取得・作成・更新で返却）。`GET /v1/definitions/{id}` の本文に `yaml` を含む旨を明記。
 
 - **Base path**: `/v1`
 - **Policy**: 終端の優先順位はエンジン内で保証
@@ -19,6 +21,7 @@ Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
 | -------- | ------------------------- | ----------------------------- |
 | GET      | /v1/health                | 死活                          |
 | POST     | /v1/definitions           | 定義登録                      |
+| PUT      | /v1/definitions/{id}      | 定義更新（displayId または UUID） |
 | GET      | /v1/definitions           | 定義一覧                      |
 | GET      | /v1/definitions/{id}      | 定義取得                      |
 | GET      | /v1/definitions/schema/nodes | nodes 入力スキーマ取得     |
@@ -58,17 +61,35 @@ Response: 201 Created
   "displayId": "string",
   "resourceId": "uuid",
   "name": "string",
-  "createdAt": "date-time"
+  "createdAt": "date-time",
+  "updatedAt": "date-time"
 }
 ```
 
-- `name` / `yaml` 必須。検証・コンパイルして保存。不正時は 422（`error.details` に field/message を含む）。
+- `name` / `yaml` 必須。検証・コンパイルして保存。新規行では `updatedAt` は `createdAt` と同一。不正時は 422（`error.details` に field/message を含む）。
+
+### 2.1.1 定義更新
+
+**PUT /v1/definitions/{id}**
+
+- `id`: displayId または UUID
+- Request: `POST` と同形（`name`, `yaml` 必須）
+
+```json
+{
+  "name": "string",
+  "yaml": "string"
+}
+```
+
+- Response: **200 OK**、`DefinitionResponse`（`GET` と同様に `yaml` を含む。`updatedAt` は保存直後の値）。
+- 存在しない／他テナント: **404**。検証・コンパイル失敗: **422**（`POST` と同様の `error.details`）。
 
 ### 2.2 定義一覧
 
 **GET /v1/definitions**
 
-- クエリなし: Response 200 OK、`DefinitionResponse[]`（displayId, resourceId, name, createdAt）
+- クエリなし: Response 200 OK、`DefinitionResponse[]`（displayId, resourceId, name, createdAt, updatedAt）
 - **`?limit=&offset=&name=&sortBy=&sortOrder=`**（いずれか指定時）: 200 OK、`PagedResult<DefinitionResponse>`（`items`, `totalCount`, `offset`, `limit`, `hasMore`）。
   - `name`: 名前の部分一致
   - `sortBy`: `createdAt` / `name`（未指定時は `createdAt`）
@@ -80,7 +101,7 @@ Response: 201 Created
 **GET /v1/definitions/{id}**
 
 - `id`: displayId または UUID
-- Response: 200 OK で 1 件。存在しなければ 404。
+- Response: 200 OK で 1 件（`displayId`, `resourceId`, `name`, `createdAt`, `updatedAt`, **`yaml`**（保存済みソース））。存在しなければ 404。
 
 ### 2.4 Graph Definition（構造）
 
