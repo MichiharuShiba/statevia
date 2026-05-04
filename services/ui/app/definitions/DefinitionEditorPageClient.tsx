@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DefinitionGraphEditor } from "../components/editor/DefinitionGraphEditor";
 import { YamlCodeEditor } from "../components/editor/YamlCodeEditor";
 import { ActionLinkGroup } from "../components/layout/ActionLinkGroup";
@@ -128,6 +128,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
       edgeWhenValueRequired: uiText.definitionEditor.graph.edgeWhenValueRequired,
       edgeWhenValueInInvalid: uiText.definitionEditor.graph.edgeWhenValueInInvalid,
       edgeWhenValueBetweenInvalid: uiText.definitionEditor.graph.edgeWhenValueBetweenInvalid,
+      edgeDefaultMultiple: uiText.definitionEditor.graph.edgeDefaultMultiple,
       selfReferenceEdge: uiText.definitionEditor.graph.selfReferenceEdge,
       missingTargetNode: uiText.definitionEditor.graph.missingTargetNode
     }),
@@ -165,6 +166,8 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
   const [savedDefinition, setSavedDefinition] = useState<DefinitionDTO | null>(null);
   // 補完候補（API スキーマ由来 + フォールバック）。
   const [completionKeywords, setCompletionKeywords] = useState<string[]>([]);
+  const yamlRef = useRef(yaml);
+  const graphDocumentRef = useRef(graphDocument);
   // 空文字 or lint エラーを保存禁止条件として統一する。
   const hasYamlError = useMemo(
     () => !yaml.trim() || yamlHasLintErrors || yamlParseMessages.length > 0 || graphValidationMessages.length > 0,
@@ -227,12 +230,26 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
     try {
       const row = await apiGet<DefinitionDTO>(`/definitions/${encodeURIComponent(definitionId)}`);
       setDefinitionName((current) => (current.trim() ? current : row.name));
+      const sourceYaml = typeof row.yaml === "string" && row.yaml.trim().length > 0 ? row.yaml : defaultDefinitionYaml;
+      setYaml(sourceYaml);
+      yamlRef.current = sourceYaml;
+      const parsed = parseDefinitionYaml(sourceYaml, parseYamlMessageOptions);
+      if (parsed.document) {
+        const validated = validateGraphDocument(parsed.document, graphValidationMessageOptions);
+        setYamlParseMessages(validated.isValid ? [] : validated.messages);
+        setGraphValidationMessages(validated.messages);
+        if (validated.isValid) {
+          setGraphDocument(parsed.document);
+        }
+      } else {
+        setYamlParseMessages(parsed.diagnostics);
+      }
     } catch (error) {
       setToast(toToastError(error));
     } finally {
       setLoadingMeta(false);
     }
-  }, [definitionId]);
+  }, [definitionId, graphValidationMessageOptions, parseYamlMessageOptions]);
 
   /**
    * 補完候補の源泉となる nodes スキーマを API から取得する。
@@ -258,6 +275,14 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
   useEffect(() => {
     void loadSchemaKeywords();
   }, [loadSchemaKeywords]);
+
+  useEffect(() => {
+    yamlRef.current = yaml;
+  }, [yaml]);
+
+  useEffect(() => {
+    graphDocumentRef.current = graphDocument;
+  }, [graphDocument]);
 
   const parseYamlImmediately = useCallback(
     (yamlText: string) => {
@@ -300,6 +325,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
   }, [definitionName, initialSnapshot, loadingMeta, yaml]);
 
   const handleGraphDocumentChange = useCallback((nextDocument: DefinitionGraphDocument) => {
+    graphDocumentRef.current = nextDocument;
     const validated = validateGraphDocument(nextDocument, graphValidationMessageOptions);
     setGraphValidationMessages(validated.messages);
     setYamlParseMessages(validated.isValid ? [] : validated.messages);
@@ -308,8 +334,14 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
       return;
     }
     const serialized = serializeDefinitionYaml(nextDocument);
+    yamlRef.current = serialized;
     setYaml(serialized);
   }, [graphValidationMessageOptions]);
+
+  const handleYamlChange = useCallback((nextYaml: string) => {
+    yamlRef.current = nextYaml;
+    setYaml(nextYaml);
+  }, []);
 
   /**
    * 保存処理（UI事前検証 -> API最終検証）。
@@ -317,7 +349,19 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
    */
   const handleSave = useCallback(async () => {
     const name = definitionName.trim();
-    const yamlText = yaml.trim();
+    const latestYaml = yamlRef.current;
+    const latestGraphDocument = graphDocumentRef.current;
+    let yamlForSave = latestYaml;
+    if (editorMode === "graph" && latestGraphDocument) {
+      yamlForSave = serializeDefinitionYaml(latestGraphDocument);
+    } else {
+      // YAML モードでも保存直前に最新テキストを再パースし、送信内容を確定する。
+      const parsedForSave = parseDefinitionYaml(latestYaml, parseYamlMessageOptions);
+      if (parsedForSave.document) {
+        yamlForSave = serializeDefinitionYaml(parsedForSave.document);
+      }
+    }
+    const yamlText = yamlForSave.trim();
     if (!name) {
       setToast({
         tone: "error",
@@ -362,7 +406,10 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
     // 直前の API 診断は保存試行ごとにクリアする。
     setApiDiagnostics([]);
     try {
-      const created = await apiPost<DefinitionDTO>("/definitions", { name, yaml });
+      // 保存 payload は直前の Graph 編集内容を優先して確定する。
+      yamlRef.current = yamlForSave;
+      setYaml(yamlForSave);
+      const created = await apiPost<DefinitionDTO>("/definitions", { name, yaml: yamlForSave });
       setSavedDefinition(created);
       setToast({
         tone: "success",
@@ -376,7 +423,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
     } finally {
       setSaving(false);
     }
-  }, [definitionName, hasYamlError, uiText.definitionEditor.validation.nameInvalidFormat, uiText.definitionEditor.validation.nameRequired, uiText.definitionEditor.validation.yamlLintInvalid, uiText.definitionEditor.validation.yamlRequired, uiText.definitionEditor.validation.yamlTooLarge, uiText.definitionEditor.toasts, uiText.labels.displayId, yaml]);
+  }, [definitionName, editorMode, hasYamlError, parseYamlMessageOptions, uiText.definitionEditor.validation.nameInvalidFormat, uiText.definitionEditor.validation.nameRequired, uiText.definitionEditor.validation.yamlLintInvalid, uiText.definitionEditor.validation.yamlRequired, uiText.definitionEditor.validation.yamlTooLarge, uiText.definitionEditor.toasts, uiText.labels.displayId]);
 
   return (
     <PageShell
@@ -435,7 +482,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
             <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionEditor.labels.yaml}</span>
             <YamlCodeEditor
               value={yaml}
-              onChange={setYaml}
+              onChange={handleYamlChange}
               completionKeywords={completionKeywords}
               onLintChange={setYamlHasLintErrors}
               onDiagnosticsChange={setYamlDiagnostics}
