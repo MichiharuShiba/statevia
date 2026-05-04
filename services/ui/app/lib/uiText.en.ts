@@ -409,6 +409,8 @@ export const uiTextEn: UiText = {
         `Node '${nodeId}': IN requires a non-empty array (or JSON array string) for edge.when.value.`,
       edgeWhenValueBetweenInvalid: (nodeId: string) =>
         `Node '${nodeId}': BETWEEN requires an array of at least two values (or JSON array string) for edge.when.value.`,
+      edgeDefaultMultiple: (nodeId: string) =>
+        `Node '${nodeId}': only one edge can have default=true.`,
       selfReferenceEdge: (nodeId: string) => `Node '${nodeId}': self-referencing edge is not allowed.`,
       missingTargetNode: (nodeId: string, targetId: string) => `Node '${nodeId}': target '${targetId}' does not exist.`,
       selfReferenceRejected: "Self-referencing edges are not allowed.",

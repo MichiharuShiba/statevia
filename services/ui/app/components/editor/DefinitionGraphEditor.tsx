@@ -762,6 +762,8 @@ function GraphInspector({
   }
 
   const selectedWhenOp = (targetEdge.when?.op ?? "").toUpperCase();
+  const isDefaultEdge = targetEdge.default === true;
+  const isWhenFieldsDisabled = isDefaultEdge;
   const isWhenValueDisabled = selectedWhenOp === "EXISTS";
   let whenValueHint: string | null = null;
   if (selectedWhenOp === "IN") {
@@ -796,13 +798,39 @@ function GraphInspector({
         />
       </label>
       {selection.edgeKind === "edge" && (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="space-y-2">
+          <label className="inline-flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={targetEdge.default === true}
+              onChange={(changeEvent) => {
+                const isDefault = changeEvent.target.checked;
+                onDocumentChange(
+                  updateNode(document, sourceNode.id, (node) => ({
+                    ...node,
+                    edges: (node.edges ?? []).map((edge, index) =>
+                      index === selection.edgeIndex
+                        ? {
+                            ...edge,
+                            default: isDefault ? true : undefined,
+                            ...(isDefault ? { when: undefined } : {})
+                          }
+                        : edge
+                    )
+                  }))
+                );
+              }}
+            />
+            <span>default</span>
+          </label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <label className="block text-xs">
             <span className="block">when.path</span>
             <input
               className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
               value={targetEdge.when?.path ?? ""}
               placeholder={labels.whenPathPlaceholder}
+              disabled={isWhenFieldsDisabled}
               onChange={(changeEvent) => {
                 const path = changeEvent.target.value;
                 onDocumentChange(
@@ -823,6 +851,7 @@ function GraphInspector({
             <select
               className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
               value={selectedWhenOp}
+              disabled={isWhenFieldsDisabled}
               onChange={(changeEvent) => {
                 const op = changeEvent.target.value.toUpperCase();
                 onDocumentChange(
@@ -860,7 +889,7 @@ function GraphInspector({
               className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
               value={formatWhenValue(targetEdge.when?.value)}
               placeholder={labels.whenValuePlaceholder}
-              disabled={isWhenValueDisabled}
+              disabled={isWhenFieldsDisabled || isWhenValueDisabled}
               onChange={(changeEvent) => {
                 const value = parseWhenValueInput(changeEvent.target.value, selectedWhenOp);
                 onDocumentChange(
@@ -875,17 +904,18 @@ function GraphInspector({
                 );
               }}
             />
-            {isWhenValueDisabled && (
+            {!isWhenFieldsDisabled && isWhenValueDisabled && (
               <span className="mt-1 block text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
                 {labels.whenValueDisabledForExists}
               </span>
             )}
-            {!isWhenValueDisabled && whenValueHint && (
+            {!isWhenFieldsDisabled && !isWhenValueDisabled && whenValueHint && (
               <span className="mt-1 block text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
                 {whenValueHint}
               </span>
             )}
           </label>
+        </div>
         </div>
       )}
       <div className="flex justify-end">

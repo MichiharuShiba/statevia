@@ -26,6 +26,7 @@ export type ValidateGraphDocumentMessageOptions = {
   edgeWhenValueRequired: (nodeId: string) => string;
   edgeWhenValueInInvalid: (nodeId: string) => string;
   edgeWhenValueBetweenInvalid: (nodeId: string) => string;
+  edgeDefaultMultiple: (nodeId: string) => string;
   selfReferenceEdge: (nodeId: string) => string;
   missingTargetNode: (nodeId: string, targetId: string) => string;
 };
@@ -263,6 +264,7 @@ function validateNode(
   const hasNext = Boolean(node.next?.trim());
   const hasEdges = Array.isArray(node.edges) && node.edges.length > 0;
   const hasBranches = Array.isArray(node.branches) && node.branches.length > 0;
+  const defaultEdgeCount = (node.edges ?? []).filter((edge) => edge.default === true).length;
 
   validateNodeByType({
     node,
@@ -277,6 +279,9 @@ function validateNode(
   if (hasEdges) {
     for (const edge of node.edges ?? []) {
       validateEdgeCondition(nodeId, edge, messages, options);
+    }
+    if (defaultEdgeCount > 1) {
+      messages.push(options.edgeDefaultMultiple(nodeId));
     }
   }
 

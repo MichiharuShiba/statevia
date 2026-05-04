@@ -382,6 +382,7 @@ export type UiText = {
       edgeWhenValueRequired: (nodeId: string) => string;
       edgeWhenValueInInvalid: (nodeId: string) => string;
       edgeWhenValueBetweenInvalid: (nodeId: string) => string;
+      edgeDefaultMultiple: (nodeId: string) => string;
       selfReferenceEdge: (nodeId: string) => string;
       missingTargetNode: (nodeId: string, targetId: string) => string;
       selfReferenceRejected: string;
@@ -846,6 +847,8 @@ export const uiText: UiText = {
         `Node '${nodeId}': IN では edge.when.value は空でない配列（または JSON 配列文字列）が必要です。`,
       edgeWhenValueBetweenInvalid: (nodeId: string) =>
         `Node '${nodeId}': BETWEEN では edge.when.value は要素2件以上の配列（または JSON 配列文字列）が必要です。`,
+      edgeDefaultMultiple: (nodeId: string) =>
+        `Node '${nodeId}': default=true の edge は 1 つまでです。`,
       selfReferenceEdge: (nodeId: string) => `Node '${nodeId}': 自己参照エッジは許可されません。`,
       missingTargetNode: (nodeId: string, targetId: string) => `Node '${nodeId}': 参照先 '${targetId}' が存在しません。`,
       selfReferenceRejected: "自己参照エッジは作成できません。",
