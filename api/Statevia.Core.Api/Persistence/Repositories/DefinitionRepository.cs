@@ -35,6 +35,31 @@ public sealed class DefinitionRepository : IDefinitionRepository
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
+    public async Task<bool> UpdateAsync(
+        string tenantId,
+        Guid definitionId,
+        string name,
+        string sourceYaml,
+        string compiledJson,
+        CancellationToken ct)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        var row = await db.WorkflowDefinitions
+            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.TenantId == tenantId, ct)
+            .ConfigureAwait(false);
+        if (row is null)
+        {
+            return false;
+        }
+
+        row.Name = name;
+        row.SourceYaml = sourceYaml;
+        row.CompiledJson = compiledJson;
+        row.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return true;
+    }
+
     public async Task<List<(WorkflowDefinitionRow Def, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);

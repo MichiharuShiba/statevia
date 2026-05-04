@@ -36,6 +36,7 @@ public sealed class DefinitionRepositoryTests
         // Act
         var tenantId = "t1";
         var defId = Guid.NewGuid();
+        var created = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         await repo.AddAsync(new WorkflowDefinitionRow
         {
             DefinitionId = defId,
@@ -43,7 +44,8 @@ public sealed class DefinitionRepositoryTests
             Name = "def-1",
             SourceYaml = "workflow:\n  name: x",
             CompiledJson = "{}",
-            CreatedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            CreatedAt = created,
+            UpdatedAt = created
         }, default);
 
         // Assert
@@ -81,7 +83,8 @@ public sealed class DefinitionRepositoryTests
                     Name = "A",
                     SourceYaml = "x",
                     CompiledJson = "{}",
-                    CreatedAt = created1
+                    CreatedAt = created1,
+                    UpdatedAt = created1
                 },
                 new WorkflowDefinitionRow
                 {
@@ -90,7 +93,8 @@ public sealed class DefinitionRepositoryTests
                     Name = "B",
                     SourceYaml = "x",
                     CompiledJson = "{}",
-                    CreatedAt = created2
+                    CreatedAt = created2,
+                    UpdatedAt = created2
                 });
 
             ctx.DisplayIds.Add(new DisplayIdRow
@@ -142,7 +146,8 @@ public sealed class DefinitionRepositoryTests
                     Name = "order-flow",
                     SourceYaml = "x",
                     CompiledJson = "{}",
-                    CreatedAt = created1
+                    CreatedAt = created1,
+                    UpdatedAt = created1
                 },
                 new WorkflowDefinitionRow
                 {
@@ -151,7 +156,8 @@ public sealed class DefinitionRepositoryTests
                     Name = "payment-flow",
                     SourceYaml = "x",
                     CompiledJson = "{}",
-                    CreatedAt = created2
+                    CreatedAt = created2,
+                    UpdatedAt = created2
                 },
                 new WorkflowDefinitionRow
                 {
@@ -160,7 +166,8 @@ public sealed class DefinitionRepositoryTests
                     Name = "order-detail",
                     SourceYaml = "x",
                     CompiledJson = "{}",
-                    CreatedAt = created3
+                    CreatedAt = created3,
+                    UpdatedAt = created3
                 });
             await ctx.SaveChangesAsync();
         }

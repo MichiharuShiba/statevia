@@ -81,6 +81,7 @@ public sealed class GraphDefinitionServiceTests
 
         await using (var ctx = new CoreDbContext(db.Options))
         {
+            var now = DateTime.UtcNow;
             ctx.WorkflowDefinitions.Add(new WorkflowDefinitionRow
             {
                 DefinitionId = uuid,
@@ -88,7 +89,8 @@ public sealed class GraphDefinitionServiceTests
                 Name = "def",
                 SourceYaml = "x",
                 CompiledJson = compiledJson,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = now,
+                UpdatedAt = now
             });
             await ctx.SaveChangesAsync();
         }
@@ -141,6 +143,7 @@ public sealed class GraphDefinitionServiceTests
 
         await using (var ctx = new CoreDbContext(db.Options))
         {
+            var now = DateTime.UtcNow;
             ctx.WorkflowDefinitions.Add(new WorkflowDefinitionRow
             {
                 DefinitionId = uuid,
@@ -148,7 +151,8 @@ public sealed class GraphDefinitionServiceTests
                 Name = "def",
                 SourceYaml = "x",
                 CompiledJson = compiledJson,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = now,
+                UpdatedAt = now
             });
             await ctx.SaveChangesAsync();
         }
@@ -179,6 +183,7 @@ public sealed class GraphDefinitionServiceTests
         // Act
         await using (var ctx = new CoreDbContext(db.Options))
         {
+            var now = DateTime.UtcNow;
             ctx.WorkflowDefinitions.Add(new WorkflowDefinitionRow
             {
                 DefinitionId = uuid,
@@ -186,7 +191,8 @@ public sealed class GraphDefinitionServiceTests
                 Name = "def",
                 SourceYaml = "x",
                 CompiledJson = "null",
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = now,
+                UpdatedAt = now
             });
             await ctx.SaveChangesAsync();
         }
