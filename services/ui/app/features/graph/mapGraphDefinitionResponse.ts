@@ -1,4 +1,4 @@
-import type { GraphDefinition, GraphEdgeDef, GraphNodeDef, LayoutHints } from "../../graphs/types";
+import type { GraphDefinition, GraphDefinitionMeta, GraphEdgeDef, GraphNodeDef } from "../../graphs/types";
 
 /** GET /v1/graphs/{graphId}（GraphDefinitionResponse）の緩い形。Core-API の camelCase JSON を前提。 */
 type ApiGraphNode = {
@@ -18,19 +18,37 @@ type ApiGraphEdge = {
   cancelCause?: string;
 };
 
-type ApiGraphUi = {
-  layout?: string;
-  positions?: Record<string, { x?: number; y?: number }>;
-};
-
 type ApiGraphDefinitionResponse = {
   graphId?: string;
   nodes?: ApiGraphNode[];
   edges?: ApiGraphEdge[];
-  ui?: ApiGraphUi;
+  meta?: unknown;
   groups?: GraphDefinition["groups"];
-  layoutHints?: LayoutHints;
 };
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+function parsePosition(pos: unknown): { x: number; y: number } | null {
+  if (!isRecord(pos)) return null;
+  const x = pos.x;
+  const y = pos.y;
+  if (typeof x !== "number" || typeof y !== "number" || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return { x, y };
+}
+
+function parseMetaLayout(rawMeta: unknown): GraphDefinitionMeta | undefined {
+  if (!isRecord(rawMeta)) return undefined;
+  const layoutRaw = rawMeta.layout;
+  if (!isRecord(layoutRaw)) return undefined;
+  const layout: Record<string, { x: number; y: number }> = {};
+  for (const [nodeId, pos] of Object.entries(layoutRaw)) {
+    const p = parsePosition(pos);
+    if (p) layout[nodeId] = p;
+  }
+  return Object.keys(layout).length > 0 ? { layout } : undefined;
+}
 
 function mapNode(n: ApiGraphNode): GraphNodeDef {
   return {
@@ -55,6 +73,7 @@ function mapEdge(e: ApiGraphEdge): GraphEdgeDef {
 
 /**
  * Core-API の GraphDefinitionResponse を UI の GraphDefinition に変換する。
+ * 保存済み座標は `meta.layout.<nodeId>.{x,y}` を前提とする（API が返さない場合もある）。
  * 不正・空の場合は null。
  */
 export function mapGraphDefinitionResponse(raw: unknown, fallbackGraphId: string): GraphDefinition | null {
@@ -71,22 +90,13 @@ export function mapGraphDefinitionResponse(raw: unknown, fallbackGraphId: string
   const edges = edgesRaw.map(mapEdge).filter((e) => e.from && e.to);
 
   const groups = o.groups;
-  let layoutHints = o.layoutHints;
-  const ui = o.ui;
-  if (!layoutHints && ui) {
-    const positions = ui.positions;
-    const hasPositions = positions != null && typeof positions === "object";
-    const hasLayout = typeof ui.layout === "string" && ui.layout.length > 0;
-    if (hasPositions || hasLayout) {
-      layoutHints = { direction: "LR" };
-    }
-  }
+  const meta = parseMetaLayout(o.meta);
 
   return {
     graphId,
     nodes,
     edges,
     groups: Array.isArray(groups) ? groups : undefined,
-    layoutHints
+    ...(meta ? { meta } : {})
   };
 }

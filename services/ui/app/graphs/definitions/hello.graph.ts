@@ -27,8 +27,8 @@ export const helloGraphDefinition: GraphDefinition = {
       nodeIds: ["fork-1", "task-b", "task-c", "join-1"]
     }
   ],
-  layoutHints: {
-    direction: "LR",
+  meta: {
+    direction: "TB",
     branchOrder: ["b", "c"],
     groupPadding: { x: 40, y: 30, header: 28 }
   }

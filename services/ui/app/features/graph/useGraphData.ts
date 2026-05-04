@@ -28,19 +28,22 @@ export function useGraphData(
     const positioned = layoutGraph(
       merged.nodes,
       merged.edges.map((edge: MergedGraphEdge) => ({ ...edge })),
-      merged.layoutHints
+      merged.meta
     );
-    const groups = resolveGroupBounds(
-      positioned.nodes,
-      positioned.edges,
-      merged.groups,
-      merged.layoutHints
-    );
+    const layoutMap = merged.meta?.layout;
+    const nodes =
+      layoutMap && Object.keys(layoutMap).length > 0
+        ? positioned.nodes.map((n) => {
+            const p = layoutMap[n.nodeId];
+            return p ? { ...n, x: p.x, y: p.y } : n;
+          })
+        : positioned.nodes;
+    const groups = resolveGroupBounds(nodes, positioned.edges, merged.groups, merged.meta);
     return {
       graphId: execution.graphId,
       definitionBased: merged.isDefinitionBased,
       mergedNodes: merged.nodes,
-      nodes: positioned.nodes,
+      nodes,
       edges: positioned.edges,
       groups
     };

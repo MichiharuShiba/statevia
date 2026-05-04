@@ -1,5 +1,5 @@
 import dagre from "dagre";
-import type { LayoutHints } from "../graphs/types";
+import type { GraphDefinitionMeta } from "../graphs/types";
 
 export type LayoutNodeInput = {
   nodeId: string;
@@ -31,27 +31,28 @@ function normalizeType(nodeType: string): string {
   return nodeType.trim().toUpperCase();
 }
 
-function getNodeSize(nodeType: string): { w: number; h: number } {
+/** アクションと同じ横幅（全ノード統一） */
+const STANDARD_NODE_WIDTH = 240;
+const STANDARD_NODE_HEIGHT = 120;
+
+function getNodeSize(nodeType: string, hints?: GraphDefinitionMeta): { w: number; h: number } {
   const type = normalizeType(nodeType);
-  if (type === "START" || type === "SUCCESS" || type === "COMPLETED" || type === "SUCCEEDED") {
-    return { w: 180, h: 70 };
+  if (hints?.defaultNodeSize) {
+    return { w: hints.defaultNodeSize.w, h: hints.defaultNodeSize.h };
   }
   if (type === "WAIT" || type === "WAITING") {
-    return { w: 240, h: 150 };
+    return { w: STANDARD_NODE_WIDTH, h: 150 };
   }
-  if (type === "JOIN") {
-    return { w: 200, h: 120 };
-  }
-  return { w: 240, h: 120 };
+  return { w: STANDARD_NODE_WIDTH, h: STANDARD_NODE_HEIGHT };
 }
 
 function getFallbackSortWeight(nodeType: string): number {
   const type = normalizeType(nodeType);
   if (type === "START") return 10;
-  if (type === "TASK" || type === "WAIT" || type === "WAITING") return 20;
+  if (type === "TASK" || type === "ACTION" || type === "WAIT" || type === "WAITING") return 20;
   if (type === "FORK") return 30;
   if (type === "JOIN") return 40;
-  if (type === "SUCCESS" || type === "SUCCEEDED" || type === "COMPLETED" || type === "FAILED" || type === "CANCELED") {
+  if (type === "SUCCESS" || type === "SUCCEEDED" || type === "COMPLETED" || type === "END" || type === "FAILED" || type === "CANCELED") {
     return 50;
   }
   return 35;
@@ -90,21 +91,33 @@ export function buildFallbackEdges(nodes: LayoutNodeInput[]): LayoutEdgeInput[] 
   return edges;
 }
 
-function applyBranchOffsets<T extends LayoutNodeInput>(nodes: Array<PositionedNode<T>>, hints?: LayoutHints): Array<PositionedNode<T>> {
+function isVerticalFlow(rankdir: string): boolean {
+  return rankdir === "TB" || rankdir === "BT";
+}
+
+function applyBranchOffsets<T extends LayoutNodeInput>(
+  nodes: Array<PositionedNode<T>>,
+  hints: GraphDefinitionMeta | undefined,
+  rankdir: string
+): Array<PositionedNode<T>> {
   const branchIds = Array.from(new Set(nodes.map((n) => n.branch).filter((b): b is string => !!b)));
   if (branchIds.length === 0) return nodes;
 
-  const order = hints?.branchOrder?.length
-    ? hints.branchOrder
-    : branchIds.sort((a, b) => a.localeCompare(b));
+  const order =
+    hints?.branchOrder?.length
+      ? hints.branchOrder
+      : [...branchIds].sort((a, b) => a.localeCompare(b));
   const offsetByBranch = new Map(order.map((branch, index) => [branch, index * 220]));
   return nodes.map((node) => {
     const offset = node.branch ? offsetByBranch.get(node.branch) ?? 0 : 0;
+    if (isVerticalFlow(rankdir)) {
+      return { ...node, x: node.x + offset };
+    }
     return { ...node, y: node.y + offset };
   });
 }
 
-export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: LayoutEdgeInput[], hints?: LayoutHints): {
+export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: LayoutEdgeInput[], hints?: GraphDefinitionMeta): {
   nodes: Array<PositionedNode<T>>;
   edges: PositionedEdge[];
 } {
@@ -117,11 +130,14 @@ export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: Lay
       nodeIdSet.has(edge.from) &&
       nodeIdSet.has(edge.to)
   );
+  const rankdir = hints?.direction ?? "TB";
+  const compact =
+    hints?.defaultNodeSize != null && hints.defaultNodeSize.h > 0 && hints.defaultNodeSize.h <= 72;
   const graph = new dagre.graphlib.Graph();
   graph.setGraph({
-    rankdir: hints?.direction ?? "LR",
-    ranksep: 90,
-    nodesep: 50,
+    rankdir,
+    ranksep: compact ? 44 : 90,
+    nodesep: compact ? 36 : 50,
     marginx: 20,
     marginy: 20
   });
@@ -129,7 +145,7 @@ export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: Lay
   graph.setDefaultEdgeLabel(() => ({ minlen: 1, weight: 1 }));
 
   nodes.forEach((node) => {
-    const baseSize = getNodeSize(node.nodeType);
+    const baseSize = getNodeSize(node.nodeType, hints);
     const override = hints?.nodeSizeOverrides?.[node.nodeId];
     graph.setNode(node.nodeId, {
       width: override?.w ?? baseSize.w,
@@ -165,6 +181,6 @@ export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: Lay
     };
   });
 
-  return { nodes: applyBranchOffsets(positioned, hints), edges: safeEdges };
+  return { nodes: applyBranchOffsets(positioned, hints, rankdir), edges: safeEdges };
 }
 
