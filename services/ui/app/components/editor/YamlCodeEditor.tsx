@@ -220,7 +220,8 @@ export function YamlCodeEditor({
           lineHeight: "1.45"
         },
         ".cm-content": {
-          padding: "8px 0"
+          padding: "8px 0",
+          caretColor: "var(--editor-caret)"
         },
         ".cm-line": {
           padding: "0 8px"
@@ -229,6 +230,10 @@ export function YamlCodeEditor({
           color: "#656d76",
           backgroundColor: "#f6f8fa",
           borderRight: "1px solid #d0d7de"
+        },
+        // ライト/ダークで切り替わるキャレット色。
+        "&.cm-focused .cm-cursor, .cm-cursor, .cm-dropCursor": {
+          borderLeftColor: "var(--editor-caret-border)"
         }
       }),
       // 長い行を折り返して表示（横スクロール依存を軽減）。
