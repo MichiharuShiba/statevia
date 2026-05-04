@@ -141,7 +141,8 @@ public sealed class DefinitionService : IDefinitionService
             DisplayId = displayId ?? row.DefinitionId.ToString(),
             ResourceId = row.DefinitionId,
             Name = row.Name,
-            CreatedAt = row.CreatedAt
+            CreatedAt = row.CreatedAt,
+            Yaml = row.SourceYaml
         };
     }
 }

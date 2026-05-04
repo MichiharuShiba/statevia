@@ -93,5 +93,8 @@ public class DefinitionResponse
 
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
+    
+    [JsonPropertyName("yaml")]
+    public string? Yaml { get; set; }
 }
 
