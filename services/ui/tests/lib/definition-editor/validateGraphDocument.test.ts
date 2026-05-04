@@ -26,6 +26,7 @@ function opts(): ValidateGraphDocumentMessageOptions {
     edgeWhenValueRequired: m("whenValueReq"),
     edgeWhenValueInInvalid: m("whenIn"),
     edgeWhenValueBetweenInvalid: m("whenBetween"),
+    edgeDefaultMultiple: m("defaultMulti"),
     selfReferenceEdge: m("selfRef"),
     missingTargetNode: m2("missing")
   };
@@ -115,5 +116,28 @@ describe("validateGraphDocument / edge.when.value", () => {
       opts()
     );
     expect(r.isValid).toBe(true);
+  });
+
+  it("default=true が同一ノードで2件以上なら defaultMulti", () => {
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "w" },
+      nodes: [
+        { id: "s", type: "start", next: "a" },
+        {
+          id: "a",
+          type: "action",
+          action: "noop",
+          edges: [
+            { to: "e", default: true },
+            { to: "e", default: true }
+          ]
+        },
+        { id: "e", type: "end" }
+      ]
+    };
+    const r = validateGraphDocument(doc, opts());
+    expect(r.isValid).toBe(false);
+    expect(r.messages.some((x) => x.startsWith("defaultMulti:"))).toBe(true);
   });
 });
