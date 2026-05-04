@@ -66,14 +66,5 @@ export function serializeDefinitionYaml(document: DefinitionGraphDocument): stri
     },
     nodes
   };
-  if (document.meta) {
-    const metaOut = { ...document.meta };
-    if (metaOut.layout && Object.keys(metaOut.layout).length === 0) {
-      delete metaOut.layout;
-    }
-    if (Object.keys(metaOut).length > 0) {
-      root.meta = metaOut;
-    }
-  }
   return stringify(root);
 }

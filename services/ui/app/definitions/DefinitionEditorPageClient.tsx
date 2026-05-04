@@ -231,10 +231,11 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
       const row = await apiGet<DefinitionDTO>(`/definitions/${encodeURIComponent(definitionId)}`);
       setDefinitionName((current) => (current.trim() ? current : row.name));
       const sourceYaml = typeof row.yaml === "string" && row.yaml.trim().length > 0 ? row.yaml : defaultDefinitionYaml;
-      setYaml(sourceYaml);
-      yamlRef.current = sourceYaml;
       const parsed = parseDefinitionYaml(sourceYaml, parseYamlMessageOptions);
       if (parsed.document) {
+        const normalizedYaml = serializeDefinitionYaml(parsed.document);
+        setYaml(normalizedYaml);
+        yamlRef.current = normalizedYaml;
         const validated = validateGraphDocument(parsed.document, graphValidationMessageOptions);
         setYamlParseMessages(validated.isValid ? [] : validated.messages);
         setGraphValidationMessages(validated.messages);
@@ -242,6 +243,8 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
           setGraphDocument(parsed.document);
         }
       } else {
+        setYaml(sourceYaml);
+        yamlRef.current = sourceYaml;
         setYamlParseMessages(parsed.diagnostics);
       }
     } catch (error) {
