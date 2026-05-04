@@ -396,7 +396,6 @@ export type UiText = {
       fullscreenExit: string;
       parseFailed: string;
     };
-    noteMvp: string;
     saved: {
       completePrefix: string;
       complete: (displayId: string) => string;
@@ -862,8 +861,6 @@ export const uiText: UiText = {
       fullscreenExit: "全画面終了",
       parseFailed: "YAML のパースに失敗したため、直前の有効グラフを表示しています。",
     },
-    noteMvp:
-      "MVP では既存定義の更新 API がないため、保存は新規 Definition として登録されます。入力不正時は 422 をそのまま表示します。",
     saved: {
       completePrefix: "保存完了:",
       complete: (displayId: string) => `保存完了: ${displayId}`,

@@ -424,8 +424,6 @@ export const uiTextEn: UiText = {
       fullscreenExit: "Exit fullscreen",
       parseFailed: "YAML parsing failed. Keeping the previous valid graph.",
     },
-    noteMvp:
-      "In MVP, the update API is unavailable, so Save creates a new definition. For invalid input, the raw 422 response is shown.",
     saved: {
       completePrefix: "Saved:",
       complete: (displayId: string) => `Saved: ${displayId}`,

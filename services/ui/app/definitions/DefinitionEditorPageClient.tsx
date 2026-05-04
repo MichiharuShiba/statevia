@@ -9,7 +9,7 @@ import { NAVIGATION_BUTTON_CLASS } from "../components/layout/navigationButtonCl
 import { PageShell } from "../components/layout/PageShell";
 import { PageState } from "../components/layout/PageState";
 import { Toast } from "../components/Toast";
-import { apiGet, apiPost } from "../lib/api";
+import { apiGet, apiPost, apiPut } from "../lib/api";
 import { parseDefinitionYaml, type ParseDefinitionYamlMessageOptions } from "../lib/definition-editor/parseDefinitionYaml";
 import { serializeDefinitionYaml } from "../lib/definition-editor/serializeDefinitionYaml";
 import type { DefinitionGraphDocument } from "../lib/definition-editor/types";
@@ -100,10 +100,7 @@ function extractApiDiagnosticMessages(error: unknown): string[] {
   return error.error?.message ? [error.error.message] : [];
 }
 
-/**
- * Definition 専用エディタ。
- * MVP では既存定義の YAML 取得 API が無いため、既存 name を初期値にしつつ保存は新規登録（POST /definitions）で行う。
- */
+/** Definition 専用エディタ。`definitionId` があるとき PUT、ないとき POST で保存する。 */
 export function DefinitionEditorPageClient({ definitionId }: Readonly<DefinitionEditorPageClientProps>) {
   const uiText = useUiText();
   const graphValidationMessageOptions = useMemo<ValidateGraphDocumentMessageOptions>(
@@ -412,11 +409,19 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
       // 保存 payload は直前の Graph 編集内容を優先して確定する。
       yamlRef.current = yamlForSave;
       setYaml(yamlForSave);
-      const created = await apiPost<DefinitionDTO>("/definitions", { name, yaml: yamlForSave });
-      setSavedDefinition(created);
+      let saved: DefinitionDTO;
+      if (definitionId) {
+        saved = await apiPut<DefinitionDTO>(
+          `/definitions/${encodeURIComponent(definitionId)}`,
+          { name, yaml: yamlForSave }
+        );
+      } else {
+        saved = await apiPost<DefinitionDTO>("/definitions", { name, yaml: yamlForSave });
+      }
+      setSavedDefinition(saved);
       setToast({
         tone: "success",
-        message: uiText.definitionEditor.toasts.savedWithDisplayId(uiText.labels.displayId, created.displayId)
+        message: uiText.definitionEditor.toasts.savedWithDisplayId(uiText.labels.displayId, saved.displayId)
       });
     } catch (error) {
       // API が返す 422 詳細をヒント領域へ反映する。
@@ -426,7 +431,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
     } finally {
       setSaving(false);
     }
-  }, [definitionName, editorMode, hasYamlError, parseYamlMessageOptions, uiText.definitionEditor.validation.nameInvalidFormat, uiText.definitionEditor.validation.nameRequired, uiText.definitionEditor.validation.yamlLintInvalid, uiText.definitionEditor.validation.yamlRequired, uiText.definitionEditor.validation.yamlTooLarge, uiText.definitionEditor.toasts, uiText.labels.displayId]);
+  }, [definitionId, definitionName, editorMode, hasYamlError, parseYamlMessageOptions, uiText.definitionEditor.validation.nameInvalidFormat, uiText.definitionEditor.validation.nameRequired, uiText.definitionEditor.validation.yamlLintInvalid, uiText.definitionEditor.validation.yamlRequired, uiText.definitionEditor.validation.yamlTooLarge, uiText.definitionEditor.toasts, uiText.labels.displayId]);
 
   return (
     <PageShell
@@ -543,10 +548,6 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
             {uiText.definitionEditor.actions.resetTemplate}
           </button>
         </div>
-
-        <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-          {uiText.definitionEditor.noteMvp}
-        </p>
       </section>
 
       {savedDefinition && (
