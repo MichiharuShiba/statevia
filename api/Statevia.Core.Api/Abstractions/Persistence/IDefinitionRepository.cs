@@ -6,6 +6,13 @@ public interface IDefinitionRepository
 {
     Task<WorkflowDefinitionRow?> GetByIdAsync(string tenantId, Guid definitionId, CancellationToken ct);
     Task AddAsync(WorkflowDefinitionRow row, CancellationToken ct);
+    Task<bool> UpdateAsync(
+        string tenantId,
+        Guid definitionId,
+        string name,
+        string sourceYaml,
+        string compiledJson,
+        CancellationToken ct);
     Task<List<(WorkflowDefinitionRow Def, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct);
 
     /// <summary>一覧のページング。<paramref name="nameContains"/> は名前の部分一致（O2）。</summary>

@@ -152,6 +152,7 @@ public sealed class DisplayIdServiceImplTests
         var uuid = Guid.NewGuid();
         await using (var ctx = new CoreDbContext(db.Options))
         {
+            var now = DateTime.UtcNow;
             ctx.WorkflowDefinitions.Add(new WorkflowDefinitionRow
             {
                 DefinitionId = uuid,
@@ -159,7 +160,8 @@ public sealed class DisplayIdServiceImplTests
                 Name = "def",
                 SourceYaml = "x",
                 CompiledJson = "{}",
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = now,
+                UpdatedAt = now
             });
             await ctx.SaveChangesAsync();
         }

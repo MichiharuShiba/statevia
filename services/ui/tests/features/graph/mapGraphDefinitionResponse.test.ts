@@ -24,4 +24,17 @@ describe("mapGraphDefinitionResponse", () => {
   it("nodes が空なら null", () => {
     expect(mapGraphDefinitionResponse({ graphId: "x", nodes: [] }, "x")).toBeNull();
   });
+
+  it("meta.layout のノード座標を GraphDefinition.meta に載せる", () => {
+    const def = mapGraphDefinitionResponse(
+      {
+        graphId: "g",
+        nodes: [{ nodeId: "a", nodeType: "Start" }],
+        edges: [],
+        meta: { layout: { a: { x: 10, y: 20 } } }
+      },
+      "g"
+    );
+    expect(def?.meta?.layout?.a).toEqual({ x: 10, y: 20 });
+  });
 });

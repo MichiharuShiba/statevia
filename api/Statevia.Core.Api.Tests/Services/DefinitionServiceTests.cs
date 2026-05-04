@@ -141,8 +141,8 @@ public sealed class DefinitionServiceTests
         await using (var ctx = new CoreDbContext(inDb.Options))
         {
             ctx.WorkflowDefinitions.AddRange(
-                new WorkflowDefinitionRow { DefinitionId = def1, TenantId = "t1", Name = "A", SourceYaml = "x", CompiledJson = "{}", CreatedAt = t1 },
-                new WorkflowDefinitionRow { DefinitionId = def2, TenantId = "t1", Name = "B", SourceYaml = "x", CompiledJson = "{}", CreatedAt = t2 }
+                new WorkflowDefinitionRow { DefinitionId = def1, TenantId = "t1", Name = "A", SourceYaml = "x", CompiledJson = "{}", CreatedAt = t1, UpdatedAt = t1 },
+                new WorkflowDefinitionRow { DefinitionId = def2, TenantId = "t1", Name = "B", SourceYaml = "x", CompiledJson = "{}", CreatedAt = t2, UpdatedAt = t2 }
             );
             ctx.DisplayIds.Add(new DisplayIdRow { Kind = "definition", DisplayId = "DISP-B", ResourceId = def2, CreatedAt = t2 });
             await ctx.SaveChangesAsync();
@@ -180,9 +180,9 @@ public sealed class DefinitionServiceTests
         await using (var ctx = new CoreDbContext(inDb.Options))
         {
             ctx.WorkflowDefinitions.AddRange(
-                new WorkflowDefinitionRow { DefinitionId = def1, TenantId = "t1", Name = "order-1", SourceYaml = "x", CompiledJson = "{}", CreatedAt = DateTime.UtcNow.AddDays(-3) },
-                new WorkflowDefinitionRow { DefinitionId = def2, TenantId = "t1", Name = "order-2", SourceYaml = "x", CompiledJson = "{}", CreatedAt = DateTime.UtcNow.AddDays(-2) },
-                new WorkflowDefinitionRow { DefinitionId = def3, TenantId = "t1", Name = "payment", SourceYaml = "x", CompiledJson = "{}", CreatedAt = DateTime.UtcNow.AddDays(-1) }
+                new WorkflowDefinitionRow { DefinitionId = def1, TenantId = "t1", Name = "order-1", SourceYaml = "x", CompiledJson = "{}", CreatedAt = DateTime.UtcNow.AddDays(-3), UpdatedAt = DateTime.UtcNow.AddDays(-3) },
+                new WorkflowDefinitionRow { DefinitionId = def2, TenantId = "t1", Name = "order-2", SourceYaml = "x", CompiledJson = "{}", CreatedAt = DateTime.UtcNow.AddDays(-2), UpdatedAt = DateTime.UtcNow.AddDays(-2) },
+                new WorkflowDefinitionRow { DefinitionId = def3, TenantId = "t1", Name = "payment", SourceYaml = "x", CompiledJson = "{}", CreatedAt = DateTime.UtcNow.AddDays(-1), UpdatedAt = DateTime.UtcNow.AddDays(-1) }
             );
             await ctx.SaveChangesAsync();
         }
@@ -261,7 +261,8 @@ public sealed class DefinitionServiceTests
                 Name = "def",
                 SourceYaml = "x",
                 CompiledJson = "{}",
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             });
             await ctx.SaveChangesAsync();
         }
@@ -325,6 +326,58 @@ public sealed class DefinitionServiceTests
         Assert.Equal("Definition validation failed.", ex.Message);
         Assert.NotNull(ex.Details);
         Assert.IsType<ArgumentException>(ex.InnerException);
+    }
+
+    /// <summary>
+    /// 既存定義を更新し、yaml と compiled_json が反映される。
+    /// </summary>
+    [Fact]
+    public async Task UpdateAsync_UpdatesExistingDefinition()
+    {
+        using var inDb = new InMemoryTestDatabase();
+        var definitionsRepo = new DefinitionRepository(inDb.Factory);
+        var guid = Guid.NewGuid();
+        var createdAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        await using (var ctx = new CoreDbContext(inDb.Options))
+        {
+            ctx.WorkflowDefinitions.Add(new WorkflowDefinitionRow
+            {
+                DefinitionId = guid,
+                TenantId = "t1",
+                Name = "old",
+                SourceYaml = "workflow:\n  name: old",
+                CompiledJson = "{\"old\":true}",
+                CreatedAt = createdAt,
+                UpdatedAt = createdAt
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        var display = new StubDisplayIdService();
+        display.ResolveMap["definition|DEF-1"] = guid;
+        display.DisplayMap[("definition", "DEF-1")] = "DEF-1";
+        var compiler = new StubCompiler(compiledJson: "{\"new\":true}");
+        var idGen = new FixedIdGenerator(Guid.NewGuid());
+        var sut = new DefinitionService(display, compiler, definitionsRepo, idGen);
+
+        var res = await sut.UpdateAsync("t1", "DEF-1", new UpdateDefinitionRequest
+        {
+            Name = "new",
+            Yaml = "workflow:\n  name: new"
+        }, CancellationToken.None);
+
+        Assert.Equal("new", res.Name);
+        Assert.Equal("DEF-1", res.DisplayId);
+        Assert.Equal(createdAt, res.CreatedAt);
+        Assert.True(res.UpdatedAt > createdAt);
+        Assert.Equal("workflow:\n  name: new", res.Yaml);
+
+        await using var verify = new CoreDbContext(inDb.Options);
+        var row = await verify.WorkflowDefinitions.FirstAsync(x => x.DefinitionId == guid);
+        Assert.Equal("new", row.Name);
+        Assert.Equal("workflow:\n  name: new", row.SourceYaml);
+        Assert.Equal("{\"new\":true}", row.CompiledJson);
+        Assert.True(row.UpdatedAt > createdAt);
     }
 }
 

@@ -344,8 +344,58 @@ export type UiText = {
       saving: string;
       saveWithApiHint: string;
       resetTemplate: string;
+      switchToYaml: string;
+      switchToGraph: string;
     };
-    noteMvp: string;
+    graph: {
+      title: string;
+      empty: string;
+      addNode: string;
+      addNodeDialogTitle: string;
+      addNodeDisabledReasonStart: string;
+      addNodeDisabledReasonEnd: string;
+      nodeInspectorTitle: string;
+      edgeInspectorTitle: string;
+      deleteNode: string;
+      deleteEdge: string;
+      apply: string;
+      closeDialog: string;
+      rootObjectRequired: () => string;
+      nodesArrayRequired: () => string;
+      nodesRequired: () => string;
+      nodeIdRequired: () => string;
+      duplicateNodeId: (nodeId: string) => string;
+      startCountInvalid: (count: number) => string;
+      endCountInvalid: (count: number) => string;
+      startRequiresTransition: (nodeId: string) => string;
+      actionRequired: (nodeId: string) => string;
+      actionRequiresTransition: (nodeId: string) => string;
+      waitEventRequired: (nodeId: string) => string;
+      waitRequiresTransition: (nodeId: string) => string;
+      forkBranchesRequired: (nodeId: string) => string;
+      joinRequiresTransition: (nodeId: string) => string;
+      joinModeInvalid: (nodeId: string) => string;
+      endCannotHaveTransition: (nodeId: string) => string;
+      edgeToRequired: (nodeId: string) => string;
+      edgeWhenPathRequired: (nodeId: string) => string;
+      edgeWhenOpRequired: (nodeId: string) => string;
+      edgeWhenValueRequired: (nodeId: string) => string;
+      edgeWhenValueInInvalid: (nodeId: string) => string;
+      edgeWhenValueBetweenInvalid: (nodeId: string) => string;
+      edgeDefaultMultiple: (nodeId: string) => string;
+      selfReferenceEdge: (nodeId: string) => string;
+      missingTargetNode: (nodeId: string, targetId: string) => string;
+      selfReferenceRejected: string;
+      whenOpPlaceholder: string;
+      whenPathPlaceholder: string;
+      whenValuePlaceholder: string;
+      whenValueDisabledForExists: string;
+      whenValueHintIn: string;
+      whenValueHintBetween: string;
+      fullscreenEnter: string;
+      fullscreenExit: string;
+      parseFailed: string;
+    };
     saved: {
       completePrefix: string;
       complete: (displayId: string) => string;
@@ -754,10 +804,63 @@ export const uiText: UiText = {
     actions: {
       saving: "保存中...",
       saveWithApiHint: "保存",
-      resetTemplate: "テンプレートに戻す",
+      resetTemplate: "編集前に戻す",
+      switchToYaml: "YAML",
+      switchToGraph: "Graph",
     },
-    noteMvp:
-      "MVP では既存定義の更新 API がないため、保存は新規 Definition として登録されます。入力不正時は 422 をそのまま表示します。",
+    graph: {
+      title: "グラフ編集",
+      empty: "YAML のパースに失敗したためグラフを表示できません。YAML を修正してください。",
+      addNode: "ノード追加",
+      addNodeDialogTitle: "ノードを追加",
+      addNodeDisabledReasonStart: "start は1つまで追加できます。",
+      addNodeDisabledReasonEnd: "end は1つまで追加できます。",
+      nodeInspectorTitle: "ノード編集",
+      edgeInspectorTitle: "エッジ編集",
+      deleteNode: "ノード削除",
+      deleteEdge: "エッジ削除",
+      apply: "反映",
+      closeDialog: "閉じる",
+      rootObjectRequired: () => "YAML ルートはオブジェクトである必要があります。",
+      nodesArrayRequired: () => "nodes は配列で指定してください。",
+      nodesRequired: () => "nodes は1件以上必要です。",
+      nodeIdRequired: () => "node.id は必須です。",
+      duplicateNodeId: (nodeId: string) => `重複 node.id: '${nodeId}'`,
+      startCountInvalid: (count: number) => `start ノードは1件のみ許可されます（現在 ${count} 件）。`,
+      endCountInvalid: (count: number) => `end ノードは1件のみ許可されます（現在 ${count} 件）。`,
+      startRequiresTransition: (nodeId: string) => `Node '${nodeId}': start は next または edges が必要です。`,
+      actionRequired: (nodeId: string) => `Node '${nodeId}': action ノードは action が必須です。`,
+      actionRequiresTransition: (nodeId: string) => `Node '${nodeId}': action は next または edges が必要です。`,
+      waitEventRequired: (nodeId: string) => `Node '${nodeId}': wait ノードは event が必須です。`,
+      waitRequiresTransition: (nodeId: string) => `Node '${nodeId}': wait は next または edges が必要です。`,
+      forkBranchesRequired: (nodeId: string) => `Node '${nodeId}': fork は branches を2件以上指定してください。`,
+      joinRequiresTransition: (nodeId: string) => `Node '${nodeId}': join は next または edges が必要です。`,
+      joinModeInvalid: (nodeId: string) => `Node '${nodeId}': join.mode は 'all' のみ許可されます。`,
+      endCannotHaveTransition: (nodeId: string) => `Node '${nodeId}': end は next/edges を持てません。`,
+      edgeToRequired: (nodeId: string) => `Node '${nodeId}': edge.to は必須です。`,
+      edgeWhenPathRequired: (nodeId: string) => `Node '${nodeId}': edge.when.path は必須です。`,
+      edgeWhenOpRequired: (nodeId: string) => `Node '${nodeId}': edge.when.op は必須です。`,
+      edgeWhenValueRequired: (nodeId: string) =>
+        `Node '${nodeId}': この演算子では edge.when.value が必須です（EXISTS 以外）。`,
+      edgeWhenValueInInvalid: (nodeId: string) =>
+        `Node '${nodeId}': IN では edge.when.value は空でない配列（または JSON 配列文字列）が必要です。`,
+      edgeWhenValueBetweenInvalid: (nodeId: string) =>
+        `Node '${nodeId}': BETWEEN では edge.when.value は要素2件以上の配列（または JSON 配列文字列）が必要です。`,
+      edgeDefaultMultiple: (nodeId: string) =>
+        `Node '${nodeId}': default=true の edge は 1 つまでです。`,
+      selfReferenceEdge: (nodeId: string) => `Node '${nodeId}': 自己参照エッジは許可されません。`,
+      missingTargetNode: (nodeId: string, targetId: string) => `Node '${nodeId}': 参照先 '${targetId}' が存在しません。`,
+      selfReferenceRejected: "自己参照エッジは作成できません。",
+      whenOpPlaceholder: "演算子を選択",
+      whenPathPlaceholder: "$.payload.amount",
+      whenValuePlaceholder: "例: 100 / true / \"100\"",
+      whenValueDisabledForExists: "EXISTS では value は不要です。",
+      whenValueHintIn: "IN は JSON配列で入力します。例: [\"A\", \"B\"]",
+      whenValueHintBetween: "BETWEEN は [最小, 最大] の JSON配列で入力します。例: [1, 10]",
+      fullscreenEnter: "全画面表示",
+      fullscreenExit: "全画面終了",
+      parseFailed: "YAML のパースに失敗したため、直前の有効グラフを表示しています。",
+    },
     saved: {
       completePrefix: "保存完了:",
       complete: (displayId: string) => `保存完了: ${displayId}`,

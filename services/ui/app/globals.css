@@ -1,7 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
 :root {
     color-scheme: light;
     /* Brand (keep custom identity) */
@@ -12,7 +11,8 @@
     --brand-cta-fg: #f8fafc;
     --brand-cta-border: #0a1a2f;
     --brand-cta-bg-hover: #132947;
-
+    --editor-caret: #0f172a;
+    --editor-caret-border: #0f172a;
     /* Material Design 3 tone-inspired semantic tokens */
     --md-sys-color-primary: #2563eb;
     --md-sys-color-on-primary: #ffffff;
@@ -26,7 +26,6 @@
     --md-sys-color-on-surface-variant: #475569;
     --md-sys-color-outline: #d9e1ec;
     --md-sys-color-outline-variant: #d4d4d8;
-
     /* Extended semantic status tokens */
     --md-sys-color-info: #2563eb;
     --md-sys-color-on-info: #ffffff;
@@ -48,7 +47,6 @@
     --md-sys-color-on-neutral: #27272a;
     --md-sys-color-neutral-container: #fafafa;
     --md-sys-color-on-neutral-container: #3f3f46;
-
 }
 
 html[data-theme="dark"] {
@@ -61,7 +59,8 @@ html[data-theme="dark"] {
     --brand-cta-fg: #93c5fd;
     --brand-cta-border: #60a5fa;
     --brand-cta-bg-hover: #f8fafc2b;
-
+    --editor-caret: #60a5fa;
+    --editor-caret-border: #60a5fa;
     /* Material Design 3 tone-inspired semantic tokens */
     --md-sys-color-primary: #60a5fa;
     --md-sys-color-on-primary: #0b1b34;
@@ -75,7 +74,6 @@ html[data-theme="dark"] {
     --md-sys-color-on-surface-variant: #a3a3a3;
     --md-sys-color-outline: #404040;
     --md-sys-color-outline-variant: #525252;
-
     /* Extended semantic status tokens */
     --md-sys-color-info: #3b82f6;
     --md-sys-color-on-info: #ffffff;
@@ -97,7 +95,6 @@ html[data-theme="dark"] {
     --md-sys-color-on-neutral: #f5f5f5;
     --md-sys-color-neutral-container: #262626;
     --md-sys-color-on-neutral-container: #e5e5e5;
-
 }
 
 html {

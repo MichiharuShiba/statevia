@@ -12,6 +12,9 @@ export function buildGraphEdges(edges: PositionedEdge[]): Edge[] {
       id: edge.id,
       source: edge.from,
       target: edge.to,
+      sourceHandle: "out",
+      targetHandle: "in",
+      type: "smoothstep" as const,
       markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
       animated: false
     };

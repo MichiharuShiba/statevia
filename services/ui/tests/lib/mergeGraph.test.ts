@@ -70,7 +70,7 @@ describe("mergeGraph", () => {
     expect(result.nodes[0].status).toBe("RUNNING");
     expect(result.edges).toHaveLength(0);
     expect(result.groups).toEqual([]);
-    expect(result.layoutHints).toEqual({ direction: "LR" });
+    expect(result.meta).toEqual({ direction: "TB" });
   });
 
   it("定義の edges を id と kind でマッピングする", () => {
@@ -121,6 +121,17 @@ describe("mergeGraph (境界値)", () => {
     // Assert
     expect(result.nodes).toHaveLength(1);
     expect(result.nodes[0].label).toBe("n1");
+  });
+
+  it("definition.meta が merged に引き継がれる", () => {
+    const def: GraphDefinition = {
+      graphId: "custom",
+      nodes: [{ nodeId: "n1", nodeType: "TASK" }],
+      edges: [],
+      meta: { layout: { n1: { x: 5, y: 6 } } }
+    };
+    const result = mergeGraph(execution([], "custom"), def);
+    expect(result.meta?.layout?.n1).toEqual({ x: 5, y: 6 });
   });
 
   it("definition が nodes/edges 空の最小定義でも merge は実行可能（別モジュールの型のためモック相当）", () => {

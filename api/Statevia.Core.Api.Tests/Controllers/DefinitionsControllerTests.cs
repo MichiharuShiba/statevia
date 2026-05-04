@@ -17,6 +17,7 @@ public sealed class DefinitionsControllerTests
         public List<DefinitionResponse> ListResult { get; set; } = new();
         public PagedResult<DefinitionResponse> ListPagedResult { get; set; } = new() { Items = new List<DefinitionResponse>(), TotalCount = 0, Offset = 0, Limit = 0, HasMore = false };
         public DefinitionResponse GetResult { get; set; } = new DefinitionResponse();
+        public DefinitionResponse UpdateResult { get; set; } = new DefinitionResponse();
 
         public async Task<DefinitionResponse> CreateAsync(string tenantId, CreateDefinitionRequest request, CancellationToken ct)
         {
@@ -48,6 +49,14 @@ public sealed class DefinitionsControllerTests
             if (ExceptionToThrow is { } ex) throw ex;
             LastTenantId = tenantId;
             return GetResult;
+        }
+
+        public async Task<DefinitionResponse> UpdateAsync(string tenantId, string idOrUuid, UpdateDefinitionRequest request, CancellationToken ct)
+        {
+            await Task.Yield(); // async boundary for coverage
+            if (ExceptionToThrow is { } ex) throw ex;
+            LastTenantId = tenantId;
+            return UpdateResult;
         }
     }
 
@@ -221,6 +230,27 @@ public sealed class DefinitionsControllerTests
 
         // Assert
         var res = await controller.Get("id", CancellationToken.None);
+        var ok = Assert.IsType<OkObjectResult>(res.Result);
+        var body = Assert.IsType<DefinitionResponse>(ok.Value);
+        Assert.Equal(expected.DisplayId, body.DisplayId);
+    }
+
+    /// <summary>
+    /// 更新で成功応答を返す。
+    /// </summary>
+    [Fact]
+    public async Task Update_ReturnsOk()
+    {
+        var http = new DefaultHttpContext();
+        http.Request.Headers["X-Tenant-Id"] = "t1";
+        var expected = new DefinitionResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Name = "updated", CreatedAt = DateTime.UtcNow };
+        var fake = new FakeDefinitionService { UpdateResult = expected };
+        var controller = new DefinitionsController(fake)
+        {
+            ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = http }
+        };
+
+        var res = await controller.Update("id", new UpdateDefinitionRequest { Name = "updated", Yaml = "workflow: {}" }, CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(res.Result);
         var body = Assert.IsType<DefinitionResponse>(ok.Value);
         Assert.Equal(expected.DisplayId, body.DisplayId);

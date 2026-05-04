@@ -40,6 +40,7 @@ public class CoreDbContext : DbContext
             e.Property(x => x.SourceYaml).HasColumnName("source_yaml");
             e.Property(x => x.CompiledJson).HasColumnName("compiled_json");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         });
 
         // workflows (projection)

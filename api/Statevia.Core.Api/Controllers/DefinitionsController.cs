@@ -29,6 +29,15 @@ public class DefinitionsController : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = created.DisplayId }, created);
     }
 
+    /// <summary>PUT /v1/definitions/{id} — 定義を更新。name + yaml を受け取り、検証・コンパイルして保存。</summary>
+    [HttpPut("{id}")]
+    public async Task<ActionResult<DefinitionResponse>> Update(string id, [FromBody] UpdateDefinitionRequest request, CancellationToken ct)
+    {
+        var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
+        var updated = await _definitions.UpdateAsync(tenantId, id, request, ct).ConfigureAwait(false);
+        return Ok(updated);
+    }
+
     /// <summary>
     /// GET /v1/definitions — 一覧（U4）。クエリなしは従来どおり配列。
     /// <c>?limit=&amp;offset=&amp;name=&amp;sortBy=&amp;sortOrder=</c> で <see cref="PagedResult{T}"/>（name は部分一致）。
@@ -80,6 +89,15 @@ public class CreateDefinitionRequest
     public string Yaml { get; set; } = "";
 }
 
+public class UpdateDefinitionRequest
+{
+    [Required]
+    public string Name { get; set; } = "";
+
+    [Required]
+    public string Yaml { get; set; } = "";
+}
+
 public class DefinitionResponse
 {
     [JsonPropertyName("displayId")]
@@ -93,5 +111,11 @@ public class DefinitionResponse
 
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
+
+    [JsonPropertyName("updatedAt")]
+    public DateTime UpdatedAt { get; set; }
+
+    [JsonPropertyName("yaml")]
+    public string? Yaml { get; set; }
 }
 

@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import ReactFlow, {
   Background,
   Controls,
   Handle,
   MiniMap,
   Position,
+  useNodeId,
+  useUpdateNodeInternals,
   type Node,
   type NodeProps,
   type NodeTypes,
@@ -22,6 +24,7 @@ import { getStatusStyle } from "../../lib/statusStyle";
 import type { NodeStatus } from "../../lib/types";
 import { useUiText } from "../../lib/uiTextContext";
 import { GraphLegend } from "./GraphLegend";
+import { GraphNodeShell } from "./GraphNodeShell";
 
 export type NodeDiffHighlight = Record<string, { isFailureOrCancel: boolean }>;
 
@@ -49,8 +52,15 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
   const style = getStatusStyle(data.status);
   const appearance = getNodeAppearance(data.nodeType);
   const isRunning = data.status === "RUNNING";
-  const isFork = appearance.label === "FORK";
-  const isJoin = appearance.label === "JOIN";
+  const isGateway = appearance.shapeKind === "gatewayFork" || appearance.shapeKind === "gatewayJoin";
+  const flowNodeId = useNodeId();
+  const updateInternals = useUpdateNodeInternals();
+
+  useEffect(() => {
+    if (flowNodeId != null && flowNodeId !== "") {
+      updateInternals(flowNodeId);
+    }
+  }, [flowNodeId, updateInternals, data.nodeType, data.status, data.label]);
   let diffRing = "";
   if (data.diffHighlight != null) {
     diffRing =
@@ -58,31 +68,24 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
         ? "ring-2 ring-red-500 ring-offset-1"
         : "ring-2 ring-amber-400 ring-offset-1";
   }
-  const wrapClass = `${appearance.shapeClass} relative border-2 p-3 shadow-sm ${style.borderClass} ${style.bgClass} ${isRunning ? "opacity-80 text-[var(--md-sys-color-on-surface-variant)]" : ""} ${data.selected ? "outline outline-2 outline-[var(--md-sys-color-primary)]" : ""} ${diffRing}`;
 
-  return (
-    <button
-      type="button"
-      className={`w-full text-left ${wrapClass}`}
-      onClick={() => data.onSelect(data.nodeId)}
-    >
-      {isFork && <div className="absolute inset-x-0 top-0 h-3 rounded-t-2xl bg-black/10 dark:bg-white/10" />}
-      {isJoin && <div className="absolute inset-x-0 bottom-0 h-3 rounded-b-2xl bg-black/10 dark:bg-white/10" />}
-      <Handle type="target" position={Position.Left} className="h-2 w-2 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]" />
-      <div className={`flex items-center justify-between gap-2 text-xs ${isFork ? "pt-1.5" : ""} ${isJoin ? "pb-1.5" : ""}`}>
-        <span>{appearance.icon}</span>
-        <span className="font-semibold">{appearance.label}</span>
-        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${style.badgeClass}`}>{data.status}</span>
+  const body = (
+    <>
+      <div className="flex items-center justify-between gap-1 text-xs">
+        <span aria-hidden>{appearance.icon}</span>
+        <span className="min-w-0 shrink font-semibold">{appearance.label}</span>
+        <span className={`inline-flex shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${style.badgeClass}`}>{data.status}</span>
       </div>
-      <div className="mt-2 space-y-1 text-xs">
-        <div className="font-mono">{data.label}</div>
+      <div className={`space-y-1 text-xs ${isGateway ? "mt-1" : "mt-2"}`}>
+        <div className="break-all font-mono">{data.label}</div>
         <div className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.nodeGraph.meta.type(data.nodeType)}</div>
         <div className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.nodeGraph.meta.attempt(data.attempt)}</div>
         {data.waitKey && <div className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.nodeGraph.meta.waitKey(data.waitKey)}</div>}
       </div>
       {data.status === "WAITING" && (
-        <div className="mt-3">
+        <div className={isGateway ? "mt-2" : "mt-3"}>
           <button
+            type="button"
             className="w-full rounded-lg bg-amber-500 px-2 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={(event) => {
               event.stopPropagation();
@@ -95,7 +98,37 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
           {data.resumeDisabledReason && <p className="mt-1 text-[10px] text-[var(--md-sys-color-on-surface-variant)]">{data.resumeDisabledReason}</p>}
         </div>
       )}
-      <Handle type="source" position={Position.Right} className="h-2 w-2 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]" />
+    </>
+  );
+
+  return (
+    <button
+      type="button"
+      className={`relative h-full w-full text-left ${isGateway ? "border-0 bg-transparent p-0" : ""}`}
+      onClick={() => data.onSelect(data.nodeId)}
+    >
+      <Handle
+        id="in"
+        type="target"
+        position={Position.Top}
+        className="h-2 w-2 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]"
+      />
+      <GraphNodeShell
+        shapeKind={appearance.shapeKind}
+        borderClass={style.borderClass}
+        bgClass={style.bgClass}
+        selected={data.selected}
+        diffRing={diffRing}
+        isRunning={isRunning}
+      >
+        {body}
+      </GraphNodeShell>
+      <Handle
+        id="out"
+        type="source"
+        position={Position.Bottom}
+        className="h-2 w-2 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]"
+      />
     </button>
   );
 }
@@ -160,6 +193,10 @@ export function NodeGraphView({
       id: node.nodeId,
       type: "executionNode",
       position: { x: node.x, y: node.y },
+      width: node.w,
+      height: node.h,
+      sourcePosition: Position.Bottom,
+      targetPosition: Position.Top,
       data: {
         nodeId: node.nodeId,
         label: node.nodeId,

@@ -159,6 +159,8 @@ export type DefinitionDTO = {
   resourceId: string;
   name: string;
   createdAt: string;
+  updatedAt: string;
+  yaml?: string;
 };
 
 export type PagedDefinitions = PagedResult<DefinitionDTO>;

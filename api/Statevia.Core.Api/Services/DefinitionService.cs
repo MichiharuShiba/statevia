@@ -67,7 +67,8 @@ public sealed class DefinitionService : IDefinitionService
             Name = request.Name!,
             SourceYaml = request.Yaml!,
             CompiledJson = compiledJson,
-            CreatedAt = now
+            CreatedAt = now,
+            UpdatedAt = now
         }, ct).ConfigureAwait(false);
 
         return new DefinitionResponse
@@ -75,7 +76,8 @@ public sealed class DefinitionService : IDefinitionService
             DisplayId = displayId,
             ResourceId = id,
             Name = request.Name!,
-            CreatedAt = now
+            CreatedAt = now,
+            UpdatedAt = now
         };
     }
 
@@ -87,7 +89,8 @@ public sealed class DefinitionService : IDefinitionService
             DisplayId = p.DisplayId ?? p.Def.DefinitionId.ToString(),
             ResourceId = p.Def.DefinitionId,
             Name = p.Def.Name,
-            CreatedAt = p.Def.CreatedAt
+            CreatedAt = p.Def.CreatedAt,
+            UpdatedAt = p.Def.UpdatedAt
         }).ToList();
     }
 
@@ -112,7 +115,8 @@ public sealed class DefinitionService : IDefinitionService
             DisplayId = p.DisplayId ?? p.Def.DefinitionId.ToString(),
             ResourceId = p.Def.DefinitionId,
             Name = p.Def.Name,
-            CreatedAt = p.Def.CreatedAt
+            CreatedAt = p.Def.CreatedAt,
+            UpdatedAt = p.Def.UpdatedAt
         }).ToList();
 
         return new PagedResult<DefinitionResponse>
@@ -141,7 +145,65 @@ public sealed class DefinitionService : IDefinitionService
             DisplayId = displayId ?? row.DefinitionId.ToString(),
             ResourceId = row.DefinitionId,
             Name = row.Name,
-            CreatedAt = row.CreatedAt
+            CreatedAt = row.CreatedAt,
+            UpdatedAt = row.UpdatedAt,
+            Yaml = row.SourceYaml
+        };
+    }
+
+    public async Task<DefinitionResponse> UpdateAsync(string tenantId, string idOrUuid, UpdateDefinitionRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            throw new ApiValidationException("Definition name is required.", new[]
+            {
+                new { message = "Definition name is required.", field = "name" }
+            });
+        }
+        if (string.IsNullOrWhiteSpace(request.Yaml))
+        {
+            throw new ApiValidationException("Definition YAML is required.", new[]
+            {
+                new { message = "Definition YAML is required.", field = "yaml" }
+            });
+        }
+
+        var uuid = await _displayIds.ResolveAsync("definition", idOrUuid, ct).ConfigureAwait(false);
+        if (uuid is null)
+            throw new NotFoundException("Definition not found");
+
+        string compiledJson;
+        try
+        {
+            (_, compiledJson) = _compiler.ValidateAndCompile(request.Name, request.Yaml);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new ApiValidationException("Definition validation failed.", new[]
+            {
+                new { message = ex.Message, field = "yaml" }
+            }, ex);
+        }
+
+        var updated = await _definitions
+            .UpdateAsync(tenantId, uuid.Value, request.Name, request.Yaml, compiledJson, ct)
+            .ConfigureAwait(false);
+        if (!updated)
+            throw new NotFoundException("Definition not found");
+
+        var row = await _definitions.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
+        if (row is null)
+            throw new NotFoundException("Definition not found");
+
+        var displayId = await _displayIds.GetDisplayIdAsync("definition", idOrUuid, ct).ConfigureAwait(false);
+        return new DefinitionResponse
+        {
+            DisplayId = displayId ?? row.DefinitionId.ToString(),
+            ResourceId = row.DefinitionId,
+            Name = row.Name,
+            CreatedAt = row.CreatedAt,
+            UpdatedAt = row.UpdatedAt,
+            Yaml = row.SourceYaml
         };
     }
 }

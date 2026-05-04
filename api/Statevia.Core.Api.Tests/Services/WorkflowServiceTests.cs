@@ -655,6 +655,7 @@ public sealed class WorkflowServiceTests
     private sealed class FakeDefinitionsRepoStub : IDefinitionRepository
     {
         public Task AddAsync(WorkflowDefinitionRow row, CancellationToken ct) => Task.CompletedTask;
+        public Task<bool> UpdateAsync(string tenantId, Guid definitionId, string name, string sourceYaml, string compiledJson, CancellationToken ct) => Task.FromResult(false);
         public Task<WorkflowDefinitionRow?> GetByIdAsync(string tenantId, Guid definitionId, CancellationToken ct) => Task.FromResult<WorkflowDefinitionRow?>(null);
         public Task<List<(WorkflowDefinitionRow Def, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct) => Task.FromResult(new List<(WorkflowDefinitionRow, string?)>());
         public Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
@@ -867,6 +868,7 @@ public sealed class WorkflowServiceTests
         private readonly Guid _defUuid;
         public FakeDefinitionsRepoStub2(Guid defUuid) => _defUuid = defUuid;
         public Task AddAsync(WorkflowDefinitionRow row, CancellationToken ct) => Task.CompletedTask;
+        public Task<bool> UpdateAsync(string tenantId, Guid definitionId, string name, string sourceYaml, string compiledJson, CancellationToken ct) => Task.FromResult(false);
         public Task<WorkflowDefinitionRow?> GetByIdAsync(string tenantId, Guid definitionId, CancellationToken ct) =>
             Task.FromResult(definitionId == _defUuid
                 ? new WorkflowDefinitionRow
@@ -876,7 +878,8 @@ public sealed class WorkflowServiceTests
                     Name = "def",
                     SourceYaml = "yaml",
                     CompiledJson = "{}",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
                 }
                 : null);
 

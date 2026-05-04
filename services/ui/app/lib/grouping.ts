@@ -1,4 +1,4 @@
-import type { GraphGroupDef, LayoutHints } from "../graphs/types";
+import type { GraphDefinitionMeta, GraphGroupDef } from "../graphs/types";
 import type { PositionedEdge, PositionedNode } from "./graphLayout";
 import type { WorkflowView } from "./types";
 
@@ -86,7 +86,7 @@ export function resolveGroupBounds(
   positionedNodes: PositionedNode[],
   positionedEdges: PositionedEdge[],
   definitionGroups: GraphGroupDef[] | undefined,
-  hints?: LayoutHints
+  hints?: GraphDefinitionMeta
 ): GroupBounds[] {
   const groups =
     definitionGroups && definitionGroups.length > 0

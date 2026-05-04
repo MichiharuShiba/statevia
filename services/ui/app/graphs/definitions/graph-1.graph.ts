@@ -12,8 +12,8 @@ export const graph1GraphDefinition: GraphDefinition = {
     { from: "start", to: "task-1" },
     { from: "task-1", to: "success" }
   ],
-  layoutHints: {
-    direction: "LR",
+  meta: {
+    direction: "TB",
     groupPadding: { x: 40, y: 30, header: 28 }
   }
 };

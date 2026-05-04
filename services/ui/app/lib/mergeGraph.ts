@@ -1,4 +1,4 @@
-import type { GraphDefinition, GraphEdgeDef, GraphGroupDef, LayoutHints } from "../graphs/types";
+import type { GraphDefinition, GraphEdgeDef, GraphGroupDef, GraphDefinitionMeta } from "../graphs/types";
 import type { ExecutionNodeDTO, NodeStatus, WorkflowView } from "./types";
 
 export type MergedGraphNode = {
@@ -11,8 +11,6 @@ export type MergedGraphNode = {
   waitKey: string | null;
   canceledByExecution: boolean;
 };
-
-import type { EdgeType } from "../graphs/types";
 
 export type MergedGraphEdge = {
   id: string;
@@ -30,7 +28,7 @@ export type MergedGraph = {
   nodes: MergedGraphNode[];
   edges: MergedGraphEdge[];
   groups?: GraphGroupDef[];
-  layoutHints?: LayoutHints;
+  meta?: GraphDefinitionMeta;
   isDefinitionBased: boolean;
 };
 
@@ -75,7 +73,7 @@ export function mergeGraph(execution: WorkflowView, definition: GraphDefinition 
       })),
       edges: [],
       groups: [],
-      layoutHints: { direction: "LR" },
+      meta: { direction: "TB" },
       isDefinitionBased: false
     };
   }
@@ -99,7 +97,7 @@ export function mergeGraph(execution: WorkflowView, definition: GraphDefinition 
     nodes,
     edges: definition.edges.map(toEdge),
     groups: definition.groups ?? [],
-    layoutHints: definition.layoutHints,
+    meta: definition.meta,
     isDefinitionBased: true
   };
 }
