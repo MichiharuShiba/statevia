@@ -68,7 +68,8 @@ Further HTTP contract: `docs/core-api-interface.md`.
    cd api && dotnet run --project Statevia.Core.Api
    ```
 
-   Or with env: `DATABASE_URL="postgres://statevia:statevia@localhost:5432/statevia" PORT=8080 dotnet run --project Statevia.Core.Api`
+   Or with env: `DATABASE_URL="postgres://statevia:statevia@localhost:5432/statevia" ASPNETCORE_URLS="http://0.0.0.0:8080" dotnet run --project Statevia.Core.Api --no-launch-profile`
+   **Gotcha**: `launchSettings.json` hardcodes ports 62427/62428. Use `--no-launch-profile` + `ASPNETCORE_URLS` to bind to port 8080.
    Migrations: `cd api && dotnet ef database update --project Statevia.Core.Api`.
 3. **ui** — run dev server:
 
