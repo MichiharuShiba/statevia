@@ -43,6 +43,9 @@ function collectEdgeTargets(node: DefinitionGraphNode): string[] {
       }
     }
   }
+  if (node.type === "action" && node.error?.trim()) {
+    targets.push(node.error.trim());
+  }
   if (node.type === "fork" && Array.isArray(node.branches)) {
     for (const branchId of node.branches) {
       if (branchId?.trim()) {

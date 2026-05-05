@@ -295,6 +295,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
       "description",
       "type",
       "action",
+      "error",
       "input",
       "next",
       "event",

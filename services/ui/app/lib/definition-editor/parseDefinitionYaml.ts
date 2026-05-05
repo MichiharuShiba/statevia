@@ -101,6 +101,12 @@ function parseNode(value: unknown): DefinitionGraphNode | null {
   if (typeof value.action === "string") {
     node.action = value.action;
   }
+  if (type === "action") {
+    const errorTarget = resolveEdgeToId(value.error);
+    if (errorTarget.trim().length > 0) {
+      node.error = errorTarget;
+    }
+  }
   if (typeof value.event === "string") {
     node.event = value.event;
   }

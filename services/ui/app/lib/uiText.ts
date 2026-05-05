@@ -395,6 +395,7 @@ export type UiText = {
       fullscreenEnter: string;
       fullscreenExit: string;
       parseFailed: string;
+      actionErrorLabel: string;
       actionInputLabel: string;
       actionInputPlaceholder: string;
       actionInputHint: string;
@@ -864,6 +865,7 @@ export const uiText: UiText = {
       fullscreenEnter: "全画面表示",
       fullscreenExit: "全画面終了",
       parseFailed: "YAML のパースに失敗したため、直前の有効グラフを表示しています。",
+      actionErrorLabel: "error 遷移先（任意）",
       actionInputLabel: "input（任意）",
       actionInputPlaceholder: '例: $.input.orderId または {"orderId":"$.input.orderId"}',
       actionInputHint: "パスは $ / $. のみ。オブジェクトは JSON で入力。",

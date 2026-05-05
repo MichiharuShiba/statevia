@@ -77,6 +77,7 @@ function DefinitionGraphNodeComponent({ data }: NodeProps<DefinitionGraphNodeDat
   const t = data.nodeType.trim().toUpperCase();
   const isStart = t === "START";
   const isEnd = t === "END";
+  const isAction = t === "ACTION";
   /** スタート: 出し口（下）のみ。エンド: 受け口（上）のみ。それ以外: 上下とも。 */
   const showTargetHandle = !isStart;
   const showSourceHandle = !isEnd;
@@ -85,7 +86,7 @@ function DefinitionGraphNodeComponent({ data }: NodeProps<DefinitionGraphNodeDat
     if (flowNodeId != null && flowNodeId !== "") {
       updateInternals(flowNodeId);
     }
-  }, [flowNodeId, updateInternals, data.nodeType, data.label, data.width, data.height, showTargetHandle, showSourceHandle]);
+  }, [flowNodeId, updateInternals, data.nodeType, data.label, data.width, data.height, showTargetHandle, showSourceHandle, isAction]);
 
   return (
     <div
@@ -126,6 +127,14 @@ function DefinitionGraphNodeComponent({ data }: NodeProps<DefinitionGraphNodeDat
           className={handleClassName}
         />
       )}
+      {isAction && (
+        <Handle
+          id="out-error"
+          type="source"
+          position={Position.Right}
+          className={handleClassName}
+        />
+      )}
     </div>
   );
 }
@@ -153,7 +162,7 @@ const DEFINITION_GRAPH_EDGE_DEFAULTS = {
 
 type GraphSelection =
   | { kind: "node"; nodeId: string }
-  | { kind: "edge"; nodeId: string; edgeKind: "next" | "edge"; edgeIndex?: number }
+  | { kind: "edge"; nodeId: string; edgeKind: "next" | "edge" | "error"; edgeIndex?: number }
   | null;
 
 type AvailableNodeType = {
@@ -189,6 +198,7 @@ type DefinitionGraphEditorProps = {
     fullscreenEnter: string;
     fullscreenExit: string;
     actionInputLabel: string;
+    actionErrorLabel: string;
     actionInputPlaceholder: string;
     actionInputHint: string;
     actionInputInvalidJson: string;
@@ -199,7 +209,7 @@ type GraphEdgeMeta = {
   id: string;
   source: string;
   target: string;
-  edgeKind: "next" | "edge" | "branch";
+  edgeKind: "next" | "edge" | "branch" | "error";
   edgeIndex?: number;
 };
 
@@ -225,6 +235,14 @@ function toLayoutNodes(document: DefinitionGraphDocument): LayoutNodeInput[] {
 function toGraphEdges(document: DefinitionGraphDocument): GraphEdgeMeta[] {
   const edges: GraphEdgeMeta[] = [];
   for (const node of document.nodes) {
+    if (node.type === "action" && node.error?.trim()) {
+      edges.push({
+        id: `error:${node.id}`,
+        source: node.id,
+        target: node.error.trim(),
+        edgeKind: "error"
+      });
+    }
     if (node.next?.trim()) {
       edges.push({
         id: `next:${node.id}`,
@@ -417,6 +435,8 @@ export function DefinitionGraphEditor({
       let label = "edge";
       if (edge.edgeKind === "next") {
         label = "next";
+      } else if (edge.edgeKind === "error") {
+        label = "error";
       } else if (edge.edgeKind === "branch") {
         label = "branch";
       }
@@ -424,7 +444,7 @@ export function DefinitionGraphEditor({
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        sourceHandle: "out",
+        sourceHandle: edge.edgeKind === "error" ? "out-error" : "out",
         targetHandle: "in",
         label,
         animated: edge.edgeKind === "edge"
@@ -512,6 +532,18 @@ export function DefinitionGraphEditor({
     }
     const sourceNode = document.nodes.find((node) => node.id === connection.source);
     if (!sourceNode) {
+      return;
+    }
+    if (connection.sourceHandle === "out-error") {
+      if (sourceNode.type !== "action") {
+        return;
+      }
+      onDocumentChange(
+        updateNode(document, sourceNode.id, (node) =>
+          node.type === "action" ? { ...node, error: targetNodeId } : node
+        )
+      );
+      setGraphMessage(null);
       return;
     }
     const nextDocument = updateNode(document, sourceNode.id, (node) => {
@@ -763,6 +795,25 @@ function GraphNodeInspector({
       )}
       {node.type === "action" && (
         <label className="block text-xs">
+          <span className="block">{labels.actionErrorLabel}</span>
+          <input
+            className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
+            value={node.error ?? ""}
+            onChange={(changeEvent) => {
+              const nextValue = changeEvent.target.value.trim();
+              onDocumentChange(
+                updateNode(document, node.id, (targetNode) =>
+                  targetNode.type === "action"
+                    ? { ...targetNode, error: nextValue.length > 0 ? nextValue : undefined }
+                    : targetNode
+                )
+              );
+            }}
+          />
+        </label>
+      )}
+      {node.type === "action" && (
+        <label className="block text-xs">
           <span className="block">{labels.actionInputLabel}</span>
           <ActionInputCodeEditor
             key={node.id}
@@ -860,16 +911,22 @@ function GraphInspector({
     return null;
   }
 
-  const targetEdge =
-    selection.edgeKind === "next"
-      ? { to: sourceNode.next ?? "" }
-      : (sourceNode.edges ?? [])[selection.edgeIndex ?? -1];
+  let targetEdge: NonNullable<DefinitionGraphNode["edges"]>[number] | { to: string } | undefined;
+  if (selection.edgeKind === "next") {
+    targetEdge = { to: sourceNode.next ?? "" };
+  } else if (selection.edgeKind === "error") {
+    targetEdge = { to: sourceNode.error ?? "" };
+  } else {
+    targetEdge = (sourceNode.edges ?? [])[selection.edgeIndex ?? -1];
+  }
   if (!targetEdge) {
     return null;
   }
 
-  const selectedWhenOp = (targetEdge.when?.op ?? "").toUpperCase();
-  const isDefaultEdge = targetEdge.default === true;
+  const conditionalEdge: NonNullable<DefinitionGraphNode["edges"]>[number] | undefined =
+    selection.edgeKind === "edge" ? (targetEdge as NonNullable<DefinitionGraphNode["edges"]>[number]) : undefined;
+  const selectedWhenOp = (conditionalEdge?.when?.op ?? "").toUpperCase();
+  const isDefaultEdge = conditionalEdge?.default === true;
   const isWhenFieldsDisabled = isDefaultEdge;
   const isWhenValueDisabled = selectedWhenOp === "EXISTS";
   let whenValueHint: string | null = null;
@@ -893,6 +950,14 @@ function GraphInspector({
               onDocumentChange(updateNode(document, sourceNode.id, (node) => ({ ...node, next: nextTarget })));
               return;
             }
+            if (selection.edgeKind === "error") {
+              onDocumentChange(
+                updateNode(document, sourceNode.id, (node) =>
+                  node.type === "action" ? { ...node, error: nextTarget.trim() || undefined } : node
+                )
+              );
+              return;
+            }
             onDocumentChange(
               updateNode(document, sourceNode.id, (node) => ({
                 ...node,
@@ -909,7 +974,7 @@ function GraphInspector({
           <label className="inline-flex items-center gap-2 text-xs">
             <input
               type="checkbox"
-              checked={targetEdge.default === true}
+                checked={conditionalEdge?.default === true}
               onChange={(changeEvent) => {
                 const isDefault = changeEvent.target.checked;
                 onDocumentChange(
@@ -935,7 +1000,7 @@ function GraphInspector({
             <span className="block">when.path</span>
             <input
               className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
-              value={targetEdge.when?.path ?? ""}
+              value={conditionalEdge?.when?.path ?? ""}
               placeholder={labels.whenPathPlaceholder}
               disabled={isWhenFieldsDisabled}
               onChange={(changeEvent) => {
@@ -994,7 +1059,7 @@ function GraphInspector({
             <span className="block">when.value</span>
             <input
               className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
-              value={formatWhenValue(targetEdge.when?.value)}
+              value={formatWhenValue(conditionalEdge?.when?.value)}
               placeholder={labels.whenValuePlaceholder}
               disabled={isWhenFieldsDisabled || isWhenValueDisabled}
               onChange={(changeEvent) => {
@@ -1032,6 +1097,15 @@ function GraphInspector({
           onClick={() => {
             if (selection.edgeKind === "next") {
               onDocumentChange(updateNode(document, sourceNode.id, (node) => ({ ...node, next: undefined })));
+              onClearSelection();
+              return;
+            }
+            if (selection.edgeKind === "error") {
+              onDocumentChange(
+                updateNode(document, sourceNode.id, (node) =>
+                  node.type === "action" ? { ...node, error: undefined } : node
+                )
+              );
               onClearSelection();
               return;
             }

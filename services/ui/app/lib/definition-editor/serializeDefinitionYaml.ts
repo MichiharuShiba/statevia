@@ -18,6 +18,9 @@ export function serializeDefinitionYaml(document: DefinitionGraphDocument): stri
     if (node.action?.trim()) {
       base.action = node.action.trim();
     }
+    if (node.type === "action" && node.error?.trim()) {
+      base.error = node.error.trim();
+    }
     if (node.event?.trim()) {
       base.event = node.event.trim();
     }
