@@ -423,6 +423,10 @@ export const uiTextEn: UiText = {
       fullscreenEnter: "Fullscreen",
       fullscreenExit: "Exit fullscreen",
       parseFailed: "YAML parsing failed. Keeping the previous valid graph.",
+      actionInputLabel: "input (optional)",
+      actionInputPlaceholder: 'e.g. $.input.orderId or {"orderId":"$.input.orderId"}',
+      actionInputHint: "Paths use $ / $. only. Enter objects as JSON.",
+      actionInputInvalidJson: "Invalid JSON.",
     },
     saved: {
       completePrefix: "Saved:",

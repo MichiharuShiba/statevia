@@ -8,7 +8,8 @@ export type NodeType = (typeof NODE_TYPES)[number];
 export type EdgeCondition = {
   path: string;
   op: string;
-  value: unknown;
+  /** EXISTS 等では省略されうる */
+  value?: unknown;
 };
 
 export type DefinitionGraphEdge = {
@@ -26,7 +27,9 @@ export type DefinitionGraphNode = {
   next?: string;
   branches?: string[];
   edges?: DefinitionGraphEdge[];
-  input?: Record<string, unknown>;
+  /** action: パス文字列・リテラル、またはキー→パス／リテラルのマップ（ローダー ParseStrictInputMapping と整合） */
+  input?: string | Record<string, unknown>;
+  /** join: conversion spec では省略可。指定時は `all` のみ */
   mode?: "all";
 };
 
@@ -40,6 +43,9 @@ export type DefinitionGraphDocument = {
   version: number;
   workflow: {
     name: string;
+    /** YAML の workflow.id（名前未指定時ローダーが名前解決に利用） */
+    id?: string;
+    description?: string;
   };
   nodes: DefinitionGraphNode[];
   meta?: DefinitionGraphMeta;

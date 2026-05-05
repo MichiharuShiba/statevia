@@ -1,6 +1,10 @@
 import { stringify } from "yaml";
 import type { DefinitionGraphDocument, DefinitionGraphEdge } from "./types";
 
+function isNonEmptyRecord(value: Record<string, unknown>): boolean {
+  return Object.keys(value).length > 0;
+}
+
 /**
  * DefinitionGraphDocument を既存 nodes スキーマの YAML へ変換する。
  */
@@ -20,11 +24,15 @@ export function serializeDefinitionYaml(document: DefinitionGraphDocument): stri
     if (node.type === "fork") {
       base.branches = [...(node.branches ?? [])];
     }
-    if (node.type === "join") {
+    if (node.type === "join" && node.mode === "all") {
       base.mode = "all";
     }
-    if (node.input && Object.keys(node.input).length > 0) {
-      base.input = node.input;
+    if (node.input !== undefined) {
+      const emit =
+        typeof node.input === "string" || isNonEmptyRecord(node.input);
+      if (emit) {
+        base.input = node.input;
+      }
     }
 
     const edges: DefinitionGraphEdge[] = (node.edges ?? [])
@@ -59,11 +67,19 @@ export function serializeDefinitionYaml(document: DefinitionGraphDocument): stri
     return base;
   });
 
+  const workflowOut: Record<string, unknown> = {
+    name: document.workflow.name
+  };
+  if (document.workflow.id?.trim()) {
+    workflowOut.id = document.workflow.id.trim();
+  }
+  if (document.workflow.description?.trim()) {
+    workflowOut.description = document.workflow.description.trim();
+  }
+
   const root: Record<string, unknown> = {
     version: document.version,
-    workflow: {
-      name: document.workflow.name
-    },
+    workflow: workflowOut,
     nodes
   };
   return stringify(root);

@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { ActionInputCodeEditor } from "../../../components/editor/ActionInputCodeEditor";
 import { NAVIGATION_BUTTON_CLASS } from "../../../components/layout/navigationButtonClass";
 import { Toast } from "../../../components/Toast";
 import { apiPost } from "../../../lib/api";
@@ -87,12 +88,13 @@ export default function DefinitionRunStartPage() {
       <section className="space-y-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm">
         <label className="block text-sm">
           <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionRunPage.workflowInputLabelWithHint(uiText.labels.workflowInput)}</span>
-          <textarea
-            className="mt-1 h-28 w-full rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-2 py-1.5 font-mono text-xs text-[var(--md-sys-color-on-surface)]"
+          <ActionInputCodeEditor
             value={inputJson}
-            onChange={(event) => setInputJson(event.target.value)}
+            onChange={setInputJson}
             placeholder={uiText.definitionRunPage.inputJsonPlaceholder}
-            spellCheck={false}
+            syntaxHighlight="jsonOnly"
+            ariaLabel={uiText.labels.workflowInput}
+            className="min-h-[7rem] w-full border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]"
           />
         </label>
         <button

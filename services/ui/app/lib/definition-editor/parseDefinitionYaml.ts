@@ -44,11 +44,22 @@ function parseCondition(value: unknown): EdgeCondition | undefined {
   };
 }
 
+/** `to` が文字列または `{ id }` のとき遷移先 ID を返す（ローダー ResolveEdgeTargetId と整合）。 */
+function resolveEdgeToId(raw: unknown): string {
+  if (typeof raw === "string") {
+    return raw;
+  }
+  if (isRecord(raw) && typeof raw.id === "string") {
+    return raw.id;
+  }
+  return "";
+}
+
 function parseEdge(value: unknown): DefinitionGraphEdge | null {
   if (!isRecord(value)) {
     return null;
   }
-  const to = typeof value.to === "string" ? value.to : "";
+  const to = resolveEdgeToId(value.to);
   const order = typeof value.order === "number" ? value.order : undefined;
   const isDefault = value.default === true;
   return {
@@ -104,11 +115,14 @@ function parseNode(value: unknown): DefinitionGraphNode | null {
       .map((edge) => parseEdge(edge))
       .filter((edge): edge is DefinitionGraphEdge => edge !== null);
   }
-  if (isRecord(value.input)) {
+  if (typeof value.input === "string" || isRecord(value.input)) {
     node.input = value.input;
   }
   if (type === "join") {
-    node.mode = "all";
+    const modeRaw = value.mode;
+    if (typeof modeRaw === "string" && modeRaw.trim().toLowerCase() === "all") {
+      node.mode = "all";
+    }
   }
   return node;
 }
@@ -137,10 +151,11 @@ export function parseDefinitionYaml(
   }
 
   const workflow = isRecord(root.workflow) ? root.workflow : {};
-  const workflowName =
-    typeof workflow.name === "string" && workflow.name.trim().length > 0
-      ? workflow.name.trim()
-      : "Unnamed";
+  const nameTrim =
+    typeof workflow.name === "string" && workflow.name.trim().length > 0 ? workflow.name.trim() : undefined;
+  const idTrim =
+    typeof workflow.id === "string" && workflow.id.trim().length > 0 ? workflow.id.trim() : undefined;
+  const workflowName = nameTrim ?? idTrim ?? "Unnamed";
 
   if (!Array.isArray(root.nodes)) {
     return {
@@ -188,9 +203,17 @@ export function parseDefinitionYaml(
     meta = { layout: mergedLayout };
   }
 
+  const workflowDoc: DefinitionGraphDocument["workflow"] = { name: workflowName };
+  if (idTrim !== undefined) {
+    workflowDoc.id = idTrim;
+  }
+  if (typeof workflow.description === "string" && workflow.description.trim().length > 0) {
+    workflowDoc.description = workflow.description.trim();
+  }
+
   const document: DefinitionGraphDocument = {
     version,
-    workflow: { name: workflowName },
+    workflow: workflowDoc,
     nodes,
     ...(meta ? { meta } : {})
   };
