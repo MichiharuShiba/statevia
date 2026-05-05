@@ -231,6 +231,17 @@ nodes:
     # 型ごとのプロパティ（下記）
 ```
 
+### 2.1.1 Definition Editor（Web UI）との往復
+
+Definition Editor は YAML 編集とグラフ編集で同じドキュメントを扱う。次は **`NodesWorkflowDefinitionLoader` が受理する情報**がエディタ経由で欠落しないよう、クライアント側で保持する。
+
+- **workflow**: `id` / `name` / `description`。`name` が無く `id` だけの場合、ローダーはワークフロー名に `id` を使うため、エディタも表示名を同様に解決し、`id` を別フィールドとして保持する。
+- **action.input**: 文字列（`$` / `$.` パスやリテラル）またはオブジェクト（キー→パス／リテラル）。グラフのノードインスペクターからも編集できる。
+- **edges[].to**: 文字列、または **`{ id: "<nodeId>" }`**。パース時にエディタは常に遷移先 ID 文字列へ正規化する。
+- **join.mode**: 省略可能（省略時に UI が `mode: all` を自動付与しない）。明示したときのみ `all` を保持する。
+
+Core-API の **`GET /v1/definitions/schema/nodes`** が返すスキーマには、`workflow.description` およびノードの **`input`** プロパティが含まれる（補完・Lint の参照用）。
+
 ### 2.2 ノード型とプロパティ
 
 | type   | 必須プロパティ     | 任意・備考 |
