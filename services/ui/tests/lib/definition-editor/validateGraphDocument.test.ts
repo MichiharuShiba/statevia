@@ -140,4 +140,17 @@ describe("validateGraphDocument / edge.when.value", () => {
     expect(r.isValid).toBe(false);
     expect(r.messages.some((x) => x.startsWith("defaultMulti:"))).toBe(true);
   });
+
+  it("join が mode なし・next のみなら有効", () => {
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "w" },
+      nodes: [
+        { id: "s", type: "start", next: "j" },
+        { id: "j", type: "join", next: "e" },
+        { id: "e", type: "end" }
+      ]
+    };
+    expect(validateGraphDocument(doc, opts()).isValid).toBe(true);
+  });
 });

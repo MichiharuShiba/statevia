@@ -233,8 +233,8 @@ describe("buildWorkflowsListPath", () => {
   it("空の値は除き、limit/offset 必須、フィルタは name / definitionId / status を含める", () => {
     // Act
     const a = buildWorkflowsListPath({
-      limit: 20,
-      offset: 40,
+      pagination: { limit: 20, offset: 40 },
+      sort: {},
       status: "Running",
       name: "x",
       definitionId: "def-1"
