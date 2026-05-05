@@ -266,6 +266,7 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         public IReadOnlyList<NodeEdgeDefinition>? Edges { get; init; }
         public string? ActionId { get; init; }
         public string? WaitEvent { get; init; }
+        public string? Error { get; init; }
         public IReadOnlyList<string>? Branches { get; init; }
         public object? InputRaw { get; init; }
 
@@ -295,6 +296,7 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
             var next = GetStr(dict, "next");
             var action = GetStr(dict, "action");
             var ev = GetStr(dict, "event");
+            var error = ResolveNodeTargetId(dict, id, "error");
             var branches = GetStrList(dict, "branches");
             dict.TryGetValue("input", out var inputVal);
             var edges = ParseEdges(id, dict);
@@ -308,6 +310,7 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
                 Edges = edges,
                 ActionId = action,
                 WaitEvent = ev,
+                Error = error,
                 Branches = branches,
                 InputRaw = inputVal
             };
@@ -340,6 +343,11 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
                         }
                     }
 
+                    if (Kind == NodeKind.Action && !string.IsNullOrWhiteSpace(Error))
+                    {
+                        yield return Error;
+                    }
+
                     break;
                 case NodeKind.Fork:
                     if (Branches != null)
@@ -365,7 +373,11 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         {
             switch (Kind)
             {
+                case NodeKind.Start:
+                    ForbidKeys(Id, Raw, "error");
+                    break;
                 case NodeKind.End:
+                    ForbidKeys(Id, Raw, "error");
                     if (HasKeyIgnoreCase(Raw, "next"))
                     {
                         throw new ArgumentException($"Node '{Id}': 'type: end' must not have 'next' (§3.1).");
@@ -378,9 +390,10 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
 
                     break;
                 case NodeKind.Action:
-                    ForbidKeys(Id, Raw, "onError", "output");
+                    ForbidKeys(Id, Raw, "output");
                     break;
                 case NodeKind.Fork:
+                    ForbidKeys(Id, Raw, "error");
                     if (Edges is { Count: > 0 })
                     {
                         throw new ArgumentException($"Fork node '{Id}': 'edges' is not supported in MVP.");
@@ -388,9 +401,10 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
 
                     break;
                 case NodeKind.Wait:
-                    ForbidKeys(Id, Raw, "timeout", "onTimeout");
+                    ForbidKeys(Id, Raw, "error");
                     break;
                 case NodeKind.Join:
+                    ForbidKeys(Id, Raw, "error");
                     if (Raw.TryGetValue("mode", out var modeVal) && modeVal != null)
                     {
                         var m = modeVal.ToString()?.Trim();
@@ -465,6 +479,15 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
                         foreach (var e in Edges)
                         {
                             MustExist(e.ToId, "edges.to");
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(Error))
+                    {
+                        MustExist(Error, "error");
+                        if (string.Equals(Error, Id, StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new ArgumentException($"Action node '{Id}' must not self-reference with 'error'.");
                         }
                     }
 
@@ -559,15 +582,20 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
                         }
                     };
                 case NodeKind.Action:
+                    var transitions = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["Completed"] = BuildLinearTransitionForFact(Id, Next, Edges)
+                    };
+                    if (!string.IsNullOrWhiteSpace(Error))
+                    {
+                        transitions["Failed"] = new TransitionDefinition { Next = Error };
+                    }
 
                     return new StateDefinition
                     {
                         Action = ActionId,
                         Input = ParseActionInput(Id, InputRaw),
-                        On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
-                        {
-                            ["Completed"] = BuildLinearTransitionForFact(Id, Next, Edges)
-                        }
+                        On = transitions
                     };
                 case NodeKind.Wait:
                     return new StateDefinition
@@ -727,6 +755,32 @@ public sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
 
         private static StateInputDefinition? ParseActionInput(string nodeId, object? inputVal) =>
             ParseStrictInputMapping(inputVal, nodeId);
+
+        private static string? ResolveNodeTargetId(Dictionary<string, object?> dict, string? nodeId, string key)
+        {
+            if (!dict.TryGetValue(key, out var raw) || raw is null)
+            {
+                return null;
+            }
+
+            if (raw is string s)
+            {
+                var trimmed = s.Trim();
+                if (trimmed.Length == 0)
+                {
+                    throw new ArgumentException(Format(nodeId, $"'{key}' must be non-empty string or object with id."));
+                }
+                return trimmed;
+            }
+
+            var targetDict = ToStringDict(raw, StringComparer.OrdinalIgnoreCase);
+            var id = GetStr(targetDict, "id");
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                throw new ArgumentException(Format(nodeId, $"'{key}' object must include non-empty 'id'."));
+            }
+            return id;
+        }
     }
 
     /// <summary>
