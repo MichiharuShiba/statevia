@@ -153,4 +153,34 @@ describe("validateGraphDocument / edge.when.value", () => {
     };
     expect(validateGraphDocument(doc, opts()).isValid).toBe(true);
   });
+
+  it("action.error が未定義ノードを指すと missing", () => {
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "w" },
+      nodes: [
+        { id: "s", type: "start", next: "a" },
+        { id: "a", type: "action", action: "noop", next: "e", error: "unknown" },
+        { id: "e", type: "end" }
+      ]
+    };
+    const r = validateGraphDocument(doc, opts());
+    expect(r.isValid).toBe(false);
+    expect(r.messages).toContain("missing:a:unknown");
+  });
+
+  it("action.error が自己参照のとき selfRef", () => {
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "w" },
+      nodes: [
+        { id: "s", type: "start", next: "a" },
+        { id: "a", type: "action", action: "noop", next: "e", error: "a" },
+        { id: "e", type: "end" }
+      ]
+    };
+    const r = validateGraphDocument(doc, opts());
+    expect(r.isValid).toBe(false);
+    expect(r.messages).toContain("selfRef:a");
+  });
 });
