@@ -26,6 +26,8 @@ const DEFAULT_KEYWORDS = [
   "type",
   "next",
   "action",
+  "input",
+  "description",
   "branches",
   "event",
   "mode",
@@ -39,8 +41,8 @@ const DEFAULT_KEYWORDS = [
   "default"
 ] as const;
 
-const WORKFLOW_KEYWORDS = ["name"] as const;
-const NODE_KEYWORDS = ["id", "type", "next", "action", "event", "branches", "mode", "edges"] as const;
+const WORKFLOW_KEYWORDS = ["name", "id", "description"] as const;
+const NODE_KEYWORDS = ["id", "type", "next", "action", "input", "event", "branches", "mode", "edges"] as const;
 const EDGE_KEYWORDS = ["to", "when", "order", "default"] as const;
 const WHEN_KEYWORDS = ["path", "op", "value"] as const;
 const GITHUB_MONO_FONT_FAMILY = "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace";

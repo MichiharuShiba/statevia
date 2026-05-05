@@ -21,7 +21,40 @@ import { getNodeAppearance } from "../../lib/nodeAppearance";
 import { getStatusStyle } from "../../lib/statusStyle";
 import { renameNodeIdInDocument } from "../../lib/definition-editor/renameNodeIdInDocument";
 import type { DefinitionGraphDocument, DefinitionGraphNode, NodeType } from "../../lib/definition-editor/types";
+import { ActionInputCodeEditor } from "./ActionInputCodeEditor";
 import { GraphNodeShell } from "../nodes/GraphNodeShell";
+
+function formatActionInputForEditor(input: DefinitionGraphNode["input"]): string {
+  if (input === undefined) {
+    return "";
+  }
+  if (typeof input === "string") {
+    return input;
+  }
+  try {
+    return JSON.stringify(input, null, 2);
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * パス文字列はそのまま、JSON オブジェクトは `{ ... }` として入力する。
+ */
+function parseActionInputEditorText(text: string): string | Record<string, unknown> | undefined {
+  const t = text.trim();
+  if (!t) {
+    return undefined;
+  }
+  if (t.startsWith("{") || t.startsWith("[")) {
+    const parsed: unknown = JSON.parse(t);
+    if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    throw new SyntaxError("Input JSON must be a single object for action input mapping.");
+  }
+  return t;
+}
 
 type DefinitionGraphNodeData = {
   nodeType: string;
@@ -155,6 +188,10 @@ type DefinitionGraphEditorProps = {
     whenValueHintBetween: string;
     fullscreenEnter: string;
     fullscreenExit: string;
+    actionInputLabel: string;
+    actionInputPlaceholder: string;
+    actionInputHint: string;
+    actionInputInvalidJson: string;
   };
 };
 
@@ -270,7 +307,7 @@ function createNode(type: NodeType, id: string): DefinitionGraphNode {
     case "fork":
       return { id, type: "fork", branches: [] };
     case "join":
-      return { id, type: "join", mode: "all" };
+      return { id, type: "join" };
     case "end":
       return { id, type: "end" };
   }
@@ -662,6 +699,133 @@ type GraphInspectorProps = {
   onInspectingNodeIdChange?: (nextId: string) => void;
 };
 
+type GraphNodeInspectorProps = {
+  document: DefinitionGraphDocument;
+  node: DefinitionGraphNode;
+  labels: DefinitionGraphEditorProps["labels"];
+  onDocumentChange: (nextDocument: DefinitionGraphDocument) => void;
+  onClearSelection: () => void;
+  onInspectingNodeIdChange?: (nextId: string) => void;
+};
+
+function GraphNodeInspector({
+  document,
+  node,
+  labels,
+  onDocumentChange,
+  onClearSelection,
+  onInspectingNodeIdChange
+}: Readonly<GraphNodeInspectorProps>) {
+  const actionInputSig = node.type === "action" ? JSON.stringify(node.input ?? null) : "";
+  const [actionInputDraft, setActionInputDraft] = useState("");
+  const [actionInputError, setActionInputError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (node.type === "action") {
+      setActionInputDraft(formatActionInputForEditor(node.input));
+      setActionInputError(null);
+    }
+  }, [node.id, node.type, actionInputSig]);
+
+  return (
+    <section className="space-y-2 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] p-3">
+      <p className="text-sm font-medium">{labels.nodeInspectorTitle}</p>
+      <label className="block text-xs">
+        <span className="block">id</span>
+        <input
+          className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
+          value={node.id}
+          onChange={(changeEvent) => {
+            const nextId = changeEvent.target.value;
+            onDocumentChange(renameNodeIdInDocument(document, node.id, nextId));
+            onInspectingNodeIdChange?.(nextId);
+          }}
+        />
+      </label>
+      {(node.type === "action" || node.type === "wait") && (
+        <label className="block text-xs">
+          <span className="block">{node.type === "action" ? "action" : "event"}</span>
+          <input
+            className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
+            value={node.type === "action" ? node.action ?? "" : node.event ?? ""}
+            onChange={(changeEvent) => {
+              const nextValue = changeEvent.target.value;
+              onDocumentChange(
+                updateNode(document, node.id, (targetNode) =>
+                  targetNode.type === "action"
+                    ? { ...targetNode, action: nextValue }
+                    : { ...targetNode, event: nextValue }
+                )
+              );
+            }}
+          />
+        </label>
+      )}
+      {node.type === "action" && (
+        <label className="block text-xs">
+          <span className="block">{labels.actionInputLabel}</span>
+          <ActionInputCodeEditor
+            key={node.id}
+            value={actionInputDraft}
+            placeholder={labels.actionInputPlaceholder}
+            onChange={(next) => {
+              setActionInputDraft(next);
+              setActionInputError(null);
+            }}
+            onBlur={(latestText) => {
+              try {
+                const parsed = parseActionInputEditorText(latestText);
+                setActionInputError(null);
+                onDocumentChange(
+                  updateNode(document, node.id, (targetNode) =>
+                    targetNode.type === "action" ? { ...targetNode, input: parsed } : targetNode
+                  )
+                );
+                setActionInputDraft(formatActionInputForEditor(parsed));
+              } catch {
+                setActionInputError(labels.actionInputInvalidJson);
+              }
+            }}
+          />
+          <span className="mt-0.5 block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">{labels.actionInputHint}</span>
+          {actionInputError ? <p className="text-[10px] text-rose-600">{actionInputError}</p> : null}
+        </label>
+      )}
+      {node.type === "fork" && (
+        <label className="block text-xs">
+          <span className="block">branches (comma separated)</span>
+          <input
+            className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
+            value={(node.branches ?? []).join(", ")}
+            onChange={(changeEvent) => {
+              const branches = changeEvent.target.value
+                .split(",")
+                .map((entry) => entry.trim())
+                .filter((entry) => entry.length > 0);
+              onDocumentChange(updateNode(document, node.id, (targetNode) => ({ ...targetNode, branches })));
+            }}
+          />
+        </label>
+      )}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          className="rounded border border-rose-400 px-2 py-1 text-xs text-rose-700"
+          onClick={() => {
+            onDocumentChange({
+              ...document,
+              nodes: document.nodes.filter((entry) => entry.id !== node.id)
+            });
+            onClearSelection();
+          }}
+        >
+          {labels.deleteNode}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function GraphInspector({
   document,
   selection,
@@ -680,71 +844,14 @@ function GraphInspector({
       return null;
     }
     return (
-      <section className="space-y-2 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] p-3">
-        <p className="text-sm font-medium">{labels.nodeInspectorTitle}</p>
-        <label className="block text-xs">
-          <span className="block">id</span>
-          <input
-            className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
-            value={node.id}
-            onChange={(changeEvent) => {
-              const nextId = changeEvent.target.value;
-              onDocumentChange(renameNodeIdInDocument(document, node.id, nextId));
-              onInspectingNodeIdChange?.(nextId);
-            }}
-          />
-        </label>
-        {(node.type === "action" || node.type === "wait") && (
-          <label className="block text-xs">
-            <span className="block">{node.type === "action" ? "action" : "event"}</span>
-            <input
-              className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
-              value={node.type === "action" ? node.action ?? "" : node.event ?? ""}
-              onChange={(changeEvent) => {
-                const nextValue = changeEvent.target.value;
-                onDocumentChange(
-                  updateNode(document, node.id, (targetNode) =>
-                    targetNode.type === "action"
-                      ? { ...targetNode, action: nextValue }
-                      : { ...targetNode, event: nextValue }
-                  )
-                );
-              }}
-            />
-          </label>
-        )}
-        {node.type === "fork" && (
-          <label className="block text-xs">
-            <span className="block">branches (comma separated)</span>
-            <input
-              className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
-              value={(node.branches ?? []).join(", ")}
-              onChange={(changeEvent) => {
-                const branches = changeEvent.target.value
-                  .split(",")
-                  .map((entry) => entry.trim())
-                  .filter((entry) => entry.length > 0);
-                onDocumentChange(updateNode(document, node.id, (targetNode) => ({ ...targetNode, branches })));
-              }}
-            />
-          </label>
-        )}
-        <div className="flex justify-end">
-          <button
-            type="button"
-            className="rounded border border-rose-400 px-2 py-1 text-xs text-rose-700"
-            onClick={() => {
-              onDocumentChange({
-                ...document,
-                nodes: document.nodes.filter((entry) => entry.id !== node.id)
-              });
-              onClearSelection();
-            }}
-          >
-            {labels.deleteNode}
-          </button>
-        </div>
-      </section>
+      <GraphNodeInspector
+        document={document}
+        node={node}
+        labels={labels}
+        onDocumentChange={onDocumentChange}
+        onClearSelection={onClearSelection}
+        onInspectingNodeIdChange={onInspectingNodeIdChange}
+      />
     );
   }
 

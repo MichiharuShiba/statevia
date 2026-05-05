@@ -21,6 +21,36 @@ import { useUiText } from "../lib/uiTextContext";
 import { getUtf8ByteLength, matchesPattern } from "../lib/validation/primitives";
 import { DEFINITION_NAME_PATTERN, DEFINITION_YAML_MAX_BYTES } from "../lib/validation/formRules";
 
+/** GET /definitions/schema/nodes の応答からルート・workflow・ノード項目の補完キーを収集する */
+function extractCompletionKeywordsFromNodesSchema(schema: unknown): string[] {
+  const root =
+    typeof schema === "object" && schema !== null ? (schema as Record<string, unknown>) : null;
+  const props = root?.properties as Record<string, unknown> | undefined;
+  const keys = new Set<string>();
+  if (!props) {
+    return [];
+  }
+  for (const k of Object.keys(props)) {
+    keys.add(k);
+  }
+  const wf = props.workflow as Record<string, unknown> | undefined;
+  const wfProps = wf?.properties as Record<string, unknown> | undefined;
+  if (wfProps) {
+    for (const k of Object.keys(wfProps)) {
+      keys.add(k);
+    }
+  }
+  const nodes = props.nodes as Record<string, unknown> | undefined;
+  const items = nodes?.items as Record<string, unknown> | undefined;
+  const nodeProps = items?.properties as Record<string, unknown> | undefined;
+  if (nodeProps) {
+    for (const k of Object.keys(nodeProps)) {
+      keys.add(k);
+    }
+  }
+  return [...keys];
+}
+
 type DefinitionEditorPageClientProps = {
   definitionId?: string;
 };
@@ -256,13 +286,33 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
    * API が落ちていても編集を止めないため、失敗時は最小候補へフォールバックする。
    */
   const loadSchemaKeywords = useCallback(async () => {
-    const fallback = ["version", "workflow", "nodes", "id", "type", "action", "next", "event", "branches", "edges"];
+    const fallback = [
+      "version",
+      "workflow",
+      "nodes",
+      "name",
+      "id",
+      "description",
+      "type",
+      "action",
+      "input",
+      "next",
+      "event",
+      "branches",
+      "mode",
+      "edges",
+      "to",
+      "when",
+      "path",
+      "op",
+      "value",
+      "order",
+      "default"
+    ];
     try {
       const response = await apiGet<DefinitionSchemaResponse>("/definitions/schema/nodes");
-      const schemaProperties = typeof response.schema.properties === "object" && response.schema.properties != null
-        ? Object.keys(response.schema.properties as Record<string, unknown>)
-        : [];
-      setCompletionKeywords(schemaProperties.length > 0 ? schemaProperties : fallback);
+      const fromSchema = extractCompletionKeywordsFromNodesSchema(response.schema);
+      setCompletionKeywords(fromSchema.length > 0 ? fromSchema : fallback);
     } catch {
       setCompletionKeywords(fallback);
     }

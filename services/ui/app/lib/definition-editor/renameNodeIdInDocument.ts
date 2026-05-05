@@ -6,6 +6,8 @@ function refTargetsRenamedId(value: string | undefined, fromId: string): boolean
 
 /**
  * ノード ID を変更し、`next` / `edges[].to` / fork の `branches[]` および `meta.layout` のキーを同期する。
+ *
+ * `edges[].to` はパース後は常に文字列（`to: { id }` は解決済み）を前提とする。
  */
 export function renameNodeIdInDocument(
   document: DefinitionGraphDocument,
