@@ -5,7 +5,7 @@ namespace Statevia.Core.Api.Application.Definition;
 /// </summary>
 public static class NodesSchemaDefinition
 {
-    public const string SchemaVersion = "1.0.0";
+    public const string SchemaVersion = "1.0.1";
     public const int NodesVersion = 1;
 
     public static object CreateSchemaDocument() => new
@@ -25,7 +25,12 @@ public static class NodesSchemaDefinition
                 properties = new
                 {
                     id = new { type = "string" },
-                    name = new { type = "string" }
+                    name = new { type = "string" },
+                    description = new
+                    {
+                        type = "string",
+                        description = "Authoring metadata (optional)."
+                    }
                 }
             },
             nodes = new
@@ -52,6 +57,20 @@ public static class NodesSchemaDefinition
                         {
                             type = "array",
                             items = new { type = "string" }
+                        },
+                        input = new
+                        {
+                            description =
+                                "Action input mapping: path strings ($ / $.seg...) or literals; object map matches ParseStrictInputMapping.",
+                            anyOf = new object[]
+                            {
+                                new { type = "string" },
+                                new
+                                {
+                                    type = "object",
+                                    additionalProperties = true
+                                }
+                            }
                         },
                         edges = new
                         {
