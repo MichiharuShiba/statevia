@@ -211,6 +211,8 @@ type GraphEdgeMeta = {
   target: string;
   edgeKind: "next" | "edge" | "branch" | "error";
   edgeIndex?: number;
+  parallelIndex?: number;
+  parallelCount?: number;
 };
 
 const WHEN_OP_OPTIONS = [
@@ -234,9 +236,23 @@ function toLayoutNodes(document: DefinitionGraphDocument): LayoutNodeInput[] {
 
 function toGraphEdges(document: DefinitionGraphDocument): GraphEdgeMeta[] {
   const edges: GraphEdgeMeta[] = [];
+  const parallelKeyToIndices = new Map<string, number[]>();
+
+  const trackParallel = (edgeMeta: GraphEdgeMeta): void => {
+    const edgeIndex = edges.length;
+    edges.push(edgeMeta);
+    const key = `${edgeMeta.source}=>${edgeMeta.target}`;
+    const list = parallelKeyToIndices.get(key);
+    if (list) {
+      list.push(edgeIndex);
+    } else {
+      parallelKeyToIndices.set(key, [edgeIndex]);
+    }
+  };
+
   for (const node of document.nodes) {
     if (node.type === "action" && node.error?.trim()) {
-      edges.push({
+      trackParallel({
         id: `error:${node.id}`,
         source: node.id,
         target: node.error.trim(),
@@ -244,7 +260,7 @@ function toGraphEdges(document: DefinitionGraphDocument): GraphEdgeMeta[] {
       });
     }
     if (node.next?.trim()) {
-      edges.push({
+      trackParallel({
         id: `next:${node.id}`,
         source: node.id,
         target: node.next.trim(),
@@ -255,7 +271,7 @@ function toGraphEdges(document: DefinitionGraphDocument): GraphEdgeMeta[] {
       if (!edge.to?.trim()) {
         continue;
       }
-      edges.push({
+      trackParallel({
         id: `edge:${node.id}:${index}`,
         source: node.id,
         target: edge.to.trim(),
@@ -267,7 +283,7 @@ function toGraphEdges(document: DefinitionGraphDocument): GraphEdgeMeta[] {
       if (!branch?.trim()) {
         continue;
       }
-      edges.push({
+      trackParallel({
         id: `branch:${node.id}:${index}`,
         source: node.id,
         target: branch.trim(),
@@ -276,7 +292,32 @@ function toGraphEdges(document: DefinitionGraphDocument): GraphEdgeMeta[] {
       });
     }
   }
+  for (const indices of parallelKeyToIndices.values()) {
+    if (indices.length < 2) {
+      continue;
+    }
+    for (let i = 0; i < indices.length; i += 1) {
+      const edge = edges[indices[i]];
+      edge.parallelIndex = i;
+      edge.parallelCount = indices.length;
+    }
+  }
   return edges;
+}
+
+function edgeOffsetForRendering(edge: GraphEdgeMeta): number {
+  let kindBaseOffset = 0;
+  if (edge.edgeKind === "error") {
+    kindBaseOffset = 36;
+  } else if (edge.edgeKind === "edge") {
+    kindBaseOffset = -24;
+  }
+  if (!edge.parallelCount || edge.parallelCount < 2 || edge.parallelIndex == null) {
+    return kindBaseOffset;
+  }
+  const center = (edge.parallelCount - 1) / 2;
+  const delta = edge.parallelIndex - center;
+  return Math.round(kindBaseOffset + delta * 24);
 }
 
 function buildAvailableNodeTypes(
@@ -427,7 +468,10 @@ export function DefinitionGraphEditor({
         from: edge.source,
         to: edge.target
       })),
-      { defaultNodeSize: { w: 240, h: 64 } }
+      {
+        // h > 72 にすると compact レイアウト（ranksep 小）を回避でき、上下間隔を広げられる。
+        defaultNodeSize: { w: 240, h: 80 }
+      }
     );
     const layoutById = new Map(layout.nodes.map((node) => [node.nodeId, node]));
     const edgeMap = new Map(sourceEdges.map((edge) => [edge.id, edge]));
@@ -447,7 +491,35 @@ export function DefinitionGraphEditor({
         sourceHandle: edge.edgeKind === "error" ? "out-error" : "out",
         targetHandle: "in",
         label,
-        animated: edge.edgeKind === "edge"
+        animated: edge.edgeKind === "edge" || edge.edgeKind === "error",
+        style:
+          edge.edgeKind === "error"
+            ? {
+                stroke: "var(--md-sys-color-edge-error-accent)",
+                strokeDasharray: "7 5"
+              }
+            : undefined,
+        markerEnd:
+          edge.edgeKind === "error"
+            ? {
+                type: MarkerType.ArrowClosed,
+                width: 15,
+                height: 15,
+                color: "var(--md-sys-color-edge-error-accent)"
+              }
+            : undefined,
+        labelStyle: {
+          fontSize: 10,
+          fontWeight: edge.edgeKind === "error" ? 700 : 600,
+          fill:
+            edge.edgeKind === "error"
+              ? "var(--md-sys-color-edge-error-accent)"
+              : "var(--md-sys-color-on-surface-variant)"
+        },
+        pathOptions: {
+          offset: edgeOffsetForRendering(edge),
+          borderRadius: 10
+        }
       };
     });
     return { edges, edgeMap, layoutById };
