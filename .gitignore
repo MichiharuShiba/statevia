@@ -53,11 +53,14 @@ coverage/
 .cursor/
 .cursorrules
 .vscode/
+.mcp.json
 .playwright-mcp/
 .spec-workflow/
 .workspace-docs/
 docs/out
 audit.log
+./CLAUDE.md
+./AGENTS.md
 
 # MSBuild Binary and Structured Log
 *.binlog
