@@ -28,7 +28,10 @@ nodes:
     expect(r.document).not.toBeNull();
     expect(r.document?.nodes.find((n) => n.id === "a")?.input).toBe("$.input.x");
 
-    const round = serializeDefinitionYaml(r.document!);
+    if (!r.document) {
+      throw new Error("document should not be null");
+    }
+    const round = serializeDefinitionYaml(r.document);
     const again = parseDefinitionYaml(round, parseOpts);
     expect(again.document?.nodes.find((n) => n.id === "a")?.input).toBe("$.input.x");
   });
@@ -54,6 +57,36 @@ nodes:
     expect(r.document?.nodes.find((n) => n.id === "a")?.edges?.[0]?.to).toBe("e");
   });
 
+  it("action.error を保持し、{id} 形式を正規化する", () => {
+    const yaml = `version: 1
+workflow:
+  name: W
+nodes:
+  - id: s
+    type: start
+    next: a
+  - id: a
+    type: action
+    action: noop
+    next: e
+    error:
+      id: ng
+  - id: ng
+    type: end
+  - id: e
+    type: end
+`;
+    const r = parseDefinitionYaml(yaml, parseOpts);
+    expect(r.document?.nodes.find((n) => n.id === "a")?.error).toBe("ng");
+
+    if (!r.document) {
+      throw new Error("document should not be null");
+    }
+    const round = serializeDefinitionYaml(r.document);
+    const again = parseDefinitionYaml(round, parseOpts);
+    expect(again.document?.nodes.find((n) => n.id === "a")?.error).toBe("ng");
+  });
+
   it("workflow.id / description を保持し、往復で欠落しない", () => {
     const yaml = `version: 1
 workflow:
@@ -72,7 +105,10 @@ nodes:
     expect(r.document?.workflow.id).toBe("wf-1");
     expect(r.document?.workflow.description).toBe("Hello");
 
-    const round = serializeDefinitionYaml(r.document!);
+    if (!r.document) {
+      throw new Error("document should not be null");
+    }
+    const round = serializeDefinitionYaml(r.document);
     const again = parseDefinitionYaml(round, parseOpts);
     expect(again.document?.workflow.name).toBe("MyName");
     expect(again.document?.workflow.id).toBe("wf-1");

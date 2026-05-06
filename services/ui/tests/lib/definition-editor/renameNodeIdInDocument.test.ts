@@ -16,7 +16,7 @@ describe("renameNodeIdInDocument", () => {
     const before = doc({
       nodes: [
         { id: "a", type: "start" },
-        { id: "b", type: "action", next: "c", action: "x" },
+        { id: "b", type: "action", next: "c", error: "c", action: "x" },
         { id: "c", type: "action", action: "y" },
         { id: "fork1", type: "fork", branches: ["c", "d"] },
         { id: "d", type: "end" },
@@ -31,6 +31,7 @@ describe("renameNodeIdInDocument", () => {
     expect(byId.get("c")).toBeUndefined();
     expect(byId.get("c2")?.id).toBe("c2");
     expect(byId.get("b")?.next).toBe("c2");
+    expect(byId.get("b")?.error).toBe("c2");
     expect(byId.get("fork1")?.branches).toEqual(["c2", "d"]);
     expect(byId.get("j")?.edges?.[0]?.to).toBe("c2");
     expect(after.meta?.layout?.c2).toEqual({ x: 1, y: 2 });

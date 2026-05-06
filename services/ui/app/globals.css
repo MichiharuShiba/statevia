@@ -43,6 +43,7 @@
     --md-sys-color-on-error: #ffffff;
     --md-sys-color-error-container: #fef2f2;
     --md-sys-color-on-error-container: #991b1b;
+    --md-sys-color-edge-error-accent: #d85a5a;
     --md-sys-color-neutral: #e4e4e7;
     --md-sys-color-on-neutral: #27272a;
     --md-sys-color-neutral-container: #fafafa;
@@ -91,6 +92,7 @@ html[data-theme="dark"] {
     --md-sys-color-on-error: #450a0a;
     --md-sys-color-error-container: #7f1d1d;
     --md-sys-color-on-error-container: #fee2e2;
+    --md-sys-color-edge-error-accent: #d85a5a;
     --md-sys-color-neutral: #737373;
     --md-sys-color-on-neutral: #f5f5f5;
     --md-sys-color-neutral-container: #262626;

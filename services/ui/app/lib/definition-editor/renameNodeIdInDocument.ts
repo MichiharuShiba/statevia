@@ -21,6 +21,7 @@ export function renameNodeIdInDocument(
   const nodes: DefinitionGraphNode[] = document.nodes.map((node) => {
     const id = node.id === fromId ? toId : node.id;
     const next = refTargetsRenamedId(node.next, fromId) ? toId : node.next;
+    const error = refTargetsRenamedId(node.error, fromId) ? toId : node.error;
     const branches = node.branches?.map((b) => (refTargetsRenamedId(b, fromId) ? toId : b));
     const edges = node.edges?.map((e) => (refTargetsRenamedId(e.to, fromId) ? { ...e, to: toId } : e));
 
@@ -28,6 +29,7 @@ export function renameNodeIdInDocument(
       ...node,
       id,
       next,
+      error,
       branches,
       edges
     };

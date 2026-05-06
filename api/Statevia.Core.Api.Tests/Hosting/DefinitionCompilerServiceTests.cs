@@ -421,6 +421,172 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
+    /// nodes の action.error は on.Failed.next へ変換される。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesActionError_AddsOnFailedTransition_Succeeds()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: FailedPath
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                action: noop
+                next: endNode
+                error: failedHandler
+              - id: failedHandler
+                type: action
+                action: noop
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("FailedPath", yaml);
+
+        // Assert
+        Assert.NotNull(compiled);
+        Assert.True(compiled.Transitions.TryGetValue("a", out var byFact));
+        Assert.Equal("failedHandler", byFact["Failed"].Next);
+    }
+
+    /// <summary>
+    /// nodes の action.error が { id } 形式でも正規化され on.Failed.next に変換される。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesActionErrorObject_NormalizesAndCompiles()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: FailedPathObj
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                action: noop
+                next: endNode
+                error:
+                  id: failedHandler
+              - id: failedHandler
+                type: action
+                action: noop
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("FailedPathObj", yaml);
+
+        // Assert
+        Assert.NotNull(compiled);
+        Assert.Equal("failedHandler", compiled.Transitions["a"]["Failed"].Next);
+    }
+
+    /// <summary>
+    /// wait ノードで error を指定した定義は拒否される。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesErrorOnWait_ThrowsArgumentException()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: ErrorOnWait
+            nodes:
+              - id: start
+                type: start
+                next: wait1
+              - id: wait1
+                type: wait
+                event: resume
+                next: endNode
+                error: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("ErrorOnWait", yaml));
+        Assert.Contains("'error' is not supported", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// action.error が自己参照を指す定義は拒否される。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesActionErrorSelfReference_ThrowsArgumentException()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: ErrorSelf
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                action: noop
+                next: endNode
+                error: a
+              - id: endNode
+                type: end
+            """;
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("ErrorSelf", yaml));
+        Assert.Contains("self-reference", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// action.error が未定義ノードを指す定義は拒否される。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_NodesActionErrorUnknownTarget_ThrowsArgumentException()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: ErrorUnknown
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                action: noop
+                next: endNode
+                error: missing
+              - id: endNode
+                type: end
+            """;
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("ErrorUnknown", yaml));
+        Assert.Contains("references unknown id", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// コンパイル結果 JSON に conditionalTransitions と stateInputs が含まれる（T6 デバッグ返却）。
     /// </summary>
     [Fact]

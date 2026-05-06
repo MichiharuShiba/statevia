@@ -5,7 +5,7 @@ namespace Statevia.Core.Api.Application.Definition;
 /// </summary>
 public static class NodesSchemaDefinition
 {
-    public const string SchemaVersion = "1.0.1";
+    public const string SchemaVersion = "1.0.2";
     public const int NodesVersion = 1;
 
     public static object CreateSchemaDocument() => new
@@ -50,6 +50,22 @@ public static class NodesSchemaDefinition
                             @enum = new[] { "start", "end", "action", "wait", "fork", "join" }
                         },
                         next = new { type = "string" },
+                        error = new
+                        {
+                            oneOf = new object[]
+                            {
+                                new { type = "string" },
+                                new
+                                {
+                                    type = "object",
+                                    properties = new
+                                    {
+                                        id = new { type = "string" }
+                                    },
+                                    required = new[] { "id" }
+                                }
+                            }
+                        },
                         action = new { type = "string" },
                         @event = new { type = "string" },
                         mode = new { type = "string", @enum = new[] { "all" } },

@@ -49,6 +49,7 @@ coverage/
 # Others
 ~$*
 *~
+.claude/
 .cursor/
 .cursorrules
 .vscode/

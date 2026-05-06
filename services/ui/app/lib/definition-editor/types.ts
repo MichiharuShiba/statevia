@@ -23,6 +23,8 @@ export type DefinitionGraphNode = {
   id: string;
   type: NodeType;
   action?: string;
+  /** action: 失敗時の遷移先（on.Failed.next） */
+  error?: string;
   event?: string;
   next?: string;
   branches?: string[];
