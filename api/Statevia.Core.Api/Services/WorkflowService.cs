@@ -145,6 +145,8 @@ public sealed class WorkflowService : IWorkflowService
         _engine.Start(compiled, engineId, request.Input);
 
         var displayId = await _displayIds.AllocateAsync("workflow", workflowId, ct).ConfigureAwait(false);
+        var graphId = await _displayIds.GetDisplayIdAsync("definition", defUuid.Value.ToString("D"), ct).ConfigureAwait(false)
+            ?? defUuid.Value.ToString("D");
         var status = MapStatus(_engine.GetSnapshot(engineId));
         var graphJson = _engine.ExportExecutionGraph(engineId);
 
@@ -172,6 +174,7 @@ public sealed class WorkflowService : IWorkflowService
         {
             DisplayId = displayId,
             ResourceId = workflowId,
+            GraphId = graphId,
             Status = status,
             StartedAt = createdAt
         };
@@ -222,6 +225,7 @@ public sealed class WorkflowService : IWorkflowService
         {
             DisplayId = p.DisplayId ?? p.Workflow.WorkflowId.ToString(),
             ResourceId = p.Workflow.WorkflowId,
+            GraphId = p.Workflow.DefinitionId.ToString("D"),
             Status = p.Workflow.Status,
             StartedAt = p.Workflow.StartedAt,
             UpdatedAt = p.Workflow.UpdatedAt,
@@ -273,6 +277,7 @@ public sealed class WorkflowService : IWorkflowService
         {
             DisplayId = p.DisplayId ?? p.Workflow.WorkflowId.ToString(),
             ResourceId = p.Workflow.WorkflowId,
+            GraphId = p.Workflow.DefinitionId.ToString("D"),
             Status = p.Workflow.Status,
             StartedAt = p.Workflow.StartedAt,
             UpdatedAt = p.Workflow.UpdatedAt,
@@ -301,11 +306,14 @@ public sealed class WorkflowService : IWorkflowService
             throw new NotFoundException("Workflow not found");
 
         var displayId = await _displayIds.GetDisplayIdAsync("workflow", idOrUuid, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
+        var graphId = await _displayIds.GetDisplayIdAsync("definition", workflow.DefinitionId.ToString("D"), ct).ConfigureAwait(false)
+            ?? workflow.DefinitionId.ToString("D");
 
         return new WorkflowResponse
         {
             DisplayId = displayId,
             ResourceId = workflow.WorkflowId,
+            GraphId = graphId,
             Status = workflow.Status,
             StartedAt = workflow.StartedAt,
             UpdatedAt = workflow.UpdatedAt,

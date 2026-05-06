@@ -235,6 +235,9 @@ public class WorkflowResponse
     [JsonPropertyName("resourceId")]
     public Guid ResourceId { get; set; }
 
+    [JsonPropertyName("graphId")]
+    public string GraphId { get; set; } = "";
+
     [JsonPropertyName("status")]
     public string Status { get; set; } = "";
 
