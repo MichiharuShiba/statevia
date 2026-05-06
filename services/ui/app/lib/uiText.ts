@@ -560,7 +560,7 @@ export const uiText: UiText = {
       `${cancelLabel} / ${resumeLabel} / ${sendEventLabel} は Run 画面に集約しています。`,
   },
   executionTimeline: {
-    title: "実行履歴タイムライン",
+    title: "イベントタイムライン",
     backToCurrent: "現在に戻る",
     replayingPastStateMessage: "過去の時点を表示中です。「現在に戻る」で最新の状態に戻せます。",
     empty: "イベントがありません",

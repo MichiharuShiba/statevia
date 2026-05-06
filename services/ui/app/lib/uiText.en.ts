@@ -100,7 +100,7 @@ export const uiTextEn: UiText = {
   },
   executionTimeline: {
     ...uiTextJa.executionTimeline,
-    title: "Execution timeline",
+    title: "Event timeline",
     backToCurrent: "Back to current",
     replayingPastStateMessage: 'Showing a past state. Click "Back to current" to return to the latest state.',
     empty: "No events",
