@@ -21,6 +21,7 @@ export type MergedGraphEdge = {
   eventName?: string;
   cancelReason?: string;
   cancelCause?: string;
+  traversed?: boolean;
 };
 
 export type MergedGraph = {
@@ -53,12 +54,24 @@ function toEdge(edge: GraphEdgeDef, index: number): MergedGraphEdge {
     edgeType: edge.edgeType,
     eventName: edge.eventName,
     cancelReason: edge.cancelReason,
-    cancelCause: edge.cancelCause
+    cancelCause: edge.cancelCause,
+    traversed: false
   };
 }
 
 export function mergeGraph(execution: WorkflowView, definition: GraphDefinition | null): MergedGraph {
   const nodeById = new Map(execution.nodes.map((n) => [n.nodeId, n] as const));
+  const nodeByStateName = new Map(execution.nodes.map((n) => [n.nodeType, n] as const));
+  const runtimeStateByNodeId = new Map(execution.nodes.map((n) => [n.nodeId, n.nodeType] as const));
+  const traversedEdgeKeys = new Set(
+    (execution.runtimeEdges ?? []).flatMap((edge) => {
+      const directKey = `${edge.from}->${edge.to}`;
+      const fromState = runtimeStateByNodeId.get(edge.from);
+      const toState = runtimeStateByNodeId.get(edge.to);
+      if (!fromState || !toState) return [directKey];
+      return [directKey, `${fromState}->${toState}`];
+    })
+  );
   if (!definition) {
     return {
       graphId: execution.graphId,
@@ -79,7 +92,10 @@ export function mergeGraph(execution: WorkflowView, definition: GraphDefinition 
   }
 
   const nodes = definition.nodes.map((defNode) => {
-    const runtimeNode = nodeById.get(defNode.nodeId) ?? asIdleNode(defNode.nodeId, defNode.nodeType);
+    const runtimeNode =
+      nodeById.get(defNode.nodeId) ??
+      nodeByStateName.get(defNode.nodeId) ??
+      asIdleNode(defNode.nodeId, defNode.nodeType);
     return {
       nodeId: defNode.nodeId,
       nodeType: defNode.nodeType,
@@ -95,7 +111,10 @@ export function mergeGraph(execution: WorkflowView, definition: GraphDefinition 
   return {
     graphId: definition.graphId,
     nodes,
-    edges: definition.edges.map(toEdge),
+    edges: definition.edges.map((defEdge, index) => toEdge(defEdge, index)).map((edge) => ({
+      ...edge,
+      traversed: traversedEdgeKeys.has(`${edge.from}->${edge.to}`)
+    })),
     groups: definition.groups ?? [],
     meta: definition.meta,
     isDefinitionBased: true

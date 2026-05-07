@@ -6,7 +6,7 @@ import { layoutGraph } from "../../lib/graphLayout";
 import { mergeGraph, type MergedGraphEdge, type MergedGraphNode } from "../../lib/mergeGraph";
 import type { ExecutionNodeDTO, WorkflowView } from "../../lib/types";
 import type { GroupBounds } from "../../lib/grouping";
-import type { PositionedEdge, PositionedNode } from "../../lib/graphLayout";
+import type { LayoutEdgeInput, PositionedNode } from "../../lib/graphLayout";
 import type { GraphDefinition } from "../../graphs/types";
 
 export type GraphData = {
@@ -14,7 +14,7 @@ export type GraphData = {
   definitionBased: boolean;
   mergedNodes: MergedGraphNode[];
   nodes: Array<PositionedNode<MergedGraphNode>>;
-  edges: PositionedEdge[];
+  edges: LayoutEdgeInput[];
   groups: GroupBounds[];
 };
 

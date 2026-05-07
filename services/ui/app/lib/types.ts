@@ -7,6 +7,7 @@ export type NodeStatus = "IDLE" | "READY" | "RUNNING" | "WAITING" | "SUCCEEDED" 
 export type WorkflowDTO = {
   displayId: string;
   resourceId: string;
+  graphId: string;
   status: WorkflowStatus;
   startedAt: string;
   updatedAt?: string | null;
@@ -27,8 +28,14 @@ export type WorkflowGraphNodeDTO = {
 
 /** v2: GET /v1/workflows/:id/graph の辺（C# ExecutionEdge）。 */
 export type WorkflowGraphEdgeDTO = {
-  fromNodeId?: string;
-  toNodeId?: string;
+  from?: string;
+  to?: string;
+  type?: number;
+};
+
+export type RuntimeGraphEdgeDTO = {
+  from: string;
+  to: string;
   type?: number;
 };
 
@@ -56,6 +63,7 @@ export type ExecutionNodeDTO = {
 export type WorkflowView = WorkflowDTO & {
   graphId: string;
   nodes: ExecutionNodeDTO[];
+  runtimeEdges?: RuntimeGraphEdgeDTO[];
 };
 
 export type CommandAccepted = {

@@ -1,13 +1,14 @@
 import { MarkerType, type Edge } from "reactflow";
-import type { PositionedEdge } from "./graphLayout";
+import type { LayoutEdgeInput } from "./graphLayout";
 
 /**
  * PositionedEdge を React Flow の Edge に変換する。
  * 仕様: Next=実線, Resume=破線+イベント名, Cancel=太線+Cancel表示
  */
-export function buildGraphEdges(edges: PositionedEdge[]): Edge[] {
+export function buildGraphEdges(edges: LayoutEdgeInput[]): Edge[] {
   return edges.map((edge) => {
     const edgeType = edge.edgeType ?? "Next";
+    const traversed = edge.traversed === true;
     const base = {
       id: edge.id,
       source: edge.from,
@@ -16,7 +17,7 @@ export function buildGraphEdges(edges: PositionedEdge[]): Edge[] {
       targetHandle: "in",
       type: "smoothstep" as const,
       markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
-      animated: false
+      animated: traversed
     };
     if (edgeType === "Resume") {
       return {
@@ -42,7 +43,9 @@ export function buildGraphEdges(edges: PositionedEdge[]): Edge[] {
     }
     return {
       ...base,
-      style: { stroke: "#d4d4d8", strokeWidth: 1.2 }
+      style: traversed
+        ? { stroke: "#2563eb", strokeWidth: 2.2 }
+        : { stroke: "#d4d4d8", strokeWidth: 1.2 }
     };
   });
 }

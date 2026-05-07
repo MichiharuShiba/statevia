@@ -17,7 +17,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { buildGraphEdges } from "../../lib/buildGraphEdges";
 import type { GroupBounds } from "../../lib/grouping";
-import type { PositionedEdge, PositionedNode } from "../../lib/graphLayout";
+import type { LayoutEdgeInput, PositionedNode } from "../../lib/graphLayout";
 import type { MergedGraphNode } from "../../lib/mergeGraph";
 import { getNodeAppearance } from "../../lib/nodeAppearance";
 import { getStatusStyle } from "../../lib/statusStyle";
@@ -150,7 +150,7 @@ export type GraphViewport = Viewport;
 
 type NodeGraphViewProps = {
   nodes: Array<PositionedNode<MergedGraphNode>>;
-  edges: PositionedEdge[];
+  edges: LayoutEdgeInput[];
   groups: GroupBounds[];
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string | null) => void;

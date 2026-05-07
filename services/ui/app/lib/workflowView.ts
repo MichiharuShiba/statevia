@@ -1,5 +1,6 @@
 import type {
   ExecutionNodeDTO,
+  RuntimeGraphEdgeDTO,
   WorkflowDTO,
   WorkflowGraphDTO,
   WorkflowView
@@ -7,23 +8,11 @@ import type {
 
 /** C# WorkflowGraphDTO のノードを ExecutionNodeDTO に変換（v2）。Core-API の camelCase JSON を前提。 */
 function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNodeDTO {
-  const nodeId =
-    (typeof n.nodeId === "string" ? n.nodeId : null) ??
-    (typeof (n as Record<string, unknown>).NodeId === "string" ? ((n as Record<string, unknown>).NodeId as string) : "");
-  const stateName =
-    (typeof n.stateName === "string" ? n.stateName : null) ??
-    (typeof (n as Record<string, unknown>).StateName === "string"
-      ? ((n as Record<string, unknown>).StateName as string)
-      : "");
-  const completedAt =
-    n.completedAt ??
-    ((n as Record<string, unknown>).CompletedAt as string | null | undefined);
-  const fact =
-    n.fact ??
-    ((n as Record<string, unknown>).Fact as string | null | undefined);
-  const conditionRouting =
-    n.conditionRouting ??
-    (n as Record<string, unknown>).ConditionRouting;
+  const nodeId = typeof n.nodeId === "string" ? n.nodeId : "";
+  const stateName = typeof n.stateName === "string" ? n.stateName : "";
+  const completedAt = n.completedAt;
+  const fact = n.fact;
+  const conditionRouting = n.conditionRouting;
 
   let status: ExecutionNodeDTO["status"] = "RUNNING";
   const factText = String(fact ?? "").toLowerCase();
@@ -44,15 +33,30 @@ function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNod
   };
 }
 
+function graphEdgeToRuntimeEdge(edge: WorkflowGraphDTO["edges"][0]): RuntimeGraphEdgeDTO | null {
+  const from = typeof edge.from === "string" ? edge.from : null;
+  const to = typeof edge.to === "string" ? edge.to : null;
+  if (!from || !to) return null;
+  let type: number | undefined;
+  if (typeof edge.type === "number") {
+    type = edge.type;
+  }
+  return { from, to, type };
+}
+
 /** WorkflowDTO と graph から WorkflowView を組み立てる（v2）。 */
 export function buildWorkflowView(
   workflow: WorkflowDTO,
   graph: WorkflowGraphDTO | null
 ): WorkflowView {
   const nodes: ExecutionNodeDTO[] = graph?.nodes?.map(graphNodeToExecutionNode) ?? [];
+  const runtimeEdges: RuntimeGraphEdgeDTO[] = (graph?.edges ?? [])
+    .map(graphEdgeToRuntimeEdge)
+    .filter((edge): edge is RuntimeGraphEdgeDTO => edge != null);
   return {
     ...workflow,
-    graphId: workflow.resourceId,
-    nodes
+    graphId: workflow.graphId,
+    nodes,
+    runtimeEdges
   };
 }
