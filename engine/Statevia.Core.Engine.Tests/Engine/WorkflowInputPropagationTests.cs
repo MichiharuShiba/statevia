@@ -144,7 +144,7 @@ public class WorkflowInputPropagationTests
         var edges = root.GetProperty("edges").EnumerateArray().ToList();
         var joinEdges = edges.Where(e => e.GetProperty("type").GetInt32() == (int)EdgeType.Join).ToList();
         Assert.Equal(2, joinEdges.Count);
-        Assert.All(joinEdges, e => Assert.Equal(joinNodeId, e.GetProperty("toNodeId").GetString()));
+        Assert.All(joinEdges, e => Assert.Equal(joinNodeId, e.GetProperty("to").GetString()));
 
         var expectedJoinSources = nodes
             .Where(n =>
@@ -152,15 +152,15 @@ public class WorkflowInputPropagationTests
                 || n.GetProperty("stateName").GetString() == "B")
             .Select(n => n.GetProperty("nodeId").GetString())
             .ToHashSet();
-        var actualJoinSources = joinEdges.Select(e => e.GetProperty("fromNodeId").GetString()).ToHashSet();
+        var actualJoinSources = joinEdges.Select(e => e.GetProperty("from").GetString()).ToHashSet();
         Assert.Equal(expectedJoinSources.Count, actualJoinSources.Count);
         Assert.All(expectedJoinSources, sourceNodeId => Assert.Contains(sourceNodeId, actualJoinSources));
 
         var fromJoinNext = edges.Where(e =>
             e.GetProperty("type").GetInt32() == (int)EdgeType.Next
-            && e.GetProperty("fromNodeId").GetString() == joinNodeId).ToList();
+            && e.GetProperty("from").GetString() == joinNodeId).ToList();
         Assert.Single(fromJoinNext);
-        Assert.Equal("AfterJoin", nodes.Single(n => n.GetProperty("nodeId").GetString() == fromJoinNext[0].GetProperty("toNodeId").GetString()).GetProperty("stateName").GetString());
+        Assert.Equal("AfterJoin", nodes.Single(n => n.GetProperty("nodeId").GetString() == fromJoinNext[0].GetProperty("to").GetString()).GetProperty("stateName").GetString());
     }
 
     /// <summary>next 遷移先の input.path が raw input に適用されることを検証する。</summary>

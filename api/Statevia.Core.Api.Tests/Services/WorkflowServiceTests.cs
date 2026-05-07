@@ -2427,6 +2427,48 @@ public sealed class WorkflowServiceTests
             sut.GetGraphJsonAsync("t1", idOrUuid: "X", CancellationToken.None));
     }
 
+    /// <summary>グラフ取得時、スナップショットの graphJson をそのまま返す。</summary>
+    [Fact]
+    public async Task GetGraphJsonAsync_ReturnsGraphJsonAsIs()
+    {
+        // Arrange
+        var uuid = Guid.NewGuid();
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = uuid };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = uuid,
+                TenantId = "t1",
+                DefinitionId = Guid.NewGuid(),
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            },
+            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            {
+                WorkflowId = uuid,
+                GraphJson = "{\"nodes\":[],\"edges\":[{\"from\":\"a1\",\"to\":\"b1\",\"type\":0}]}"
+            }
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository(),
+            engine: new FakeWorkflowEngine(),
+            display: display,
+            workflowRepo: workflowRepo,
+            eventStore: new FakeEventStoreRepository());
+
+        // Act
+        var graphJson = await sut.GetGraphJsonAsync("t1", idOrUuid: "X", CancellationToken.None);
+
+        // Assert
+        Assert.Equal("{\"nodes\":[],\"edges\":[{\"from\":\"a1\",\"to\":\"b1\",\"type\":0}]}", graphJson);
+    }
+
     /// <summary>再開キーがないとき引数例外を投げる。</summary>
     [Fact]
     public async Task ResumeNodeAsync_WhenResumeKeyMissing_ThrowsArgumentException()
