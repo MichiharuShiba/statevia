@@ -49,8 +49,7 @@ public sealed class GraphsControllerTests
         {
             GraphId = "g1",
             Nodes = new GraphNodeDefinition[0],
-            Edges = new GraphEdgeDefinition[0],
-            Ui = null
+            Edges = new GraphEdgeDefinition[0]
         };
 
         var fakeSvc = new FakeGraphDefinitionService
