@@ -58,7 +58,7 @@ public sealed class ExecutionGraph
 
     public void AddEdge(string fromNodeId, string toNodeId, EdgeType type)
     {
-        lock (_lock) { _edges.Add(new ExecutionEdge { FromNodeId = fromNodeId, ToNodeId = toNodeId, Type = type }); }
+        lock (_lock) { _edges.Add(new ExecutionEdge { From = fromNodeId, To = toNodeId, Type = type }); }
     }
 
     /// <summary>実行グラフを JSON としてエクスポートします。</summary>
