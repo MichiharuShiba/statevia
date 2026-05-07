@@ -13,7 +13,8 @@ function execution(nodes: ExecutionNodeDTO[], graphId = "g-1"): WorkflowView {
     cancelRequested: false,
     restartLost: false,
     graphId,
-    nodes
+    nodes,
+    runtimeEdges: []
   };
 }
 
@@ -89,6 +90,57 @@ describe("mergeGraph", () => {
     const resumeEdge = result.edges.find((e) => e.from === "task-c" && e.to === "join-1");
     expect(resumeEdge?.edgeType).toBe("Resume");
     expect(resumeEdge?.eventName).toBe("DoneC");
+  });
+
+  it("runtimeEdges と一致する定義エッジに traversed=true を付与する", () => {
+    const def = getGraphDefinition("hello")!;
+    const exec = {
+      ...execution([], "hello"),
+      runtimeEdges: [{ from: "start", to: "task-a", type: 0 }]
+    };
+
+    const result = mergeGraph(exec, def);
+    const startToTaskA = result.edges.find((e) => e.from === "start" && e.to === "task-a");
+    const taskAToFork = result.edges.find((e) => e.from === "task-a" && e.to === "fork-1");
+    expect(startToTaskA?.traversed).toBe(true);
+    expect(taskAToFork?.traversed).toBe(false);
+  });
+
+  it("runtime nodeId が実行時IDでも stateName ベースで定義ノード/エッジへマージできる", () => {
+    const def = getGraphDefinition("hello")!;
+    const exec = execution(
+      [
+        {
+          nodeId: "rt-start-1",
+          nodeType: "start",
+          status: "SUCCEEDED",
+          attempt: 1,
+          workerId: null,
+          waitKey: null,
+          canceledByExecution: false
+        },
+        {
+          nodeId: "rt-task-a-1",
+          nodeType: "task-a",
+          status: "RUNNING",
+          attempt: 1,
+          workerId: null,
+          waitKey: null,
+          canceledByExecution: false
+        }
+      ],
+      "hello"
+    );
+    exec.runtimeEdges = [{ from: "rt-start-1", to: "rt-task-a-1", type: 0 }];
+
+    const result = mergeGraph(exec, def);
+    const startNode = result.nodes.find((n) => n.nodeId === "start");
+    const taskANode = result.nodes.find((n) => n.nodeId === "task-a");
+    const startToTaskA = result.edges.find((e) => e.from === "start" && e.to === "task-a");
+
+    expect(startNode?.status).toBe("SUCCEEDED");
+    expect(taskANode?.status).toBe("RUNNING");
+    expect(startToTaskA?.traversed).toBe(true);
   });
 });
 

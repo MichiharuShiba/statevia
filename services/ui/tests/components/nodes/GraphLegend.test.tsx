@@ -24,7 +24,8 @@ describe("GraphLegend", () => {
 
   it("全エッジ種別を表示する", () => {
     render(<GraphLegend />);
-    expect(screen.getByText(uiText.status.edgeTypeNext)).toBeInTheDocument();
+    expect(screen.getByText(`${uiText.status.edgeTypeNext} (traversed)`)).toBeInTheDocument();
+    expect(screen.getByText(`${uiText.status.edgeTypeNext} (default)`)).toBeInTheDocument();
     expect(screen.getByText(uiText.status.edgeTypeResume)).toBeInTheDocument();
     expect(screen.getByText(uiText.status.edgeTypeCancel)).toBeInTheDocument();
   });

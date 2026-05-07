@@ -8,6 +8,7 @@ describe("buildWorkflowView", () => {
     const workflow: WorkflowDTO = {
       displayId: "ex-1",
       resourceId: "r-1",
+      graphId: "def-1",
       status: "Running",
       startedAt: "2026-01-01T00:00:00Z",
       cancelRequested: false,
@@ -31,7 +32,7 @@ describe("buildWorkflowView", () => {
           conditionRouting
         }
       ],
-      edges: []
+      edges: [{ from: "n-1", to: "n-2", type: 0 }]
     };
 
     // Act
@@ -40,5 +41,6 @@ describe("buildWorkflowView", () => {
     // Assert
     expect(view.nodes).toHaveLength(1);
     expect(view.nodes[0]?.conditionRouting).toEqual(conditionRouting);
+    expect(view.runtimeEdges).toEqual([{ from: "n-1", to: "n-2", type: 0 }]);
   });
 });
