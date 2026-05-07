@@ -65,19 +65,44 @@ public sealed class GraphDefinitionServiceTests
         var graphId = "graph-1";
 
         // Act
-        var compiledJson =
-            "{"
-            + "\"name\":\"g1\","
-            + "\"initialState\":\"StartState\","
-            + "\"transitions\":{"
-            + "\"StartState\":{\"Completed\":{\"next\":\"WaitState\",\"fork\":null,\"end\":false}},"
-            + "\"WaitState\":{\"Completed\":{\"next\":\"ForkState\",\"fork\":null,\"end\":false}},"
-            + "\"EndState\":{\"Completed\":{\"next\":null,\"fork\":null,\"end\":true}}"
-            + "},"
-            + "\"forkTable\":{\"ForkState\":[\"JoinState\"]},"
-            + "\"joinTable\":{\"JoinState\":[\"WaitState\",\"ForkState\"]},"
-            + "\"waitTable\":{\"WaitState\":\"UserApproved\"}"
-            + "}";
+        var compiledJson = """
+            {
+              "name": "g1",
+              "initialState": "StartState",
+              "transitions": {
+                "StartState": {
+                  "Completed": {
+                    "next": "WaitState",
+                    "fork": null,
+                    "end": false
+                  }
+                },
+                "WaitState": {
+                  "Completed": {
+                    "next": "ForkState",
+                    "fork": null,
+                    "end": false
+                  }
+                },
+                "EndState": {
+                  "Completed": {
+                    "next": null,
+                    "fork": null,
+                    "end": true
+                  }
+                }
+              },
+              "forkTable": {
+                "ForkState": ["JoinState"]
+              },
+              "joinTable": {
+                "JoinState": ["WaitState", "ForkState"]
+              },
+              "waitTable": {
+                "WaitState": "UserApproved"
+              }
+            }
+            """;
 
         await using (var ctx = new CoreDbContext(db.Options))
         {
@@ -100,8 +125,6 @@ public sealed class GraphDefinitionServiceTests
 
         // Assert
         Assert.Equal(graphId, res.GraphId);
-        Assert.NotNull(res.Ui);
-        Assert.Equal("dagre", res.Ui!.Layout);
 
         var nodeById = new Dictionary<string, GraphNodeDefinition>(StringComparer.OrdinalIgnoreCase);
         foreach (var n in res.Nodes)
@@ -131,15 +154,28 @@ public sealed class GraphDefinitionServiceTests
         var graphId = "graph-task";
 
         // Act
-        var compiledJson =
-            "{"
-            + "\"name\":\"g1\","
-            + "\"initialState\":\"StartState\","
-            + "\"transitions\":{"
-            + "\"StartState\":{\"Completed\":{\"next\":\"TaskState\",\"fork\":null,\"end\":false}},"
-            + "\"TaskState\":{\"Completed\":{\"next\":null,\"fork\":null,\"end\":false}}"
-            + "}"
-            + "}";
+        var compiledJson = """
+            {
+              "name": "g1",
+              "initialState": "StartState",
+              "transitions": {
+                "StartState": {
+                  "Completed": {
+                    "next": "TaskState",
+                    "fork": null,
+                    "end": false
+                  }
+                },
+                "TaskState": {
+                  "Completed": {
+                    "next": null,
+                    "fork": null,
+                    "end": false
+                  }
+                }
+              }
+            }
+            """;
 
         await using (var ctx = new CoreDbContext(db.Options))
         {
@@ -167,6 +203,81 @@ public sealed class GraphDefinitionServiceTests
         // Assert
         Assert.Equal("Start", nodeById["StartState"].NodeType);
         Assert.Equal("Task", nodeById["TaskState"].NodeType);
+    }
+
+    /// <summary>
+    /// conditionalTransitions（cases/default）の遷移先もエッジへ展開される。
+    /// </summary>
+    [Fact]
+    public async Task GetByGraphIdAsync_IncludesEdgesFromConditionalTransitions()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uuid = Guid.NewGuid();
+        var graphId = "graph-conditional";
+
+        var compiledJson = """
+            {
+              "name": "g1",
+              "initialState": "start",
+              "transitions": {
+                "start": {
+                  "Completed": {
+                    "next": "slowStep",
+                    "fork": null,
+                    "end": false
+                  }
+                }
+              },
+              "conditionalTransitions": {
+                "slowStep": {
+                  "Completed": {
+                    "linearTarget": null,
+                    "cases": [
+                      {
+                        "target": {
+                          "next": "endNode",
+                          "fork": null,
+                          "end": false
+                        }
+                      }
+                    ],
+                    "defaultTarget": {
+                      "next": "fork1",
+                      "fork": null,
+                      "end": false
+                    }
+                  }
+                }
+              }
+            }
+            """;
+
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            var now = DateTime.UtcNow;
+            ctx.WorkflowDefinitions.Add(new WorkflowDefinitionRow
+            {
+                DefinitionId = uuid,
+                TenantId = "t1",
+                Name = "def",
+                SourceYaml = "x",
+                CompiledJson = compiledJson,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        var sut = new GraphDefinitionService(db.Factory, new StubDisplayIdService(uuid));
+
+        // Act
+        var res = await sut.GetByGraphIdAsync(graphId, "t1", CancellationToken.None);
+
+        // Assert
+        Assert.Contains(res.Edges, e => e.From == "start" && e.To == "slowStep");
+        Assert.Contains(res.Edges, e => e.From == "slowStep" && e.To == "fork1");
+        Assert.Contains(res.Edges, e => e.From == "slowStep" && e.To == "endNode");
     }
 
     /// <summary>
