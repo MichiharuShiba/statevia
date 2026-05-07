@@ -298,9 +298,22 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
 
     private async Task RunJoinStateAsync(WorkflowInstance instance, EventProvider eventProvider, string joinStateName, string? fromNodeId, EdgeType? edgeType)
     {
+        if (!instance.JoinTracker.TryBeginJoinExecution(joinStateName))
+        {
+            return;
+        }
+
         var joinInputs = instance.JoinTracker.GetJoinInputs(joinStateName);
+        var joinSourceNodeIds = instance.JoinTracker.GetJoinSourceNodeIds(joinStateName);
         var nodeId = instance.Graph.AddNode(joinStateName);
-        if (fromNodeId != null && edgeType != null)
+        if (edgeType == EdgeType.Join)
+        {
+            foreach (var sourceNodeId in joinSourceNodeIds)
+            {
+                instance.Graph.AddEdge(sourceNodeId, nodeId, EdgeType.Join);
+            }
+        }
+        else if (fromNodeId != null && edgeType != null)
         {
             instance.Graph.AddEdge(fromNodeId, nodeId, edgeType.Value);
         }
@@ -357,7 +370,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
 
     private void ProcessFact(WorkflowInstance instance, EventProvider eventProvider, string stateName, string fact, object? output, string nodeId)
     {
-        var readyJoin = instance.JoinTracker.RecordFact(stateName, fact, output);
+        var readyJoin = instance.JoinTracker.RecordFact(stateName, fact, output, nodeId);
         if (readyJoin != null)
         {
             _ = RunJoinStateAsync(instance, eventProvider, readyJoin, nodeId, EdgeType.Join);
