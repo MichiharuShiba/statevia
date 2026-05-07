@@ -1,3 +1,4 @@
+using System.Linq;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.FSM;
@@ -29,6 +30,27 @@ public class ForkJoinTests
         Assert.Equal("Join1", second);
     }
 
+    /// <summary>
+    /// allOf 完了後、GetJoinInputs のキーが JoinTable の依存状態名集合と一致することを検証する（合流前の出力が Join 解決用に集約されていること）。
+    /// </summary>
+    [Fact]
+    public void GetJoinInputs_KeysMatchJoinTableDependencies_WhenAllCompleted()
+    {
+        // Arrange
+        var def = CreateDefinitionWithJoin();
+        var tracker = new JoinTracker(def);
+        var expectedDeps = def.JoinTable["Join1"].ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Act
+        tracker.RecordFact("Prepare", Fact.Completed, "prepared");
+        tracker.RecordFact("AskUser", Fact.Completed, true);
+        var inputs = tracker.GetJoinInputs("Join1");
+
+        // Assert
+        var actualKeys = inputs.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Assert.True(expectedDeps.SetEquals(actualKeys));
+    }
+
     /// <summary>GetJoinInputs が Join の allOf に含まれる状態の出力を全て返すことを検証する。</summary>
     [Fact]
     public void GetJoinInputs_ReturnsAllOutputs()
@@ -46,6 +68,25 @@ public class ForkJoinTests
         Assert.Equal(2, inputs.Count);
         Assert.Equal("prepared", inputs["Prepare"]);
         Assert.True((bool)(inputs["AskUser"] ?? false));
+    }
+
+    /// <summary>GetJoinSourceNodeIds が allOf の依存順で実行ノード ID を返すことを検証する。</summary>
+    [Fact]
+    public void GetJoinSourceNodeIds_ReturnsDependencyNodeIdsInOrder()
+    {
+        // Arrange
+        var def = CreateDefinitionWithJoin();
+        var tracker = new JoinTracker(def);
+        tracker.RecordFact("AskUser", Fact.Completed, true, "node-b");
+        tracker.RecordFact("Prepare", Fact.Completed, "prepared", "node-a");
+
+        // Act
+        var sourceNodeIds = tracker.GetJoinSourceNodeIds("Join1");
+
+        // Assert（JoinTable は Prepare, AskUser の順）
+        Assert.Equal(2, sourceNodeIds.Count);
+        Assert.Equal("node-a", sourceNodeIds[0]);
+        Assert.Equal("node-b", sourceNodeIds[1]);
     }
 
     /// <summary>存在しない Join 状態で GetJoinInputs を呼ぶと空の辞書が返ることを検証する。</summary>
@@ -115,6 +156,27 @@ public class ForkJoinTests
         // Assert
         Assert.NotNull(inputs);
         Assert.Empty(inputs);
+    }
+
+    /// <summary>TryBeginJoinExecution は allOf が揃う前は false、揃った後に1回だけ true を返すことを検証する。</summary>
+    [Fact]
+    public void TryBeginJoinExecution_ReturnsTrueOnlyOnce_WhenDependenciesCompleted()
+    {
+        // Arrange
+        var def = CreateDefinitionWithJoin();
+        var tracker = new JoinTracker(def);
+
+        // allOf が揃う前
+        Assert.False(tracker.TryBeginJoinExecution("Join1"));
+
+        tracker.RecordFact("Prepare", Fact.Completed, "prepared");
+        Assert.False(tracker.TryBeginJoinExecution("Join1"));
+
+        tracker.RecordFact("AskUser", Fact.Completed, true);
+
+        // 揃った後に最初の1回だけ true
+        Assert.True(tracker.TryBeginJoinExecution("Join1"));
+        Assert.False(tracker.TryBeginJoinExecution("Join1"));
     }
 
     private static CompiledWorkflowDefinition CreateDefinitionWithJoin() => new()
