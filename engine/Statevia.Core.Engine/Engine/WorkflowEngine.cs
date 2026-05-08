@@ -22,6 +22,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
     private readonly IScheduler _scheduler;
     private readonly IWorkflowInstanceIdGenerator _workflowInstanceIdGenerator;
     private readonly WorkflowExecutionLogger _workflowLog;
+    private readonly string _workerId;
     private readonly ConcurrentDictionary<string, WorkflowInstance> _instances = new();
     private readonly ConcurrentDictionary<string, EventProvider> _eventProviders = new();
     private Func<string, Task>? _nodeCompletedHandler;
@@ -32,6 +33,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         _scheduler = new DefaultScheduler(options.MaxParallelism);
         _workflowInstanceIdGenerator = options.WorkflowInstanceIdGenerator ?? new UuidV7WorkflowInstanceIdGenerator();
         _workflowLog = new WorkflowExecutionLogger(ResolveLogger(options));
+        _workerId = Guid.NewGuid().ToString("D");
     }
 
     private static ILogger<WorkflowEngine> ResolveLogger(WorkflowEngineOptions options) =>
@@ -240,7 +242,18 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
             return;
         }
 
-        var nodeId = instance.Graph.AddNode(stateName);
+        var attempt = instance.NextAttempt(stateName);
+        var nodeType = ResolveNodeType(def, stateName);
+        var waitKey = def.WaitTable.TryGetValue(stateName, out var configuredWaitKey)
+            ? configuredWaitKey
+            : null;
+        var nodeId = instance.Graph.AddNode(
+            stateName,
+            nodeType: nodeType,
+            input: input,
+            attempt: attempt,
+            workerId: _workerId,
+            waitKey: waitKey);
         if (fromNodeId != null && edgeType != null)
         {
             instance.Graph.AddEdge(fromNodeId, nodeId, edgeType.Value);
@@ -305,7 +318,8 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
 
         var joinInputs = instance.JoinTracker.GetJoinInputs(joinStateName);
         var joinSourceNodeIds = instance.JoinTracker.GetJoinSourceNodeIds(joinStateName);
-        var nodeId = instance.Graph.AddNode(joinStateName);
+        var attempt = instance.NextAttempt(joinStateName);
+        var nodeId = instance.Graph.AddNode(joinStateName, nodeType: "Join", input: joinInputs, attempt: attempt, workerId: _workerId);
         if (edgeType == EdgeType.Join)
         {
             foreach (var sourceNodeId in joinSourceNodeIds)
@@ -463,4 +477,20 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
 
     /// <inheritdoc />
     public void Dispose() => (_scheduler as IDisposable)?.Dispose();
+
+    private static string ResolveNodeType(CompiledWorkflowDefinition def, string stateName)
+    {
+        if (string.Equals(def.InitialState, stateName, StringComparison.OrdinalIgnoreCase))
+            return "Start";
+        if (def.JoinTable.ContainsKey(stateName))
+            return "Join";
+        if (def.WaitTable.ContainsKey(stateName))
+            return "Wait";
+        if (def.ForkTable.ContainsKey(stateName))
+            return "Fork";
+        if (def.Transitions.TryGetValue(stateName, out var byFact)
+            && byFact.Values.Any(target => target.End))
+            return "End";
+        return "Task";
+    }
 }
