@@ -10,8 +10,10 @@ import type {
 function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNodeDTO {
   const nodeId = typeof n.nodeId === "string" ? n.nodeId : "";
   const stateName = typeof n.stateName === "string" ? n.stateName : "";
-  const completedAt = n.completedAt;
   const fact = n.fact;
+  const startedAt = typeof n.startedAt === "string" ? n.startedAt : undefined;
+  const completedAt = typeof n.completedAt === "string" ? n.completedAt : null;
+  const output = "output" in n ? n.output : undefined;
   const conditionRouting = n.conditionRouting;
 
   let status: ExecutionNodeDTO["status"] = "RUNNING";
@@ -21,14 +23,24 @@ function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNod
     else if (factText.includes("cancel")) status = "CANCELED";
     else status = "SUCCEEDED";
   }
+
   return {
     nodeId,
+    // 現在の /graph ノードは state type（Start/Task/...）を返さないため、
+    // ひとまず stateName を nodeType へ入れて扱う。
+    // 定義グラフがある画面では mergeGraph 側で definition.nodeType が使われる。
     nodeType: stateName,
     status,
+    // NOTE:
+    // attempt / workerId / waitKey / canceledByExecution は /graph 応答に含まれないため、
+    // API/Engine 側で公開されるまでは暫定値を設定する。
     attempt: 0,
     workerId: null,
     waitKey: null,
     canceledByExecution: false,
+    startedAt,
+    completedAt,
+    output,
     conditionRouting
   };
 }

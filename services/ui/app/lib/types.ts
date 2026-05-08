@@ -54,6 +54,10 @@ export type ExecutionNodeDTO = {
   workerId: string | null;
   waitKey: string | null;
   canceledByExecution: boolean;
+  /** GET /graph のノードに含まれる場合のみ（ノード詳細のトレース用）。 */
+  startedAt?: string;
+  completedAt?: string | null;
+  output?: unknown;
   conditionRouting?: unknown;
   error?: { message?: string } | null;
   cancelReason?: string | null;
