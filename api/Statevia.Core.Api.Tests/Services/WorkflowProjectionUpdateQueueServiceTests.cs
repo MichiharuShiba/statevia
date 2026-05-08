@@ -93,8 +93,12 @@ public sealed class WorkflowProjectionUpdateQueueServiceTests
 
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
+        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) =>
+            throw new NotSupportedException();
 
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+            throw new NotSupportedException();
+        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
@@ -145,8 +149,12 @@ public sealed class WorkflowProjectionUpdateQueueServiceTests
 
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
+        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) =>
+            throw new NotSupportedException();
 
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+            throw new NotSupportedException();
+        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
