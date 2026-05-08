@@ -54,7 +54,7 @@ export type WorkflowGraphDTO = {
 /** グラフ可視化用のノード（状態実行）。v2 では WorkflowGraphDTO から変換。 */
 export type ExecutionNodeDTO = {
   nodeId: string;
-  stateName: string;
+  stateName?: string;
   nodeType: string;
   status: NodeStatus;
   attempt: number;

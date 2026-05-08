@@ -64,6 +64,7 @@ export function getNodeWithFallback(
   if (!mergedNode) return null;
   return {
     nodeId: mergedNode.nodeId,
+    stateName: mergedNode.stateName,
     nodeType: mergedNode.nodeType,
     status: mergedNode.status,
     attempt: mergedNode.attempt,

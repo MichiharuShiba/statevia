@@ -28,6 +28,7 @@ function upsertNode(nodes: ExecutionNodeDTO[], incoming: Partial<ExecutionNodeDT
       ...nodes,
       {
         nodeId: incoming.nodeId,
+        stateName: incoming.stateName ?? "",
         nodeType: incoming.nodeType ?? "Unknown",
         status: incoming.status ?? "IDLE",
         attempt: incoming.attempt ?? 0,

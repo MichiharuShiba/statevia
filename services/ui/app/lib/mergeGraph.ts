@@ -3,6 +3,8 @@ import type { ExecutionNodeDTO, NodeStatus, WorkflowView } from "./types";
 
 export type MergedGraphNode = {
   nodeId: string;
+  /** 定義グラフ・API の状態名（実行ノードに stateName があればそれを優先） */
+  stateName: string;
   nodeType: string;
   label: string;
   branch?: string;
@@ -33,9 +35,11 @@ export type MergedGraph = {
   isDefinitionBased: boolean;
 };
 
-function asIdleNode(nodeId: string, nodeType: string): ExecutionNodeDTO {
+/** 定義のみ存在するノード用。`nodeId` は定義上のノードキー、`stateName` はワークフロー状態名。 */
+function asIdleNode(nodeId: string, stateName: string, nodeType: string): ExecutionNodeDTO {
   return {
     nodeId,
+    stateName,
     nodeType,
     status: "IDLE",
     attempt: 0,
@@ -60,15 +64,23 @@ function toEdge(edge: GraphEdgeDef, index: number): MergedGraphEdge {
 }
 
 export function mergeGraph(execution: WorkflowView, definition: GraphDefinition | null): MergedGraph {
-  const nodeById = new Map(execution.nodes.map((n) => [n.nodeId, n] as const));
-  const nodeByStateName = new Map(execution.nodes.map((n) => [n.nodeType, n] as const));
-  const runtimeStateByNodeId = new Map(execution.nodes.map((n) => [n.nodeId, n.nodeType] as const));
+  const byRuntimeId = new Map<string, ExecutionNodeDTO>();
+  const byStateNameKey = new Map<string, ExecutionNodeDTO>();
+  const stateNameByRuntimeId = new Map<string, string>();
+  for (const n of execution.nodes) {
+    byRuntimeId.set(n.nodeId, n);
+    const trimmed = typeof n.stateName === "string" ? n.stateName.trim() : "";
+    if (trimmed.length === 0) continue;
+    byStateNameKey.set(trimmed, n);
+    stateNameByRuntimeId.set(n.nodeId, trimmed);
+  }
+
   const traversedEdgeKeys = new Set(
     (execution.runtimeEdges ?? []).flatMap((edge) => {
       const directKey = `${edge.from}->${edge.to}`;
-      const fromState = runtimeStateByNodeId.get(edge.from);
-      const toState = runtimeStateByNodeId.get(edge.to);
-      if (!fromState || !toState) return [directKey];
+      const fromState = stateNameByRuntimeId.get(edge.from);
+      const toState = stateNameByRuntimeId.get(edge.to);
+      if (fromState === undefined || toState === undefined) return [directKey];
       return [directKey, `${fromState}->${toState}`];
     })
   );
@@ -77,6 +89,7 @@ export function mergeGraph(execution: WorkflowView, definition: GraphDefinition 
       graphId: execution.graphId,
       nodes: execution.nodes.map((n) => ({
         nodeId: n.nodeId,
+        stateName: n.stateName ?? "",
         nodeType: n.nodeType,
         label: n.nodeId,
         status: n.status,
@@ -92,12 +105,24 @@ export function mergeGraph(execution: WorkflowView, definition: GraphDefinition 
   }
 
   const nodes = definition.nodes.map((defNode) => {
+    const definitionStateName =
+      typeof defNode.stateName === "string" && defNode.stateName.trim().length > 0
+        ? defNode.stateName.trim()
+        : defNode.nodeId;
+
     const runtimeNode =
-      nodeById.get(defNode.nodeId) ??
-      nodeByStateName.get(defNode.nodeId) ??
-      asIdleNode(defNode.nodeId, defNode.nodeType);
+      byRuntimeId.get(defNode.nodeId) ??
+      byStateNameKey.get(definitionStateName) ??
+      asIdleNode(defNode.nodeId, definitionStateName, defNode.nodeType);
+
+    const resolvedStateName =
+      typeof runtimeNode.stateName === "string" && runtimeNode.stateName.trim().length > 0
+        ? runtimeNode.stateName.trim()
+        : definitionStateName;
+
     return {
       nodeId: defNode.nodeId,
+      stateName: resolvedStateName,
       nodeType: defNode.nodeType,
       label: defNode.label ?? defNode.nodeId,
       branch: defNode.branch,
