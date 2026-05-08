@@ -2722,11 +2722,11 @@ public sealed class WorkflowServiceTests
 
         var graphJson =
             "{\"nodes\":[" +
-            "{\"nodeId\":\"n1\",\"stateName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
-            "{\"nodeId\":null,\"stateName\":\"S2\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Cancelled\"}" +
-            ",{\"nodeId\":\"n3\",\"stateName\":\"S3\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"SomeOtherFact\"}," +
-            "{\"nodeId\":\"n4\",\"stateName\":\"S4\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Completed\"}," +
-            "{\"nodeId\":\"n5\",\"stateName\":\"S5\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Joined\"}" +
+            "{\"nodeId\":\"n1\",\"stateName\":null,\"nodeType\":\"Task\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null,\"input\":{\"seed\":1},\"output\":{\"next\":2},\"attempt\":2,\"workerId\":\"wk-1\",\"waitKey\":\"resume-1\",\"canceledByExecution\":false}," +
+            "{\"nodeId\":null,\"stateName\":\"S2\",\"nodeType\":\"Wait\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Cancelled\"}" +
+            ",{\"nodeId\":\"n3\",\"stateName\":\"S3\",\"nodeType\":\"Task\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"SomeOtherFact\"}," +
+            "{\"nodeId\":\"n4\",\"stateName\":\"S4\",\"nodeType\":\"End\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Completed\"}," +
+            "{\"nodeId\":\"n5\",\"stateName\":\"S5\",\"nodeType\":\"Join\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Joined\"}" +
             "]}";
 
         var workflowRepo = new FakeWorkflowRepository
@@ -2776,25 +2776,28 @@ public sealed class WorkflowServiceTests
         Assert.Equal("n1", view.Nodes[0].NodeId);
         Assert.Equal("Task", view.Nodes[0].NodeType);
         Assert.Equal("RUNNING", view.Nodes[0].Status);
+        Assert.Equal(2, view.Nodes[0].Attempt);
+        Assert.Equal("wk-1", view.Nodes[0].WorkerId);
+        Assert.Equal("resume-1", view.Nodes[0].WaitKey);
         Assert.False(view.Nodes[0].CanceledByExecution);
 
         Assert.Equal(string.Empty, view.Nodes[1].NodeId);
-        Assert.Equal("S2", view.Nodes[1].NodeType);
+        Assert.Equal("Wait", view.Nodes[1].NodeType);
         Assert.Equal("CANCELED", view.Nodes[1].Status);
         Assert.True(view.Nodes[1].CanceledByExecution);
 
         Assert.Equal("n3", view.Nodes[2].NodeId);
-        Assert.Equal("S3", view.Nodes[2].NodeType);
+        Assert.Equal("Task", view.Nodes[2].NodeType);
         Assert.Equal("SUCCEEDED", view.Nodes[2].Status); // default branch of MapNodeStatus
         Assert.False(view.Nodes[2].CanceledByExecution);
 
         Assert.Equal("n4", view.Nodes[3].NodeId);
-        Assert.Equal("S4", view.Nodes[3].NodeType);
+        Assert.Equal("End", view.Nodes[3].NodeType);
         Assert.Equal("SUCCEEDED", view.Nodes[3].Status); // Completed -> SUCCEEDED
         Assert.False(view.Nodes[3].CanceledByExecution);
 
         Assert.Equal("n5", view.Nodes[4].NodeId);
-        Assert.Equal("S5", view.Nodes[4].NodeType);
+        Assert.Equal("Join", view.Nodes[4].NodeType);
         Assert.Equal("SUCCEEDED", view.Nodes[4].Status); // Joined -> SUCCEEDED
         Assert.False(view.Nodes[4].CanceledByExecution);
     }
