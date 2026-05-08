@@ -10,39 +10,59 @@ import type {
 function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNodeDTO {
   const nodeId = typeof n.nodeId === "string" ? n.nodeId : "";
   const stateName = typeof n.stateName === "string" ? n.stateName : "";
+  const nodeType = typeof n.nodeType === "string" ? n.nodeType : "";
   const fact = n.fact;
   const startedAt = typeof n.startedAt === "string" ? n.startedAt : undefined;
   const completedAt = typeof n.completedAt === "string" ? n.completedAt : null;
+  const input = "input" in n ? n.input : undefined;
   const output = "output" in n ? n.output : undefined;
+  const attempt = parseAttempt(n);
+  const workerId = parseNullableString(n.workerId);
+  const waitKey = parseNullableString(n.waitKey);
+  const factText = toFactText(fact);
+  const canceledByExecution = parseCanceledByExecution(n.canceledByExecution, factText);
   const conditionRouting = n.conditionRouting;
 
-  let status: ExecutionNodeDTO["status"] = "RUNNING";
-  const factText = String(fact ?? "").toLowerCase();
-  if (completedAt != null) {
-    if (factText.includes("fail")) status = "FAILED";
-    else if (factText.includes("cancel")) status = "CANCELED";
-    else status = "SUCCEEDED";
-  }
+  const status = resolveNodeStatus(completedAt, factText);
 
   return {
     nodeId,
-    // 現在の /graph ノードは state type（Start/Task/...）を返さないため、
-    // ひとまず stateName を nodeType へ入れて扱う。
-    // 定義グラフがある画面では mergeGraph 側で definition.nodeType が使われる。
-    nodeType: stateName,
+    stateName,
+    nodeType,
     status,
-    // NOTE:
-    // attempt / workerId / waitKey / canceledByExecution は /graph 応答に含まれないため、
-    // API/Engine 側で公開されるまでは暫定値を設定する。
-    attempt: 0,
-    workerId: null,
-    waitKey: null,
-    canceledByExecution: false,
+    attempt,
+    workerId,
+    waitKey,
+    canceledByExecution,
     startedAt,
     completedAt,
+    input,
     output,
     conditionRouting
   };
+}
+
+function parseAttempt(node: WorkflowGraphDTO["nodes"][0]): number {
+  return typeof node.attempt === "number" ? node.attempt : 1;
+}
+
+function parseNullableString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function toFactText(fact: unknown): string {
+  return typeof fact === "string" ? fact.toLowerCase() : "";
+}
+
+function parseCanceledByExecution(value: unknown, factText: string): boolean {
+  return typeof value === "boolean" ? value : factText.includes("cancel");
+}
+
+function resolveNodeStatus(completedAt: string | null, factText: string): ExecutionNodeDTO["status"] {
+  if (completedAt == null) return "RUNNING";
+  if (factText.includes("fail")) return "FAILED";
+  if (factText.includes("cancel")) return "CANCELED";
+  return "SUCCEEDED";
 }
 
 function graphEdgeToRuntimeEdge(edge: WorkflowGraphDTO["edges"][0]): RuntimeGraphEdgeDTO | null {
