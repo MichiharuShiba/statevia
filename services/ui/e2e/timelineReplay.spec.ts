@@ -6,7 +6,7 @@ import {
   getStateAtSeq,
 } from "./fixtures/mockTimeline";
 
-test.describe("実行履歴タイムライン・リプレイ", () => {
+test.describe("イベントタイムライン・リプレイ", () => {
   test.beforeEach(async ({ page }) => {
     await page.route("**/api/core/workflows/**", (route) => {
       const url = route.request().url();
@@ -52,7 +52,7 @@ test.describe("実行履歴タイムライン・リプレイ", () => {
     });
   });
 
-  test("実行履歴タイムラインの見出しが表示される", async ({ executionPage }) => {
+  test("イベントタイムラインの見出しが表示される", async ({ executionPage }) => {
     await executionPage.goto();
     await executionPage.loadExecution();
     await executionPage.waitForExecutionLoaded();

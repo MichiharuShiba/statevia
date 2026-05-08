@@ -17,8 +17,8 @@ const NODE_STATUSES: NodeStatus[] = [
 export function GraphLegend() {
   const uiText = useUiText();
   const edgeItems: { type: string; label: string; stroke: string; strokeWidth: number; dash?: string }[] = [
-    { type: "NextTraversed", label: `${uiText.status.edgeTypeNext} (traversed)`, stroke: "#2563eb", strokeWidth: 2.2 },
-    { type: "Next", label: `${uiText.status.edgeTypeNext} (default)`, stroke: "#d4d4d8", strokeWidth: 1.2 },
+    { type: "NextTraversed", label: uiText.graphLegend.edgeKind.nextTraversed, stroke: "#2563eb", strokeWidth: 2.2 },
+    { type: "Next", label: uiText.graphLegend.edgeKind.nextNotTraversed, stroke: "#d4d4d8", strokeWidth: 1.2 },
     { type: "Resume", label: uiText.status.edgeTypeResume, stroke: "#78716c", strokeWidth: 1.2, dash: "8 4" },
     { type: "Cancel", label: uiText.status.edgeTypeCancel, stroke: "#b91c1c", strokeWidth: 2.5 }
   ];

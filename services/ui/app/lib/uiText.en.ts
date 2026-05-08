@@ -155,6 +155,16 @@ export const uiTextEn: UiText = {
       title: "Failure",
       noMessage: "(No message)",
     },
+    trace: {
+      startedAt: (formattedInstant: string) => `Started: ${formattedInstant}`,
+      completedAt: (formattedInstant: string) => `Completed: ${formattedInstant}`,
+      duration: (durationText: string) => `Duration: ${durationText}`,
+      durationUnavailable: "Duration: —",
+      outputHeading: "Output",
+      outputEmpty: "(None)",
+      conditionRoutingHeading: "Condition routing",
+      conditionRoutingEmpty: "(None)",
+    },
   },
   graphLegend: {
     ...uiTextJa.graphLegend,
@@ -166,6 +176,10 @@ export const uiTextEn: UiText = {
       root: "Graph legend",
       nodeStatus: "Node status legend",
       edgeType: "Edge type legend",
+    },
+    edgeKind: {
+      nextTraversed: "Next (executed path)",
+      nextNotTraversed: "Next (not traversed)",
     },
   },
   executionHeader: {

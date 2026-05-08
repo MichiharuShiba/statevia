@@ -150,6 +150,16 @@ export type UiText = {
       title: string;
       noMessage: string;
     };
+    trace: {
+      startedAt: (formattedInstant: string) => string;
+      completedAt: (formattedInstant: string) => string;
+      duration: (durationText: string) => string;
+      durationUnavailable: string;
+      outputHeading: string;
+      outputEmpty: string;
+      conditionRoutingHeading: string;
+      conditionRoutingEmpty: string;
+    };
   };
   graphLegend: {
     heading: {
@@ -160,6 +170,10 @@ export type UiText = {
       root: string;
       nodeStatus: string;
       edgeType: string;
+    };
+    edgeKind: {
+      nextTraversed: string;
+      nextNotTraversed: string;
     };
   };
   dashboard: {
@@ -593,7 +607,7 @@ export const uiText: UiText = {
       loadExecution: (executionLabel: string) => `${executionLabel} を読み込んでください。`,
       selectNode: (nodeLabel: string) => `${nodeLabel} を選択してください。`,
     },
-    title: (nodeLabel: string) => `${nodeLabel} Detail`,
+    title: (_nodeLabel: string) => "ノード詳細",
     meta: {
       type: (nodeType: string) => `種別: ${nodeType}`,
       attempt: (attempt: number) => `試行回数: ${attempt}`,
@@ -613,6 +627,16 @@ export const uiText: UiText = {
       title: "失敗情報",
       noMessage: "（メッセージなし）",
     },
+    trace: {
+      startedAt: (formattedInstant: string) => `開始: ${formattedInstant}`,
+      completedAt: (formattedInstant: string) => `終了: ${formattedInstant}`,
+      duration: (durationText: string) => `実行時間: ${durationText}`,
+      durationUnavailable: "実行時間: —",
+      outputHeading: "出力",
+      outputEmpty: "（なし）",
+      conditionRoutingHeading: "条件ルーティング",
+      conditionRoutingEmpty: "（なし）",
+    },
   },
   graphLegend: {
     heading: {
@@ -623,6 +647,10 @@ export const uiText: UiText = {
       root: "グラフ凡例",
       nodeStatus: "ノードステータス凡例",
       edgeType: "エッジ種別凡例",
+    },
+    edgeKind: {
+      nextTraversed: "Next（実行経路）",
+      nextNotTraversed: "Next（未通過）",
     },
   },
   dashboard: {
