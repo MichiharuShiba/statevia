@@ -63,6 +63,26 @@ describe("NodeDetail", () => {
     expect(screen.getByText("RUNNING")).toBeInTheDocument();
   });
 
+  it("startedAt・completedAt があるときトレース欄に開始・終了・実行時間を表示する", () => {
+    const node: ExecutionNodeDTO = {
+      ...baseNode,
+      status: "SUCCEEDED",
+      startedAt: "2026-01-15T10:00:00.000Z",
+      completedAt: "2026-01-15T10:00:01.000Z"
+    };
+    render(<NodeDetail {...defaultProps} node={node} />);
+    expect(screen.getByText(/開始:/)).toBeInTheDocument();
+    expect(screen.getByText(/終了:/)).toBeInTheDocument();
+    expect(screen.getByText(/実行時間:/)).toBeInTheDocument();
+  });
+
+  it("output を渡すと出力見出しと内容を表示する", () => {
+    const node: ExecutionNodeDTO = { ...baseNode, output: { x: 1 } };
+    render(<NodeDetail {...defaultProps} node={node} />);
+    expect(screen.getByText(uiText.nodeDetail.trace.outputHeading)).toBeInTheDocument();
+    expect(screen.getByText(/"x": 1/, { exact: false })).toBeInTheDocument();
+  });
+
   describe("Wait / Resume 詳細", () => {
     it("status が WAITING のとき「待機中 (Wait)」と理由を表示する", () => {
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
