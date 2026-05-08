@@ -161,6 +161,16 @@ public class WorkflowInputPropagationTests
             && e.GetProperty("from").GetString() == joinNodeId).ToList();
         Assert.Single(fromJoinNext);
         Assert.Equal("AfterJoin", nodes.Single(n => n.GetProperty("nodeId").GetString() == fromJoinNext[0].GetProperty("to").GetString()).GetProperty("stateName").GetString());
+
+        var joinInput = joinNodes[0].GetProperty("input");
+        var joinInputKeys = joinInput.EnumerateObject().Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("A", joinInputKeys);
+        Assert.Contains("B", joinInputKeys);
+
+        Assert.Equal(1, joinNodes[0].GetProperty("attempt").GetInt32());
+        var joinWorkerId = joinNodes[0].GetProperty("workerId").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(joinWorkerId));
+        Assert.False(joinNodes[0].GetProperty("canceledByExecution").GetBoolean());
     }
 
     /// <summary>next 遷移先の input.path が raw input に適用されることを検証する。</summary>
@@ -284,7 +294,7 @@ public class WorkflowInputPropagationTests
         var dict = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(bInput);
         Assert.Equal("my song", dict["title"]);
         Assert.Equal(2L, dict["count"]);
-        Assert.Equal(true, dict["enabled"]);
+        Assert.True((bool)dict["enabled"]!);
         var foo = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(dict["foo"]);
         Assert.Equal("from-path", foo["bar"]);
     }

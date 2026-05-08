@@ -451,6 +451,51 @@ public class WorkflowEngineTests
         Assert.Equal("Manual", selectedByBetween);
     }
 
+    /// <summary>同一 stateName が再訪されたとき execution graph の attempt が増加することを検証する。</summary>
+    [Fact]
+    public async Task Start_WhenStateNameRevisited_AttemptIncrementsPerStateName()
+    {
+        // Arrange
+        var def = CreateDefinitionWithStateRevisit();
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+
+        // Act
+        var id = engine.Start(def);
+        await Task.Delay(400);
+        var graphJson = engine.ExportExecutionGraph(id);
+
+        // Assert
+        using var doc = JsonDocument.Parse(graphJson);
+        var nodes = doc.RootElement.GetProperty("nodes").EnumerateArray().ToList();
+        var aNodes = nodes.Where(n =>
+                n.TryGetProperty("stateName", out var stateName)
+                && string.Equals(stateName.GetString(), "A", StringComparison.Ordinal))
+            .ToList();
+        Assert.Equal(2, aNodes.Count);
+        var attempts = aNodes.Select(n => n.GetProperty("attempt").GetInt32()).OrderBy(x => x).ToArray();
+        Assert.Equal([1, 2], attempts);
+    }
+
+    /// <summary>WaitTable に定義されたイベントキーが実行グラフの waitKey に記録されることを検証する。</summary>
+    [Fact]
+    public async Task Start_WhenStateHasWaitTableEntry_ExecutionGraphIncludesWaitKey()
+    {
+        // Arrange
+        var def = CreateDefinitionWithWaitKey();
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+
+        // Act
+        var id = engine.Start(def);
+        await Task.Delay(300);
+        var graphJson = engine.ExportExecutionGraph(id);
+
+        // Assert
+        using var doc = JsonDocument.Parse(graphJson);
+        var node = doc.RootElement.GetProperty("nodes").EnumerateArray()
+            .First(n => string.Equals(n.GetProperty("stateName").GetString(), "WaitState", StringComparison.Ordinal));
+        Assert.Equal("resume", node.GetProperty("waitKey").GetString());
+    }
+
     /// <summary>Store.TryGetOutput が状態実行中に利用される経路を検証する。</summary>
     [Fact]
     public async Task Start_StateCanReadOtherStateOutputViaStore()
@@ -681,6 +726,72 @@ public class WorkflowEngineTests
         StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
         {
             ["Start"] = DefaultStateExecutor.Create(new ImmediateState())
+        })
+    };
+
+    private static CompiledWorkflowDefinition CreateDefinitionWithStateRevisit()
+    {
+        var revisitAttemptForA = 0;
+        return new CompiledWorkflowDefinition
+        {
+            Name = "Revisit",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+            {
+                ["A"] = new Dictionary<string, TransitionTarget>(),
+                ["B"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { Next = "A" } },
+                ["End"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } }
+            },
+            ConditionalTransitions = new Dictionary<string, IReadOnlyDictionary<string, CompiledFactTransition>>
+            {
+                ["A"] = new Dictionary<string, CompiledFactTransition>
+                {
+                    ["Completed"] = new CompiledFactTransition
+                    {
+                        Cases =
+                        [
+                            new CompiledTransitionCase
+                            {
+                                Order = 1,
+                                DeclarationIndex = 0,
+                                When = new ConditionExpressionDefinition { Path = "$.round", Op = "eq", Value = 1 },
+                                Target = new TransitionTarget { Next = "B" }
+                            }
+                        ],
+                        DefaultTarget = new TransitionTarget { Next = "End" }
+                    }
+                }
+            },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
+            JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+            WaitTable = new Dictionary<string, string>(),
+            InitialState = "A",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
+            {
+                ["A"] = new DefaultStateExecutor((_, _, _) =>
+                {
+                    revisitAttemptForA++;
+                    return Task.FromResult<object?>(new Dictionary<string, object?> { ["round"] = revisitAttemptForA });
+                }),
+                ["B"] = DefaultStateExecutor.Create(new ImmediateState()),
+                ["End"] = DefaultStateExecutor.Create(new ImmediateState())
+            })
+        };
+    }
+
+    private static CompiledWorkflowDefinition CreateDefinitionWithWaitKey() => new()
+    {
+        Name = "WithWaitKey",
+        Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+        {
+            ["WaitState"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } }
+        },
+        ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
+        JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+        WaitTable = new Dictionary<string, string> { ["WaitState"] = "resume" },
+        InitialState = "WaitState",
+        StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
+        {
+            ["WaitState"] = DefaultStateExecutor.Create(new ImmediateState())
         })
     };
 
