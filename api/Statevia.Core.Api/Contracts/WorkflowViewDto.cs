@@ -25,6 +25,8 @@ public sealed class WorkflowViewNodeDto
     public string? WorkerId { get; init; }
     public string? WaitKey { get; init; }
     public bool CanceledByExecution { get; init; }
+    public JsonElement? Input { get; init; }
+    public JsonElement? Output { get; init; }
     /// <summary>条件遷移の評価情報（ExecutionGraph の conditionRouting をそのまま透過）。</summary>
     public JsonElement? ConditionRouting { get; init; }
 }
