@@ -327,13 +327,22 @@ public sealed class WorkflowService : IWorkflowService
         var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
             throw new NotFoundException("Workflow not found");
-
-        var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
-        if (workflow is null)
-            throw new NotFoundException("Workflow not found");
-
+        await EnsureWorkflowExistsAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         var row = await _workflows.GetSnapshotByWorkflowIdAsync(uuid.Value, ct).ConfigureAwait(false);
         return row is null ? throw new NotFoundException("Workflow not found") : row.GraphJson;
+    }
+
+    public async Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct)
+    {
+        var workflow = await _workflows.GetByIdAsync(tenantId, workflowId, ct).ConfigureAwait(false);
+        if (workflow is null)
+            throw new NotFoundException("Workflow not found");
+    }
+
+    public async Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
+    {
+        var row = await _workflows.GetSnapshotByWorkflowIdAsync(workflowId, ct).ConfigureAwait(false);
+        return row?.GraphJson;
     }
 
     public async Task CancelAsync(

@@ -27,12 +27,18 @@ public sealed class WorkflowStreamService
 
     public async Task WriteStreamAsync(HttpResponse response, string tenantId, string idOrUuid, CancellationToken ct)
     {
+        if (ct.IsCancellationRequested)
+            return;
+
         var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
         {
             response.StatusCode = StatusCodes.Status404NotFound;
             return;
         }
+
+        // 接続開始時に tenant + workflow の存在を一度だけ確認する。
+        await _workflows.EnsureWorkflowExistsAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
 
         var displayId = await _displayIds.GetDisplayIdAsync("workflow", idOrUuid, ct).ConfigureAwait(false) ?? idOrUuid;
 
@@ -49,7 +55,13 @@ public sealed class WorkflowStreamService
             string graphJson;
             try
             {
-                graphJson = await _workflows.GetGraphJsonAsync(tenantId, idOrUuid, ct).ConfigureAwait(false);
+                var snapshotGraphJson = await _workflows.TryGetSnapshotGraphJsonByWorkflowIdAsync(uuid.Value, ct).ConfigureAwait(false);
+                if (snapshotGraphJson is null)
+                {
+                    // スナップショット行が消えた場合はストリームを終了する。
+                    return;
+                }
+                graphJson = snapshotGraphJson;
             }
             catch
             {
