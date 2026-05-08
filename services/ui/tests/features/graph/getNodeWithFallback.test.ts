@@ -29,7 +29,18 @@ function graphData(mergedNodes: GraphData["mergedNodes"]): GraphData {
 describe("getNodeWithFallback", () => {
   it("execution が null のとき null を返す", () => {
     // Arrange
-    const graph = graphData([{ nodeId: "n-1", nodeType: "TASK", label: "n-1", status: "IDLE", attempt: 0, waitKey: null, canceledByExecution: false }]);
+    const graph = graphData([
+      {
+        nodeId: "n-1",
+        stateName: "n-1",
+        nodeType: "TASK",
+        label: "n-1",
+        status: "IDLE",
+        attempt: 0,
+        waitKey: null,
+        canceledByExecution: false
+      }
+    ]);
 
     // Act
     const result = getNodeWithFallback(null, graph, "n-1");
@@ -74,7 +85,16 @@ describe("getNodeWithFallback", () => {
     // Arrange
     const exec = execution([]);
     const mergedNodes = [
-      { nodeId: "n-2", nodeType: "WAIT", label: "Wait", status: "IDLE" as const, attempt: 0, waitKey: null, canceledByExecution: false }
+      {
+        nodeId: "n-2",
+        stateName: "n-2",
+        nodeType: "WAIT",
+        label: "Wait",
+        status: "IDLE" as const,
+        attempt: 0,
+        waitKey: null,
+        canceledByExecution: false
+      }
     ];
     const graph = graphData(mergedNodes);
 
@@ -87,6 +107,7 @@ describe("getNodeWithFallback", () => {
     expect(result?.nodeType).toBe("WAIT");
     expect(result?.status).toBe("IDLE");
     expect(result?.workerId).toBeNull();
+    expect(result?.stateName).toBe("n-2");
   });
 
   it("nodeId が execution にも graphData にも無いとき null を返す", () => {
@@ -106,7 +127,16 @@ describe("getNodeWithFallback", () => {
     const runtimeNode: ExecutionNodeDTO = { nodeId: "n-1", nodeType: "TASK", status: "RUNNING", attempt: 1, workerId: "w-1", waitKey: null, canceledByExecution: false };
     const exec = execution([runtimeNode]);
     const graph = graphData([
-      { nodeId: "n-1", nodeType: "TASK", label: "n-1", status: "IDLE", attempt: 0, waitKey: null, canceledByExecution: false }
+      {
+        nodeId: "n-1",
+        stateName: "n-1",
+        nodeType: "TASK",
+        label: "n-1",
+        status: "IDLE",
+        attempt: 0,
+        waitKey: null,
+        canceledByExecution: false
+      }
     ]);
 
     // Act
@@ -135,7 +165,16 @@ describe("getNodeWithFallback (境界値)", () => {
     // Arrange
     const exec = execution([]);
     const graph = graphData([
-      { nodeId: "only-in-merged", nodeType: "TASK", label: "Merged", status: "IDLE" as const, attempt: 0, waitKey: null, canceledByExecution: false }
+      {
+        nodeId: "only-in-merged",
+        stateName: "only-in-merged",
+        nodeType: "TASK",
+        label: "Merged",
+        status: "IDLE" as const,
+        attempt: 0,
+        waitKey: null,
+        canceledByExecution: false
+      }
     ]);
 
     // Act

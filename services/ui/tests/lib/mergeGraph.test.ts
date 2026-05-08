@@ -112,7 +112,8 @@ describe("mergeGraph", () => {
       [
         {
           nodeId: "rt-start-1",
-          nodeType: "start",
+          stateName: "start",
+          nodeType: "Start",
           status: "SUCCEEDED",
           attempt: 1,
           workerId: null,
@@ -121,7 +122,8 @@ describe("mergeGraph", () => {
         },
         {
           nodeId: "rt-task-a-1",
-          nodeType: "task-a",
+          stateName: "task-a",
+          nodeType: "Task",
           status: "RUNNING",
           attempt: 1,
           workerId: null,
@@ -141,6 +143,44 @@ describe("mergeGraph", () => {
     expect(startNode?.status).toBe("SUCCEEDED");
     expect(taskANode?.status).toBe("RUNNING");
     expect(startToTaskA?.traversed).toBe(true);
+  });
+
+  it("定義で nodeId と stateName が異なるときマージ結果で両方を維持する", () => {
+    const def: GraphDefinition = {
+      graphId: "custom-split",
+      nodes: [{ nodeId: "canvas-n1", stateName: "workflowState", nodeType: "Task" }],
+      edges: []
+    };
+    const exec = execution([], "custom-split");
+
+    const result = mergeGraph(exec, def);
+
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].nodeId).toBe("canvas-n1");
+    expect(result.nodes[0].stateName).toBe("workflowState");
+  });
+
+  it("実行ノードに stateName があるときマージ結果の stateName に反映する", () => {
+    const def = getGraphDefinition("hello")!;
+    const exec = execution(
+      [
+        {
+          nodeId: "start",
+          stateName: "startStateApi",
+          nodeType: "Start",
+          status: "RUNNING",
+          attempt: 1,
+          workerId: null,
+          waitKey: null,
+          canceledByExecution: false
+        }
+      ],
+      "hello"
+    );
+
+    const result = mergeGraph(exec, def);
+    const mergedStart = result.nodes.find((n) => n.nodeId === "start");
+    expect(mergedStart?.stateName).toBe("startStateApi");
   });
 });
 

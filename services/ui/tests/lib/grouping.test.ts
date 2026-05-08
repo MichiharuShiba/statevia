@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildGroups, resolveGroupBounds } from "../../app/lib/grouping";
 import type { ExecutionNodeDTO } from "../../app/lib/types";
-import type { PositionedEdge, PositionedNode } from "../../app/lib/graphLayout";
+import type { LayoutEdgeInput, PositionedNode } from "../../app/lib/graphLayout";
 import type { GraphGroupDef } from "../../app/graphs/types";
 
 function execNodes(ids: string[]): ExecutionNodeDTO[] {
@@ -92,7 +92,7 @@ describe("resolveGroupBounds", () => {
   it("定義グループが無く推論も空のとき空を返す", () => {
     // Arrange
     const nodes = positioned([{ nodeId: "a", x: 0, y: 0, w: 100, h: 50 }]);
-    const edges: PositionedEdge[] = [];
+    const edges: LayoutEdgeInput[] = [];
 
     // Act
     const result = resolveGroupBounds(nodes, edges, undefined);
@@ -107,7 +107,7 @@ describe("resolveGroupBounds", () => {
       { nodeId: "n1", x: 10, y: 20, w: 100, h: 50 },
       { nodeId: "n2", x: 150, y: 20, w: 100, h: 50 }
     ]);
-    const edges: PositionedEdge[] = [];
+    const edges: LayoutEdgeInput[] = [];
     const definitionGroups: GraphGroupDef[] = [
       { groupId: "g1", label: "Group 1", nodeIds: ["n1", "n2"] }
     ];
@@ -186,7 +186,7 @@ describe("resolveGroupBounds", () => {
       { nodeId: "fork-1", x: 0, y: 0, w: 100, h: 50 },
       { nodeId: "join-1", x: 200, y: 0, w: 100, h: 50 }
     ]).map((n, i) => ({ ...n, nodeType: ["FORK", "JOIN"][i] }));
-    const edges: PositionedEdge[] = [];
+    const edges: LayoutEdgeInput[] = [];
 
     // Act
     const result = resolveGroupBounds(nodes, edges, undefined);
@@ -202,7 +202,7 @@ describe("resolveGroupBounds", () => {
       { nodeId: "task-b", x: 100, y: 0, w: 100, h: 50 },
       { nodeId: "join-1", x: 200, y: 0, w: 100, h: 50 }
     ]).map((n, i) => ({ ...n, nodeType: ["FORK", "TASK", "JOIN"][i] }));
-    const edges: PositionedEdge[] = [
+    const edges: LayoutEdgeInput[] = [
       { id: "e1", from: "fork-1", to: "ghost" },
       { id: "e2", from: "fork-1", to: "task-b" },
       { id: "e3", from: "task-b", to: "join-1" }
