@@ -47,6 +47,7 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const onErrorRef = useRef(onError);
+  const activeStreamRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
     onErrorRef.current = onError;
@@ -81,10 +82,10 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
   useEffect(() => {
     if (!streamEnabled) return;
     if (!execution?.displayId) return;
+    if (terminal) return;
 
     const currentDisplayId = execution.displayId;
     let disposed = false;
-    let stream: EventSource | null = null;
     let reconnectAttempt = 0;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let getDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -141,6 +142,9 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
 
     const connectStream = () => {
       if (disposed) return;
+      // 念のため既存接続をクローズしてから再接続する。
+      activeStreamRef.current?.close();
+      activeStreamRef.current = null;
 
       const { tenantId } = getApiConfig();
       const streamPath = `/api/core/workflows/${encodeURIComponent(currentDisplayId)}/stream`;
@@ -148,7 +152,7 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
         ? `${streamPath}?${new URLSearchParams({ tenantId }).toString()}`
         : streamPath;
       const next = new EventSource(streamUrl);
-      stream = next;
+      activeStreamRef.current = next;
 
       next.onopen = onStreamOpen;
 
@@ -161,8 +165,8 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
       next.onerror = () => {
         if (disposed) return;
         next.close();
-        if (stream === next) {
-          stream = null;
+        if (activeStreamRef.current === next) {
+          activeStreamRef.current = null;
         }
         scheduleReconnect();
       };
@@ -174,9 +178,12 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
       disposed = true;
       clearReconnectTimer();
       clearGetDebounce();
-      stream?.close();
+      if (activeStreamRef.current) {
+        activeStreamRef.current.close();
+        activeStreamRef.current = null;
+      }
     };
-  }, [execution?.displayId, streamEnabled, streamRefreshDebounceMs]);
+  }, [execution?.displayId, streamEnabled, streamRefreshDebounceMs, terminal]);
 
   useEffect(() => {
     if (streamEnabled) return;
