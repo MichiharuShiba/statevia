@@ -26,6 +26,7 @@ describe("buildWorkflowView", () => {
         {
           nodeId: "n-1",
           stateName: "RouteByScore",
+          nodeType: "Task",
           startedAt: "2026-01-01T00:00:00Z",
           completedAt: "2026-01-01T00:00:01Z",
           fact: "Completed",
@@ -40,6 +41,7 @@ describe("buildWorkflowView", () => {
 
     // Assert
     expect(view.nodes).toHaveLength(1);
+    expect(view.nodes[0]?.nodeType).toBe("Task");
     expect(view.nodes[0]?.conditionRouting).toEqual(conditionRouting);
     expect(view.nodes[0]?.startedAt).toBe("2026-01-01T00:00:00Z");
     expect(view.nodes[0]?.completedAt).toBe("2026-01-01T00:00:01Z");
@@ -63,7 +65,12 @@ describe("buildWorkflowView", () => {
           stateName: "Task",
           completedAt: "2026-01-01T00:00:02Z",
           fact: "Completed",
-          output: { result: 42 }
+          input: { payload: 1 },
+          output: { result: 42 },
+          attempt: 2,
+          workerId: "wk-1",
+          waitKey: "resume-key",
+          canceledByExecution: true
         }
       ],
       edges: []
@@ -71,6 +78,11 @@ describe("buildWorkflowView", () => {
 
     const view = buildWorkflowView(workflow, graph);
 
+    expect(view.nodes[0]?.input).toEqual({ payload: 1 });
     expect(view.nodes[0]?.output).toEqual({ result: 42 });
+    expect(view.nodes[0]?.attempt).toBe(2);
+    expect(view.nodes[0]?.workerId).toBe("wk-1");
+    expect(view.nodes[0]?.waitKey).toBe("resume-key");
+    expect(view.nodes[0]?.canceledByExecution).toBe(true);
   });
 });
