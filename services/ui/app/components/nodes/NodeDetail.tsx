@@ -1,8 +1,10 @@
 "use client";
 
 import type { ExecutionNodeDTO, WorkflowView } from "../../lib/types";
+import { formatExecutionDuration, formatExecutionInstant } from "../../lib/dateTime";
+import { formatTracePayload } from "../../lib/formatExecutionTrace";
 import { getStatusStyle } from "../../lib/statusStyle";
-import { useUiText } from "../../lib/uiTextContext";
+import { useLocale, useUiText } from "../../lib/uiTextContext";
 
 type NodeDetailProps = {
   execution: WorkflowView | null;
@@ -28,6 +30,7 @@ export function NodeDetail({
   className
 }: Readonly<NodeDetailProps>) {
   const uiText = useUiText();
+  const locale = useLocale();
   const baseClassName = "rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm";
   const asideClassName = className ? `${baseClassName} ${className}` : baseClassName;
 
@@ -52,6 +55,14 @@ export function NodeDetail({
   const isWaiting = node.status === "WAITING";
   const isCanceled = node.status === "CANCELED";
   const isFailed = node.status === "FAILED";
+  const outputText = "output" in node && node.output !== undefined ? formatTracePayload(node.output) : "";
+  const conditionRoutingText =
+    "conditionRouting" in node && node.conditionRouting !== undefined ? formatTracePayload(node.conditionRouting) : "";
+  const showTracePanel =
+    (node.startedAt != null && node.startedAt !== "") ||
+    (node.completedAt != null && node.completedAt !== "") ||
+    ("output" in node && node.output !== undefined) ||
+    ("conditionRouting" in node && node.conditionRouting !== undefined);
 
   return (
     <aside className={asideClassName}>
@@ -68,6 +79,54 @@ export function NodeDetail({
           <div>{uiText.nodeDetail.meta.attempt(node.attempt)}</div>
           <div>{uiText.nodeDetail.meta.waitKey(node.waitKey ?? "—")}</div>
           <div>{uiText.nodeDetail.meta.canceledByExecution(node.canceledByExecution)}</div>
+
+          {showTracePanel && (
+            <div className="mt-2 space-y-1 border-t border-[var(--md-sys-color-outline-variant)] pt-2">
+              {node.startedAt != null && node.startedAt !== "" && (
+                <div>{uiText.nodeDetail.trace.startedAt(formatExecutionInstant(node.startedAt, locale))}</div>
+              )}
+              {node.completedAt != null && node.completedAt !== "" && (
+                <div>{uiText.nodeDetail.trace.completedAt(formatExecutionInstant(node.completedAt, locale))}</div>
+              )}
+              {(() => {
+                const durationText = formatExecutionDuration(node.startedAt, node.completedAt);
+                if (durationText != null) {
+                  return <div>{uiText.nodeDetail.trace.duration(durationText)}</div>;
+                }
+                if (
+                  node.startedAt != null &&
+                  node.startedAt !== "" &&
+                  node.completedAt != null &&
+                  node.completedAt !== ""
+                ) {
+                  return (
+                    <div className="text-[var(--md-sys-color-on-surface-variant)]">
+                      {uiText.nodeDetail.trace.durationUnavailable}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              {"output" in node && node.output !== undefined && (
+                <div>
+                  <div className="font-medium text-[var(--md-sys-color-on-surface)]">{uiText.nodeDetail.trace.outputHeading}</div>
+                  <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--md-sys-color-surface-container-high)] p-2 text-[10px] leading-snug text-[var(--md-sys-color-on-surface)]">
+                    {outputText === "" ? uiText.nodeDetail.trace.outputEmpty : outputText}
+                  </pre>
+                </div>
+              )}
+              {"conditionRouting" in node && node.conditionRouting !== undefined && (
+                <div>
+                  <div className="font-medium text-[var(--md-sys-color-on-surface)]">
+                    {uiText.nodeDetail.trace.conditionRoutingHeading}
+                  </div>
+                  <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--md-sys-color-surface-container-high)] p-2 text-[10px] leading-snug text-[var(--md-sys-color-on-surface)]">
+                    {conditionRoutingText === "" ? uiText.nodeDetail.trace.conditionRoutingEmpty : conditionRoutingText}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Wait / Resume 詳細 */}
           {isWaiting && (
