@@ -1,5 +1,5 @@
 /**
- * 実行履歴タイムライン・リプレイ機能の e2e 用テストデータ
+ * イベントタイムライン・リプレイ機能の e2e 用テストデータ
  */
 import type { ExecutionEventWithSeq, WorkflowView } from "../../app/lib/types";
 import { mockExecution } from "./mockExecution";

@@ -69,13 +69,13 @@ test.describe("execution", () => {
     await executionPage.waitForGraphView();
   });
 
-  test("実行履歴タイムラインが表示される", async ({ executionPage, page }) => {
+  test("イベントタイムラインが表示される", async ({ executionPage, page }) => {
     await executionPage.goto();
 
     await executionPage.loadExecution();
     await executionPage.waitForExecutionLoaded();
 
-    await expect(page.getByRole("heading", { name: "実行履歴タイムライン" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "イベントタイムライン" })).toBeVisible();
   });
 
   test("タイムラインで時点を選ぶと「現在に戻る」が表示され、押すとリプレイが解除される", async ({ executionPage, page }) => {
