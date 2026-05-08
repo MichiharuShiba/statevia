@@ -22,10 +22,16 @@ public sealed class WorkflowStreamServiceTests
             string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) => Task.CompletedTask;
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
         {
             GetGraphJsonCalls++;
             return Task.FromResult(_graphJson);
+        }
+        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
+        {
+            GetGraphJsonCalls++;
+            return Task.FromResult<string?>(_graphJson);
         }
         public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<WorkflowViewDto> GetWorkflowViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
@@ -52,14 +58,18 @@ public sealed class WorkflowStreamServiceTests
             string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
-
+        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) => Task.CompletedTask;
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
+        {
+            return Task.FromResult(_stableJson);
+        }
+        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
         {
             _getGraphCalls++;
             if (_getGraphCalls == 1)
-                return Task.FromException<string>(new InvalidOperationException("transient graph failure"));
+                return Task.FromException<string?>(new InvalidOperationException("transient graph failure"));
 
-            return Task.FromResult(_stableJson);
+            return Task.FromResult<string?>(_stableJson);
         }
         public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<WorkflowViewDto> GetWorkflowViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
@@ -93,8 +103,12 @@ public sealed class WorkflowStreamServiceTests
 
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
-
+        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) => Task.CompletedTask;
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
+        {
+            return Task.FromResult(_stableJson);
+        }
+        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
         {
             var now = DateTime.UtcNow;
             if (_getGraphCalls > 0)
@@ -103,9 +117,9 @@ public sealed class WorkflowStreamServiceTests
             _previousCallStartedAtUtc = now;
             _getGraphCalls++;
             if (_getGraphCalls == 1)
-                return Task.FromException<string>(new InvalidOperationException("transient graph failure"));
+                return Task.FromException<string?>(new InvalidOperationException("transient graph failure"));
 
-            return Task.FromResult(_stableJson);
+            return Task.FromResult<string?>(_stableJson);
         }
 
         public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
@@ -137,7 +151,37 @@ public sealed class WorkflowStreamServiceTests
             string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
-        public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
+        public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) => Task.FromResult("{\"nodes\":[]}");
+        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
+        public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task<WorkflowViewDto> GetWorkflowViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
+        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
+        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
+        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
+        public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
+    }
+
+    /// <summary>開始時の存在確認は成功し、その後 snapshot 取得が null を返すテスト用実装。</summary>
+    private sealed class SnapshotMissingWorkflowService : IWorkflowService
+    {
+        public int TryGetSnapshotCalls { get; private set; }
+
+        public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+            throw new NotSupportedException();
+        public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
+        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
+            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
+            throw new NotSupportedException();
+        public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) => Task.CompletedTask;
+        public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) => Task.FromResult("{\"nodes\":[]}");
+        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
+        {
+            TryGetSnapshotCalls++;
+            return Task.FromResult<string?>(null);
+        }
         public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<WorkflowViewDto> GetWorkflowViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
@@ -204,7 +248,7 @@ public sealed class WorkflowStreamServiceTests
         http.Response.Body = body;
 
         using var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
         // Act
         await sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", cts.Token);
@@ -244,7 +288,7 @@ public sealed class WorkflowStreamServiceTests
         // Assert
         var bodyText = System.Text.Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray());
         Assert.Contains("GraphUpdated", bodyText);
-        Assert.Equal(1, fakeWorkflows.GetGraphJsonCalls); // likely only first iteration
+        Assert.True(fakeWorkflows.GetGraphJsonCalls >= 1); // 1 周以上の snapshot 取得
     }
 
     /// <summary>二周目で内容が同じなら二回目の更新イベントを書き込まない。</summary>
@@ -373,6 +417,31 @@ public sealed class WorkflowStreamServiceTests
             $"Expected spacing >= {WorkflowStreamService.GraphPollingIntervalMilliseconds - 150} ms, was {fakeWorkflows.TimeSincePreviousGetGraphStarted!.Value.TotalMilliseconds} ms");
         var bodyText = System.Text.Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray());
         Assert.Contains("GraphUpdated", bodyText);
+    }
+
+    /// <summary>snapshot が見つからない場合は配信を終了し、本文を書き込まない。</summary>
+    [Fact]
+    public async Task WriteStreamAsync_WhenSnapshotMissing_EndsStreamWithoutWriting()
+    {
+        // Arrange
+        var workflows = new SnapshotMissingWorkflowService();
+        var display = new FakeDisplayIdService
+        {
+            ResolveResult = Guid.NewGuid(),
+            GetDisplayIdResult = "EXEC-1"
+        };
+        var sut = new WorkflowStreamService(workflows, display);
+        var http = new DefaultHttpContext();
+        var body = new MemoryStream();
+        http.Response.Body = body;
+
+        // Act
+        await sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", CancellationToken.None);
+
+        // Assert
+        Assert.Equal("text/event-stream", http.Response.ContentType);
+        Assert.Equal(1, workflows.TryGetSnapshotCalls);
+        Assert.Equal(0, body.Length);
     }
 }
 
