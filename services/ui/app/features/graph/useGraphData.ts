@@ -58,6 +58,8 @@ export function getNodeWithFallback(
   if (!execution || !nodeId) return null;
   const runtimeNode = execution.nodes.find((n) => n.nodeId === nodeId);
   if (runtimeNode) return runtimeNode;
+  const runtimeNodeByStateName = execution.nodes.find((n) => n.nodeType.toLowerCase() === nodeId.toLowerCase());
+  if (runtimeNodeByStateName) return runtimeNodeByStateName;
   const mergedNode = graphData?.mergedNodes.find((n) => n.nodeId === nodeId);
   if (!mergedNode) return null;
   return {
