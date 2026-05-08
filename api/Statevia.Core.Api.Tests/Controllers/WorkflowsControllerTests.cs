@@ -116,12 +116,24 @@ public sealed class WorkflowsControllerTests
             LastTenantId = tenantId;
             return GetResult;
         }
+        public async Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct)
+        {
+            await Task.Yield(); // async boundary for coverage
+            if (ExceptionToThrow is { } ex) throw ex;
+            LastTenantId = tenantId;
+        }
 
         public async Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
             LastTenantId = tenantId;
+            return GraphJsonResult;
+        }
+        public async Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
+        {
+            await Task.Yield(); // async boundary for coverage
+            if (ExceptionToThrow is { } ex) throw ex;
             return GraphJsonResult;
         }
 
