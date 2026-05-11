@@ -35,7 +35,7 @@ function DiffRow({
     <button
       type="button"
       className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[var(--md-sys-color-surface-container-high)]"
-      onClick={() => onSelect?.(item.nodeId)}
+      onClick={() => onSelect?.(item.executionNodeId)}
     >
       <span
         className={
@@ -44,7 +44,7 @@ function DiffRow({
             : "font-medium text-[var(--md-sys-color-on-surface)]"
         }
       >
-        {item.nodeId}
+        {item.executionNodeId}
       </span>
       <span className="text-[var(--md-sys-color-on-surface-variant)]">{label}</span>
       {item.statusLeft != null && styleLeft && (
@@ -134,7 +134,7 @@ export function ExecutionComparisonBar({
                   </div>
                   {failureOrCancelDiffs.map((item) => (
                     <DiffRow
-                      key={item.nodeId}
+                      key={item.executionNodeId}
                       item={item}
                       onSelect={onSelectDiffNode}
                     />
@@ -148,7 +148,7 @@ export function ExecutionComparisonBar({
                   </div>
                   {otherDiffs.map((item) => (
                     <DiffRow
-                      key={item.nodeId}
+                      key={item.executionNodeId}
                       item={item}
                       onSelect={onSelectDiffNode}
                     />

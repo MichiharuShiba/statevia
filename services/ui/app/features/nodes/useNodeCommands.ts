@@ -45,12 +45,12 @@ export function useNodeCommands(
   async function resumeNode(nodeId: string) {
     if (!commandsEnabled) return;
     if (!execution) return;
-    const node = execution.nodes.find((n) => n.nodeId === nodeId);
+    const node = execution.nodes.find((n) => n.executionNodeId === nodeId);
     if (!node) return;
     setLoading(true);
     try {
       await apiPost<CommandAccepted>(
-        `/workflows/${execution.displayId}/nodes/${node.nodeId}/resume`,
+        `/workflows/${execution.displayId}/nodes/${node.executionNodeId}/resume`,
         { resumeKey: node.waitKey ?? undefined }
       );
       onSuccess?.();

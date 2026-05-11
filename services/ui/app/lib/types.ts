@@ -53,7 +53,8 @@ export type WorkflowGraphDTO = {
 
 /** グラフ可視化用のノード（状態実行）。v2 では WorkflowGraphDTO から変換。 */
 export type ExecutionNodeDTO = {
-  nodeId: string;
+  /** ExecutionGraph のノード ID（GET /graph の `nodeId`、WorkflowView の `executionNodeId` と同一値）。 */
+  executionNodeId: string;
   stateName?: string;
   nodeType: string;
   status: NodeStatus;
@@ -96,10 +97,12 @@ export type ApiError = {
 };
 
 export type GraphPatchNode = {
-  nodeId: string;
+  executionNodeId: string;
+  stateName?: string;
   nodeType?: string;
   status?: NodeStatus;
   attempt?: number;
+  workerId?: string | null;
   waitKey?: string | null;
   canceledByExecution?: boolean;
   error?: { message?: string } | null;

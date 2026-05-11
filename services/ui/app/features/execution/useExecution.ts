@@ -59,8 +59,11 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
   const applyExecutionSnapshot = (view: WorkflowView) => {
     setExecution(view);
     setSelectedNodeId((current) => {
-      if (current && view.nodes.some((node) => node.nodeId === current)) return current;
-      return view.nodes[0]?.nodeId ?? null;
+      if (!current) return view.nodes[0]?.executionNodeId ?? null;
+      const key = current.trim();
+      if (view.nodes.some((node) => node.executionNodeId === key)) return current;
+      if (view.nodes.some((node) => (node.stateName?.trim() ?? "") === key)) return current;
+      return view.nodes[0]?.executionNodeId ?? null;
     });
   };
 

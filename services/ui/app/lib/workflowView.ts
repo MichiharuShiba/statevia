@@ -6,9 +6,10 @@ import type {
   WorkflowView
 } from "./types";
 
-/** C# WorkflowGraphDTO のノードを ExecutionNodeDTO に変換（v2）。Core-API の camelCase JSON を前提。 */
+/** C# WorkflowGraphDTO のノードを ExecutionNodeDTO に変換（v2）。GET /graph のノード ID は JSON の `nodeId` のみ（Core-API 永続スナップショットと一致）。 */
 function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNodeDTO {
-  const nodeId = typeof n.nodeId === "string" ? n.nodeId : "";
+  const executionNodeId =
+    typeof n.nodeId === "string" && n.nodeId.length > 0 ? n.nodeId : "";
   const stateName = typeof n.stateName === "string" ? n.stateName : "";
   const nodeType = typeof n.nodeType === "string" ? n.nodeType : "";
   const fact = n.fact;
@@ -26,7 +27,7 @@ function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNod
   const status = resolveNodeStatus(completedAt, factText);
 
   return {
-    nodeId,
+    executionNodeId,
     stateName,
     nodeType,
     status,

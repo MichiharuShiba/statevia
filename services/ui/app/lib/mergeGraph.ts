@@ -3,6 +3,8 @@ import type { ExecutionNodeDTO, NodeStatus, WorkflowView } from "./types";
 
 export type MergedGraphNode = {
   nodeId: string;
+  /** ExecutionGraph のノード ID（差分ハイライト・ランタイム行と対応）。定義のみの IDLE 行では `nodeId` と同一の合成値。 */
+  executionNodeId: string;
   /** 定義グラフ・API の状態名（実行ノードに stateName があればそれを優先） */
   stateName: string;
   nodeType: string;
@@ -10,6 +12,8 @@ export type MergedGraphNode = {
   branch?: string;
   status: NodeStatus;
   attempt: number;
+  /** ランタイム行がマージされたときのワーカー ID（定義のみの IDLE 行では null）。 */
+  workerId: string | null;
   waitKey: string | null;
   canceledByExecution: boolean;
 };
@@ -38,7 +42,7 @@ export type MergedGraph = {
 /** 定義のみ存在するノード用。`nodeId` は定義上のノードキー、`stateName` はワークフロー状態名。 */
 function asIdleNode(nodeId: string, stateName: string, nodeType: string): ExecutionNodeDTO {
   return {
-    nodeId,
+    executionNodeId: nodeId,
     stateName,
     nodeType,
     status: "IDLE",
@@ -68,11 +72,11 @@ export function mergeGraph(execution: WorkflowView, definition: GraphDefinition 
   const byStateNameKey = new Map<string, ExecutionNodeDTO>();
   const stateNameByRuntimeId = new Map<string, string>();
   for (const n of execution.nodes) {
-    byRuntimeId.set(n.nodeId, n);
+    byRuntimeId.set(n.executionNodeId, n);
     const trimmed = typeof n.stateName === "string" ? n.stateName.trim() : "";
     if (trimmed.length === 0) continue;
     byStateNameKey.set(trimmed, n);
-    stateNameByRuntimeId.set(n.nodeId, trimmed);
+    stateNameByRuntimeId.set(n.executionNodeId, trimmed);
   }
 
   const traversedEdgeKeys = new Set(
@@ -88,12 +92,14 @@ export function mergeGraph(execution: WorkflowView, definition: GraphDefinition 
     return {
       graphId: execution.graphId,
       nodes: execution.nodes.map((n) => ({
-        nodeId: n.nodeId,
+        nodeId: n.executionNodeId,
+        executionNodeId: n.executionNodeId,
         stateName: n.stateName ?? "",
         nodeType: n.nodeType,
-        label: n.nodeId,
+        label: n.executionNodeId,
         status: n.status,
         attempt: n.attempt,
+        workerId: n.workerId,
         waitKey: n.waitKey,
         canceledByExecution: n.canceledByExecution
       })),
@@ -122,12 +128,14 @@ export function mergeGraph(execution: WorkflowView, definition: GraphDefinition 
 
     return {
       nodeId: defNode.nodeId,
+      executionNodeId: runtimeNode.executionNodeId,
       stateName: resolvedStateName,
       nodeType: defNode.nodeType,
       label: defNode.label ?? defNode.nodeId,
       branch: defNode.branch,
       status: runtimeNode.status,
       attempt: runtimeNode.attempt,
+      workerId: runtimeNode.workerId,
       waitKey: runtimeNode.waitKey,
       canceledByExecution: runtimeNode.canceledByExecution
     };

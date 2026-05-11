@@ -52,7 +52,7 @@ export function useGraphData(
 
 /**
  * ノード詳細・Resume 用に `ExecutionNodeDTO` を解決する。
- * リストはランタイム `nodeId`（UUID）、グラフは定義グラフの `nodeId`（状態キー）で選択するため、
+ * リストはランタイム `executionNodeId`（UUID）、グラフは定義の `nodeId`（状態キー）で選択するため、
  * `stateName` およびマージ結果の `stateName` でランタイム行へ寄せる。
  */
 export function getNodeWithFallback(
@@ -63,7 +63,7 @@ export function getNodeWithFallback(
   if (!execution || !nodeId) return null;
   const key = nodeId.trim();
 
-  const byRuntimeId = execution.nodes.find((n) => n.nodeId === key);
+  const byRuntimeId = execution.nodes.find((n) => n.executionNodeId === key);
   if (byRuntimeId) return byRuntimeId;
 
   const byStateNameKey = execution.nodes.find(
@@ -90,12 +90,12 @@ export function getNodeWithFallback(
   if (!mergedNode) return null;
 
   return {
-    nodeId: mergedNode.nodeId,
+    executionNodeId: mergedNode.executionNodeId,
     stateName: mergedNode.stateName,
     nodeType: mergedNode.nodeType,
     status: mergedNode.status,
     attempt: mergedNode.attempt,
-    workerId: null,
+    workerId: mergedNode.workerId,
     waitKey: mergedNode.waitKey,
     canceledByExecution: mergedNode.canceledByExecution
   };

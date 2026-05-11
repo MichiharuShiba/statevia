@@ -31,7 +31,10 @@ import { GraphNodeShell } from "./GraphNodeShell";
 export type NodeDiffHighlight = Record<string, { isFailureOrCancel: boolean }>;
 
 type ExecutionNodeData = {
+  /** 定義グラフ上のノード ID（選択・Resume エッジ照合）。 */
   nodeId: string;
+  /** ExecutionGraph のノード ID（Resume API 本体）。 */
+  executionNodeId: string;
   label: string;
   nodeType: string;
   status: NodeStatus;
@@ -39,7 +42,7 @@ type ExecutionNodeData = {
   waitKey: string | null;
   selected: boolean;
   onSelect: (nodeId: string) => void;
-  onResume: (nodeId: string) => void;
+  onResume: (executionNodeId: string) => void;
   resumeDisabledReason: string | null;
   /** 比較モード時の差分ハイライト（該当時のみ ring 表示） */
   diffHighlight?: { isFailureOrCancel: boolean } | null;
@@ -99,7 +102,7 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
           className="nodrag w-full cursor-pointer rounded-lg bg-amber-500 px-2 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
           onClick={(event) => {
             event.stopPropagation();
-            data.onResume(data.nodeId);
+            data.onResume(data.executionNodeId);
           }}
           disabled={!!data.resumeDisabledReason}
         >
@@ -196,7 +199,7 @@ type NodeGraphViewProps = {
   defaultViewport?: GraphViewport;
   /** パン・ズーム終了時に呼ばれる（状態保持用） */
   onViewportChange?: (viewport: GraphViewport) => void;
-  /** 比較モード時のノード差分ハイライト（nodeId -> ハイライト情報） */
+  /** 比較モード時のノード差分ハイライト（executionNodeId -> ハイライト情報） */
   nodeDiffHighlight?: NodeDiffHighlight;
 };
 
@@ -235,16 +238,17 @@ export function NodeGraphView({
       draggable: true,
       data: {
         nodeId: node.nodeId,
-        label: node.nodeId,
+        executionNodeId: node.executionNodeId,
+        label: node.label,
         nodeType: node.nodeType,
         status: node.status,
         attempt: node.attempt,
         waitKey: node.waitKey,
         selected: false,
-        onSelect: (nodeId: string) => onSelectNode(nodeId),
-        onResume: (nodeId: string) => onResumeNode(nodeId),
+        onSelect: (id: string) => onSelectNode(id),
+        onResume: (id: string) => onResumeNode(id),
         resumeDisabledReason: getResumeDisabledReason(node.nodeId),
-        diffHighlight: nodeDiffHighlight?.[node.nodeId] ?? null
+        diffHighlight: nodeDiffHighlight?.[node.executionNodeId] ?? null
       },
       style: { width: node.w, height: node.h }
     }));
@@ -277,7 +281,7 @@ export function NodeGraphView({
           resumeDisabledReason: getResumeDisabledReason(d.nodeId),
           onSelect: (id: string) => onSelectNode(id),
           onResume: (id: string) => onResumeNode(id),
-          diffHighlight: nodeDiffHighlight?.[d.nodeId] ?? null
+          diffHighlight: nodeDiffHighlight?.[d.executionNodeId] ?? null
         }
       };
     });

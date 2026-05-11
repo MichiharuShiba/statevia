@@ -21,13 +21,13 @@ function normalizeNodeStatus(value: string): NodeStatus | null {
   return allowed.has(normalized as NodeStatus) ? (normalized as NodeStatus) : null;
 }
 
-function upsertNode(nodes: ExecutionNodeDTO[], incoming: Partial<ExecutionNodeDTO> & { nodeId: string }): ExecutionNodeDTO[] {
-  const index = nodes.findIndex((node) => node.nodeId === incoming.nodeId);
+function upsertNode(nodes: ExecutionNodeDTO[], incoming: Partial<ExecutionNodeDTO> & { executionNodeId: string }): ExecutionNodeDTO[] {
+  const index = nodes.findIndex((node) => node.executionNodeId === incoming.executionNodeId);
   if (index < 0) {
     return [
       ...nodes,
       {
-        nodeId: incoming.nodeId,
+        executionNodeId: incoming.executionNodeId,
         stateName: incoming.stateName ?? "",
         nodeType: incoming.nodeType ?? "Unknown",
         status: incoming.status ?? "IDLE",
@@ -42,11 +42,11 @@ function upsertNode(nodes: ExecutionNodeDTO[], incoming: Partial<ExecutionNodeDT
   }
 
   const target = nodes[index];
-  const nextNode: ExecutionNodeDTO = {
-    ...target,
-    ...incoming,
-    nodeId: target.nodeId
-  };
+  const { executionNodeId: _ignoredExecutionNodeId, ...rest } = incoming;
+  const definedPatch = Object.fromEntries(
+    Object.entries(rest).filter(([, value]) => value !== undefined)
+  ) as Partial<ExecutionNodeDTO>;
+  const nextNode: ExecutionNodeDTO = { ...target, ...definedPatch, executionNodeId: target.executionNodeId };
 
   return [...nodes.slice(0, index), nextNode, ...nodes.slice(index + 1)];
 }
@@ -56,9 +56,11 @@ function applyGraphUpdated(execution: WorkflowView, event: Extract<ExecutionStre
   const nextNodes = patchNodes.reduce((acc, patchNode) => {
     const normalizedStatus = patchNode.status ? normalizeNodeStatus(patchNode.status) : null;
     return upsertNode(acc, {
-      nodeId: patchNode.nodeId,
+      executionNodeId: patchNode.executionNodeId,
+      stateName: patchNode.stateName,
       status: normalizedStatus ?? undefined,
       attempt: patchNode.attempt,
+      workerId: patchNode.workerId,
       waitKey: patchNode.waitKey,
       canceledByExecution: patchNode.canceledByExecution,
       error: patchNode.error,
@@ -82,7 +84,7 @@ function applyNodeCancelled(execution: WorkflowView, event: Extract<ExecutionStr
   return {
     ...execution,
     nodes: upsertNode(execution.nodes, {
-      nodeId: event.nodeId,
+      executionNodeId: event.nodeId,
       status: "CANCELED",
       canceledByExecution: true,
       cancelReason: reason
@@ -96,7 +98,7 @@ function applyNodeFailed(execution: WorkflowView, event: Extract<ExecutionStream
   return {
     ...execution,
     nodes: upsertNode(execution.nodes, {
-      nodeId: event.nodeId,
+      executionNodeId: event.nodeId,
       status: "FAILED",
       error
     })

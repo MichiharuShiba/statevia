@@ -32,15 +32,15 @@ export function NodeListView({ nodes, selectedNodeId, onSelectNode }: Readonly<N
         <tbody>
           {sorted.map((node) => {
             const style = getStatusStyle(node.status);
-            const selected = selectedNodeId === node.nodeId;
+            const selected = selectedNodeId === node.executionNodeId;
             const runningClass = node.status === "RUNNING" ? "opacity-80" : "";
             return (
               <tr
-                key={node.nodeId}
+                key={node.executionNodeId}
                 className={`cursor-pointer border-t border-[var(--md-sys-color-outline)] ${style.bgClass} ${runningClass} ${selected ? "outline outline-2 outline-[var(--md-sys-color-primary)]" : ""}`}
-                onClick={() => onSelectNode(node.nodeId)}
+                onClick={() => onSelectNode(node.executionNodeId)}
               >
-                <td className="py-2 pr-2 font-mono text-xs">{node.nodeId}</td>
+                <td className="py-2 pr-2 font-mono text-xs">{node.executionNodeId}</td>
                 <td className="py-2 pr-2">{node.nodeType}</td>
                 <td className="py-2 pr-2">
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${style.badgeClass}`}>
