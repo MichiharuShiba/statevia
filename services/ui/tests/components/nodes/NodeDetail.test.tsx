@@ -56,10 +56,10 @@ describe("NodeDetail", () => {
     expect(screen.getByText(uiText.nodeDetail.prompts.selectNode(uiText.entities.node))).toBeInTheDocument();
   });
 
-  it("node が選択されているとき詳細見出しと nodeId を表示する", () => {
+  it("node が選択されているとき詳細見出しと実行ノード ID を表示する", () => {
     render(<NodeDetail {...defaultProps} />);
     expect(screen.getByText(uiText.nodeDetail.title(uiText.entities.node))).toBeInTheDocument();
-    expect(screen.getByText("n-1")).toBeInTheDocument();
+    expect(screen.getByText(uiText.nodeDetail.meta.executionNodeId("n-1"))).toBeInTheDocument();
     expect(screen.getByText("RUNNING")).toBeInTheDocument();
   });
 
@@ -67,23 +67,26 @@ describe("NodeDetail", () => {
     const node: ExecutionNodeDTO = {
       ...baseNode,
       status: "SUCCEEDED",
-      startedAt: "2026-01-15T10:00:00.000Z",
-      completedAt: "2026-01-15T10:00:01.000Z"
+      startedAt: "2026-01-15T10:00:00.123Z",
+      completedAt: "2026-01-15T10:00:01.456Z"
     };
     render(<NodeDetail {...defaultProps} node={node} />);
     expect(screen.getByText(/開始:/)).toBeInTheDocument();
     expect(screen.getByText(/終了:/)).toBeInTheDocument();
     expect(screen.getByText(/実行時間:/)).toBeInTheDocument();
+    expect(screen.getByText(/123/)).toBeInTheDocument();
+    expect(screen.getByText(/456/)).toBeInTheDocument();
   });
 
   it("output を渡すと出力見出しと内容を表示する", () => {
     const node: ExecutionNodeDTO = { ...baseNode, output: { x: 1 } };
     render(<NodeDetail {...defaultProps} node={node} />);
+    fireEvent.click(screen.getByText(uiText.nodeDetail.trace.outputHeading));
     expect(screen.getByText(uiText.nodeDetail.trace.outputHeading)).toBeInTheDocument();
     expect(screen.getByText(/"x": 1/, { exact: false })).toBeInTheDocument();
   });
 
-  it("stateName があるときメタ情報に状態名を表示する", () => {
+  it("stateName があるときメタ情報にノード名を表示する", () => {
     const node: ExecutionNodeDTO = { ...baseNode, stateName: "MyState" };
     render(<NodeDetail {...defaultProps} node={node} />);
     expect(screen.getByText(uiText.nodeDetail.meta.stateName("MyState"))).toBeInTheDocument();
@@ -92,6 +95,7 @@ describe("NodeDetail", () => {
   it("input を渡すとトレース欄に入力見出しと内容を表示する", () => {
     const node: ExecutionNodeDTO = { ...baseNode, input: { seed: true } };
     render(<NodeDetail {...defaultProps} node={node} />);
+    fireEvent.click(screen.getByText(uiText.nodeDetail.trace.inputHeading));
     expect(screen.getByText(uiText.nodeDetail.trace.inputHeading)).toBeInTheDocument();
     expect(screen.getByText(/"seed": true/, { exact: false })).toBeInTheDocument();
   });
