@@ -8,6 +8,13 @@ describe("dateTime", () => {
     expect(s).not.toBe("2026-01-15T10:00:00.000Z");
   });
 
+  it("formatExecutionInstant はミリ秒まで含める", () => {
+    const ja = formatExecutionInstant("2026-01-15T10:00:00.789Z", "ja");
+    expect(ja).toMatch(/789/);
+    const en = formatExecutionInstant("2026-01-15T10:00:00.789Z", "en");
+    expect(en).toMatch(/789/);
+  });
+
   it("formatExecutionDuration は ms / s / min 表記に切り替える", () => {
     expect(
       formatExecutionDuration("2026-01-15T10:00:00.000Z", "2026-01-15T10:00:00.100Z")

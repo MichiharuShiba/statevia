@@ -18,12 +18,27 @@ export function formatDateTimeLocalized(
 }
 
 /**
- * 実行グラフ由来の ISO 時刻を画面表示用に整形する。
+ * 実行グラフ由来の ISO 時刻を画面表示用に整形する（日付＋時刻、ミリ秒まで）。
  */
 export function formatExecutionInstant(iso: string, locale: Locale): string {
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return iso;
-  return new Date(t).toLocaleString(getDateTimeLocale(locale));
+  const loc = getDateTimeLocale(locale);
+  const d = new Date(t);
+  try {
+    return new Intl.DateTimeFormat(loc, {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      fractionalSecondDigits: 3,
+      hour12: locale === "en"
+    }).format(d);
+  } catch {
+    return d.toLocaleString(loc);
+  }
 }
 
 /**
