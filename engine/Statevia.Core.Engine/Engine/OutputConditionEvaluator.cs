@@ -300,12 +300,135 @@ internal static class OutputConditionEvaluator
             return left is null && right is null;
         }
 
+        if (TryEqualityWithBooleanCoercion(left, right, out var boolEquality))
+        {
+            return boolEquality;
+        }
+
         if (TryConvertDecimal(left, out var leftNumber) && TryConvertDecimal(right, out var rightNumber))
         {
             return leftNumber == rightNumber;
         }
 
         return Equals(left, right);
+    }
+
+    /// <summary>
+    /// YAML / JSON で片側のみ真偽に解釈されるスカラーが混ざる場合（例: 実側が長整数 1、定義側が <c>true</c>）。
+    /// いずれかが <see cref="bool"/> のときにもう一方を真偽に正規化して比較する。
+    /// </summary>
+    private static bool TryEqualityWithBooleanCoercion(object left, object right, out bool equal)
+    {
+        equal = false;
+
+        if (left is bool leftBool && TryCoerceToBoolForMixedComparison(right, out var rightBool))
+        {
+            equal = leftBool == rightBool;
+            return true;
+        }
+
+        if (right is bool rightBool2 && TryCoerceToBoolForMixedComparison(left, out var leftBool2))
+        {
+            equal = leftBool2 == rightBool2;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 条件式で <c>true</c> / <c>false</c> と比較される列挙のみを真偽に写像する。曖昧な数値や文字列は失敗させる。
+    /// </summary>
+    private static bool TryCoerceToBoolForMixedComparison(object value, out bool converted)
+    {
+        if (value is bool b)
+        {
+            converted = b;
+            return true;
+        }
+
+        if (value is string s)
+            return TryCoerceStringToBool(s, out converted);
+
+        if (TryCoerceIntegralLikeNumberToBool(value, out converted))
+            return true;
+
+        if (value is float f && ApproxBinaryFloat(f))
+        {
+            converted = Math.Abs(f - 1f) < 1e-6f;
+            return true;
+        }
+
+        if (value is double db && ApproxBinaryDouble(db))
+        {
+            converted = Math.Abs(db - 1d) < 1e-9;
+            return true;
+        }
+
+        converted = default;
+        return false;
+    }
+
+    private static bool TryCoerceStringToBool(string raw, out bool converted)
+    {
+        var trimmed = raw.Trim();
+        if (string.Equals(trimmed, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            converted = true;
+            return true;
+        }
+
+        if (string.Equals(trimmed, "false", StringComparison.OrdinalIgnoreCase))
+        {
+            converted = false;
+            return true;
+        }
+
+        if (string.Equals(trimmed, "1", StringComparison.Ordinal))
+        {
+            converted = true;
+            return true;
+        }
+
+        if (string.Equals(trimmed, "0", StringComparison.Ordinal))
+        {
+            converted = false;
+            return true;
+        }
+
+        converted = default;
+        return false;
+    }
+
+    private static bool TryCoerceIntegralLikeNumberToBool(object value, out bool converted)
+    {
+        converted = value switch
+        {
+            byte b => b != 0,
+            sbyte sb => sb != 0,
+            short sh => sh != 0,
+            ushort ush => ush != 0,
+            int i => i != 0,
+            uint ui => ui != 0,
+            long l => l != 0,
+            ulong ul => ul != 0,
+            decimal dcm => dcm != 0m,
+            _ => false
+        };
+
+        return value switch
+        {
+            byte b => b is 0 or 1,
+            sbyte sb => sb is 0 or 1,
+            short sh => sh is 0 or 1,
+            ushort ush => ush is 0 or 1,
+            int i => i is 0 or 1,
+            uint ui => ui is 0 or 1,
+            long l => l is 0L or 1L,
+            ulong ul => ul is 0UL or 1UL,
+            decimal dcm => dcm == 0m || dcm == 1m,
+            _ => false
+        };
     }
 
     private static bool TryCompare(object? left, object? right, out int comparison)
@@ -375,6 +498,12 @@ internal static class OutputConditionEvaluator
             _ => jsonElement
         };
     }
+
+    private static bool ApproxBinaryFloat(float value) =>
+        float.IsFinite(value) && (Math.Abs(value) < 1e-6f || Math.Abs(value - 1f) < 1e-6f);
+
+    private static bool ApproxBinaryDouble(double value) =>
+        double.IsFinite(value) && (Math.Abs(value) < 1e-9 || Math.Abs(value - 1d) < 1e-9);
 
     private static bool TryConvertDecimal(object value, out decimal result)
     {
