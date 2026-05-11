@@ -4,6 +4,7 @@ using Statevia.Core.Api.Application.Actions.Abstractions;
 using Statevia.Core.Api.Application.Actions.Registry;
 using Statevia.Core.Api.Application.Definition;
 using Statevia.Core.Api.Hosting;
+using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Execution;
@@ -704,7 +705,7 @@ public sealed class DefinitionCompilerServiceTests
             .First(n =>
                 string.Equals(n.GetProperty("stateName").GetString(), "order.preflight", StringComparison.Ordinal));
         Assert.True(preflightNode.TryGetProperty("conditionRouting", out var routing));
-        Assert.Equal("matched_case", routing.GetProperty("resolution").GetString());
+        Assert.Equal(ConditionRoutingResolutions.MatchedCase, routing.GetProperty("resolution").GetString());
         Assert.Equal(0, routing.GetProperty("matchedCaseIndex").GetInt32());
     }
 

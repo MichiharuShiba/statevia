@@ -5,6 +5,7 @@ using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Services;
+using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Core.Api.Tests.Controllers;
 
@@ -468,10 +469,10 @@ public sealed class WorkflowsControllerTests
                         WorkerId = null,
                         WaitKey = null,
                         CanceledByExecution = false,
-                        ConditionRouting = JsonDocument.Parse("""
+                        ConditionRouting = JsonDocument.Parse($$"""
                             {
                               "fact": "Completed",
-                              "resolution": "matched_case",
+                              "resolution": "{{ConditionRoutingResolutions.MatchedCase}}",
                               "matchedCaseIndex": 0
                             }
                             """).RootElement.Clone()
@@ -491,7 +492,7 @@ public sealed class WorkflowsControllerTests
         Assert.Equal("n1", model.Nodes[0].NodeId);
         Assert.True(model.Nodes[0].ConditionRouting.HasValue);
         Assert.Equal(
-            "matched_case",
+            ConditionRoutingResolutions.MatchedCase,
             model.Nodes[0].ConditionRouting!.Value.GetProperty("resolution").GetString());
     }
 

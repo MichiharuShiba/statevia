@@ -389,7 +389,7 @@ public class WorkflowEngineTests
         Assert.False(routeNode.TryGetProperty("ConditionRouting", out _));
         var routing = routeNode.GetProperty("conditionRouting");
         Assert.Equal("Completed", routing.GetProperty("fact").GetString());
-        Assert.Equal("default_fallback", routing.GetProperty("resolution").GetString());
+        Assert.Equal(ConditionRoutingResolutions.DefaultFallback, routing.GetProperty("resolution").GetString());
         var matchedIdx = routing.GetProperty("matchedCaseIndex");
         Assert.Equal(JsonValueKind.Null, matchedIdx.ValueKind);
         var evaluations = routing.GetProperty("caseEvaluations").EnumerateArray().ToList();
