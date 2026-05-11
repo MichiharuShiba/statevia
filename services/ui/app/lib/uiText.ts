@@ -133,6 +133,8 @@ export type UiText = {
     title: (nodeLabel: string) => string;
     meta: {
       type: (nodeType: string) => string;
+      stateName: (stateName: string) => string;
+      workerId: (workerId: string) => string;
       attempt: (attempt: number) => string;
       waitKey: (waitKey: string) => string;
       canceledByExecution: (canceledByExecution: boolean) => string;
@@ -157,6 +159,8 @@ export type UiText = {
       durationUnavailable: string;
       outputHeading: string;
       outputEmpty: string;
+      inputHeading: string;
+      inputEmpty: string;
       conditionRoutingHeading: string;
       conditionRoutingEmpty: string;
     };
@@ -614,6 +618,8 @@ export const uiText: UiText = {
     title: (_nodeLabel: string) => "ノード詳細",
     meta: {
       type: (nodeType: string) => `種別: ${nodeType}`,
+      stateName: (stateName: string) => `状態名: ${stateName}`,
+      workerId: (workerId: string) => `ワーカー ID: ${workerId}`,
       attempt: (attempt: number) => `試行回数: ${attempt}`,
       waitKey: (waitKey: string) => `Wait キー: ${waitKey}`,
       canceledByExecution: (canceledByExecution: boolean) => `キャンセル: ${String(canceledByExecution)}`,
@@ -638,6 +644,8 @@ export const uiText: UiText = {
       durationUnavailable: "実行時間: —",
       outputHeading: "出力",
       outputEmpty: "（なし）",
+      inputHeading: "入力",
+      inputEmpty: "（なし）",
       conditionRoutingHeading: "条件ルーティング",
       conditionRoutingEmpty: "（なし）",
     },

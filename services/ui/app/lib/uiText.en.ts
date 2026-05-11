@@ -138,6 +138,8 @@ export const uiTextEn: UiText = {
     title: (nodeLabel: string) => `${nodeLabel} detail`,
     meta: {
       type: (nodeType: string) => `Type: ${nodeType}`,
+      stateName: (stateName: string) => `State name: ${stateName}`,
+      workerId: (workerId: string) => `Worker ID: ${workerId}`,
       attempt: (attempt: number) => `Attempts: ${attempt}`,
       waitKey: (waitKey: string) => `Wait key: ${waitKey}`,
       canceledByExecution: (canceledByExecution: boolean) => `Canceled: ${String(canceledByExecution)}`,
@@ -162,6 +164,8 @@ export const uiTextEn: UiText = {
       durationUnavailable: "Duration: —",
       outputHeading: "Output",
       outputEmpty: "(None)",
+      inputHeading: "Input",
+      inputEmpty: "(None)",
       conditionRoutingHeading: "Condition routing",
       conditionRoutingEmpty: "(None)",
     },
