@@ -38,6 +38,25 @@ public class WorkflowInputPropagationTests
         Assert.Equal("workflow-seed", seen);
     }
 
+    /// <summary>実行グラフ JSON の初期状態ノードに workflowInput が記録されることを検証する。</summary>
+    [Fact]
+    public async Task ExportExecutionGraph_records_workflow_input_on_initial_state_node()
+    {
+        var def = CreateSingleStateDefinition(
+            DefaultStateExecutor.Create(new ImmediateState()));
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var seed = new Dictionary<string, object?> { ["k"] = "v" };
+        var id = engine.Start(def, null, seed);
+
+        await WaitUntilCompletedAsync(engine, id);
+
+        using var doc = JsonDocument.Parse(engine.ExportExecutionGraph(id));
+        var nodes = doc.RootElement.GetProperty("nodes").EnumerateArray().ToList();
+        var startNode = Assert.Single(nodes, n => n.GetProperty("stateName").GetString() == "Start");
+        Assert.Equal(JsonValueKind.Object, startNode.GetProperty("input").ValueKind);
+        Assert.Equal("v", startNode.GetProperty("input").GetProperty("k").GetString());
+    }
+
     /// <summary>next 遷移で後続状態には直前状態の出力が input として渡ることを検証する。</summary>
     [Fact]
     public async Task Next_transition_passes_previous_output()
