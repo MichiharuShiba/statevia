@@ -15,7 +15,10 @@ export type WorkflowDTO = {
   restartLost: boolean;
 };
 
-/** v2: GET /v1/workflows/:id/graph のノード（C# ExecutionNode）。JSON は camelCase（Core-API）。 */
+/**
+ * v2: GET /v1/workflows/:id/graph のノード（C# ExecutionNode）。JSON は camelCase（Core-API）。
+ * ノード ID のキーは API／Engine／永続グラフとも `nodeId` のまま。UI 組み立て後の `ExecutionNodeDTO` だけ `executionNodeId` に正規化する。
+ */
 export type WorkflowGraphNodeDTO = {
   nodeId?: string;
   stateName?: string;
@@ -53,7 +56,7 @@ export type WorkflowGraphDTO = {
 
 /** グラフ可視化用のノード（状態実行）。v2 では WorkflowGraphDTO から変換。 */
 export type ExecutionNodeDTO = {
-  /** ExecutionGraph のノード ID（GET /graph の `nodeId`、WorkflowView の `executionNodeId` と同一値）。 */
+  /** UI 向けの実行ノード ID。永続グラフ JSON のキーは `nodeId` のまま（API／Engine は変更しない）。グラフから組み立てるときはその値と同じ。 */
   executionNodeId: string;
   stateName?: string;
   nodeType: string;
@@ -96,6 +99,7 @@ export type ApiError = {
   };
 };
 
+/** GraphUpdated 等のパッチ。`executionNodeId` は UI／REST 向け名（永続グラフ JSON の `nodeId` と同値）。 */
 export type GraphPatchNode = {
   executionNodeId: string;
   stateName?: string;
