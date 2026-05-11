@@ -15,7 +15,7 @@ const baseExecution: WorkflowView = {
   graphId: "g-1",
   nodes: [
     {
-      nodeId: "n-1",
+      executionNodeId: "n-1",
       nodeType: "TASK",
       status: "IDLE",
       attempt: 0,
@@ -32,7 +32,7 @@ describe("parseExecutionStreamEvent", () => {
     const raw = JSON.stringify({
       type: "GraphUpdated",
       executionId: "ex-1",
-      patch: { nodes: [{ nodeId: "n-1", status: "RUNNING" }] },
+      patch: { nodes: [{ executionNodeId: "n-1", status: "RUNNING" }] },
       at: "2026-01-01T00:00:00Z"
     });
 
@@ -176,7 +176,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ nodeId: "n-1", status: "RUNNING", attempt: 1 }] }
+        patch: { nodes: [{ executionNodeId: "n-1", status: "RUNNING", attempt: 1 }] }
       })
     )!;
 
@@ -188,6 +188,64 @@ describe("applyExecutionStreamEvent", () => {
     expect(next.nodes[0].attempt).toBe(1);
   });
 
+  it("GraphUpdated で stateName・workerId が無いとき既存の stateName・workerId を維持する", () => {
+    const execution: WorkflowView = {
+      ...baseExecution,
+      nodes: [
+        {
+          executionNodeId: "n-1",
+          stateName: "Alpha",
+          nodeType: "TASK",
+          status: "IDLE",
+          attempt: 0,
+          workerId: "old-w",
+          waitKey: null,
+          canceledByExecution: false
+        }
+      ]
+    };
+    const event = parseExecutionStreamEvent(
+      JSON.stringify({
+        type: "GraphUpdated",
+        executionId: "ex-1",
+        patch: { nodes: [{ executionNodeId: "n-1", status: "RUNNING" }] }
+      })
+    )!;
+    const next = applyExecutionStreamEvent(execution, event);
+    expect(next.nodes[0].stateName).toBe("Alpha");
+    expect(next.nodes[0].workerId).toBe("old-w");
+  });
+
+  it("GraphUpdated で stateName・workerId をパッチすると上書きする", () => {
+    const execution: WorkflowView = {
+      ...baseExecution,
+      nodes: [
+        {
+          executionNodeId: "n-1",
+          stateName: "Alpha",
+          nodeType: "TASK",
+          status: "IDLE",
+          attempt: 0,
+          workerId: "old-w",
+          waitKey: null,
+          canceledByExecution: false
+        }
+      ]
+    };
+    const event = parseExecutionStreamEvent(
+      JSON.stringify({
+        type: "GraphUpdated",
+        executionId: "ex-1",
+        patch: {
+          nodes: [{ executionNodeId: "n-1", status: "RUNNING", stateName: "Beta", workerId: "new-w" }]
+        }
+      })
+    )!;
+    const next = applyExecutionStreamEvent(execution, event);
+    expect(next.nodes[0].stateName).toBe("Beta");
+    expect(next.nodes[0].workerId).toBe("new-w");
+  });
+
   it("GraphUpdated を適用してノードの error と cancelReason をマージする", () => {
     // Arrange
     const event = parseExecutionStreamEvent(
@@ -197,7 +255,7 @@ describe("applyExecutionStreamEvent", () => {
         patch: {
           nodes: [
             {
-              nodeId: "n-1",
+              executionNodeId: "n-1",
               status: "FAILED",
               error: { message: "merged error" },
               cancelReason: "merged reason"
@@ -369,7 +427,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ nodeId: "n-2", status: "IDLE" }] }
+        patch: { nodes: [{ executionNodeId: "n-2", status: "IDLE" }] }
       })
     )!;
 
@@ -378,7 +436,7 @@ describe("applyExecutionStreamEvent", () => {
 
     // Assert
     expect(next.nodes).toHaveLength(2);
-    const added = next.nodes.find((n) => n.nodeId === "n-2");
+    const added = next.nodes.find((n) => n.executionNodeId === "n-2");
     expect(added?.status).toBe("IDLE");
     expect(added?.nodeType).toBe("Unknown");
   });
@@ -434,7 +492,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ nodeId: "n-1", status: "CANCELLED" }] }
+        patch: { nodes: [{ executionNodeId: "n-1", status: "CANCELLED" }] }
       })
     )!;
 
@@ -451,7 +509,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ nodeId: "n-1" }] }
+        patch: { nodes: [{ executionNodeId: "n-1" }] }
       })
     )!;
 
@@ -460,7 +518,7 @@ describe("applyExecutionStreamEvent", () => {
 
     // Assert
     expect(next.nodes).toHaveLength(1);
-    expect(next.nodes[0].nodeId).toBe("n-1");
+    expect(next.nodes[0].executionNodeId).toBe("n-1");
   });
 
   it("GraphUpdated で patch の status が不正な文字列のときは normalizeNodeStatus が null で status は undefined で上書きされる", () => {
@@ -469,7 +527,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ nodeId: "n-1", status: "INVALID_STATUS" }] }
+        patch: { nodes: [{ executionNodeId: "n-1", status: "INVALID_STATUS" }] }
       })
     )!;
 
@@ -477,7 +535,7 @@ describe("applyExecutionStreamEvent", () => {
     const next = applyExecutionStreamEvent(baseExecution, event);
 
     // Assert
-    expect(next.nodes[0].nodeId).toBe("n-1");
+    expect(next.nodes[0].executionNodeId).toBe("n-1");
     expect(next.nodes).toHaveLength(1);
   });
 
@@ -488,7 +546,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ nodeId: "n-new", status: "IDLE" }] }
+        patch: { nodes: [{ executionNodeId: "n-new", status: "IDLE" }] }
       })
     )!;
 
@@ -507,7 +565,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ nodeId: "n-1", status: "IDLE" }] }
+        patch: { nodes: [{ executionNodeId: "n-1", status: "IDLE" }] }
       })
     )!;
 
@@ -516,7 +574,7 @@ describe("applyExecutionStreamEvent", () => {
 
     // Assert
     expect(next.nodes).toHaveLength(1);
-    expect(next.nodes[0].nodeId).toBe("n-1");
+    expect(next.nodes[0].executionNodeId).toBe("n-1");
     expect(next.nodes[0].status).toBe("IDLE");
   });
 });

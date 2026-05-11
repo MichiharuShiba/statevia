@@ -3,12 +3,12 @@ import { computeExecutionDiff } from "../../app/lib/executionDiff";
 import type { ExecutionNodeDTO, WorkflowStatus, WorkflowView } from "../../app/lib/types";
 
 function node(
-  nodeId: string,
+  executionNodeId: string,
   status: ExecutionNodeDTO["status"],
   nodeType = "Task"
 ): ExecutionNodeDTO {
   return {
-    nodeId,
+    executionNodeId,
     nodeType,
     status,
     attempt: 1,
@@ -65,9 +65,9 @@ describe("computeExecutionDiff", () => {
     const result = computeExecutionDiff(a, b);
     expect(result).not.toBeNull();
     expect(result!.nodeDiffs).toHaveLength(2);
-    expect(result!.nodeDiffs[0].nodeId).toBe("n2");
+    expect(result!.nodeDiffs[0].executionNodeId).toBe("n2");
     expect(result!.nodeDiffs[0].isFailureOrCancel).toBe(true);
-    expect(result!.nodeDiffs[1].nodeId).toBe("n3");
+    expect(result!.nodeDiffs[1].executionNodeId).toBe("n3");
     expect(result!.nodeDiffs[1].isFailureOrCancel).toBe(true);
     expect(result!.nodeHighlights["n2"]).toEqual({ isFailureOrCancel: true });
     expect(result!.nodeHighlights["n3"]).toEqual({ isFailureOrCancel: true });
@@ -81,7 +81,7 @@ describe("computeExecutionDiff", () => {
     expect(result!.onlyInLeft).toContain("n2");
     expect(result!.onlyInRight).toHaveLength(0);
     const onlyLeft = result!.nodeDiffs.find((d) => d.kind === "only_in_left");
-    expect(onlyLeft?.nodeId).toBe("n2");
+    expect(onlyLeft?.executionNodeId).toBe("n2");
   });
 
   it("片方にのみ存在するノードを検出する（B のみ）", () => {
@@ -92,7 +92,7 @@ describe("computeExecutionDiff", () => {
     expect(result!.onlyInLeft).toHaveLength(0);
     expect(result!.onlyInRight).toContain("n2");
     const onlyRight = result!.nodeDiffs.find((d) => d.kind === "only_in_right");
-    expect(onlyRight?.nodeId).toBe("n2");
+    expect(onlyRight?.executionNodeId).toBe("n2");
     expect(onlyRight?.statusRight).toBe("FAILED");
     expect(onlyRight?.isFailureOrCancel).toBe(true);
     expect(result!.nodeHighlights["n2"]).toEqual({ isFailureOrCancel: true });

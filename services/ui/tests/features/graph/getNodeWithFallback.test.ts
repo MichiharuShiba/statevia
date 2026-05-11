@@ -32,11 +32,13 @@ describe("getNodeWithFallback", () => {
     const graph = graphData([
       {
         nodeId: "n-1",
+        executionNodeId: "n-1",
         stateName: "n-1",
         nodeType: "TASK",
         label: "n-1",
         status: "IDLE",
         attempt: 0,
+        workerId: null,
         waitKey: null,
         canceledByExecution: false
       }
@@ -51,7 +53,7 @@ describe("getNodeWithFallback", () => {
 
   it("nodeId が null のとき null を返す", () => {
     // Arrange
-    const exec = execution([{ nodeId: "n-1", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false }]);
+    const exec = execution([{ executionNodeId: "n-1", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false }]);
 
     // Act
     const result = getNodeWithFallback(exec, null, null);
@@ -63,7 +65,7 @@ describe("getNodeWithFallback", () => {
   it("execution に存在するときランタイムノードを返す", () => {
     // Arrange
     const runtimeNode: ExecutionNodeDTO = {
-      nodeId: "n-1",
+      executionNodeId: "n-1",
       nodeType: "TASK",
       status: "RUNNING",
       attempt: 2,
@@ -87,11 +89,13 @@ describe("getNodeWithFallback", () => {
     const mergedNodes = [
       {
         nodeId: "n-2",
+        executionNodeId: "n-2",
         stateName: "n-2",
         nodeType: "WAIT",
         label: "Wait",
         status: "IDLE" as const,
         attempt: 0,
+        workerId: null,
         waitKey: null,
         canceledByExecution: false
       }
@@ -103,7 +107,7 @@ describe("getNodeWithFallback", () => {
 
     // Assert
     expect(result).not.toBeNull();
-    expect(result?.nodeId).toBe("n-2");
+    expect(result?.executionNodeId).toBe("n-2");
     expect(result?.nodeType).toBe("WAIT");
     expect(result?.status).toBe("IDLE");
     expect(result?.workerId).toBeNull();
@@ -112,7 +116,7 @@ describe("getNodeWithFallback", () => {
 
   it("nodeId が execution にも graphData にも無いとき null を返す", () => {
     // Arrange
-    const exec = execution([{ nodeId: "n-1", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false }]);
+    const exec = execution([{ executionNodeId: "n-1", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false }]);
     const graph = graphData([]);
 
     // Act
@@ -124,7 +128,7 @@ describe("getNodeWithFallback", () => {
 
   it("グラフが定義ノード ID・ランタイムが UUID のとき stateName でランタイムを返す（詳細の input 等を維持）", () => {
     const runtimeNode: ExecutionNodeDTO = {
-      nodeId: "uuid-slow-step",
+      executionNodeId: "uuid-slow-step",
       stateName: "slowStep",
       nodeType: "Task",
       status: "SUCCEEDED",
@@ -140,11 +144,13 @@ describe("getNodeWithFallback", () => {
     const graph = graphData([
       {
         nodeId: "slowStep",
+        executionNodeId: "uuid-slow-step",
         stateName: "slowStep",
         nodeType: "Task",
         label: "slowStep",
         status: "SUCCEEDED",
         attempt: 1,
+        workerId: "worker-1",
         waitKey: null,
         canceledByExecution: false
       }
@@ -159,16 +165,18 @@ describe("getNodeWithFallback", () => {
 
   it("両方にノードがあるときランタイムノードを優先する", () => {
     // Arrange
-    const runtimeNode: ExecutionNodeDTO = { nodeId: "n-1", nodeType: "TASK", status: "RUNNING", attempt: 1, workerId: "w-1", waitKey: null, canceledByExecution: false };
+    const runtimeNode: ExecutionNodeDTO = { executionNodeId: "n-1", nodeType: "TASK", status: "RUNNING", attempt: 1, workerId: "w-1", waitKey: null, canceledByExecution: false };
     const exec = execution([runtimeNode]);
     const graph = graphData([
       {
         nodeId: "n-1",
+        executionNodeId: "n-1",
         stateName: "n-1",
         nodeType: "TASK",
         label: "n-1",
         status: "IDLE",
         attempt: 0,
+        workerId: null,
         waitKey: null,
         canceledByExecution: false
       }
@@ -186,7 +194,7 @@ describe("getNodeWithFallback", () => {
 describe("getNodeWithFallback (境界値)", () => {
   it("nodeId が空文字のときは null を返す（!nodeId で弾かれる）", () => {
     // Arrange
-    const exec = execution([{ nodeId: "n-1", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false }]);
+    const exec = execution([{ executionNodeId: "n-1", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false }]);
     const graph = graphData([]);
 
     // Act
@@ -202,11 +210,13 @@ describe("getNodeWithFallback (境界値)", () => {
     const graph = graphData([
       {
         nodeId: "only-in-merged",
+        executionNodeId: "only-in-merged",
         stateName: "only-in-merged",
         nodeType: "TASK",
         label: "Merged",
         status: "IDLE" as const,
         attempt: 0,
+        workerId: "merged-worker",
         waitKey: null,
         canceledByExecution: false
       }
@@ -216,8 +226,8 @@ describe("getNodeWithFallback (境界値)", () => {
     const result = getNodeWithFallback(exec, graph, "only-in-merged");
 
     // Assert
-    expect(result?.nodeId).toBe("only-in-merged");
-    expect(result?.workerId).toBeNull();
+    expect(result?.executionNodeId).toBe("only-in-merged");
+    expect(result?.workerId).toBe("merged-worker");
   });
 
   it("graphData が null で execution にノードが無いときは null", () => {

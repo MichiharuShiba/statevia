@@ -32,7 +32,7 @@ describe("useNodeCommands", () => {
   it("resumeNode と loading を返す", () => {
     // Arrange
     const exec = execWithNodes([
-      { nodeId: "n-1", nodeType: "TASK", status: "WAITING", attempt: 1, workerId: null, waitKey: "wk-1", canceledByExecution: false }
+      { executionNodeId: "n-1", nodeType: "TASK", status: "WAITING", attempt: 1, workerId: null, waitKey: "wk-1", canceledByExecution: false }
     ]);
 
     // Act
@@ -46,7 +46,7 @@ describe("useNodeCommands", () => {
   it("resumeNode 成功時に apiPost と onSuccess を呼ぶ", async () => {
     // Arrange
     const exec = execWithNodes([
-      { nodeId: "n-1", nodeType: "TASK", status: "WAITING", attempt: 1, workerId: null, waitKey: "wk-1", canceledByExecution: false }
+      { executionNodeId: "n-1", nodeType: "TASK", status: "WAITING", attempt: 1, workerId: null, waitKey: "wk-1", canceledByExecution: false }
     ]);
     const onSuccess = vi.fn();
     const { result } = renderHook(() => useNodeCommands(exec, { onSuccess }));
@@ -68,7 +68,7 @@ describe("useNodeCommands", () => {
     // Arrange
     vi.mocked(api.apiPost).mockRejectedValueOnce(new Error("Network error"));
     const exec = execWithNodes([
-      { nodeId: "n-1", nodeType: "TASK", status: "WAITING", attempt: 1, workerId: null, waitKey: null, canceledByExecution: false }
+      { executionNodeId: "n-1", nodeType: "TASK", status: "WAITING", attempt: 1, workerId: null, waitKey: null, canceledByExecution: false }
     ]);
     const onError = vi.fn();
     const { result } = renderHook(() => useNodeCommands(exec, { onError }));
@@ -98,7 +98,7 @@ describe("useNodeCommands", () => {
   it("nodeId が execution に無いとき apiPost を呼ばない", async () => {
     // Arrange
     const exec = execWithNodes([
-      { nodeId: "n-1", nodeType: "TASK", status: "WAITING", attempt: 1, workerId: null, waitKey: null, canceledByExecution: false }
+      { executionNodeId: "n-1", nodeType: "TASK", status: "WAITING", attempt: 1, workerId: null, waitKey: null, canceledByExecution: false }
     ]);
     const { result } = renderHook(() => useNodeCommands(exec));
 

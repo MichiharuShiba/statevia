@@ -19,7 +19,7 @@ function execution(overrides: Partial<WorkflowView> = {}): WorkflowView {
 
 function node(overrides: Partial<ExecutionNodeDTO> = {}): ExecutionNodeDTO {
   return {
-    nodeId: "n-1",
+    executionNodeId: "n-1",
     nodeType: "TASK",
     status: "WAITING",
     attempt: 1,
