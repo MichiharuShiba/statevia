@@ -35,10 +35,30 @@ public sealed class BuiltinActionStatesTests
         };
 
     /// <summary>
-    /// 何もしない処理は空の値を返す。
+    /// noop は副作用を起こさず、入力を出力としてそのまま返す。
     /// </summary>
     [Fact]
-    public async Task NoOpState_ExecuteAsync_ReturnsUnit()
+    public async Task NoOpState_ExecuteAsync_ReturnsInputUnchanged()
+    {
+        // Arrange
+        var state = new NoOpState();
+        var events = new FakeEventProvider();
+        var store = new FakeStore();
+        var payload = new Dictionary<string, object?> { ["eligible"] = true };
+
+        // Act
+        var result = await state.ExecuteAsync(MakeContext(events, store), payload, CancellationToken.None);
+
+        // Assert
+        Assert.Same(payload, result);
+        Assert.Null(events.LastEventName);
+    }
+
+    /// <summary>
+    /// noop は null 入力でも null を返す。
+    /// </summary>
+    [Fact]
+    public async Task NoOpState_ExecuteAsync_WhenInputNull_ReturnsNull()
     {
         // Arrange
         var state = new NoOpState();
@@ -46,10 +66,10 @@ public sealed class BuiltinActionStatesTests
         var store = new FakeStore();
 
         // Act
-        var result = await state.ExecuteAsync(MakeContext(events, store), Unit.Value, CancellationToken.None);
+        var result = await state.ExecuteAsync(MakeContext(events, store), null, CancellationToken.None);
 
         // Assert
-        Assert.Equal(Unit.Value, result);
+        Assert.Null(result);
         Assert.Null(events.LastEventName);
     }
 
