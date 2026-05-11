@@ -10,11 +10,11 @@ public sealed class ConditionRoutingDiagnostics
 
     /// <summary>
     /// 解決結果の種別。
-    /// <c>linear</c>（線形のみのコンパイル済み遷移）、<c>matched_case</c>、<c>default_fallback</c>、<c>no_transition</c>。
+    /// 値は <see cref="ConditionRoutingResolutions"/> の定数を用いる。
     /// </summary>
     public required string Resolution { get; init; }
 
-    /// <summary>一致した case のインデックス（<see cref="Resolution"/> が <c>matched_case</c> のとき）。</summary>
+    /// <summary>一致した case のインデックス（<see cref="Resolution"/> が <see cref="ConditionRoutingResolutions.MatchedCase"/> のとき）。</summary>
     public int? MatchedCaseIndex { get; init; }
 
     /// <summary>評価順に並んだ各 case の結果。</summary>
