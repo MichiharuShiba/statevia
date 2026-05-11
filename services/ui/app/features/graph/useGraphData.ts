@@ -50,18 +50,45 @@ export function useGraphData(
   }, [execution, graphDefinition]);
 }
 
+/**
+ * ノード詳細・Resume 用に `ExecutionNodeDTO` を解決する。
+ * リストはランタイム `nodeId`（UUID）、グラフは定義グラフの `nodeId`（状態キー）で選択するため、
+ * `stateName` およびマージ結果の `stateName` でランタイム行へ寄せる。
+ */
 export function getNodeWithFallback(
   execution: WorkflowView | null,
   graphData: GraphData | null,
   nodeId: string | null
 ): ExecutionNodeDTO | null {
   if (!execution || !nodeId) return null;
-  const runtimeNode = execution.nodes.find((n) => n.nodeId === nodeId);
-  if (runtimeNode) return runtimeNode;
-  const runtimeNodeByStateName = execution.nodes.find((n) => n.nodeType.toLowerCase() === nodeId.toLowerCase());
-  if (runtimeNodeByStateName) return runtimeNodeByStateName;
-  const mergedNode = graphData?.mergedNodes.find((n) => n.nodeId === nodeId);
+  const key = nodeId.trim();
+
+  const byRuntimeId = execution.nodes.find((n) => n.nodeId === key);
+  if (byRuntimeId) return byRuntimeId;
+
+  const byStateNameKey = execution.nodes.find(
+    (n) =>
+      typeof n.stateName === "string" &&
+      n.stateName.trim().length > 0 &&
+      n.stateName.trim().toLowerCase() === key.toLowerCase()
+  );
+  if (byStateNameKey) return byStateNameKey;
+
+  const mergedNode = graphData?.mergedNodes.find((n) => n.nodeId === key);
+  if (mergedNode) {
+    const mergedState = mergedNode.stateName.trim();
+    if (mergedState.length > 0) {
+      const byMergedStateName = execution.nodes.find(
+        (n) =>
+          typeof n.stateName === "string" &&
+          n.stateName.trim().toLowerCase() === mergedState.toLowerCase()
+      );
+      if (byMergedStateName) return byMergedStateName;
+    }
+  }
+
   if (!mergedNode) return null;
+
   return {
     nodeId: mergedNode.nodeId,
     stateName: mergedNode.stateName,
