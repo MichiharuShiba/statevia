@@ -6,6 +6,30 @@ import { formatTracePayload } from "../../lib/formatExecutionTrace";
 import { getStatusStyle } from "../../lib/statusStyle";
 import { useLocale, useUiText } from "../../lib/uiTextContext";
 
+type TracePayloadDisclosureProps = {
+  heading: string;
+  /** `formatTracePayload` 結果。空なら `emptyLabel` を表示。 */
+  payloadText: string;
+  emptyLabel: string;
+};
+
+/**
+ * トレースの JSON プレビューを `<details>` で開閉可能にする。
+ */
+function TracePayloadDisclosure({ heading, payloadText, emptyLabel }: Readonly<TracePayloadDisclosureProps>) {
+  const display = payloadText === "" ? emptyLabel : payloadText;
+  return (
+    <details className="mt-1 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-high)]/60">
+      <summary className="cursor-pointer select-none list-none px-2 py-1.5 text-xs font-medium text-[var(--md-sys-color-on-surface)] outline-none marker:content-none [&::-webkit-details-marker]:hidden">
+        {heading}
+      </summary>
+      <pre className="mx-2 mb-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--md-sys-color-surface-container-high)] p-2 text-[10px] leading-snug text-[var(--md-sys-color-on-surface)]">
+        {display}
+      </pre>
+    </details>
+  );
+}
+
 type NodeDetailProps = {
   execution: WorkflowView | null;
   node: ExecutionNodeDTO | null;
@@ -72,17 +96,17 @@ export function NodeDetail({
       <h2 className="text-sm font-semibold">{uiText.nodeDetail.title(uiText.entities.node)}</h2>
       <div className={`mt-3 rounded-xl border p-3 ${style.borderClass} ${style.bgClass}`}>
         <div className="flex items-center justify-between">
-          <div className="font-mono text-xs">{node.executionNodeId}</div>
+          <div className="font-mono text-xs">{uiText.nodeDetail.meta.executionNodeId(node.executionNodeId)}</div>
           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${style.badgeClass}`}>
             {node.status}
           </span>
         </div>
         <div className="mt-2 space-y-1 text-xs text-[var(--md-sys-color-on-surface)]">
-          <div>{uiText.nodeDetail.meta.type(node.nodeType)}</div>
-          {stateNameText !== "" && <div>{uiText.nodeDetail.meta.stateName(stateNameText)}</div>}
           {node.workerId != null && node.workerId !== "" && (
             <div className="font-mono">{uiText.nodeDetail.meta.workerId(node.workerId)}</div>
           )}
+          <div>{uiText.nodeDetail.meta.type(node.nodeType)}</div>
+          {stateNameText !== "" && <div>{uiText.nodeDetail.meta.stateName(stateNameText)}</div>}
           <div>{uiText.nodeDetail.meta.attempt(node.attempt)}</div>
           <div>{uiText.nodeDetail.meta.waitKey(node.waitKey ?? "—")}</div>
           <div>{uiText.nodeDetail.meta.canceledByExecution(node.canceledByExecution)}</div>
@@ -115,30 +139,25 @@ export function NodeDetail({
                 return null;
               })()}
               {"input" in node && node.input !== undefined && (
-                <div>
-                  <div className="font-medium text-[var(--md-sys-color-on-surface)]">{uiText.nodeDetail.trace.inputHeading}</div>
-                  <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--md-sys-color-surface-container-high)] p-2 text-[10px] leading-snug text-[var(--md-sys-color-on-surface)]">
-                    {inputText === "" ? uiText.nodeDetail.trace.inputEmpty : inputText}
-                  </pre>
-                </div>
+                <TracePayloadDisclosure
+                  heading={uiText.nodeDetail.trace.inputHeading}
+                  payloadText={inputText}
+                  emptyLabel={uiText.nodeDetail.trace.inputEmpty}
+                />
               )}
               {"output" in node && node.output !== undefined && (
-                <div>
-                  <div className="font-medium text-[var(--md-sys-color-on-surface)]">{uiText.nodeDetail.trace.outputHeading}</div>
-                  <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--md-sys-color-surface-container-high)] p-2 text-[10px] leading-snug text-[var(--md-sys-color-on-surface)]">
-                    {outputText === "" ? uiText.nodeDetail.trace.outputEmpty : outputText}
-                  </pre>
-                </div>
+                <TracePayloadDisclosure
+                  heading={uiText.nodeDetail.trace.outputHeading}
+                  payloadText={outputText}
+                  emptyLabel={uiText.nodeDetail.trace.outputEmpty}
+                />
               )}
               {"conditionRouting" in node && node.conditionRouting !== undefined && (
-                <div>
-                  <div className="font-medium text-[var(--md-sys-color-on-surface)]">
-                    {uiText.nodeDetail.trace.conditionRoutingHeading}
-                  </div>
-                  <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--md-sys-color-surface-container-high)] p-2 text-[10px] leading-snug text-[var(--md-sys-color-on-surface)]">
-                    {conditionRoutingText === "" ? uiText.nodeDetail.trace.conditionRoutingEmpty : conditionRoutingText}
-                  </pre>
-                </div>
+                <TracePayloadDisclosure
+                  heading={uiText.nodeDetail.trace.conditionRoutingHeading}
+                  payloadText={conditionRoutingText}
+                  emptyLabel={uiText.nodeDetail.trace.conditionRoutingEmpty}
+                />
               )}
             </div>
           )}

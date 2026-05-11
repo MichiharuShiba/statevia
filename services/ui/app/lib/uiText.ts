@@ -134,6 +134,7 @@ export type UiText = {
     meta: {
       type: (nodeType: string) => string;
       stateName: (stateName: string) => string;
+      executionNodeId: (id: string) => string;
       workerId: (workerId: string) => string;
       attempt: (attempt: number) => string;
       waitKey: (waitKey: string) => string;
@@ -451,10 +452,11 @@ export type UiText = {
     title: string;
     nodeCount: (count: number) => string;
     columns: {
-      nodeId: string;
-      type: string;
       status: string;
-      waitKey: string;
+      type: string;
+      nodeName: string;
+      executionNodeId: string;
+      duration: string;
     };
   };
   nodeGraph: {
@@ -617,9 +619,10 @@ export const uiText: UiText = {
     },
     title: (_nodeLabel: string) => "ノード詳細",
     meta: {
-      type: (nodeType: string) => `種別: ${nodeType}`,
-      stateName: (stateName: string) => `状態名: ${stateName}`,
-      workerId: (workerId: string) => `ワーカー ID: ${workerId}`,
+      type: (nodeType: string) => `タイプ: ${nodeType}`,
+      stateName: (stateName: string) => `ノード名: ${stateName}`,
+      executionNodeId: (id: string) => `実行ノードID: ${id}`,
+      workerId: (workerId: string) => `ワーカーID: ${workerId}`,
       attempt: (attempt: number) => `試行回数: ${attempt}`,
       waitKey: (waitKey: string) => `Wait キー: ${waitKey}`,
       canceledByExecution: (canceledByExecution: boolean) => `キャンセル: ${String(canceledByExecution)}`,
@@ -941,15 +944,16 @@ export const uiText: UiText = {
     title: "ノード一覧",
     nodeCount: (count: number) => `${count} 件`,
     columns: {
-      nodeId: "ノードID",
-      type: "種別",
       status: "ステータス",
-      waitKey: "Wait キー",
+      type: "タイプ",
+      nodeName: "ノード名",
+      executionNodeId: "実行ノードID",
+      duration: "実行時間",
     },
   },
   nodeGraph: {
     meta: {
-      type: (nodeType: string) => `種別: ${nodeType}`,
+      type: (nodeType: string) => `タイプ: ${nodeType}`,
       attempt: (attempt: number) => `試行回数: ${attempt}`,
       waitKey: (waitKey: string) => `Wait キー: ${waitKey}`,
     },

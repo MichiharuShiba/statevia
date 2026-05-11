@@ -138,7 +138,8 @@ export const uiTextEn: UiText = {
     title: (nodeLabel: string) => `${nodeLabel} detail`,
     meta: {
       type: (nodeType: string) => `Type: ${nodeType}`,
-      stateName: (stateName: string) => `State name: ${stateName}`,
+      stateName: (stateName: string) => `Node name: ${stateName}`,
+      executionNodeId: (id: string) => `Execution node ID: ${id}`,
       workerId: (workerId: string) => `Worker ID: ${workerId}`,
       attempt: (attempt: number) => `Attempts: ${attempt}`,
       waitKey: (waitKey: string) => `Wait key: ${waitKey}`,
@@ -192,10 +193,10 @@ export const uiTextEn: UiText = {
     executionIdLabel: (executionLabel: string) => `${executionLabel} ID`,
     compareLabel: "Compare",
     realtimeSseLabel: "Realtime updates",
-    cancelRequestedLabel: "cancelRequested",
+    cancelRequestedLabel: "Cancel requested",
     graphIdLine: (graphIdLabel: string, graphId: string) => `${graphIdLabel}: ${graphId}`,
     cancelRequestedLine: (cancelRequestedLabel: string, cancelRequested: boolean) =>
-      `${cancelRequestedLabel}: ${cancelRequested ? "true" : "false"}`,
+      `${cancelRequestedLabel}: ${cancelRequested ? "Yes" : "No"}`,
   },
   pageState: {
     loading: "Loading...",
@@ -478,10 +479,11 @@ export const uiTextEn: UiText = {
     title: "Node list",
     nodeCount: (count: number) => `${count} items`,
     columns: {
-      nodeId: "Node ID",
-      type: "Type",
       status: "Status",
-      waitKey: "Wait key",
+      type: "Type",
+      nodeName: "Node name",
+      executionNodeId: "Execution node ID",
+      duration: "Duration",
     },
   },
   nodeGraph: {
