@@ -206,6 +206,8 @@ states:
 
 ## 2. Nodes 形式
 
+フル構成の公式 YAML サンプルは [`docs/samples/ui-customer-order-parallel.yaml`](samples/ui-customer-order-parallel.yaml)（`ui-` プレフィックス・ドット区切りノード ID・条件 edges・fork/join）を参照する。
+
 ### 2.1 基本構造
 
 ルートに **nodes** 配列があり、各要素が `id` と `type` を持つ。`workflow` メタデータと任意で `controls`（cancel/resume イベント）を併記する。
