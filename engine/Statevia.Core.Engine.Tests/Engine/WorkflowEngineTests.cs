@@ -451,6 +451,160 @@ public class WorkflowEngineTests
         Assert.Equal("Manual", selectedByBetween);
     }
 
+    /// <summary>
+    /// <c>eq</c> で定義値が真偽のとき、実値が 0/1 の数値でも一致扱いになることを検証する。
+    /// </summary>
+    [Fact]
+    public async Task Start_ConditionalTransition_Eq_TrueMatchesWhenActualIsIntegralOne()
+    {
+        // Arrange
+        string? selectedState = null;
+        var def = CreateDefinitionWithConditionalRoute(
+            routeOutput: new Dictionary<string, object?> { ["eligible"] = 1L },
+            cases:
+            [
+                new CompiledTransitionCase
+                {
+                    Order = 10,
+                    DeclarationIndex = 0,
+                    When = new ConditionExpressionDefinition { Path = "$.eligible", Op = "eq", Value = true },
+                    Target = new TransitionTarget { Next = "Manual" }
+                }
+            ],
+            defaultTarget: new TransitionTarget { Next = "Fallback" },
+            onTerminalStateExecuted: stateName => selectedState = stateName);
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+
+        // Act
+        var id = engine.Start(def);
+        await Task.Delay(300);
+        var snapshot = engine.GetSnapshot(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+        Assert.Equal("Manual", selectedState);
+    }
+
+    /// <summary>
+    /// <c>eq</c> で定義値が文字列 <c>true</c> のとき、実値が真偽でも一致することを検証する。
+    /// </summary>
+    [Fact]
+    public async Task Start_ConditionalTransition_Eq_StringTrueMatchesActualBoolean()
+    {
+        // Arrange
+        string? selectedState = null;
+        var def = CreateDefinitionWithConditionalRoute(
+            routeOutput: new Dictionary<string, object?> { ["eligible"] = true },
+            cases:
+            [
+                new CompiledTransitionCase
+                {
+                    Order = 10,
+                    DeclarationIndex = 0,
+                    When = new ConditionExpressionDefinition { Path = "$.eligible", Op = "eq", Value = "true" },
+                    Target = new TransitionTarget { Next = "Manual" }
+                }
+            ],
+            defaultTarget: new TransitionTarget { Next = "Fallback" },
+            onTerminalStateExecuted: stateName => selectedState = stateName);
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+
+        // Act
+        var id = engine.Start(def);
+        await Task.Delay(300);
+        var snapshot = engine.GetSnapshot(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+        Assert.Equal("Manual", selectedState);
+    }
+
+    /// <summary>
+    /// workflowInput が初期状態に渡り、その状態の出力が条件式（OutputConditionEvaluator）で評価されて遷移先が決まることを検証する。
+    /// </summary>
+    [Fact]
+    public async Task Start_WorkflowInput_maps_to_route_output_then_conditional_selects_manual()
+    {
+        // Arrange
+        object? observedRouteInput = null;
+        string? selectedState = null;
+        var workflowInput = new Dictionary<string, object?> { ["score"] = 42 };
+        var def = CreateDefinitionWithConditionalRouteFromWorkflowInput(
+            routeOutputFromInput: input =>
+            {
+                observedRouteInput = input;
+                return new Dictionary<string, object?> { ["score"] = ReadScoreFromWorkflowPayload(input) };
+            },
+            cases:
+            [
+                new CompiledTransitionCase
+                {
+                    Order = 1,
+                    DeclarationIndex = 0,
+                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 10 },
+                    Target = new TransitionTarget { Next = "Manual" }
+                }
+            ],
+            defaultTarget: new TransitionTarget { Next = "Fallback" },
+            onTerminalStateExecuted: stateName => selectedState = stateName);
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+
+        // Act
+        var id = engine.Start(def, null, workflowInput);
+        await Task.Delay(300);
+        var snapshot = engine.GetSnapshot(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+        Assert.Same(workflowInput, observedRouteInput);
+        Assert.Equal("Manual", selectedState);
+    }
+
+    /// <summary>
+    /// workflowInput 由来の出力が条件に一致しないとき default 遷移へ進むことを検証する。
+    /// </summary>
+    [Fact]
+    public async Task Start_WorkflowInput_maps_to_route_output_then_conditional_selects_default_fallback()
+    {
+        // Arrange
+        object? observedRouteInput = null;
+        string? selectedState = null;
+        var workflowInput = new Dictionary<string, object?> { ["score"] = 5 };
+        var def = CreateDefinitionWithConditionalRouteFromWorkflowInput(
+            routeOutputFromInput: input =>
+            {
+                observedRouteInput = input;
+                return new Dictionary<string, object?> { ["score"] = ReadScoreFromWorkflowPayload(input) };
+            },
+            cases:
+            [
+                new CompiledTransitionCase
+                {
+                    Order = 1,
+                    DeclarationIndex = 0,
+                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 10 },
+                    Target = new TransitionTarget { Next = "Manual" }
+                }
+            ],
+            defaultTarget: new TransitionTarget { Next = "Fallback" },
+            onTerminalStateExecuted: stateName => selectedState = stateName);
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+
+        // Act
+        var id = engine.Start(def, null, workflowInput);
+        await Task.Delay(300);
+        var snapshot = engine.GetSnapshot(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+        Assert.Same(workflowInput, observedRouteInput);
+        Assert.Equal("Fallback", selectedState);
+    }
+
     /// <summary>同一 stateName が再訪されたとき execution graph の attempt が増加することを検証する。</summary>
     [Fact]
     public async Task Start_WhenStateNameRevisited_AttemptIncrementsPerStateName()
@@ -682,6 +836,84 @@ public class WorkflowEngineTests
                     return Task.FromResult<object?>(Unit.Value);
                 })
             })
+        };
+    }
+
+    /// <summary>
+    /// <see cref="CreateDefinitionWithConditionalRoute"/> と同様だが、Route の出力を固定値ではなく
+    /// <paramref name="routeOutputFromInput"/> で workflowInput（初期状態への入力）から生成する。
+    /// </summary>
+    private static CompiledWorkflowDefinition CreateDefinitionWithConditionalRouteFromWorkflowInput(
+        Func<object?, object?> routeOutputFromInput,
+        IReadOnlyList<CompiledTransitionCase> cases,
+        TransitionTarget defaultTarget,
+        Action<string> onTerminalStateExecuted)
+    {
+        var orderedCases = cases
+            .OrderBy(transitionCase => transitionCase.Order.HasValue ? 0 : 1)
+            .ThenBy(transitionCase => transitionCase.Order ?? int.MaxValue)
+            .ThenBy(transitionCase => transitionCase.DeclarationIndex)
+            .ToList();
+
+        return new CompiledWorkflowDefinition
+        {
+            Name = "ConditionalRouteFromWorkflowInput",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+            {
+                ["Manual"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } },
+                ["Auto"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } },
+                ["Fallback"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } }
+            },
+            ConditionalTransitions = new Dictionary<string, IReadOnlyDictionary<string, CompiledFactTransition>>
+            {
+                ["Route"] = new Dictionary<string, CompiledFactTransition>
+                {
+                    ["Completed"] = new CompiledFactTransition
+                    {
+                        Cases = orderedCases,
+                        DefaultTarget = defaultTarget
+                    }
+                }
+            },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
+            JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+            WaitTable = new Dictionary<string, string>(),
+            InitialState = "Route",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
+            {
+                ["Route"] = new DefaultStateExecutor((_, input, _) => Task.FromResult(routeOutputFromInput(input))),
+                ["Manual"] = new DefaultStateExecutor((_, _, _) =>
+                {
+                    onTerminalStateExecuted("Manual");
+                    return Task.FromResult<object?>(Unit.Value);
+                }),
+                ["Auto"] = new DefaultStateExecutor((_, _, _) =>
+                {
+                    onTerminalStateExecuted("Auto");
+                    return Task.FromResult<object?>(Unit.Value);
+                }),
+                ["Fallback"] = new DefaultStateExecutor((_, _, _) =>
+                {
+                    onTerminalStateExecuted("Fallback");
+                    return Task.FromResult<object?>(Unit.Value);
+                })
+            })
+        };
+    }
+
+    /// <summary>テスト用: workflow payload から score を読み取る（JSON 要素・整数の差異を吸収）。</summary>
+    private static int ReadScoreFromWorkflowPayload(object? input)
+    {
+        if (input is not IReadOnlyDictionary<string, object?> dictionary)
+            return 0;
+        if (!dictionary.TryGetValue("score", out var raw) || raw is null)
+            return 0;
+        return raw switch
+        {
+            int i => i,
+            long l => (int)l,
+            JsonElement jsonElement when jsonElement.ValueKind == JsonValueKind.Number => jsonElement.GetInt32(),
+            _ => 0
         };
     }
 
