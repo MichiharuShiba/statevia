@@ -55,12 +55,15 @@ export function NodeDetail({
   const isWaiting = node.status === "WAITING";
   const isCanceled = node.status === "CANCELED";
   const isFailed = node.status === "FAILED";
+  const stateNameText = typeof node.stateName === "string" ? node.stateName.trim() : "";
   const outputText = "output" in node && node.output !== undefined ? formatTracePayload(node.output) : "";
+  const inputText = "input" in node && node.input !== undefined ? formatTracePayload(node.input) : "";
   const conditionRoutingText =
     "conditionRouting" in node && node.conditionRouting !== undefined ? formatTracePayload(node.conditionRouting) : "";
   const showTracePanel =
     (node.startedAt != null && node.startedAt !== "") ||
     (node.completedAt != null && node.completedAt !== "") ||
+    ("input" in node && node.input !== undefined) ||
     ("output" in node && node.output !== undefined) ||
     ("conditionRouting" in node && node.conditionRouting !== undefined);
 
@@ -69,13 +72,17 @@ export function NodeDetail({
       <h2 className="text-sm font-semibold">{uiText.nodeDetail.title(uiText.entities.node)}</h2>
       <div className={`mt-3 rounded-xl border p-3 ${style.borderClass} ${style.bgClass}`}>
         <div className="flex items-center justify-between">
-          <div className="font-mono text-xs">{node.nodeId}</div>
+          <div className="font-mono text-xs">{node.executionNodeId}</div>
           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${style.badgeClass}`}>
             {node.status}
           </span>
         </div>
         <div className="mt-2 space-y-1 text-xs text-[var(--md-sys-color-on-surface)]">
           <div>{uiText.nodeDetail.meta.type(node.nodeType)}</div>
+          {stateNameText !== "" && <div>{uiText.nodeDetail.meta.stateName(stateNameText)}</div>}
+          {node.workerId != null && node.workerId !== "" && (
+            <div className="font-mono">{uiText.nodeDetail.meta.workerId(node.workerId)}</div>
+          )}
           <div>{uiText.nodeDetail.meta.attempt(node.attempt)}</div>
           <div>{uiText.nodeDetail.meta.waitKey(node.waitKey ?? "—")}</div>
           <div>{uiText.nodeDetail.meta.canceledByExecution(node.canceledByExecution)}</div>
@@ -107,6 +114,14 @@ export function NodeDetail({
                 }
                 return null;
               })()}
+              {"input" in node && node.input !== undefined && (
+                <div>
+                  <div className="font-medium text-[var(--md-sys-color-on-surface)]">{uiText.nodeDetail.trace.inputHeading}</div>
+                  <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--md-sys-color-surface-container-high)] p-2 text-[10px] leading-snug text-[var(--md-sys-color-on-surface)]">
+                    {inputText === "" ? uiText.nodeDetail.trace.inputEmpty : inputText}
+                  </pre>
+                </div>
+              )}
               {"output" in node && node.output !== undefined && (
                 <div>
                   <div className="font-medium text-[var(--md-sys-color-on-surface)]">{uiText.nodeDetail.trace.outputHeading}</div>

@@ -16,7 +16,7 @@ const baseExecution: WorkflowView = {
 };
 
 const baseNode: ExecutionNodeDTO = {
-  nodeId: "n-1",
+  executionNodeId: "n-1",
   nodeType: "Task",
   status: "RUNNING",
   attempt: 1,
@@ -81,6 +81,19 @@ describe("NodeDetail", () => {
     render(<NodeDetail {...defaultProps} node={node} />);
     expect(screen.getByText(uiText.nodeDetail.trace.outputHeading)).toBeInTheDocument();
     expect(screen.getByText(/"x": 1/, { exact: false })).toBeInTheDocument();
+  });
+
+  it("stateName があるときメタ情報に状態名を表示する", () => {
+    const node: ExecutionNodeDTO = { ...baseNode, stateName: "MyState" };
+    render(<NodeDetail {...defaultProps} node={node} />);
+    expect(screen.getByText(uiText.nodeDetail.meta.stateName("MyState"))).toBeInTheDocument();
+  });
+
+  it("input を渡すとトレース欄に入力見出しと内容を表示する", () => {
+    const node: ExecutionNodeDTO = { ...baseNode, input: { seed: true } };
+    render(<NodeDetail {...defaultProps} node={node} />);
+    expect(screen.getByText(uiText.nodeDetail.trace.inputHeading)).toBeInTheDocument();
+    expect(screen.getByText(/"seed": true/, { exact: false })).toBeInTheDocument();
   });
 
   describe("Wait / Resume 詳細", () => {
