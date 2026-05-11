@@ -459,6 +459,10 @@ export type UiText = {
       attempt: (attempt: number) => string;
       waitKey: (waitKey: string) => string;
     };
+    aria: {
+      /** グラフノードを選択（ドラッグ可能なブロック用。内側に実 button があるため外側は div） */
+      selectNode: (displayLabel: string) => string;
+    };
   };
   nodeCommands: {
     resumeDisabledReason: {
@@ -940,6 +944,9 @@ export const uiText: UiText = {
       type: (nodeType: string) => `種別: ${nodeType}`,
       attempt: (attempt: number) => `試行回数: ${attempt}`,
       waitKey: (waitKey: string) => `Wait キー: ${waitKey}`,
+    },
+    aria: {
+      selectNode: (displayLabel: string) => `ノードを選択: ${displayLabel}`,
     },
   },
   nodeCommands: {

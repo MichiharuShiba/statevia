@@ -486,6 +486,9 @@ export const uiTextEn: UiText = {
       attempt: (attempt: number) => `Attempts: ${attempt}`,
       waitKey: (waitKey: string) => `Wait key: ${waitKey}`,
     },
+    aria: {
+      selectNode: (displayLabel: string) => `Select node: ${displayLabel}`,
+    },
   },
   nodeCommands: {
     resumeDisabledReason: {
