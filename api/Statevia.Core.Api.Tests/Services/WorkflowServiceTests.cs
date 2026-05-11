@@ -1046,7 +1046,8 @@ public sealed class WorkflowServiceTests
         Assert.Equal(2, view.Nodes.Count);
         Assert.Equal("Task", view.Nodes[0].NodeType);
         Assert.Equal("RUNNING", view.Nodes[0].Status);
-        Assert.Equal("S2", view.Nodes[1].NodeType);
+        Assert.Equal("Task", view.Nodes[1].NodeType);
+        Assert.Equal("S2", view.Nodes[1].StateName);
         Assert.Equal("FAILED", view.Nodes[1].Status);
         Assert.Equal(defId.ToString("D"), view.GraphId);
     }
@@ -1212,7 +1213,8 @@ public sealed class WorkflowServiceTests
         Assert.Equal(2, view.Nodes.Count);
         Assert.Equal("Task", view.Nodes[0].NodeType);
         Assert.Equal("RUNNING", view.Nodes[0].Status);
-        Assert.Equal("S2", view.Nodes[1].NodeType);
+        Assert.Equal("Task", view.Nodes[1].NodeType);
+        Assert.Equal("S2", view.Nodes[1].StateName);
         Assert.Equal("FAILED", view.Nodes[1].Status);
         Assert.Equal(defId.ToString("D"), view.GraphId);
     }
@@ -1306,9 +1308,10 @@ public sealed class WorkflowServiceTests
         Assert.NotNull(res.Events[2].Patch!.Nodes);
         Assert.Equal(2, res.Events[2].Patch!.Nodes!.Count);
 
-        var nodeB = Assert.Single(res.Events[2].Patch!.Nodes!, n => n.NodeId == "b");
+        var nodeB = Assert.Single(res.Events[2].Patch!.Nodes!, n => n.ExecutionNodeId == "b");
         Assert.True(nodeB.CanceledByExecution.GetValueOrDefault());
         Assert.Equal("CANCELED", nodeB.Status);
+        Assert.Equal("Wait", nodeB.StateName);
     }
 
     /// <summary>ノード識別子が空白のみのとき引数例外を投げる。</summary>
@@ -2773,7 +2776,7 @@ public sealed class WorkflowServiceTests
         Assert.Equal(defId.ToString("D"), view.GraphId); // graphId fallback
 
         Assert.Equal(5, view.Nodes.Count);
-        Assert.Equal("n1", view.Nodes[0].NodeId);
+        Assert.Equal("n1", view.Nodes[0].ExecutionNodeId);
         Assert.Equal("Task", view.Nodes[0].NodeType);
         Assert.Equal("RUNNING", view.Nodes[0].Status);
         Assert.Equal(2, view.Nodes[0].Attempt);
@@ -2781,22 +2784,22 @@ public sealed class WorkflowServiceTests
         Assert.Equal("resume-1", view.Nodes[0].WaitKey);
         Assert.False(view.Nodes[0].CanceledByExecution);
 
-        Assert.Equal(string.Empty, view.Nodes[1].NodeId);
+        Assert.Equal(string.Empty, view.Nodes[1].ExecutionNodeId);
         Assert.Equal("Wait", view.Nodes[1].NodeType);
         Assert.Equal("CANCELED", view.Nodes[1].Status);
         Assert.True(view.Nodes[1].CanceledByExecution);
 
-        Assert.Equal("n3", view.Nodes[2].NodeId);
+        Assert.Equal("n3", view.Nodes[2].ExecutionNodeId);
         Assert.Equal("Task", view.Nodes[2].NodeType);
         Assert.Equal("SUCCEEDED", view.Nodes[2].Status); // default branch of MapNodeStatus
         Assert.False(view.Nodes[2].CanceledByExecution);
 
-        Assert.Equal("n4", view.Nodes[3].NodeId);
+        Assert.Equal("n4", view.Nodes[3].ExecutionNodeId);
         Assert.Equal("End", view.Nodes[3].NodeType);
         Assert.Equal("SUCCEEDED", view.Nodes[3].Status); // Completed -> SUCCEEDED
         Assert.False(view.Nodes[3].CanceledByExecution);
 
-        Assert.Equal("n5", view.Nodes[4].NodeId);
+        Assert.Equal("n5", view.Nodes[4].ExecutionNodeId);
         Assert.Equal("Join", view.Nodes[4].NodeType);
         Assert.Equal("SUCCEEDED", view.Nodes[4].Status); // Joined -> SUCCEEDED
         Assert.False(view.Nodes[4].CanceledByExecution);

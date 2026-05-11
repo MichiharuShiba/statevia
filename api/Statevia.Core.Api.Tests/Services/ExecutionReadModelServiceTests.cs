@@ -170,7 +170,7 @@ public sealed class ExecutionReadModelServiceTests
         Assert.Equal("RUNNING", res.Nodes[0].Status);
         Assert.False(res.Nodes[0].CanceledByExecution);
 
-        Assert.Equal(string.Empty, res.Nodes[1].NodeId);
+        Assert.Equal(string.Empty, res.Nodes[1].ExecutionNodeId);
         Assert.Equal("SUCCEEDED", res.Nodes[1].Status);
 
         Assert.Equal("FAILED", res.Nodes[2].Status);

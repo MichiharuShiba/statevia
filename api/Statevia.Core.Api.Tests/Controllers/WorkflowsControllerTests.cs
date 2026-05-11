@@ -462,7 +462,8 @@ public sealed class WorkflowsControllerTests
                 {
                     new WorkflowViewNodeDto
                     {
-                        NodeId = "n1",
+                        ExecutionNodeId = "n1",
+                        StateName = "S1",
                         NodeType = "Task",
                         Status = "RUNNING",
                         Attempt = 1,
@@ -489,7 +490,7 @@ public sealed class WorkflowsControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var model = Assert.IsType<WorkflowViewDto>(ok.Value);
         Assert.Single(model.Nodes);
-        Assert.Equal("n1", model.Nodes[0].NodeId);
+        Assert.Equal("n1", model.Nodes[0].ExecutionNodeId);
         Assert.True(model.Nodes[0].ConditionRouting.HasValue);
         Assert.Equal(
             ConditionRoutingResolutions.MatchedCase,
