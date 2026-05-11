@@ -65,7 +65,8 @@ internal static class WorkflowViewMapper
 
             list.Add(new WorkflowViewNodeDto
             {
-                NodeId = n.NodeId ?? string.Empty,
+                ExecutionNodeId = n.NodeId ?? string.Empty,
+                StateName = n.StateName ?? string.Empty,
                 NodeType = nodeType,
                 Status = nodeStatus,
                 Attempt = n.Attempt ?? 1,
@@ -86,9 +87,11 @@ internal static class WorkflowViewMapper
         var nodes = MapNodes(graphJson);
         return nodes.Select(n => new GraphPatchNodeDto
         {
-            NodeId = n.NodeId,
+            ExecutionNodeId = n.ExecutionNodeId,
+            StateName = string.IsNullOrWhiteSpace(n.StateName) ? null : n.StateName,
             Status = n.Status,
             Attempt = n.Attempt,
+            WorkerId = n.WorkerId,
             WaitKey = n.WaitKey,
             CanceledByExecution = n.CanceledByExecution
         }).ToList();
@@ -113,7 +116,8 @@ internal static class WorkflowViewMapper
     {
         if (!string.IsNullOrWhiteSpace(node.NodeType))
             return node.NodeType!;
-        return string.Empty;
+        // 古いスナップショットに nodeType が無い場合の既定（ExecutionReadModelService と揃える）
+        return "Task";
     }
 
     private sealed class ExecutionGraphSnapshotDto

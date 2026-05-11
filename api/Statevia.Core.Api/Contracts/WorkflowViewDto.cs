@@ -18,7 +18,10 @@ public sealed class WorkflowViewDto
 
 public sealed class WorkflowViewNodeDto
 {
-    public string NodeId { get; init; } = string.Empty;
+    /// <summary>ExecutionGraph が付与するノード識別子（試行単位）。定義キャンバスのノードキーとは別。</summary>
+    public string ExecutionNodeId { get; init; } = string.Empty;
+    /// <summary>ワークフロー定義上の状態名（<see cref="ExecutionNodeId"/> とは別）。</summary>
+    public string StateName { get; init; } = string.Empty;
     public string NodeType { get; init; } = string.Empty;
     public string Status { get; init; } = string.Empty;
     public int Attempt { get; init; }
@@ -57,9 +60,11 @@ public sealed class GraphUpdatedPatchDto
 
 public sealed class GraphPatchNodeDto
 {
-    public string NodeId { get; init; } = string.Empty;
+    public string ExecutionNodeId { get; init; } = string.Empty;
+    public string? StateName { get; init; }
     public string? Status { get; init; }
     public int? Attempt { get; init; }
+    public string? WorkerId { get; init; }
     public string? WaitKey { get; init; }
     public bool? CanceledByExecution { get; init; }
 }
