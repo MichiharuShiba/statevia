@@ -122,6 +122,41 @@ describe("getNodeWithFallback", () => {
     expect(result).toBeNull();
   });
 
+  it("グラフが定義ノード ID・ランタイムが UUID のとき stateName でランタイムを返す（詳細の input 等を維持）", () => {
+    const runtimeNode: ExecutionNodeDTO = {
+      nodeId: "uuid-slow-step",
+      stateName: "slowStep",
+      nodeType: "Task",
+      status: "SUCCEEDED",
+      attempt: 1,
+      workerId: "worker-1",
+      waitKey: null,
+      canceledByExecution: false,
+      startedAt: "2026-01-01T12:00:00Z",
+      completedAt: "2026-01-01T12:00:05Z",
+      input: { x: 1 }
+    };
+    const exec = execution([runtimeNode]);
+    const graph = graphData([
+      {
+        nodeId: "slowStep",
+        stateName: "slowStep",
+        nodeType: "Task",
+        label: "slowStep",
+        status: "SUCCEEDED",
+        attempt: 1,
+        waitKey: null,
+        canceledByExecution: false
+      }
+    ]);
+
+    const result = getNodeWithFallback(exec, graph, "slowStep");
+
+    expect(result).toEqual(runtimeNode);
+    expect(result?.startedAt).toBe("2026-01-01T12:00:00Z");
+    expect(result?.workerId).toBe("worker-1");
+  });
+
   it("両方にノードがあるときランタイムノードを優先する", () => {
     // Arrange
     const runtimeNode: ExecutionNodeDTO = { nodeId: "n-1", nodeType: "TASK", status: "RUNNING", attempt: 1, workerId: "w-1", waitKey: null, canceledByExecution: false };
