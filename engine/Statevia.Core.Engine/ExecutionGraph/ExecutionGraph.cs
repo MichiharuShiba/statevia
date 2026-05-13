@@ -24,10 +24,23 @@ public sealed class ExecutionGraph
     public IReadOnlyList<ExecutionEdge> Edges { get { lock (_lock) { return _edges.ToList(); } } }
 
     /// <summary>ノードを追加し、ノード ID を返します。</summary>
-    public string AddNode(string stateName)
+    public string AddNode(string stateName, string nodeType = "Task", object? input = null, int attempt = 1, string? workerId = null, string? waitKey = null)
     {
         var nodeId = Guid.NewGuid().ToString("N")[..8];
-        lock (_lock) { _nodes.Add(new ExecutionNode { NodeId = nodeId, StateName = stateName, StartedAt = DateTime.UtcNow }); }
+        lock (_lock)
+        {
+            _nodes.Add(new ExecutionNode
+            {
+                NodeId = nodeId,
+                StateName = stateName,
+                NodeType = nodeType,
+                StartedAt = DateTime.UtcNow,
+                Input = input,
+                Attempt = attempt,
+                WorkerId = workerId ?? nodeId,
+                WaitKey = waitKey
+            });
+        }
         return nodeId;
     }
 
@@ -37,7 +50,13 @@ public sealed class ExecutionGraph
         lock (_lock)
         {
             var node = _nodes.FirstOrDefault(n => n.NodeId == nodeId);
-            if (node != null) { node.CompletedAt = DateTime.UtcNow; node.Fact = fact; node.Output = output; }
+            if (node != null)
+            {
+                node.CompletedAt = DateTime.UtcNow;
+                node.Fact = fact;
+                node.Output = output;
+                node.CanceledByExecution = string.Equals(fact, "Cancelled", StringComparison.Ordinal);
+            }
         }
     }
 
@@ -58,7 +77,7 @@ public sealed class ExecutionGraph
 
     public void AddEdge(string fromNodeId, string toNodeId, EdgeType type)
     {
-        lock (_lock) { _edges.Add(new ExecutionEdge { FromNodeId = fromNodeId, ToNodeId = toNodeId, Type = type }); }
+        lock (_lock) { _edges.Add(new ExecutionEdge { From = fromNodeId, To = toNodeId, Type = type }); }
     }
 
     /// <summary>実行グラフを JSON としてエクスポートします。</summary>

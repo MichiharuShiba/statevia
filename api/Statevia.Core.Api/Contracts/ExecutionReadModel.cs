@@ -21,7 +21,8 @@ public sealed class ExecutionReadModel
 
 public sealed class ExecutionNodeReadModel
 {
-    public string NodeId { get; init; } = string.Empty;
+    /// <summary>ExecutionGraph のノード識別子（試行単位）。</summary>
+    public string ExecutionNodeId { get; init; } = string.Empty;
     public string NodeType { get; init; } = string.Empty;
     public string Status { get; init; } = string.Empty;
     public int Attempt { get; init; }

@@ -13,7 +13,8 @@ function execution(nodes: ExecutionNodeDTO[], graphId = "g-1"): WorkflowView {
     cancelRequested: false,
     restartLost: false,
     graphId,
-    nodes
+    nodes,
+    runtimeEdges: []
   };
 }
 
@@ -22,7 +23,7 @@ describe("mergeGraph", () => {
     // Arrange
     const def = getGraphDefinition("hello")!;
     const exec = execution(
-      [{ nodeId: "start", nodeType: "Start", status: "RUNNING", attempt: 1, workerId: "w-1", waitKey: null, canceledByExecution: false }],
+      [{ executionNodeId: "start", nodeType: "Start", status: "RUNNING", attempt: 1, workerId: "w-1", waitKey: null, canceledByExecution: false }],
       "hello"
     );
 
@@ -37,6 +38,8 @@ describe("mergeGraph", () => {
     const startNode = result.nodes.find((n) => n.nodeId === "start");
     expect(startNode?.status).toBe("RUNNING");
     expect(startNode?.attempt).toBe(1);
+    expect(startNode?.workerId).toBe("w-1");
+    expect(startNode?.executionNodeId).toBe("start");
   });
 
   it("execution に無い定義ノードは IDLE にする", () => {
@@ -55,7 +58,7 @@ describe("mergeGraph", () => {
   it("definition が null のとき execution のみのマージを返す", () => {
     // Arrange
     const exec = execution([
-      { nodeId: "n-1", nodeType: "TASK", status: "RUNNING", attempt: 1, workerId: "w-1", waitKey: null, canceledByExecution: false }
+      { executionNodeId: "n-1", nodeType: "TASK", status: "RUNNING", attempt: 1, workerId: "w-1", waitKey: null, canceledByExecution: false }
     ]);
 
     // Act
@@ -66,6 +69,7 @@ describe("mergeGraph", () => {
     expect(result.isDefinitionBased).toBe(false);
     expect(result.nodes).toHaveLength(1);
     expect(result.nodes[0].nodeId).toBe("n-1");
+    expect(result.nodes[0].executionNodeId).toBe("n-1");
     expect(result.nodes[0].label).toBe("n-1");
     expect(result.nodes[0].status).toBe("RUNNING");
     expect(result.edges).toHaveLength(0);
@@ -89,6 +93,100 @@ describe("mergeGraph", () => {
     const resumeEdge = result.edges.find((e) => e.from === "task-c" && e.to === "join-1");
     expect(resumeEdge?.edgeType).toBe("Resume");
     expect(resumeEdge?.eventName).toBe("DoneC");
+  });
+
+  it("runtimeEdges と一致する定義エッジに traversed=true を付与する", () => {
+    const def = getGraphDefinition("hello")!;
+    const exec = {
+      ...execution([], "hello"),
+      runtimeEdges: [{ from: "start", to: "task-a", type: 0 }]
+    };
+
+    const result = mergeGraph(exec, def);
+    const startToTaskA = result.edges.find((e) => e.from === "start" && e.to === "task-a");
+    const taskAToFork = result.edges.find((e) => e.from === "task-a" && e.to === "fork-1");
+    expect(startToTaskA?.traversed).toBe(true);
+    expect(taskAToFork?.traversed).toBe(false);
+  });
+
+  it("runtime nodeId が実行時IDでも stateName ベースで定義ノード/エッジへマージできる", () => {
+    const def = getGraphDefinition("hello")!;
+    const exec = execution(
+      [
+        {
+          executionNodeId: "rt-start-1",
+          stateName: "start",
+          nodeType: "Start",
+          status: "SUCCEEDED",
+          attempt: 1,
+          workerId: null,
+          waitKey: null,
+          canceledByExecution: false
+        },
+        {
+          executionNodeId: "rt-task-a-1",
+          stateName: "task-a",
+          nodeType: "Task",
+          status: "RUNNING",
+          attempt: 1,
+          workerId: null,
+          waitKey: null,
+          canceledByExecution: false
+        }
+      ],
+      "hello"
+    );
+    exec.runtimeEdges = [{ from: "rt-start-1", to: "rt-task-a-1", type: 0 }];
+
+    const result = mergeGraph(exec, def);
+    const startNode = result.nodes.find((n) => n.nodeId === "start");
+    const taskANode = result.nodes.find((n) => n.nodeId === "task-a");
+    const startToTaskA = result.edges.find((e) => e.from === "start" && e.to === "task-a");
+
+    expect(startNode?.status).toBe("SUCCEEDED");
+    expect(taskANode?.status).toBe("RUNNING");
+    expect(startNode?.executionNodeId).toBe("rt-start-1");
+    expect(taskANode?.executionNodeId).toBe("rt-task-a-1");
+    expect(startToTaskA?.traversed).toBe(true);
+  });
+
+  it("定義で nodeId と stateName が異なるときマージ結果で両方を維持する", () => {
+    const def: GraphDefinition = {
+      graphId: "custom-split",
+      nodes: [{ nodeId: "canvas-n1", stateName: "workflowState", nodeType: "Task" }],
+      edges: []
+    };
+    const exec = execution([], "custom-split");
+
+    const result = mergeGraph(exec, def);
+
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].nodeId).toBe("canvas-n1");
+    expect(result.nodes[0].executionNodeId).toBe("canvas-n1");
+    expect(result.nodes[0].stateName).toBe("workflowState");
+  });
+
+  it("実行ノードに stateName があるときマージ結果の stateName に反映する", () => {
+    const def = getGraphDefinition("hello")!;
+    const exec = execution(
+      [
+        {
+          executionNodeId: "start",
+          stateName: "startStateApi",
+          nodeType: "Start",
+          status: "RUNNING",
+          attempt: 1,
+          workerId: null,
+          waitKey: null,
+          canceledByExecution: false
+        }
+      ],
+      "hello"
+    );
+
+    const result = mergeGraph(exec, def);
+    const mergedStart = result.nodes.find((n) => n.nodeId === "start");
+    expect(mergedStart?.stateName).toBe("startStateApi");
   });
 });
 

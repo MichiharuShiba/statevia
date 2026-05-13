@@ -1,9 +1,12 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Execution;
+using Statevia.Core.Engine.ExecutionGraphs;
 using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Engine;
@@ -33,6 +36,25 @@ public class WorkflowInputPropagationTests
 
         // Assert
         Assert.Equal("workflow-seed", seen);
+    }
+
+    /// <summary>実行グラフ JSON の初期状態ノードに workflowInput が記録されることを検証する。</summary>
+    [Fact]
+    public async Task ExportExecutionGraph_records_workflow_input_on_initial_state_node()
+    {
+        var def = CreateSingleStateDefinition(
+            DefaultStateExecutor.Create(new ImmediateState()));
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var seed = new Dictionary<string, object?> { ["k"] = "v" };
+        var id = engine.Start(def, null, seed);
+
+        await WaitUntilCompletedAsync(engine, id);
+
+        using var doc = JsonDocument.Parse(engine.ExportExecutionGraph(id));
+        var nodes = doc.RootElement.GetProperty("nodes").EnumerateArray().ToList();
+        var startNode = Assert.Single(nodes, n => n.GetProperty("stateName").GetString() == "Start");
+        Assert.Equal(JsonValueKind.Object, startNode.GetProperty("input").ValueKind);
+        Assert.Equal("v", startNode.GetProperty("input").GetProperty("k").GetString());
     }
 
     /// <summary>next 遷移で後続状態には直前状態の出力が input として渡ることを検証する。</summary>
@@ -113,6 +135,61 @@ public class WorkflowInputPropagationTests
         Assert.NotNull(dict);
         Assert.Equal("out-A", dict["A"]);
         Assert.Equal("out-B", dict["B"]);
+    }
+
+    /// <summary>
+    /// 実行グラフに Join 状態のノードが 1 つだけ存在し、A/B 分岐の Join 辺が同一 Join ノード ID に収束することを検証する。
+    /// </summary>
+    [Fact]
+    public async Task Join_execution_graph_has_single_join_node_and_join_edge_targets_that_node()
+    {
+        var def = CreateJoinThenNextDefinition(
+            DefaultStateExecutor.Create(new DelegateState((_, _, _) => Task.FromResult<object?>("out-A"))),
+            DefaultStateExecutor.Create(new DelegateState((_, _, _) => Task.FromResult<object?>("out-B"))),
+            DefaultStateExecutor.Create(new DelegateState((_, _, _) => Task.FromResult<object?>(null))));
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var id = engine.Start(def);
+
+        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+
+        using var doc = JsonDocument.Parse(engine.ExportExecutionGraph(id));
+        var root = doc.RootElement;
+        var nodes = root.GetProperty("nodes").EnumerateArray().ToList();
+        var joinNodes = nodes.Where(n => n.GetProperty("stateName").GetString() == "Join1").ToList();
+        Assert.Single(joinNodes);
+        var joinNodeId = joinNodes[0].GetProperty("nodeId").GetString();
+        Assert.NotNull(joinNodeId);
+
+        var edges = root.GetProperty("edges").EnumerateArray().ToList();
+        var joinEdges = edges.Where(e => e.GetProperty("type").GetInt32() == (int)EdgeType.Join).ToList();
+        Assert.Equal(2, joinEdges.Count);
+        Assert.All(joinEdges, e => Assert.Equal(joinNodeId, e.GetProperty("to").GetString()));
+
+        var expectedJoinSources = nodes
+            .Where(n =>
+                n.GetProperty("stateName").GetString() == "A"
+                || n.GetProperty("stateName").GetString() == "B")
+            .Select(n => n.GetProperty("nodeId").GetString())
+            .ToHashSet();
+        var actualJoinSources = joinEdges.Select(e => e.GetProperty("from").GetString()).ToHashSet();
+        Assert.Equal(expectedJoinSources.Count, actualJoinSources.Count);
+        Assert.All(expectedJoinSources, sourceNodeId => Assert.Contains(sourceNodeId, actualJoinSources));
+
+        var fromJoinNext = edges.Where(e =>
+            e.GetProperty("type").GetInt32() == (int)EdgeType.Next
+            && e.GetProperty("from").GetString() == joinNodeId).ToList();
+        Assert.Single(fromJoinNext);
+        Assert.Equal("AfterJoin", nodes.Single(n => n.GetProperty("nodeId").GetString() == fromJoinNext[0].GetProperty("to").GetString()).GetProperty("stateName").GetString());
+
+        var joinInput = joinNodes[0].GetProperty("input");
+        var joinInputKeys = joinInput.EnumerateObject().Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("A", joinInputKeys);
+        Assert.Contains("B", joinInputKeys);
+
+        Assert.Equal(1, joinNodes[0].GetProperty("attempt").GetInt32());
+        var joinWorkerId = joinNodes[0].GetProperty("workerId").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(joinWorkerId));
+        Assert.False(joinNodes[0].GetProperty("canceledByExecution").GetBoolean());
     }
 
     /// <summary>next 遷移先の input.path が raw input に適用されることを検証する。</summary>
@@ -236,7 +313,7 @@ public class WorkflowInputPropagationTests
         var dict = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(bInput);
         Assert.Equal("my song", dict["title"]);
         Assert.Equal(2L, dict["count"]);
-        Assert.Equal(true, dict["enabled"]);
+        Assert.True((bool)dict["enabled"]!);
         var foo = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(dict["foo"]);
         Assert.Equal("from-path", foo["bar"]);
     }

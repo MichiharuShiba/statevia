@@ -4,6 +4,7 @@ using Statevia.Core.Api.Application.Actions.Abstractions;
 using Statevia.Core.Api.Application.Actions.Registry;
 using Statevia.Core.Api.Application.Definition;
 using Statevia.Core.Api.Hosting;
+using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Execution;
@@ -650,6 +651,65 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
+    /// nodes の noop で workflowInput が伝播するとき、<c>$.eligible eq true</c> がマッチすること（公式サンプル相当）。
+    /// </summary>
+    [Fact]
+    public async Task ValidateAndCompile_NodesEligibleEqTrueWithJsonWorkflowInput_ResolvesMatchedCase()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            version: 1
+            workflow:
+              name: CustomerOrderParallel
+              id: sample.customer.order.parallel
+            nodes:
+              - id: order.start
+                type: start
+                next: order.preflight
+              - id: order.preflight
+                type: action
+                action: noop
+                edges:
+                  - to: order.validate
+                    when:
+                      path: $.eligible
+                      op: eq
+                      value: true
+                    order: 10
+                  - to: order.reject.notify
+              - id: order.validate
+                type: action
+                action: noop
+                next: order.end
+              - id: order.reject.notify
+                type: action
+                action: noop
+                next: order.end
+              - id: order.end
+                type: end
+            """;
+
+        var (compiled, _) = svc.ValidateAndCompile("CustomerOrderParallel", yaml);
+        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var inputDoc = JsonDocument.Parse("""{"eligible":true,"shared":{"orderId":"ORD-1001"}}""");
+
+        // Act
+        var workflowId = engine.Start(compiled, null, inputDoc.RootElement);
+        await Task.Delay(400);
+        var graphJson = engine.ExportExecutionGraph(workflowId);
+
+        // Assert
+        using var graphDoc = JsonDocument.Parse(graphJson);
+        var preflightNode = graphDoc.RootElement.GetProperty("nodes").EnumerateArray()
+            .First(n =>
+                string.Equals(n.GetProperty("stateName").GetString(), "order.preflight", StringComparison.Ordinal));
+        Assert.True(preflightNode.TryGetProperty("conditionRouting", out var routing));
+        Assert.Equal(ConditionRoutingResolutions.MatchedCase, routing.GetProperty("resolution").GetString());
+        Assert.Equal(0, routing.GetProperty("matchedCaseIndex").GetInt32());
+    }
+
+    /// <summary>
     /// nodes 配列と states オブジェクトの併存は U10 に従い ArgumentException。
     /// </summary>
     [Fact]
@@ -726,6 +786,7 @@ public sealed class DefinitionCompilerServiceTests
         var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("N", yaml));
         Assert.Contains("invalid input path", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
+
 }
 
 

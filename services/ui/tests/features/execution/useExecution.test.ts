@@ -8,6 +8,7 @@ function workflowDto(overrides: Partial<WorkflowDTO> = {}): WorkflowDTO {
   return {
     displayId: "ex-1",
     resourceId: "r-1",
+    graphId: "def-1",
     status: "Running",
     startedAt: "2026-01-01T00:00:00Z",
     cancelRequested: false,
@@ -307,7 +308,7 @@ describe("useExecution", () => {
       const graphUpdated = JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ nodeId: "n-1", status: "RUNNING" }] }
+        patch: { nodes: [{ executionNodeId: "n-1", status: "RUNNING" }] }
       });
 
       await act(async () => {
@@ -446,7 +447,7 @@ describe("useExecution", () => {
       const graphUpdated = JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ nodeId: "n-1", status: "RUNNING" }] }
+        patch: { nodes: [{ executionNodeId: "n-1", status: "RUNNING" }] }
       });
 
       await act(async () => {

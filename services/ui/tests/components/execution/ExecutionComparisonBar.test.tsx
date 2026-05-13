@@ -23,10 +23,10 @@ function exec(
 }
 
 const node = (
-  nodeId: string,
+  executionNodeId: string,
   status: WorkflowView["nodes"][0]["status"]
 ): WorkflowView["nodes"][0] => ({
-  nodeId,
+  executionNodeId,
   nodeType: "Task",
   status,
   attempt: 1,

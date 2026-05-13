@@ -1,47 +1,80 @@
 import type {
   ExecutionNodeDTO,
+  RuntimeGraphEdgeDTO,
   WorkflowDTO,
   WorkflowGraphDTO,
   WorkflowView
 } from "./types";
 
-/** C# WorkflowGraphDTO のノードを ExecutionNodeDTO に変換（v2）。Core-API の camelCase JSON を前提。 */
+/** C# WorkflowGraphDTO のノードを ExecutionNodeDTO に変換（v2）。GET /graph のノード ID は JSON の `nodeId` のみ（Core-API 永続スナップショットと一致）。 */
 function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNodeDTO {
-  const nodeId =
-    (typeof n.nodeId === "string" ? n.nodeId : null) ??
-    (typeof (n as Record<string, unknown>).NodeId === "string" ? ((n as Record<string, unknown>).NodeId as string) : "");
-  const stateName =
-    (typeof n.stateName === "string" ? n.stateName : null) ??
-    (typeof (n as Record<string, unknown>).StateName === "string"
-      ? ((n as Record<string, unknown>).StateName as string)
-      : "");
-  const completedAt =
-    n.completedAt ??
-    ((n as Record<string, unknown>).CompletedAt as string | null | undefined);
-  const fact =
-    n.fact ??
-    ((n as Record<string, unknown>).Fact as string | null | undefined);
-  const conditionRouting =
-    n.conditionRouting ??
-    (n as Record<string, unknown>).ConditionRouting;
+  const executionNodeId =
+    typeof n.nodeId === "string" && n.nodeId.length > 0 ? n.nodeId : "";
+  const stateName = typeof n.stateName === "string" ? n.stateName : "";
+  const nodeType = typeof n.nodeType === "string" ? n.nodeType : "";
+  const fact = n.fact;
+  const startedAt = typeof n.startedAt === "string" ? n.startedAt : undefined;
+  const completedAt = typeof n.completedAt === "string" ? n.completedAt : null;
+  const input = "input" in n ? n.input : undefined;
+  const output = "output" in n ? n.output : undefined;
+  const attempt = parseAttempt(n);
+  const workerId = parseNullableString(n.workerId);
+  const waitKey = parseNullableString(n.waitKey);
+  const factText = toFactText(fact);
+  const canceledByExecution = parseCanceledByExecution(n.canceledByExecution, factText);
+  const conditionRouting = n.conditionRouting;
 
-  let status: ExecutionNodeDTO["status"] = "RUNNING";
-  const factText = String(fact ?? "").toLowerCase();
-  if (completedAt != null) {
-    if (factText.includes("fail")) status = "FAILED";
-    else if (factText.includes("cancel")) status = "CANCELED";
-    else status = "SUCCEEDED";
-  }
+  const status = resolveNodeStatus(completedAt, factText);
+
   return {
-    nodeId,
-    nodeType: stateName,
+    executionNodeId,
+    stateName,
+    nodeType,
     status,
-    attempt: 0,
-    workerId: null,
-    waitKey: null,
-    canceledByExecution: false,
+    attempt,
+    workerId,
+    waitKey,
+    canceledByExecution,
+    startedAt,
+    completedAt,
+    input,
+    output,
     conditionRouting
   };
+}
+
+function parseAttempt(node: WorkflowGraphDTO["nodes"][0]): number {
+  return typeof node.attempt === "number" ? node.attempt : 1;
+}
+
+function parseNullableString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function toFactText(fact: unknown): string {
+  return typeof fact === "string" ? fact.toLowerCase() : "";
+}
+
+function parseCanceledByExecution(value: unknown, factText: string): boolean {
+  return typeof value === "boolean" ? value : factText.includes("cancel");
+}
+
+function resolveNodeStatus(completedAt: string | null, factText: string): ExecutionNodeDTO["status"] {
+  if (completedAt == null) return "RUNNING";
+  if (factText.includes("fail")) return "FAILED";
+  if (factText.includes("cancel")) return "CANCELED";
+  return "SUCCEEDED";
+}
+
+function graphEdgeToRuntimeEdge(edge: WorkflowGraphDTO["edges"][0]): RuntimeGraphEdgeDTO | null {
+  const from = typeof edge.from === "string" ? edge.from : null;
+  const to = typeof edge.to === "string" ? edge.to : null;
+  if (!from || !to) return null;
+  let type: number | undefined;
+  if (typeof edge.type === "number") {
+    type = edge.type;
+  }
+  return { from, to, type };
 }
 
 /** WorkflowDTO と graph から WorkflowView を組み立てる（v2）。 */
@@ -50,9 +83,13 @@ export function buildWorkflowView(
   graph: WorkflowGraphDTO | null
 ): WorkflowView {
   const nodes: ExecutionNodeDTO[] = graph?.nodes?.map(graphNodeToExecutionNode) ?? [];
+  const runtimeEdges: RuntimeGraphEdgeDTO[] = (graph?.edges ?? [])
+    .map(graphEdgeToRuntimeEdge)
+    .filter((edge): edge is RuntimeGraphEdgeDTO => edge != null);
   return {
     ...workflow,
-    graphId: workflow.resourceId,
-    nodes
+    graphId: workflow.graphId,
+    nodes,
+    runtimeEdges
   };
 }

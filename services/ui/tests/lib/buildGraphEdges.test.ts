@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { buildGraphEdges } from "../../app/lib/buildGraphEdges";
-import type { PositionedEdge } from "../../app/lib/graphLayout";
+import type { LayoutEdgeInput } from "../../app/lib/graphLayout";
 
-function edge(overrides: Partial<PositionedEdge> & { id: string; from: string; to: string }): PositionedEdge {
+function edge(overrides: Partial<LayoutEdgeInput> & { id: string; from: string; to: string }): LayoutEdgeInput {
   const { id, from, to, ...rest } = overrides;
   return { id, from, to, ...rest };
 }
 
 describe("buildGraphEdges", () => {
   it("edgeType なしのとき Next として実線・ラベルなしで返す", () => {
-    const edges: PositionedEdge[] = [edge({ id: "e1", from: "a", to: "b" })];
+    const edges: LayoutEdgeInput[] = [edge({ id: "e1", from: "a", to: "b" })];
     const result = buildGraphEdges(edges);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -22,7 +22,7 @@ describe("buildGraphEdges", () => {
   });
 
   it('edgeType "Next" のとき実線・ラベルなしで返す', () => {
-    const edges: PositionedEdge[] = [edge({ id: "e1", from: "a", to: "b", edgeType: "Next" })];
+    const edges: LayoutEdgeInput[] = [edge({ id: "e1", from: "a", to: "b", edgeType: "Next" })];
     const result = buildGraphEdges(edges);
     expect(result[0]).toMatchObject({
       style: { stroke: "#d4d4d8", strokeWidth: 1.2 }
@@ -31,7 +31,7 @@ describe("buildGraphEdges", () => {
   });
 
   it('edgeType "Resume" のとき破線とイベント名ラベルで返す', () => {
-    const edges: PositionedEdge[] = [
+    const edges: LayoutEdgeInput[] = [
       edge({ id: "e1", from: "wait", to: "join", edgeType: "Resume", eventName: "DoneC" })
     ];
     const result = buildGraphEdges(edges);
@@ -48,14 +48,14 @@ describe("buildGraphEdges", () => {
   });
 
   it('edgeType "Resume" で eventName がないときラベルは "Resume"', () => {
-    const edges: PositionedEdge[] = [edge({ id: "e1", from: "a", to: "b", edgeType: "Resume" })];
+    const edges: LayoutEdgeInput[] = [edge({ id: "e1", from: "a", to: "b", edgeType: "Resume" })];
     const result = buildGraphEdges(edges);
     expect(result[0].label).toBe("Resume");
     expect(result[0]).toMatchObject({ style: { strokeDasharray: "8 4" } });
   });
 
   it('edgeType "Cancel" のとき太線と "Cancel" ラベルで返す', () => {
-    const edges: PositionedEdge[] = [
+    const edges: LayoutEdgeInput[] = [
       edge({ id: "e1", from: "task", to: "end", edgeType: "Cancel", cancelReason: "UserRequest" })
     ];
     const result = buildGraphEdges(edges);
@@ -72,7 +72,7 @@ describe("buildGraphEdges", () => {
   });
 
   it("複数エッジで Next / Resume / Cancel が混在するとき種別ごとに正しく変換する", () => {
-    const edges: PositionedEdge[] = [
+    const edges: LayoutEdgeInput[] = [
       edge({ id: "e1", from: "a", to: "b" }),
       edge({ id: "e2", from: "b", to: "c", edgeType: "Resume", eventName: "Ev" }),
       edge({ id: "e3", from: "c", to: "d", edgeType: "Cancel" })
@@ -88,10 +88,17 @@ describe("buildGraphEdges", () => {
   });
 
   it("全エッジに markerEnd と animated: false を付与する", () => {
-    const edges: PositionedEdge[] = [edge({ id: "e1", from: "a", to: "b" })];
+    const edges: LayoutEdgeInput[] = [edge({ id: "e1", from: "a", to: "b" })];
     const result = buildGraphEdges(edges);
     expect(result[0].markerEnd).toMatchObject({ width: 14, height: 14 });
     expect(result[0].markerEnd).toHaveProperty("type");
     expect(result[0].animated).toBe(false);
+  });
+
+  it("traversed=true の Next エッジは強調色で animated=true になる", () => {
+    const edges: LayoutEdgeInput[] = [edge({ id: "e1", from: "a", to: "b", traversed: true })];
+    const result = buildGraphEdges(edges);
+    expect(result[0].style).toEqual({ stroke: "#2563eb", strokeWidth: 2.2 });
+    expect(result[0].animated).toBe(true);
   });
 });

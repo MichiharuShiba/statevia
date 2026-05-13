@@ -1,5 +1,5 @@
 import type { GraphDefinitionMeta, GraphGroupDef } from "../graphs/types";
-import type { PositionedEdge, PositionedNode } from "./graphLayout";
+import type { LayoutEdgeInput, PositionedNode } from "./graphLayout";
 import type { WorkflowView } from "./types";
 
 export type GroupBounds = {
@@ -16,7 +16,7 @@ export function buildGroups(nodes: WorkflowView["nodes"]): {
   groups: Array<{ groupId: string; label: string; nodeIds: string[] }>;
   nodeToGroup: Record<string, string>;
 } {
-  const ids = nodes.map((n) => n.nodeId);
+  const ids = nodes.map((n) => n.executionNodeId);
   const firstForkIndex = ids.findIndex((id) => id.includes("fork-"));
   const firstJoinIndex = ids.findIndex((id) => id.includes("join-"));
   if (firstForkIndex < 0 || firstJoinIndex < 0 || firstForkIndex >= firstJoinIndex) {
@@ -32,7 +32,7 @@ export function buildGroups(nodes: WorkflowView["nodes"]): {
   };
 }
 
-function inferGroupsFromGraph(nodes: PositionedNode[], edges: PositionedEdge[]): GraphGroupDef[] {
+function inferGroupsFromGraph(nodes: PositionedNode[], edges: LayoutEdgeInput[]): GraphGroupDef[] {
   const nodeById = new Map(nodes.map((node) => [node.nodeId, node] as const));
   const forks = nodes.filter(
     (node) => node.nodeId.includes("fork-") || node.nodeType.trim().toUpperCase() === "FORK"
@@ -84,7 +84,7 @@ function inferGroupsFromGraph(nodes: PositionedNode[], edges: PositionedEdge[]):
 
 export function resolveGroupBounds(
   positionedNodes: PositionedNode[],
-  positionedEdges: PositionedEdge[],
+  positionedEdges: LayoutEdgeInput[],
   definitionGroups: GraphGroupDef[] | undefined,
   hints?: GraphDefinitionMeta
 ): GroupBounds[] {

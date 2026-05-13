@@ -1,8 +1,34 @@
 "use client";
 
 import type { ExecutionNodeDTO, WorkflowView } from "../../lib/types";
+import { formatExecutionDuration, formatExecutionInstant } from "../../lib/dateTime";
+import { formatTracePayload } from "../../lib/formatExecutionTrace";
 import { getStatusStyle } from "../../lib/statusStyle";
-import { useUiText } from "../../lib/uiTextContext";
+import { useLocale, useUiText } from "../../lib/uiTextContext";
+
+type TracePayloadDisclosureProps = {
+  heading: string;
+  /** `formatTracePayload` 結果。空なら `emptyLabel` を表示。 */
+  payloadText: string;
+  emptyLabel: string;
+};
+
+/**
+ * トレースの JSON プレビューを `<details>` で開閉可能にする。
+ */
+function TracePayloadDisclosure({ heading, payloadText, emptyLabel }: Readonly<TracePayloadDisclosureProps>) {
+  const display = payloadText === "" ? emptyLabel : payloadText;
+  return (
+    <details className="mt-1 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-high)]/60">
+      <summary className="cursor-pointer select-none list-none px-2 py-1.5 text-xs font-medium text-[var(--md-sys-color-on-surface)] outline-none marker:content-none [&::-webkit-details-marker]:hidden">
+        {heading}
+      </summary>
+      <pre className="mx-2 mb-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--md-sys-color-surface-container-high)] p-2 text-[10px] leading-snug text-[var(--md-sys-color-on-surface)]">
+        {display}
+      </pre>
+    </details>
+  );
+}
 
 type NodeDetailProps = {
   execution: WorkflowView | null;
@@ -28,6 +54,7 @@ export function NodeDetail({
   className
 }: Readonly<NodeDetailProps>) {
   const uiText = useUiText();
+  const locale = useLocale();
   const baseClassName = "rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm";
   const asideClassName = className ? `${baseClassName} ${className}` : baseClassName;
 
@@ -52,22 +79,88 @@ export function NodeDetail({
   const isWaiting = node.status === "WAITING";
   const isCanceled = node.status === "CANCELED";
   const isFailed = node.status === "FAILED";
+  const stateNameText = typeof node.stateName === "string" ? node.stateName.trim() : "";
+  const outputText = "output" in node && node.output !== undefined ? formatTracePayload(node.output) : "";
+  const inputText = "input" in node && node.input !== undefined ? formatTracePayload(node.input) : "";
+  const conditionRoutingText =
+    "conditionRouting" in node && node.conditionRouting !== undefined ? formatTracePayload(node.conditionRouting) : "";
+  const showTracePanel =
+    (node.startedAt != null && node.startedAt !== "") ||
+    (node.completedAt != null && node.completedAt !== "") ||
+    ("input" in node && node.input !== undefined) ||
+    ("output" in node && node.output !== undefined) ||
+    ("conditionRouting" in node && node.conditionRouting !== undefined);
 
   return (
     <aside className={asideClassName}>
       <h2 className="text-sm font-semibold">{uiText.nodeDetail.title(uiText.entities.node)}</h2>
       <div className={`mt-3 rounded-xl border p-3 ${style.borderClass} ${style.bgClass}`}>
         <div className="flex items-center justify-between">
-          <div className="font-mono text-xs">{node.nodeId}</div>
+          <div className="font-mono text-xs">{uiText.nodeDetail.meta.executionNodeId(node.executionNodeId)}</div>
           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${style.badgeClass}`}>
             {node.status}
           </span>
         </div>
         <div className="mt-2 space-y-1 text-xs text-[var(--md-sys-color-on-surface)]">
+          {node.workerId != null && node.workerId !== "" && (
+            <div className="font-mono">{uiText.nodeDetail.meta.workerId(node.workerId)}</div>
+          )}
           <div>{uiText.nodeDetail.meta.type(node.nodeType)}</div>
+          {stateNameText !== "" && <div>{uiText.nodeDetail.meta.stateName(stateNameText)}</div>}
           <div>{uiText.nodeDetail.meta.attempt(node.attempt)}</div>
           <div>{uiText.nodeDetail.meta.waitKey(node.waitKey ?? "—")}</div>
           <div>{uiText.nodeDetail.meta.canceledByExecution(node.canceledByExecution)}</div>
+
+          {showTracePanel && (
+            <div className="mt-2 space-y-1 border-t border-[var(--md-sys-color-outline-variant)] pt-2">
+              {node.startedAt != null && node.startedAt !== "" && (
+                <div>{uiText.nodeDetail.trace.startedAt(formatExecutionInstant(node.startedAt, locale))}</div>
+              )}
+              {node.completedAt != null && node.completedAt !== "" && (
+                <div>{uiText.nodeDetail.trace.completedAt(formatExecutionInstant(node.completedAt, locale))}</div>
+              )}
+              {(() => {
+                const durationText = formatExecutionDuration(node.startedAt, node.completedAt);
+                if (durationText != null) {
+                  return <div>{uiText.nodeDetail.trace.duration(durationText)}</div>;
+                }
+                if (
+                  node.startedAt != null &&
+                  node.startedAt !== "" &&
+                  node.completedAt != null &&
+                  node.completedAt !== ""
+                ) {
+                  return (
+                    <div className="text-[var(--md-sys-color-on-surface-variant)]">
+                      {uiText.nodeDetail.trace.durationUnavailable}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              {"input" in node && node.input !== undefined && (
+                <TracePayloadDisclosure
+                  heading={uiText.nodeDetail.trace.inputHeading}
+                  payloadText={inputText}
+                  emptyLabel={uiText.nodeDetail.trace.inputEmpty}
+                />
+              )}
+              {"output" in node && node.output !== undefined && (
+                <TracePayloadDisclosure
+                  heading={uiText.nodeDetail.trace.outputHeading}
+                  payloadText={outputText}
+                  emptyLabel={uiText.nodeDetail.trace.outputEmpty}
+                />
+              )}
+              {"conditionRouting" in node && node.conditionRouting !== undefined && (
+                <TracePayloadDisclosure
+                  heading={uiText.nodeDetail.trace.conditionRoutingHeading}
+                  payloadText={conditionRoutingText}
+                  emptyLabel={uiText.nodeDetail.trace.conditionRoutingEmpty}
+                />
+              )}
+            </div>
+          )}
 
           {/* Wait / Resume 詳細 */}
           {isWaiting && (

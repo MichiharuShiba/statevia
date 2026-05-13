@@ -7,6 +7,7 @@ export type NodeStatus = "IDLE" | "READY" | "RUNNING" | "WAITING" | "SUCCEEDED" 
 export type WorkflowDTO = {
   displayId: string;
   resourceId: string;
+  graphId: string;
   status: WorkflowStatus;
   startedAt: string;
   updatedAt?: string | null;
@@ -14,21 +15,36 @@ export type WorkflowDTO = {
   restartLost: boolean;
 };
 
-/** v2: GET /v1/workflows/:id/graph のノード（C# ExecutionNode）。JSON は camelCase（Core-API）。 */
+/**
+ * v2: GET /v1/workflows/:id/graph のノード（C# ExecutionNode）。JSON は camelCase（Core-API）。
+ * ノード ID のキーは API／Engine／永続グラフとも `nodeId` のまま。UI 組み立て後の `ExecutionNodeDTO` だけ `executionNodeId` に正規化する。
+ */
 export type WorkflowGraphNodeDTO = {
   nodeId?: string;
   stateName?: string;
+  nodeType?: string;
   startedAt?: string;
   completedAt?: string | null;
   fact?: string | null;
+  input?: unknown;
   output?: unknown;
+  attempt?: number;
+  workerId?: string | null;
+  waitKey?: string | null;
+  canceledByExecution?: boolean;
   conditionRouting?: unknown;
 };
 
 /** v2: GET /v1/workflows/:id/graph の辺（C# ExecutionEdge）。 */
 export type WorkflowGraphEdgeDTO = {
-  fromNodeId?: string;
-  toNodeId?: string;
+  from?: string;
+  to?: string;
+  type?: number;
+};
+
+export type RuntimeGraphEdgeDTO = {
+  from: string;
+  to: string;
   type?: number;
 };
 
@@ -40,13 +56,20 @@ export type WorkflowGraphDTO = {
 
 /** グラフ可視化用のノード（状態実行）。v2 では WorkflowGraphDTO から変換。 */
 export type ExecutionNodeDTO = {
-  nodeId: string;
+  /** UI 向けの実行ノード ID。永続グラフ JSON のキーは `nodeId` のまま（API／Engine は変更しない）。グラフから組み立てるときはその値と同じ。 */
+  executionNodeId: string;
+  stateName?: string;
   nodeType: string;
   status: NodeStatus;
   attempt: number;
   workerId: string | null;
   waitKey: string | null;
   canceledByExecution: boolean;
+  /** GET /graph のノードに含まれる場合のみ（ノード詳細のトレース用）。 */
+  startedAt?: string;
+  completedAt?: string | null;
+  input?: unknown;
+  output?: unknown;
   conditionRouting?: unknown;
   error?: { message?: string } | null;
   cancelReason?: string | null;
@@ -56,6 +79,7 @@ export type ExecutionNodeDTO = {
 export type WorkflowView = WorkflowDTO & {
   graphId: string;
   nodes: ExecutionNodeDTO[];
+  runtimeEdges?: RuntimeGraphEdgeDTO[];
 };
 
 export type CommandAccepted = {
@@ -75,11 +99,14 @@ export type ApiError = {
   };
 };
 
+/** GraphUpdated 等のパッチ。`executionNodeId` は UI／REST 向け名（永続グラフ JSON の `nodeId` と同値）。 */
 export type GraphPatchNode = {
-  nodeId: string;
+  executionNodeId: string;
+  stateName?: string;
   nodeType?: string;
   status?: NodeStatus;
   attempt?: number;
+  workerId?: string | null;
   waitKey?: string | null;
   canceledByExecution?: boolean;
   error?: { message?: string } | null;

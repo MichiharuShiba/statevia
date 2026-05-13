@@ -6,7 +6,7 @@ import { layoutGraph } from "../../lib/graphLayout";
 import { mergeGraph, type MergedGraphEdge, type MergedGraphNode } from "../../lib/mergeGraph";
 import type { ExecutionNodeDTO, WorkflowView } from "../../lib/types";
 import type { GroupBounds } from "../../lib/grouping";
-import type { PositionedEdge, PositionedNode } from "../../lib/graphLayout";
+import type { LayoutEdgeInput, PositionedNode } from "../../lib/graphLayout";
 import type { GraphDefinition } from "../../graphs/types";
 
 export type GraphData = {
@@ -14,7 +14,7 @@ export type GraphData = {
   definitionBased: boolean;
   mergedNodes: MergedGraphNode[];
   nodes: Array<PositionedNode<MergedGraphNode>>;
-  edges: PositionedEdge[];
+  edges: LayoutEdgeInput[];
   groups: GroupBounds[];
 };
 
@@ -50,22 +50,52 @@ export function useGraphData(
   }, [execution, graphDefinition]);
 }
 
+/**
+ * ノード詳細・Resume 用に `ExecutionNodeDTO` を解決する。
+ * リストはランタイム `executionNodeId`（UUID）、グラフは定義の `nodeId`（状態キー）で選択するため、
+ * `stateName` およびマージ結果の `stateName` でランタイム行へ寄せる。
+ */
 export function getNodeWithFallback(
   execution: WorkflowView | null,
   graphData: GraphData | null,
   nodeId: string | null
 ): ExecutionNodeDTO | null {
   if (!execution || !nodeId) return null;
-  const runtimeNode = execution.nodes.find((n) => n.nodeId === nodeId);
-  if (runtimeNode) return runtimeNode;
-  const mergedNode = graphData?.mergedNodes.find((n) => n.nodeId === nodeId);
+  const key = nodeId.trim();
+
+  const byRuntimeId = execution.nodes.find((n) => n.executionNodeId === key);
+  if (byRuntimeId) return byRuntimeId;
+
+  const byStateNameKey = execution.nodes.find(
+    (n) =>
+      typeof n.stateName === "string" &&
+      n.stateName.trim().length > 0 &&
+      n.stateName.trim().toLowerCase() === key.toLowerCase()
+  );
+  if (byStateNameKey) return byStateNameKey;
+
+  const mergedNode = graphData?.mergedNodes.find((n) => n.nodeId === key);
+  if (mergedNode) {
+    const mergedState = mergedNode.stateName.trim();
+    if (mergedState.length > 0) {
+      const byMergedStateName = execution.nodes.find(
+        (n) =>
+          typeof n.stateName === "string" &&
+          n.stateName.trim().toLowerCase() === mergedState.toLowerCase()
+      );
+      if (byMergedStateName) return byMergedStateName;
+    }
+  }
+
   if (!mergedNode) return null;
+
   return {
-    nodeId: mergedNode.nodeId,
+    executionNodeId: mergedNode.executionNodeId,
+    stateName: mergedNode.stateName,
     nodeType: mergedNode.nodeType,
     status: mergedNode.status,
     attempt: mergedNode.attempt,
-    workerId: null,
+    workerId: mergedNode.workerId,
     waitKey: mergedNode.waitKey,
     canceledByExecution: mergedNode.canceledByExecution
   };

@@ -38,92 +38,73 @@ public sealed class GraphDefinitionService : IGraphDefinitionService
 
     internal static GraphDefinitionResponse BuildFromCompiledJson(string graphId, string definitionName, string compiledJson)
     {
-        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var dto = JsonSerializer.Deserialize<CompiledDefinitionDto>(compiledJson, opts);
+        var dto = DeserializeCompiledDefinition(compiledJson);
         if (dto is null)
-            return new GraphDefinitionResponse { GraphId = graphId, Nodes = Array.Empty<GraphNodeDefinition>(), Edges = Array.Empty<GraphEdgeDefinition>() };
+            return EmptyGraph(graphId);
 
-        var stateNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { dto.InitialState };
-        if (dto.Transitions is not null)
-        {
-            foreach (var (from, map) in dto.Transitions)
-            {
-                stateNames.Add(from);
-                if (map is null) continue;
-                foreach (var (_, target) in map)
-                {
-                    if (target?.Next is { } n) stateNames.Add(n);
-                    if (target?.Fork is { } f) foreach (var t in f) stateNames.Add(t);
-                }
-            }
-        }
-        if (dto.ForkTable is not null)
-        {
-            foreach (var key in dto.ForkTable.Keys)
-                stateNames.Add(key);
-            foreach (var list in dto.ForkTable.Values)
-                if (list is not null)
-                    foreach (var s in list) stateNames.Add(s);
-        }
-        if (dto.JoinTable is not null)
-        {
-            foreach (var key in dto.JoinTable.Keys)
-                stateNames.Add(key);
-            foreach (var list in dto.JoinTable.Values)
-                if (list is not null)
-                    foreach (var s in list) stateNames.Add(s);
-        }
-        if (dto.WaitTable is not null)
-            foreach (var key in dto.WaitTable.Keys)
-                stateNames.Add(key);
-
-        var nodes = new List<GraphNodeDefinition>();
-        foreach (var state in stateNames)
-        {
-            var nodeType = GetNodeType(state, dto);
-            nodes.Add(new GraphNodeDefinition
-            {
-                NodeId = state,
-                NodeType = nodeType,
-                Label = state
-            });
-        }
-
-        var edges = new List<GraphEdgeDefinition>();
-        if (dto.Transitions is not null)
-        {
-            foreach (var (from, map) in dto.Transitions)
-            {
-                if (map is null) continue;
-                foreach (var (_, target) in map)
-                {
-                    if (target is null) continue;
-                    if (target.Next is { } to)
-                        edges.Add(new GraphEdgeDefinition { From = from, To = to });
-                    if (target.Fork is { } forkList)
-                        foreach (var branch in forkList)
-                            edges.Add(new GraphEdgeDefinition { From = from, To = branch });
-                }
-            }
-        }
-        if (dto.ForkTable is not null)
-            foreach (var (from, list) in dto.ForkTable)
-                if (list is not null)
-                    foreach (var targetState in list)
-                        edges.Add(new GraphEdgeDefinition { From = from, To = targetState });
-        if (dto.JoinTable is not null)
-            foreach (var (joinState, list) in dto.JoinTable)
-                if (list is not null)
-                    foreach (var from in list)
-                        edges.Add(new GraphEdgeDefinition { From = from, To = joinState });
+        var stateNames = CollectStateNames(dto);
+        var nodes = BuildNodes(stateNames, dto);
+        var edges = BuildEdges(dto);
 
         return new GraphDefinitionResponse
         {
             GraphId = graphId,
             Nodes = nodes,
-            Edges = edges,
-            Ui = new GraphUiDefinition { Layout = "dagre" }
+            Edges = edges
         };
+    }
+
+    /// <summary>
+    /// コンパイル済み定義 JSON を DTO に逆シリアライズする。
+    /// </summary>
+    private static CompiledDefinitionDto? DeserializeCompiledDefinition(string compiledJson)
+    {
+        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        return JsonSerializer.Deserialize<CompiledDefinitionDto>(compiledJson, opts);
+    }
+
+    /// <summary>
+    /// ノード・エッジが空の GraphDefinitionResponse を生成する。
+    /// </summary>
+    private static GraphDefinitionResponse EmptyGraph(string graphId) =>
+        new() { GraphId = graphId, Nodes = Array.Empty<GraphNodeDefinition>(), Edges = Array.Empty<GraphEdgeDefinition>() };
+
+    /// <summary>
+    /// compiled 定義全体から出現しうる状態名を収集する。
+    /// </summary>
+    private static HashSet<string> CollectStateNames(CompiledDefinitionDto dto)
+    {
+        var stateNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { dto.InitialState };
+        AddStatesFromTransitions(stateNames, dto.Transitions);
+        AddStatesFromConditionalTransitions(stateNames, dto.ConditionalTransitions);
+        AddStatesFromStateTable(stateNames, dto.ForkTable);
+        AddStatesFromStateTable(stateNames, dto.JoinTable);
+        AddStatesFromWaitTable(stateNames, dto.WaitTable);
+        return stateNames;
+    }
+
+    /// <summary>
+    /// 収集済み状態名から描画用ノード定義を構築する。
+    /// </summary>
+    private static List<GraphNodeDefinition> BuildNodes(IEnumerable<string> stateNames, CompiledDefinitionDto dto) =>
+        stateNames.Select(state => new GraphNodeDefinition
+        {
+            NodeId = state,
+            NodeType = GetNodeType(state, dto),
+            Label = state
+        }).ToList();
+
+    /// <summary>
+    /// compiled 定義から描画用エッジ定義を構築する。
+    /// </summary>
+    private static List<GraphEdgeDefinition> BuildEdges(CompiledDefinitionDto dto)
+    {
+        var edges = new List<GraphEdgeDefinition>();
+        AddEdgesFromTransitions(edges, dto.Transitions);
+        AddEdgesFromConditionalTransitions(edges, dto.ConditionalTransitions);
+        AddEdgesFromStateTable(edges, dto.ForkTable);
+        AddEdgesFromJoinTable(edges, dto.JoinTable);
+        return edges;
     }
 
     private static string GetNodeType(string state, CompiledDefinitionDto dto)
@@ -136,27 +117,200 @@ public sealed class GraphDefinitionService : IGraphDefinitionService
             return "Join";
         if (dto.ForkTable is not null && dto.ForkTable.ContainsKey(state))
             return "Fork";
-        if (dto.Transitions is not null && dto.Transitions.TryGetValue(state, out var map) && map is not null)
-            foreach (var (_, target) in map)
-                if (target?.End == true)
-                    return "End";
+        if (dto.Transitions is not null
+            && dto.Transitions.TryGetValue(state, out var map)
+            && map is not null
+            && map.Values.Any(target => target?.End == true))
+            return "End";
         return "Task";
+    }
+
+    /// <summary>
+    /// 線形遷移テーブル（transitions）から到達先状態を収集する。
+    /// </summary>
+    private static void AddStatesFromTransitions(
+        HashSet<string> stateNames,
+        Dictionary<string, Dictionary<string, TransitionTargetDto>?>? transitions)
+    {
+        if (transitions is null) return;
+        transitions.Keys.ToList().ForEach(key => _ = stateNames.Add(key));
+        transitions.Values
+            .Where(map => map is not null)
+            .SelectMany(map => map!.Values)
+            .ToList()
+            .ForEach(target => AddTargetStates(stateNames, target));
+    }
+
+    /// <summary>
+    /// 条件遷移テーブル（conditionalTransitions）から到達先状態を収集する。
+    /// </summary>
+    private static void AddStatesFromConditionalTransitions(
+        HashSet<string> stateNames,
+        Dictionary<string, Dictionary<string, CompiledFactTransitionDto>?>? conditionalTransitions)
+    {
+        if (conditionalTransitions is null) return;
+        conditionalTransitions.Keys.ToList().ForEach(key => _ = stateNames.Add(key));
+        conditionalTransitions.Values
+            .Where(map => map is not null)
+            .SelectMany(map => map!.Values)
+            .ToList()
+            .ForEach(transition =>
+            {
+                AddTargetStates(stateNames, transition?.LinearTarget);
+                AddTargetStates(stateNames, transition?.DefaultTarget);
+                transition?.Cases?
+                    .Select(c => c?.Target)
+                    .ToList()
+                    .ForEach(target => AddTargetStates(stateNames, target));
+            });
+    }
+
+    /// <summary>
+    /// stateName → stateName[] 形式テーブル（fork/join）から状態名を収集する。
+    /// </summary>
+    private static void AddStatesFromStateTable(
+        HashSet<string> stateNames,
+        Dictionary<string, List<string>?>? stateTable)
+    {
+        if (stateTable is null) return;
+        stateTable.Keys.ToList().ForEach(key => _ = stateNames.Add(key));
+        stateTable.Values
+            .Where(list => list is not null)
+            .SelectMany(list => list!)
+            .ToList()
+            .ForEach(state => _ = stateNames.Add(state));
+    }
+
+    /// <summary>
+    /// wait テーブルのキー（待機状態名）を収集する。
+    /// </summary>
+    private static void AddStatesFromWaitTable(HashSet<string> stateNames, Dictionary<string, string>? waitTable)
+    {
+        if (waitTable is null) return;
+        waitTable.Keys.ToList().ForEach(key => _ = stateNames.Add(key));
+    }
+
+    /// <summary>
+    /// 単一遷移ターゲットから到達先状態を収集する。
+    /// </summary>
+    private static void AddTargetStates(HashSet<string> stateNames, TransitionTargetDto? target)
+    {
+        if (target is null)
+        {
+            return;
+        }
+        if (target.Next is { } n) stateNames.Add(n);
+        target.Fork?.ToList().ForEach(state => _ = stateNames.Add(state));
+    }
+
+    /// <summary>
+    /// 単一遷移ターゲットから描画用エッジを追加する。
+    /// </summary>
+    private static void AddEdges(List<GraphEdgeDefinition> edges, string from, TransitionTargetDto? target)
+    {
+        if (target is null)
+        {
+            return;
+        }
+        if (target.Next is { } to)
+            edges.Add(new GraphEdgeDefinition { From = from, To = to });
+        target.Fork?
+            .Select(branch => new GraphEdgeDefinition { From = from, To = branch })
+            .ToList()
+            .ForEach(edges.Add);
+    }
+
+    /// <summary>
+    /// 線形遷移テーブル（transitions）から描画用エッジを追加する。
+    /// </summary>
+    private static void AddEdgesFromTransitions(
+        List<GraphEdgeDefinition> edges,
+        Dictionary<string, Dictionary<string, TransitionTargetDto>?>? transitions)
+    {
+        if (transitions is null) return;
+        transitions
+            .Where(pair => pair.Value is not null)
+            .SelectMany(pair => pair.Value!.Values.Select(target => (pair.Key, target)))
+            .ToList()
+            .ForEach(item => AddEdges(edges, item.Key, item.target));
+    }
+
+    /// <summary>
+    /// 条件遷移テーブル（conditionalTransitions）から描画用エッジを追加する。
+    /// </summary>
+    private static void AddEdgesFromConditionalTransitions(
+        List<GraphEdgeDefinition> edges,
+        Dictionary<string, Dictionary<string, CompiledFactTransitionDto>?>? conditionalTransitions)
+    {
+        if (conditionalTransitions is null) return;
+        conditionalTransitions
+            .Where(pair => pair.Value is not null)
+            .SelectMany(pair => pair.Value!.Values.Select(transition => (pair.Key, transition)))
+            .ToList()
+            .ForEach(item =>
+            {
+                AddEdges(edges, item.Key, item.transition?.LinearTarget);
+                AddEdges(edges, item.Key, item.transition?.DefaultTarget);
+                item.transition?.Cases?
+                    .Select(c => c?.Target)
+                    .ToList()
+                    .ForEach(target => AddEdges(edges, item.Key, target));
+            });
+    }
+
+    /// <summary>
+    /// stateName → stateName[] 形式テーブル（fork）から描画用エッジを追加する。
+    /// </summary>
+    private static void AddEdgesFromStateTable(List<GraphEdgeDefinition> edges, Dictionary<string, List<string>?>? stateTable)
+    {
+        if (stateTable is null) return;
+        stateTable
+            .Where(pair => pair.Value is not null)
+            .SelectMany(pair => pair.Value!.Select(targetState => new GraphEdgeDefinition { From = pair.Key, To = targetState }))
+            .ToList()
+            .ForEach(edges.Add);
+    }
+
+    /// <summary>
+    /// join テーブル（joinState ← dependencies）から描画用エッジを追加する。
+    /// </summary>
+    private static void AddEdgesFromJoinTable(List<GraphEdgeDefinition> edges, Dictionary<string, List<string>?>? joinTable)
+    {
+        if (joinTable is null) return;
+        joinTable
+            .Where(pair => pair.Value is not null)
+            .SelectMany(pair => pair.Value!.Select(from => new GraphEdgeDefinition { From = from, To = pair.Key }))
+            .ToList()
+            .ForEach(edges.Add);
     }
 
     private sealed class CompiledDefinitionDto
     {
         public string Name { get; set; } = string.Empty;
         public string InitialState { get; set; } = string.Empty;
-        public Dictionary<string, Dictionary<string, TransitionTargetDto>?>? Transitions { get; set; }
-        public Dictionary<string, List<string>?>? ForkTable { get; set; }
-        public Dictionary<string, List<string>?>? JoinTable { get; set; }
-        public Dictionary<string, string>? WaitTable { get; set; }
+        public Dictionary<string, Dictionary<string, TransitionTargetDto>?>? Transitions { get; set; } = new();
+        public Dictionary<string, Dictionary<string, CompiledFactTransitionDto>?>? ConditionalTransitions { get; set; } = new();
+        public Dictionary<string, List<string>?>? ForkTable { get; set; } = new();
+        public Dictionary<string, List<string>?>? JoinTable { get; set; } = new();
+        public Dictionary<string, string>? WaitTable { get; set; } = new();
+    }
+
+    private sealed class CompiledFactTransitionDto
+    {
+        public TransitionTargetDto? LinearTarget { get; set; } = new();
+        public List<CompiledTransitionCaseDto?>? Cases { get; set; } = [];
+        public TransitionTargetDto? DefaultTarget { get; set; } = new();
+    }
+
+    private sealed class CompiledTransitionCaseDto
+    {
+        public TransitionTargetDto? Target { get; set; } = new();
     }
 
     private sealed class TransitionTargetDto
     {
-        public string? Next { get; set; }
-        public List<string>? Fork { get; set; }
-        public bool End { get; set; }
+        public string? Next { get; set; } = string.Empty;
+        public List<string>? Fork { get; set; } = [];
+        public bool End { get; set; } = false;
     }
 }

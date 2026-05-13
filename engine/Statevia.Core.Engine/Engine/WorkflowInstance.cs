@@ -24,6 +24,7 @@ public sealed class WorkflowInstance
     public required ExecutionGraph Graph { get; init; }
 
     private readonly Dictionary<string, object?> _stateOutputs = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> _stateAttempts = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _activeStates = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
     private readonly ConcurrentDictionary<Guid, byte> _appliedPublishClientEventIds = new();
@@ -38,6 +39,15 @@ public sealed class WorkflowInstance
 
     public void SetOutput(string stateName, object? output) { lock (_lock) { _stateOutputs[stateName] = output; } }
     public bool TryGetOutput(string stateName, out object? output) { lock (_lock) { return _stateOutputs.TryGetValue(stateName, out output); } }
+    public int NextAttempt(string stateName)
+    {
+        lock (_lock)
+        {
+            var next = _stateAttempts.TryGetValue(stateName, out var current) ? current + 1 : 1;
+            _stateAttempts[stateName] = next;
+            return next;
+        }
+    }
     public void AddActiveState(string stateName) { lock (_lock) { _activeStates.Add(stateName); } }
     public void RemoveActiveState(string stateName) { lock (_lock) { _activeStates.Remove(stateName); } }
     public IReadOnlyList<string> GetActiveStates() { lock (_lock) { return _activeStates.ToList(); } }

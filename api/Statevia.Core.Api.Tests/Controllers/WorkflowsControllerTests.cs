@@ -5,6 +5,7 @@ using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Services;
+using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Core.Api.Tests.Controllers;
 
@@ -116,12 +117,24 @@ public sealed class WorkflowsControllerTests
             LastTenantId = tenantId;
             return GetResult;
         }
+        public async Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct)
+        {
+            await Task.Yield(); // async boundary for coverage
+            if (ExceptionToThrow is { } ex) throw ex;
+            LastTenantId = tenantId;
+        }
 
         public async Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
             LastTenantId = tenantId;
+            return GraphJsonResult;
+        }
+        public async Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
+        {
+            await Task.Yield(); // async boundary for coverage
+            if (ExceptionToThrow is { } ex) throw ex;
             return GraphJsonResult;
         }
 
@@ -449,17 +462,18 @@ public sealed class WorkflowsControllerTests
                 {
                     new WorkflowViewNodeDto
                     {
-                        NodeId = "n1",
+                        ExecutionNodeId = "n1",
+                        StateName = "S1",
                         NodeType = "Task",
                         Status = "RUNNING",
                         Attempt = 1,
                         WorkerId = null,
                         WaitKey = null,
                         CanceledByExecution = false,
-                        ConditionRouting = JsonDocument.Parse("""
+                        ConditionRouting = JsonDocument.Parse($$"""
                             {
                               "fact": "Completed",
-                              "resolution": "matched_case",
+                              "resolution": "{{ConditionRoutingResolutions.MatchedCase}}",
                               "matchedCaseIndex": 0
                             }
                             """).RootElement.Clone()
@@ -476,10 +490,10 @@ public sealed class WorkflowsControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var model = Assert.IsType<WorkflowViewDto>(ok.Value);
         Assert.Single(model.Nodes);
-        Assert.Equal("n1", model.Nodes[0].NodeId);
+        Assert.Equal("n1", model.Nodes[0].ExecutionNodeId);
         Assert.True(model.Nodes[0].ConditionRouting.HasValue);
         Assert.Equal(
-            "matched_case",
+            ConditionRoutingResolutions.MatchedCase,
             model.Nodes[0].ConditionRouting!.Value.GetProperty("resolution").GetString());
     }
 

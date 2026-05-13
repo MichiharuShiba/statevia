@@ -10,9 +10,9 @@ public enum EdgeType { Next, Fork, Join, Resume, Cancel }
 public sealed class ExecutionEdge
 {
     /// <summary>遷移元ノード ID。</summary>
-    public required string FromNodeId { get; init; }
+    public required string From { get; init; }
     /// <summary>遷移先ノード ID。</summary>
-    public required string ToNodeId { get; init; }
+    public required string To { get; init; }
     /// <summary>辺の種類。</summary>
     public required EdgeType Type { get; init; }
 }

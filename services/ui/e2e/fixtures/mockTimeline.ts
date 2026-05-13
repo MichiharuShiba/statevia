@@ -1,5 +1,5 @@
 /**
- * 実行履歴タイムライン・リプレイ機能の e2e 用テストデータ
+ * イベントタイムライン・リプレイ機能の e2e 用テストデータ
  */
 import type { ExecutionEventWithSeq, WorkflowView } from "../../app/lib/types";
 import { mockExecution } from "./mockExecution";
@@ -15,8 +15,8 @@ export const timelineEventsPage1: ExecutionEventWithSeq[] = [
     executionId: EXECUTION_ID,
     patch: {
       nodes: [
-        { nodeId: "start", nodeType: "Start", status: "IDLE" },
-        { nodeId: "task-a", nodeType: "Task", status: "IDLE" },
+        { executionNodeId: "start", nodeType: "Start", status: "IDLE" },
+        { executionNodeId: "task-a", nodeType: "Task", status: "IDLE" },
       ],
     },
     at: at("2026-02-28T10:00:00.000Z"),
@@ -34,7 +34,7 @@ export const timelineEventsPage1: ExecutionEventWithSeq[] = [
     executionId: EXECUTION_ID,
     patch: {
       nodes: [
-        { nodeId: "start", nodeType: "Start", status: "READY" },
+        { executionNodeId: "start", nodeType: "Start", status: "READY" },
       ],
     },
     at: at("2026-02-28T10:00:02.000Z"),
@@ -49,8 +49,8 @@ export const timelineEventsPage2: ExecutionEventWithSeq[] = [
     executionId: EXECUTION_ID,
     patch: {
       nodes: [
-        { nodeId: "start", nodeType: "Start", status: "SUCCEEDED" },
-        { nodeId: "task-a", nodeType: "Task", status: "RUNNING", attempt: 1 },
+        { executionNodeId: "start", nodeType: "Start", status: "SUCCEEDED" },
+        { executionNodeId: "task-a", nodeType: "Task", status: "RUNNING", attempt: 1 },
       ],
     },
     at: at("2026-02-28T10:00:03.000Z"),
@@ -61,7 +61,7 @@ export const timelineEventsPage2: ExecutionEventWithSeq[] = [
     executionId: EXECUTION_ID,
     patch: {
       nodes: [
-        { nodeId: "task-a", nodeType: "Task", status: "SUCCEEDED" },
+        { executionNodeId: "task-a", nodeType: "Task", status: "SUCCEEDED" },
       ],
     },
     at: at("2026-02-28T10:00:04.000Z"),
@@ -73,8 +73,8 @@ export const stateAtSeq1: WorkflowView = {
   ...mockExecution,
   displayId: EXECUTION_ID,
   nodes: [
-    { nodeId: "start", nodeType: "Start", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
-    { nodeId: "task-a", nodeType: "Task", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
+    { executionNodeId: "start", nodeType: "Start", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
+    { executionNodeId: "task-a", nodeType: "Task", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
   ],
 };
 
@@ -82,8 +82,8 @@ export const stateAtSeq1: WorkflowView = {
 export const stateAtSeq2: WorkflowView = {
   ...stateAtSeq1,
   nodes: [
-    { nodeId: "start", nodeType: "Start", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
-    { nodeId: "task-a", nodeType: "Task", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
+    { executionNodeId: "start", nodeType: "Start", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
+    { executionNodeId: "task-a", nodeType: "Task", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
   ],
 };
 
@@ -91,8 +91,8 @@ export const stateAtSeq2: WorkflowView = {
 export const stateAtSeq3: WorkflowView = {
   ...stateAtSeq1,
   nodes: [
-    { nodeId: "start", nodeType: "Start", status: "READY", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
-    { nodeId: "task-a", nodeType: "Task", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
+    { executionNodeId: "start", nodeType: "Start", status: "READY", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
+    { executionNodeId: "task-a", nodeType: "Task", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
   ],
 };
 
@@ -100,8 +100,8 @@ export const stateAtSeq3: WorkflowView = {
 export const stateAtSeq4: WorkflowView = {
   ...stateAtSeq1,
   nodes: [
-    { nodeId: "start", nodeType: "Start", status: "SUCCEEDED", attempt: 1, workerId: null, waitKey: null, canceledByExecution: false },
-    { nodeId: "task-a", nodeType: "Task", status: "RUNNING", attempt: 1, workerId: "w1", waitKey: null, canceledByExecution: false },
+    { executionNodeId: "start", nodeType: "Start", status: "SUCCEEDED", attempt: 1, workerId: null, waitKey: null, canceledByExecution: false },
+    { executionNodeId: "task-a", nodeType: "Task", status: "RUNNING", attempt: 1, workerId: "w1", waitKey: null, canceledByExecution: false },
   ],
 };
 

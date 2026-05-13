@@ -36,8 +36,8 @@ public class ExecutionGraphTests
 
         // Assert
         Assert.Single(edges);
-        Assert.Equal(id1, edges[0].FromNodeId);
-        Assert.Equal(id2, edges[0].ToNodeId);
+        Assert.Equal(id1, edges[0].From);
+        Assert.Equal(id2, edges[0].To);
         Assert.Equal(EdgeType.Next, edges[0].Type);
     }
 

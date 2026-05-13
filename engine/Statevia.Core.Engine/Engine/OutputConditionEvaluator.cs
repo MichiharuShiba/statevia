@@ -12,6 +12,16 @@ namespace Statevia.Core.Engine.Engine;
 /// </summary>
 internal static class OutputConditionEvaluator
 {
+    private const string ReasonUnsupportedOp = "unsupported_op";
+    private const string ReasonPathResolutionFailed = "path_resolution_failed";
+    private const string ReasonPathNotFound = "path_not_found";
+    private const string ReasonConditionFalse = "condition_false";
+    private const string ReasonExistsAbsent = "exists_absent";
+    private const string ReasonCompareOperandNull = "compare_operand_null";
+    private const string ReasonCompareUnsupported = "compare_unsupported";
+    private const string ReasonInOperandNotCollection = "in_operand_not_collection";
+    private const string ReasonBetweenOperandInvalid = "between_operand_invalid";
+
     /// <summary>
     /// コンパイル済みの事実遷移を output で評価し、遷移結果を返す。
     /// </summary>
@@ -39,7 +49,7 @@ internal static class OutputConditionEvaluator
                 new ConditionRoutingDiagnostics
                 {
                     Fact = fact,
-                    Resolution = "linear",
+                    Resolution = ConditionRoutingResolutions.Linear,
                     MatchedCaseIndex = null,
                     CaseEvaluations = Array.Empty<ConditionCaseEvaluationRecord>(),
                     EvaluationErrors = evaluationErrors
@@ -73,7 +83,7 @@ internal static class OutputConditionEvaluator
                     new ConditionRoutingDiagnostics
                     {
                         Fact = fact,
-                        Resolution = "matched_case",
+                        Resolution = ConditionRoutingResolutions.MatchedCase,
                         MatchedCaseIndex = caseIndex,
                         CaseEvaluations = caseEvaluations,
                         EvaluationErrors = evaluationErrors
@@ -90,7 +100,7 @@ internal static class OutputConditionEvaluator
                 new ConditionRoutingDiagnostics
                 {
                     Fact = fact,
-                    Resolution = "default_fallback",
+                    Resolution = ConditionRoutingResolutions.DefaultFallback,
                     MatchedCaseIndex = null,
                     CaseEvaluations = caseEvaluations,
                     EvaluationErrors = evaluationErrors
@@ -103,7 +113,7 @@ internal static class OutputConditionEvaluator
             new ConditionRoutingDiagnostics
             {
                 Fact = fact,
-                Resolution = "no_transition",
+                Resolution = ConditionRoutingResolutions.NoTransition,
                 MatchedCaseIndex = null,
                 CaseEvaluations = caseEvaluations,
                 EvaluationErrors = evaluationErrors
@@ -143,50 +153,81 @@ internal static class OutputConditionEvaluator
         {
             var msg = $"Unsupported when.op: '{condition.Op}'.";
             evaluationErrors.Add(msg);
-            return (false, "unsupported_op", msg);
+            return (false, ReasonUnsupportedOp, msg);
         }
 
         if (!TryResolvePath(output, condition.Path, out var actualValue, out var hasPath, onPathWarning, evaluationErrors))
         {
-            return (false, "path_resolution_failed", condition.Path);
+            return (false, ReasonPathResolutionFailed, condition.Path);
         }
 
-        return op switch
-        {
-            "EXISTS" => hasPath
-                ? (true, null, null)
-                : (false, "exists_absent", null),
-            "EQ" => !hasPath
-                ? (false, "path_not_found", null)
-                : ValuesEqual(actualValue, condition.Value)
-                    ? (true, null, null)
-                    : (false, "condition_false", null),
-            "NE" => !hasPath
-                ? (false, "path_not_found", null)
-                : !ValuesEqual(actualValue, condition.Value)
-                    ? (true, null, null)
-                    : (false, "condition_false", null),
-            "GT" => !hasPath
-                ? (false, "path_not_found", null)
-                : EvaluateOrdered(actualValue, condition.Value, static c => c > 0),
-            "GTE" => !hasPath
-                ? (false, "path_not_found", null)
-                : EvaluateOrdered(actualValue, condition.Value, static c => c >= 0),
-            "LT" => !hasPath
-                ? (false, "path_not_found", null)
-                : EvaluateOrdered(actualValue, condition.Value, static c => c < 0),
-            "LTE" => !hasPath
-                ? (false, "path_not_found", null)
-                : EvaluateOrdered(actualValue, condition.Value, static c => c <= 0),
-            "IN" => !hasPath
-                ? (false, "path_not_found", null)
-                : EvaluateIn(actualValue, condition.Value),
-            "BETWEEN" => !hasPath
-                ? (false, "path_not_found", null)
-                : EvaluateBetween(actualValue, condition.Value),
-            _ => (false, "unsupported_op", op)
-        };
+        return EvaluateNormalizedOperator(op, hasPath, actualValue, condition.Value);
     }
+
+    private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateNormalizedOperator(
+        string op,
+        bool hasPath,
+        object? actualValue,
+        object? expectedValue) =>
+        op switch
+        {
+            "EXISTS" => EvaluateExists(hasPath),
+            "EQ" => EvaluateEq(hasPath, actualValue, expectedValue),
+            "NE" => EvaluateNe(hasPath, actualValue, expectedValue),
+            "GT" => EvaluateOrderedWhenPathPresent(hasPath, actualValue, expectedValue, static c => c > 0),
+            "GTE" => EvaluateOrderedWhenPathPresent(hasPath, actualValue, expectedValue, static c => c >= 0),
+            "LT" => EvaluateOrderedWhenPathPresent(hasPath, actualValue, expectedValue, static c => c < 0),
+            "LTE" => EvaluateOrderedWhenPathPresent(hasPath, actualValue, expectedValue, static c => c <= 0),
+            "IN" => EvaluateInWhenPathPresent(hasPath, actualValue, expectedValue),
+            "BETWEEN" => EvaluateBetweenWhenPathPresent(hasPath, actualValue, expectedValue),
+            _ => (false, ReasonUnsupportedOp, op)
+        };
+
+    private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateExists(bool hasPath) =>
+        hasPath ? (true, null, null) : (false, ReasonExistsAbsent, null);
+
+    private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateEq(
+        bool hasPath,
+        object? actualValue,
+        object? expectedValue)
+    {
+        if (!hasPath)
+            return (false, ReasonPathNotFound, null);
+        if (ValuesEqual(actualValue, expectedValue))
+            return (true, null, null);
+        return (false, ReasonConditionFalse, null);
+    }
+
+    private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateNe(
+        bool hasPath,
+        object? actualValue,
+        object? expectedValue)
+    {
+        if (!hasPath)
+            return (false, ReasonPathNotFound, null);
+        if (!ValuesEqual(actualValue, expectedValue))
+            return (true, null, null);
+        return (false, ReasonConditionFalse, null);
+    }
+
+    private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateOrderedWhenPathPresent(
+        bool hasPath,
+        object? actualValue,
+        object? expectedValue,
+        Func<int, bool> predicate) =>
+        !hasPath ? (false, ReasonPathNotFound, null) : EvaluateOrdered(actualValue, expectedValue, predicate);
+
+    private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateInWhenPathPresent(
+        bool hasPath,
+        object? actualValue,
+        object? expectedValue) =>
+        !hasPath ? (false, ReasonPathNotFound, null) : EvaluateIn(actualValue, expectedValue);
+
+    private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateBetweenWhenPathPresent(
+        bool hasPath,
+        object? actualValue,
+        object? expectedValue) =>
+        !hasPath ? (false, ReasonPathNotFound, null) : EvaluateBetween(actualValue, expectedValue);
 
     private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateOrdered(
         object? actualValue,
@@ -195,17 +236,17 @@ internal static class OutputConditionEvaluator
     {
         if (actualValue is null || expectedValue is null)
         {
-            return (false, "compare_operand_null", null);
+            return (false, ReasonCompareOperandNull, null);
         }
 
         if (!TryCompare(actualValue, expectedValue, out var comparison))
         {
-            return (false, "compare_unsupported", null);
+            return (false, ReasonCompareUnsupported, null);
         }
 
         return predicate(comparison)
             ? (true, null, null)
-            : (false, "condition_false", null);
+            : (false, ReasonConditionFalse, null);
     }
 
     private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateIn(
@@ -214,12 +255,12 @@ internal static class OutputConditionEvaluator
     {
         if (!TryEnumerate(expectedValue, out var inValues))
         {
-            return (false, "in_operand_not_collection", null);
+            return (false, ReasonInOperandNotCollection, null);
         }
 
         return inValues.Any(candidate => ValuesEqual(actualValue, candidate))
             ? (true, null, null)
-            : (false, "condition_false", null);
+            : (false, ReasonConditionFalse, null);
     }
 
     private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateBetween(
@@ -228,22 +269,22 @@ internal static class OutputConditionEvaluator
     {
         if (!TryEnumerate(expectedValue, out var rangeValues) || rangeValues.Count != 2)
         {
-            return (false, "between_operand_invalid", null);
+            return (false, ReasonBetweenOperandInvalid, null);
         }
 
         if (!TryCompare(actualValue, rangeValues[0], out var lower))
         {
-            return (false, "compare_unsupported", null);
+            return (false, ReasonCompareUnsupported, null);
         }
 
         if (!TryCompare(actualValue, rangeValues[1], out var upper))
         {
-            return (false, "compare_unsupported", null);
+            return (false, ReasonCompareUnsupported, null);
         }
 
         return lower >= 0 && upper <= 0
             ? (true, null, null)
-            : (false, "condition_false", null);
+            : (false, ReasonConditionFalse, null);
     }
 
     private static bool TryResolvePath(
@@ -300,12 +341,141 @@ internal static class OutputConditionEvaluator
             return left is null && right is null;
         }
 
+        if (TryEqualityWithBooleanCoercion(left, right, out var boolEquality))
+        {
+            return boolEquality;
+        }
+
         if (TryConvertDecimal(left, out var leftNumber) && TryConvertDecimal(right, out var rightNumber))
         {
             return leftNumber == rightNumber;
         }
 
         return Equals(left, right);
+    }
+
+    /// <summary>
+    /// YAML / JSON で片側のみ真偽に解釈されるスカラーが混ざる場合（例: 実側が長整数 1、定義側が <c>true</c>）。
+    /// いずれかが <see cref="bool"/> のときにもう一方を真偽に正規化して比較する。
+    /// </summary>
+    private static bool TryEqualityWithBooleanCoercion(object left, object right, out bool equal)
+    {
+        equal = false;
+
+        if (left is bool leftBool && TryCoerceToBoolForMixedComparison(right, out var rightBool))
+        {
+            equal = leftBool == rightBool;
+            return true;
+        }
+
+        if (right is bool rightBool2 && TryCoerceToBoolForMixedComparison(left, out var leftBool2))
+        {
+            equal = leftBool2 == rightBool2;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 条件式で <c>true</c> / <c>false</c> と比較される列挙のみを真偽に写像する。曖昧な数値や文字列は失敗させる。
+    /// </summary>
+    private static bool TryCoerceToBoolForMixedComparison(object value, out bool converted)
+    {
+        if (value is bool b)
+        {
+            converted = b;
+            return true;
+        }
+
+        if (value is string s)
+            return TryCoerceStringToBool(s, out converted);
+
+        if (TryCoerceIntegralLikeNumberToBool(value, out converted))
+            return true;
+
+        if (value is float f && ApproxBinaryFloat(f))
+        {
+            converted = Math.Abs(f - 1f) < 1e-6f;
+            return true;
+        }
+
+        if (value is double db && ApproxBinaryDouble(db))
+        {
+            converted = Math.Abs(db - 1d) < 1e-9;
+            return true;
+        }
+
+        converted = default;
+        return false;
+    }
+
+    private static bool TryCoerceStringToBool(string raw, out bool converted)
+    {
+        var trimmed = raw.Trim();
+        if (string.Equals(trimmed, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            converted = true;
+            return true;
+        }
+
+        if (string.Equals(trimmed, "false", StringComparison.OrdinalIgnoreCase))
+        {
+            converted = false;
+            return true;
+        }
+
+        if (string.Equals(trimmed, "1", StringComparison.Ordinal))
+        {
+            converted = true;
+            return true;
+        }
+
+        if (string.Equals(trimmed, "0", StringComparison.Ordinal))
+        {
+            converted = false;
+            return true;
+        }
+
+        converted = default;
+        return false;
+    }
+
+    private static bool TryCoerceIntegralLikeNumberToBool(object value, out bool converted)
+    {
+        converted = default;
+        switch (value)
+        {
+            case byte b when b is 0 or 1:
+                converted = b != 0;
+                return true;
+            case sbyte sb when sb is 0 or 1:
+                converted = sb != 0;
+                return true;
+            case short sh when sh is 0 or 1:
+                converted = sh != 0;
+                return true;
+            case ushort ush when ush is 0 or 1:
+                converted = ush != 0;
+                return true;
+            case int i when i is 0 or 1:
+                converted = i != 0;
+                return true;
+            case uint ui when ui is 0 or 1:
+                converted = ui != 0;
+                return true;
+            case long l when l is 0L or 1L:
+                converted = l != 0;
+                return true;
+            case ulong ul when ul is 0UL or 1UL:
+                converted = ul != 0;
+                return true;
+            case decimal dcm when dcm == 0m || dcm == 1m:
+                converted = dcm != 0m;
+                return true;
+            default:
+                return false;
+        }
     }
 
     private static bool TryCompare(object? left, object? right, out int comparison)
@@ -375,6 +545,12 @@ internal static class OutputConditionEvaluator
             _ => jsonElement
         };
     }
+
+    private static bool ApproxBinaryFloat(float value) =>
+        float.IsFinite(value) && (Math.Abs(value) < 1e-6f || Math.Abs(value - 1f) < 1e-6f);
+
+    private static bool ApproxBinaryDouble(double value) =>
+        double.IsFinite(value) && (Math.Abs(value) < 1e-9 || Math.Abs(value - 1d) < 1e-9);
 
     private static bool TryConvertDecimal(object value, out decimal result)
     {

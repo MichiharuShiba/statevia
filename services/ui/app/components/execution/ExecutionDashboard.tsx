@@ -638,7 +638,7 @@ function ExecutionDashboardView({
               execution={displayExecution ?? execution}
               node={selectedNode}
               loading={loading}
-              onResume={() => !isReplaying && selectedNodeId && onResumeNode(selectedNodeId)}
+              onResume={() => !isReplaying && selectedNode && onResumeNode(selectedNode.executionNodeId)}
               resumeDisabledReason={selectedResumeDisabledReason}
               resumeEventName={resumeEventName}
               showResumeAction={operationsEnabled}

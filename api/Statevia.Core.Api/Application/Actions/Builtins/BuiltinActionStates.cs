@@ -2,10 +2,15 @@ using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Core.Api.Application.Actions.Builtins;
 
-/// <summary>Registry 用の組み込み IState 実装（no-op）。</summary>
-public sealed class NoOpState : IState<Unit, Unit>
+/// <summary>
+/// Registry 用の組み込み IState 実装（no-op）。
+/// 処理は行わず <see cref="T:Statevia.Core.Engine.Engine.WorkflowEngine"/> が渡す入力をそのまま出力として返す。
+/// 条件付き edges が前段の <c>workflowInput</c>／直前状態の出力を <c>$.path</c> で解決できるようにする。
+/// </summary>
+public sealed class NoOpState : IState<object?, object?>
 {
-    public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct) => Task.FromResult(Unit.Value);
+    /// <inheritdoc />
+    public Task<object?> ExecuteAsync(StateContext ctx, object? input, CancellationToken ct) => Task.FromResult(input);
 }
 
 /// <summary>

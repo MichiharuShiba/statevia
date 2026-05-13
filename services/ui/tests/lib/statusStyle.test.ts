@@ -50,14 +50,24 @@ describe("getStatusStyle", () => {
     expect(result.emphasisRank).toBe(80);
   });
 
+  it("Node status SUCCEEDED の bgClass はダークで color-mix によりコンテナ背景を薄める", () => {
+    const result = getStatusStyle("SUCCEEDED");
+    expect(result.bgClass).toContain("dark:bg-[color-mix(in_srgb,var(--md-sys-color-success-container)_30%,transparent)]");
+  });
+
+  it("Node status IDLE の bgClass はダーク用の混色クラスを付けない", () => {
+    const result = getStatusStyle("IDLE");
+    expect(result.bgClass).not.toContain("color-mix");
+  });
+
+  it("Node status RUNNING の bgClass はダーク用の混色クラスを付けない", () => {
+    const result = getStatusStyle("RUNNING");
+    expect(result.bgClass).not.toContain("color-mix");
+  });
+
   it("Node status CANCELED のスタイルを返す", () => {
-    // Arrange (NodeStatus)
     const status = "CANCELED";
-
-    // Act
     const result = getStatusStyle(status);
-
-    // Assert
     expect(result.icon).toBe("✕");
     expect(result.emphasisRank).toBe(100);
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { NAVIGATION_BUTTON_CLASS } from "./navigationButtonClass";
 import { useUiText } from "../../lib/uiTextContext";
 
@@ -32,7 +32,6 @@ function getLinkClass(priority: ActionLinkPriority): string {
  */
 export function ActionLinkGroup({ links, className }: Readonly<ActionLinkGroupProps>) {
   const uiText = useUiText();
-  const router = useRouter();
   if (links.length === 0) return null;
 
   return (
@@ -43,14 +42,13 @@ export function ActionLinkGroup({ links, className }: Readonly<ActionLinkGroupPr
       {links.map((link) => {
         const priority = link.priority ?? "secondary";
         return (
-          <button
+          <Link
             key={`${link.href}:${link.label}`}
-            type="button"
+            href={link.href}
             className={getLinkClass(priority)}
-            onClick={() => router.push(link.href)}
           >
             {link.label}
-          </button>
+          </Link>
         );
       })}
     </nav>

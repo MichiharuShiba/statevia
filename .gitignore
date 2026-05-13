@@ -57,6 +57,7 @@ coverage/
 .playwright-mcp/
 .spec-workflow/
 .workspace-docs/
+.serena/
 docs/out
 audit.log
 ./CLAUDE.md

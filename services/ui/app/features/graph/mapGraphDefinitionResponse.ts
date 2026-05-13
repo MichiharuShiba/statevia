@@ -3,6 +3,7 @@ import type { GraphDefinition, GraphDefinitionMeta, GraphEdgeDef, GraphNodeDef }
 /** GET /v1/graphs/{graphId}（GraphDefinitionResponse）の緩い形。Core-API の camelCase JSON を前提。 */
 type ApiGraphNode = {
   nodeId?: string;
+  stateName?: string;
   nodeType?: string;
   label?: string;
   branch?: string;
@@ -51,8 +52,12 @@ function parseMetaLayout(rawMeta: unknown): GraphDefinitionMeta | undefined {
 }
 
 function mapNode(n: ApiGraphNode): GraphNodeDef {
+  const nodeId = typeof n.nodeId === "string" ? n.nodeId : "";
+  const stateName =
+    typeof n.stateName === "string" && n.stateName.trim().length > 0 ? n.stateName.trim() : undefined;
   return {
-    nodeId: typeof n.nodeId === "string" ? n.nodeId : "",
+    nodeId,
+    ...(stateName === undefined ? {} : { stateName }),
     nodeType: typeof n.nodeType === "string" && n.nodeType.length > 0 ? n.nodeType : "Task",
     label: typeof n.label === "string" && n.label.length > 0 ? n.label : undefined,
     branch: typeof n.branch === "string" && n.branch.length > 0 ? n.branch : undefined

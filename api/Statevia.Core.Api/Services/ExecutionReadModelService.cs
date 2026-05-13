@@ -110,7 +110,7 @@ public sealed class ExecutionReadModelService : IExecutionReadModelService
 
             list.Add(new ExecutionNodeReadModel
             {
-                NodeId = n.NodeId ?? string.Empty,
+                ExecutionNodeId = n.NodeId ?? string.Empty,
                 NodeType = "Task",
                 Status = nodeStatus,
                 Attempt = 1,

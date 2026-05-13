@@ -135,7 +135,10 @@ builder.Services.AddOptions<EventDeliveryRetryOptions>()
     .Validate(o => o.MaxAttempts is >= 1 and <= 50, "EventDelivery:Retry:MaxAttempts must be between 1 and 50.")
     .Validate(o => o.BaseDelayMs is >= 0 and <= 600_000, "EventDelivery:Retry:BaseDelayMs is out of range.")
     .Validate(o => o.MaxDelayMs is >= 0 and <= 600_000, "EventDelivery:Retry:MaxDelayMs is out of range.")
-    .Validate(o => o.MaxTotalBackoffMs is >= 0 and <= 600_000, "EventDelivery:Retry:MaxTotalBackoffMs is out of range.");
+    .Validate(o => o.MaxTotalBackoffMs is >= 0 and <= 600_000, "EventDelivery:Retry:MaxTotalBackoffMs is out of range.")
+    .Validate(
+        o => o.SerializablePersistenceMaxAttempts is >= 1 and <= 50,
+        "EventDelivery:Retry:SerializablePersistenceMaxAttempts must be between 1 and 50.");
 
 builder.Services.AddHttpContextAccessor();
 

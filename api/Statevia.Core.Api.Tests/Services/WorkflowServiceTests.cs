@@ -1046,7 +1046,8 @@ public sealed class WorkflowServiceTests
         Assert.Equal(2, view.Nodes.Count);
         Assert.Equal("Task", view.Nodes[0].NodeType);
         Assert.Equal("RUNNING", view.Nodes[0].Status);
-        Assert.Equal("S2", view.Nodes[1].NodeType);
+        Assert.Equal("Task", view.Nodes[1].NodeType);
+        Assert.Equal("S2", view.Nodes[1].StateName);
         Assert.Equal("FAILED", view.Nodes[1].Status);
         Assert.Equal(defId.ToString("D"), view.GraphId);
     }
@@ -1212,7 +1213,8 @@ public sealed class WorkflowServiceTests
         Assert.Equal(2, view.Nodes.Count);
         Assert.Equal("Task", view.Nodes[0].NodeType);
         Assert.Equal("RUNNING", view.Nodes[0].Status);
-        Assert.Equal("S2", view.Nodes[1].NodeType);
+        Assert.Equal("Task", view.Nodes[1].NodeType);
+        Assert.Equal("S2", view.Nodes[1].StateName);
         Assert.Equal("FAILED", view.Nodes[1].Status);
         Assert.Equal(defId.ToString("D"), view.GraphId);
     }
@@ -1306,9 +1308,10 @@ public sealed class WorkflowServiceTests
         Assert.NotNull(res.Events[2].Patch!.Nodes);
         Assert.Equal(2, res.Events[2].Patch!.Nodes!.Count);
 
-        var nodeB = Assert.Single(res.Events[2].Patch!.Nodes!, n => n.NodeId == "b");
+        var nodeB = Assert.Single(res.Events[2].Patch!.Nodes!, n => n.ExecutionNodeId == "b");
         Assert.True(nodeB.CanceledByExecution.GetValueOrDefault());
         Assert.Equal("CANCELED", nodeB.Status);
+        Assert.Equal("Wait", nodeB.StateName);
     }
 
     /// <summary>ノード識別子が空白のみのとき引数例外を投げる。</summary>
@@ -2427,6 +2430,48 @@ public sealed class WorkflowServiceTests
             sut.GetGraphJsonAsync("t1", idOrUuid: "X", CancellationToken.None));
     }
 
+    /// <summary>グラフ取得時、スナップショットの graphJson をそのまま返す。</summary>
+    [Fact]
+    public async Task GetGraphJsonAsync_ReturnsGraphJsonAsIs()
+    {
+        // Arrange
+        var uuid = Guid.NewGuid();
+        var display = new FakeDisplayIdService { ResolveResultWorkflow = uuid };
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            ByIdResult = new WorkflowRow
+            {
+                WorkflowId = uuid,
+                TenantId = "t1",
+                DefinitionId = Guid.NewGuid(),
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            },
+            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            {
+                WorkflowId = uuid,
+                GraphJson = "{\"nodes\":[],\"edges\":[{\"from\":\"a1\",\"to\":\"b1\",\"type\":0}]}"
+            }
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository(),
+            engine: new FakeWorkflowEngine(),
+            display: display,
+            workflowRepo: workflowRepo,
+            eventStore: new FakeEventStoreRepository());
+
+        // Act
+        var graphJson = await sut.GetGraphJsonAsync("t1", idOrUuid: "X", CancellationToken.None);
+
+        // Assert
+        Assert.Equal("{\"nodes\":[],\"edges\":[{\"from\":\"a1\",\"to\":\"b1\",\"type\":0}]}", graphJson);
+    }
+
     /// <summary>再開キーがないとき引数例外を投げる。</summary>
     [Fact]
     public async Task ResumeNodeAsync_WhenResumeKeyMissing_ThrowsArgumentException()
@@ -2680,11 +2725,11 @@ public sealed class WorkflowServiceTests
 
         var graphJson =
             "{\"nodes\":[" +
-            "{\"nodeId\":\"n1\",\"stateName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
-            "{\"nodeId\":null,\"stateName\":\"S2\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Cancelled\"}" +
-            ",{\"nodeId\":\"n3\",\"stateName\":\"S3\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"SomeOtherFact\"}," +
-            "{\"nodeId\":\"n4\",\"stateName\":\"S4\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Completed\"}," +
-            "{\"nodeId\":\"n5\",\"stateName\":\"S5\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Joined\"}" +
+            "{\"nodeId\":\"n1\",\"stateName\":null,\"nodeType\":\"Task\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null,\"input\":{\"seed\":1},\"output\":{\"next\":2},\"attempt\":2,\"workerId\":\"wk-1\",\"waitKey\":\"resume-1\",\"canceledByExecution\":false}," +
+            "{\"nodeId\":null,\"stateName\":\"S2\",\"nodeType\":\"Wait\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Cancelled\"}" +
+            ",{\"nodeId\":\"n3\",\"stateName\":\"S3\",\"nodeType\":\"Task\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"SomeOtherFact\"}," +
+            "{\"nodeId\":\"n4\",\"stateName\":\"S4\",\"nodeType\":\"End\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Completed\"}," +
+            "{\"nodeId\":\"n5\",\"stateName\":\"S5\",\"nodeType\":\"Join\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Joined\"}" +
             "]}";
 
         var workflowRepo = new FakeWorkflowRepository
@@ -2731,28 +2776,31 @@ public sealed class WorkflowServiceTests
         Assert.Equal(defId.ToString("D"), view.GraphId); // graphId fallback
 
         Assert.Equal(5, view.Nodes.Count);
-        Assert.Equal("n1", view.Nodes[0].NodeId);
+        Assert.Equal("n1", view.Nodes[0].ExecutionNodeId);
         Assert.Equal("Task", view.Nodes[0].NodeType);
         Assert.Equal("RUNNING", view.Nodes[0].Status);
+        Assert.Equal(2, view.Nodes[0].Attempt);
+        Assert.Equal("wk-1", view.Nodes[0].WorkerId);
+        Assert.Equal("resume-1", view.Nodes[0].WaitKey);
         Assert.False(view.Nodes[0].CanceledByExecution);
 
-        Assert.Equal(string.Empty, view.Nodes[1].NodeId);
-        Assert.Equal("S2", view.Nodes[1].NodeType);
+        Assert.Equal(string.Empty, view.Nodes[1].ExecutionNodeId);
+        Assert.Equal("Wait", view.Nodes[1].NodeType);
         Assert.Equal("CANCELED", view.Nodes[1].Status);
         Assert.True(view.Nodes[1].CanceledByExecution);
 
-        Assert.Equal("n3", view.Nodes[2].NodeId);
-        Assert.Equal("S3", view.Nodes[2].NodeType);
+        Assert.Equal("n3", view.Nodes[2].ExecutionNodeId);
+        Assert.Equal("Task", view.Nodes[2].NodeType);
         Assert.Equal("SUCCEEDED", view.Nodes[2].Status); // default branch of MapNodeStatus
         Assert.False(view.Nodes[2].CanceledByExecution);
 
-        Assert.Equal("n4", view.Nodes[3].NodeId);
-        Assert.Equal("S4", view.Nodes[3].NodeType);
+        Assert.Equal("n4", view.Nodes[3].ExecutionNodeId);
+        Assert.Equal("End", view.Nodes[3].NodeType);
         Assert.Equal("SUCCEEDED", view.Nodes[3].Status); // Completed -> SUCCEEDED
         Assert.False(view.Nodes[3].CanceledByExecution);
 
-        Assert.Equal("n5", view.Nodes[4].NodeId);
-        Assert.Equal("S5", view.Nodes[4].NodeType);
+        Assert.Equal("n5", view.Nodes[4].ExecutionNodeId);
+        Assert.Equal("Join", view.Nodes[4].NodeType);
         Assert.Equal("SUCCEEDED", view.Nodes[4].Status); // Joined -> SUCCEEDED
         Assert.False(view.Nodes[4].CanceledByExecution);
     }

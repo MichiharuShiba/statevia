@@ -16,6 +16,7 @@ export type LayoutEdgeInput = {
   eventName?: string;
   cancelReason?: string;
   cancelCause?: string;
+  traversed?: boolean;
 };
 
 export type PositionedNode<T extends LayoutNodeInput = LayoutNodeInput> = T & {
@@ -24,8 +25,6 @@ export type PositionedNode<T extends LayoutNodeInput = LayoutNodeInput> = T & {
   w: number;
   h: number;
 };
-
-export type PositionedEdge = LayoutEdgeInput;
 
 function normalizeType(nodeType: string): string {
   return nodeType.trim().toUpperCase();
@@ -119,7 +118,7 @@ function applyBranchOffsets<T extends LayoutNodeInput>(
 
 export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: LayoutEdgeInput[], hints?: GraphDefinitionMeta): {
   nodes: Array<PositionedNode<T>>;
-  edges: PositionedEdge[];
+  edges: LayoutEdgeInput[];
 } {
   const edges = rawEdges.length > 0 ? rawEdges : buildFallbackEdges(nodes);
   const nodeIdSet = new Set(nodes.map((n) => n.nodeId));

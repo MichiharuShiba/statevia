@@ -59,17 +59,22 @@ internal static class WorkflowViewMapper
         foreach (var n in dto.Nodes)
         {
             var nodeStatus = MapNodeStatus(n);
-            var canceledByExecution = string.Equals(n.Fact, "Cancelled", StringComparison.OrdinalIgnoreCase);
+            var canceledByExecution = n.CanceledByExecution
+                ?? string.Equals(n.Fact, "Cancelled", StringComparison.OrdinalIgnoreCase);
+            var nodeType = ResolveNodeType(n);
 
             list.Add(new WorkflowViewNodeDto
             {
-                NodeId = n.NodeId ?? string.Empty,
-                NodeType = string.IsNullOrEmpty(n.StateName) ? "Task" : n.StateName!,
+                ExecutionNodeId = n.NodeId ?? string.Empty,
+                StateName = n.StateName ?? string.Empty,
+                NodeType = nodeType,
                 Status = nodeStatus,
-                Attempt = 1,
-                WorkerId = null,
-                WaitKey = null,
+                Attempt = n.Attempt ?? 1,
+                WorkerId = n.WorkerId,
+                WaitKey = n.WaitKey,
                 CanceledByExecution = canceledByExecution,
+                Input = n.Input,
+                Output = n.Output,
                 ConditionRouting = n.ConditionRouting
             });
         }
@@ -82,9 +87,11 @@ internal static class WorkflowViewMapper
         var nodes = MapNodes(graphJson);
         return nodes.Select(n => new GraphPatchNodeDto
         {
-            NodeId = n.NodeId,
+            ExecutionNodeId = n.ExecutionNodeId,
+            StateName = string.IsNullOrWhiteSpace(n.StateName) ? null : n.StateName,
             Status = n.Status,
             Attempt = n.Attempt,
+            WorkerId = n.WorkerId,
             WaitKey = n.WaitKey,
             CanceledByExecution = n.CanceledByExecution
         }).ToList();
@@ -105,6 +112,14 @@ internal static class WorkflowViewMapper
         };
     }
 
+    private static string ResolveNodeType(ExecutionNodeDto node)
+    {
+        if (!string.IsNullOrWhiteSpace(node.NodeType))
+            return node.NodeType!;
+        // 古いスナップショットに nodeType が無い場合の既定（ExecutionReadModelService と揃える）
+        return "Task";
+    }
+
     private sealed class ExecutionGraphSnapshotDto
     {
         [JsonPropertyName("nodes")]
@@ -119,6 +134,9 @@ internal static class WorkflowViewMapper
         [JsonPropertyName("stateName")]
         public string? StateName { get; set; }
 
+        [JsonPropertyName("nodeType")]
+        public string? NodeType { get; set; }
+
         [JsonPropertyName("startedAt")]
         public DateTime StartedAt { get; set; }
 
@@ -127,6 +145,24 @@ internal static class WorkflowViewMapper
 
         [JsonPropertyName("fact")]
         public string? Fact { get; set; }
+
+        [JsonPropertyName("input")]
+        public JsonElement? Input { get; set; }
+
+        [JsonPropertyName("output")]
+        public JsonElement? Output { get; set; }
+
+        [JsonPropertyName("attempt")]
+        public int? Attempt { get; set; }
+
+        [JsonPropertyName("workerId")]
+        public string? WorkerId { get; set; }
+
+        [JsonPropertyName("waitKey")]
+        public string? WaitKey { get; set; }
+
+        [JsonPropertyName("canceledByExecution")]
+        public bool? CanceledByExecution { get; set; }
 
         [JsonPropertyName("conditionRouting")]
         public JsonElement? ConditionRouting { get; set; }

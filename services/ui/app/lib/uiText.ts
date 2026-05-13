@@ -133,6 +133,9 @@ export type UiText = {
     title: (nodeLabel: string) => string;
     meta: {
       type: (nodeType: string) => string;
+      stateName: (stateName: string) => string;
+      executionNodeId: (id: string) => string;
+      workerId: (workerId: string) => string;
       attempt: (attempt: number) => string;
       waitKey: (waitKey: string) => string;
       canceledByExecution: (canceledByExecution: boolean) => string;
@@ -150,6 +153,18 @@ export type UiText = {
       title: string;
       noMessage: string;
     };
+    trace: {
+      startedAt: (formattedInstant: string) => string;
+      completedAt: (formattedInstant: string) => string;
+      duration: (durationText: string) => string;
+      durationUnavailable: string;
+      outputHeading: string;
+      outputEmpty: string;
+      inputHeading: string;
+      inputEmpty: string;
+      conditionRoutingHeading: string;
+      conditionRoutingEmpty: string;
+    };
   };
   graphLegend: {
     heading: {
@@ -160,6 +175,10 @@ export type UiText = {
       root: string;
       nodeStatus: string;
       edgeType: string;
+    };
+    edgeKind: {
+      nextTraversed: string;
+      nextNotTraversed: string;
     };
   };
   dashboard: {
@@ -433,10 +452,11 @@ export type UiText = {
     title: string;
     nodeCount: (count: number) => string;
     columns: {
-      nodeId: string;
-      type: string;
       status: string;
-      waitKey: string;
+      type: string;
+      nodeName: string;
+      executionNodeId: string;
+      duration: string;
     };
   };
   nodeGraph: {
@@ -444,6 +464,10 @@ export type UiText = {
       type: (nodeType: string) => string;
       attempt: (attempt: number) => string;
       waitKey: (waitKey: string) => string;
+    };
+    aria: {
+      /** グラフノードを選択（ドラッグ可能なブロック用。内側に実 button があるため外側は div） */
+      selectNode: (displayLabel: string) => string;
     };
   };
   nodeCommands: {
@@ -560,7 +584,7 @@ export const uiText: UiText = {
       `${cancelLabel} / ${resumeLabel} / ${sendEventLabel} は Run 画面に集約しています。`,
   },
   executionTimeline: {
-    title: "実行履歴タイムライン",
+    title: "イベントタイムライン",
     backToCurrent: "現在に戻る",
     replayingPastStateMessage: "過去の時点を表示中です。「現在に戻る」で最新の状態に戻せます。",
     empty: "イベントがありません",
@@ -593,9 +617,12 @@ export const uiText: UiText = {
       loadExecution: (executionLabel: string) => `${executionLabel} を読み込んでください。`,
       selectNode: (nodeLabel: string) => `${nodeLabel} を選択してください。`,
     },
-    title: (nodeLabel: string) => `${nodeLabel} Detail`,
+    title: (_nodeLabel: string) => "ノード詳細",
     meta: {
-      type: (nodeType: string) => `種別: ${nodeType}`,
+      type: (nodeType: string) => `タイプ: ${nodeType}`,
+      stateName: (stateName: string) => `ノード名: ${stateName}`,
+      executionNodeId: (id: string) => `実行ノードID: ${id}`,
+      workerId: (workerId: string) => `ワーカーID: ${workerId}`,
       attempt: (attempt: number) => `試行回数: ${attempt}`,
       waitKey: (waitKey: string) => `Wait キー: ${waitKey}`,
       canceledByExecution: (canceledByExecution: boolean) => `キャンセル: ${String(canceledByExecution)}`,
@@ -613,6 +640,18 @@ export const uiText: UiText = {
       title: "失敗情報",
       noMessage: "（メッセージなし）",
     },
+    trace: {
+      startedAt: (formattedInstant: string) => `開始: ${formattedInstant}`,
+      completedAt: (formattedInstant: string) => `終了: ${formattedInstant}`,
+      duration: (durationText: string) => `実行時間: ${durationText}`,
+      durationUnavailable: "実行時間: —",
+      outputHeading: "出力",
+      outputEmpty: "（なし）",
+      inputHeading: "入力",
+      inputEmpty: "（なし）",
+      conditionRoutingHeading: "条件ルーティング",
+      conditionRoutingEmpty: "（なし）",
+    },
   },
   graphLegend: {
     heading: {
@@ -623,6 +662,10 @@ export const uiText: UiText = {
       root: "グラフ凡例",
       nodeStatus: "ノードステータス凡例",
       edgeType: "エッジ種別凡例",
+    },
+    edgeKind: {
+      nextTraversed: "Next（実行経路）",
+      nextNotTraversed: "Next（未通過）",
     },
   },
   dashboard: {
@@ -901,17 +944,21 @@ export const uiText: UiText = {
     title: "ノード一覧",
     nodeCount: (count: number) => `${count} 件`,
     columns: {
-      nodeId: "ノードID",
-      type: "種別",
       status: "ステータス",
-      waitKey: "Wait キー",
+      type: "タイプ",
+      nodeName: "ノード名",
+      executionNodeId: "実行ノードID",
+      duration: "実行時間",
     },
   },
   nodeGraph: {
     meta: {
-      type: (nodeType: string) => `種別: ${nodeType}`,
+      type: (nodeType: string) => `タイプ: ${nodeType}`,
       attempt: (attempt: number) => `試行回数: ${attempt}`,
       waitKey: (waitKey: string) => `Wait キー: ${waitKey}`,
+    },
+    aria: {
+      selectNode: (displayLabel: string) => `ノードを選択: ${displayLabel}`,
     },
   },
   nodeCommands: {

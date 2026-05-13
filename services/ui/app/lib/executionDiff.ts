@@ -9,7 +9,7 @@ function isFailureOrCancel(status: NodeStatus): boolean {
 export type NodeDiffKind = "status_diff" | "only_in_left" | "only_in_right";
 
 export type NodeDiffItem = {
-  nodeId: string;
+  executionNodeId: string;
   kind: NodeDiffKind;
   statusLeft: NodeStatus | null;
   statusRight: NodeStatus | null;
@@ -20,11 +20,11 @@ export type NodeDiffItem = {
 export type ExecutionDiffResult = {
   /** ノード単位の差分一覧（Failed/Canceled を先頭にした並び） */
   nodeDiffs: NodeDiffItem[];
-  /** グラフハイライト用: nodeId -> ハイライト情報 */
+  /** グラフハイライト用: executionNodeId -> ハイライト情報 */
   nodeHighlights: Record<string, { isFailureOrCancel: boolean }>;
-  /** 左（A）にのみ存在する nodeId */
+  /** 左（A）にのみ存在する executionNodeId */
   onlyInLeft: string[];
-  /** 右（B）にのみ存在する nodeId */
+  /** 右（B）にのみ存在する executionNodeId */
   onlyInRight: string[];
 };
 
@@ -44,8 +44,8 @@ export function computeExecutionDiff(
 ): ExecutionDiffResult | null {
   if (!left || !right) return null;
 
-  const nodesLeft = new Map(left.nodes.map((n) => [n.nodeId, n]));
-  const nodesRight = new Map(right.nodes.map((n) => [n.nodeId, n]));
+  const nodesLeft = new Map(left.nodes.map((n) => [n.executionNodeId, n]));
+  const nodesRight = new Map(right.nodes.map((n) => [n.executionNodeId, n]));
   const allNodeIds = new Set<string>([...nodesLeft.keys(), ...nodesRight.keys()]);
 
   const nodeDiffs: NodeDiffItem[] = [];
@@ -53,47 +53,47 @@ export function computeExecutionDiff(
   const onlyInLeft: string[] = [];
   const onlyInRight: string[] = [];
 
-  for (const nodeId of allNodeIds) {
-    const nLeft = nodesLeft.get(nodeId) ?? null;
-    const nRight = nodesRight.get(nodeId) ?? null;
+  for (const executionNodeId of allNodeIds) {
+    const nLeft = nodesLeft.get(executionNodeId) ?? null;
+    const nRight = nodesRight.get(executionNodeId) ?? null;
 
     if (nLeft && !nRight) {
       const isFC = isFailureOrCancel(nLeft.status);
       nodeDiffs.push({
-        nodeId,
+        executionNodeId,
         kind: "only_in_left",
         statusLeft: nLeft.status,
         statusRight: null,
         isFailureOrCancel: isFC
       });
-      nodeHighlights[nodeId] = { isFailureOrCancel: isFC };
-      onlyInLeft.push(nodeId);
+      nodeHighlights[executionNodeId] = { isFailureOrCancel: isFC };
+      onlyInLeft.push(executionNodeId);
       continue;
     }
     if (!nLeft && nRight) {
       const isFC = isFailureOrCancel(nRight.status);
       nodeDiffs.push({
-        nodeId,
+        executionNodeId,
         kind: "only_in_right",
         statusLeft: null,
         statusRight: nRight.status,
         isFailureOrCancel: isFC
       });
-      nodeHighlights[nodeId] = { isFailureOrCancel: isFC };
-      onlyInRight.push(nodeId);
+      nodeHighlights[executionNodeId] = { isFailureOrCancel: isFC };
+      onlyInRight.push(executionNodeId);
       continue;
     }
     if (nLeft && nRight && nLeft.status !== nRight.status) {
       const isFC =
         isFailureOrCancel(nLeft.status) || isFailureOrCancel(nRight.status);
       nodeDiffs.push({
-        nodeId,
+        executionNodeId,
         kind: "status_diff",
         statusLeft: nLeft.status,
         statusRight: nRight.status,
         isFailureOrCancel: isFC
       });
-      nodeHighlights[nodeId] = { isFailureOrCancel: isFC };
+      nodeHighlights[executionNodeId] = { isFailureOrCancel: isFC };
     }
   }
 

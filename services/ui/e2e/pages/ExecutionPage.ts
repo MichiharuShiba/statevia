@@ -81,9 +81,9 @@ export class ExecutionPage {
     await this.fullscreenButton.waitFor({ state: "visible", timeout });
   }
 
-  /** 実行履歴タイムラインの見出し（クリックで開閉） */
+  /** イベントタイムラインの見出し（クリックで開閉） */
   get timelineHeading() {
-    return this.page.getByRole("heading", { name: "実行履歴タイムライン" });
+    return this.page.getByRole("heading", { name: "イベントタイムライン" });
   }
 
   /** タイムライン本体（開いたときのイベント一覧のコンテナ） */

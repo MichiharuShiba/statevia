@@ -1,0 +1,109 @@
+# =============================================================================
+# 公式サンプル: nodes 形式ワークフロー定義（version: 1）
+# -----------------------------------------------------------------------------
+# 配置: docs/samples/ui-customer-order-parallel.yaml（UI / Definition Editor 向け）
+#
+# docs/core-engine-definition-spec.md §2 に沿ったフィールド例です。
+#
+# 含めるもの:
+#   - workflow: id / name / description
+#   - 各ノード id は domain.segment.leaf 形式（ドット区切り）
+#   - label（任意・UI/エディタ用）
+#   - action: action / next | edges / input（path またはキー→リテラル）/ error
+#   - wait: event / next
+#   - fork: branches
+#   - join: mode: all / next
+#   - 条件付き edges（when / order）+ 既定 branch（default）
+#
+# 含めないもの（現行 NodesWorkflowDefinitionLoader MVP）:
+#   - ルート controls（指定するとロード時に ArgumentException）
+#   - wait.timeout（変換未対応のため記載しない）
+#
+# CLI の Statevia.Cli は states 形式のみ。本ファイルは Core-API の定義ロード経由で検証してください。
+# =============================================================================
+
+version: 1
+
+workflow:
+  id: sample.customer.order.parallel
+  name: CustomerOrderParallel
+  description: >
+    受付条件による分岐、受注検証と失敗時ルート、並列出荷（即時処理と在庫イベント待ち）、
+    合流、通知までを一通り示す。ワークフロー入力例:
+    { "eligible": true, "shared": { "orderId": "ORD-1001" } }
+
+nodes:
+  - id: order.start
+    type: start
+    label: 開始
+    next: order.preflight
+
+  # 条件付き edges の例（既定 branch で却下ハンドラへ）
+  - id: order.preflight
+    type: action
+    label: 受付ゲート
+    action: noop
+    edges:
+      - to: order.validate
+        when:
+          path: $.eligible
+          op: eq
+          value: true
+        order: 10
+      - to: order.reject.notify
+
+  - id: order.validate
+    type: action
+    label: 受注検証
+    action: noop
+    next: order.split
+    error: order.reject.notify
+
+  - id: order.reject.notify
+    type: action
+    label: 却下・検証失敗の通知
+    action: noop
+    input:
+      reason: validation_failed
+      stage: pre_fulfillment
+    next: order.end
+
+  - id: order.split
+    type: fork
+    label: 並列出荷
+    branches:
+      - order.ship.east
+      - order.await.transfer
+
+  - id: order.ship.east
+    type: action
+    label: 東倉から即出荷（遅延シミュレート）
+    action: delay5s
+    input:
+      path: $.shared
+    next: order.merge
+
+  - id: order.await.transfer
+    type: wait
+    label: 在庫横持ち完了待ち
+    event: StockTransferred
+    next: order.merge
+
+  - id: order.merge
+    type: join
+    label: 出荷ライン合流
+    mode: all
+    next: order.notify.customer
+
+  - id: order.notify.customer
+    type: action
+    label: 顧客へ発送通知
+    action: noop
+    input:
+      channel: email
+      template: order.shipped
+    next: order.end
+
+  - id: order.end
+    type: end
+    label: 完了

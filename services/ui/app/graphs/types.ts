@@ -1,5 +1,11 @@
 export type GraphNodeDef = {
+  /** 定義グラフ上のノード ID（エッジ・レイアウトのキー）。 */
   nodeId: string;
+  /**
+   * ワークフローの状態名（API の execution `stateName` と揃える）。
+   * 省略時は `nodeId` とみなす。
+   */
+  stateName?: string;
   nodeType: string;
   label?: string;
   branch?: string;
