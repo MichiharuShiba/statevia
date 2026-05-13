@@ -16,6 +16,12 @@ internal static class EventDeliveryRetryPolicy
     /// <summary>PostgreSQL <c>unique_violation</c> の SQLSTATE。</summary>
     private const string PostgresUniqueViolationSqlState = "23505";
 
+    /// <summary>PostgreSQL <c>serialization_failure</c>（Serializable 競合）。</summary>
+    private const string PostgresSerializationFailureSqlState = "40001";
+
+    /// <summary>PostgreSQL <c>deadlock_detected</c>。</summary>
+    private const string PostgresDeadlockDetectedSqlState = "40P01";
+
     /// <summary>SQL Server: 一意キー違反（行）。</summary>
     private const int SqlServerErrorUniqueKeyRow = 2627;
 
@@ -38,18 +44,51 @@ internal static class EventDeliveryRetryPolicy
     /// <see cref="DbUpdateException"/> が一意制約違反（重複キー）に起因するか。
     /// <see cref="Exception.InnerException"/> チェーン上のプロバイダ例外を走査する。
     /// </summary>
-    internal static bool IsUniqueConstraintViolation(DbUpdateException exception)
-    {
-        for (var current = exception.InnerException; current is not null; current = current.InnerException)
-        {
-            if (IsPostgresUniqueViolation(current)
-                || IsSqliteUniqueViolation(current)
-                || IsSqlServerUniqueViolation(current)
-                || IsMySqlUniqueViolation(current))
-                return true;
-        }
+    internal static bool IsUniqueConstraintViolation(DbUpdateException exception) =>
+        EnumerateInnerExceptions(exception).Any(e =>
+            IsPostgresUniqueViolation(e)
+            || IsSqliteUniqueViolation(e)
+            || IsSqlServerUniqueViolation(e)
+            || IsMySqlUniqueViolation(e));
 
-        return false;
+    /// <summary>
+    /// Serializable 分離レベルや並行更新に起因する、再試行で解消されうる PostgreSQL 競合か。
+    /// <see cref="DbUpdateException"/> の内部例外チェーンを走査する。
+    /// </summary>
+    internal static bool IsPostgresSerializableOrDeadlockConflict(Exception exception) =>
+        EnumerateExceptionAndInner(exception).Any(e =>
+            IsPostgresSqlState(e, PostgresSerializationFailureSqlState)
+            || IsPostgresSqlState(e, PostgresDeadlockDetectedSqlState));
+
+    /// <summary><paramref name="exception"/> から <see cref="Exception.InnerException"/> 連鎖を列挙する。</summary>
+    private static IEnumerable<Exception> EnumerateExceptionAndInner(Exception exception)
+    {
+        var current = exception;
+        while (current is not null)
+        {
+            yield return current;
+            current = current.InnerException;
+        }
+    }
+
+    /// <summary><paramref name="exception"/> の <see cref="Exception.InnerException"/> 以降のみを列挙する。</summary>
+    private static IEnumerable<Exception> EnumerateInnerExceptions(Exception exception)
+    {
+        var current = exception.InnerException;
+        while (current is not null)
+        {
+            yield return current;
+            current = current.InnerException;
+        }
+    }
+
+    private static bool IsPostgresSqlState(Exception exception, string sqlState)
+    {
+        if (!TypeFullNameEquals(exception, "Npgsql.PostgresException"))
+            return false;
+
+        var actual = exception.GetType().GetProperty("SqlState", PublicInstance)?.GetValue(exception) as string;
+        return string.Equals(actual, sqlState, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -86,8 +125,7 @@ internal static class EventDeliveryRetryPolicy
             if (IsUniqueConstraintViolation(dbUpdateException))
                 return false;
 
-            if (dbUpdateException.InnerException is { } inner
-                && IsPostgresExceptionTransient(inner))
+            if (EnumerateInnerExceptions(dbUpdateException).Any(IsPostgresExceptionTransient))
                 return true;
 
             return false;

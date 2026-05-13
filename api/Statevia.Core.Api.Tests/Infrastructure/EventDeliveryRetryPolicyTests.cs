@@ -79,6 +79,47 @@ public sealed class EventDeliveryRetryPolicyTests
         Assert.False(EventDeliveryRetryPolicy.IsUniqueConstraintViolation(dbUpdate));
     }
 
+    /// <summary>PostgreSQL 40001（直列化失敗）は Serializable 競合の再試行対象とみなす。</summary>
+    [Fact]
+    public void IsPostgresSerializableOrDeadlockConflict_ReturnsTrue_ForSerializationFailureWrappedInDbUpdate()
+    {
+        var inner = new PostgresException(
+            messageText: "could not serialize access due to concurrent update",
+            severity: "ERROR",
+            invariantSeverity: "ERROR",
+            sqlState: "40001");
+        var dbUpdate = new DbUpdateException("save", inner);
+
+        Assert.True(EventDeliveryRetryPolicy.IsPostgresSerializableOrDeadlockConflict(dbUpdate));
+    }
+
+    /// <summary>PostgreSQL 40P01（デッドロック）は再試行対象とみなす。</summary>
+    [Fact]
+    public void IsPostgresSerializableOrDeadlockConflict_ReturnsTrue_ForDeadlock()
+    {
+        var inner = new PostgresException(
+            messageText: "deadlock detected",
+            severity: "ERROR",
+            invariantSeverity: "ERROR",
+            sqlState: "40P01");
+
+        Assert.True(EventDeliveryRetryPolicy.IsPostgresSerializableOrDeadlockConflict(inner));
+    }
+
+    /// <summary>23505 は Serializable 競合ではない。</summary>
+    [Fact]
+    public void IsPostgresSerializableOrDeadlockConflict_ReturnsFalse_ForUniqueViolation()
+    {
+        var inner = new PostgresException(
+            messageText: "duplicate key",
+            severity: "ERROR",
+            invariantSeverity: "ERROR",
+            sqlState: "23505");
+        var dbUpdate = new DbUpdateException("dup", inner);
+
+        Assert.False(EventDeliveryRetryPolicy.IsPostgresSerializableOrDeadlockConflict(dbUpdate));
+    }
+
     /// <summary>SQLite の制約エラー（19）を一意制約系の失敗として扱う。</summary>
     [Fact]
     public void IsUniqueConstraintViolation_ReturnsTrue_ForSqliteConstraint()

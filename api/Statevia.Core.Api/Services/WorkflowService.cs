@@ -1,10 +1,12 @@
 using System.Data;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Statevia.Core.Api.Abstractions.Persistence;
@@ -21,7 +23,21 @@ namespace Statevia.Core.Api.Services;
 
 public sealed class WorkflowService : IWorkflowService
 {
-    private static readonly JsonSerializerOptions DedupJsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    /// <summary>
+    /// イベント本文・冪等キャッシュ応答・リクエストハッシュ入力など、camelCase でシリアル化する際の共有オプション（都度 new しない）。
+    /// </summary>
+    private static readonly JsonSerializerOptions CamelCaseJsonSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
+    /// <summary>
+    /// <see cref="CommandDedupRow.ResponseBody"/> からの逆シリアル用（プロパティ名の大文字小文字を許容）。
+    /// </summary>
+    private static readonly JsonSerializerOptions CaseInsensitiveJsonSerializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     /// <summary><c>event_delivery_decision</c> 構造化ログの <c>decision</c> プロパティ値。</summary>
     private static class EventDeliveryLogDecisions
@@ -43,6 +59,14 @@ public sealed class WorkflowService : IWorkflowService
         internal const string UniqueViolation = "unique_violation";
         internal const string PersistFailed = "persist_failed";
     }
+
+    /// <summary>
+    /// Serializable 永続化の再試行ループにおける試行番号・上限・累積バックオフ（待機間隔・予算計算に用いる）。
+    /// </summary>
+    private readonly record struct SerializablePersistenceRetryProgress(
+        int Attempt,
+        int MaxAttempts,
+        int TotalBackoffMs);
 
     private readonly IWorkflowEngine _engine;
     private readonly IDisplayIdService _displayIds;
@@ -181,7 +205,7 @@ public sealed class WorkflowService : IWorkflowService
 
         var startedPayload = JsonSerializer.Serialize(
             new { definitionId = defUuid.Value.ToString(), tenantId },
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            CamelCaseJsonSerializerOptions);
 
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct).ConfigureAwait(false);
@@ -192,7 +216,7 @@ public sealed class WorkflowService : IWorkflowService
 
             if (dedupKey is { } saveKey)
             {
-                var responseJson = JsonSerializer.Serialize(response, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                var responseJson = JsonSerializer.Serialize(response, CamelCaseJsonSerializerOptions);
                 await _dedup.SaveAsync(db, new CommandDedupRow
                 {
                     DedupKey = saveKey.DedupKey,
@@ -386,65 +410,61 @@ public sealed class WorkflowService : IWorkflowService
         var (projStatus, projCancel, projGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var cancelPayload = JsonSerializer.Serialize(
             new { tenantId },
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            CamelCaseJsonSerializerOptions);
 
-        await using var dbCancel = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        await using var txCancel = await dbCancel.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct).ConfigureAwait(false);
-        try
-        {
-            await _workflows.UpdateWorkflowAndSnapshotAsync(dbCancel, uuid.Value, projStatus, projCancel, projGraphJson, ct).ConfigureAwait(false);
-            if (!skipCancelEventAppend)
+        await CommitWorkflowMutationSerializableWithRetryAsync(
+            tenantId,
+            uuid.Value,
+            clientEventId,
+            ct,
+            async (dbCancel, ctInner) =>
             {
-                await _eventStore.AppendAsync(dbCancel, uuid.Value, EventStoreEventType.WorkflowCancelled, cancelPayload, ct).ConfigureAwait(false);
-            }
-            else
-            {
-                await _eventStore.TryAppendIfAbsentByClientEventAsync(
+                await _workflows.UpdateWorkflowAndSnapshotAsync(dbCancel, uuid.Value, projStatus, projCancel, projGraphJson, ctInner).ConfigureAwait(false);
+                if (!skipCancelEventAppend)
+                {
+                    await _eventStore.AppendAsync(dbCancel, uuid.Value, EventStoreEventType.WorkflowCancelled, cancelPayload, ctInner).ConfigureAwait(false);
+                }
+                else
+                {
+                    await _eventStore.TryAppendIfAbsentByClientEventAsync(
+                        dbCancel,
+                        uuid.Value,
+                        clientEventId,
+                        EventStoreEventType.WorkflowCancelled,
+                        cancelPayload,
+                        ctInner).ConfigureAwait(false);
+                }
+
+                if (dedupKey is { } saveKey)
+                {
+                    var now = DateTime.UtcNow;
+                    await _dedup.SaveAsync(dbCancel, new CommandDedupRow
+                    {
+                        DedupKey = saveKey.DedupKey,
+                        Endpoint = saveKey.Endpoint,
+                        IdempotencyKey = saveKey.IdempotencyKey,
+                        RequestHash = null,
+                        StatusCode = StatusCodes.Status204NoContent,
+                        ResponseBody = null,
+                        CreatedAt = now,
+                        ExpiresAt = now.AddHours(24)
+                    }, ctInner).ConfigureAwait(false);
+                }
+
+                var nowUtc = DateTime.UtcNow;
+                await _eventDeliveryDedup.TryUpdateStatusAsync(
                     dbCancel,
+                    tenantId,
                     uuid.Value,
                     clientEventId,
-                    EventStoreEventType.WorkflowCancelled,
-                    cancelPayload,
-                    ct).ConfigureAwait(false);
-            }
+                    EventDeliveryDedupStatuses.Applied,
+                    nowUtc,
+                    appliedAt: nowUtc,
+                    errorCode: null,
+                    ctInner).ConfigureAwait(false);
 
-            if (dedupKey is { } saveKey)
-            {
-                var now = DateTime.UtcNow;
-                await _dedup.SaveAsync(dbCancel, new CommandDedupRow
-                {
-                    DedupKey = saveKey.DedupKey,
-                    Endpoint = saveKey.Endpoint,
-                    IdempotencyKey = saveKey.IdempotencyKey,
-                    RequestHash = null,
-                    StatusCode = StatusCodes.Status204NoContent,
-                    ResponseBody = null,
-                    CreatedAt = now,
-                    ExpiresAt = now.AddHours(24)
-                }, ct).ConfigureAwait(false);
-            }
-
-            var nowUtc = DateTime.UtcNow;
-            await _eventDeliveryDedup.TryUpdateStatusAsync(
-                dbCancel,
-                tenantId,
-                uuid.Value,
-                clientEventId,
-                EventDeliveryDedupStatuses.Applied,
-                nowUtc,
-                appliedAt: nowUtc,
-                errorCode: null,
-                ct).ConfigureAwait(false);
-
-            await dbCancel.SaveChangesAsync(ct).ConfigureAwait(false);
-            await txCancel.CommitAsync(ct).ConfigureAwait(false);
-        }
-        catch
-        {
-            await txCancel.RollbackAsync(ct).ConfigureAwait(false);
-            await TryMarkEventDeliveryFailedAsync(tenantId, uuid.Value, clientEventId, ct).ConfigureAwait(false);
-            throw;
-        }
+                await dbCancel.SaveChangesAsync(ctInner).ConfigureAwait(false);
+            }).ConfigureAwait(false);
     }
 
     public async Task PublishEventAsync(
@@ -489,65 +509,61 @@ public sealed class WorkflowService : IWorkflowService
         var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var publishedPayload = JsonSerializer.Serialize(
             new { tenantId, name = eventName },
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            CamelCaseJsonSerializerOptions);
 
-        await using var dbPub = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        await using var txPub = await dbPub.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct).ConfigureAwait(false);
-        try
-        {
-            await _workflows.UpdateWorkflowAndSnapshotAsync(dbPub, uuid.Value, pubStatus, pubCancel, pubGraphJson, ct).ConfigureAwait(false);
-            if (!skipEventAppend)
+        await CommitWorkflowMutationSerializableWithRetryAsync(
+            tenantId,
+            uuid.Value,
+            clientEventId,
+            ct,
+            async (dbPub, ctInner) =>
             {
-                await _eventStore.AppendAsync(dbPub, uuid.Value, EventStoreEventType.EventPublished, publishedPayload, ct).ConfigureAwait(false);
-            }
-            else
-            {
-                await _eventStore.TryAppendIfAbsentByClientEventAsync(
+                await _workflows.UpdateWorkflowAndSnapshotAsync(dbPub, uuid.Value, pubStatus, pubCancel, pubGraphJson, ctInner).ConfigureAwait(false);
+                if (!skipEventAppend)
+                {
+                    await _eventStore.AppendAsync(dbPub, uuid.Value, EventStoreEventType.EventPublished, publishedPayload, ctInner).ConfigureAwait(false);
+                }
+                else
+                {
+                    await _eventStore.TryAppendIfAbsentByClientEventAsync(
+                        dbPub,
+                        uuid.Value,
+                        clientEventId,
+                        EventStoreEventType.EventPublished,
+                        publishedPayload,
+                        ctInner).ConfigureAwait(false);
+                }
+
+                if (dedupKey is { } saveKey)
+                {
+                    var now = DateTime.UtcNow;
+                    await _dedup.SaveAsync(dbPub, new CommandDedupRow
+                    {
+                        DedupKey = saveKey.DedupKey,
+                        Endpoint = saveKey.Endpoint,
+                        IdempotencyKey = saveKey.IdempotencyKey,
+                        RequestHash = null,
+                        StatusCode = StatusCodes.Status204NoContent,
+                        ResponseBody = null,
+                        CreatedAt = now,
+                        ExpiresAt = now.AddHours(24)
+                    }, ctInner).ConfigureAwait(false);
+                }
+
+                var nowUtc = DateTime.UtcNow;
+                await _eventDeliveryDedup.TryUpdateStatusAsync(
                     dbPub,
+                    tenantId,
                     uuid.Value,
                     clientEventId,
-                    EventStoreEventType.EventPublished,
-                    publishedPayload,
-                    ct).ConfigureAwait(false);
-            }
+                    EventDeliveryDedupStatuses.Applied,
+                    nowUtc,
+                    appliedAt: nowUtc,
+                    errorCode: null,
+                    ctInner).ConfigureAwait(false);
 
-            if (dedupKey is { } saveKey)
-            {
-                var now = DateTime.UtcNow;
-                await _dedup.SaveAsync(dbPub, new CommandDedupRow
-                {
-                    DedupKey = saveKey.DedupKey,
-                    Endpoint = saveKey.Endpoint,
-                    IdempotencyKey = saveKey.IdempotencyKey,
-                    RequestHash = null,
-                    StatusCode = StatusCodes.Status204NoContent,
-                    ResponseBody = null,
-                    CreatedAt = now,
-                    ExpiresAt = now.AddHours(24)
-                }, ct).ConfigureAwait(false);
-            }
-
-            var nowUtc = DateTime.UtcNow;
-            await _eventDeliveryDedup.TryUpdateStatusAsync(
-                dbPub,
-                tenantId,
-                uuid.Value,
-                clientEventId,
-                EventDeliveryDedupStatuses.Applied,
-                nowUtc,
-                appliedAt: nowUtc,
-                errorCode: null,
-                ct).ConfigureAwait(false);
-
-            await dbPub.SaveChangesAsync(ct).ConfigureAwait(false);
-            await txPub.CommitAsync(ct).ConfigureAwait(false);
-        }
-        catch
-        {
-            await txPub.RollbackAsync(ct).ConfigureAwait(false);
-            await TryMarkEventDeliveryFailedAsync(tenantId, uuid.Value, clientEventId, ct).ConfigureAwait(false);
-            throw;
-        }
+                await dbPub.SaveChangesAsync(ctInner).ConfigureAwait(false);
+            }).ConfigureAwait(false);
     }
 
     public async Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct)
@@ -687,7 +703,7 @@ public sealed class WorkflowService : IWorkflowService
         {
             return JsonSerializer.Deserialize<WorkflowResponse>(
                 existing.ResponseBody,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                CaseInsensitiveJsonSerializerOptions);
         }
         catch
         {
@@ -703,7 +719,7 @@ public sealed class WorkflowService : IWorkflowService
                 definitionId = request.DefinitionId,
                 input = request.Input
             },
-            DedupJsonOptions);
+            CamelCaseJsonSerializerOptions);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
     }
 
@@ -830,7 +846,7 @@ public sealed class WorkflowService : IWorkflowService
         _logger.Log(
             level,
             exception,
-            "event_delivery_decision traceId={traceId} workflowId={workflowId} tenantId={tenantId} clientEventId={clientEventId} decision={decision} attempt={attempt} elapsedMs={elapsedMs} errorCode={errorCode}",
+            "event_delivery_decision traceId={TraceId} workflowId={WorkflowId} tenantId={TenantId} clientEventId={ClientEventId} decision={Decision} attempt={Attempt} elapsedMs={ElapsedMs} errorCode={ErrorCode}",
             traceId,
             workflowId,
             tenantId,
@@ -1013,6 +1029,166 @@ public sealed class WorkflowService : IWorkflowService
         }
 
         throw new InvalidOperationException("Event delivery insert retry loop ended unexpectedly.");
+    }
+
+    private static async Task TryRollbackSerializableTransactionAsync(
+        IDbContextTransaction tx,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await tx.RollbackAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            // 破損済みトランザクションのロールバックで起きうる競合は無視する。
+        }
+    }
+
+    /// <summary>
+    /// イベント配送・キャンセル等の Serializable 永続化を試み、PostgreSQL の直列化失敗（40001）や
+    /// デッドロック（40P01）のときは <see cref="EventDeliveryRetryOptions"/> に従いバックオフして再試行する。
+    /// Engine への適用は呼び出し側で一度だけ行い、本メソッドは投影の DB 書き込みのみを繰り返す。
+    /// </summary>
+    private async Task CommitWorkflowMutationSerializableWithRetryAsync(
+        string tenantId,
+        Guid workflowId,
+        Guid clientEventId,
+        CancellationToken ct,
+        Func<CoreDbContext, CancellationToken, Task> applyAndSaveAsync)
+    {
+        var retryOptions = _eventDeliveryRetryOptions.Value;
+        var maxAttempts = Math.Max(1, retryOptions.SerializablePersistenceMaxAttempts);
+        var totalBackoffMs = 0;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+            await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct).ConfigureAwait(false);
+            try
+            {
+                await applyAndSaveAsync(db, ct).ConfigureAwait(false);
+                await tx.CommitAsync(ct).ConfigureAwait(false);
+                return;
+            }
+            catch (Exception ex) when (EventDeliveryRetryPolicy.IsNonRetryableTimeoutOrCancellation(ex))
+            {
+                await TryRollbackSerializableTransactionAsync(tx, ct).ConfigureAwait(false);
+                await TryMarkEventDeliveryFailedAsync(tenantId, workflowId, clientEventId, ct).ConfigureAwait(false);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                await TryRollbackSerializableTransactionAsync(tx, ct).ConfigureAwait(false);
+                totalBackoffMs = await ApplySerializablePersistenceFailureAsync(
+                    ex,
+                    tenantId,
+                    workflowId,
+                    clientEventId,
+                    new SerializablePersistenceRetryProgress(attempt, maxAttempts, totalBackoffMs),
+                    retryOptions,
+                    ct).ConfigureAwait(false);
+            }
+        }
+
+        throw new InvalidOperationException("Serializable persistence retry loop ended unexpectedly.");
+    }
+
+    /// <summary>
+    /// Serializable 永続化が競合・その他の失敗で終わったあとの処理。
+    /// 再試行可能な競合ならバックオフ後に累積待機時間を返し、呼び出し側はループを続行する。
+    /// それ以外は <see cref="TryMarkEventDeliveryFailedAsync"/> の後に元例外を再送出する。
+    /// </summary>
+    /// <returns>バックオフ適用後の累積待機時間（ミリ秒）。</returns>
+    /// <exception cref="InvalidOperationException">バックオフ予算を使い切った場合。</exception>
+    private async Task<int> ApplySerializablePersistenceFailureAsync(
+        Exception ex,
+        string tenantId,
+        Guid workflowId,
+        Guid clientEventId,
+        SerializablePersistenceRetryProgress retryProgress,
+        EventDeliveryRetryOptions retryOptions,
+        CancellationToken ct)
+    {
+        var conflict = EventDeliveryRetryPolicy.IsPostgresSerializableOrDeadlockConflict(ex);
+        if (conflict && retryProgress.Attempt < retryProgress.MaxAttempts)
+        {
+            var failureIndex = retryProgress.Attempt - 1;
+            var delayMs = EventDeliveryRetryPolicy.ComputeBackoffDelayMs(failureIndex, retryOptions, Random.Shared);
+            if (retryOptions.MaxTotalBackoffMs > 0)
+            {
+                var remainingBudgetMs = retryOptions.MaxTotalBackoffMs - retryProgress.TotalBackoffMs;
+                if (remainingBudgetMs <= 0)
+                {
+                    LogSerializablePersistRetry(
+                        tenantId,
+                        workflowId,
+                        clientEventId,
+                        retryProgress.Attempt,
+                        retryProgress.MaxAttempts,
+                        delayMs: 0,
+                        ex.Message);
+                    await TryMarkEventDeliveryFailedAsync(tenantId, workflowId, clientEventId, ct).ConfigureAwait(false);
+                    throw new InvalidOperationException(
+                        "Serializable persistence retry stopped: total backoff budget exhausted.",
+                        ex);
+                }
+
+                delayMs = Math.Min(delayMs, remainingBudgetMs);
+            }
+
+            var newTotalBackoffMs = retryProgress.TotalBackoffMs + delayMs;
+            LogSerializablePersistRetry(
+                tenantId,
+                workflowId,
+                clientEventId,
+                retryProgress.Attempt,
+                retryProgress.MaxAttempts,
+                delayMs,
+                ex.Message);
+            if (delayMs > 0)
+                await Task.Delay(delayMs, ct).ConfigureAwait(false);
+
+            return newTotalBackoffMs;
+        }
+
+        if (conflict)
+        {
+            LogSerializablePersistRetry(
+                tenantId,
+                workflowId,
+                clientEventId,
+                retryProgress.Attempt,
+                retryProgress.MaxAttempts,
+                delayMs: 0,
+                ex.Message);
+        }
+
+        await TryMarkEventDeliveryFailedAsync(tenantId, workflowId, clientEventId, ct).ConfigureAwait(false);
+        ExceptionDispatchInfo.Capture(ex).Throw();
+        return 0;
+    }
+
+    private void LogSerializablePersistRetry(
+        string tenantId,
+        Guid workflowId,
+        Guid clientEventId,
+        int attempt,
+        int maxAttempts,
+        int delayMs,
+        string failureMessage)
+    {
+        var traceId = GetTraceIdOrEmpty();
+        _logger.LogInformation(
+            "serializable_persist_retry traceId={TraceId} workflowId={WorkflowId} tenantId={TenantId} clientEventId={ClientEventId} attempt={Attempt} maxAttempts={MaxAttempts} delayMs={DelayMs} failureMessage={FailureMessage}",
+            traceId,
+            workflowId,
+            tenantId,
+            clientEventId,
+            attempt,
+            maxAttempts,
+            delayMs,
+            failureMessage);
     }
 
     /// <summary>

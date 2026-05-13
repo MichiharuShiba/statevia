@@ -22,4 +22,10 @@ public sealed class EventDeliveryRetryOptions
     /// API リクエストのタイムアウト予算を超えないようクリップするために用いる。0 は上限なし。
     /// </summary>
     public int MaxTotalBackoffMs { get; set; } = 8000;
+
+    /// <summary>
+    /// イベント配送・キャンセル等の Serializable 永続化ブロックの最大試行回数（初回含む）。
+    /// PostgreSQL の直列化失敗（40001）やデッドロック（40P01）の再試行上限。既定は 8。
+    /// </summary>
+    public int SerializablePersistenceMaxAttempts { get; set; } = 8;
 }
