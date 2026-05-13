@@ -1,5 +1,28 @@
 import type { NodeStatus, WorkflowStatus } from "./types";
 
+/**
+ * ライトはトークンどおり、ダークでは *-container のベタ塗りが濃く見えるため混色で弱める。
+ * `var(...)/NN` は hex トークンでは効かないことがあるため `color-mix` を使う。
+ * IDLE / RUNNING のニュートラル帯には使わない。
+ *
+ * クラス名はソースに静的な文字列としてのみ現わす（Tailwind が `` `...${x}...` `` を arbitrary として誤検出するのを避ける）。
+ */
+const darkSoftContainerBgClass = {
+  info: "bg-[var(--md-sys-color-info-container)] dark:bg-[color-mix(in_srgb,var(--md-sys-color-info-container)_30%,transparent)]",
+  success:
+    "bg-[var(--md-sys-color-success-container)] dark:bg-[color-mix(in_srgb,var(--md-sys-color-success-container)_30%,transparent)]",
+  error: "bg-[var(--md-sys-color-error-container)] dark:bg-[color-mix(in_srgb,var(--md-sys-color-error-container)_30%,transparent)]",
+  warning:
+    "bg-[var(--md-sys-color-warning-container)] dark:bg-[color-mix(in_srgb,var(--md-sys-color-warning-container)_30%,transparent)]"
+} as const;
+
+type DarkSoftContainerSemantic = keyof typeof darkSoftContainerBgClass;
+
+/** @param semantic コンテナ色の系統（info / success / error / warning） */
+function softDarkContainerBackground(semantic: DarkSoftContainerSemantic): string {
+  return darkSoftContainerBgClass[semantic];
+}
+
 export type StatusLike = WorkflowStatus | NodeStatus;
 
 export type StatusStyle = {
@@ -15,7 +38,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
   Running: {
     badgeClass: "bg-[var(--md-sys-color-info)] text-[var(--md-sys-color-on-info)]",
     borderClass: "border-[var(--md-sys-color-info)]",
-    bgClass: "bg-[var(--md-sys-color-info-container)]",
+    bgClass: softDarkContainerBackground("info"),
     textClass: "text-[var(--md-sys-color-on-info-container)]",
     icon: "•",
     emphasisRank: 20
@@ -23,7 +46,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
   Completed: {
     badgeClass: "bg-[var(--md-sys-color-success)] text-[var(--md-sys-color-on-success)]",
     borderClass: "border-[var(--md-sys-color-success)]",
-    bgClass: "bg-[var(--md-sys-color-success-container)]",
+    bgClass: softDarkContainerBackground("success"),
     textClass: "text-[var(--md-sys-color-on-success-container)]",
     icon: "✓",
     emphasisRank: 40
@@ -31,7 +54,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
   Failed: {
     badgeClass: "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)]",
     borderClass: "border-[var(--md-sys-color-error)]",
-    bgClass: "bg-[var(--md-sys-color-error-container)]",
+    bgClass: softDarkContainerBackground("error"),
     textClass: "text-[var(--md-sys-color-on-error-container)]",
     icon: "⚠",
     emphasisRank: 80
@@ -39,7 +62,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
   Cancelled: {
     badgeClass: "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)]",
     borderClass: "border-[var(--md-sys-color-error)]",
-    bgClass: "bg-[var(--md-sys-color-error-container)]",
+    bgClass: softDarkContainerBackground("error"),
     textClass: "text-[var(--md-sys-color-on-error-container)]",
     icon: "✕",
     emphasisRank: 100
@@ -55,7 +78,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
   READY: {
     badgeClass: "bg-[var(--md-sys-color-info)] text-[var(--md-sys-color-on-info)]",
     borderClass: "border-[var(--md-sys-color-info)]",
-    bgClass: "bg-[var(--md-sys-color-info-container)]",
+    bgClass: softDarkContainerBackground("info"),
     textClass: "text-[var(--md-sys-color-on-info-container)]",
     icon: "•",
     emphasisRank: 20
@@ -71,7 +94,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
   WAITING: {
     badgeClass: "bg-[var(--md-sys-color-warning)] text-[var(--md-sys-color-on-warning)]",
     borderClass: "border-[var(--md-sys-color-warning)]",
-    bgClass: "bg-[var(--md-sys-color-warning-container)]",
+    bgClass: softDarkContainerBackground("warning"),
     textClass: "text-[var(--md-sys-color-on-warning-container)]",
     icon: "⏸",
     emphasisRank: 70
@@ -79,7 +102,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
   SUCCEEDED: {
     badgeClass: "bg-[var(--md-sys-color-success)] text-[var(--md-sys-color-on-success)]",
     borderClass: "border-[var(--md-sys-color-success)]",
-    bgClass: "bg-[var(--md-sys-color-success-container)]",
+    bgClass: softDarkContainerBackground("success"),
     textClass: "text-[var(--md-sys-color-on-success-container)]",
     icon: "✓",
     emphasisRank: 40
@@ -87,7 +110,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
   FAILED: {
     badgeClass: "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)]",
     borderClass: "border-[var(--md-sys-color-error)]",
-    bgClass: "bg-[var(--md-sys-color-error-container)]",
+    bgClass: softDarkContainerBackground("error"),
     textClass: "text-[var(--md-sys-color-on-error-container)]",
     icon: "⚠",
     emphasisRank: 80
@@ -95,7 +118,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
   CANCELED: {
     badgeClass: "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)]",
     borderClass: "border-[var(--md-sys-color-error)]",
-    bgClass: "bg-[var(--md-sys-color-error-container)]",
+    bgClass: softDarkContainerBackground("error"),
     textClass: "text-[var(--md-sys-color-on-error-container)]",
     icon: "✕",
     emphasisRank: 100
