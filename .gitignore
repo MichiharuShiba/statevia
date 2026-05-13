@@ -55,7 +55,12 @@ coverage/
 .vscode/
 .mcp.json
 .playwright-mcp/
-.spec-workflow/
+# Spec workflow: テンプレートと steering のみリポジトリで共有（それ以外はローカル）
+.spec-workflow/*
+!.spec-workflow/templates/
+!.spec-workflow/templates/**
+!.spec-workflow/steering/
+!.spec-workflow/steering/**
 .workspace-docs/
 .serena/
 docs/out
