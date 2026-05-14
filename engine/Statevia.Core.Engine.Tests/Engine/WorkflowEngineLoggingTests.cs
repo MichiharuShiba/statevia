@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Engine;
 
-public sealed class WorkflowEngineLoggingTests
+public sealed partial class WorkflowEngineLoggingTests
 {
     /// <summary>正常完走時に Workflow 開始・State スケジュール・State 完了（ElapsedMs 付き）が Information ログに残ることを検証する。</summary>
     [Fact]
@@ -314,11 +314,17 @@ public sealed class WorkflowEngineLoggingTests
             Task.FromResult(_output);
     }
 
+    private static partial class LoggingTestMessages
+    {
+        [LoggerMessage(EventId = 9901, Level = LogLevel.Information, Message = "StateContext user log")]
+        public static partial void StateContextUserLog(ILogger logger);
+    }
+
     private sealed class LoggingState : IState<Unit, Unit>
     {
         public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
         {
-            ctx.Logger.LogInformation("StateContext user log");
+            LoggingTestMessages.StateContextUserLog(ctx.Logger);
             return Task.FromResult(Unit.Value);
         }
     }
