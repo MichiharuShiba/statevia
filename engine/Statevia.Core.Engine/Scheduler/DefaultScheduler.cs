@@ -18,13 +18,14 @@ public sealed class DefaultScheduler : IScheduler, IDisposable
     }
 
     /// <inheritdoc />
-    public void Dispose() => Dispose(true);
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarLint", "S3971", Justification = "GC.SuppressFinalize is part of the standard IDisposable pattern")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.CodeAnalysis", "CA1816", Justification = "GC.SuppressFinalize is part of the standard IDisposable pattern")]
-    private void Dispose(bool disposing)
+    public void Dispose()
     {
-        if (!_disposed && disposing) { _limiter.Dispose(); _disposed = true; }
-        GC.SuppressFinalize(this);
+        if (_disposed)
+        {
+            return;
+        }
+
+        _limiter.Dispose();
+        _disposed = true;
     }
 }

@@ -19,13 +19,15 @@ public sealed class ExecutionLimiter : IDisposable
         finally { _semaphore.Release(); }
     }
 
-    public void Dispose() => Dispose(true);
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarLint", "S3971", Justification = "GC.SuppressFinalize is part of the standard IDisposable pattern")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.CodeAnalysis", "CA1816", Justification = "GC.SuppressFinalize is part of the standard IDisposable pattern")]
-    private void Dispose(bool disposing)
+    /// <inheritdoc />
+    public void Dispose()
     {
-        if (!_disposed && disposing) { _semaphore.Dispose(); _disposed = true; }
-        GC.SuppressFinalize(this);
+        if (_disposed)
+        {
+            return;
+        }
+
+        _semaphore.Dispose();
+        _disposed = true;
     }
 }
