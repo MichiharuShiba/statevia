@@ -71,14 +71,25 @@ Definition (JSON/YAML)
 - samples/hello-statevia
 
 ```csharp
-var engine = new WorkflowEngine(definition);
+using Microsoft.Extensions.Logging.Abstractions;
+using Statevia.Core.Engine.Abstractions;
+using Statevia.Core.Engine.Engine;
+using Statevia.Core.Engine.Infrastructure;
+using Statevia.Core.Engine.Scheduler;
 
-await engine.StartAsync();
+// compiled は DefinitionCompiler 等で用意した CompiledWorkflowDefinition（ここでは省略）
+using var engine = new WorkflowEngine(
+    new DefaultScheduler(maxParallelism: 4),
+    new DefaultWorkflowInstanceFactory(),
+    new UuidV7WorkflowInstanceIdGenerator(),
+    NullLogger<WorkflowEngine>.Instance);
 
-engine.EmitEvent("resume-event");
-
-var graph = engine.ExecutionGraph;
+var workflowId = engine.Start(compiled);
+engine.PublishEvent(workflowId, "resume-event");
+var graphJson = engine.ExportExecutionGraph(workflowId);
 ```
+
+ASP.NET Core から使う場合は、`Program.cs` のとおり `AddStateviaWorkflowEngine` で `IWorkflowEngine` を登録し、コンストラクタ組み立てはホスト側に任せます。
 
 ---
 
