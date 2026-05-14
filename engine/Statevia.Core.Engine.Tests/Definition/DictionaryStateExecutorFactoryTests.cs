@@ -76,7 +76,7 @@ public class DictionaryStateExecutorFactoryTests
         var id = engine.Start(def);
 
         // Act
-        await Task.Delay(150);
+        await Task.Delay(150).ConfigureAwait(false);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert

@@ -24,7 +24,7 @@ public class SchedulerTests
             return 1;
         }));
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
         // Assert: 同時実行数の最大値が 2 であること
         Assert.Equal(2, maxConcurrent);
@@ -38,7 +38,7 @@ public class SchedulerTests
         using var scheduler = new DefaultScheduler(2);
 
         // Act
-        var result = await scheduler.RunAsync(ct => Task.FromResult(42));
+        var result = await scheduler.RunAsync(ct => Task.FromResult(42)).ConfigureAwait(false);
 
         // Assert
         Assert.Equal(42, result);

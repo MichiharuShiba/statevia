@@ -16,7 +16,7 @@ public class DefaultStateExecutorTests
         var ctx = CreateContext();
 
         // Act
-        var result = await executor.ExecuteAsync(ctx, Unit.Value, CancellationToken.None);
+        var result = await executor.ExecuteAsync(ctx, Unit.Value, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
         Assert.Equal("done", result);
@@ -32,7 +32,7 @@ public class DefaultStateExecutorTests
         var ctx = CreateContext();
 
         // Act
-        var result = await executor.ExecuteAsync(ctx, 42, CancellationToken.None);
+        var result = await executor.ExecuteAsync(ctx, 42, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
         Assert.Equal(42, result);
@@ -48,7 +48,7 @@ public class DefaultStateExecutorTests
         var ctx = CreateContext();
 
         // Act
-        var result = await executor.ExecuteAsync(ctx, Unit.Value, CancellationToken.None);
+        var result = await executor.ExecuteAsync(ctx, Unit.Value, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
         Assert.Equal("waited", result);
@@ -64,7 +64,7 @@ public class DefaultStateExecutorTests
         var ctx = CreateContext();
 
         // Act
-        var result = await executor.ExecuteAsync(ctx, Unit.Value, CancellationToken.None);
+        var result = await executor.ExecuteAsync(ctx, Unit.Value, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
         Assert.False((bool)result);
