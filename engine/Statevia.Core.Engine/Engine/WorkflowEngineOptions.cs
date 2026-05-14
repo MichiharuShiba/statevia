@@ -7,7 +7,10 @@ namespace Statevia.Core.Engine.Engine;
 public sealed class WorkflowEngineOptions
 {
     /// <summary>
-    /// 最大並列実行数（ホストが <c>AddStateviaWorkflowEngine</c> で既定スケジューラを構築するときに解釈）。既定値は 4。
+    /// 最大並列実行数。
     /// </summary>
+    /// <remarks>
+    /// ホストが <c>AddStateviaWorkflowEngine</c> 拡張で既定の <see cref="DefaultScheduler"/> を組み立てるときに参照する。既定値は 4。
+    /// </remarks>
     public int MaxParallelism { get; set; } = 4;
 }
