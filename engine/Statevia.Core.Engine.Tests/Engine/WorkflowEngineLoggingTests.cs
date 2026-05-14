@@ -19,7 +19,7 @@ public sealed class WorkflowEngineLoggingTests
         // Arrange
         var sink = new ListLogger();
         var def = CreateMinimalDefinition();
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1, Logger = sink });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, logger: sink);
 
         // Act
         var id = engine.Start(def);
@@ -40,7 +40,7 @@ public sealed class WorkflowEngineLoggingTests
         // Arrange
         var sink = new ListLogger();
         var def = CreateDefinitionWithFailingState();
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1, Logger = sink });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, logger: sink);
 
         // Act
         engine.Start(def);
@@ -59,7 +59,7 @@ public sealed class WorkflowEngineLoggingTests
         // Arrange
         var sink = new ListLogger();
         var def = CreateDefinitionWithForkJoin();
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 2, Logger = sink });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 2, logger: sink);
 
         // Act
         engine.Start(def);
@@ -102,7 +102,7 @@ public sealed class WorkflowEngineLoggingTests
                 ["B"] = DefaultStateExecutor.Create(new ImmediateState())
             })
         };
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1, Logger = sink });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, logger: sink);
 
         // Act
         engine.Start(def);
@@ -141,7 +141,7 @@ public sealed class WorkflowEngineLoggingTests
                 ["Start"] = DefaultStateExecutor.Create(new ImmediateState())
             })
         };
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1, Logger = sink });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, logger: sink);
 
         // Act
         engine.Start(def);
@@ -179,7 +179,7 @@ public sealed class WorkflowEngineLoggingTests
                 ["Start"] = DefaultStateExecutor.Create(new LoggingState())
             })
         };
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1, Logger = sink });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, logger: sink);
 
         // Act
         var workflowId = engine.Start(def);

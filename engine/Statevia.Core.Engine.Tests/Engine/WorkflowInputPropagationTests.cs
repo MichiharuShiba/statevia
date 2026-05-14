@@ -28,7 +28,7 @@ public class WorkflowInputPropagationTests
                 seen = input;
                 return Task.FromResult<object?>("done");
             })));
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def, null, "workflow-seed");
 
         // Act
@@ -44,7 +44,7 @@ public class WorkflowInputPropagationTests
     {
         var def = CreateSingleStateDefinition(
             DefaultStateExecutor.Create(new ImmediateState()));
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var seed = new Dictionary<string, object?> { ["k"] = "v" };
         var id = engine.Start(def, null, seed);
 
@@ -74,7 +74,7 @@ public class WorkflowInputPropagationTests
                 bInput = input;
                 return Task.FromResult<object?>(null);
             })));
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -101,7 +101,7 @@ public class WorkflowInputPropagationTests
                 inputs.Add(input);
                 return Task.FromResult<object?>("b");
             })));
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
@@ -124,7 +124,7 @@ public class WorkflowInputPropagationTests
                 afterInput = input;
                 return Task.FromResult<object?>(null);
             })));
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -147,7 +147,7 @@ public class WorkflowInputPropagationTests
             DefaultStateExecutor.Create(new DelegateState((_, _, _) => Task.FromResult<object?>("out-A"))),
             DefaultStateExecutor.Create(new DelegateState((_, _, _) => Task.FromResult<object?>("out-B"))),
             DefaultStateExecutor.Create(new DelegateState((_, _, _) => Task.FromResult<object?>(null))));
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
@@ -207,7 +207,7 @@ public class WorkflowInputPropagationTests
                 return Task.FromResult<object?>(null);
             })),
             new StateInputDefinition { Path = "$.payload" });
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -242,7 +242,7 @@ public class WorkflowInputPropagationTests
                 ["A"] = new() { Path = "$.v" },
                 ["B"] = new() { Path = "$.v" }
             });
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -268,7 +268,7 @@ public class WorkflowInputPropagationTests
                 return Task.FromResult<object?>(null);
             })),
             new StateInputDefinition { Path = "$.A" });
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -303,7 +303,7 @@ public class WorkflowInputPropagationTests
                     ["enabled"] = new() { Literal = true }
                 }
             });
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act

@@ -19,7 +19,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateMinimalDefinition();
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -34,7 +34,7 @@ public class WorkflowEngineTests
     public void GetSnapshot_ReturnsNull_WhenWorkflowNotFound()
     {
         // Arrange
-        var engine = new WorkflowEngine();
+        var engine = WorkflowEngineTestHarness.Create();
 
         // Act
         var snapshot = engine.GetSnapshot("non-existent");
@@ -49,7 +49,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateMinimalDefinition();
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -68,7 +68,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateMinimalDefinition();
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -84,7 +84,7 @@ public class WorkflowEngineTests
     public void ExportExecutionGraph_ReturnsEmptyJson_WhenWorkflowNotFound()
     {
         // Arrange
-        var engine = new WorkflowEngine();
+        var engine = WorkflowEngineTestHarness.Create();
 
         // Act
         var json = engine.ExportExecutionGraph("non-existent");
@@ -99,7 +99,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateMinimalDefinition();
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act: ワークフロー完了を待つ
@@ -116,7 +116,7 @@ public class WorkflowEngineTests
     public void PublishEvent_DoesNotThrow()
     {
         // Arrange
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         engine.Start(CreateMinimalDefinition());
 
         // Act
@@ -130,7 +130,7 @@ public class WorkflowEngineTests
     public void PublishEvent_BroadcastByEventName_DoesNotThrow_WhenMultipleWorkflows()
     {
         // Arrange
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 2 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 2);
         engine.Start(CreateMinimalDefinition());
         engine.Start(CreateMinimalDefinition());
 
@@ -145,7 +145,7 @@ public class WorkflowEngineTests
     public void PublishEvent_WithClientEventId_DoesNotThrow()
     {
         // Arrange
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var workflowId = engine.Start(CreateMinimalDefinition());
         var clientEventId = Guid.Parse("a1b2c3d4-e5f6-4789-a012-3456789abcde");
 
@@ -161,7 +161,7 @@ public class WorkflowEngineTests
     public void PublishEvent_WithClientEventId_Broadcast_AppliesThenAlreadyApplied_ForMultipleWorkflows()
     {
         // Arrange
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 2 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 2);
         engine.Start(CreateMinimalDefinition());
         engine.Start(CreateMinimalDefinition());
         var clientEventId = Guid.Parse("b2c3d4e5-f6a7-4890-b123-456789abcdef");
@@ -180,7 +180,7 @@ public class WorkflowEngineTests
     public void Dispose_DoesNotThrow()
     {
         // Arrange
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         engine.Start(CreateMinimalDefinition());
 
         // Act
@@ -195,7 +195,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateDefinitionWithFailingState();
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -213,7 +213,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateMinimalDefinition();
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var callCount = 0;
         var called = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         engine.SetNodeCompletedHandler(workflowId =>
@@ -238,7 +238,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateDefinitionWithForkJoin();
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 2 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 2);
         var callCount = 0;
         var calledAtJoin = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         engine.SetNodeCompletedHandler(workflowId =>
@@ -267,7 +267,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateDefinitionWithForkJoin();
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 2 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 2);
         var id = engine.Start(def);
 
         // Act
@@ -306,7 +306,7 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedState = stateName);
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -339,7 +339,7 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedState = stateName);
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -371,7 +371,7 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: _ => { });
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -433,7 +433,7 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedByBetween = stateName);
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var inWorkflowId = engine.Start(inDefinition);
@@ -473,7 +473,7 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedState = stateName);
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -508,7 +508,7 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedState = stateName);
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -549,7 +549,7 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedState = stateName);
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def, null, workflowInput);
@@ -591,7 +591,7 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedState = stateName);
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def, null, workflowInput);
@@ -611,7 +611,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateDefinitionWithStateRevisit();
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -636,7 +636,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateDefinitionWithWaitKey();
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -656,7 +656,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateDefinitionWithStoreReader();
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -683,7 +683,7 @@ public class WorkflowEngineTests
             InitialState = "Start",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["Start"] = DefaultStateExecutor.Create(new ImmediateState()) })
         };
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -711,7 +711,7 @@ public class WorkflowEngineTests
             InitialState = "A",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["A"] = DefaultStateExecutor.Create(new ContextReaderState()) })
         };
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
