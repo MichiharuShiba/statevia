@@ -10,7 +10,7 @@ namespace Statevia.Core.Engine.Tests.TestSupport;
 /// <summary>
 /// テスト用に <see cref="WorkflowEngine"/> を既定の具象依存で組み立てるヘルパー。
 /// </summary>
-public static class WorkflowEngineTestHarness
+internal static class WorkflowEngineTestHarness
 {
     /// <summary>
     /// 既定の <see cref="DefaultScheduler"/>・<see cref="DefaultWorkflowInstanceFactory"/>・UUID v7 ID 生成でエンジンを生成する。
