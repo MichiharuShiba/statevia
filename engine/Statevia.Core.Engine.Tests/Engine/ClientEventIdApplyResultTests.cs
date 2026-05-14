@@ -16,7 +16,7 @@ public class ClientEventIdApplyResultTests
     public async Task PublishEvent_SecondCallWithSameClientEventId_ReturnsAlreadyApplied()
     {
         // Arrange
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var workflowId = engine.Start(CreateMinimalDefinition());
         await Task.Delay(200).ConfigureAwait(true);
         var clientEventId = Guid.Parse("c3d4e5f6-a7b8-4901-c234-567890abcdef");

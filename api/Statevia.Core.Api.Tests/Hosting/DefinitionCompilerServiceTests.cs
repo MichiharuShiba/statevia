@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Logging.Abstractions;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Application.Actions.Abstractions;
 using Statevia.Core.Api.Application.Actions.Registry;
@@ -8,11 +9,20 @@ using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Execution;
+using Statevia.Core.Engine.Infrastructure;
+using Statevia.Core.Engine.Scheduler;
 
 namespace Statevia.Core.Api.Tests.Hosting;
 
 public sealed class DefinitionCompilerServiceTests
 {
+    private static WorkflowEngine CreateTestEngine(int maxParallelism = 4) =>
+        new(
+            new DefaultScheduler(maxParallelism),
+            new DefaultWorkflowInstanceFactory(),
+            new UuidV7WorkflowInstanceIdGenerator(),
+            NullLogger<WorkflowEngine>.Instance);
+
     private static IDefinitionLoadStrategy CreateDefaultStrategy() =>
         new DefinitionLoadStrategy(new StateWorkflowDefinitionLoader(), new NodesWorkflowDefinitionLoader());
 
@@ -190,7 +200,7 @@ public sealed class DefinitionCompilerServiceTests
         var (def, _) = compiler.ValidateAndCompile("W", yaml);
 
         // Act
-        var engine = new WorkflowEngine();
+        var engine = CreateTestEngine();
         var wfId = engine.Start(def, workflowInput: new Dictionary<string, int> { ["x"] = 42 });
 
         await Task.Delay(200);
@@ -691,7 +701,7 @@ public sealed class DefinitionCompilerServiceTests
             """;
 
         var (compiled, _) = svc.ValidateAndCompile("CustomerOrderParallel", yaml);
-        using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        using var engine = CreateTestEngine(maxParallelism: 1);
         using var inputDoc = JsonDocument.Parse("""{"eligible":true,"shared":{"orderId":"ORD-1001"}}""");
 
         // Act

@@ -1,8 +1,11 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Definition.Validation;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Execution;
+using Statevia.Core.Engine.Infrastructure;
+using Statevia.Core.Engine.Scheduler;
 
 var loader = new StateWorkflowDefinitionLoader();
 var content = await File.ReadAllTextAsync("hello.yaml");
@@ -44,7 +47,11 @@ var compiler = new DefinitionCompiler(factory);
 var compiled = compiler.Compile(def);
 
 // README 3.3 に準拠
-using var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 2 });
+using var engine = new WorkflowEngine(
+    new DefaultScheduler(2),
+    new DefaultWorkflowInstanceFactory(),
+    new UuidV7WorkflowInstanceIdGenerator(),
+    NullLogger<WorkflowEngine>.Instance);
 var id = engine.Start(compiled);
 
 Console.WriteLine($"Workflow started: {id}");

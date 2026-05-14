@@ -72,7 +72,7 @@ public class DictionaryStateExecutorFactoryTests
             InitialState = "Start",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["Start"] = DefaultStateExecutor.Create(state) })
         };
-        var engine = new WorkflowEngine(new WorkflowEngineOptions { MaxParallelism = 1 });
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act

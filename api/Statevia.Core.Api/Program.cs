@@ -1,25 +1,25 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Statevia.Core.Api.Configuration;
-using Statevia.Core.Engine.Abstractions;
-using Statevia.Core.Engine.Engine;
-using Statevia.Core.Engine.Infrastructure;
-using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
+using Statevia.Core.Api.Application.Actions.Abstractions;
+using Statevia.Core.Api.Application.Actions.Registry;
+using Statevia.Core.Api.Application.Definition;
+using Statevia.Core.Api.Configuration;
+using Statevia.Core.Api.Contracts;
+using Statevia.Core.Api.Hosting;
 using Statevia.Core.Api.Infrastructure;
 using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Persistence.Repositories;
 using Statevia.Core.Api.Services;
-using Statevia.Core.Api.Hosting;
-using Statevia.Core.Api.Application.Actions.Abstractions;
-using Statevia.Core.Api.Application.Actions.Registry;
-using Statevia.Core.Api.Application.Definition;
+using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
+using Statevia.Core.Engine.DependencyInjection;
+using Statevia.Core.Engine.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,18 +62,11 @@ builder.Services.AddScoped<IDisplayIdService, DisplayIdServiceImpl>();
 builder.Services.AddScoped<IExecutionReadModelService, ExecutionReadModelService>();
 builder.Services.AddSingleton<IIdGenerator, UuidV7Generator>();
 
-// IWorkflowEngine を DI でシングルトン登録（計画 3.3）
-// workflowId 未指定時の生成は Core-API の IIdGenerator と同一経路（UUID v7）に揃える。
-builder.Services.AddSingleton<IWorkflowEngine>(sp =>
-{
-    var idGen = sp.GetRequiredService<IIdGenerator>();
-    var logger = sp.GetRequiredService<ILogger<WorkflowEngine>>();
-    return new WorkflowEngine(new WorkflowEngineOptions
-    {
-        WorkflowInstanceIdGenerator = new DelegateWorkflowInstanceIdGenerator(() => idGen.NewGuid().ToString()),
-        Logger = logger
-    });
-});
+// WorkflowEngine（Singleton）: IScheduler をプロセス単位で共有。登録は AddStateviaWorkflowEngine。
+// IWorkflowInstanceIdGenerator: Start で workflowId 未指定のとき、IIdGenerator（UUID v7）と同一経路で ID を採番する。
+builder.Services.AddSingleton<IWorkflowInstanceIdGenerator>(
+    sp => new DelegateWorkflowInstanceIdGenerator(() => sp.GetRequiredService<IIdGenerator>().NewGuid().ToString()));
+builder.Services.AddStateviaWorkflowEngine();
 builder.Services.AddScoped<ICommandDedupService, CommandDedupService>();
 builder.Services.AddScoped<IDefinitionRepository, DefinitionRepository>();
 builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
