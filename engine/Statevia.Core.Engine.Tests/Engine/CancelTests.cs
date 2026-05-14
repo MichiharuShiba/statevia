@@ -91,7 +91,7 @@ public class CancelTests
     {
         public async Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
         {
-            await Task.Delay(5000, ct);
+            await Task.Delay(5000, ct).ConfigureAwait(false);
             return Unit.Value;
         }
     }

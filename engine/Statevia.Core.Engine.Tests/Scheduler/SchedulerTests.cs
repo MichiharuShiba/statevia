@@ -19,7 +19,7 @@ public class SchedulerTests
         var tasks = Enumerable.Range(0, 5).Select(_ => limiter.RunAsync(async ct =>
         {
             lock (lockObj) { concurrent++; maxConcurrent = Math.Max(maxConcurrent, concurrent); }
-            await Task.Delay(50, ct);
+            await Task.Delay(50, ct).ConfigureAwait(false);
             lock (lockObj) { concurrent--; }
             return 1;
         }));

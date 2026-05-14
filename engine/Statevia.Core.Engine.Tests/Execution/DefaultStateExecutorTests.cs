@@ -102,7 +102,7 @@ public class DefaultStateExecutorTests
     {
         public async Task<string> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
         {
-            await ctx.Events.WaitAsync("ev", ct);
+            await ctx.Events.WaitAsync("ev", ct).ConfigureAwait(false);
             return "waited";
         }
     }

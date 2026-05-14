@@ -34,6 +34,6 @@ public class WaitResumeTests
         await cts.CancelAsync();
 
         // Assert: TaskCanceledException がスローされること
-        await Assert.ThrowsAsync<TaskCanceledException>(async () => await waitTask);
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await waitTask.ConfigureAwait(false));
     }
 }
