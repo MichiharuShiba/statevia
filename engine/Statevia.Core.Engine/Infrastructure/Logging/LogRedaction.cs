@@ -54,7 +54,7 @@ public static class LogRedaction
             return query;
         }
 
-        if (!query.StartsWith("?", StringComparison.Ordinal))
+        if (!query.StartsWith('?'))
         {
             return query;
         }
@@ -62,7 +62,7 @@ public static class LogRedaction
         var trimmed = query.TrimStart('?');
         if (trimmed.Length == 0)
         {
-            return query.StartsWith("?", StringComparison.Ordinal) ? "?" : "";
+            return query.StartsWith('?') ? "?" : "";
         }
 
         var parts = trimmed.Split('&', StringSplitOptions.RemoveEmptyEntries);
