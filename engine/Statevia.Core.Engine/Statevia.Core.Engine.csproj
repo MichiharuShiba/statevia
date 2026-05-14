@@ -10,6 +10,7 @@
     <Version>0.1.0</Version>
     <Authors>MichiharuShiba</Authors>
     <Description>A definition-driven workflow engine based on fact-driven FSM</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
