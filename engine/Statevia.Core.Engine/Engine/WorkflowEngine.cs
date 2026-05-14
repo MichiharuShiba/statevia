@@ -21,6 +21,10 @@ namespace Statevia.Core.Engine.Engine;
 /// ホストが <see cref="IWorkflowEngine"/> を Singleton として登録する場合、コンストラクタに渡した
 /// <see cref="IScheduler"/> はプロセス内のワークフロー実行で共有される（グローバル並列制御の単一窓口）。
 /// </para>
+/// <para>
+/// 例外を広く捕捉する <c>#pragma warning disable CA1031</c> 付きの try/catch は、複数ワークフローへのイベントブロードキャストで
+/// 失敗を集約するため、状態実行失敗をグラフへ記録するため、およびログ実装の失敗を遷移へ伝播させない（STV-404）ためである。
+/// </para>
 /// </remarks>
 public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
 {
@@ -232,7 +236,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         {
             await ScheduleStateAsync(instance, eventProvider, instance.Definition.InitialState, null, null, initialInput).ConfigureAwait(false);
         }
-#pragma warning disable CA1031 // Do not catch general exception types - workflow failure is observed via MarkFailed()
+#pragma warning disable CA1031 // 例外種別に依らず捕捉し、ワークフロー失敗は MarkFailed により観測する
         catch (Exception ex)
         {
             instance.MarkFailed();
@@ -306,7 +310,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
                 _workflowLog.LogStateCompleted(instance.WorkflowId, stateName, nodeId, Fact.Cancelled, sw.ElapsedMilliseconds);
                 return (Fact.Cancelled, (object?)null);
             }
-#pragma warning disable CA1031 // Do not catch general exception types - state failure is recorded in graph
+#pragma warning disable CA1031 // 例外種別に依らず捕捉し、状態失敗は実行グラフへ記録する
             catch (Exception ex)
             {
                 instance.Graph.CompleteNode(nodeId, Fact.Failed, null);
