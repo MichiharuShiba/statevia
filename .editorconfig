@@ -1,0 +1,11 @@
+root = true
+
+# Engine 単体テスト: xUnit がテストクラスを反射で検出するため public が必須。
+# `dotnet format` 実行時に CA1515（未使用の public 型を internal にせよ）がテスト型へ掛かり、
+# internal 化 → xUnit1000（テストクラスは public）でビルドエラーになるのを防ぐ。
+[engine/Statevia.Core.Engine.Tests/**/*.cs]
+dotnet_diagnostic.CA1515.severity = none
+
+# CLI のテストプロジェクトも同様。
+[engine/Statevia.Cli.Tests/**/*.cs]
+dotnet_diagnostic.CA1515.severity = none
