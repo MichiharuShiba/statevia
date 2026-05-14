@@ -11,8 +11,12 @@ namespace Statevia.Core.Engine.Engine;
 public sealed class DefaultWorkflowInstanceFactory : IWorkflowInstanceFactory
 {
     /// <inheritdoc />
-    public WorkflowInstance Create(CompiledWorkflowDefinition definition, string workflowId) =>
-        new()
+    public WorkflowInstance Create(CompiledWorkflowDefinition definition, string workflowId)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        ArgumentException.ThrowIfNullOrWhiteSpace(workflowId);
+
+        return new WorkflowInstance
         {
             WorkflowId = workflowId,
             Definition = definition,
@@ -20,4 +24,5 @@ public sealed class DefaultWorkflowInstanceFactory : IWorkflowInstanceFactory
             JoinTracker = new JoinTracker(definition),
             Graph = new ExecutionGraph()
         };
+    }
 }
