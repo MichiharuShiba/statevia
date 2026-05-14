@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Execution;
 using Statevia.Core.Engine.ExecutionGraphs;
@@ -17,9 +16,16 @@ namespace Statevia.Core.Engine.Engine;
 /// IWorkflowEngine の実装。定義駆動型ワークフローエンジンの中核クラスです。
 /// 事実駆動型 FSM、Fork/Join、Wait/Resume、協調的キャンセルをサポートします。
 /// </summary>
+/// <remarks>
+/// <para>
+/// ホストが <see cref="IWorkflowEngine"/> を Singleton として登録する場合、コンストラクタに渡した
+/// <see cref="IScheduler"/> はプロセス内のワークフロー実行で共有される（グローバル並列制御の単一窓口）。
+/// </para>
+/// </remarks>
 public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
 {
     private readonly IScheduler _scheduler;
+    private readonly IWorkflowInstanceFactory _instanceFactory;
     private readonly IWorkflowInstanceIdGenerator _workflowInstanceIdGenerator;
     private readonly WorkflowExecutionLogger _workflowLog;
     private readonly string _workerId;
@@ -27,19 +33,26 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
     private readonly ConcurrentDictionary<string, EventProvider> _eventProviders = new();
     private Func<string, Task>? _nodeCompletedHandler;
 
-    public WorkflowEngine(WorkflowEngineOptions? options = null)
+    /// <summary>
+    /// 依存を注入してエンジンを構築する。
+    /// </summary>
+    public WorkflowEngine(
+        IScheduler scheduler,
+        IWorkflowInstanceFactory instanceFactory,
+        IWorkflowInstanceIdGenerator workflowInstanceIdGenerator,
+        ILogger<WorkflowEngine> logger)
     {
-        options ??= new WorkflowEngineOptions();
-        _scheduler = new DefaultScheduler(options.MaxParallelism);
-        _workflowInstanceIdGenerator = options.WorkflowInstanceIdGenerator ?? new UuidV7WorkflowInstanceIdGenerator();
-        _workflowLog = new WorkflowExecutionLogger(ResolveLogger(options));
+        ArgumentNullException.ThrowIfNull(scheduler);
+        ArgumentNullException.ThrowIfNull(instanceFactory);
+        ArgumentNullException.ThrowIfNull(workflowInstanceIdGenerator);
+        ArgumentNullException.ThrowIfNull(logger);
+
+        _scheduler = scheduler;
+        _instanceFactory = instanceFactory;
+        _workflowInstanceIdGenerator = workflowInstanceIdGenerator;
+        _workflowLog = new WorkflowExecutionLogger(logger);
         _workerId = Guid.NewGuid().ToString("D");
     }
-
-    private static ILogger<WorkflowEngine> ResolveLogger(WorkflowEngineOptions options) =>
-        options.Logger
-        ?? options.LoggerFactory?.CreateLogger<WorkflowEngine>()
-        ?? NullLogger<WorkflowEngine>.Instance;
 
     /// <inheritdoc />
     public string Start(CompiledWorkflowDefinition definition, string? workflowId = null, object? workflowInput = null)
@@ -47,14 +60,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         ArgumentNullException.ThrowIfNull(definition);
         workflowId ??= _workflowInstanceIdGenerator.NewWorkflowInstanceId();
         var eventProvider = new EventProvider(workflowId);
-        var instance = new WorkflowInstance
-        {
-            WorkflowId = workflowId,
-            Definition = definition,
-            Fsm = new TransitionTable(definition.Transitions),
-            JoinTracker = new JoinTracker(definition),
-            Graph = new ExecutionGraph()
-        };
+        var instance = _instanceFactory.Create(definition, workflowId);
         _instances[workflowId] = instance;
         _eventProviders[workflowId] = eventProvider;
         _workflowLog.LogWorkflowStarted(workflowId, definition.Name, definition.InitialState);
