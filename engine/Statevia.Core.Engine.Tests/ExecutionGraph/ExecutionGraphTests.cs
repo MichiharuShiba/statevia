@@ -71,7 +71,7 @@ public class ExecutionGraphTests
 
         // Assert
         Assert.Equal(2, nodes.Count);
-        Assert.True(nodes.Any(n => n.NodeId == id1 && n.StateName == "A"));
-        Assert.True(nodes.Any(n => n.NodeId == id2 && n.StateName == "B"));
+        Assert.Contains(nodes, n => n.NodeId == id1 && n.StateName == "A");
+        Assert.Contains(nodes, n => n.NodeId == id2 && n.StateName == "B");
     }
 }
