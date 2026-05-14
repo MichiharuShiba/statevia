@@ -5,7 +5,16 @@ root = true
 # internal 化 → xUnit1000（テストクラスは public）でビルドエラーになるのを防ぐ。
 [engine/Statevia.Core.Engine.Tests/**/*.cs]
 dotnet_diagnostic.CA1515.severity = none
+# テストメソッド名の Method_State_Expected 形式（アンダースコア）を維持する。Sonar external_roslyn:CA1707 のノイズ低減。
+dotnet_diagnostic.CA1707.severity = none
+# 短い統合テストで毎回 Engine を Dispose しないパターンを許容する（ハーネス生成のみのテストが多い）。
+dotnet_diagnostic.CA2000.severity = none
+# xUnit1030 に合わせ ConfigureAwait を付けない方針のため、CA2007（付けろ）と両立しない。
+dotnet_diagnostic.CA2007.severity = none
 
 # CLI のテストプロジェクトも同様。
 [engine/Statevia.Cli.Tests/**/*.cs]
 dotnet_diagnostic.CA1515.severity = none
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA2000.severity = none
+dotnet_diagnostic.CA2007.severity = none
