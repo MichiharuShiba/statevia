@@ -36,6 +36,10 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
     /// <summary>
     /// 依存を注入してエンジンを構築する。
     /// </summary>
+    /// <param name="scheduler">状態実行のスケジューリング（並列度は実装側で解釈）。</param>
+    /// <param name="instanceFactory">ワークフローインスタンスの組み立て。</param>
+    /// <param name="workflowInstanceIdGenerator"><see cref="IWorkflowEngine.Start"/> で ID 未指定のときに使う生成器。</param>
+    /// <param name="logger">エンジン本体の構造化ログ。</param>
     public WorkflowEngine(
         IScheduler scheduler,
         IWorkflowInstanceFactory instanceFactory,
@@ -117,11 +121,13 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
             {
                 eventProvider.Publish(eventName);
             }
+#pragma warning disable CA1031 // 複数ワークフローへブロードキャストするため、例外種別に依らず収集して AggregateException にまとめる
             catch (Exception exception)
             {
                 publishFailures ??= new List<Exception>();
                 publishFailures.Add(exception);
             }
+#pragma warning restore CA1031
         }
 
         if (publishFailures is { Count: > 0 })
@@ -153,11 +159,13 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
                     anyApplied = true;
                 }
             }
+#pragma warning disable CA1031 // 複数ワークフローへブロードキャストするため、例外種別に依らず収集して AggregateException にまとめる
             catch (Exception exception)
             {
                 publishFailures ??= new List<Exception>();
                 publishFailures.Add(exception);
             }
+#pragma warning restore CA1031
         }
 
         if (publishFailures is { Count: > 0 })
@@ -382,10 +390,12 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         {
             await handler(workflowId).ConfigureAwait(false);
         }
+#pragma warning disable CA1031 // 外部ハンドラの失敗は遷移へ伝播させずログのみ（STV-404 のベストエフォート通知）
         catch (Exception exception)
         {
             _workflowLog.LogWarningNodeCompletedHandlerFailed(exception, workflowId);
         }
+#pragma warning restore CA1031
     }
 
     private void ProcessFact(WorkflowInstance instance, EventProvider eventProvider, string stateName, string fact, object? output, string nodeId)
