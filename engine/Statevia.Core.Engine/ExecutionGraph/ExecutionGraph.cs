@@ -75,6 +75,10 @@ public sealed class ExecutionGraph
         }
     }
 
+    /// <summary>実行グラフに辺を追加する。</summary>
+    /// <param name="fromNodeId">始点ノード ID。</param>
+    /// <param name="toNodeId">終点ノード ID。</param>
+    /// <param name="type">辺の種類。</param>
     public void AddEdge(string fromNodeId, string toNodeId, EdgeType type)
     {
         lock (_lock) { _edges.Add(new ExecutionEdge { From = fromNodeId, To = toNodeId, Type = type }); }

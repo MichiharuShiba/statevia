@@ -11,8 +11,13 @@ public sealed class EventProvider : IEventProvider
     private readonly Dictionary<string, List<TaskCompletionSource<bool>>> _waiters = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
 
+    /// <summary>
+    /// 指定ワークフローに紐づくイベントプロバイダを構築する（相関用の識別子を保持する）。
+    /// </summary>
+    /// <param name="workflowId">ワークフローインスタンス ID。</param>
     public EventProvider(string workflowId) { }
 
+    /// <inheritdoc />
     public Task WaitAsync(string eventName, CancellationToken ct)
     {
         var tcs = new TaskCompletionSource<bool>();

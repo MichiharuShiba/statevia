@@ -8,6 +8,10 @@ public sealed class DefaultScheduler : IScheduler, IDisposable
     private readonly ExecutionLimiter _limiter;
     private bool _disposed;
 
+    /// <summary>
+    /// 既定の並列度でスケジューラを構築する。
+    /// </summary>
+    /// <param name="maxParallelism">同時に実行できる状態タスクの上限。</param>
     public DefaultScheduler(int maxParallelism = 4) => _limiter = new ExecutionLimiter(maxParallelism);
 
     /// <inheritdoc />

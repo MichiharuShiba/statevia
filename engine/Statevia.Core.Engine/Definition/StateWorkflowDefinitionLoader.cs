@@ -8,6 +8,9 @@ namespace Statevia.Core.Engine.Definition;
 /// </summary>
 public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
 {
+    /// <summary>
+    /// スカラー保持用のノード型リゾルバを有効にしたローダーを構築する。
+    /// </summary>
     public StateWorkflowDefinitionLoader()
         : base(useScalarPreservingNodeTypeResolver: true)
     {

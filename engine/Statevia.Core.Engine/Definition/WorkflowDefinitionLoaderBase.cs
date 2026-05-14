@@ -14,6 +14,12 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
 {
     private readonly IDeserializer _deserializer;
 
+    /// <summary>
+    /// デシリアライザを構築する。
+    /// </summary>
+    /// <param name="useScalarPreservingNodeTypeResolver">
+    /// <see langword="true"/> のとき、スカラー型を保持するノード型リゾルバを有効にする。
+    /// </param>
     protected WorkflowDefinitionLoaderBase(bool useScalarPreservingNodeTypeResolver = false)
     {
         var builder = new DeserializerBuilder()
@@ -161,6 +167,13 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         };
     }
 
+    /// <summary>
+    /// 辞書の子キーに対応する値をネスト辞書として取得する。欠損・null のときは空辞書。
+    /// </summary>
+    /// <param name="dict">親辞書。</param>
+    /// <param name="key">子を指すキー。</param>
+    /// <param name="comparer">キー比較子。省略時は序数無視比較。</param>
+    /// <returns>正規化した子辞書。</returns>
     protected static Dictionary<string, object?> GetChildDict(
         Dictionary<string, object?> dict,
         string key,
@@ -175,6 +188,12 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         return ToStringDict(val, comparer);
     }
 
+    /// <summary>
+    /// 任意オブジェクトを <see cref="string"/> キーの辞書へ正規化する。
+    /// </summary>
+    /// <param name="val">YAML/JSON 由来のオブジェクト。</param>
+    /// <param name="comparer">キー比較子。省略時は序数無視比較。</param>
+    /// <returns>正規化した辞書。</returns>
     protected static Dictionary<string, object?> ToStringDict(object? val, IEqualityComparer<string>? comparer = null)
     {
         var cmp = comparer ?? StringComparer.Ordinal;
@@ -205,12 +224,24 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         return result;
     }
 
+    /// <summary>
+    /// 辞書の値を文字列として取得する。欠損・null のときは null。
+    /// </summary>
+    /// <param name="dict">キーと値の辞書。</param>
+    /// <param name="key">読み取るキー。</param>
+    /// <returns>文字列化した値、または null。</returns>
     protected static string? GetStr(Dictionary<string, object?> dict, string key)
     {
         ArgumentNullException.ThrowIfNull(dict);
         return dict.TryGetValue(key, out var v) && v != null ? v.ToString() : null;
     }
 
+    /// <summary>
+    /// 辞書の値を真偽として解釈する。欠損・null・非対応型のときは false。
+    /// </summary>
+    /// <param name="dict">キーと値の辞書。</param>
+    /// <param name="key">読み取るキー。</param>
+    /// <returns>真偽値。</returns>
     protected static bool GetBool(Dictionary<string, object?> dict, string key)
     {
         ArgumentNullException.ThrowIfNull(dict);
@@ -250,6 +281,12 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         };
     }
 
+    /// <summary>
+    /// 辞書の値を文字列の列として取得する。配列・列挙でない、または欠損のときは null。
+    /// </summary>
+    /// <param name="dict">キーと値の辞書。</param>
+    /// <param name="key">読み取るキー。</param>
+    /// <returns>文字列の一覧、または null。</returns>
     protected static IReadOnlyList<string>? GetStrList(Dictionary<string, object?> dict, string key)
     {
         ArgumentNullException.ThrowIfNull(dict);
@@ -266,6 +303,12 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         return null;
     }
 
+    /// <summary>
+    /// 辞書にキーが存在するかを序数無視で判定する。
+    /// </summary>
+    /// <param name="dict">キーと値の辞書。</param>
+    /// <param name="key">検索するキー。</param>
+    /// <returns>存在するとき true。</returns>
     protected static bool HasKeyIgnoreCase(Dictionary<string, object?> dict, string key)
     {
         ArgumentNullException.ThrowIfNull(dict);

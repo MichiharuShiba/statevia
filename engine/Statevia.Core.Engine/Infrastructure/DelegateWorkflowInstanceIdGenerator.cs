@@ -9,8 +9,13 @@ public sealed class DelegateWorkflowInstanceIdGenerator : IWorkflowInstanceIdGen
 {
     private readonly Func<string> _createId;
 
+    /// <summary>
+    /// 指定デリゲートで ID を生成する生成器を構築する。
+    /// </summary>
+    /// <param name="createId">新しいワークフローインスタンス ID を返す関数。</param>
     public DelegateWorkflowInstanceIdGenerator(Func<string> createId) =>
         _createId = createId ?? throw new ArgumentNullException(nameof(createId));
 
+    /// <inheritdoc />
     public string NewWorkflowInstanceId() => _createId();
 }

@@ -10,6 +10,10 @@ public sealed class WorkflowStateStore : IReadOnlyStateStore
 {
     private readonly WorkflowInstance _instance;
 
+    /// <summary>
+    /// 指定インスタンスの状態出力を参照するストアを構築する。
+    /// </summary>
+    /// <param name="instance">対象のワークフローインスタンス。</param>
     public WorkflowStateStore(WorkflowInstance instance) => _instance = instance;
 
     /// <inheritdoc />

@@ -16,6 +16,11 @@ public sealed class JoinTracker : IJoinTracker
     private readonly HashSet<string> _startedJoins = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
 
+    /// <summary>
+    /// コンパイル済み定義の Join テーブルに基づきトラッカーを構築する。
+    /// </summary>
+    /// <param name="definition">Join テーブルを含む定義。</param>
+    /// <param name="policyFactory">完了ポリシーのファクトリ。省略時は <see cref="JoinCompletionPolicyFactory"/>。</param>
     public JoinTracker(CompiledWorkflowDefinition definition, IJoinCompletionPolicyFactory? policyFactory = null)
     {
         ArgumentNullException.ThrowIfNull(definition);

@@ -10,6 +10,10 @@ public sealed class DefinitionCompiler
 {
     private readonly IStateExecutorFactory _executorFactory;
 
+    /// <summary>
+    /// 状態実行ファクトリを指定してコンパイラを構築する。
+    /// </summary>
+    /// <param name="executorFactory">コンパイル済み定義に埋め込む <see cref="IStateExecutorFactory"/>。</param>
     public DefinitionCompiler(IStateExecutorFactory executorFactory) => _executorFactory = executorFactory;
 
     /// <summary>ワークフロー定義をコンパイルし、実行可能なコンパイル済み定義を返します。</summary>

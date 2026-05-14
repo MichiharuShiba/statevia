@@ -216,6 +216,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         return ApplyResult.Applied;
     }
 
+    /// <inheritdoc />
     public WorkflowSnapshot? GetSnapshot(string workflowId) =>
         _instances.TryGetValue(workflowId, out var instance) ? instance.ToSnapshot() : null;
 

@@ -360,5 +360,10 @@ public sealed class ValidationResult
     public IReadOnlyList<string> Errors { get; }
     /// <summary>エラーが 0 件の場合 true。</summary>
     public bool IsValid => Errors.Count == 0;
+
+    /// <summary>
+    /// 検証で収集したエラーメッセージで結果を構築する。
+    /// </summary>
+    /// <param name="errors">エラーメッセージの一覧。</param>
     public ValidationResult(IReadOnlyList<string> errors) => Errors = errors;
 }

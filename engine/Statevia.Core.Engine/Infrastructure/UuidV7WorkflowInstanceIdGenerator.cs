@@ -8,6 +8,7 @@ namespace Statevia.Core.Engine.Infrastructure;
 /// </summary>
 public sealed class UuidV7WorkflowInstanceIdGenerator : IWorkflowInstanceIdGenerator
 {
+    /// <inheritdoc />
     public string NewWorkflowInstanceId() => CreateVersion7().ToString();
 
     private static Guid CreateVersion7()

@@ -9,6 +9,10 @@ public sealed class TransitionTable : IFsm
 {
     private readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, TransitionTarget>> _transitions;
 
+    /// <summary>
+    /// 状態名・事実・遷移先のテーブルを指定して FSM を構築する。
+    /// </summary>
+    /// <param name="transitions">状態名をキーとし、事実文字列から遷移先へのマップ。</param>
     public TransitionTable(IReadOnlyDictionary<string, IReadOnlyDictionary<string, TransitionTarget>> transitions)
         => _transitions = transitions;
 

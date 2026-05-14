@@ -1,7 +1,23 @@
 namespace Statevia.Core.Engine.ExecutionGraphs;
 
 /// <summary>実行グラフの辺の種類。</summary>
-public enum EdgeType { Next, Fork, Join, Resume, Cancel }
+public enum EdgeType
+{
+    /// <summary>単一の次ノードへの遷移。</summary>
+    Next,
+
+    /// <summary>Fork による分岐。</summary>
+    Fork,
+
+    /// <summary>Join への合流。</summary>
+    Join,
+
+    /// <summary>Wait からの再開。</summary>
+    Resume,
+
+    /// <summary>協調的キャンセル。</summary>
+    Cancel
+}
 
 /// <summary>
 /// 実行グラフの辺。あるノードから別ノードへの遷移を表します。

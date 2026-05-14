@@ -37,8 +37,20 @@ public sealed class WorkflowInstance
     /// <summary>失敗で停止したか。</summary>
     public bool IsFailed { get; private set; }
 
+    /// <summary>状態完了時の出力を記録する。</summary>
+    /// <param name="stateName">状態名。</param>
+    /// <param name="output"><see cref="IStateExecutor.ExecuteAsync"/> の戻り値。</param>
     public void SetOutput(string stateName, object? output) { lock (_lock) { _stateOutputs[stateName] = output; } }
+
+    /// <summary>指定状態の出力を取得する。</summary>
+    /// <param name="stateName">状態名。</param>
+    /// <param name="output">取得した出力。存在しないときは既定値。</param>
+    /// <returns>出力が存在するとき true。</returns>
     public bool TryGetOutput(string stateName, out object? output) { lock (_lock) { return _stateOutputs.TryGetValue(stateName, out output); } }
+
+    /// <summary>状態の試行回数をインクリメントし、次の試行番号（1 始まり）を返す。</summary>
+    /// <param name="stateName">状態名。</param>
+    /// <returns>次の試行番号。</returns>
     public int NextAttempt(string stateName)
     {
         lock (_lock)
@@ -48,11 +60,26 @@ public sealed class WorkflowInstance
             return next;
         }
     }
+
+    /// <summary>現在アクティブな状態集合へ追加する。</summary>
+    /// <param name="stateName">状態名。</param>
     public void AddActiveState(string stateName) { lock (_lock) { _activeStates.Add(stateName); } }
+
+    /// <summary>現在アクティブな状態集合から除去する。</summary>
+    /// <param name="stateName">状態名。</param>
     public void RemoveActiveState(string stateName) { lock (_lock) { _activeStates.Remove(stateName); } }
+
+    /// <summary>現在アクティブな状態名のスナップショットを返す。</summary>
+    /// <returns>アクティブ状態名の一覧。</returns>
     public IReadOnlyList<string> GetActiveStates() { lock (_lock) { return _activeStates.ToList(); } }
+
+    /// <summary>ワークフローを正常終了としてマークする。</summary>
     public void MarkCompleted() => IsCompleted = true;
+
+    /// <summary>協調的キャンセルにより停止したとマークする。</summary>
     public void MarkCancelled() => IsCancelled = true;
+
+    /// <summary>失敗により停止したとマークする。</summary>
     public void MarkFailed() => IsFailed = true;
 
     /// <summary>
