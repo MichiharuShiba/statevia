@@ -112,7 +112,7 @@ Comment rules, Markdownlint (e.g. `.spec-workflow/`), and how to treat build or 
 
 ### Engine: 実行ログ（STV-404）
 
-- **`WorkflowEngine`** は `Microsoft.Extensions.Logging` の **同期 `ILogger<WorkflowEngine>`** のみ使用。`WorkflowEngineOptions.Logger` または `LoggerFactory` で注入（未設定は `NullLogger`）。プロバイダ例外は **ログ呼び出しを try/catch** して遷移に伝播させない。
+- **`WorkflowEngine`** は `Microsoft.Extensions.Logging` の **同期 `ILogger<WorkflowEngine>`** をコンストラクタで受け取る（Core-API は `AddStateviaWorkflowEngine` で登録）。テスト等では `NullLogger` を渡してよい。プロバイダ例外は **ログ呼び出しを try/catch** して遷移に伝播させない。
 - **主な項目（概要）**: `Workflow started`（`WorkflowId`, `DefinitionName`, `InitialState`）、`State scheduled` / `State completed`（`StateName`, `NodeId`, `Fact`、通常状態は **`ElapsedMs`**＝`ExecuteAsync` 前後の壁時計。Wait の待機込み）、`State execute failed` / `Workflow terminal failure`（Error）、`Workflow completed`。Join 合成ノードの完了ログには **`ElapsedMs` を付けない**。
 
 ### .NET SDK
