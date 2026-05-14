@@ -103,7 +103,7 @@ public class WorkflowEngineTests
         var id = engine.Start(def);
 
         // Act: ワークフロー完了を待つ
-        await Task.Delay(200).ConfigureAwait(false);
+        await Task.Delay(200);
 
         // Assert
         var snapshot = engine.GetSnapshot(id);
@@ -120,9 +120,10 @@ public class WorkflowEngineTests
         engine.Start(CreateMinimalDefinition());
 
         // Act
-        engine.PublishEvent("SomeEvent");
+        var ex = Record.Exception(() => engine.PublishEvent("SomeEvent"));
 
-        // Assert: 例外が発生しないこと
+        // Assert
+        Assert.Null(ex);
     }
 
     /// <summary>複数ワークフローが存在するとき、イベント名のみのブロードキャストが例外で終了しないこと。</summary>
@@ -135,9 +136,10 @@ public class WorkflowEngineTests
         engine.Start(CreateMinimalDefinition());
 
         // Act
-        engine.PublishEvent("SomeEvent");
+        var ex = Record.Exception(() => engine.PublishEvent("SomeEvent"));
 
-        // Assert: 例外が発生しないこと
+        // Assert
+        Assert.Null(ex);
     }
 
     /// <summary>clientEventId 付き PublishEvent オーバーロードも従来と同様に例外を投げないことを検証する。</summary>
@@ -184,9 +186,10 @@ public class WorkflowEngineTests
         engine.Start(CreateMinimalDefinition());
 
         // Act
-        engine.Dispose();
+        var ex = Record.Exception(() => engine.Dispose());
 
-        // Assert: 例外が発生しないこと
+        // Assert
+        Assert.Null(ex);
     }
 
     /// <summary>状態が例外を投げるとワークフローが IsFailed になることを検証する。</summary>
@@ -199,7 +202,7 @@ public class WorkflowEngineTests
         var id = engine.Start(def);
 
         // Act
-        await Task.Delay(200).ConfigureAwait(false);
+        await Task.Delay(200);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -226,7 +229,7 @@ public class WorkflowEngineTests
         // Act
         engine.Start(def);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await called.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
+        await called.Task.WaitAsync(timeout.Token);
 
         // Assert
         Assert.True(callCount >= 1);
@@ -252,7 +255,7 @@ public class WorkflowEngineTests
         // Act
         var workflowId = engine.Start(def);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await calledAtJoin.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
+        await calledAtJoin.Task.WaitAsync(timeout.Token);
         var snapshot = engine.GetSnapshot(workflowId);
 
         // Assert
@@ -271,7 +274,7 @@ public class WorkflowEngineTests
         var id = engine.Start(def);
 
         // Act
-        await Task.Delay(500).ConfigureAwait(false);
+        await Task.Delay(500);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -310,7 +313,7 @@ public class WorkflowEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -343,7 +346,7 @@ public class WorkflowEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -375,7 +378,7 @@ public class WorkflowEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var graphJson = engine.ExportExecutionGraph(id);
 
         // Assert
@@ -438,7 +441,7 @@ public class WorkflowEngineTests
         // Act
         var inWorkflowId = engine.Start(inDefinition);
         var betweenWorkflowId = engine.Start(betweenDefinition);
-        await Task.Delay(400).ConfigureAwait(false);
+        await Task.Delay(400);
         var inSnapshot = engine.GetSnapshot(inWorkflowId);
         var betweenSnapshot = engine.GetSnapshot(betweenWorkflowId);
 
@@ -477,7 +480,7 @@ public class WorkflowEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -512,7 +515,7 @@ public class WorkflowEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -553,7 +556,7 @@ public class WorkflowEngineTests
 
         // Act
         var id = engine.Start(def, null, workflowInput);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -595,7 +598,7 @@ public class WorkflowEngineTests
 
         // Act
         var id = engine.Start(def, null, workflowInput);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -615,7 +618,7 @@ public class WorkflowEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(400).ConfigureAwait(false);
+        await Task.Delay(400);
         var graphJson = engine.ExportExecutionGraph(id);
 
         // Assert
@@ -640,7 +643,7 @@ public class WorkflowEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var graphJson = engine.ExportExecutionGraph(id);
 
         // Assert
@@ -660,7 +663,7 @@ public class WorkflowEngineTests
         var id = engine.Start(def);
 
         // Act
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -687,7 +690,7 @@ public class WorkflowEngineTests
         var id = engine.Start(def);
 
         // Act
-        await Task.Delay(200).ConfigureAwait(false);
+        await Task.Delay(200);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert: 完了にも失敗にもせず、遷移がないのでそのまま止まる
@@ -715,7 +718,7 @@ public class WorkflowEngineTests
         var id = engine.Start(def);
 
         // Act
-        await Task.Delay(200).ConfigureAwait(false);
+        await Task.Delay(200);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
