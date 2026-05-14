@@ -62,7 +62,8 @@ builder.Services.AddScoped<IDisplayIdService, DisplayIdServiceImpl>();
 builder.Services.AddScoped<IExecutionReadModelService, ExecutionReadModelService>();
 builder.Services.AddSingleton<IIdGenerator, UuidV7Generator>();
 
-// IWorkflowEngine: シングルトン。workflowId 未指定時は IIdGenerator と同一の UUID v7 経路。
+// WorkflowEngine（Singleton）: IScheduler をプロセス単位で共有。登録は AddStateviaWorkflowEngine。
+// IWorkflowInstanceIdGenerator: Start で workflowId 未指定のとき、IIdGenerator（UUID v7）と同一経路で ID を採番する。
 builder.Services.AddSingleton<IWorkflowInstanceIdGenerator>(
     sp => new DelegateWorkflowInstanceIdGenerator(() => sp.GetRequiredService<IIdGenerator>().NewGuid().ToString()));
 builder.Services.AddStateviaWorkflowEngine();
