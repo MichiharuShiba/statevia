@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Statevia.Core.Api</RootNamespace>
     <AssemblyName>Statevia.Core.Api</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
