@@ -22,6 +22,7 @@ public sealed class AllOfJoinCompletionPolicy : IJoinCompletionPolicy
     /// <inheritdoc />
     public bool IsSatisfied(IReadOnlyDictionary<string, JoinObservedState> results)
     {
+        ArgumentNullException.ThrowIfNull(results);
         foreach (var dependency in _dependencies)
         {
             if (!results.TryGetValue(dependency, out var observed) || observed.Fact != Fact.Completed)
