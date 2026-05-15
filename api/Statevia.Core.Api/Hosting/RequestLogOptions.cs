@@ -3,7 +3,7 @@ namespace Statevia.Core.Api.Hosting;
 /// <summary>
 /// HTTP リクエスト/レスポンス本文のログ方針。
 /// </summary>
-public sealed class RequestLogOptions
+internal sealed class RequestLogOptions
 {
     /// <summary>リクエスト本文をログに載せる（本番既定 false 推奨）。</summary>
     public bool LogRequestBody { get; set; }

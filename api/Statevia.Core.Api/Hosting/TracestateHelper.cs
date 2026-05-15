@@ -3,7 +3,7 @@ namespace Statevia.Core.Api.Hosting;
 /// <summary>
 /// W3C <c>tracestate</c> の既存値とベンダーメンバーをマージする（長さを抑える）。
 /// </summary>
-public static class TracestateHelper
+internal static class TracestateHelper
 {
     public const string StateviaVendorKey = "st@statevia";
 

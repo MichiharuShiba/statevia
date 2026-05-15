@@ -2,7 +2,7 @@ using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Abstractions.Persistence;
 
-public interface IWorkflowRepository
+internal interface IWorkflowRepository
 {
     Task<WorkflowRow?> GetByIdAsync(string tenantId, Guid workflowId, CancellationToken ct);
     Task<List<(WorkflowRow Workflow, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct);

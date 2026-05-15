@@ -3,7 +3,7 @@ namespace Statevia.Core.Api.Application.Definition;
 /// <summary>
 /// UI 補完/Lint 用の nodes 形式スキーマ定義を返す。
 /// </summary>
-public static class NodesSchemaDefinition
+internal static class NodesSchemaDefinition
 {
     public const string SchemaVersion = "1.0.2";
     public const int NodesVersion = 1;

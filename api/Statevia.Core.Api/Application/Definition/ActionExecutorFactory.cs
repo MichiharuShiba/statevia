@@ -8,7 +8,7 @@ using Statevia.Core.Api.Application.Actions.Builtins;
 namespace Statevia.Core.Api.Application.Definition;
 
 /// <summary>状態定義の wait / action に応じて <see cref="IStateExecutor"/> を解決する（引擎は状態名のみ参照）。</summary>
-public sealed class ActionExecutorFactory : IStateExecutorFactory
+internal sealed class ActionExecutorFactory : IStateExecutorFactory
 {
     private readonly WorkflowDefinition _definition;
     private readonly IActionRegistry _registry;

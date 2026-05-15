@@ -7,7 +7,7 @@ namespace Statevia.Core.Api.Services;
 /// <summary>
 /// HTTP 冪等キーから <c>event_delivery_dedup.client_event_id</c> 用の GUID を決定する。
 /// </summary>
-public static class ClientEventIdResolver
+internal static class ClientEventIdResolver
 {
     /// <summary>
     /// <paramref name="idempotencyKey"/> が RFC 形式の GUID ならその値を返す。

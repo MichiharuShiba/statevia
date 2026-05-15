@@ -1,7 +1,7 @@
 namespace Statevia.Core.Api.Persistence;
 
 /// <summary>command_dedup テーブル（コマンド冪等制御）。</summary>
-public class CommandDedupRow
+internal class CommandDedupRow
 {
     public required string DedupKey { get; set; }
     public required string Endpoint { get; set; }

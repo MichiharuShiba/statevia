@@ -3,7 +3,7 @@ namespace Statevia.Core.Api.Configuration;
 /// <summary>
 /// ワークフロー投影更新キューの設定。
 /// </summary>
-public sealed class WorkflowProjectionQueueOptions
+internal sealed class WorkflowProjectionQueueOptions
 {
     /// <summary>
     /// グローバル待ち行列の最大スロット数。

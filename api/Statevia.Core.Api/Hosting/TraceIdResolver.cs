@@ -5,7 +5,7 @@ namespace Statevia.Core.Api.Hosting;
 /// <summary>
 /// W3C <c>traceparent</c> またはフォールバックヘッダからログ用 trace ID を決定する。
 /// </summary>
-public static class TraceIdResolver
+internal static class TraceIdResolver
 {
     private const int MaxCustomHeaderLength = 128;
 

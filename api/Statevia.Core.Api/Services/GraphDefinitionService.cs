@@ -7,7 +7,7 @@ using Statevia.Core.Api.Persistence;
 namespace Statevia.Core.Api.Services;
 
 /// <summary>定義の compiled_json から契約の Graph Definition（nodes / edges）を組み立てる。</summary>
-public sealed class GraphDefinitionService : IGraphDefinitionService
+internal sealed class GraphDefinitionService : IGraphDefinitionService
 {
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
     private readonly IDisplayIdService _displayIds;

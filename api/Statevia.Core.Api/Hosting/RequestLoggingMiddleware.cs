@@ -9,7 +9,7 @@ namespace Statevia.Core.Api.Hosting;
 /// <summary>
 /// リクエスト開始・完了・未処理例外を <see cref="ILogger"/> に記録する。
 /// </summary>
-public sealed class RequestLoggingMiddleware
+internal sealed class RequestLoggingMiddleware
 {
     private readonly RequestDelegate _next;
 

@@ -1,7 +1,7 @@
 namespace Statevia.Core.Api.Persistence;
 
 /// <summary>workflows テーブル（projection）。</summary>
-public class WorkflowRow
+internal class WorkflowRow
 {
     public Guid WorkflowId { get; set; }
     public string TenantId { get; set; } = "default";

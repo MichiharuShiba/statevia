@@ -7,7 +7,7 @@ namespace Statevia.Core.Api.Persistence.Repositories;
 /// <summary>
 /// <see cref="IEventDeliveryDedupRepository"/> の EF Core 実装。
 /// </summary>
-public sealed class EventDeliveryDedupRepository : IEventDeliveryDedupRepository
+internal sealed class EventDeliveryDedupRepository : IEventDeliveryDedupRepository
 {
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
 

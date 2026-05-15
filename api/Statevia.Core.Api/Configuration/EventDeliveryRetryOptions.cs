@@ -3,7 +3,7 @@ namespace Statevia.Core.Api.Configuration;
 /// <summary>
 /// <c>event_delivery_dedup</c> 先行 INSERT など、DB 一時障害に対する再試行の設定。
 /// </summary>
-public sealed class EventDeliveryRetryOptions
+internal sealed class EventDeliveryRetryOptions
 {
     /// <summary>同一操作あたりの最大試行回数（初回含む）。既定は 3。</summary>
     public int MaxAttempts { get; set; } = 3;

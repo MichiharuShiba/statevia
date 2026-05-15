@@ -2,7 +2,7 @@ using Statevia.Core.Api.Abstractions.Services;
 
 namespace Statevia.Core.Api.Services;
 
-public sealed class CommandDedupService : ICommandDedupService
+internal sealed class CommandDedupService : ICommandDedupService
 {
     public CommandDedupKey? Create(string tenantId, string? idempotencyKey, string method, string path, string? requestHash = null)
     {

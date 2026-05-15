@@ -5,7 +5,7 @@ using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Persistence.Repositories;
 
-public sealed class WorkflowRepository : IWorkflowRepository
+internal sealed class WorkflowRepository : IWorkflowRepository
 {
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
 

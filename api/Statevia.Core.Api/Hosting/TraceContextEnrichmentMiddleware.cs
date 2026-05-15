@@ -8,7 +8,7 @@ namespace Statevia.Core.Api.Hosting;
 /// <summary>
 /// ルート確定後にドメイン ID を <see cref="HttpContext.Items"/> とログへ載せ、任意で応答 <c>tracestate</c> を更新する。
 /// </summary>
-public sealed class TraceContextEnrichmentMiddleware
+internal sealed class TraceContextEnrichmentMiddleware
 {
     private readonly RequestDelegate _next;
 

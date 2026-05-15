@@ -5,7 +5,7 @@ using Statevia.Core.Api.Application.Actions.Abstractions;
 namespace Statevia.Core.Api.Application.Actions.Registry;
 
 /// <summary>プロセス内の actionId → <see cref="IStateExecutor"/> マップ。</summary>
-public sealed class InMemoryActionRegistry : IActionRegistry
+internal sealed class InMemoryActionRegistry : IActionRegistry
 {
     private readonly Dictionary<string, IStateExecutor> _executors = new(StringComparer.Ordinal);
 

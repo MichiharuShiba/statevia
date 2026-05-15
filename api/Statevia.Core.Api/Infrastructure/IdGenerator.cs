@@ -4,7 +4,7 @@ using Statevia.Core.Api.Abstractions.Services;
 namespace Statevia.Core.Api.Infrastructure;
 
 /// <summary>.NET 8 向け UUID v7（時刻プレフィックス + ランダム）。.NET 9 の Guid.CreateVersion7 と同趣旨。</summary>
-public sealed class UuidV7Generator : IIdGenerator
+internal sealed class UuidV7Generator : IIdGenerator
 {
     public Guid NewGuid()
     {

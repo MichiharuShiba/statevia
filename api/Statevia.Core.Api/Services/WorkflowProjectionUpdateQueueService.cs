@@ -11,7 +11,7 @@ namespace Statevia.Core.Api.Services;
 /// <summary>
 /// ノード完了通知を受け、ワークフロー投影更新を逐次処理するキューサービス。
 /// </summary>
-public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IWorkflowProjectionUpdateQueue
+internal sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IWorkflowProjectionUpdateQueue
 {
     /// <summary>
     /// 再試行上限に達して退避したワークフロー情報。

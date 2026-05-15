@@ -5,7 +5,7 @@ namespace Statevia.Core.Api.Abstractions.Persistence;
 /// <summary>
 /// イベント配送冪等テーブル <c>event_delivery_dedup</c> の永続化。
 /// </summary>
-public interface IEventDeliveryDedupRepository
+internal interface IEventDeliveryDedupRepository
 {
     /// <summary>
     /// 主キーで行を取得する（読み取り専用）。

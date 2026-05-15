@@ -9,7 +9,7 @@ namespace Statevia.Core.Api.Services;
 /// <summary>
 /// workflows / execution_graph_snapshots / display_ids から Execution Read Model を組み立てるサービス。
 /// </summary>
-public sealed class ExecutionReadModelService : IExecutionReadModelService
+internal sealed class ExecutionReadModelService : IExecutionReadModelService
 {
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
     private readonly IDisplayIdService _displayIds;

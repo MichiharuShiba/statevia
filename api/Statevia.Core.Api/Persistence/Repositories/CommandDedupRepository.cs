@@ -4,7 +4,7 @@ using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Persistence.Repositories;
 
-public sealed class CommandDedupRepository : ICommandDedupRepository
+internal sealed class CommandDedupRepository : ICommandDedupRepository
 {
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
 

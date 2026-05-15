@@ -5,7 +5,7 @@ using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Persistence.Repositories;
 
-public sealed class DefinitionRepository : IDefinitionRepository
+internal sealed class DefinitionRepository : IDefinitionRepository
 {
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
 
