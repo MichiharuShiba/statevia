@@ -7,7 +7,7 @@ public sealed partial class WorkflowEngine
     /// <summary>実行ログのメッセージ組み立てと <see cref="SafeLog"/> を一箇所に集約する。</summary>
     private sealed class WorkflowExecutionLogger
     {
-        private readonly ILogger<WorkflowEngine> _logger;
+        private readonly ILogger _logger;
 
         public WorkflowExecutionLogger(ILogger<WorkflowEngine> logger)
         {
@@ -84,12 +84,12 @@ public sealed partial class WorkflowEngine
     /// </summary>
     private sealed class StateContextLogger : ILogger
     {
-        private readonly ILogger _inner;
+        private readonly ILogger _logger;
         private readonly IReadOnlyDictionary<string, object?> _scope;
 
-        public StateContextLogger(ILogger inner, string workflowId, string stateName)
+        public StateContextLogger(ILogger logger, string workflowId, string stateName)
         {
-            _inner = inner;
+            _logger = logger;
             _scope = new Dictionary<string, object?>
             {
                 ["WorkflowId"] = workflowId,
@@ -97,9 +97,9 @@ public sealed partial class WorkflowEngine
             };
         }
 
-        public IDisposable BeginScope<TState>(TState state) where TState : notnull => _inner.BeginScope(state)!;
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => _logger.BeginScope(state)!;
 
-        public bool IsEnabled(LogLevel logLevel) => _inner.IsEnabled(logLevel);
+        public bool IsEnabled(LogLevel logLevel) => _logger.IsEnabled(logLevel);
 
         public void Log<TState>(
             LogLevel logLevel,
@@ -108,8 +108,8 @@ public sealed partial class WorkflowEngine
             Exception? exception,
             Func<TState, Exception?, string> formatter)
         {
-            using var _ = _inner.BeginScope(_scope);
-            _inner.Log(logLevel, eventId, state, exception, formatter);
+            using var _ = _logger.BeginScope(_scope);
+            _logger.Log(logLevel, eventId, state, exception, formatter);
         }
     }
 
