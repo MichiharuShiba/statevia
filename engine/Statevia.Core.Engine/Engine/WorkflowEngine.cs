@@ -43,22 +43,22 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
     /// <param name="scheduler">状態実行のスケジューリング（並列度は実装側で解釈）。</param>
     /// <param name="instanceFactory">ワークフローインスタンスの組み立て。</param>
     /// <param name="workflowInstanceIdGenerator"><see cref="IWorkflowEngine.Start"/> で ID 未指定のときに使う生成器。</param>
-    /// <param name="logger">エンジン本体の構造化ログ。</param>
+    /// <param name="loggerFactory">実行ログ用 <see cref="WorkflowExecutionLogger"/> の生成に使うファクトリ。</param>
     public WorkflowEngine(
         IScheduler scheduler,
         IWorkflowInstanceFactory instanceFactory,
         IWorkflowInstanceIdGenerator workflowInstanceIdGenerator,
-        ILogger<WorkflowEngine> logger)
+        ILoggerFactory loggerFactory)
     {
         ArgumentNullException.ThrowIfNull(scheduler);
         ArgumentNullException.ThrowIfNull(instanceFactory);
         ArgumentNullException.ThrowIfNull(workflowInstanceIdGenerator);
-        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(loggerFactory);
 
         _scheduler = scheduler;
         _instanceFactory = instanceFactory;
         _workflowInstanceIdGenerator = workflowInstanceIdGenerator;
-        _workflowLog = new WorkflowExecutionLogger(logger);
+        _workflowLog = new WorkflowExecutionLogger(loggerFactory.CreateLogger<WorkflowExecutionLogger>());
         _workerId = Guid.NewGuid().ToString("D");
     }
 

@@ -5,11 +5,11 @@ namespace Statevia.Core.Engine.Engine;
 public sealed partial class WorkflowEngine
 {
     /// <summary>実行ログのメッセージ組み立てと <see cref="SafeLog"/> を一箇所に集約する。</summary>
-    private sealed class WorkflowExecutionLogger
+    internal sealed class WorkflowExecutionLogger
     {
-        private readonly ILogger _logger;
+        private readonly ILogger<WorkflowExecutionLogger> _logger;
 
-        public WorkflowExecutionLogger(ILogger<WorkflowEngine> logger)
+        public WorkflowExecutionLogger(ILogger<WorkflowExecutionLogger> logger)
         {
             _logger = logger;
         }
@@ -82,7 +82,7 @@ public sealed partial class WorkflowEngine
     /// <summary>
     /// 各ログ呼び出しに WorkflowId / StateName のスコープを付与する。
     /// </summary>
-    private sealed class StateContextLogger : ILogger
+    internal sealed class StateContextLogger : ILogger
     {
         private readonly ILogger _logger;
         private readonly IReadOnlyDictionary<string, object?> _scope;

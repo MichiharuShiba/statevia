@@ -19,7 +19,7 @@ public class StateviaWorkflowEngineServiceCollectionExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<IWorkflowInstanceIdGenerator>(_ => new DelegateWorkflowInstanceIdGenerator(() => "test-wf"));
-        services.AddSingleton<ILogger<WorkflowEngine>>(_ => NullLogger<WorkflowEngine>.Instance);
+        services.AddSingleton<ILoggerFactory>(_ => NullLoggerFactory.Instance);
 
         // Act
         services.AddStateviaWorkflowEngine();
@@ -40,7 +40,7 @@ public class StateviaWorkflowEngineServiceCollectionExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<IWorkflowInstanceIdGenerator>(_ => new UuidV7WorkflowInstanceIdGenerator());
-        services.AddSingleton<ILogger<WorkflowEngine>>(_ => NullLogger<WorkflowEngine>.Instance);
+        services.AddSingleton<ILoggerFactory>(_ => NullLoggerFactory.Instance);
 
         // Act
         services.AddStateviaWorkflowEngine(o => o.MaxParallelism = 2);

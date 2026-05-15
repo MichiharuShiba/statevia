@@ -51,7 +51,7 @@ using var engine = new WorkflowEngine(
     new DefaultScheduler(2),
     new DefaultWorkflowInstanceFactory(),
     new UuidV7WorkflowInstanceIdGenerator(),
-    NullLogger<WorkflowEngine>.Instance);
+    NullLoggerFactory.Instance);
 var id = engine.Start(compiled);
 
 Console.WriteLine($"Workflow started: {id}");

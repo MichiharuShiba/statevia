@@ -16,18 +16,19 @@ internal static class WorkflowEngineTestHarness
     /// 既定の <see cref="DefaultScheduler"/>・<see cref="DefaultWorkflowInstanceFactory"/>・UUID v7 ID 生成でエンジンを生成する。
     /// </summary>
     /// <param name="maxParallelism"><see cref="DefaultScheduler"/> に渡す最大並列数。</param>
-    /// <param name="logger">省略時は <see cref="NullLogger{WorkflowEngine}"/> を使用する。</param>
+    /// <param name="executionLogger">省略時は <see cref="NullLogger{TCategoryName}"/>（<see cref="WorkflowEngine.WorkflowExecutionLogger"/>）を使用する。</param>
     /// <param name="workflowInstanceIdGenerator">省略時は <see cref="UuidV7WorkflowInstanceIdGenerator"/>。</param>
     /// <returns>組み立て済みの <see cref="WorkflowEngine"/>。</returns>
     public static WorkflowEngine Create(
         int maxParallelism = 4,
-        ILogger<WorkflowEngine>? logger = null,
+        ILogger<WorkflowEngine.WorkflowExecutionLogger>? executionLogger = null,
         IWorkflowInstanceIdGenerator? workflowInstanceIdGenerator = null)
     {
-        logger ??= NullLogger<WorkflowEngine>.Instance;
+        executionLogger ??= NullLogger<WorkflowEngine.WorkflowExecutionLogger>.Instance;
         workflowInstanceIdGenerator ??= new UuidV7WorkflowInstanceIdGenerator();
         var scheduler = new DefaultScheduler(maxParallelism);
         var factory = new DefaultWorkflowInstanceFactory();
-        return new WorkflowEngine(scheduler, factory, workflowInstanceIdGenerator, logger);
+        var loggerFactory = new SingleCategoryLoggerFactory<WorkflowEngine.WorkflowExecutionLogger>(executionLogger);
+        return new WorkflowEngine(scheduler, factory, workflowInstanceIdGenerator, loggerFactory);
     }
 }

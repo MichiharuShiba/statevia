@@ -28,6 +28,6 @@ internal static class WorkflowEngineServiceRegistrations
             sp.GetRequiredService<IScheduler>(),
             sp.GetRequiredService<IWorkflowInstanceFactory>(),
             sp.GetRequiredService<IWorkflowInstanceIdGenerator>(),
-            sp.GetRequiredService<ILogger<WorkflowEngine>>()));
+            sp.GetRequiredService<ILoggerFactory>()));
     }
 }
