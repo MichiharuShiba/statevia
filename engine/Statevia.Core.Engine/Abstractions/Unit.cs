@@ -6,7 +6,7 @@ namespace Statevia.Core.Engine.Abstractions;
 public readonly struct Unit : IEquatable<Unit>
 {
     /// <summary>単一の既定値。</summary>
-    public static readonly Unit Value = default;
+    public static readonly Unit Value;
 
     /// <inheritdoc />
     public bool Equals(Unit other) => true;
