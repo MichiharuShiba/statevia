@@ -127,9 +127,27 @@ public static class Level1Validator
             trans,
             stateNames,
             errors,
-            isDefaultTransition,
             ref terminalTransitionCount);
     }
+
+    /// <summary>遷移形状検証用に算出したフラグ一式。</summary>
+    /// <param name="HasNext"><c>next</c> が非空で定義されている。</param>
+    /// <param name="HasFork"><c>fork</c> が非空の一覧として定義されている。</param>
+    /// <param name="HasEnd"><c>end: true</c> が定義されている。</param>
+    /// <param name="HasCases"><c>cases</c> が非空の一覧として定義されている。</param>
+    /// <param name="HasDefault"><c>default</c> 遷移が定義されている。</param>
+    /// <param name="UsesLinearForm"><c>next</c> / <c>fork</c> / <c>end</c> のいずれかが定義されている。</param>
+    /// <param name="UsesConditionalForm"><c>cases</c> または <c>default</c> が定義されている。</param>
+    /// <param name="LinearCount"><c>next</c> / <c>fork</c> / <c>end</c> のうち定義されている件数（0〜3）。</param>
+    private readonly record struct TransitionShapeFlags(
+        bool HasNext,
+        bool HasFork,
+        bool HasEnd,
+        bool HasCases,
+        bool HasDefault,
+        bool UsesLinearForm,
+        bool UsesConditionalForm,
+        int LinearCount);
 
     /// <summary>遷移の構文形状（線形 next/fork/end と cases/default の組み合わせ）を検証する。</summary>
     /// <param name="transitionPath">エラーメッセージ用の遷移パス。</param>
@@ -147,9 +165,15 @@ public static class Level1Validator
         var hasEnd = trans.End;
         var hasCases = trans.Cases is { Count: > 0 };
         var hasDefault = trans.Default is not null;
-        var usesLinearForm = hasNext || trans.Fork is not null || hasEnd;
-        var usesConditionalForm = trans.Cases is not null || hasDefault;
-        var linearCount = (hasNext ? 1 : 0) + (hasFork ? 1 : 0) + (hasEnd ? 1 : 0);
+        var shape = new TransitionShapeFlags(
+            HasNext: hasNext,
+            HasFork: hasFork,
+            HasEnd: hasEnd,
+            HasCases: hasCases,
+            HasDefault: hasDefault,
+            UsesLinearForm: hasNext || trans.Fork is not null || hasEnd,
+            UsesConditionalForm: trans.Cases is not null || hasDefault,
+            LinearCount: (hasNext ? 1 : 0) + (hasFork ? 1 : 0) + (hasEnd ? 1 : 0));
 
         if (trans.Fork is { Count: 0 })
         {
@@ -163,21 +187,11 @@ public static class Level1Validator
 
         if (isDefaultTransition)
         {
-            ValidateDefaultTransitionShape(transitionPath, usesConditionalForm, linearCount, errors);
+            ValidateDefaultTransitionShape(transitionPath, shape.UsesConditionalForm, shape.LinearCount, errors);
             return;
         }
 
-        ValidateNonDefaultTransitionShape(
-            transitionPath,
-            hasNext,
-            hasFork,
-            hasEnd,
-            hasCases,
-            hasDefault,
-            usesLinearForm,
-            usesConditionalForm,
-            linearCount,
-            errors);
+        ValidateNonDefaultTransitionShape(transitionPath, shape, errors);
     }
 
     /// <summary><c>default</c> 遷移が線形形式のみで、next/fork/end のいずれか 1 つだけを持つことを検証する。</summary>
@@ -204,53 +218,39 @@ public static class Level1Validator
 
     /// <summary>通常遷移（default 以外）の形状制約を検証する。</summary>
     /// <param name="transitionPath">エラーメッセージ用の遷移パス。</param>
-    /// <param name="hasNext"><c>next</c> が定義されているとき true。</param>
-    /// <param name="hasFork">非空の <c>fork</c> が定義されているとき true。</param>
-    /// <param name="hasEnd"><c>end: true</c> が定義されているとき true。</param>
-    /// <param name="hasCases">非空の <c>cases</c> が定義されているとき true。</param>
-    /// <param name="hasDefault"><c>default</c> が定義されているとき true。</param>
-    /// <param name="usesLinearForm">next / fork / end のいずれかが定義されているとき true。</param>
-    /// <param name="usesConditionalForm">cases または default が定義されているとき true。</param>
-    /// <param name="linearCount">next / fork / end のうち定義されている件数。</param>
+    /// <param name="shape"><see cref="TransitionShapeFlags"/>。</param>
     /// <param name="errors">検出したエラーメッセージの蓄積先。</param>
     private static void ValidateNonDefaultTransitionShape(
         string transitionPath,
-        bool hasNext,
-        bool hasFork,
-        bool hasEnd,
-        bool hasCases,
-        bool hasDefault,
-        bool usesLinearForm,
-        bool usesConditionalForm,
-        int linearCount,
+        TransitionShapeFlags shape,
         List<string> errors)
     {
-        if (usesLinearForm && usesConditionalForm)
+        if (shape.UsesLinearForm && shape.UsesConditionalForm)
         {
             errors.Add($"Transition '{transitionPath}' cannot mix next/fork/end with cases/default.");
         }
 
-        if (!usesLinearForm && !usesConditionalForm)
+        if (!shape.UsesLinearForm && !shape.UsesConditionalForm)
         {
             errors.Add($"Transition '{transitionPath}' must define next/fork/end or cases/default.");
         }
 
-        if (usesLinearForm && !usesConditionalForm && linearCount != 1)
+        if (shape.UsesLinearForm && !shape.UsesConditionalForm && shape.LinearCount != 1)
         {
             errors.Add($"Transition '{transitionPath}' must define exactly one of next/fork/end.");
         }
 
-        if (hasCases && !hasDefault)
+        if (shape.HasCases && !shape.HasDefault)
         {
             errors.Add($"Transition '{transitionPath}' requires default when cases are defined.");
         }
 
-        if (!hasCases && hasDefault)
+        if (!shape.HasCases && shape.HasDefault)
         {
             errors.Add($"Transition '{transitionPath}' cannot define default without cases.");
         }
 
-        if (hasEnd && (hasNext || hasFork))
+        if (shape.HasEnd && (shape.HasNext || shape.HasFork))
         {
             errors.Add($"Transition '{transitionPath}' cannot combine end: true with next/fork.");
         }
@@ -262,7 +262,6 @@ public static class Level1Validator
     /// <param name="trans">検証対象の遷移定義。</param>
     /// <param name="stateNames">定義済み状態名の集合。</param>
     /// <param name="errors">検出したエラーメッセージの蓄積先。</param>
-    /// <param name="isDefaultTransition"><c>default</c> 配下の遷移を検証しているとき true。</param>
     /// <param name="terminalTransitionCount"><c>end: true</c> 遷移の件数（ワークフロー全体で集計）。</param>
     private static void ValidateTransitionReferences(
         string stateName,
@@ -270,7 +269,6 @@ public static class Level1Validator
         TransitionDefinition trans,
         HashSet<string> stateNames,
         List<string> errors,
-        bool isDefaultTransition,
         ref int terminalTransitionCount)
     {
         if (!string.IsNullOrWhiteSpace(trans.Next))
@@ -439,7 +437,7 @@ public static class Level1Validator
     /// <returns>文字列以外の列挙可能オブジェクトとして解釈できたとき true。</returns>
     private static bool TryGetCollectionItems(object? value, out List<object?> items)
     {
-        items = new List<object?>();
+        items = [];
         if (value is null || value is string || value is not IEnumerable enumerable)
         {
             return false;
