@@ -9,8 +9,9 @@ public sealed partial class WorkflowEngine
 {
     /// <summary>
     /// ソース生成による高パフォーマンス ログ（<see cref="WorkflowExecutionLogger"/> が <see cref="SafeLog"/> 内から呼び出す）。
+    /// <see cref="StateContextLogger"/> の <c>ILogger.Log</c> と名前が衝突しないよう <c>WorkflowLog</c> とする。
     /// </summary>
-    private static partial class Log
+    private static partial class WorkflowLog
     {
         [LoggerMessage(EventId = 5001, Level = LogLevel.Information, Message = "Workflow started WorkflowId={WorkflowId} DefinitionName={DefinitionName} InitialState={InitialState}")]
         public static partial void WorkflowStarted(ILogger logger, string workflowId, string definitionName, string initialState);
