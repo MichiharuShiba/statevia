@@ -577,8 +577,7 @@ public sealed class WorkflowServiceTests
             tenantId: "t1",
             request: request,
             idempotencyKey: "idem",
-            method: "POST",
-            path: "/v1/workflows",
+            requestContext: new CommandRequestContext("POST", "/v1/workflows"),
             CancellationToken.None);
 
         // Assert
@@ -645,8 +644,7 @@ public sealed class WorkflowServiceTests
             tenantId: "t1",
             request: request,
             idempotencyKey: "idem",
-            method: "POST",
-            path: "/v1/workflows",
+            requestContext: new CommandRequestContext("POST", "/v1/workflows"),
             CancellationToken.None));
 
         Assert.False(engine.StartCalled);
@@ -747,8 +745,7 @@ public sealed class WorkflowServiceTests
             tenantId: "t1",
             request: request,
             idempotencyKey: "idem",
-            method: "POST",
-            path: "/v1/workflows",
+            requestContext: new CommandRequestContext("POST", "/v1/workflows"),
             CancellationToken.None);
 
         // Assert
@@ -845,8 +842,7 @@ public sealed class WorkflowServiceTests
             tenantId: "t1",
             request: request,
             idempotencyKey: "idem",
-            method: "POST",
-            path: "/v1/workflows",
+            requestContext: new CommandRequestContext("POST", "/v1/workflows"),
             CancellationToken.None);
 
         // Assert
@@ -930,7 +926,7 @@ public sealed class WorkflowServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.StartAsync("t1", request, idempotencyKey: null, method: "POST", path: "/v1/workflows", CancellationToken.None));
+            sut.StartAsync("t1", request, idempotencyKey: null, new CommandRequestContext("POST", "/v1/workflows"), CancellationToken.None));
     }
 
     /// <summary>連番指定が一未満のとき引数例外を投げる。</summary>
@@ -1324,7 +1320,7 @@ public sealed class WorkflowServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.ResumeNodeAsync("t1", idOrUuid: "workflow", nodeId: "  ", resumeKey: "Approve", idempotencyKey: null, method: "POST", path: "/v1/workflows", CancellationToken.None));
+            sut.ResumeNodeAsync("t1", idOrUuid: "workflow", nodeId: "  ", resumeKey: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/workflows"), CancellationToken.None));
     }
 
     /// <summary>取消要求で冪等一致かつ有効行があるとき副作用なく即時終了する。</summary>
@@ -1383,7 +1379,7 @@ public sealed class WorkflowServiceTests
             eventStore: eventStore);
 
         // Act
-        await sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: "idem", method: "POST", path: "/v1/workflows/cancel", CancellationToken.None);
+        await sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/workflows/cancel"), CancellationToken.None);
 
         // Assert
         Assert.False(engine.CancelCalled);
@@ -1442,7 +1438,7 @@ public sealed class WorkflowServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: null, method: "POST", path: "/v1/workflows/cancel", CancellationToken.None));
+            sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/workflows/cancel"), CancellationToken.None));
         Assert.Equal(1, projectionQueue.DrainCalls);
         Assert.Equal(workflowId, projectionQueue.LastDrainWorkflowId);
         Assert.False(engine.CancelCalled);
@@ -1468,7 +1464,7 @@ public sealed class WorkflowServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: null, method: "POST", path: "/v1/workflows/cancel", CancellationToken.None));
+            sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/workflows/cancel"), CancellationToken.None));
 
         Assert.False(engine.CancelCalled);
     }
@@ -1495,7 +1491,7 @@ public sealed class WorkflowServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: null, method: "POST", path: "/v1/workflows/cancel", CancellationToken.None));
+            sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/workflows/cancel"), CancellationToken.None));
 
         Assert.False(engine.CancelCalled);
     }
@@ -1563,7 +1559,7 @@ public sealed class WorkflowServiceTests
             eventStore: eventStore);
 
         // Act
-        await sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: "idem", method: "POST", path: "/v1/workflows/cancel", CancellationToken.None);
+        await sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/workflows/cancel"), CancellationToken.None);
 
         // Assert
         Assert.True(engine.CancelCalled);
@@ -1650,7 +1646,7 @@ public sealed class WorkflowServiceTests
 
         // Act
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: null, method: "POST", path: "/v1/workflows/cancel", CancellationToken.None));
+            sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/workflows/cancel"), CancellationToken.None));
 
         // Assert
         Assert.Equal("append failed", ex.Message);
@@ -1777,7 +1773,7 @@ public sealed class WorkflowServiceTests
             eventStore: eventStore);
 
         // Act
-        await sut.PublishEventAsync(tenantId: "t1", idOrUuid: "X", eventName: "Approve", idempotencyKey: "idem", method: "POST", path: "/v1/workflows/events", CancellationToken.None);
+        await sut.PublishEventAsync(tenantId: "t1", idOrUuid: "X", eventName: "Approve", idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/workflows/events"), CancellationToken.None);
 
         // Assert
         Assert.Null(engine.PublishEventLastName);
@@ -1836,7 +1832,7 @@ public sealed class WorkflowServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.PublishEventAsync("t1", idOrUuid: "X", eventName: "Approve", idempotencyKey: null, method: "POST", path: "/v1/workflows/events", CancellationToken.None));
+            sut.PublishEventAsync("t1", idOrUuid: "X", eventName: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/workflows/events"), CancellationToken.None));
         Assert.Equal(1, projectionQueue.DrainCalls);
         Assert.Equal(workflowId, projectionQueue.LastDrainWorkflowId);
         Assert.Null(engine.PublishEventLastWorkflowId);
@@ -1864,7 +1860,7 @@ public sealed class WorkflowServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.PublishEventAsync(tenantId: "t1", idOrUuid: "X", eventName: "Approve", idempotencyKey: null, method: "POST", path: "/v1/workflows/events", CancellationToken.None));
+            sut.PublishEventAsync(tenantId: "t1", idOrUuid: "X", eventName: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/workflows/events"), CancellationToken.None));
 
         Assert.Null(engine.PublishEventLastWorkflowId);
         Assert.Null(engine.PublishEventLastName);
@@ -1935,7 +1931,7 @@ public sealed class WorkflowServiceTests
         const string eventName = "Approve";
 
         // Act
-        await sut.PublishEventAsync(tenantId: tenantId, idOrUuid: "X", eventName: eventName, idempotencyKey: "idem", method: "POST", path: "/v1/workflows/events", CancellationToken.None);
+        await sut.PublishEventAsync(tenantId: tenantId, idOrUuid: "X", eventName: eventName, idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/workflows/events"), CancellationToken.None);
 
         // Assert
         Assert.Equal(workflowId.ToString(), engine.PublishEventLastWorkflowId);
@@ -2028,7 +2024,7 @@ public sealed class WorkflowServiceTests
         const string eventName = "Approve";
 
         // Act
-        await sut.PublishEventAsync(tenantId, idOrUuid: "X", eventName: eventName, idempotencyKey: "idem", method: "POST", path: "/v1/workflows/events", CancellationToken.None);
+        await sut.PublishEventAsync(tenantId, idOrUuid: "X", eventName: eventName, idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/workflows/events"), CancellationToken.None);
 
         // Assert
         Assert.Equal(expectedClientEventId, engine.PublishEventLastClientEventId);
@@ -2096,7 +2092,7 @@ public sealed class WorkflowServiceTests
             eventStore: eventStore);
 
         // Act
-        await sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: "idem", method: "POST", path: "/v1/workflows/cancel", CancellationToken.None);
+        await sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/workflows/cancel"), CancellationToken.None);
 
         // Assert
         Assert.Equal(expectedClientEventId, engine.CancelAsyncLastClientEventId);
@@ -2166,7 +2162,7 @@ public sealed class WorkflowServiceTests
 
         // Act
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.PublishEventAsync(tenantId: tenantId, idOrUuid: "X", eventName: eventName, idempotencyKey: null, method: "POST", path: "/v1/workflows/events", CancellationToken.None));
+            sut.PublishEventAsync(tenantId: tenantId, idOrUuid: "X", eventName: eventName, idempotencyKey: null, new CommandRequestContext("POST", "/v1/workflows/events"), CancellationToken.None));
 
         // Assert
         Assert.Equal("append failed", ex.Message);
@@ -2243,8 +2239,7 @@ public sealed class WorkflowServiceTests
             idOrUuid: "X",
             eventName: "Approve",
             idempotencyKey: clientEventId.ToString(),
-            method: "POST",
-            path: "/v1/workflows/events",
+            requestContext: new CommandRequestContext("POST", "/v1/workflows/events"),
             CancellationToken.None);
 
         // Assert
@@ -2482,7 +2477,7 @@ public sealed class WorkflowServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.ResumeNodeAsync("t1", idOrUuid: "workflow", nodeId: "node-1", resumeKey: null, idempotencyKey: null, method: "POST", path: "/v1/workflows", CancellationToken.None));
+            sut.ResumeNodeAsync("t1", idOrUuid: "workflow", nodeId: "node-1", resumeKey: null, idempotencyKey: null, new CommandRequestContext("POST", "/v1/workflows"), CancellationToken.None));
     }
 
     /// <summary>有効なノード識別子と再開キーで公開と投影更新を実施する。</summary>
@@ -2548,7 +2543,7 @@ public sealed class WorkflowServiceTests
             UnitTestHttpContextAccessor());
 
         // Act
-        await sut.ResumeNodeAsync(tenantId, idOrUuid: "X", nodeId: nodeId, resumeKey: resumeKey, idempotencyKey: null, method: "POST", path: "/v1/workflows", CancellationToken.None);
+        await sut.ResumeNodeAsync(tenantId, idOrUuid: "X", nodeId: nodeId, resumeKey: resumeKey, idempotencyKey: null, new CommandRequestContext("POST", "/v1/workflows"), CancellationToken.None);
 
         // Assert
         Assert.Equal(workflowId.ToString(), engine.PublishEventLastWorkflowId);
@@ -2670,7 +2665,7 @@ public sealed class WorkflowServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var page = await sut.ListPagedAsync(tenantId, offset: 0, limit: 2, status: null, null, null, null, null, CancellationToken.None);
+        var page = await sut.ListPagedAsync(tenantId, new WorkflowListQuery { Offset = 0, Limit = 2 }, CancellationToken.None);
 
         // Assert
         Assert.Equal(3, page.TotalCount);
@@ -2680,7 +2675,7 @@ public sealed class WorkflowServiceTests
         workflowRepo.ListWithDisplayIdsPageResult = (2, new List<(WorkflowRow Workflow, string? DisplayId)> { (w1, null), (w2, null) });
 
         // Act
-        var page2 = await sut.ListPagedAsync(tenantId, offset: 0, limit: 2, status: null, null, null, null, null, CancellationToken.None);
+        var page2 = await sut.ListPagedAsync(tenantId, new WorkflowListQuery { Offset = 0, Limit = 2 }, CancellationToken.None);
 
         // Assert
         Assert.Equal(2, page2.TotalCount);
@@ -2706,7 +2701,7 @@ public sealed class WorkflowServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var page = await sut.ListPagedAsync("t1", offset: 0, limit: 10, null, "no-such-def", null, null, null, CancellationToken.None);
+        var page = await sut.ListPagedAsync("t1", new WorkflowListQuery { Offset = 0, Limit = 10, DefinitionId = "no-such-def" }, CancellationToken.None);
 
         // Assert
         Assert.Equal(0, page.TotalCount);
@@ -3177,8 +3172,7 @@ public sealed class WorkflowServiceTests
             idOrUuid: "X",
             eventName: "Approve",
             idempotencyKey: dedupKey.IdempotencyKey,
-            method: "POST",
-            path: "/v1/workflows/events",
+            requestContext: new CommandRequestContext("POST", "/v1/workflows/events"),
             CancellationToken.None);
 
         // Assert
@@ -3245,8 +3239,7 @@ public sealed class WorkflowServiceTests
             idOrUuid: "X",
             eventName: "Approve",
             idempotencyKey: dedupKey.IdempotencyKey,
-            method: "POST",
-            path: "/v1/workflows/events",
+            requestContext: new CommandRequestContext("POST", "/v1/workflows/events"),
             CancellationToken.None));
 
         Assert.Equal(1, flakyEventDelivery.InsertReceivedCallCount);
@@ -3320,8 +3313,7 @@ public sealed class WorkflowServiceTests
             idOrUuid: "X",
             eventName: "Approve",
             idempotencyKey: dedupKey.IdempotencyKey,
-            method: "POST",
-            path: "/v1/workflows/events",
+            requestContext: new CommandRequestContext("POST", "/v1/workflows/events"),
             CancellationToken.None));
 
         Assert.Equal(3, flakyEventDelivery.InsertReceivedCallCount);
@@ -3370,8 +3362,7 @@ public sealed class WorkflowServiceTests
                 idOrUuid: "X",
                 eventName: "Approve",
                 idempotencyKey: null,
-                method: "POST",
-                path: "/v1/workflows/events",
+                requestContext: new CommandRequestContext("POST", "/v1/workflows/events"),
                 CancellationToken.None));
 
         Assert.Contains("not loaded in this API process", ex.Message, StringComparison.Ordinal);
@@ -3416,7 +3407,7 @@ public sealed class WorkflowServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: null, method: "POST", path: "/v1/workflows/cancel", CancellationToken.None));
+            sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/workflows/cancel"), CancellationToken.None));
 
         Assert.Contains("not loaded in this API process", ex.Message, StringComparison.Ordinal);
         Assert.False(engine.CancelCalled);
@@ -3465,8 +3456,7 @@ public sealed class WorkflowServiceTests
                 idOrUuid: "X",
                 eventName: "Approve",
                 idempotencyKey: null,
-                method: "POST",
-                path: "/v1/workflows/events",
+                requestContext: new CommandRequestContext("POST", "/v1/workflows/events"),
                 CancellationToken.None));
 
         Assert.Contains("terminal state", ex.Message, StringComparison.OrdinalIgnoreCase);

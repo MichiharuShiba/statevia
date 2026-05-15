@@ -41,8 +41,7 @@ public class WorkflowsController : ControllerBase
             tenantId,
             request,
             resolvedIdempotencyKey,
-            Request.Method,
-            Request.Path.Value ?? string.Empty,
+            new CommandRequestContext(Request.Method, Request.Path.Value ?? string.Empty),
             ct).ConfigureAwait(false);
 
         return CreatedAtAction(nameof(Get), new { id = created.DisplayId }, created);
@@ -55,31 +54,24 @@ public class WorkflowsController : ControllerBase
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> List(
-        [FromQuery] int? limit,
-        [FromQuery] int offset = 0,
-        [FromQuery] string? status = null,
-        [FromQuery] string? definitionId = null,
-        [FromQuery] string? name = null,
-        [FromQuery] string? sortBy = null,
-        [FromQuery] string? sortOrder = null,
+        [FromQuery] WorkflowListQuery query,
         [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        if (limit is null)
+        if (query.Limit is null)
         {
             var list = await _workflows.ListAsync(tenantId, ct).ConfigureAwait(false);
             return Ok(list);
         }
 
-        ArgumentOutOfRangeException.ThrowIfNegative(offset);
-        ArgumentOutOfRangeException.ThrowIfLessThan(limit.Value, 1);
-        if (limit.Value > 500)
+        ArgumentOutOfRangeException.ThrowIfNegative(query.Offset);
+        ArgumentOutOfRangeException.ThrowIfLessThan(query.Limit.Value, 1);
+        if (query.Limit.Value > 500)
             throw new ArgumentException("limit must be at most 500");
 
-        var paged = await _workflows
-            .ListPagedAsync(tenantId, offset, limit.Value, status, definitionId, name, sortBy, sortOrder, ct)
-            .ConfigureAwait(false);
+        var paged = await _workflows.ListPagedAsync(tenantId, query, ct).ConfigureAwait(false);
         return Ok(paged);
     }
 
@@ -159,8 +151,7 @@ public class WorkflowsController : ControllerBase
             tenantId,
             id,
             resolvedIdempotencyKey,
-            Request.Method,
-            Request.Path.Value ?? string.Empty,
+            new CommandRequestContext(Request.Method, Request.Path.Value ?? string.Empty),
             ct).ConfigureAwait(false);
 
         return NoContent();
@@ -185,8 +176,7 @@ public class WorkflowsController : ControllerBase
             nodeId,
             body?.ResumeKey,
             resolvedIdempotencyKey,
-            Request.Method,
-            Request.Path.Value ?? string.Empty,
+            new CommandRequestContext(Request.Method, Request.Path.Value ?? string.Empty),
             ct).ConfigureAwait(false);
         return NoContent();
     }
@@ -207,8 +197,7 @@ public class WorkflowsController : ControllerBase
             id,
             body.Name,
             resolvedIdempotencyKey,
-            Request.Method,
-            Request.Path.Value ?? string.Empty,
+            new CommandRequestContext(Request.Method, Request.Path.Value ?? string.Empty),
             ct).ConfigureAwait(false);
         return NoContent();
     }

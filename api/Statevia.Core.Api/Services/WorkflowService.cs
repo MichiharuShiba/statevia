@@ -21,7 +21,7 @@ using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Core.Api.Services;
 
-public sealed class WorkflowService : IWorkflowService
+internal sealed class WorkflowService : IWorkflowService
 {
     /// <summary>
     /// イベント本文・冪等キャッシュ応答・リクエストハッシュ入力など、camelCase でシリアル化する際の共有オプション（都度 new しない）。
@@ -122,12 +122,12 @@ public sealed class WorkflowService : IWorkflowService
         string tenantId,
         StartWorkflowRequest request,
         string? idempotencyKey,
-        string method,
-        string path,
+        CommandRequestContext requestContext,
         CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(requestContext);
         var requestHash = ComputeStartRequestHash(request);
-        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, method, path, requestHash);
+        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, requestContext.Method, requestContext.Path, requestHash);
 
         if (dedupKey is { } key)
         {
@@ -260,15 +260,18 @@ public sealed class WorkflowService : IWorkflowService
 
     public async Task<PagedResult<WorkflowResponse>> ListPagedAsync(
         string tenantId,
-        int offset,
-        int limit,
-        string? status,
-        string? definitionId,
-        string? nameContains,
-        string? sortBy,
-        string? sortOrder,
+        WorkflowListQuery query,
         CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(query);
+        var offset = query.Offset;
+        var limit = query.Limit ?? throw new ArgumentException("limit is required for paged list");
+        var status = query.Status;
+        var definitionId = query.DefinitionId;
+        var nameContains = query.Name;
+        var sortBy = query.SortBy;
+        var sortOrder = query.SortOrder;
+
         Guid? definitionIdFilter = null;
         if (!string.IsNullOrWhiteSpace(definitionId))
         {
@@ -287,15 +290,15 @@ public sealed class WorkflowService : IWorkflowService
             definitionIdFilter = defUuid;
         }
 
-        var name = string.IsNullOrWhiteSpace(nameContains) ? null : nameContains.Trim();
-        var query = new WorkflowListPageQuery(
+        var nameFilter = string.IsNullOrWhiteSpace(nameContains) ? null : nameContains.Trim();
+        var pageQuery = new WorkflowListPageQuery(
             Page: new PageQuery(offset, limit),
             Sort: new SortQuery(sortBy, sortOrder),
             StatusFilter: status,
             DefinitionIdFilter: definitionIdFilter,
-            NameContains: name);
+            NameContains: nameFilter);
         var (total, pairs) = await _workflows
-            .ListWithDisplayIdsPageAsync(tenantId, query, ct)
+            .ListWithDisplayIdsPageAsync(tenantId, pageQuery, ct)
             .ConfigureAwait(false);
         var items = pairs.Select(p => new WorkflowResponse
         {
@@ -373,11 +376,11 @@ public sealed class WorkflowService : IWorkflowService
         string tenantId,
         string idOrUuid,
         string? idempotencyKey,
-        string method,
-        string path,
+        CommandRequestContext requestContext,
         CancellationToken ct)
     {
-        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, method, path);
+        ArgumentNullException.ThrowIfNull(requestContext);
+        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, requestContext.Method, requestContext.Path);
 
         if (dedupKey is { } key)
         {
@@ -472,11 +475,11 @@ public sealed class WorkflowService : IWorkflowService
         string idOrUuid,
         string eventName,
         string? idempotencyKey,
-        string method,
-        string path,
+        CommandRequestContext requestContext,
         CancellationToken ct)
     {
-        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, method, path);
+        ArgumentNullException.ThrowIfNull(requestContext);
+        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, requestContext.Method, requestContext.Path);
 
         if (dedupKey is { } key)
         {
@@ -669,15 +672,14 @@ public sealed class WorkflowService : IWorkflowService
         string nodeId,
         string? resumeKey,
         string? idempotencyKey,
-        string method,
-        string path,
+        CommandRequestContext requestContext,
         CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
         if (string.IsNullOrWhiteSpace(resumeKey))
             throw new ArgumentException("resumeKey is required");
 
-        return PublishEventAsync(tenantId, idOrUuid, resumeKey!, idempotencyKey, method, path, ct);
+        return PublishEventAsync(tenantId, idOrUuid, resumeKey!, idempotencyKey, requestContext, ct);
     }
 
     private async Task<WorkflowViewDto> BuildWorkflowViewInternalAsync(string tenantId, Guid uuid, string idOrUuidForDisplay, CancellationToken ct)
