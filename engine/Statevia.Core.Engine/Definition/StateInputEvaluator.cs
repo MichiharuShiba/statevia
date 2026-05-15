@@ -2,7 +2,7 @@ using System.Collections;
 
 namespace Statevia.Core.Engine.Definition;
 
-/// <summary>1 件の input 評価警告（同一 <see cref="ApplyWithDiagnostics"/> 呼び出し内の重複は抑制）。</summary>
+/// <summary>1 件の input 評価警告（同一 <see cref="StateInputEvaluator.ApplyWithDiagnostics"/> 呼び出し内の重複は抑制）。</summary>
 internal readonly record struct StateInputWarning(string InputKey, string Reason);
 
 /// <summary>input 評価の結果値と警告一覧。</summary>
