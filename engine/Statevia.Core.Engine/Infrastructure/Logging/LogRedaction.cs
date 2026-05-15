@@ -20,6 +20,9 @@ public static class LogRedaction
         "workflowInput", "input", "output"
     ];
 
+    /// <summary>JSON 風キー置換用正規表現のマッチ上限（ReDoS 対策・S6444）。</summary>
+    private static readonly TimeSpan s_jsonKeyRedactionMatchTimeout = TimeSpan.FromSeconds(1);
+
     /// <summary>
     /// 長さ切り詰め後、クエリ文字列と JSON 風テキストの代表キーをマスクする。
     /// </summary>
@@ -111,7 +114,8 @@ public static class LogRedaction
                 redactedText,
                 pattern,
                 "$1\"[redacted]\"",
-                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                s_jsonKeyRedactionMatchTimeout);
         }
 
         return redactedText;
