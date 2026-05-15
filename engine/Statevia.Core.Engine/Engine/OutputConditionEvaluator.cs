@@ -511,7 +511,7 @@ internal static class OutputConditionEvaluator
 
     private static bool TryEnumerate(object? value, out List<object?> values)
     {
-        values = new List<object?>();
+        values = [];
         value = NormalizeValue(value);
         if (value is null || value is string || value is not IEnumerable enumerable)
         {
