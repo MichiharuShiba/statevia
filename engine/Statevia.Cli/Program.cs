@@ -15,7 +15,7 @@ if (!File.Exists(path))
 }
 
 var loader = new StateWorkflowDefinitionLoader();
-var content = File.ReadAllText(path);
+var content = await File.ReadAllTextAsync(path).ConfigureAwait(false);
 
 try
 {
@@ -23,8 +23,7 @@ try
     Console.WriteLine($"Loaded workflow: {def.Workflow.Name}");
     Console.WriteLine($"States: {string.Join(", ", def.States.Keys)}");
 
-    var validator = new DefinitionValidator();
-    var result = validator.Validate(def);
+    var result = DefinitionValidator.Validate(def);
     if (!result.IsValid)
     {
         Console.WriteLine("Validation failed:");

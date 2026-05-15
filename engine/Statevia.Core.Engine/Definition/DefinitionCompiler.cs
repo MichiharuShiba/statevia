@@ -10,6 +10,10 @@ public sealed class DefinitionCompiler
 {
     private readonly IStateExecutorFactory _executorFactory;
 
+    /// <summary>
+    /// 状態実行ファクトリを指定してコンパイラを構築する。
+    /// </summary>
+    /// <param name="executorFactory">コンパイル済み定義に埋め込む <see cref="IStateExecutorFactory"/>。</param>
     public DefinitionCompiler(IStateExecutorFactory executorFactory) => _executorFactory = executorFactory;
 
     /// <summary>ワークフロー定義をコンパイルし、実行可能なコンパイル済み定義を返します。</summary>
@@ -30,7 +34,7 @@ public sealed class DefinitionCompiler
         };
     }
 
-    private static IReadOnlyDictionary<string, StateInputDefinition> BuildStateInputTable(WorkflowDefinition definition)
+    private static Dictionary<string, StateInputDefinition> BuildStateInputTable(WorkflowDefinition definition)
     {
         var result = new Dictionary<string, StateInputDefinition>(StringComparer.OrdinalIgnoreCase);
         foreach (var (stateName, stateDef) in definition.States)
@@ -43,7 +47,7 @@ public sealed class DefinitionCompiler
         return result;
     }
 
-    private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, TransitionTarget>> BuildTransitionTable(WorkflowDefinition definition)
+    private static Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>> BuildTransitionTable(WorkflowDefinition definition)
     {
         var result = new Dictionary<string, Dictionary<string, TransitionTarget>>(StringComparer.OrdinalIgnoreCase);
         foreach (var (stateName, stateDef) in definition.States)
@@ -73,7 +77,7 @@ public sealed class DefinitionCompiler
         return result.ToDictionary(k => k.Key, v => (IReadOnlyDictionary<string, TransitionTarget>)v.Value, StringComparer.OrdinalIgnoreCase);
     }
 
-    private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, CompiledFactTransition>> BuildConditionalTransitionTable(WorkflowDefinition definition)
+    private static Dictionary<string, IReadOnlyDictionary<string, CompiledFactTransition>> BuildConditionalTransitionTable(WorkflowDefinition definition)
     {
         var result = new Dictionary<string, Dictionary<string, CompiledFactTransition>>(StringComparer.OrdinalIgnoreCase);
         foreach (var (stateName, stateDef) in definition.States)
@@ -115,7 +119,7 @@ public sealed class DefinitionCompiler
         };
     }
 
-    private static IReadOnlyList<CompiledTransitionCase> CompileCases(IReadOnlyList<TransitionCaseDefinition>? cases)
+    private static List<CompiledTransitionCase> CompileCases(IReadOnlyList<TransitionCaseDefinition>? cases)
     {
         if (cases is null || cases.Count == 0)
         {
@@ -139,7 +143,7 @@ public sealed class DefinitionCompiler
     private static TransitionTarget ToTransitionTarget(TransitionDefinition transition) =>
         new() { Next = transition.Next, Fork = transition.Fork, End = transition.End };
 
-    private static IReadOnlyDictionary<string, IReadOnlyList<string>> BuildForkTable(WorkflowDefinition definition)
+    private static Dictionary<string, IReadOnlyList<string>> BuildForkTable(WorkflowDefinition definition)
     {
         var result = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
         foreach (var (stateName, stateDef) in definition.States)
@@ -160,7 +164,7 @@ public sealed class DefinitionCompiler
         return result;
     }
 
-    private static IReadOnlyDictionary<string, IReadOnlyList<string>> BuildJoinTable(WorkflowDefinition definition)
+    private static Dictionary<string, IReadOnlyList<string>> BuildJoinTable(WorkflowDefinition definition)
     {
         var result = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
         foreach (var (stateName, stateDef) in definition.States)
@@ -173,7 +177,7 @@ public sealed class DefinitionCompiler
         return result;
     }
 
-    private static IReadOnlyDictionary<string, string> BuildWaitTable(WorkflowDefinition definition)
+    private static Dictionary<string, string> BuildWaitTable(WorkflowDefinition definition)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (stateName, stateDef) in definition.States)

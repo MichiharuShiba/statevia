@@ -120,9 +120,10 @@ public class WorkflowEngineTests
         engine.Start(CreateMinimalDefinition());
 
         // Act
-        engine.PublishEvent("SomeEvent");
+        var ex = Record.Exception(() => engine.PublishEvent("SomeEvent"));
 
-        // Assert: 例外が発生しないこと
+        // Assert
+        Assert.Null(ex);
     }
 
     /// <summary>複数ワークフローが存在するとき、イベント名のみのブロードキャストが例外で終了しないこと。</summary>
@@ -135,9 +136,10 @@ public class WorkflowEngineTests
         engine.Start(CreateMinimalDefinition());
 
         // Act
-        engine.PublishEvent("SomeEvent");
+        var ex = Record.Exception(() => engine.PublishEvent("SomeEvent"));
 
-        // Assert: 例外が発生しないこと
+        // Assert
+        Assert.Null(ex);
     }
 
     /// <summary>clientEventId 付き PublishEvent オーバーロードも従来と同様に例外を投げないことを検証する。</summary>
@@ -184,9 +186,10 @@ public class WorkflowEngineTests
         engine.Start(CreateMinimalDefinition());
 
         // Act
-        engine.Dispose();
+        var ex = Record.Exception(() => engine.Dispose());
 
-        // Assert: 例外が発生しないこと
+        // Assert
+        Assert.Null(ex);
     }
 
     /// <summary>状態が例外を投げるとワークフローが IsFailed になることを検証する。</summary>

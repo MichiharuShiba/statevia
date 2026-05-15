@@ -19,6 +19,7 @@ public class WaitResumeTests
 
         // Assert: Wait が完了すること
         await waitTask;
+        Assert.True(waitTask.IsCompletedSuccessfully);
     }
 
     /// <summary>WaitAsync 待機中に CancellationToken をキャンセルすると TaskCanceledException になることを検証する。</summary>

@@ -20,6 +20,9 @@ public static class LogRedaction
         "workflowInput", "input", "output"
     ];
 
+    /// <summary>JSON 風キー置換用正規表現のマッチ上限（ReDoS 対策・S6444）。</summary>
+    private static readonly TimeSpan s_jsonKeyRedactionMatchTimeout = TimeSpan.FromSeconds(1);
+
     /// <summary>
     /// 長さ切り詰め後、クエリ文字列と JSON 風テキストの代表キーをマスクする。
     /// </summary>
@@ -54,7 +57,7 @@ public static class LogRedaction
             return query;
         }
 
-        if (!query.StartsWith("?", StringComparison.Ordinal))
+        if (!query.StartsWith('?'))
         {
             return query;
         }
@@ -62,7 +65,7 @@ public static class LogRedaction
         var trimmed = query.TrimStart('?');
         if (trimmed.Length == 0)
         {
-            return query.StartsWith("?", StringComparison.Ordinal) ? "?" : "";
+            return query.StartsWith('?') ? "?" : "";
         }
 
         var parts = trimmed.Split('&', StringSplitOptions.RemoveEmptyEntries);
@@ -96,26 +99,9 @@ public static class LogRedaction
         return stringBuilder.ToString();
     }
 
-    private static bool IsSensitiveName(string name)
-    {
-        foreach (var substring in CredentialSubstringsInNames)
-        {
-            if (name.Contains(substring, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        foreach (var key in SensitiveKeys)
-        {
-            if (name.Equals(key, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    private static bool IsSensitiveName(string name) =>
+        CredentialSubstringsInNames.Any(substring => name.Contains(substring, StringComparison.OrdinalIgnoreCase))
+        || SensitiveKeys.Any(key => name.Equals(key, StringComparison.OrdinalIgnoreCase));
 
     private static string RedactJsonLikeKeys(string text)
     {
@@ -128,7 +114,8 @@ public static class LogRedaction
                 redactedText,
                 pattern,
                 "$1\"[redacted]\"",
-                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                s_jsonKeyRedactionMatchTimeout);
         }
 
         return redactedText;

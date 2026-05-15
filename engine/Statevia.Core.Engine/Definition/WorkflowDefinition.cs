@@ -87,7 +87,7 @@ public sealed class JoinDefinition
 }
 
 /// <summary>
-/// 状態入力の最小指定（states.<name>.input）。
+/// 状態入力の最小指定（states.{name}.input）。
 /// 現在は JSONPath 風の <c>path</c>（例: <c>$.foo.bar</c>）のみをサポートする。
 /// </summary>
 public sealed class StateInputDefinition

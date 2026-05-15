@@ -12,6 +12,7 @@ public static class SimpleJsonPath
     /// <returns>有効なら true。</returns>
     public static bool IsValid(string path)
     {
+        ArgumentNullException.ThrowIfNull(path);
         if (path == "$")
         {
             return true;

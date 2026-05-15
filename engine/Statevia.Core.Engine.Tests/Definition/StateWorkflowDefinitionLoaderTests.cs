@@ -237,7 +237,7 @@ public class StateWorkflowDefinitionLoaderTests
         Assert.Equal("$.payload.value", input.Values!["foo"].Path);
         Assert.Equal("my song", input.Values["title"].Literal);
         Assert.Equal(2L, input.Values["count"].Literal);
-        Assert.Equal(true, input.Values["enabled"].Literal);
+        Assert.True(Assert.IsType<bool>(input.Values["enabled"].Literal));
     }
 
     /// <summary>states が空の YAML をパースすることを検証する。</summary>

@@ -32,7 +32,7 @@ public class ExecutionGraphTests
 
         // Act
         graph.AddEdge(id1, id2, EdgeType.Next);
-        var edges = graph.Edges;
+        var edges = graph.GetEdgesSnapshot();
 
         // Assert
         Assert.Single(edges);
@@ -67,11 +67,11 @@ public class ExecutionGraphTests
         var id2 = graph.AddNode("B");
 
         // Act
-        var nodes = graph.Nodes;
+        var nodes = graph.GetNodesSnapshot();
 
         // Assert
         Assert.Equal(2, nodes.Count);
-        Assert.True(nodes.Any(n => n.NodeId == id1 && n.StateName == "A"));
-        Assert.True(nodes.Any(n => n.NodeId == id2 && n.StateName == "B"));
+        Assert.Contains(nodes, n => n.NodeId == id1 && n.StateName == "A");
+        Assert.Contains(nodes, n => n.NodeId == id2 && n.StateName == "B");
     }
 }

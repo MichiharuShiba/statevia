@@ -17,11 +17,11 @@ public sealed class LogRedactionTests
         var redacted = LogRedaction.Redact(json, 500);
 
         // Assert
-        Assert.DoesNotContain("abc", redacted);
-        Assert.DoesNotContain("Bearer xyz", redacted);
-        Assert.Contains("\"password\":\"[redacted]\"", redacted);
-        Assert.Contains("\"authorization\":\"[redacted]\"", redacted);
-        Assert.Contains("ok", redacted);
+        Assert.DoesNotContain("abc", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("Bearer xyz", redacted, StringComparison.Ordinal);
+        Assert.Contains("\"password\":\"[redacted]\"", redacted, StringComparison.Ordinal);
+        Assert.Contains("\"authorization\":\"[redacted]\"", redacted, StringComparison.Ordinal);
+        Assert.Contains("ok", redacted, StringComparison.Ordinal);
     }
 
     /// <summary>クエリ文字列の機微キーがマスクされることを検証する。</summary>
@@ -35,9 +35,9 @@ public sealed class LogRedactionTests
         var redacted = LogRedaction.Redact(query, 200);
 
         // Assert
-        Assert.Contains("accessToken=[redacted]", redacted);
-        Assert.Contains("secret=[redacted]", redacted);
-        Assert.DoesNotContain("abc", redacted);
-        Assert.DoesNotContain("s3cr3t", redacted);
+        Assert.Contains("accessToken=[redacted]", redacted, StringComparison.Ordinal);
+        Assert.Contains("secret=[redacted]", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("abc", redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain("s3cr3t", redacted, StringComparison.Ordinal);
     }
 }

@@ -1,0 +1,68 @@
+root = true
+
+# =============================================================================
+# engine/Statevia.Core.Engine.Tests
+# =============================================================================
+
+[engine/Statevia.Core.Engine.Tests/**/*.cs]
+
+# CA1515: インスタンス化されない型は internal にせよ（アセンブリ API 表面を狭める）。
+# 除外理由: xUnit は public なテストクラスを反射で検出する。internal 化すると xUnit1000 でビルド失敗する。
+#            `dotnet format` 実行時に CA1515 がテスト型へ掛かり、意図せず internal 化されるのを防ぐ。
+dotnet_diagnostic.CA1515.severity = none
+
+# CA1707: メンバー名からアンダースコアを削除せよ（PascalCase / camelCase 規約）。
+# 除外理由: テストメソッド名を Method_State_Expected 形式（アンダースコア区切り）で統一している。
+#            Sonar external_roslyn:CA1707 のノイズ低減にも寄与する。
+dotnet_diagnostic.CA1707.severity = none
+
+# CA2000: スコープを抜ける前に IDisposable を破棄せよ。
+# 除外理由: 短い統合テストでは Engine / ハーネスを毎回 Dispose しないパターンが多く、
+#            テスト終了時のプロセス終了に任せる運用としている。
+dotnet_diagnostic.CA2000.severity = none
+
+# CA2007: await に ConfigureAwait を付けよ（ライブラリコード向けの同期コンテキスト回避）。
+# 除外理由: xUnit1030 に合わせテストでは ConfigureAwait(false) を付けない方針。
+#            CA2007（付けろ）と方針が両立しない。
+dotnet_diagnostic.CA2007.severity = none
+
+# CA1861: 繰り返し呼ぶメソッドには定数配列引数より static readonly フィールドを使え。
+# 除外理由: テストの Assert やフィクスチャでインライン配列リテラルを使う方が読みやすい。
+#            static readonly への抽出はボイラープレートが増えるだけで実益が小さい。
+dotnet_diagnostic.CA1861.severity = none
+
+# =============================================================================
+# engine/Statevia.Cli.Tests
+# =============================================================================
+
+[engine/Statevia.Cli.Tests/**/*.cs]
+
+# CA1515: インスタンス化されない型は internal にせよ。
+# 除外理由: Engine.Tests と同様、xUnit の public テストクラス要件と `dotnet format` による誤 internal 化を防ぐ。
+dotnet_diagnostic.CA1515.severity = none
+
+# CA1707: メンバー名からアンダースコアを削除せよ。
+# 除外理由: Engine.Tests と同様、テスト命名規約（アンダースコア区切り）を維持する。
+dotnet_diagnostic.CA1707.severity = none
+
+# CA2000: スコープを抜ける前に IDisposable を破棄せよ。
+# 除外理由: Engine.Tests と同様、短いテストでの Dispose 省略パターンを許容する。
+dotnet_diagnostic.CA2000.severity = none
+
+# CA2007: await に ConfigureAwait を付けよ。
+# 除外理由: Engine.Tests と同様、xUnit1030 方針（ConfigureAwait なし）と両立しない。
+dotnet_diagnostic.CA2007.severity = none
+
+# CA1861: 定数配列引数より static readonly フィールドを使え。
+# 除外理由: Engine.Tests と同様、インライン配列リテラルの可読性を優先する。
+dotnet_diagnostic.CA1861.severity = none
+
+# =============================================================================
+# engine/Statevia.Cli
+# =============================================================================
+
+[engine/Statevia.Cli/**/*.cs]
+
+# CA1303: ローカライズ可能なパラメーターにリテラル文字列を渡すな（リソースファイル経由にせよ）。
+# 除外理由: 開発者向け CLI ツールであり、多言語リソース化の対象外。Usage / エラーメッセージは英語固定で十分。
+dotnet_diagnostic.CA1303.severity = none

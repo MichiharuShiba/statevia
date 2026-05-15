@@ -21,7 +21,7 @@ public sealed class DefinitionCompilerServiceTests
             new DefaultScheduler(maxParallelism),
             new DefaultWorkflowInstanceFactory(),
             new UuidV7WorkflowInstanceIdGenerator(),
-            NullLogger<WorkflowEngine>.Instance);
+            NullLoggerFactory.Instance);
 
     private static IDefinitionLoadStrategy CreateDefaultStrategy() =>
         new DefinitionLoadStrategy(new StateWorkflowDefinitionLoader(), new NodesWorkflowDefinitionLoader());

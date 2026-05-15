@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Engine;
 
-public sealed class WorkflowEngineLoggingTests
+public sealed partial class WorkflowEngineLoggingTests
 {
     /// <summary>正常完走時に Workflow 開始・State スケジュール・State 完了（ElapsedMs 付き）が Information ログに残ることを検証する。</summary>
     [Fact]
@@ -19,7 +19,7 @@ public sealed class WorkflowEngineLoggingTests
         // Arrange
         var sink = new ListLogger();
         var def = CreateMinimalDefinition();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, logger: sink);
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
 
         // Act
         var id = engine.Start(def);
@@ -40,7 +40,7 @@ public sealed class WorkflowEngineLoggingTests
         // Arrange
         var sink = new ListLogger();
         var def = CreateDefinitionWithFailingState();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, logger: sink);
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
 
         // Act
         engine.Start(def);
@@ -59,7 +59,7 @@ public sealed class WorkflowEngineLoggingTests
         // Arrange
         var sink = new ListLogger();
         var def = CreateDefinitionWithForkJoin();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 2, logger: sink);
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 2, executionLogger: sink);
 
         // Act
         engine.Start(def);
@@ -102,7 +102,7 @@ public sealed class WorkflowEngineLoggingTests
                 ["B"] = DefaultStateExecutor.Create(new ImmediateState())
             })
         };
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, logger: sink);
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
 
         // Act
         engine.Start(def);
@@ -141,7 +141,7 @@ public sealed class WorkflowEngineLoggingTests
                 ["Start"] = DefaultStateExecutor.Create(new ImmediateState())
             })
         };
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, logger: sink);
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
 
         // Act
         engine.Start(def);
@@ -179,7 +179,7 @@ public sealed class WorkflowEngineLoggingTests
                 ["Start"] = DefaultStateExecutor.Create(new LoggingState())
             })
         };
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, logger: sink);
+        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
 
         // Act
         var workflowId = engine.Start(def);
@@ -195,9 +195,9 @@ public sealed class WorkflowEngineLoggingTests
                 e.Message.Contains("StateName=Start", StringComparison.Ordinal));
     }
 
-    private sealed class ListLogger : ILogger<WorkflowEngine>
+    private sealed class ListLogger : ILogger<WorkflowEngine.WorkflowExecutionLogger>
     {
-        public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = new();
+        public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = [];
         private readonly AsyncLocal<Stack<object>> _scopes = new();
 
         public IDisposable BeginScope<TState>(TState state) where TState : notnull
@@ -314,11 +314,17 @@ public sealed class WorkflowEngineLoggingTests
             Task.FromResult(_output);
     }
 
+    private static partial class LoggingTestMessages
+    {
+        [LoggerMessage(EventId = 9901, Level = LogLevel.Information, Message = "StateContext user log")]
+        public static partial void StateContextUserLog(ILogger logger);
+    }
+
     private sealed class LoggingState : IState<Unit, Unit>
     {
         public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
         {
-            ctx.Logger.LogInformation("StateContext user log");
+            LoggingTestMessages.StateContextUserLog(ctx.Logger);
             return Task.FromResult(Unit.Value);
         }
     }

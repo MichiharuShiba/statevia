@@ -67,7 +67,7 @@ public class DefaultStateExecutorTests
         var result = await executor.ExecuteAsync(ctx, Unit.Value, CancellationToken.None);
 
         // Assert
-        Assert.False((bool)result);
+        Assert.False(Assert.IsType<bool>(result));
     }
 
     private static StateContext CreateContext() => new()

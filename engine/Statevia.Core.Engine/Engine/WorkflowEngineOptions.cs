@@ -10,7 +10,7 @@ public sealed class WorkflowEngineOptions
     /// 最大並列実行数。
     /// </summary>
     /// <remarks>
-    /// ホストが <c>AddStateviaWorkflowEngine</c> 拡張で既定の <see cref="DefaultScheduler"/> を組み立てるときに参照する。既定値は 4。
+    /// ホストが <c>AddStateviaWorkflowEngine</c> 拡張で既定の <see cref="Scheduler.DefaultScheduler"/> を組み立てるときに参照する。既定値は 4。
     /// </remarks>
     public int MaxParallelism { get; set; } = 4;
 }
