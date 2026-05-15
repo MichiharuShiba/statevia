@@ -43,4 +43,17 @@ public class SchedulerTests
         // Assert
         Assert.Equal(42, result);
     }
+
+    /// <summary>Dispose 後の RunAsync が <see cref="ObjectDisposedException"/> になることを検証する。</summary>
+    [Fact]
+    public async Task ExecutionLimiter_AfterDispose_ThrowsObjectDisposed()
+    {
+        // Arrange
+        var limiter = new ExecutionLimiter(1);
+        limiter.Dispose();
+
+        // Act / Assert
+        await Assert.ThrowsAsync<ObjectDisposedException>(() =>
+            limiter.RunAsync(_ => Task.FromResult(0)));
+    }
 }
