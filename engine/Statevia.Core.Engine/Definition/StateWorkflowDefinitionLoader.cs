@@ -38,7 +38,7 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         };
     }
 
-    private static IReadOnlyDictionary<string, StateDefinition> ParseStates(Dictionary<string, object?> dict)
+    private static Dictionary<string, StateDefinition> ParseStates(Dictionary<string, object?> dict)
     {
         var result = new Dictionary<string, StateDefinition>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in dict)
@@ -99,7 +99,7 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         return new StateDefinition { Action = action, On = on, Wait = wait, Join = join, Input = stateInput };
     }
 
-    private static IReadOnlyDictionary<string, TransitionDefinition> ParseOn(Dictionary<string, object?> dict)
+    private static Dictionary<string, TransitionDefinition> ParseOn(Dictionary<string, object?> dict)
     {
         var result = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in dict)
@@ -125,7 +125,7 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         Default = ParseDefaultTransition(dict)
     };
 
-    private static IReadOnlyList<TransitionCaseDefinition>? ParseCases(Dictionary<string, object?> dict)
+    private static List<TransitionCaseDefinition>? ParseCases(Dictionary<string, object?> dict)
     {
         if (!dict.TryGetValue("cases", out var casesVal) || casesVal is null)
         {
@@ -203,14 +203,4 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         => ParseStrictInputMapping(inputVal)
             ?? throw new ArgumentException("input mapping is required.");
 
-    private static void EnsureOnlyKnownKeys(Dictionary<string, object?> dict, IReadOnlyCollection<string> knownKeys, string sectionName)
-    {
-        foreach (var key in dict.Keys)
-        {
-            if (!knownKeys.Contains(key, StringComparer.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException($"Unknown key in {sectionName}: {key}");
-            }
-        }
-    }
 }
