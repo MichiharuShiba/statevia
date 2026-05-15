@@ -30,7 +30,7 @@ public class DefinitionCompilerTests
         // Assert
         Assert.Equal("Test", compiled.Name);
         Assert.Equal(2, compiled.Transitions.Count);
-        Assert.True(compiled.Transitions["A"]["Completed"].Next == "B");
+        Assert.Equal("B", compiled.Transitions["A"]["Completed"].Next);
         Assert.True(compiled.Transitions["B"]["Completed"].End);
     }
 
@@ -120,7 +120,7 @@ public class DefinitionCompilerTests
             Workflow = new WorkflowMetadata { Name = "Test" },
             States = new Dictionary<string, StateDefinition>
             {
-                ["Start"] = new StateDefinition { Join = new JoinDefinition { AllOf = new List<string>() }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+                ["Start"] = new StateDefinition { Join = new JoinDefinition { AllOf = [] }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
             }
         };
         var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
