@@ -96,26 +96,9 @@ public static class LogRedaction
         return stringBuilder.ToString();
     }
 
-    private static bool IsSensitiveName(string name)
-    {
-        foreach (var substring in CredentialSubstringsInNames)
-        {
-            if (name.Contains(substring, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        foreach (var key in SensitiveKeys)
-        {
-            if (name.Equals(key, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    private static bool IsSensitiveName(string name) =>
+        CredentialSubstringsInNames.Any(substring => name.Contains(substring, StringComparison.OrdinalIgnoreCase))
+        || SensitiveKeys.Any(key => name.Equals(key, StringComparison.OrdinalIgnoreCase));
 
     private static string RedactJsonLikeKeys(string text)
     {
