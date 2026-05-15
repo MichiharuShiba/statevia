@@ -128,7 +128,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
 #pragma warning disable CA1031 // 複数ワークフローへブロードキャストするため、例外種別に依らず収集して AggregateException にまとめる
             catch (Exception exception)
             {
-                publishFailures ??= new List<Exception>();
+                publishFailures ??= [];
                 publishFailures.Add(exception);
             }
 #pragma warning restore CA1031
@@ -166,7 +166,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
 #pragma warning disable CA1031 // 複数ワークフローへブロードキャストするため、例外種別に依らず収集して AggregateException にまとめる
             catch (Exception exception)
             {
-                publishFailures ??= new List<Exception>();
+                publishFailures ??= [];
                 publishFailures.Add(exception);
             }
 #pragma warning restore CA1031
