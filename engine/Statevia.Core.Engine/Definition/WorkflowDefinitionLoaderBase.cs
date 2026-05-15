@@ -61,70 +61,118 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
 
         if (inputVal is string s)
         {
-            RejectTemplate(ownerLabel, s);
-            if (IsPathExpression(s))
-            {
-                if (!SimpleJsonPath.IsValid(s))
-                {
-                    throw new ArgumentException(Format(ownerLabel, $"invalid input path: '{s}'."));
-                }
-
-                return new StateInputDefinition { Path = s };
-            }
-
-            return new StateInputDefinition
-            {
-                Values = new Dictionary<string, StateInputValueDefinition>(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["value"] = new StateInputValueDefinition { Literal = s }
-                }
-            };
+            return ParseStrictInputFromString(s, ownerLabel);
         }
 
         var map = ToStringDict(inputVal, StringComparer.OrdinalIgnoreCase);
-        if (map.Count == 1
-            && map.TryGetValue("path", out var pathVal)
-            && pathVal is string onlyPath)
+        var singlePath = TryParseStrictInputSinglePath(map, ownerLabel);
+        if (singlePath is not null)
         {
-            RejectTemplate(ownerLabel, onlyPath);
-            if (IsPathExpression(onlyPath))
-            {
-                if (!SimpleJsonPath.IsValid(onlyPath))
-                {
-                    throw new ArgumentException(Format(ownerLabel, $"invalid input.path: '{onlyPath}'."));
-                }
-
-                return new StateInputDefinition { Path = onlyPath };
-            }
+            return singlePath;
         }
 
+        return ParseStrictInputFromMap(map, ownerLabel);
+    }
+
+    /// <summary>スカラー文字列の input を <see cref="StateInputDefinition"/> に解釈する。</summary>
+    /// <param name="s">YAML/JSON 由来の文字列（パス式またはリテラル）。</param>
+    /// <param name="ownerLabel">エラーメッセージ用のオーナー文脈。省略可。</param>
+    /// <returns>単一 <c>path</c> または <c>values.value</c> リテラルとしての定義。</returns>
+    private static StateInputDefinition ParseStrictInputFromString(string s, string? ownerLabel)
+    {
+        RejectTemplate(ownerLabel, s);
+        if (IsPathExpression(s))
+        {
+            if (!SimpleJsonPath.IsValid(s))
+            {
+                throw new ArgumentException(Format(ownerLabel, $"invalid input path: '{s}'."));
+            }
+
+            return new StateInputDefinition { Path = s };
+        }
+
+        return new StateInputDefinition
+        {
+            Values = new Dictionary<string, StateInputValueDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["value"] = new StateInputValueDefinition { Literal = s }
+            }
+        };
+    }
+
+    /// <summary><c>{ path: "$...." }</c> 形式の単一キー input を解釈する。</summary>
+    /// <param name="map">input の辞書。</param>
+    /// <param name="ownerLabel">エラーメッセージ用のオーナー文脈。省略可。</param>
+    /// <returns>単一 path として解釈できたときの定義。該当しないとき null。</returns>
+    private static StateInputDefinition? TryParseStrictInputSinglePath(
+        Dictionary<string, object?> map,
+        string? ownerLabel)
+    {
+        if (map.Count != 1
+            || !map.TryGetValue("path", out var pathVal)
+            || pathVal is not string onlyPath)
+        {
+            return null;
+        }
+
+        RejectTemplate(ownerLabel, onlyPath);
+        if (!IsPathExpression(onlyPath))
+        {
+            return null;
+        }
+
+        if (!SimpleJsonPath.IsValid(onlyPath))
+        {
+            throw new ArgumentException(Format(ownerLabel, $"invalid input.path: '{onlyPath}'."));
+        }
+
+        return new StateInputDefinition { Path = onlyPath };
+    }
+
+    /// <summary>複数キーの input マップを <c>values</c> 付き <see cref="StateInputDefinition"/> に解釈する。</summary>
+    /// <param name="map">キーと値の input 辞書。</param>
+    /// <param name="ownerLabel">エラーメッセージ用のオーナー文脈。省略可。</param>
+    /// <returns>各キーを path または literal として解釈した定義。</returns>
+    private static StateInputDefinition ParseStrictInputFromMap(
+        Dictionary<string, object?> map,
+        string? ownerLabel)
+    {
         var values = new Dictionary<string, StateInputValueDefinition>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, raw) in map)
         {
-            if (raw is string str)
-            {
-                RejectTemplate(ownerLabel, str);
-                if (IsPathExpression(str))
-                {
-                    if (!SimpleJsonPath.IsValid(str))
-                    {
-                        throw new ArgumentException(Format(ownerLabel, $"invalid input path for key '{key}': '{str}'."));
-                    }
-
-                    values[key] = new StateInputValueDefinition { Path = str };
-                }
-                else
-                {
-                    values[key] = new StateInputValueDefinition { Literal = str };
-                }
-            }
-            else
-            {
-                values[key] = new StateInputValueDefinition { Literal = raw };
-            }
+            values[key] = ParseStrictInputValue(raw, key, ownerLabel);
         }
 
         return new StateInputDefinition { Values = values };
+    }
+
+    /// <summary>input マップの 1 エントリを path または literal として解釈する。</summary>
+    /// <param name="raw">YAML/JSON 由来の値。</param>
+    /// <param name="key">マップ上のキー（エラーメッセージ用）。</param>
+    /// <param name="ownerLabel">エラーメッセージ用のオーナー文脈。省略可。</param>
+    /// <returns>path または literal を設定した値定義。</returns>
+    private static StateInputValueDefinition ParseStrictInputValue(
+        object? raw,
+        string key,
+        string? ownerLabel)
+    {
+        if (raw is not string str)
+        {
+            return new StateInputValueDefinition { Literal = raw };
+        }
+
+        RejectTemplate(ownerLabel, str);
+        if (!IsPathExpression(str))
+        {
+            return new StateInputValueDefinition { Literal = str };
+        }
+
+        if (!SimpleJsonPath.IsValid(str))
+        {
+            throw new ArgumentException(Format(ownerLabel, $"invalid input path for key '{key}': '{str}'."));
+        }
+
+        return new StateInputValueDefinition { Path = str };
     }
 
     /// <summary>
@@ -315,9 +363,16 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         return dict.Keys.Contains(key, StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>文字列が簡易 JSONPath 式（<c>$</c> または <c>$.</c> 始まり）かどうかを判定する。</summary>
+    /// <param name="s">判定対象の文字列。</param>
+    /// <returns>パス式として扱うとき true。</returns>
     private static bool IsPathExpression(string s) =>
         s == "$" || s.StartsWith("$.", StringComparison.Ordinal);
 
+    /// <summary><c>${...}</c> 形式のテンプレート文字列を拒否する（厳格仕様では未サポート）。</summary>
+    /// <param name="ownerLabel">エラーメッセージ用のオーナー文脈。省略可。</param>
+    /// <param name="value">検査対象の文字列。</param>
+    /// <exception cref="ArgumentException"><paramref name="value"/> が <c>${</c> で始まるとき。</exception>
     private static void RejectTemplate(string? ownerLabel, string value)
     {
         if (!value.StartsWith("${", StringComparison.Ordinal))
