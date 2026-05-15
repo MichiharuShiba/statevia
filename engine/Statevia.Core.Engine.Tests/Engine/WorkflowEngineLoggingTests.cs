@@ -197,7 +197,7 @@ public sealed partial class WorkflowEngineLoggingTests
 
     private sealed class ListLogger : ILogger<WorkflowEngine>
     {
-        public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = new();
+        public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = [];
         private readonly AsyncLocal<Stack<object>> _scopes = new();
 
         public IDisposable BeginScope<TState>(TState state) where TState : notnull
