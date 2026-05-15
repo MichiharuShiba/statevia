@@ -1,0 +1,10 @@
+root = false
+
+[Controllers/**/*.cs]
+dotnet_diagnostic.CA1515.severity = none
+
+[Contracts/**/*.cs]
+dotnet_diagnostic.CA1515.severity = none
+
+[Abstractions/Services/**/*.cs]
+dotnet_diagnostic.CA1515.severity = none
