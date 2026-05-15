@@ -7,6 +7,8 @@ namespace Statevia.Core.Engine.Abstractions;
 public interface IWorkflowEngine
 {
     /// <summary>コンパイル済み定義からワークフローインスタンスを開始し、その ID を返します。workflowId を指定した場合はその ID を使用し、null の場合はエンジンが生成します。</summary>
+    /// <param name="definition">コンパイル済みワークフロー定義。</param>
+    /// <param name="workflowId">使用するワークフロー ID。省略時はエンジンが生成する。</param>
     /// <param name="workflowInput">初期状態の <see cref="IStateExecutor.ExecuteAsync"/> に渡す入力（省略時は <c>null</c>）。</param>
     string Start(CompiledWorkflowDefinition definition, string? workflowId = null, object? workflowInput = null);
 
