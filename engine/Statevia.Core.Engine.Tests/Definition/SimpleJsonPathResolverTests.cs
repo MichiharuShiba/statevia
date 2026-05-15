@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Text.Json;
 using Statevia.Core.Engine.Definition;
 using Xunit;
@@ -135,5 +136,38 @@ public class SimpleJsonPathResolverTests
         Assert.True(r.Found);
         var je = Assert.IsType<JsonElement>(r.Value);
         Assert.Equal(99, je.GetInt32());
+    }
+
+    /// <summary><see cref="IDictionary"/>（非 <see cref="IReadOnlyDictionary{TKey,TValue}"/>）でもセグメント解決できることを検証する。</summary>
+    [Fact]
+    public void Resolve_NonReadOnlyDictionary_TraversesSegments()
+    {
+        // Arrange
+        IDictionary table = new Hashtable { ["a"] = new Hashtable { ["b"] = "leaf" } };
+
+        // Act
+        var r = SimpleJsonPathResolver.Resolve(table, "$.a.b");
+
+        // Assert
+        Assert.True(r.IsSupportedPathExpression);
+        Assert.True(r.Found);
+        Assert.Equal("leaf", r.Value);
+    }
+
+    /// <summary><see cref="JsonElement"/> で存在しないプロパティは PathSegmentMissing になることを検証する。</summary>
+    [Fact]
+    public void Resolve_JsonElementMissingProperty_ReturnsPathSegmentMissing()
+    {
+        // Arrange
+        using var doc = JsonDocument.Parse("""{"a":{}}""");
+        var root = doc.RootElement;
+
+        // Act
+        var r = SimpleJsonPathResolver.Resolve(root, "$.a.missing");
+
+        // Assert
+        Assert.True(r.IsSupportedPathExpression);
+        Assert.False(r.Found);
+        Assert.Equal(SimpleJsonPathResolver.PathSegmentMissing, r.WarningReason);
     }
 }
