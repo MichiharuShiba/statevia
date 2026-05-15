@@ -10,11 +10,7 @@ public interface IDefinitionService
     Task<List<DefinitionResponse>> ListAsync(string tenantId, CancellationToken ct);
     Task<PagedResult<DefinitionResponse>> ListPagedAsync(
         string tenantId,
-        int offset,
-        int limit,
-        string? nameContains,
-        string? sortBy,
-        string? sortOrder,
+        DefinitionListQuery query,
         CancellationToken ct);
     Task<DefinitionResponse> GetAsync(string tenantId, string idOrUuid, CancellationToken ct);
 }

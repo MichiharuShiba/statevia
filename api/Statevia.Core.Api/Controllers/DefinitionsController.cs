@@ -22,18 +22,25 @@ public class DefinitionsController : ControllerBase
 
     /// <summary>POST /v1/definitions — 定義を登録。name + yaml を受け取り、検証・コンパイルして保存。</summary>
     [HttpPost]
-    public async Task<ActionResult<DefinitionResponse>> Create([FromBody] CreateDefinitionRequest request, CancellationToken ct)
+    public async Task<ActionResult<DefinitionResponse>> Create(
+        [FromBody] CreateDefinitionRequest request,
+        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
+        CancellationToken ct = default)
     {
-        var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
+        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         var created = await _definitions.CreateAsync(tenantId, request, ct).ConfigureAwait(false);
         return CreatedAtAction(nameof(Get), new { id = created.DisplayId }, created);
     }
 
     /// <summary>PUT /v1/definitions/{id} — 定義を更新。name + yaml を受け取り、検証・コンパイルして保存。</summary>
     [HttpPut("{id}")]
-    public async Task<ActionResult<DefinitionResponse>> Update(string id, [FromBody] UpdateDefinitionRequest request, CancellationToken ct)
+    public async Task<ActionResult<DefinitionResponse>> Update(
+        string id,
+        [FromBody] UpdateDefinitionRequest request,
+        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
+        CancellationToken ct = default)
     {
-        var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
+        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         var updated = await _definitions.UpdateAsync(tenantId, id, request, ct).ConfigureAwait(false);
         return Ok(updated);
     }
@@ -44,36 +51,35 @@ public class DefinitionsController : ControllerBase
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> List(
-        [FromQuery] int? limit,
-        [FromQuery] int offset = 0,
-        [FromQuery] string? name = null,
-        [FromQuery] string? sortBy = null,
-        [FromQuery] string? sortOrder = null,
+        [FromQuery] DefinitionListQuery query,
+        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
-        var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
-        if (limit is null)
+        ArgumentNullException.ThrowIfNull(query);
+        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
+        if (query.Limit is null)
         {
             var list = await _definitions.ListAsync(tenantId, ct).ConfigureAwait(false);
             return Ok(list);
         }
 
-        ArgumentOutOfRangeException.ThrowIfNegative(offset);
-        ArgumentOutOfRangeException.ThrowIfLessThan(limit.Value, 1);
-        if (limit.Value > 500)
+        ArgumentOutOfRangeException.ThrowIfNegative(query.Offset);
+        ArgumentOutOfRangeException.ThrowIfLessThan(query.Limit.Value, 1);
+        if (query.Limit.Value > 500)
             throw new ArgumentException("limit must be at most 500");
 
-        var paged = await _definitions
-            .ListPagedAsync(tenantId, offset, limit.Value, name, sortBy, sortOrder, ct)
-            .ConfigureAwait(false);
+        var paged = await _definitions.ListPagedAsync(tenantId, query, ct).ConfigureAwait(false);
         return Ok(paged);
     }
 
     /// <summary>GET /v1/definitions/{id} — 表示用 ID または UUID で取得（U4）。</summary>
     [HttpGet("{id}")]
-    public async Task<ActionResult<DefinitionResponse>> Get(string id, CancellationToken ct)
+    public async Task<ActionResult<DefinitionResponse>> Get(
+        string id,
+        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
+        CancellationToken ct = default)
     {
-        var tenantId = Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
+        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         var row = await _definitions.GetAsync(tenantId, id, ct).ConfigureAwait(false);
         return Ok(row);
     }
@@ -118,4 +124,3 @@ public class DefinitionResponse
     [JsonPropertyName("yaml")]
     public string? Yaml { get; set; }
 }
-

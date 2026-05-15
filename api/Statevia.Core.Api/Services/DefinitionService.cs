@@ -7,7 +7,7 @@ using Statevia.Core.Api.Contracts;
 
 namespace Statevia.Core.Api.Services;
 
-public sealed class DefinitionService : IDefinitionService
+internal sealed class DefinitionService : IDefinitionService
 {
     private readonly IDisplayIdService _displayIds;
     private readonly IDefinitionCompilerService _compiler;
@@ -96,19 +96,17 @@ public sealed class DefinitionService : IDefinitionService
 
     public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(
         string tenantId,
-        int offset,
-        int limit,
-        string? nameContains,
-        string? sortBy,
-        string? sortOrder,
+        DefinitionListQuery query,
         CancellationToken ct)
     {
-        var query = new DefinitionListPageQuery(
-            Page: new PageQuery(offset, limit),
-            Sort: new SortQuery(sortBy, sortOrder),
-            NameContains: nameContains);
+        ArgumentNullException.ThrowIfNull(query);
+        var limit = query.Limit ?? throw new ArgumentException("limit is required for paged list");
+        var pageQuery = new DefinitionListPageQuery(
+            Page: new PageQuery(query.Offset, limit),
+            Sort: new SortQuery(query.SortBy, query.SortOrder),
+            NameContains: query.Name);
         var (total, pairs) = await _definitions
-            .ListWithDisplayIdsPageAsync(tenantId, query, ct)
+            .ListWithDisplayIdsPageAsync(tenantId, pageQuery, ct)
             .ConfigureAwait(false);
         var items = pairs.Select(p => new DefinitionResponse
         {
@@ -123,9 +121,9 @@ public sealed class DefinitionService : IDefinitionService
         {
             Items = items,
             TotalCount = total,
-            Offset = offset,
+            Offset = query.Offset,
             Limit = limit,
-            HasMore = offset + items.Count < total
+            HasMore = query.Offset + items.Count < total
         };
     }
 

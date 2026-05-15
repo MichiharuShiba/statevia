@@ -35,7 +35,7 @@ public sealed class DefinitionsControllerTests
             return ListResult;
         }
 
-        public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(string tenantId, int offset, int limit, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct)
+        public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(string tenantId, DefinitionListQuery query, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
@@ -84,7 +84,7 @@ public sealed class DefinitionsControllerTests
         };
 
         var req = new CreateDefinitionRequest { Name = "n", Yaml = "workflow: {}" };
-        var res = await controller.Create(req, CancellationToken.None);
+        var res = await controller.Create(req, ct: CancellationToken.None);
 
         // Assert
         var created = Assert.IsType<CreatedAtActionResult>(res.Result);
@@ -117,7 +117,7 @@ public sealed class DefinitionsControllerTests
         };
 
         // Assert
-        var res = await controller.List(limit: null, offset: 0, name: null, sortBy: null, sortOrder: null, CancellationToken.None);
+        var res = await controller.List(new DefinitionListQuery(), ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(res);
         var list = Assert.IsType<List<DefinitionResponse>>(ok.Value);
         Assert.Single(list);
@@ -148,7 +148,7 @@ public sealed class DefinitionsControllerTests
         };
 
         // Assert
-        var res = await controller.List(limit: null, offset: 0, name: null, sortBy: null, sortOrder: null, CancellationToken.None);
+        var res = await controller.List(new DefinitionListQuery(), ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(res);
         var list = Assert.IsType<List<DefinitionResponse>>(ok.Value);
         Assert.Single(list);
@@ -184,7 +184,7 @@ public sealed class DefinitionsControllerTests
         };
 
         // Assert
-        var res = await controller.List(limit: 1, offset: 0, name: null, sortBy: null, sortOrder: null, CancellationToken.None);
+        var res = await controller.List(new DefinitionListQuery { Limit = 1, Offset = 0 }, ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(res);
         var paged = Assert.IsType<PagedResult<DefinitionResponse>>(ok.Value);
         Assert.False(paged.HasMore);
@@ -206,7 +206,7 @@ public sealed class DefinitionsControllerTests
             ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = http }
         };
 
-        await Assert.ThrowsAsync<ArgumentException>(() => controller.List(limit: 501, offset: 0, name: null, sortBy: null, sortOrder: null, CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() => controller.List(new DefinitionListQuery { Limit = 501, Offset = 0 }, ct: CancellationToken.None));
     }
 
     /// <summary>
@@ -229,7 +229,7 @@ public sealed class DefinitionsControllerTests
         };
 
         // Assert
-        var res = await controller.Get("id", CancellationToken.None);
+        var res = await controller.Get("id", ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(res.Result);
         var body = Assert.IsType<DefinitionResponse>(ok.Value);
         Assert.Equal(expected.DisplayId, body.DisplayId);
@@ -250,7 +250,7 @@ public sealed class DefinitionsControllerTests
             ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = http }
         };
 
-        var res = await controller.Update("id", new UpdateDefinitionRequest { Name = "updated", Yaml = "workflow: {}" }, CancellationToken.None);
+        var res = await controller.Update("id", new UpdateDefinitionRequest { Name = "updated", Yaml = "workflow: {}" }, ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(res.Result);
         var body = Assert.IsType<DefinitionResponse>(ok.Value);
         Assert.Equal(expected.DisplayId, body.DisplayId);
@@ -277,7 +277,7 @@ public sealed class DefinitionsControllerTests
 
         var req = new CreateDefinitionRequest { Name = "n", Yaml = "workflow: {}" };
 
-        await Assert.ThrowsAsync<NotFoundException>(() => controller.Create(req, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => controller.Create(req, ct: CancellationToken.None));
     }
 
     /// <summary>
@@ -297,7 +297,7 @@ public sealed class DefinitionsControllerTests
             ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = http }
         };
 
-        await Assert.ThrowsAsync<NotFoundException>(() => controller.Get("id", CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => controller.Get("id", ct: CancellationToken.None));
     }
 
     /// <summary>
@@ -324,7 +324,7 @@ public sealed class DefinitionsControllerTests
         };
 
         var req = new CreateDefinitionRequest { Name = "n", Yaml = "workflow: {}" };
-        var res = await controller.Create(req, CancellationToken.None);
+        var res = await controller.Create(req, ct: CancellationToken.None);
 
         // Assert
         var created = Assert.IsType<CreatedAtActionResult>(res.Result);
@@ -353,7 +353,7 @@ public sealed class DefinitionsControllerTests
         };
 
         // Assert
-        var res = await controller.Get("id", CancellationToken.None);
+        var res = await controller.Get("id", ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(res.Result);
         var body = Assert.IsType<DefinitionResponse>(ok.Value);
         Assert.Equal("D1", body.DisplayId);
