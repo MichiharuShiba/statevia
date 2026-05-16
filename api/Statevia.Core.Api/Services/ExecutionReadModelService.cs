@@ -1,7 +1,7 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
+using Statevia.Core.Api.Infrastructure;
 using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Services;
@@ -85,14 +85,7 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
             return Array.Empty<ExecutionNodeReadModel>();
         }
 
-        ExecutionGraphSnapshotDto? dto;
-        try
-        {
-            dto = JsonSerializer.Deserialize<ExecutionGraphSnapshotDto>(
-                graphJson,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        }
-        catch
+        if (!JsonDeserialize.TryDeserialize(graphJson, JsonDeserialize.CaseInsensitiveDeserializeOptions, out ExecutionGraphSnapshotDto? dto))
         {
             return Array.Empty<ExecutionNodeReadModel>();
         }
