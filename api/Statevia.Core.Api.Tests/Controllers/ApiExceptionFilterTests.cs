@@ -10,7 +10,7 @@ public sealed class ApiExceptionFilterTests
     private static ExceptionContext CreateContext(DefaultHttpContext http, Exception ex)
     {
         var actionContext = new Microsoft.AspNetCore.Mvc.ActionContext(http, new Microsoft.AspNetCore.Routing.RouteData(), new Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor());
-        var context = new ExceptionContext(actionContext, new List<IFilterMetadata>());
+        var context = new ExceptionContext(actionContext, []);
         context.Exception = ex;
         return context;
     }

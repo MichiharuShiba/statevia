@@ -63,7 +63,7 @@ public sealed class TraceContextEnrichmentMiddlewareTests
 
     private sealed class LogCollector : ILoggerProvider, IDisposable
     {
-        public List<string> Entries { get; } = new();
+        public List<string> Entries { get; } = [];
 
         public ILogger CreateLogger(string categoryName) => new CollLogger(Entries);
 

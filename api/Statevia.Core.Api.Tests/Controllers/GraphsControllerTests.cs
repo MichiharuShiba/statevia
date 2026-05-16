@@ -39,8 +39,8 @@ public sealed class GraphsControllerTests
         var expected = new GraphDefinitionResponse
         {
             GraphId = "g1",
-            Nodes = new GraphNodeDefinition[0],
-            Edges = new GraphEdgeDefinition[0]
+            Nodes = Array.Empty<GraphNodeDefinition>(),
+            Edges = Array.Empty<GraphEdgeDefinition>()
         };
 
         var fakeSvc = new FakeGraphDefinitionService

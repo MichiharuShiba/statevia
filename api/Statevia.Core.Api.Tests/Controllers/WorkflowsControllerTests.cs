@@ -62,8 +62,8 @@ public sealed class WorkflowsControllerTests
         public string? LastIdempotencyKey { get; private set; }
 
         public WorkflowResponse StartResult { get; set; } = new WorkflowResponse();
-        public List<WorkflowResponse> ListResult { get; set; } = new();
-        public PagedResult<WorkflowResponse> ListPagedResult { get; set; } = new() { Items = new List<WorkflowResponse>(), TotalCount = 0, Offset = 0, Limit = 0, HasMore = false };
+        public List<WorkflowResponse> ListResult { get; set; } = [];
+        public PagedResult<WorkflowResponse> ListPagedResult { get; set; } = new() { Items = [], TotalCount = 0, Offset = 0, Limit = 0, HasMore = false };
         public WorkflowResponse GetResult { get; set; } = new WorkflowResponse();
         public string GraphJsonResult { get; set; } = "{\"nodes\":[]}";
         public WorkflowViewDto ViewResult { get; set; } = new WorkflowViewDto();
@@ -246,10 +246,10 @@ public sealed class WorkflowsControllerTests
         // Act
         var workflows = new FakeWorkflowService
         {
-            ListResult = new List<WorkflowResponse>
-            {
+            ListResult =
+            [
                 new WorkflowResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow },
-            }
+            ]
         };
 
         var stream = new WorkflowStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
@@ -275,10 +275,10 @@ public sealed class WorkflowsControllerTests
         // Act
         var workflows = new FakeWorkflowService
         {
-            ListResult = new List<WorkflowResponse>
-            {
+            ListResult =
+            [
                 new WorkflowResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow },
-            }
+            ]
         };
 
         var stream = new WorkflowStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
@@ -307,10 +307,10 @@ public sealed class WorkflowsControllerTests
         {
             ListPagedResult = new PagedResult<WorkflowResponse>
             {
-                Items = new List<WorkflowResponse>
-                {
+                Items =
+                [
                     new WorkflowResponse { DisplayId = "D2", ResourceId = Guid.NewGuid(), Status = "Completed", StartedAt = DateTime.UtcNow }
-                },
+                ],
                 TotalCount = 1,
                 Offset = 0,
                 Limit = 1,
@@ -451,8 +451,8 @@ public sealed class WorkflowsControllerTests
                 UpdatedAt = null,
                 CancelRequested = false,
                 RestartLost = false,
-                Nodes = new List<WorkflowViewNodeDto>
-                {
+                Nodes =
+                [
                     new WorkflowViewNodeDto
                     {
                         ExecutionNodeId = "n1",
@@ -471,7 +471,7 @@ public sealed class WorkflowsControllerTests
                             }
                             """).RootElement.Clone()
                     }
-                }
+                ]
             }
         };
 
@@ -505,10 +505,10 @@ public sealed class WorkflowsControllerTests
         {
             EventsResult = new ExecutionEventsResponseDto
             {
-                Events = new List<TimelineEventDto>
-                {
+                Events =
+                [
                     new TimelineEventDto { Seq = 1, Type = "ExecutionStatusChanged", ExecutionId = "E1", To = "Running", At = DateTime.UtcNow.ToString("O") }
-                },
+                ],
                 HasMore = false
             }
         };
@@ -1082,7 +1082,7 @@ public sealed class WorkflowsControllerTests
         // Act
         var workflows = new FakeWorkflowService
         {
-            ViewResult = new WorkflowViewDto { DisplayId = "E1", ResourceId = Guid.NewGuid().ToString("D"), GraphId = "G1", Status = "ACTIVE", StartedAt = DateTime.UtcNow, UpdatedAt = null, CancelRequested = false, RestartLost = false, Nodes = new List<WorkflowViewNodeDto>() }
+            ViewResult = new WorkflowViewDto { DisplayId = "E1", ResourceId = Guid.NewGuid().ToString("D"), GraphId = "G1", Status = "ACTIVE", StartedAt = DateTime.UtcNow, UpdatedAt = null, CancelRequested = false, RestartLost = false, Nodes = [] }
         };
         var stream = new WorkflowStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, workflows, stream);
@@ -1108,7 +1108,7 @@ public sealed class WorkflowsControllerTests
         // Act
         var workflows = new FakeWorkflowService
         {
-            EventsResult = new ExecutionEventsResponseDto { Events = new List<TimelineEventDto>(), HasMore = false }
+            EventsResult = new ExecutionEventsResponseDto { Events = [], HasMore = false }
         };
         var stream = new WorkflowStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, workflows, stream);

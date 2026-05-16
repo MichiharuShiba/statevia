@@ -61,7 +61,7 @@ public sealed class DefinitionServiceTests
     {
         public string? AllocateValue { get; init; }
         public Dictionary<string, Guid> ResolveMap { get; } = new(StringComparer.OrdinalIgnoreCase);
-        public Dictionary<(string Kind, string IdOrUuid), string?> DisplayMap { get; } = new();
+        public Dictionary<(string Kind, string IdOrUuid), string?> DisplayMap { get; } = [];
 
         public Task<string> AllocateAsync(string kind, Guid uuid, CancellationToken ct = default)
         {

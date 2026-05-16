@@ -14,8 +14,8 @@ public sealed class DefinitionsControllerTests
         public string? LastTenantId { get; private set; }
 
         public DefinitionResponse CreateResult { get; set; } = new DefinitionResponse();
-        public List<DefinitionResponse> ListResult { get; set; } = new();
-        public PagedResult<DefinitionResponse> ListPagedResult { get; set; } = new() { Items = new List<DefinitionResponse>(), TotalCount = 0, Offset = 0, Limit = 0, HasMore = false };
+        public List<DefinitionResponse> ListResult { get; set; } = [];
+        public PagedResult<DefinitionResponse> ListPagedResult { get; set; } = new() { Items = [], TotalCount = 0, Offset = 0, Limit = 0, HasMore = false };
         public DefinitionResponse GetResult { get; set; } = new DefinitionResponse();
         public DefinitionResponse UpdateResult { get; set; } = new DefinitionResponse();
 
@@ -105,10 +105,10 @@ public sealed class DefinitionsControllerTests
         // Act
         var fake = new FakeDefinitionService
         {
-            ListResult = new List<DefinitionResponse>
-            {
+            ListResult =
+            [
                 new DefinitionResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Name = "a", CreatedAt = DateTime.UtcNow }
-            }
+            ]
         };
 
         var controller = new DefinitionsController(fake)
@@ -136,10 +136,10 @@ public sealed class DefinitionsControllerTests
         // Act
         var fake = new FakeDefinitionService
         {
-            ListResult = new List<DefinitionResponse>
-            {
+            ListResult =
+            [
                 new DefinitionResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Name = "a", CreatedAt = DateTime.UtcNow }
-            }
+            ]
         };
 
         var controller = new DefinitionsController(fake)
@@ -170,7 +170,7 @@ public sealed class DefinitionsControllerTests
         {
             ListPagedResult = new PagedResult<DefinitionResponse>
             {
-                Items = new List<DefinitionResponse> { new DefinitionResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Name = "a", CreatedAt = DateTime.UtcNow } },
+                Items = [new DefinitionResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Name = "a", CreatedAt = DateTime.UtcNow }],
                 TotalCount = 1,
                 Offset = 0,
                 Limit = 1,
