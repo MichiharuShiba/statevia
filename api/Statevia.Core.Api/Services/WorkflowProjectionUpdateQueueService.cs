@@ -416,7 +416,7 @@ internal sealed class WorkflowProjectionUpdateQueueService : BackgroundService, 
     private static TaskCompletionSource<bool> CreateCompletedSignal()
     {
         var taskCompletionSource = CreatePendingSignal();
-        taskCompletionSource.TrySetResult(true);
+        _ = taskCompletionSource.TrySetResult(true);
         return taskCompletionSource;
     }
 }
