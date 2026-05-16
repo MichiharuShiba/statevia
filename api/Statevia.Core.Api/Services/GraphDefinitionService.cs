@@ -9,6 +9,11 @@ namespace Statevia.Core.Api.Services;
 /// <summary>定義の compiled_json から契約の Graph Definition（nodes / edges）を組み立てる。</summary>
 internal sealed class GraphDefinitionService : IGraphDefinitionService
 {
+    private static readonly JsonSerializerOptions CaseInsensitiveJsonSerializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
     private readonly IDisplayIdService _displayIds;
 
@@ -59,8 +64,7 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     /// </summary>
     private static CompiledDefinitionDto? DeserializeCompiledDefinition(string compiledJson)
     {
-        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        return JsonSerializer.Deserialize<CompiledDefinitionDto>(compiledJson, opts);
+        return JsonSerializer.Deserialize<CompiledDefinitionDto>(compiledJson, CaseInsensitiveJsonSerializerOptions);
     }
 
     /// <summary>
@@ -311,6 +315,6 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     {
         public string? Next { get; set; } = string.Empty;
         public List<string>? Fork { get; set; } = [];
-        public bool End { get; set; } = false;
+        public bool End { get; set; }
     }
 }
