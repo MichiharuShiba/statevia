@@ -36,8 +36,7 @@ internal sealed class TraceContextEnrichmentMiddleware
             if (!string.IsNullOrEmpty(wf) || !string.IsNullOrEmpty(def) || !string.IsNullOrEmpty(graph))
             {
                 TryLog(() =>
-                    logger.LogInformation(
-                        "HTTP trace enrich TraceId={TraceId} WorkflowId={WorkflowId} DefinitionId={DefinitionId} GraphDefinitionId={GraphDefinitionId}",
+                    logger.HttpTraceEnrich(
                         traceId,
                         string.IsNullOrEmpty(wf) ? null : wf,
                         string.IsNullOrEmpty(def) ? null : def,
