@@ -379,5 +379,43 @@ public sealed class DefinitionServiceTests
         Assert.Equal("{\"new\":true}", row.CompiledJson);
         Assert.True(row.UpdatedAt > createdAt);
     }
+
+    /// <summary>更新時のコンパイル失敗を 422 用検証例外へラップする。</summary>
+    [Fact]
+    public async Task UpdateAsync_WhenCompilerThrows_WrapsToApiValidationException()
+    {
+        // Arrange
+        using var inDb = new InMemoryTestDatabase();
+        var definitionsRepo = new DefinitionRepository(inDb.Factory);
+        var guid = Guid.NewGuid();
+        var createdAt = DateTime.UtcNow;
+        await using (var ctx = new CoreDbContext(inDb.Options))
+        {
+            ctx.WorkflowDefinitions.Add(new WorkflowDefinitionRow
+            {
+                DefinitionId = guid,
+                TenantId = "t1",
+                Name = "old",
+                SourceYaml = "workflow:\n  name: old",
+                CompiledJson = "{}",
+                CreatedAt = createdAt,
+                UpdatedAt = createdAt
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        var display = new StubDisplayIdService();
+        display.ResolveMap["definition|DEF-1"] = guid;
+        var compiler = new ThrowingCompiler(new ArgumentException("yaml invalid"));
+        var sut = new DefinitionService(display, compiler, definitionsRepo, new FixedIdGenerator(Guid.NewGuid()));
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() =>
+            sut.UpdateAsync("t1", "DEF-1", new UpdateDefinitionRequest { Name = "n", Yaml = "bad" }, CancellationToken.None));
+
+        // Assert
+        Assert.Equal(DefinitionValidationMessages.ValidationFailed, ex.Message);
+        Assert.IsType<ArgumentException>(ex.InnerException);
+    }
 }
 
