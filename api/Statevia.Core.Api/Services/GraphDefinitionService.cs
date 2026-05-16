@@ -292,11 +292,11 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     {
         public string Name { get; set; } = string.Empty;
         public string InitialState { get; set; } = string.Empty;
-        public Dictionary<string, Dictionary<string, TransitionTargetDto>?>? Transitions { get; set; } = new();
-        public Dictionary<string, Dictionary<string, CompiledFactTransitionDto>?>? ConditionalTransitions { get; set; } = new();
-        public Dictionary<string, List<string>?>? ForkTable { get; set; } = new();
-        public Dictionary<string, List<string>?>? JoinTable { get; set; } = new();
-        public Dictionary<string, string>? WaitTable { get; set; } = new();
+        public Dictionary<string, Dictionary<string, TransitionTargetDto>?>? Transitions { get; set; } = [];
+        public Dictionary<string, Dictionary<string, CompiledFactTransitionDto>?>? ConditionalTransitions { get; set; } = [];
+        public Dictionary<string, List<string>?>? ForkTable { get; set; } = [];
+        public Dictionary<string, List<string>?>? JoinTable { get; set; } = [];
+        public Dictionary<string, string>? WaitTable { get; set; } = [];
     }
 
     private sealed class CompiledFactTransitionDto
@@ -315,6 +315,14 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     {
         public string? Next { get; set; } = string.Empty;
         public List<string>? Fork { get; set; } = [];
-        public bool End { get; init; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage(
+            "Major Code Smell",
+            "S1144:Unused private types or members should be removed",
+            Justification = "JSON 逆シリアル化が setter を使用する。")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage(
+            "Minor Code Smell",
+            "S3459:Unassigned members should be set or removed",
+            Justification = "JSON 逆シリアル化で代入される。")]
+        public bool End { get; set; }
     }
 }
