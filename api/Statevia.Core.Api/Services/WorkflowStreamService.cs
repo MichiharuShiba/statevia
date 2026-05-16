@@ -20,19 +20,31 @@ public sealed class WorkflowStreamService
     };
 
     /// <summary>
-    /// 投影済みグラフ JSON の取得・比較ループ間隔（ms）。フェーズ 1 は 2 秒固定（`docs/statevia-data-integration-contract.md` の SSE 節と整合）。
+    /// 投影グラフ取得のポーリング間隔（ミリ秒）。
     /// </summary>
     internal const int GraphPollingIntervalMilliseconds = 2000;
 
     private readonly IWorkflowService _workflows;
     private readonly IDisplayIdService _displayIds;
 
+    /// <summary>
+    /// <see cref="WorkflowStreamService"/> を生成する。
+    /// </summary>
+    /// <param name="workflows">ワークフローサービス。</param>
+    /// <param name="displayIds">表示 ID 解決。</param>
     public WorkflowStreamService(IWorkflowService workflows, IDisplayIdService displayIds)
     {
         _workflows = workflows;
         _displayIds = displayIds;
     }
 
+    /// <summary>
+    /// Server-Sent Events としてグラフ JSON の変化を書き込む。
+    /// </summary>
+    /// <param name="response">HTTP レスポンス。</param>
+    /// <param name="tenantId">テナント ID。</param>
+    /// <param name="idOrUuid">ワークフロー表示 ID または UUID。</param>
+    /// <param name="ct">キャンセルトークン。</param>
     public async Task WriteStreamAsync(HttpResponse response, string tenantId, string idOrUuid, CancellationToken ct)
     {
         if (ct.IsCancellationRequested)

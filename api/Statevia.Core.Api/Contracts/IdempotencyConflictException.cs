@@ -6,6 +6,10 @@ namespace Statevia.Core.Api.Contracts;
 /// </summary>
 public sealed class IdempotencyConflictException : Exception
 {
+    /// <summary>
+    /// <see cref="IdempotencyConflictException"/> を生成する。
+    /// </summary>
+    /// <param name="message">説明メッセージ。</param>
     public IdempotencyConflictException(string message)
         : base(message)
     {

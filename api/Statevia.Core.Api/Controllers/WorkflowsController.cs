@@ -10,6 +10,9 @@ using Statevia.Core.Api.Services;
 
 namespace Statevia.Core.Api.Controllers;
 
+/// <summary>
+/// ワークフロー REST API（<c>/v1/workflows</c>）。
+/// </summary>
 [ApiController]
 [Route("v1/workflows")]
 public class WorkflowsController : ControllerBase
@@ -19,6 +22,11 @@ public class WorkflowsController : ControllerBase
     private readonly IWorkflowService _workflows;
     private readonly WorkflowStreamService _stream;
 
+    /// <summary>
+    /// <see cref="WorkflowsController"/> を生成する。
+    /// </summary>
+    /// <param name="workflows">ワークフローサービス。</param>
+    /// <param name="stream">SSE 用ストリームサービス。</param>
     public WorkflowsController(
         IWorkflowService workflows,
         WorkflowStreamService stream)
@@ -203,42 +211,57 @@ public class WorkflowsController : ControllerBase
     }
 }
 
+/// <summary>POST /v1/workflows のリクエスト本文。</summary>
 public class StartWorkflowRequest
 {
+    /// <summary>開始に用いる定義 ID（display または UUID）。</summary>
     [Required]
     public string DefinitionId { get; set; } = "";
+
+    /// <summary>ワークフロー入力（任意）。</summary>
     public JsonElement? Input { get; set; }
 }
 
+/// <summary>POST …/events のリクエスト本文。</summary>
 public class PublishEventRequest
 {
+    /// <summary>発行するイベント名。</summary>
     [Required]
     public string Name { get; set; } = "";
 }
 
+/// <summary>ワークフロー一覧・単票の JSON 応答形（U4）。</summary>
 public class WorkflowResponse
 {
+    /// <summary>表示用ワークフロー ID。</summary>
     [JsonPropertyName("displayId")]
     public string DisplayId { get; set; } = "";
 
+    /// <summary>ワークフローのリソース UUID。</summary>
     [JsonPropertyName("resourceId")]
     public Guid ResourceId { get; set; }
 
+    /// <summary>定義グラフ ID。</summary>
     [JsonPropertyName("graphId")]
     public string GraphId { get; set; } = "";
 
+    /// <summary>状態文字列。</summary>
     [JsonPropertyName("status")]
     public string Status { get; set; } = "";
 
+    /// <summary>開始日時（UTC）。</summary>
     [JsonPropertyName("startedAt")]
     public DateTime StartedAt { get; set; }
 
+    /// <summary>最終更新日時（UTC）。</summary>
     [JsonPropertyName("updatedAt")]
     public DateTime? UpdatedAt { get; set; }
 
+    /// <summary>キャンセル要求フラグ。</summary>
     [JsonPropertyName("cancelRequested")]
     public bool CancelRequested { get; set; }
 
+    /// <summary>再起動喪失フラグ。</summary>
     [JsonPropertyName("restartLost")]
     public bool RestartLost { get; set; }
 }

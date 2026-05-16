@@ -4,12 +4,19 @@ using Statevia.Core.Api.Abstractions.Services;
 
 namespace Statevia.Core.Api.Controllers;
 
+/// <summary>
+/// nodes 入力スキーマ REST API（<c>/v1/definitions/schema</c>）。
+/// </summary>
 [ApiController]
 [Route("v1/definitions/schema")]
 public class DefinitionSchemasController : ControllerBase
 {
     private readonly IDefinitionSchemaService _definitionSchemas;
 
+    /// <summary>
+    /// <see cref="DefinitionSchemasController"/> を生成する。
+    /// </summary>
+    /// <param name="definitionSchemas">スキーマサービス。</param>
     public DefinitionSchemasController(IDefinitionSchemaService definitionSchemas)
     {
         _definitionSchemas = definitionSchemas;
@@ -31,14 +38,18 @@ public class DefinitionSchemasController : ControllerBase
     }
 }
 
+/// <summary>GET …/schema/nodes のレスポンス本文。</summary>
 public class DefinitionNodesSchemaResponse
 {
+    /// <summary>スキーマ文書のバージョン文字列。</summary>
     [JsonPropertyName("schemaVersion")]
     public string SchemaVersion { get; set; } = "";
 
+    /// <summary>nodes スキーマの整数バージョン。</summary>
     [JsonPropertyName("nodesVersion")]
     public int NodesVersion { get; set; }
 
+    /// <summary>スキーマ JSON オブジェクト。</summary>
     [JsonPropertyName("schema")]
     public object Schema { get; set; } = new { };
 }
