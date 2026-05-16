@@ -133,7 +133,7 @@ public sealed class WorkflowProjectionUpdateQueueServiceTests
         {
             var callNumber = Interlocked.Increment(ref _updateProjectionCallCount);
             if (callNumber == 1)
-                await _firstUpdateMayProceed.Task.WaitAsync(ct).ConfigureAwait(false);
+                await _firstUpdateMayProceed.Task.WaitAsync(ct);
         }
 
         public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
