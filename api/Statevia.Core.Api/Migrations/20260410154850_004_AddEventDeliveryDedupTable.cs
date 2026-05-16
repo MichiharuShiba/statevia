@@ -11,6 +11,8 @@ namespace Statevia.Core.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            ArgumentNullException.ThrowIfNull(migrationBuilder);
+
             migrationBuilder.CreateTable(
                 name: "event_delivery_dedup",
                 columns: table => new
@@ -39,6 +41,8 @@ namespace Statevia.Core.Api.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            ArgumentNullException.ThrowIfNull(migrationBuilder);
+
             migrationBuilder.DropTable(
                 name: "event_delivery_dedup");
         }

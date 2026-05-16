@@ -11,6 +11,8 @@ namespace Statevia.Core.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            ArgumentNullException.ThrowIfNull(migrationBuilder);
+
             migrationBuilder.AddColumn<DateTime>(
                 name: "updated_at",
                 table: "workflow_definitions",
@@ -33,6 +35,8 @@ namespace Statevia.Core.Api.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            ArgumentNullException.ThrowIfNull(migrationBuilder);
+
             migrationBuilder.DropColumn(
                 name: "updated_at",
                 table: "workflow_definitions");

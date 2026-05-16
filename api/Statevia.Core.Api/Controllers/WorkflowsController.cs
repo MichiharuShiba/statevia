@@ -198,6 +198,8 @@ public class WorkflowsController : ControllerBase
         [FromHeader(Name = IdempotencyKeyHeaderName)] string? idempotencyKey = null,
         CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(body);
+
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         var resolvedIdempotencyKey = idempotencyKey;
         await _workflows.PublishEventAsync(

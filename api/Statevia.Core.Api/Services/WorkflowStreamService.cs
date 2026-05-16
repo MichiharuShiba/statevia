@@ -1,3 +1,4 @@
+using System;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -47,6 +48,8 @@ public sealed class WorkflowStreamService
     /// <param name="ct">キャンセルトークン。</param>
     public async Task WriteStreamAsync(HttpResponse response, string tenantId, string idOrUuid, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(response);
+
         if (ct.IsCancellationRequested)
             return;
 

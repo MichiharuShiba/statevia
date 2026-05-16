@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -14,6 +15,8 @@ public sealed class ApiExceptionFilter : IExceptionFilter
     /// <param name="context">例外コンテキスト。</param>
     public void OnException(ExceptionContext context)
     {
+        ArgumentNullException.ThrowIfNull(context);
+
         var ex = context.Exception;
         var root = ex;
         while (root.InnerException is { } inner)
