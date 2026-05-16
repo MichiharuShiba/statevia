@@ -611,4 +611,196 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         // Assert
         Assert.Contains("version", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>root version 欠落時は拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenVersionMissing()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: N
+            nodes:
+              - id: start
+                type: start
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("version", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>workflow 欠落時は拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenWorkflowMissing()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            nodes:
+              - id: start
+                type: start
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("workflow", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>start が複数あるとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenMultipleStartNodes()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: TwoStarts
+            nodes:
+              - id: start1
+                type: start
+                next: endNode
+              - id: start2
+                type: start
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("exactly one", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>join に対応する fork がないとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenJoinHasNoMatchingFork()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: OrphanJoin
+            nodes:
+              - id: start
+                type: start
+                next: join1
+              - id: join1
+                type: join
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("no matching fork", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>fork に edges があるとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenForkHasEdges()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: ForkEdges
+            nodes:
+              - id: start
+                type: start
+                next: fork1
+              - id: fork1
+                type: fork
+                branches: [b1, b2]
+                edges:
+                  - to: b1
+              - id: b1
+                type: action
+                action: noop
+                next: join1
+              - id: b2
+                type: action
+                action: noop
+                next: join1
+              - id: join1
+                type: join
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("edges", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>action ノードに action 属性がないとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenActionMissingActionId()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: NoAction
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("must have 'action'", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>edge.to の object 形式（id）を受理する。</summary>
+    [Fact]
+    public void Load_EdgeToObject_Succeeds()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: EdgeObj
+            nodes:
+              - id: start
+                type: start
+                edges:
+                  - to:
+                      id: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        Assert.Equal("endNode", definition.States["start"].On![Fact.Completed].Next);
+    }
 }
