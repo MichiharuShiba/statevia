@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 
 namespace Statevia.Core.Api.Services;
@@ -13,12 +14,31 @@ internal static partial class WorkflowServiceLogMessages
         Message = "Skip projection queue update because runtime is missing for workflow {workflowId}")]
     public static partial void SkipProjectionQueueUpdateDebug(this ILogger logger, Guid workflowId);
 
+    /// <summary>
+    /// Serializable 永続化リトライを記録する。
+    /// </summary>
+    public static void SerializablePersistRetry(this ILogger logger, SerializablePersistRetryDetails details) =>
+        SerializablePersistRetry(
+            logger,
+            details.TraceId,
+            details.WorkflowId,
+            details.TenantId,
+            details.ClientEventId,
+            details.Attempt,
+            details.MaxAttempts,
+            details.DelayMs,
+            details.FailureMessage);
+
     [LoggerMessage(
         EventId = 3002,
         Level = LogLevel.Information,
         Message = "serializable_persist_retry traceId={traceId} workflowId={workflowId} tenantId={tenantId} clientEventId={clientEventId} attempt={attempt} maxAttempts={maxAttempts} delayMs={delayMs} failureMessage={failureMessage}")]
-    public static partial void SerializablePersistRetry(
-        this ILogger logger,
+    [SuppressMessage(
+        "Major Code Smell",
+        "S107:Methods should not have too many parameters",
+        Justification = "LoggerMessage のテンプレートはプレースホルダごとに引数が必要。")]
+    private static partial void SerializablePersistRetry(
+        ILogger logger,
         string traceId,
         Guid workflowId,
         string tenantId,
@@ -28,12 +48,33 @@ internal static partial class WorkflowServiceLogMessages
         int delayMs,
         string failureMessage);
 
+    /// <summary>
+    /// イベント配送 dedup の Information ログを記録する。
+    /// </summary>
+    public static void EventDeliveryDecisionInformation(
+        this ILogger logger,
+        EventDeliveryDecisionDetails details) =>
+        EventDeliveryDecisionInformation(
+            logger,
+            details.TraceId,
+            details.WorkflowId,
+            details.TenantId,
+            details.ClientEventId,
+            details.Decision,
+            details.Attempt,
+            details.ElapsedMs,
+            details.ErrorCode);
+
     [LoggerMessage(
         EventId = 3003,
         Level = LogLevel.Information,
         Message = "event_delivery_decision traceId={traceId} workflowId={workflowId} tenantId={tenantId} clientEventId={clientEventId} decision={decision} attempt={attempt} elapsedMs={elapsedMs} errorCode={errorCode}")]
-    public static partial void EventDeliveryDecisionInformation(
-        this ILogger logger,
+    [SuppressMessage(
+        "Major Code Smell",
+        "S107:Methods should not have too many parameters",
+        Justification = "LoggerMessage のテンプレートはプレースホルダごとに引数が必要。")]
+    private static partial void EventDeliveryDecisionInformation(
+        ILogger logger,
         string traceId,
         Guid workflowId,
         string tenantId,
@@ -43,12 +84,35 @@ internal static partial class WorkflowServiceLogMessages
         long elapsedMs,
         string errorCode);
 
+    /// <summary>
+    /// イベント配送 dedup の Warning ログを記録する。
+    /// </summary>
+    public static void EventDeliveryDecisionWarning(
+        this ILogger logger,
+        Exception ex,
+        EventDeliveryDecisionDetails details) =>
+        EventDeliveryDecisionWarning(
+            logger,
+            ex,
+            details.TraceId,
+            details.WorkflowId,
+            details.TenantId,
+            details.ClientEventId,
+            details.Decision,
+            details.Attempt,
+            details.ElapsedMs,
+            details.ErrorCode);
+
     [LoggerMessage(
         EventId = 3004,
         Level = LogLevel.Warning,
         Message = "event_delivery_decision traceId={traceId} workflowId={workflowId} tenantId={tenantId} clientEventId={clientEventId} decision={decision} attempt={attempt} elapsedMs={elapsedMs} errorCode={errorCode}")]
-    public static partial void EventDeliveryDecisionWarning(
-        this ILogger logger,
+    [SuppressMessage(
+        "Major Code Smell",
+        "S107:Methods should not have too many parameters",
+        Justification = "LoggerMessage のテンプレートはプレースホルダごとに引数が必要。")]
+    private static partial void EventDeliveryDecisionWarning(
+        ILogger logger,
         Exception ex,
         string traceId,
         Guid workflowId,
@@ -59,12 +123,35 @@ internal static partial class WorkflowServiceLogMessages
         long elapsedMs,
         string errorCode);
 
+    /// <summary>
+    /// イベント配送 dedup の Error ログを記録する。
+    /// </summary>
+    public static void EventDeliveryDecisionError(
+        this ILogger logger,
+        Exception ex,
+        EventDeliveryDecisionDetails details) =>
+        EventDeliveryDecisionError(
+            logger,
+            ex,
+            details.TraceId,
+            details.WorkflowId,
+            details.TenantId,
+            details.ClientEventId,
+            details.Decision,
+            details.Attempt,
+            details.ElapsedMs,
+            details.ErrorCode);
+
     [LoggerMessage(
         EventId = 3005,
         Level = LogLevel.Error,
         Message = "event_delivery_decision traceId={traceId} workflowId={workflowId} tenantId={tenantId} clientEventId={clientEventId} decision={decision} attempt={attempt} elapsedMs={elapsedMs} errorCode={errorCode}")]
-    public static partial void EventDeliveryDecisionError(
-        this ILogger logger,
+    [SuppressMessage(
+        "Major Code Smell",
+        "S107:Methods should not have too many parameters",
+        Justification = "LoggerMessage のテンプレートはプレースホルダごとに引数が必要。")]
+    private static partial void EventDeliveryDecisionError(
+        ILogger logger,
         Exception ex,
         string traceId,
         Guid workflowId,

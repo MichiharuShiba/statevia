@@ -832,44 +832,30 @@ internal sealed class WorkflowService : IWorkflowService
         string errorCode,
         Exception? exception = null)
     {
+        var details = new EventDeliveryDecisionDetails
+        {
+            TraceId = traceId,
+            WorkflowId = workflowId,
+            TenantId = tenantId,
+            ClientEventId = clientEventId,
+            Decision = decision,
+            Attempt = attempt,
+            ElapsedMs = elapsedMs,
+            ErrorCode = errorCode,
+        };
+
         switch (decision)
         {
             case EventDeliveryLogDecisions.Failed:
             case EventDeliveryLogDecisions.BackoffBudgetExhausted:
-                _logger.EventDeliveryDecisionError(
-                    exception!,
-                    traceId,
-                    workflowId,
-                    tenantId,
-                    clientEventId,
-                    decision,
-                    attempt,
-                    elapsedMs,
-                    errorCode);
+                _logger.EventDeliveryDecisionError(exception!, details);
                 break;
             case EventDeliveryLogDecisions.Retry:
             case EventDeliveryLogDecisions.AbortedTimeout:
-                _logger.EventDeliveryDecisionWarning(
-                    exception!,
-                    traceId,
-                    workflowId,
-                    tenantId,
-                    clientEventId,
-                    decision,
-                    attempt,
-                    elapsedMs,
-                    errorCode);
+                _logger.EventDeliveryDecisionWarning(exception!, details);
                 break;
             default:
-                _logger.EventDeliveryDecisionInformation(
-                    traceId,
-                    workflowId,
-                    tenantId,
-                    clientEventId,
-                    decision,
-                    attempt,
-                    elapsedMs,
-                    errorCode);
+                _logger.EventDeliveryDecisionInformation(details);
                 break;
         }
     }
@@ -1062,6 +1048,7 @@ internal sealed class WorkflowService : IWorkflowService
         }
         catch (InvalidOperationException)
         {
+            // 接続切断後など、既に破棄されたトランザクションのロールバック失敗は無視する。
         }
     }
 
@@ -1212,16 +1199,17 @@ internal sealed class WorkflowService : IWorkflowService
         int delayMs,
         string failureMessage)
     {
-        var traceId = GetTraceIdOrEmpty();
-        _logger.SerializablePersistRetry(
-            traceId,
-            workflowId,
-            tenantId,
-            clientEventId,
-            attempt,
-            maxAttempts,
-            delayMs,
-            failureMessage);
+        _logger.SerializablePersistRetry(new SerializablePersistRetryDetails
+        {
+            TraceId = GetTraceIdOrEmpty(),
+            WorkflowId = workflowId,
+            TenantId = tenantId,
+            ClientEventId = clientEventId,
+            Attempt = attempt,
+            MaxAttempts = maxAttempts,
+            DelayMs = delayMs,
+            FailureMessage = failureMessage,
+        });
     }
 
     /// <summary>
