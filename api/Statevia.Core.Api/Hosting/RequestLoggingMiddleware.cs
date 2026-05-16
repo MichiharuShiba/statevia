@@ -69,8 +69,7 @@ internal sealed class RequestLoggingMiddleware
 
         // Path と Query は分離（要件: 一覧検索・相関しやすくする）
         TryLog(() =>
-            logger.LogInformation(
-                "HTTP request start TraceId={TraceId} Method={Method} Path={Path} Query={Query} TenantId={TenantId} UserAgent={UserAgent} RequestBody={RequestBody}",
+            logger.HttpRequestStart(
                 traceId,
                 context.Request.Method,
                 path,
@@ -97,8 +96,8 @@ internal sealed class RequestLoggingMiddleware
         catch (Exception ex)
         {
             TryLog(() =>
-                logger.LogError(ex,
-                    "HTTP request unhandled exception TraceId={TraceId} ExceptionType={ExceptionType} Message={Message}",
+                logger.HttpRequestUnhandledException(
+                    ex,
                     traceId,
                     ex.GetType().FullName,
                     ex.Message));
@@ -137,8 +136,7 @@ internal sealed class RequestLoggingMiddleware
 
             var status = context.Response.StatusCode;
             TryLog(() =>
-                logger.LogInformation(
-                    "HTTP request complete TraceId={TraceId} StatusCode={StatusCode} ElapsedMs={ElapsedMs} ResponseSize={ResponseSize} ResponseBody={ResponseBody}",
+                logger.HttpRequestComplete(
                     traceId,
                     status,
                     sw.ElapsedMilliseconds,
