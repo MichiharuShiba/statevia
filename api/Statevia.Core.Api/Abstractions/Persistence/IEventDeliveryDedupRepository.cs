@@ -17,7 +17,7 @@ internal interface IEventDeliveryDedupRepository
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// 独立した <see cref="CoreDbContext"/> で RECEIVED 行を挿入し <see cref="CoreDbContext.SaveChangesAsync"/> する。
+    /// 独立した <see cref="CoreDbContext"/> で RECEIVED 行を挿入し、変更を保存する。
     /// 一意制約違反は <see cref="Microsoft.EntityFrameworkCore.DbUpdateException"/>。
     /// </summary>
     Task InsertReceivedAsync(EventDeliveryDedupRow row, CancellationToken cancellationToken);

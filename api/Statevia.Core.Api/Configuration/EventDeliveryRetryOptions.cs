@@ -18,7 +18,7 @@ internal sealed class EventDeliveryRetryOptions
     public bool Jitter { get; set; } = true;
 
     /// <summary>
-    /// 再試行で <see cref="Task.Delay"/> する合計時間の上限（ミリ秒）。
+    /// 再試行で <see cref="Task.Delay(int)"/> する合計時間の上限（ミリ秒）。
     /// API リクエストのタイムアウト予算を超えないようクリップするために用いる。0 は上限なし。
     /// </summary>
     public int MaxTotalBackoffMs { get; set; } = 8000;

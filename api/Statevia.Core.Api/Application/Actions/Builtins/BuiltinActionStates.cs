@@ -4,7 +4,7 @@ namespace Statevia.Core.Api.Application.Actions.Builtins;
 
 /// <summary>
 /// Registry 用の組み込み IState 実装（no-op）。
-/// 処理は行わず <see cref="T:Statevia.Core.Engine.Engine.WorkflowEngine"/> が渡す入力をそのまま出力として返す。
+/// 処理は行わず <see cref="Statevia.Core.Engine.Engine.WorkflowEngine"/> が渡す入力をそのまま出力として返す。
 /// 条件付き edges が前段の <c>workflowInput</c>／直前状態の出力を <c>$.path</c> で解決できるようにする。
 /// </summary>
 internal sealed class NoOpState : IState<object?, object?>
@@ -32,7 +32,7 @@ internal sealed class DelayCompleteState : IState<Unit, Unit>
     }
 }
 
-/// <summary>wait ブロック用。イベント名は状態ごとに <see cref="ActionExecutorFactory"/> が束ねる。</summary>
+/// <summary>wait ブロック用。イベント名は状態ごとに <see cref="Statevia.Core.Api.Application.Definition.ActionExecutorFactory"/> が束ねる。</summary>
 internal sealed class WaitOnlyState : IState<Unit, Unit>
 {
     private readonly string _eventName;
