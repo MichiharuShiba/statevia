@@ -323,7 +323,7 @@ public sealed class DefinitionServiceTests
         var ex = await Assert.ThrowsAsync<ApiValidationException>(() => sut.CreateAsync("t1", request, CancellationToken.None));
 
         // Assert
-        Assert.Equal("Definition validation failed.", ex.Message);
+        Assert.Equal(DefinitionValidationMessages.ValidationFailed, ex.Message);
         Assert.NotNull(ex.Details);
         Assert.IsType<ArgumentException>(ex.InnerException);
     }
