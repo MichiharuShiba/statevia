@@ -803,4 +803,111 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         // Assert
         Assert.Equal("endNode", definition.States["start"].On![Fact.Completed].Next);
     }
+
+    /// <summary>複数 fork が同一 join に合致するとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenMultipleForksMatchJoin()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: MultiFork
+            nodes:
+              - id: start
+                type: start
+                next: forkOuter
+              - id: forkOuter
+                type: fork
+                branches: [fork1, fork2]
+              - id: fork1
+                type: fork
+                branches: [b1, b2]
+              - id: b1
+                type: action
+                action: noop
+                next: join1
+              - id: b2
+                type: action
+                action: noop
+                next: join1
+              - id: fork2
+                type: fork
+                branches: [c1, c2]
+              - id: c1
+                type: action
+                action: noop
+                next: join1
+              - id: c2
+                type: action
+                action: noop
+                next: join1
+              - id: join1
+                type: join
+                mode: all
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("multiple forks", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>end ノードが無いとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenEndNodeMissing()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: NoEnd
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                action: noop
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("type: end", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>action.error が未知ノードを指すとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenActionErrorReferencesUnknownNode()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: BadErrorRef
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                action: noop
+                next: endNode
+                error: missing
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("references unknown id", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }
