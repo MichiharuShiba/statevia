@@ -1,10 +1,17 @@
 root = false
 
-[Controllers/**/*.cs]
+[Migrations/*.cs]
 dotnet_diagnostic.CA1515.severity = none
 
-[Contracts/**/*.cs]
+# CA1515: ** はサブディレクトリ前提の解釈で直下 *.cs にマッチしない環境があるため *.cs を使用
+[Contracts/*.cs]
 dotnet_diagnostic.CA1515.severity = none
 
-[Abstractions/Services/**/*.cs]
+[Controllers/*.cs]
+dotnet_diagnostic.CA1515.severity = none
+
+[Abstractions/Services/*.cs]
+dotnet_diagnostic.CA1515.severity = none
+
+[Services/*.cs]
 dotnet_diagnostic.CA1515.severity = none
