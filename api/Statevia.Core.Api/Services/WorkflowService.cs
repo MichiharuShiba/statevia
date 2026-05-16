@@ -85,6 +85,10 @@ internal sealed class WorkflowService : IWorkflowService
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IWorkflowProjectionUpdateQueue _projectionUpdateQueue;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Major Code Smell",
+        "S107:Methods should not have too many parameters",
+        Justification = "ASP.NET Core DI による明示的コンストラクタ注入。")]
     public WorkflowService(
         IWorkflowEngine engine,
         IDisplayIdService displayIds,
@@ -281,7 +285,7 @@ internal sealed class WorkflowService : IWorkflowService
             {
                 return new PagedResult<WorkflowResponse>
                 {
-                    Items = new List<WorkflowResponse>(),
+                    Items = [],
                     TotalCount = 0,
                     Offset = offset,
                     Limit = limit,
@@ -460,10 +464,11 @@ internal sealed class WorkflowService : IWorkflowService
                     tenantId,
                     uuid.Value,
                     clientEventId,
-                    EventDeliveryDedupStatuses.Applied,
-                    nowUtc,
-                    appliedAt: nowUtc,
-                    errorCode: null,
+                    new EventDeliveryDedupStatusUpdate(
+                        EventDeliveryDedupStatuses.Applied,
+                        nowUtc,
+                        AppliedAt: nowUtc,
+                        ErrorCode: null),
                     ctInner).ConfigureAwait(false);
 
                 await dbCancel.SaveChangesAsync(ctInner).ConfigureAwait(false);
@@ -559,10 +564,11 @@ internal sealed class WorkflowService : IWorkflowService
                     tenantId,
                     uuid.Value,
                     clientEventId,
-                    EventDeliveryDedupStatuses.Applied,
-                    nowUtc,
-                    appliedAt: nowUtc,
-                    errorCode: null,
+                    new EventDeliveryDedupStatusUpdate(
+                        EventDeliveryDedupStatuses.Applied,
+                        nowUtc,
+                        AppliedAt: nowUtc,
+                        ErrorCode: null),
                     ctInner).ConfigureAwait(false);
 
                 await dbPub.SaveChangesAsync(ctInner).ConfigureAwait(false);
@@ -821,30 +827,9 @@ internal sealed class WorkflowService : IWorkflowService
     /// <summary>
     /// イベント配送 dedup の観測性用に必須キーを構造化ログへ書き出す。
     /// </summary>
-    private void LogEventDeliveryDecision(
-        string traceId,
-        string tenantId,
-        Guid workflowId,
-        Guid clientEventId,
-        string decision,
-        int attempt,
-        long elapsedMs,
-        string errorCode,
-        Exception? exception = null)
+    private void LogEventDeliveryDecision(EventDeliveryDecisionDetails details, Exception? exception = null)
     {
-        var details = new EventDeliveryDecisionDetails
-        {
-            TraceId = traceId,
-            WorkflowId = workflowId,
-            TenantId = tenantId,
-            ClientEventId = clientEventId,
-            Decision = decision,
-            Attempt = attempt,
-            ElapsedMs = elapsedMs,
-            ErrorCode = errorCode,
-        };
-
-        switch (decision)
+        switch (details.Decision)
         {
             case EventDeliveryLogDecisions.Failed:
             case EventDeliveryLogDecisions.BackoffBudgetExhausted:
@@ -910,30 +895,34 @@ internal sealed class WorkflowService : IWorkflowService
             {
                 await _eventDeliveryDedup.InsertReceivedAsync(row, cancellationToken).ConfigureAwait(false);
                 attemptStopwatch.Stop();
-                LogEventDeliveryDecision(
-                    traceId,
-                    tenantId,
-                    workflowId,
-                    clientEventId,
-                    decision: EventDeliveryLogDecisions.Inserted,
-                    attempt,
-                    attemptStopwatch.ElapsedMilliseconds,
-                    errorCode: EventDeliveryLogErrorCodes.None);
+                LogEventDeliveryDecision(new EventDeliveryDecisionDetails
+                {
+                    TraceId = traceId,
+                    TenantId = tenantId,
+                    WorkflowId = workflowId,
+                    ClientEventId = clientEventId,
+                    Decision = EventDeliveryLogDecisions.Inserted,
+                    Attempt = attempt,
+                    ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
+                    ErrorCode = EventDeliveryLogErrorCodes.None,
+                });
                 return false;
             }
             catch (DbUpdateException dbUpdateException)
                 when (EventDeliveryRetryPolicy.IsUniqueConstraintViolation(dbUpdateException))
             {
                 attemptStopwatch.Stop();
-                LogEventDeliveryDecision(
-                    traceId,
-                    tenantId,
-                    workflowId,
-                    clientEventId,
-                    decision: EventDeliveryLogDecisions.DuplicateKey,
-                    attempt,
-                    attemptStopwatch.ElapsedMilliseconds,
-                    errorCode: EventDeliveryLogErrorCodes.UniqueViolation);
+                LogEventDeliveryDecision(new EventDeliveryDecisionDetails
+                {
+                    TraceId = traceId,
+                    TenantId = tenantId,
+                    WorkflowId = workflowId,
+                    ClientEventId = clientEventId,
+                    Decision = EventDeliveryLogDecisions.DuplicateKey,
+                    Attempt = attempt,
+                    ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
+                    ErrorCode = EventDeliveryLogErrorCodes.UniqueViolation,
+                });
 
                 var existing = await _eventDeliveryDedup
                     .FindAsync(tenantId, workflowId, clientEventId, cancellationToken)
@@ -951,14 +940,17 @@ internal sealed class WorkflowService : IWorkflowService
             {
                 attemptStopwatch.Stop();
                 LogEventDeliveryDecision(
-                    traceId,
-                    tenantId,
-                    workflowId,
-                    clientEventId,
-                    decision: EventDeliveryLogDecisions.AbortedTimeout,
-                    attempt,
-                    attemptStopwatch.ElapsedMilliseconds,
-                    MapErrorCode(exception),
+                    new EventDeliveryDecisionDetails
+                    {
+                        TraceId = traceId,
+                        TenantId = tenantId,
+                        WorkflowId = workflowId,
+                        ClientEventId = clientEventId,
+                        Decision = EventDeliveryLogDecisions.AbortedTimeout,
+                        Attempt = attempt,
+                        ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
+                        ErrorCode = MapErrorCode(exception),
+                    },
                     exception);
                 throw;
             }
@@ -968,14 +960,17 @@ internal sealed class WorkflowService : IWorkflowService
             {
                 attemptStopwatch.Stop();
                 LogEventDeliveryDecision(
-                    traceId,
-                    tenantId,
-                    workflowId,
-                    clientEventId,
-                    decision: EventDeliveryLogDecisions.Retry,
-                    attempt,
-                    attemptStopwatch.ElapsedMilliseconds,
-                    MapErrorCode(exception),
+                    new EventDeliveryDecisionDetails
+                    {
+                        TraceId = traceId,
+                        TenantId = tenantId,
+                        WorkflowId = workflowId,
+                        ClientEventId = clientEventId,
+                        Decision = EventDeliveryLogDecisions.Retry,
+                        Attempt = attempt,
+                        ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
+                        ErrorCode = MapErrorCode(exception),
+                    },
                     exception);
 
                 var failureIndex = attempt - 1;
@@ -991,14 +986,17 @@ internal sealed class WorkflowService : IWorkflowService
                     {
                         attemptStopwatch.Stop();
                         LogEventDeliveryDecision(
-                            traceId,
-                            tenantId,
-                            workflowId,
-                            clientEventId,
-                            decision: EventDeliveryLogDecisions.BackoffBudgetExhausted,
-                            attempt,
-                            attemptStopwatch.ElapsedMilliseconds,
-                            errorCode: EventDeliveryLogDecisions.BackoffBudgetExhausted,
+                            new EventDeliveryDecisionDetails
+                            {
+                                TraceId = traceId,
+                                TenantId = tenantId,
+                                WorkflowId = workflowId,
+                                ClientEventId = clientEventId,
+                                Decision = EventDeliveryLogDecisions.BackoffBudgetExhausted,
+                                Attempt = attempt,
+                                ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
+                                ErrorCode = EventDeliveryLogDecisions.BackoffBudgetExhausted,
+                            },
                             exception);
                         throw new InvalidOperationException(
                             "Event delivery insert retry stopped: total backoff budget exhausted.",
@@ -1018,14 +1016,17 @@ internal sealed class WorkflowService : IWorkflowService
             {
                 attemptStopwatch.Stop();
                 LogEventDeliveryDecision(
-                    traceId,
-                    tenantId,
-                    workflowId,
-                    clientEventId,
-                    decision: EventDeliveryLogDecisions.Failed,
-                    attempt,
-                    attemptStopwatch.ElapsedMilliseconds,
-                    MapErrorCode(exception),
+                    new EventDeliveryDecisionDetails
+                    {
+                        TraceId = traceId,
+                        TenantId = tenantId,
+                        WorkflowId = workflowId,
+                        ClientEventId = clientEventId,
+                        Decision = EventDeliveryLogDecisions.Failed,
+                        Attempt = attempt,
+                        ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
+                        ErrorCode = MapErrorCode(exception),
+                    },
                     exception);
                 throw;
             }
@@ -1230,10 +1231,11 @@ internal sealed class WorkflowService : IWorkflowService
                 tenantId,
                 workflowId,
                 clientEventId,
-                EventDeliveryDedupStatuses.Failed,
-                nowUtc,
-                appliedAt: null,
-                errorCode: EventDeliveryLogErrorCodes.PersistFailed,
+                new EventDeliveryDedupStatusUpdate(
+                    EventDeliveryDedupStatuses.Failed,
+                    nowUtc,
+                    AppliedAt: null,
+                    ErrorCode: EventDeliveryLogErrorCodes.PersistFailed),
                 cancellationToken).ConfigureAwait(false);
         }
 #pragma warning disable CA1031 // Do not catch general exception types — 補助更新の失敗は本例外に影響させない

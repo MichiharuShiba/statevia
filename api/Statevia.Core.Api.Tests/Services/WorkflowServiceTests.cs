@@ -233,20 +233,18 @@ public sealed class WorkflowServiceTests
             string tenantId,
             Guid workflowId,
             Guid clientEventId,
-            string status,
-            DateTime utcNow,
-            DateTime? appliedAt,
-            string? errorCode,
+            EventDeliveryDedupStatusUpdate update,
             CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(update);
             var key = (tenantId, workflowId, clientEventId);
             if (!_rows.TryGetValue(key, out var row))
                 return Task.FromResult(false);
 
-            row.Status = status;
-            row.UpdatedAt = utcNow;
-            row.AppliedAt = appliedAt;
-            row.ErrorCode = errorCode;
+            row.Status = update.Status;
+            row.UpdatedAt = update.UtcNow;
+            row.AppliedAt = update.AppliedAt;
+            row.ErrorCode = update.ErrorCode;
             return Task.FromResult(true);
         }
 
@@ -304,20 +302,14 @@ public sealed class WorkflowServiceTests
             string tenantId,
             Guid workflowId,
             Guid clientEventId,
-            string status,
-            DateTime utcNow,
-            DateTime? appliedAt,
-            string? errorCode,
+            EventDeliveryDedupStatusUpdate update,
             CancellationToken cancellationToken) =>
             _inner.TryUpdateStatusAsync(
                 db,
                 tenantId,
                 workflowId,
                 clientEventId,
-                status,
-                utcNow,
-                appliedAt,
-                errorCode,
+                update,
                 cancellationToken);
     }
 
@@ -344,7 +336,7 @@ public sealed class WorkflowServiceTests
         /// <summary>非 null のとき <see cref="FindValidConflictingRequestHashAsync"/> がこれを返す。</summary>
         public CommandDedupRow? NextConflictingRow { get; set; }
 
-        public List<CommandDedupRow> SavedRows { get; } = new();
+        public List<CommandDedupRow> SavedRows { get; } = [];
 
         public async Task<CommandDedupRow?> FindValidAsync(string dedupKey, DateTime utcNow, CancellationToken ct)
         {
@@ -382,10 +374,10 @@ public sealed class WorkflowServiceTests
         public WorkflowRow? ByIdResult { get; set; }
         public ExecutionGraphSnapshotRow? SnapshotByWorkflowId { get; set; }
 
-        public List<(WorkflowRow Workflow, ExecutionGraphSnapshotRow Snapshot)> Added { get; } = new();
-        public List<(Guid WorkflowId, string Status, bool? CancelRequested, string GraphJson)> Updates { get; } = new();
-        public List<(WorkflowRow Workflow, string? DisplayId)> ListWithDisplayIdsResult { get; set; } = new();
-        public (int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items) ListWithDisplayIdsPageResult { get; set; } = (0, new());
+        public List<(WorkflowRow Workflow, ExecutionGraphSnapshotRow Snapshot)> Added { get; } = [];
+        public List<(Guid WorkflowId, string Status, bool? CancelRequested, string GraphJson)> Updates { get; } = [];
+        public List<(WorkflowRow Workflow, string? DisplayId)> ListWithDisplayIdsResult { get; set; } = [];
+        public (int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items) ListWithDisplayIdsPageResult { get; set; } = (0, []);
 
         public async Task<WorkflowRow?> GetByIdAsync(string tenantId, Guid workflowId, CancellationToken ct)
         {
@@ -441,12 +433,12 @@ public sealed class WorkflowServiceTests
 
     private sealed class FakeEventStoreRepository : IEventStoreRepository
     {
-        public List<(EventStoreEventType Type, Guid WorkflowId, string? Payload)> Appended { get; } = new();
-        public List<EventStoreRow> AfterSeqItems { get; set; } = new();
+        public List<(EventStoreEventType Type, Guid WorkflowId, string? Payload)> Appended { get; } = [];
+        public List<EventStoreRow> AfterSeqItems { get; set; } = [];
         public bool AfterSeqHasMore { get; set; }
         public long MaxSeq { get; set; }
 
-        private readonly HashSet<(Guid WorkflowId, Guid ClientEventId, EventStoreEventType Type)> _clientEventDedupKeys = new();
+        private readonly HashSet<(Guid WorkflowId, Guid ClientEventId, EventStoreEventType Type)> _clientEventDedupKeys = [];
 
         /// <summary>設定時に追記処理で例外を投げて巻き戻し分岐を通す。</summary>
         public Exception? ThrowFromAppendWithDb { get; set; }
@@ -2596,11 +2588,11 @@ public sealed class WorkflowServiceTests
 
         var workflowRepo = new FakeWorkflowRepository
         {
-            ListWithDisplayIdsResult = new List<(WorkflowRow Workflow, string? DisplayId)>
-            {
+            ListWithDisplayIdsResult =
+            [
                 (w1, null),
                 (w2, "WF-DISP-2")
-            }
+            ]
         };
 
         var sut = MakeSut(

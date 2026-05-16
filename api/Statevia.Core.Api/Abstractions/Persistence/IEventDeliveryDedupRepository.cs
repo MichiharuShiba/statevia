@@ -36,9 +36,6 @@ internal interface IEventDeliveryDedupRepository
         string tenantId,
         Guid workflowId,
         Guid clientEventId,
-        string status,
-        DateTime utcNow,
-        DateTime? appliedAt,
-        string? errorCode,
+        EventDeliveryDedupStatusUpdate update,
         CancellationToken cancellationToken);
 }
