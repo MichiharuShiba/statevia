@@ -71,6 +71,15 @@ dotnet_diagnostic.CS1591.severity = none
 # 除外理由: EF マイグレーションクラスは public 必須。アプリ外への参照面ではない。
 dotnet_diagnostic.CA1515.severity = none
 
+# generated_code / dotnet_analyzer_diagnostic: IDE・ビルドの Roslyn 波線を抑止。
+# 除外理由: Migrations は品質リファクタ対象外（スキーマ定義のスナップショット）。
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none
+
+# S1192: 同一リテラル文字列の定数化を推奨（Sonar）。
+# 除外理由: EF マイグレーションの列型・インデックス定義は生成物に近く、定数抽出の実益がない。
+dotnet_diagnostic.S1192.severity = none
+
 # =============================================================================
 # api/Statevia.Core.Api — HTTP / DI 公開面（CA1515）
 # =============================================================================
