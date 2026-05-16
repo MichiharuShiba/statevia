@@ -133,21 +133,13 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
         };
     }
 
-    private sealed class ExecutionGraphSnapshotDto
-    {
-        public List<ExecutionNodeDto>? Nodes { get; set; }
-    }
+    private sealed record ExecutionGraphSnapshotDto(List<ExecutionNodeDto>? Nodes);
 
-    private sealed class ExecutionNodeDto
-    {
-        public string? NodeId { get; set; }
-
-        public string? StateName { get; set; }
-
-        public DateTime? CompletedAt { get; set; }
-
-        public string? Fact { get; set; }
-    }
+    private sealed record ExecutionNodeDto(
+        string? NodeId,
+        string? StateName,
+        DateTime? CompletedAt,
+        string? Fact);
 }
 
 internal static class ExecutionStatusMapper
