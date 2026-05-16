@@ -27,7 +27,7 @@ public sealed class ExecutionReadModel
     /// <summary>完了日時（任意）。</summary>
     public DateTimeOffset? CompletedAt { get; init; }
 
-    // TODO: nodes の詳細は ExecutionGraph の仕様に合わせて埋める（現状は空コレクションを返す実装になる想定）。
+    // Note: nodes の詳細は ExecutionGraph の仕様に合わせて埋める（現状は空コレクションを返す実装になる想定）。
     /// <summary>実行ノードの列。</summary>
     public IReadOnlyList<ExecutionNodeReadModel> Nodes { get; init; } =
         Array.Empty<ExecutionNodeReadModel>();
@@ -54,7 +54,7 @@ public sealed class ExecutionNodeReadModel
     /// <summary>Wait キー（任意）。</summary>
     public string? WaitKey { get; init; }
 
-    // TODO: canceledByExecution は ExecutionGraph 側に情報を持たせた上でマッピングする。
+    // Note: canceledByExecution は ExecutionGraph 側に情報を持たせた上でマッピングする。
     /// <summary>実行キャンセルにより打ち切られたか。</summary>
     public bool CanceledByExecution { get; init; }
 }

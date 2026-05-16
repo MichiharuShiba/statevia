@@ -158,7 +158,7 @@ internal class CoreDbContext : DbContext
             e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
             e.Property(x => x.ExpiresAt).HasColumnName(Columns.ExpiresAt);
 
-            // TODO: ExpiresAt の DB デフォルト値（created_at + interval '24 hours'）はマイグレーションで設定する。
+            // Note: ExpiresAt の DB デフォルト値（created_at + interval '24 hours'）はマイグレーションで設定する。
         });
 
         // event_delivery_dedup（イベント配送の冪等制御）
