@@ -3,7 +3,7 @@ namespace Statevia.Core.Api.Abstractions.Services;
 /// <summary>
 /// コマンド冪等（dedup）キーとエンドポイント情報の組。
 /// </summary>
-public readonly struct CommandDedupKey
+public readonly struct CommandDedupKey : IEquatable<CommandDedupKey>
 {
     /// <summary>DB に保存する冪等キー文字列。</summary>
     public string DedupKey { get; init; }
@@ -13,6 +13,25 @@ public readonly struct CommandDedupKey
 
     /// <summary>クライアントが送った <c>X-Idempotency-Key</c>（未送信時は空文字列などの正規化値）。</summary>
     public string IdempotencyKey { get; init; }
+
+    /// <inheritdoc />
+    public bool Equals(CommandDedupKey other) =>
+        string.Equals(DedupKey, other.DedupKey, StringComparison.Ordinal)
+        && string.Equals(Endpoint, other.Endpoint, StringComparison.Ordinal)
+        && string.Equals(IdempotencyKey, other.IdempotencyKey, StringComparison.Ordinal);
+
+    /// <inheritdoc />
+    public override bool Equals(object? obj) => obj is CommandDedupKey other && Equals(other);
+
+    /// <inheritdoc />
+    public override int GetHashCode() =>
+        HashCode.Combine(DedupKey, Endpoint, IdempotencyKey);
+
+    /// <summary>等値比較。</summary>
+    public static bool operator ==(CommandDedupKey left, CommandDedupKey right) => left.Equals(right);
+
+    /// <summary>非等値比較。</summary>
+    public static bool operator !=(CommandDedupKey left, CommandDedupKey right) => !left.Equals(right);
 }
 
 /// <summary>
