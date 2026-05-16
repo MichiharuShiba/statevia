@@ -29,10 +29,10 @@ public sealed class TraceContextEnrichmentMiddlewareTests
             LogResponseBody = false
         });
 
-        RequestDelegate next = async c => await c.Response.WriteAsync("ok").ConfigureAwait(false);
+        RequestDelegate next = c => c.Response.WriteAsync("ok");
 
         var mw = new TraceContextEnrichmentMiddleware(next);
-        await mw.InvokeAsync(ctx, logger, opts).ConfigureAwait(false);
+        await mw.InvokeAsync(ctx, logger, opts);
 
         Assert.Contains(collector.Entries, e => e.Contains("HTTP trace enrich", StringComparison.Ordinal));
         Assert.Contains(collector.Entries, e => e.Contains("wf-abc", StringComparison.Ordinal));
