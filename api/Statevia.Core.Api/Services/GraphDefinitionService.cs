@@ -315,6 +315,6 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     {
         public string? Next { get; set; } = string.Empty;
         public List<string>? Fork { get; set; } = [];
-        public bool End { get; set; }
+        public bool End { get; init; }
     }
 }
