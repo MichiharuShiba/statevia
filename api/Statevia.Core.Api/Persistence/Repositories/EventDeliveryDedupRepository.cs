@@ -55,20 +55,18 @@ internal sealed class EventDeliveryDedupRepository : IEventDeliveryDedupReposito
         string tenantId,
         Guid workflowId,
         Guid clientEventId,
-        string status,
-        DateTime utcNow,
-        DateTime? appliedAt,
-        string? errorCode,
+        EventDeliveryDedupStatusUpdate update,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(update);
         var affected = await db.EventDeliveryDedup
             .Where(x => x.TenantId == tenantId && x.WorkflowId == workflowId && x.ClientEventId == clientEventId)
             .ExecuteUpdateAsync(
                 s => s
-                    .SetProperty(x => x.Status, status)
-                    .SetProperty(x => x.UpdatedAt, utcNow)
-                    .SetProperty(x => x.AppliedAt, appliedAt)
-                    .SetProperty(x => x.ErrorCode, errorCode),
+                    .SetProperty(x => x.Status, update.Status)
+                    .SetProperty(x => x.UpdatedAt, update.UtcNow)
+                    .SetProperty(x => x.AppliedAt, update.AppliedAt)
+                    .SetProperty(x => x.ErrorCode, update.ErrorCode),
                 cancellationToken)
             .ConfigureAwait(false);
 

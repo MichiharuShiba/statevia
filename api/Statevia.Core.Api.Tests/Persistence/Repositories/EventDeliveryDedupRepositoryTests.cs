@@ -123,10 +123,11 @@ public sealed class EventDeliveryDedupRepositoryTests
             "tenant-a",
             workflowId,
             clientEventId,
-            EventDeliveryDedupStatuses.Applied,
-            appliedAt,
-            appliedAt,
-            errorCode: null,
+            new EventDeliveryDedupStatusUpdate(
+                EventDeliveryDedupStatuses.Applied,
+                appliedAt,
+                AppliedAt: appliedAt,
+                ErrorCode: null),
             default);
 
         // Assert
@@ -153,10 +154,11 @@ public sealed class EventDeliveryDedupRepositoryTests
             "tenant-a",
             Guid.NewGuid(),
             Guid.NewGuid(),
-            EventDeliveryDedupStatuses.Failed,
-            DateTime.UtcNow,
-            appliedAt: null,
-            errorCode: "ERR",
+            new EventDeliveryDedupStatusUpdate(
+                EventDeliveryDedupStatuses.Failed,
+                DateTime.UtcNow,
+                AppliedAt: null,
+                ErrorCode: "ERR"),
             default);
 
         // Assert
