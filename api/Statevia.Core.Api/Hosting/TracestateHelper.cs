@@ -27,7 +27,7 @@ internal static class TracestateHelper
             // 既存 list-member を分解し、同一ベンダーキーは上書き用に落とす
             foreach (var part in existing.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
-                var eq = part.IndexOf('=');
+                var eq = part.IndexOf('=', StringComparison.Ordinal);
                 if (eq <= 0 || eq >= part.Length - 1)
                     continue;
                 var key = part[..eq].Trim();
