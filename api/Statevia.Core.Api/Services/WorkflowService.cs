@@ -787,7 +787,7 @@ internal sealed class WorkflowService : IWorkflowService
         var snapshot = _engine.GetSnapshot(engineId);
         if (snapshot is null)
         {
-            _logger.LogDebug("Skip projection queue update because runtime is missing for workflow {WorkflowId}", workflowId);
+            _logger.SkipProjectionQueueUpdateDebug(workflowId);
             return (null, null, null);
         }
 
@@ -832,25 +832,46 @@ internal sealed class WorkflowService : IWorkflowService
         string errorCode,
         Exception? exception = null)
     {
-        var level = decision switch
+        switch (decision)
         {
-            EventDeliveryLogDecisions.Failed or EventDeliveryLogDecisions.BackoffBudgetExhausted => LogLevel.Error,
-            EventDeliveryLogDecisions.Retry or EventDeliveryLogDecisions.AbortedTimeout => LogLevel.Warning,
-            _ => LogLevel.Information
-        };
-
-        _logger.Log(
-            level,
-            exception,
-            "event_delivery_decision traceId={TraceId} workflowId={WorkflowId} tenantId={TenantId} clientEventId={ClientEventId} decision={Decision} attempt={Attempt} elapsedMs={ElapsedMs} errorCode={ErrorCode}",
-            traceId,
-            workflowId,
-            tenantId,
-            clientEventId,
-            decision,
-            attempt,
-            elapsedMs,
-            errorCode);
+            case EventDeliveryLogDecisions.Failed:
+            case EventDeliveryLogDecisions.BackoffBudgetExhausted:
+                _logger.EventDeliveryDecisionError(
+                    exception!,
+                    traceId,
+                    workflowId,
+                    tenantId,
+                    clientEventId,
+                    decision,
+                    attempt,
+                    elapsedMs,
+                    errorCode);
+                break;
+            case EventDeliveryLogDecisions.Retry:
+            case EventDeliveryLogDecisions.AbortedTimeout:
+                _logger.EventDeliveryDecisionWarning(
+                    exception!,
+                    traceId,
+                    workflowId,
+                    tenantId,
+                    clientEventId,
+                    decision,
+                    attempt,
+                    elapsedMs,
+                    errorCode);
+                break;
+            default:
+                _logger.EventDeliveryDecisionInformation(
+                    traceId,
+                    workflowId,
+                    tenantId,
+                    clientEventId,
+                    decision,
+                    attempt,
+                    elapsedMs,
+                    errorCode);
+                break;
+        }
     }
 
     /// <summary>
@@ -1192,8 +1213,7 @@ internal sealed class WorkflowService : IWorkflowService
         string failureMessage)
     {
         var traceId = GetTraceIdOrEmpty();
-        _logger.LogInformation(
-            "serializable_persist_retry traceId={TraceId} workflowId={WorkflowId} tenantId={TenantId} clientEventId={ClientEventId} attempt={Attempt} maxAttempts={MaxAttempts} delayMs={DelayMs} failureMessage={FailureMessage}",
+        _logger.SerializablePersistRetry(
             traceId,
             workflowId,
             tenantId,
