@@ -1,0 +1,17 @@
+root = false
+
+[Statevia.Core.Api/Migrations/*.cs]
+dotnet_diagnostic.CA1515.severity = none
+
+# api ディレクトリを基準に Statevia.Core.Api 配下へマッチ（*.cs は直下のみ）
+[Statevia.Core.Api/Contracts/*.cs]
+dotnet_diagnostic.CA1515.severity = none
+
+[Statevia.Core.Api/Controllers/*.cs]
+dotnet_diagnostic.CA1515.severity = none
+
+[Statevia.Core.Api/Abstractions/Services/*.cs]
+dotnet_diagnostic.CA1515.severity = none
+
+[Statevia.Core.Api/Services/*.cs]
+dotnet_diagnostic.CA1515.severity = none
