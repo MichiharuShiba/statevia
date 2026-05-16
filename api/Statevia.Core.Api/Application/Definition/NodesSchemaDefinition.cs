@@ -1,5 +1,7 @@
 namespace Statevia.Core.Api.Application.Definition;
 
+using static NodesSchemaLiteral;
+
 /// <summary>
 /// UI 補完/Lint 用の nodes 形式スキーマ定義を返す。
 /// </summary>
@@ -10,69 +12,81 @@ internal static class NodesSchemaDefinition
 
     public static object CreateSchemaDocument() => new
     {
-        type = "object",
-        required = new[] { "version", "workflow", "nodes" },
+        type = TypeObject,
+        required = new[] { Version, Workflow, Nodes },
         properties = new
         {
             version = new
             {
-                type = "integer",
-                @enum = new[] { 1 }
+                type = TypeInteger,
+                @enum = new[] { NodesVersion }
             },
             workflow = new
             {
-                type = "object",
+                type = TypeObject,
                 properties = new
                 {
-                    id = new { type = "string" },
-                    name = new { type = "string" },
+                    id = new { type = TypeString },
+                    name = new { type = TypeString },
                     description = new
                     {
-                        type = "string",
+                        type = TypeString,
                         description = "Authoring metadata (optional)."
                     }
                 }
             },
             nodes = new
             {
-                type = "array",
+                type = TypeArray,
                 minItems = 1,
                 items = new
                 {
-                    type = "object",
-                    required = new[] { "id", "type" },
+                    type = TypeObject,
+                    required = new[] { Id, Type },
                     properties = new
                     {
-                        id = new { type = "string" },
+                        id = new { type = TypeString },
                         type = new
                         {
-                            type = "string",
-                            @enum = new[] { "start", "end", "action", "wait", "fork", "join" }
+                            type = TypeString,
+                            @enum = new[]
+                            {
+                                NodeTypeStart,
+                                NodeTypeEnd,
+                                NodeTypeAction,
+                                NodeTypeWait,
+                                NodeTypeFork,
+                                NodeTypeJoin,
+                            }
                         },
-                        next = new { type = "string" },
+                        next = new { type = TypeString },
                         error = new
                         {
                             oneOf = new object[]
                             {
-                                new { type = "string" },
+                                new { type = TypeString },
                                 new
                                 {
-                                    type = "object",
+                                    type = TypeObject,
                                     properties = new
                                     {
-                                        id = new { type = "string" }
+                                        id = new { type = TypeString }
                                     },
-                                    required = new[] { "id" }
+                                    required = new[] { Id }
                                 }
                             }
                         },
-                        action = new { type = "string" },
-                        @event = new { type = "string" },
-                        mode = new { type = "string", @enum = new[] { "all" } },
+                        action = new { type = TypeString },
+                        @event = new { type = TypeString },
+                        mode = new
+                        {
+                            type = TypeString,
+                            @enum = new[] { JoinModeAll }
+                        },
                         branches = new
                         {
-                            type = "array",
-                            items = new { type = "string" }
+                            type = TypeArray,
+                            items = new { type = TypeString }
                         },
                         input = new
                         {
@@ -80,51 +94,62 @@ internal static class NodesSchemaDefinition
                                 "Action input mapping: path strings ($ / $.seg...) or literals; object map matches ParseStrictInputMapping.",
                             anyOf = new object[]
                             {
-                                new { type = "string" },
+                                new { type = TypeString },
                                 new
                                 {
-                                    type = "object",
+                                    type = TypeObject,
                                     additionalProperties = true
                                 }
                             }
                         },
                         edges = new
                         {
-                            type = "array",
+                            type = TypeArray,
                             items = new
                             {
-                                type = "object",
-                                required = new[] { "to" },
+                                type = TypeObject,
+                                required = new[] { To },
                                 properties = new
                                 {
                                     to = new
                                     {
                                         oneOf = new object[]
                                         {
-                                            new { type = "string" },
+                                            new { type = TypeString },
                                             new
                                             {
-                                                type = "object",
+                                                type = TypeObject,
                                                 properties = new
                                                 {
-                                                    id = new { type = "string" }
+                                                    id = new { type = TypeString }
                                                 }
                                             }
                                         }
                                     },
                                     when = new
                                     {
-                                        type = "object",
-                                        required = new[] { "path", "op" },
+                                        type = TypeObject,
+                                        required = new[] { Path, Op },
                                         properties = new
                                         {
-                                            path = new { type = "string" },
-                                            op = new { type = "string" },
-                                            value = new { type = new[] { "string", "number", "boolean", "array", "object", "null" } }
+                                            path = new { type = TypeString },
+                                            op = new { type = TypeString },
+                                            value = new
+                                            {
+                                                type = new[]
+                                                {
+                                                    TypeString,
+                                                    TypeNumber,
+                                                    TypeBoolean,
+                                                    TypeArray,
+                                                    TypeObject,
+                                                    TypeNull,
+                                                }
+                                            }
                                         }
                                     },
-                                    order = new { type = "integer" },
-                                    @default = new { type = "boolean" }
+                                    order = new { type = TypeInteger },
+                                    @default = new { type = TypeBoolean }
                                 }
                             }
                         }
