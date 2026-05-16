@@ -420,7 +420,6 @@ internal sealed class WorkflowService : IWorkflowService
             tenantId,
             uuid.Value,
             clientEventId,
-            ct,
             async (dbCancel, ctInner) =>
             {
                 await _workflows.UpdateWorkflowAndSnapshotAsync(dbCancel, uuid.Value, projStatus, projCancel, projGraphJson, ctInner).ConfigureAwait(false);
@@ -468,7 +467,8 @@ internal sealed class WorkflowService : IWorkflowService
                     ctInner).ConfigureAwait(false);
 
                 await dbCancel.SaveChangesAsync(ctInner).ConfigureAwait(false);
-            }).ConfigureAwait(false);
+            },
+            ct).ConfigureAwait(false);
     }
 
     public async Task PublishEventAsync(
@@ -519,7 +519,6 @@ internal sealed class WorkflowService : IWorkflowService
             tenantId,
             uuid.Value,
             clientEventId,
-            ct,
             async (dbPub, ctInner) =>
             {
                 await _workflows.UpdateWorkflowAndSnapshotAsync(dbPub, uuid.Value, pubStatus, pubCancel, pubGraphJson, ctInner).ConfigureAwait(false);
@@ -567,7 +566,8 @@ internal sealed class WorkflowService : IWorkflowService
                     ctInner).ConfigureAwait(false);
 
                 await dbPub.SaveChangesAsync(ctInner).ConfigureAwait(false);
-            }).ConfigureAwait(false);
+            },
+            ct).ConfigureAwait(false);
     }
 
     public async Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct)
@@ -698,7 +698,7 @@ internal sealed class WorkflowService : IWorkflowService
         return WorkflowViewMapper.BuildWorkflowView(workflow, snapshot.GraphJson, displayId, graphId);
     }
 
-    private WorkflowResponse? DeserializeCachedWorkflowResponse(CommandDedupRow existing)
+    private static WorkflowResponse? DeserializeCachedWorkflowResponse(CommandDedupRow existing)
     {
         if (string.IsNullOrEmpty(existing.ResponseBody))
             return null;
@@ -1074,8 +1074,8 @@ internal sealed class WorkflowService : IWorkflowService
         string tenantId,
         Guid workflowId,
         Guid clientEventId,
-        CancellationToken ct,
-        Func<CoreDbContext, CancellationToken, Task> applyAndSaveAsync)
+        Func<CoreDbContext, CancellationToken, Task> applyAndSaveAsync,
+        CancellationToken ct)
     {
         var retryOptions = _eventDeliveryRetryOptions.Value;
         var maxAttempts = Math.Max(1, retryOptions.SerializablePersistenceMaxAttempts);
