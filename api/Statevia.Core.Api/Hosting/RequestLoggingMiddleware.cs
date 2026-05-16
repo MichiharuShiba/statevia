@@ -48,7 +48,19 @@ internal sealed class RequestLoggingMiddleware
         {
             requestBodyLog = await BuildRequestBodyLogAsync(context.Request, opts).ConfigureAwait(false);
         }
-        catch
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (IOException)
+        {
+            requestBodyLog = "[request body read error]";
+        }
+        catch (NotSupportedException)
+        {
+            requestBodyLog = "[request body read error]";
+        }
+        catch (InvalidOperationException)
         {
             requestBodyLog = "[request body read error]";
         }
@@ -108,10 +120,12 @@ internal sealed class RequestLoggingMiddleware
                 {
                     responseBodyLog = BuildResponseBodyLog(bytes, context.Response.ContentType, opts);
                 }
-                catch
+#pragma warning disable CA1031 // 応答ログ用デコード／マスキング失敗でもリクエスト完了ログは続行する
+                catch (Exception)
                 {
                     responseBodyLog = "[response body decode error]";
                 }
+#pragma warning restore CA1031
 
                 captureStream.Dispose();
             }
@@ -174,9 +188,14 @@ internal sealed class RequestLoggingMiddleware
             {
                 request.Body.Position = 0;
             }
-            catch
+            catch (IOException)
             {
-                // ignore
+            }
+            catch (NotSupportedException)
+            {
+            }
+            catch (InvalidOperationException)
+            {
             }
         }
 
@@ -228,14 +247,16 @@ internal sealed class RequestLoggingMiddleware
 
     private static void TryLog(Action logAction)
     {
+#pragma warning disable CA1031 // 構造化ログ提供側の異常でもパイプラインへ影響を与えない
         try
         {
             logAction();
         }
-        catch
+        catch (Exception)
         {
             // ログ失敗でリクエストを壊さない
         }
+#pragma warning restore CA1031
     }
 
     /// <summary>
