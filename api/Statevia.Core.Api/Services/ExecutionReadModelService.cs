@@ -24,9 +24,9 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
 
     public async Task<ExecutionReadModel> GetByDisplayIdAsync(string id, string tenantId, CancellationToken ct = default)
     {
-        var uuid = await _displayIds.ResolveAsync("workflow", id, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, id, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
 
@@ -34,17 +34,17 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
             .FirstOrDefaultAsync(x => x.WorkflowId == uuid && x.TenantId == tenantId, ct)
             .ConfigureAwait(false);
         if (workflow is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         var snapshot = await db.ExecutionGraphSnapshots.AsNoTracking()
             .FirstOrDefaultAsync(x => x.WorkflowId == uuid, ct)
             .ConfigureAwait(false);
         if (snapshot is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
-        var displayId = await _displayIds.GetDisplayIdAsync("workflow", id, ct)
+        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Workflow, id, ct)
             .ConfigureAwait(false) ?? workflow.WorkflowId.ToString();
-        var graphId = await _displayIds.GetDisplayIdAsync("definition", workflow.DefinitionId.ToString(), ct)
+        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, workflow.DefinitionId.ToString(), ct)
             .ConfigureAwait(false) ?? workflow.DefinitionId.ToString();
 
         return MapToReadModel(workflow, snapshot, displayId, graphId);
@@ -58,7 +58,7 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
     {
         var status = ExecutionStatusMapper.ToContractStatus(workflow.Status);
 
-        // TODO: cancelRequestedAt / canceledAt / failedAt / completedAt は reducer / event 由来の正確な時刻に差し替える。
+        // Note: cancelRequestedAt / canceledAt / failedAt / completedAt は reducer / event 由来の正確な時刻に差し替える。
         DateTimeOffset? canceledAt = status is "CANCELED" ? workflow.UpdatedAt : null;
         DateTimeOffset? failedAt = status is "FAILED" ? workflow.UpdatedAt : null;
         DateTimeOffset? completedAt = status is "COMPLETED" ? workflow.UpdatedAt : null;
@@ -104,7 +104,7 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
             list.Add(new ExecutionNodeReadModel
             {
                 ExecutionNodeId = n.NodeId ?? string.Empty,
-                NodeType = "Task",
+                NodeType = string.IsNullOrWhiteSpace(n.StateName) ? "Task" : n.StateName,
                 Status = nodeStatus,
                 Attempt = 1,
                 WorkerId = null,
@@ -141,9 +141,11 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
     private sealed class ExecutionNodeDto
     {
         public string? NodeId { get; set; }
+
         public string? StateName { get; set; }
-        public DateTime StartedAt { get; set; }
+
         public DateTime? CompletedAt { get; set; }
+
         public string? Fact { get; set; }
     }
 }
