@@ -189,7 +189,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
     /// <summary>
     /// nodes を states へ正規化し、状態名（node.id）をキーにした辞書を構築する。
     /// </summary>
-    private static IReadOnlyDictionary<string, StateDefinition> BuildStates(IReadOnlyList<ParsedNode> nodes)
+    private static Dictionary<string, StateDefinition> BuildStates(IReadOnlyList<ParsedNode> nodes)
     {
         var byId = nodes.ToDictionary(n => n.Id, n => n, StringComparer.OrdinalIgnoreCase);
         var states = new Dictionary<string, StateDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -263,7 +263,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         public required NodeKind Kind { get; init; }
         public required Dictionary<string, object?> Raw { get; init; }
         public string? Next { get; init; }
-        public IReadOnlyList<NodeEdgeDefinition>? Edges { get; init; }
+        public List<NodeEdgeDefinition>? Edges { get; init; }
         public string? ActionId { get; init; }
         public string? WaitEvent { get; init; }
         public string? Error { get; init; }
@@ -282,7 +282,9 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                 throw new ArgumentException("Every node must have 'type'.");
             }
 
+#pragma warning disable CA1308 // YAML の type 値は小文字キーワードとして正規化する
             var kind = typeStr.Trim().ToLowerInvariant() switch
+#pragma warning restore CA1308
             {
                 "start" => NodeKind.Start,
                 "end" => NodeKind.End,
@@ -632,7 +634,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         /// <summary>
         /// ノード定義の edges を読み取り、条件遷移の素材となる内部モデルへ変換する。
         /// </summary>
-        private static IReadOnlyList<NodeEdgeDefinition>? ParseEdges(string? nodeIdForErrors, Dictionary<string, object?> dict)
+        private static List<NodeEdgeDefinition>? ParseEdges(string? nodeIdForErrors, Dictionary<string, object?> dict)
         {
             if (!dict.TryGetValue("edges", out var edgesVal) || edgesVal is null)
             {
