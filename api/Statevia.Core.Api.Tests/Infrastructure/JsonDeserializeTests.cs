@@ -14,11 +14,11 @@ public sealed class JsonDeserializeTests
         const string json = """{"name":"x"}""";
 
         // Act
-        var ok = JsonDeserialize.TryDeserialize(json, JsonDeserialize.CaseInsensitiveDeserializeOptions, out SampleDto? value);
+        var ok = JsonDeserialize.TryDeserialize(json, JsonDeserialize.CaseInsensitiveDeserializeOptions, out JsonElement? value);
 
         // Assert
         Assert.True(ok);
-        Assert.Equal("x", value!.Name);
+        Assert.Equal("x", value!.Value.GetProperty("name").GetString());
     }
 
     /// <summary>不正な JSON は false を返し値は default。</summary>
@@ -29,7 +29,7 @@ public sealed class JsonDeserializeTests
         const string json = "not-json";
 
         // Act
-        var ok = JsonDeserialize.TryDeserialize(json, null, out SampleDto? value);
+        var ok = JsonDeserialize.TryDeserialize(json, null, out JsonElement? value);
 
         // Assert
         Assert.False(ok);
@@ -42,8 +42,6 @@ public sealed class JsonDeserializeTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            JsonDeserialize.TryDeserialize<SampleDto>(null!, null, out _));
+            JsonDeserialize.TryDeserialize<JsonElement>(null!, null, out _));
     }
-
-    private sealed record SampleDto(string? Name);
 }
