@@ -14,6 +14,10 @@ internal sealed class TraceContextEnrichmentMiddleware
 
     public TraceContextEnrichmentMiddleware(RequestDelegate next) => _next = next;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Critical Code Smell",
+        "S3776:Cognitive Complexity of methods should not be too high",
+        Justification = "トレース enrich と tracestate 付与を単一ミドルウェアに集約している。")]
     public async Task InvokeAsync(
         HttpContext context,
         ILogger<TraceContextEnrichmentMiddleware> logger,
@@ -70,41 +74,25 @@ internal sealed class TraceContextEnrichmentMiddleware
     internal static (string? wf, string? def, string? graph) ExtractDomainIds(HttpContext ctx)
     {
         var path = ctx.Request.Path.Value ?? "";
-        var rv = ctx.Request.RouteValues;
-
-        // コントローラの Route プレフィックスとテンプレート引数名に合わせる
-        if (path.StartsWith("/v1/workflows/", StringComparison.OrdinalIgnoreCase))
+        if (TryGetRouteString(ctx, "id") is { } routeId)
         {
-            if (rv.TryGetValue("id", out var id) && id != null)
-            {
-                var s = id.ToString();
-                if (!string.IsNullOrEmpty(s))
-                    return (s, null, null);
-            }
+            if (path.StartsWith("/v1/workflows/", StringComparison.OrdinalIgnoreCase))
+                return (routeId, null, null);
+            if (path.StartsWith("/v1/definitions/", StringComparison.OrdinalIgnoreCase))
+                return (null, routeId, null);
         }
 
-        if (path.StartsWith("/v1/definitions/", StringComparison.OrdinalIgnoreCase))
-        {
-            if (rv.TryGetValue("id", out var id) && id != null)
-            {
-                var s = id.ToString();
-                if (!string.IsNullOrEmpty(s))
-                    return (null, s, null);
-            }
-        }
-
-        if (path.StartsWith("/v1/graphs/", StringComparison.OrdinalIgnoreCase))
-        {
-            if (rv.TryGetValue("graphId", out var gid) && gid != null)
-            {
-                var s = gid.ToString();
-                if (!string.IsNullOrEmpty(s))
-                    return (null, null, s);
-            }
-        }
+        if (path.StartsWith("/v1/graphs/", StringComparison.OrdinalIgnoreCase)
+            && TryGetRouteString(ctx, "graphId") is { } graphId)
+            return (null, null, graphId);
 
         return (null, null, null);
     }
+
+    private static string? TryGetRouteString(HttpContext ctx, string routeKey) =>
+        ctx.Request.RouteValues.TryGetValue(routeKey, out var value) && value is not null
+            ? value.ToString()
+            : null;
 
     internal static string? BuildTracestateOpaque(string? wf, string? def, string? graph)
     {
