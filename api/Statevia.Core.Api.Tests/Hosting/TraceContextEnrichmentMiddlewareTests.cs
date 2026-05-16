@@ -8,6 +8,30 @@ namespace Statevia.Core.Api.Tests.Hosting;
 /// <summary>STV-403: ルート後ドメイン ID enrich の単体テスト。</summary>
 public sealed class TraceContextEnrichmentMiddlewareTests
 {
+    /// <summary>TraceId が Items に無いときは enrich ログを出さない。</summary>
+    [Fact]
+    public async Task InvokeAsync_SkipsEnrichLog_WhenTraceIdMissing()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/workflows/wf-abc";
+        ctx.Request.RouteValues["id"] = "wf-abc";
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<TraceContextEnrichmentMiddleware>();
+        var opts = Options.Create(new RequestLogOptions { EmitTracestateWithDomainIds = true });
+        var middleware = new TraceContextEnrichmentMiddleware(_ => Task.CompletedTask);
+
+        // Act
+        await middleware.InvokeAsync(ctx, logger, opts);
+
+        // Assert
+        Assert.DoesNotContain(collector.Entries, e => e.Contains("HTTP trace enrich", StringComparison.Ordinal));
+    }
+
     /// <summary>
     /// ワークフロールートで Items へのドメイン ID 設定と enrich ログ出力を行う。
     /// </summary>
