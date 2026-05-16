@@ -44,6 +44,18 @@ internal sealed class WorkflowProjectionUpdateQueueService : BackgroundService, 
         internal bool IsDeadLettered { get; set; }
         // drain 待ちの同期に使う。idle になったら完了させる。
         internal TaskCompletionSource<bool> IdleSignal { get; set; } = CreateCompletedSignal();
+
+        /// <summary>drain 待機用の未完了シグナルを生成する。</summary>
+        internal static TaskCompletionSource<bool> CreatePendingSignal() =>
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>初期状態（idle）を表す完了済みシグナルを生成する。</summary>
+        internal static TaskCompletionSource<bool> CreateCompletedSignal()
+        {
+            var taskCompletionSource = CreatePendingSignal();
+            _ = taskCompletionSource.TrySetResult(true);
+            return taskCompletionSource;
+        }
     }
 
     private readonly Channel<Guid> _globalQueue;
@@ -114,7 +126,7 @@ internal sealed class WorkflowProjectionUpdateQueueService : BackgroundService, 
             {
                 // idle -> active 遷移。drain 待ちが同期できるよう pending signal を作り直す。
                 if (state.IdleSignal.Task.IsCompleted)
-                    state.IdleSignal = CreatePendingSignal();
+                    state.IdleSignal = WorkflowQueueState.CreatePendingSignal();
                 state.IsQueued = true;
                 shouldWrite = true;
             }
@@ -307,7 +319,7 @@ internal sealed class WorkflowProjectionUpdateQueueService : BackgroundService, 
                     shouldRetry = true;
                     retryDelayMs = GetRetryDelayMs(state.ConsecutiveFailureCount, _retryBaseDelayMs, _retryMaxDelayMs);
                     if (state.IdleSignal.Task.IsCompleted)
-                        state.IdleSignal = CreatePendingSignal();
+                        state.IdleSignal = WorkflowQueueState.CreatePendingSignal();
                 }
             }
 
@@ -404,19 +416,4 @@ internal sealed class WorkflowProjectionUpdateQueueService : BackgroundService, 
         return Math.Min(maxMs, Math.Max(baseMs, delay));
     }
 
-    /// <summary>
-    /// drain 待機用の未完了シグナルを生成する。
-    /// </summary>
-    private static TaskCompletionSource<bool> CreatePendingSignal() =>
-        new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-    /// <summary>
-    /// 初期状態（idle）を表す完了済みシグナルを生成する。
-    /// </summary>
-    private static TaskCompletionSource<bool> CreateCompletedSignal()
-    {
-        var taskCompletionSource = CreatePendingSignal();
-        _ = taskCompletionSource.TrySetResult(true);
-        return taskCompletionSource;
-    }
 }
