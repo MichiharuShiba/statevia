@@ -3446,6 +3446,206 @@ public sealed class WorkflowServiceTests
         Assert.Null(engine.PublishEventLastWorkflowId);
     }
 
+    /// <summary>定義 ID は解決できるが行が無いとき未検出例外を投げる。</summary>
+    [Fact]
+    public async Task StartAsync_WhenDefinitionRowMissingAfterResolve_ThrowsNotFound()
+    {
+        // Arrange
+        var defUuid = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        var display = new FakeDisplayIdService { ResolveResultDefinition = defUuid };
+        var sut = MakeSut(
+            new FakeCommandDedupService(null),
+            new FakeCommandDedupRepository(),
+            new FakeWorkflowEngine(),
+            display,
+            new FakeWorkflowRepository(),
+            new FakeEventStoreRepository(),
+            projectionQueue: null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            sut.StartAsync(
+                "t1",
+                new StartWorkflowRequest { DefinitionId = "DEF-1" },
+                idempotencyKey: null,
+                new CommandRequestContext("POST", "/v1/workflows"),
+                CancellationToken.None));
+    }
+
+    /// <summary>永続化失敗時はトランザクションをロールバックして再送出する。</summary>
+    [Fact]
+    public async Task StartAsync_WhenEventStoreAppendFails_RethrowsAfterRollback()
+    {
+        // Arrange
+        var defUuid = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
+        var display = new FakeDisplayIdService { ResolveResultDefinition = defUuid };
+        var eventStore = new FakeEventStoreRepository { ThrowFromAppendWithDb = new InvalidOperationException("db fail") };
+        using var sqlite = new SqliteTestDatabase();
+        var sut = new WorkflowService(
+            new FakeWorkflowEngine(),
+            display,
+            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            new FakeWorkflowRepository(),
+            new FakeDefinitionsRepoStub2(defUuid),
+            new FakeCommandDedupRepository(),
+            eventStore,
+            new FakeEventDeliveryDedupRepository(),
+            sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.StartAsync(
+                "t1",
+                new StartWorkflowRequest { DefinitionId = "DEF-1" },
+                idempotencyKey: null,
+                new CommandRequestContext("POST", "/v1/workflows"),
+                CancellationToken.None));
+    }
+
+    /// <summary>存在確認でワークフローが無いとき未検出例外を投げる。</summary>
+    [Fact]
+    public async Task EnsureWorkflowExistsAsync_Throws_WhenWorkflowMissing()
+    {
+        // Arrange
+        var sut = MakeSut(
+            new FakeCommandDedupService(null),
+            new FakeCommandDedupRepository(),
+            new FakeWorkflowEngine(),
+            new FakeDisplayIdService(),
+            new FakeWorkflowRepository { ByIdResult = null },
+            new FakeEventStoreRepository());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            sut.EnsureWorkflowExistsAsync("t1", Guid.NewGuid(), CancellationToken.None));
+    }
+
+    /// <summary>スナップショット JSON を workflow ID で取得できる。</summary>
+    [Fact]
+    public async Task TryGetSnapshotGraphJsonByWorkflowIdAsync_ReturnsGraphJson()
+    {
+        // Arrange
+        var workflowId = Guid.NewGuid();
+        var workflowRepo = new FakeWorkflowRepository
+        {
+            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            {
+                WorkflowId = workflowId,
+                GraphJson = """{"nodes":[]}""",
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+        var sut = MakeSut(
+            new FakeCommandDedupService(null),
+            new FakeCommandDedupRepository(),
+            new FakeWorkflowEngine(),
+            new FakeDisplayIdService(),
+            workflowRepo,
+            new FakeEventStoreRepository());
+
+        // Act
+        var json = await sut.TryGetSnapshotGraphJsonByWorkflowIdAsync(workflowId, CancellationToken.None);
+
+        // Assert
+        Assert.Equal("""{"nodes":[]}""", json);
+    }
+
+    /// <summary>スナップショット行が無いとき null を返す。</summary>
+    [Fact]
+    public async Task TryGetSnapshotGraphJsonByWorkflowIdAsync_ReturnsNull_WhenMissing()
+    {
+        // Arrange
+        var sut = MakeSut(
+            new FakeCommandDedupService(null),
+            new FakeCommandDedupRepository(),
+            new FakeWorkflowEngine(),
+            new FakeDisplayIdService(),
+            new FakeWorkflowRepository { SnapshotByWorkflowId = null },
+            new FakeEventStoreRepository());
+
+        // Act
+        var json = await sut.TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid.NewGuid(), CancellationToken.None);
+
+        // Assert
+        Assert.Null(json);
+    }
+
+    /// <summary>Engine にスナップショットが無いとき投影更新をスキップする。</summary>
+    [Fact]
+    public async Task UpdateProjectionFromEngineAsync_WhenEngineSnapshotNull_DoesNotUpdate()
+    {
+        // Arrange
+        var workflowId = Guid.NewGuid();
+        var workflowRepo = new FakeWorkflowRepository();
+        using var sqlite = new SqliteTestDatabase();
+        var sut = new WorkflowService(
+            new FakeWorkflowEngine { SnapshotToReturn = null },
+            new FakeDisplayIdService(),
+            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            workflowRepo,
+            new FakeDefinitionsRepoStub(),
+            new FakeCommandDedupRepository(),
+            new FakeEventStoreRepository(),
+            new FakeEventDeliveryDedupRepository(),
+            sqlite.Factory,
+            NullLogger<WorkflowService>.Instance,
+            DefaultEventDeliveryRetryOptions,
+            UnitTestHttpContextAccessor());
+
+        // Act
+        await sut.UpdateProjectionFromEngineAsync(workflowId, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(workflowRepo.Updates);
+    }
+
+    /// <summary>afterSeq が負のとき引数例外を投げる。</summary>
+    [Fact]
+    public async Task ListEventsAsync_WhenAfterSeqNegative_ThrowsArgumentException()
+    {
+        // Arrange
+        var sut = MakeSut(
+            new FakeCommandDedupService(null),
+            new FakeCommandDedupRepository(),
+            new FakeWorkflowEngine(),
+            new FakeDisplayIdService { ResolveResultWorkflow = Guid.NewGuid() },
+            new FakeWorkflowRepository { ByIdResult = new WorkflowRow { WorkflowId = Guid.NewGuid(), TenantId = "t1", DefinitionId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, CancelRequested = false, RestartLost = false } },
+            new FakeEventStoreRepository());
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            sut.ListEventsAsync("t1", "WF-1", afterSeq: -1, limit: 10, CancellationToken.None));
+        Assert.Contains("afterSeq", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>limit が範囲外のとき引数例外を投げる。</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(5001)]
+    public async Task ListEventsAsync_WhenLimitOutOfRange_ThrowsArgumentException(int limit)
+    {
+        // Arrange
+        var sut = MakeSut(
+            new FakeCommandDedupService(null),
+            new FakeCommandDedupRepository(),
+            new FakeWorkflowEngine(),
+            new FakeDisplayIdService { ResolveResultWorkflow = Guid.NewGuid() },
+            new FakeWorkflowRepository { ByIdResult = new WorkflowRow { WorkflowId = Guid.NewGuid(), TenantId = "t1", DefinitionId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, CancelRequested = false, RestartLost = false } },
+            new FakeEventStoreRepository());
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            sut.ListEventsAsync("t1", "WF-1", afterSeq: 0, limit: limit, CancellationToken.None));
+        Assert.Contains("limit", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static WorkflowService MakeSut(
         FakeCommandDedupService dedupService,
         FakeCommandDedupRepository dedupRepo,
