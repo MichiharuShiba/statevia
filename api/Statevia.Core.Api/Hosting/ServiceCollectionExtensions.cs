@@ -79,26 +79,7 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
 
         services.AddOptions<RequestLogOptions>()
-            .Configure<IHostEnvironment>((options, environment) =>
-            {
-                if (environment.IsProduction())
-                {
-                    options.LogRequestBody = false;
-                    options.LogResponseBody = false;
-                }
-                else
-                {
-                    options.LogRequestBody = true;
-                    options.LogResponseBody = true;
-                }
-
-                if (string.Equals(Environment.GetEnvironmentVariable("STATEVIA_LOG_HTTP_BODIES"), "true",
-                        StringComparison.OrdinalIgnoreCase))
-                {
-                    options.LogRequestBody = true;
-                    options.LogResponseBody = true;
-                }
-            });
+            .Configure<IHostEnvironment>(ConfigureRequestLogOptions);
 
         services.AddOptions<EventDeliveryRetryOptions>()
             .Bind(configuration.GetSection("EventDelivery:Retry"))
@@ -120,35 +101,58 @@ internal static class ServiceCollectionExtensions
                 jsonOptions.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
             });
 
-        services.Configure<ApiBehaviorOptions>(options =>
-        {
-            options.InvalidModelStateResponseFactory = context =>
-            {
-                var errors = context.ModelState
-                    .Where(kvp => kvp.Value?.Errors.Count > 0)
-                    .SelectMany(kvp => kvp.Value!.Errors.Select(error => error.ErrorMessage))
-                    .Where(message => !string.IsNullOrWhiteSpace(message))
-                    .ToArray();
-
-                var message = errors.Length > 0 ? string.Join("; ", errors) : "Validation failed";
-
-                var details = context.ModelState.ToDictionary(
-                    kvp => kvp.Key,
-                    kvp => kvp.Value?.Errors.Select(error => error.ErrorMessage).ToArray() ?? Array.Empty<string>());
-
-                return new UnprocessableEntityObjectResult(
-                    new ErrorResponse
-                    {
-                        Error = new ApiError
-                        {
-                            Code = "VALIDATION_ERROR",
-                            Message = message,
-                            Details = details
-                        }
-                    });
-            };
-        });
+        services.Configure<ApiBehaviorOptions>(ConfigureApiValidationResponse);
 
         return services;
+    }
+
+    private static void ConfigureRequestLogOptions(RequestLogOptions options, IHostEnvironment environment)
+    {
+        if (environment.IsProduction())
+        {
+            options.LogRequestBody = false;
+            options.LogResponseBody = false;
+        }
+        else
+        {
+            options.LogRequestBody = true;
+            options.LogResponseBody = true;
+        }
+
+        if (string.Equals(Environment.GetEnvironmentVariable("STATEVIA_LOG_HTTP_BODIES"), "true",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            options.LogRequestBody = true;
+            options.LogResponseBody = true;
+        }
+    }
+
+    private static void ConfigureApiValidationResponse(ApiBehaviorOptions options)
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(kvp => kvp.Value?.Errors.Count > 0)
+                .SelectMany(kvp => kvp.Value!.Errors.Select(error => error.ErrorMessage))
+                .Where(message => !string.IsNullOrWhiteSpace(message))
+                .ToArray();
+
+            var message = errors.Length > 0 ? string.Join("; ", errors) : "Validation failed";
+
+            var details = context.ModelState.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value?.Errors.Select(error => error.ErrorMessage).ToArray() ?? Array.Empty<string>());
+
+            return new UnprocessableEntityObjectResult(
+                new ErrorResponse
+                {
+                    Error = new ApiError
+                    {
+                        Code = "VALIDATION_ERROR",
+                        Message = message,
+                        Details = details
+                    }
+                });
+        };
     }
 }
