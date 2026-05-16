@@ -15,3 +15,7 @@ dotnet_diagnostic.CA1515.severity = none
 
 [Services/*.cs]
 dotnet_diagnostic.CA1515.severity = none
+
+[Abstractions/Services/IWorkflowProjectionUpdateQueue.cs]
+# CA1711: 既存の DI 契約名。Queue サフィックスへのリネームは公開面の破壊変更となる。
+dotnet_diagnostic.CA1711.severity = none
