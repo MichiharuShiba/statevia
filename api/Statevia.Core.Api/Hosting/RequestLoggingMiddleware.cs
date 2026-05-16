@@ -69,14 +69,16 @@ internal sealed class RequestLoggingMiddleware
 
         // Path と Query は分離（要件: 一覧検索・相関しやすくする）
         TryLog(() =>
-            logger.HttpRequestStart(
-                traceId,
-                context.Request.Method,
-                path,
-                queryForLog,
-                tenantId,
-                string.IsNullOrEmpty(userAgent) ? null : userAgent,
-                requestBodyLog));
+            logger.HttpRequestStart(new RequestLogStartDetails
+            {
+                TraceId = traceId,
+                Method = context.Request.Method,
+                Path = path,
+                QueryForLog = queryForLog,
+                TenantId = tenantId,
+                UserAgent = string.IsNullOrEmpty(userAgent) ? null : userAgent,
+                RequestBody = requestBodyLog,
+            }));
 
         var sw = Stopwatch.StartNew();
         Stream? originalBody = null;
@@ -248,24 +250,23 @@ internal sealed class RequestLoggingMiddleware
     /// <summary>
     /// リクエスト本文ストリームを先頭へ戻す。非シーク可能なストリームでは false を返す。
     /// </summary>
-    private static bool TryRewindRequestBody(Stream body)
+    private static void TryRewindRequestBody(Stream body)
     {
         try
         {
             body.Position = 0;
-            return true;
         }
         catch (IOException)
         {
-            return false;
+            // 非シーク可能なストリーム — 下流の再読はできないがログは続行する。
         }
         catch (NotSupportedException)
         {
-            return false;
+            // 非シーク可能なストリーム — 下流の再読はできないがログは続行する。
         }
         catch (InvalidOperationException)
         {
-            return false;
+            // 既に消費済みなど — 下流の再読はできないがログは続行する。
         }
     }
 
