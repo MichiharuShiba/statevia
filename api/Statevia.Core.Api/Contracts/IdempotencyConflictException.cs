@@ -9,9 +9,27 @@ public sealed class IdempotencyConflictException : Exception
     /// <summary>
     /// <see cref="IdempotencyConflictException"/> を生成する。
     /// </summary>
+    public IdempotencyConflictException()
+        : this("The idempotency key conflicts with a previous request.")
+    {
+    }
+
+    /// <summary>
+    /// <see cref="IdempotencyConflictException"/> を生成する。
+    /// </summary>
     /// <param name="message">説明メッセージ。</param>
     public IdempotencyConflictException(string message)
         : base(message)
+    {
+    }
+
+    /// <summary>
+    /// <see cref="IdempotencyConflictException"/> を生成する。
+    /// </summary>
+    /// <param name="message">説明メッセージ。</param>
+    /// <param name="innerException">内部例外。</param>
+    public IdempotencyConflictException(string message, Exception innerException)
+        : base(message, innerException)
     {
     }
 }
