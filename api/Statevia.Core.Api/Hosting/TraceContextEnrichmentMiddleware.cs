@@ -53,7 +53,7 @@ internal sealed class TraceContextEnrichmentMiddleware
             var opaque = BuildTracestateOpaque(wf, def, graph);
             if (!string.IsNullOrEmpty(opaque))
             {
-                var existing = context.Request.Headers["tracestate"].FirstOrDefault();
+                var existing = context.Request.Headers.TraceState.FirstOrDefault();
                 var merged = TracestateHelper.Merge(existing, TracestateHelper.StateviaVendorKey, opaque);
                 // クロージャで merged を固定（応答開始時に一括設定）
                 var mergedLocal = merged;
@@ -61,7 +61,7 @@ internal sealed class TraceContextEnrichmentMiddleware
                     static state =>
                     {
                         var (ctx, m) = ((HttpContext, string))state!;
-                        ctx.Response.Headers["tracestate"] = m;
+                        ctx.Response.Headers.TraceState = m;
                         return Task.CompletedTask;
                     },
                     (context, mergedLocal));

@@ -15,7 +15,7 @@ internal static class TraceIdResolver
     public static string ResolveTraceId(HttpRequest request)
     {
         // 分散トレース標準: 有効な trace-id（32 hex）のみ採用
-        var traceParent = request.Headers["traceparent"].FirstOrDefault();
+        var traceParent = request.Headers.TraceParent.FirstOrDefault();
         if (!string.IsNullOrEmpty(traceParent) && TryParseTraceParent(traceParent, out var fromParent))
             return fromParent;
 
