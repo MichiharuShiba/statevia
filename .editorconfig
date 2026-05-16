@@ -113,6 +113,12 @@ dotnet_diagnostic.CA1515.severity = none
 # api/Statevia.Core.Api — 個別ファイル
 # =============================================================================
 
+[api/Statevia.Core.Api/Hosting/**/*.cs]
+
+# ASP0015: ヘッダ辞書の推奨 API を使え。
+# 除外理由: W3C traceparent や X-Trace-Id 等のカスタムヘッダは文字列キー指定が契約どおり。
+dotnet_diagnostic.ASP0015.severity = none
+
 [api/Statevia.Core.Api/Abstractions/Services/IWorkflowProjectionUpdateQueue.cs]
 
 # CA1711: 識別子は接尾辞に型名を使うな（Queue 等の汎用語を避けよ）。
@@ -154,6 +160,22 @@ dotnet_diagnostic.CA1861.severity = none
 # 除外理由: xUnit の Assert.Contains / DoesNotContain はテスト意図の可読性を優先し、
 #            既定の序数比較で十分。Sonar external_roslyn:CA1307 のノイズ低減にも寄与する。
 dotnet_diagnostic.CA1307.severity = none
+
+# ASP0015: ヘッダ辞書の推奨 API を使え。
+# 除外理由: テストの DefaultHttpContext では文字列キー指定の方が意図が明確。
+dotnet_diagnostic.ASP0015.severity = none
+
+# CA1859: 具象型で戻り値・ローカルを宣言せよ。
+# 除外理由: テストのヘルパーはインターフェース戻り値の方が差し替えやすい。
+dotnet_diagnostic.CA1859.severity = none
+
+# CA1869: JsonSerializerOptions をキャッシュせよ。
+# 除外理由: 単発テストでのオプション生成は可読性を優先する。
+dotnet_diagnostic.CA1869.severity = none
+
+# CA2201: 十分に特定された例外型を使え。
+# 除外理由: フィルタの汎用 Exception 経路を意図的に検証する。
+dotnet_diagnostic.CA2201.severity = none
 
 # =============================================================================
 # engine/Statevia.Cli
