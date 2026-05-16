@@ -61,7 +61,7 @@ dotnet_diagnostic.CA1861.severity = none
 # api/Statevia.Core.Api/Migrations
 # =============================================================================
 
-[api/Statevia.Core.Api/Migrations/**/*.cs]
+[api/Statevia.Core.Api/Migrations/*.cs]
 
 # CS1591: 公開型の XML ドキュメントがない。
 # 除外理由: EF 生成マイグレーション。手編集・XML 付与の対象外。
@@ -75,19 +75,24 @@ dotnet_diagnostic.CA1515.severity = none
 # api/Statevia.Core.Api — HTTP / DI 公開面（CA1515）
 # =============================================================================
 
-[api/Statevia.Core.Api/Controllers/**/*.cs]
+[api/Statevia.Core.Api/Controllers/*.cs]
 
 # CA1515: ASP.NET Core が Controller を public で発見するため internal 化不可。
 dotnet_diagnostic.CA1515.severity = none
 
-[api/Statevia.Core.Api/Contracts/**/*.cs]
+[api/Statevia.Core.Api/Contracts/*.cs]
 
 # CA1515: JSON 契約 DTO・例外は HTTP レスポンス／フィルタで公開面として維持する。
 dotnet_diagnostic.CA1515.severity = none
 
-[api/Statevia.Core.Api/Abstractions/Services/**/*.cs]
+[api/Statevia.Core.Api/Abstractions/Services/*.cs]
 
 # CA1515: Controller コンストラクタ注入のサービス IF は public 必須（同一アセンブリの DI 境界）。
+dotnet_diagnostic.CA1515.severity = none
+
+[api/Statevia.Core.Api/Services/*.cs]
+
+# CA1515: Controller から直接注入する SSE 等のサービスは public のままとする。
 dotnet_diagnostic.CA1515.severity = none
 
 # =============================================================================
