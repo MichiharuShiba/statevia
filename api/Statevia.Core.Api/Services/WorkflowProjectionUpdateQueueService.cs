@@ -284,6 +284,7 @@ internal sealed class WorkflowProjectionUpdateQueueService : BackgroundService, 
             }
             throw;
         }
+#pragma warning disable CA1031 // BackgroundService 投影キュー: 未取得例外も試行カウント・DLQ へ確実に集約する
         catch (Exception exception)
         {
             var retryDelayMs = 0;
@@ -343,6 +344,7 @@ internal sealed class WorkflowProjectionUpdateQueueService : BackgroundService, 
 
             await ScheduleRetryAsync(workflowId, retryDelayMs, stoppingToken).ConfigureAwait(false);
         }
+#pragma warning restore CA1031
     }
 
     /// <summary>
