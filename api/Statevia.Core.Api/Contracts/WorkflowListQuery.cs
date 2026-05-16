@@ -13,7 +13,7 @@ public sealed class WorkflowListQuery
 
     /// <summary>オフセット（0 以上）。</summary>
     [FromQuery(Name = "offset")]
-    public int Offset { get; init; }
+    public int? Offset { get; init; }
 
     /// <summary>ステータスフィルタ。</summary>
     [FromQuery(Name = "status")]
