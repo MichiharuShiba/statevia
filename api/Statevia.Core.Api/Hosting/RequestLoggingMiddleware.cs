@@ -126,7 +126,7 @@ internal sealed class RequestLoggingMiddleware
                 }
 #pragma warning restore CA1031
 
-                captureStream.Dispose();
+                await captureStream.DisposeAsync().ConfigureAwait(false);
             }
             // 本文キャプチャ無しでも Content-Length があればサイズだけ記録
             else if (context.Response.ContentLength is { } clen)
@@ -227,7 +227,7 @@ internal sealed class RequestLoggingMiddleware
     {
         if (string.IsNullOrEmpty(contentType))
             return true; // 未指定はテキスト扱いで試す
-        var semi = contentType.IndexOf(';');
+        var semi = contentType.IndexOf(';', StringComparison.Ordinal);
         var media = semi >= 0 ? contentType[..semi] : contentType;
         media = media.Trim();
         return media.Equals("application/json", StringComparison.OrdinalIgnoreCase)
