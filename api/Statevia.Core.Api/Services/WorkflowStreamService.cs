@@ -124,11 +124,13 @@ public sealed class WorkflowStreamService
         {
             return (false, null);
         }
-        catch
+#pragma warning disable CA1031 // SSE ポーリング: DB／実行時の未取得例外でも接続維持のためポーリングを継続する
+        catch (Exception)
         {
             var canContinue = await DelayNextPollAsync(response, ct).ConfigureAwait(false);
             return (canContinue, null);
         }
+#pragma warning restore CA1031
     }
 
     private static async Task<bool> TryWriteAsync(HttpResponse response, string payload, CancellationToken ct)
@@ -191,7 +193,7 @@ public sealed class WorkflowStreamService
             return nodesElement.EnumerateArray().Any(node =>
                 IsTerminalNodeFact(node) || IsCompletedSinkNode(node, sinkNodeIds));
         }
-        catch
+        catch (JsonException)
         {
             // 不正 JSON は終端扱いにせず次回ポーリングで再評価する。
             return false;
