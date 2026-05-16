@@ -2,8 +2,11 @@ using System.Collections;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Definition.Validation;
+using Statevia.Core.Engine.FSM;
 
 namespace Statevia.Core.Api.Application.Definition;
+
+using static NodesSchemaLiteral;
 
 /// <summary>
 /// nodes（UI）形式ルート → <see cref="WorkflowDefinition"/>。仕様:
@@ -24,19 +27,19 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             throw new ArgumentException("Workflow definition root must be an object.");
         }
 
-        if (root.ContainsKey("controls"))
+        if (root.ContainsKey(KeyControls))
         {
             throw new ArgumentException("Root 'controls' is not supported in MVP (see v2-nodes-to-states-conversion-spec §7).");
         }
 
         ValidateVersion(root);
-        var workflowDict = GetChildDict(root, "workflow", StringComparer.OrdinalIgnoreCase);
+        var workflowDict = GetChildDict(root, KeyWorkflow, StringComparer.OrdinalIgnoreCase);
         if (workflowDict.Count == 0)
         {
             throw new ArgumentException("Nodes workflow definition requires root 'workflow'.");
         }
 
-        if (!root.TryGetValue("nodes", out var nodesRaw) || nodesRaw is not IList nodesList || nodesList.Count == 0)
+        if (!root.TryGetValue(KeyNodes, out var nodesRaw) || nodesRaw is not IList nodesList || nodesList.Count == 0)
         {
             throw new ArgumentException("Nodes workflow definition requires non-empty root 'nodes' array.");
         }
@@ -69,7 +72,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
     /// </summary>
     private static void ValidateVersion(Dictionary<string, object?> root)
     {
-        if (!root.TryGetValue("version", out var v) || v == null)
+        if (!root.TryGetValue(KeyVersion, out var v) || v == null)
         {
             throw new ArgumentException("Nodes workflow definition requires root 'version: 1'.");
         }
@@ -92,13 +95,13 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
     /// </summary>
     private static string ResolveWorkflowName(Dictionary<string, object?> workflowDict)
     {
-        var name = GetStr(workflowDict, "name");
+        var name = GetStr(workflowDict, KeyName);
         if (!string.IsNullOrWhiteSpace(name))
         {
             return name;
         }
 
-        var id = GetStr(workflowDict, "id");
+        var id = GetStr(workflowDict, KeyId);
         return !string.IsNullOrWhiteSpace(id) ? id : "Unnamed";
     }
 
@@ -135,7 +138,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
         foreach (var n in nodes)
         {
-            n.ValidateForbiddenMvp(byId);
+            n.ValidateForbiddenMvp();
             n.ValidateReferences(byId);
         }
 
@@ -203,6 +206,10 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
     }
 
     /// <summary>単一 fork から各 branch が直接 join に入る MVP パターンのみ。</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Critical Code Smell",
+        "S3776:Cognitive Complexity of methods should not be too high",
+        Justification = "fork/join の MVP パターン照合を単一メソッドに集約している。")]
     private static IReadOnlyList<string> ResolveJoinAllOf(ParsedNode joinNode, IReadOnlyDictionary<string, ParsedNode> byId)
     {
         var joinId = joinNode.Id;
@@ -275,8 +282,8 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         /// </summary>
         public static ParsedNode FromDict(Dictionary<string, object?> dict)
         {
-            var id = GetStr(dict, "id");
-            var typeStr = GetStr(dict, "type");
+            var id = GetStr(dict, KeyId);
+            var typeStr = GetStr(dict, KeyType);
             if (string.IsNullOrWhiteSpace(typeStr))
             {
                 throw new ArgumentException("Every node must have 'type'.");
@@ -286,21 +293,21 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             var kind = typeStr.Trim().ToLowerInvariant() switch
 #pragma warning restore CA1308
             {
-                "start" => NodeKind.Start,
-                "end" => NodeKind.End,
-                "action" => NodeKind.Action,
-                "wait" => NodeKind.Wait,
-                "fork" => NodeKind.Fork,
-                "join" => NodeKind.Join,
+                NodeTypeStart => NodeKind.Start,
+                NodeTypeEnd => NodeKind.End,
+                NodeTypeAction => NodeKind.Action,
+                NodeTypeWait => NodeKind.Wait,
+                NodeTypeFork => NodeKind.Fork,
+                NodeTypeJoin => NodeKind.Join,
                 _ => throw new ArgumentException($"Unknown node type '{typeStr}' for node '{id ?? "?"}'.")
             };
 
-            var next = GetStr(dict, "next");
-            var action = GetStr(dict, "action");
-            var ev = GetStr(dict, "event");
-            var error = ResolveNodeTargetId(dict, id, "error");
-            var branches = GetStrList(dict, "branches");
-            dict.TryGetValue("input", out var inputVal);
+            var next = GetStr(dict, KeyNext);
+            var action = GetStr(dict, KeyAction);
+            var ev = GetStr(dict, KeyEvent);
+            var error = ResolveNodeTargetId(dict, id, KeyError);
+            var branches = GetStrList(dict, KeyBranches);
+            dict.TryGetValue(KeyInput, out var inputVal);
             var edges = ParseEdges(id, dict);
 
             return new ParsedNode
@@ -321,6 +328,10 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         /// <summary>
         /// 到達性検証に使う隣接ノード ID を列挙する。
         /// </summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage(
+            "Critical Code Smell",
+            "S3776:Cognitive Complexity of methods should not be too high",
+            Justification = "ノード種別ごとの隣接 ID 列挙を switch で網羅している。")]
         public IEnumerable<string> OutNeighborIds()
         {
             switch (Kind)
@@ -336,12 +347,11 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
                     if (Edges != null)
                     {
-                        foreach (var e in Edges)
+                        foreach (var toId in Edges
+                                     .Select(edge => edge.ToId)
+                                     .Where(toId => !string.IsNullOrWhiteSpace(toId)))
                         {
-                            if (!string.IsNullOrWhiteSpace(e.ToId))
-                            {
-                                yield return e.ToId;
-                            }
+                            yield return toId;
                         }
                     }
 
@@ -371,16 +381,16 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         /// <summary>
         /// MVP で未対応のノード属性を拒否する。
         /// </summary>
-        public void ValidateForbiddenMvp(Dictionary<string, ParsedNode> byId)
+        public void ValidateForbiddenMvp()
         {
             switch (Kind)
             {
                 case NodeKind.Start:
-                    ForbidKeys(Id, Raw, "error");
+                    ForbidKeys(Id, Raw, KeyError);
                     break;
                 case NodeKind.End:
-                    ForbidKeys(Id, Raw, "error");
-                    if (HasKeyIgnoreCase(Raw, "next"))
+                    ForbidKeys(Id, Raw, KeyError);
+                    if (HasKeyIgnoreCase(Raw, KeyNext))
                     {
                         throw new ArgumentException($"Node '{Id}': 'type: end' must not have 'next' (§3.1).");
                     }
@@ -392,10 +402,10 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
                     break;
                 case NodeKind.Action:
-                    ForbidKeys(Id, Raw, "output");
+                    ForbidKeys(Id, Raw, KeyOutput);
                     break;
                 case NodeKind.Fork:
-                    ForbidKeys(Id, Raw, "error");
+                    ForbidKeys(Id, Raw, KeyError);
                     if (Edges is { Count: > 0 })
                     {
                         throw new ArgumentException($"Fork node '{Id}': 'edges' is not supported in MVP.");
@@ -403,14 +413,14 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
                     break;
                 case NodeKind.Wait:
-                    ForbidKeys(Id, Raw, "error");
+                    ForbidKeys(Id, Raw, KeyError);
                     break;
                 case NodeKind.Join:
-                    ForbidKeys(Id, Raw, "error");
-                    if (Raw.TryGetValue("mode", out var modeVal) && modeVal != null)
+                    ForbidKeys(Id, Raw, KeyError);
+                    if (Raw.TryGetValue(KeyMode, out var modeVal) && modeVal != null)
                     {
                         var m = modeVal.ToString()?.Trim();
-                        if (!string.Equals(m, "all", StringComparison.OrdinalIgnoreCase))
+                        if (!string.Equals(m, JoinModeAll, StringComparison.OrdinalIgnoreCase))
                         {
                             throw new ArgumentException($"Join '{Id}': only mode 'all' is supported in MVP (found '{m}').");
                         }
@@ -423,6 +433,10 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         /// <summary>
         /// ノード種別ごとの必須属性と参照先 ID の存在を検証する。
         /// </summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage(
+            "Critical Code Smell",
+            "S3776:Cognitive Complexity of methods should not be too high",
+            Justification = "ノード種別ごとの参照検証を switch で網羅している。")]
         public void ValidateReferences(Dictionary<string, ParsedNode> byId)
         {
             void MustExist(string? refId, string role)
@@ -448,14 +462,14 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
                     if (!string.IsNullOrWhiteSpace(Next))
                     {
-                        MustExist(Next, "next");
+                        MustExist(Next, KeyNext);
                     }
 
                     if (Edges != null)
                     {
                         foreach (var e in Edges)
                         {
-                            MustExist(e.ToId, "edges.to");
+                            MustExist(e.ToId, KeyEdgesTo);
                         }
                     }
 
@@ -473,20 +487,20 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
                     if (!string.IsNullOrWhiteSpace(Next))
                     {
-                        MustExist(Next, "next");
+                        MustExist(Next, KeyNext);
                     }
 
                     if (Edges != null)
                     {
                         foreach (var e in Edges)
                         {
-                            MustExist(e.ToId, "edges.to");
+                            MustExist(e.ToId, KeyEdgesTo);
                         }
                     }
 
                     if (!string.IsNullOrWhiteSpace(Error))
                     {
-                        MustExist(Error, "error");
+                        MustExist(Error, KeyError);
                         if (string.Equals(Error, Id, StringComparison.OrdinalIgnoreCase))
                         {
                             throw new ArgumentException($"Action node '{Id}' must not self-reference with 'error'.");
@@ -507,14 +521,14 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
                     if (!string.IsNullOrWhiteSpace(Next))
                     {
-                        MustExist(Next, "next");
+                        MustExist(Next, KeyNext);
                     }
 
                     if (Edges != null)
                     {
                         foreach (var e in Edges)
                         {
-                            MustExist(e.ToId, "edges.to");
+                            MustExist(e.ToId, KeyEdgesTo);
                         }
                     }
 
@@ -527,7 +541,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
                     foreach (var b in Branches)
                     {
-                        MustExist(b, "branches");
+                        MustExist(b, KeyBranches);
                     }
 
                     break;
@@ -539,14 +553,14 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
                     if (!string.IsNullOrWhiteSpace(Next))
                     {
-                        MustExist(Next, "next");
+                        MustExist(Next, KeyNext);
                     }
 
                     if (Edges != null)
                     {
                         foreach (var e in Edges)
                         {
-                            MustExist(e.ToId, "edges.to");
+                            MustExist(e.ToId, KeyEdgesTo);
                         }
                     }
 
@@ -561,6 +575,10 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         /// <summary>
         /// ノード種別ごとに StateDefinition へ変換する。
         /// </summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage(
+            "Critical Code Smell",
+            "S3776:Cognitive Complexity of methods should not be too high",
+            Justification = "ノード種別ごとの states 変換を switch で網羅している。")]
         public StateDefinition ToStateDefinition(IReadOnlyDictionary<string, ParsedNode> byId, ParsedNode self)
         {
             switch (Kind)
@@ -571,7 +589,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                         Action = null,
                         On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                         {
-                            ["Completed"] = BuildLinearTransitionForFact(Id, Next, Edges)
+                            [Fact.Completed] = BuildLinearTransitionForFact(Id, Next, Edges)
                         }
                     };
                 case NodeKind.End:
@@ -580,17 +598,17 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                         Action = null,
                         On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                         {
-                            ["Completed"] = new TransitionDefinition { End = true }
+                            [Fact.Completed] = new TransitionDefinition { End = true }
                         }
                     };
                 case NodeKind.Action:
                     var transitions = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                     {
-                        ["Completed"] = BuildLinearTransitionForFact(Id, Next, Edges)
+                        [Fact.Completed] = BuildLinearTransitionForFact(Id, Next, Edges)
                     };
                     if (!string.IsNullOrWhiteSpace(Error))
                     {
-                        transitions["Failed"] = new TransitionDefinition { Next = Error };
+                        transitions[Fact.Failed] = new TransitionDefinition { Next = Error };
                     }
 
                     return new StateDefinition
@@ -605,7 +623,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                         Wait = new WaitDefinition { Event = WaitEvent! },
                         On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                         {
-                            ["Completed"] = BuildLinearTransitionForFact(Id, Next, Edges)
+                            [Fact.Completed] = BuildLinearTransitionForFact(Id, Next, Edges)
                         }
                     };
                 case NodeKind.Fork:
@@ -614,7 +632,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                         Action = null,
                         On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                         {
-                            ["Completed"] = new TransitionDefinition { Fork = Branches!.ToList() }
+                            [Fact.Completed] = new TransitionDefinition { Fork = Branches!.ToList() }
                         }
                     };
                 case NodeKind.Join:
@@ -623,7 +641,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                         Join = new JoinDefinition { AllOf = ResolveJoinAllOf(self, byId).ToList() },
                         On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                         {
-                            ["Joined"] = BuildLinearTransitionForFact(Id, Next, Edges)
+                            [Fact.Joined] = BuildLinearTransitionForFact(Id, Next, Edges)
                         }
                     };
                 default:
@@ -636,7 +654,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         /// </summary>
         private static List<NodeEdgeDefinition>? ParseEdges(string? nodeIdForErrors, Dictionary<string, object?> dict)
         {
-            if (!dict.TryGetValue("edges", out var edgesVal) || edgesVal is null)
+            if (!dict.TryGetValue(KeyEdges, out var edgesVal) || edgesVal is null)
             {
                 return null;
             }
@@ -724,17 +742,14 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                     $"Node '{nodeId}': 'next' must match the default/unconditional edge target when conditional 'edges' are present.");
             }
 
-            var cases = new List<TransitionCaseDefinition>(conditional.Count);
-            foreach (var e in conditional)
-            {
-                cases.Add(
-                    new TransitionCaseDefinition
-                    {
-                        Order = e.Order,
-                        When = e.When ?? throw new InvalidOperationException($"Node '{nodeId}': internal error: conditional edge missing when."),
-                        Transition = new TransitionDefinition { Next = e.ToId }
-                    });
-            }
+            var cases = conditional
+                .Select(edge => new TransitionCaseDefinition
+                {
+                    Order = edge.Order,
+                    When = edge.When ?? throw new InvalidOperationException($"Node '{nodeId}': internal error: conditional edge missing when."),
+                    Transition = new TransitionDefinition { Next = edge.ToId }
+                })
+                .ToList();
 
             return new TransitionDefinition
             {
@@ -776,7 +791,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             }
 
             var targetDict = ToStringDict(raw, StringComparer.OrdinalIgnoreCase);
-            var id = GetStr(targetDict, "id");
+            var id = GetStr(targetDict, KeyId);
             if (string.IsNullOrWhiteSpace(id))
             {
                 throw new ArgumentException(Format(nodeId, $"'{key}' object must include non-empty 'id'."));
@@ -803,7 +818,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         {
             var toId = ResolveEdgeTargetId(nodeId, edgeDict);
 
-            edgeDict.TryGetValue("when", out var whenRaw);
+            edgeDict.TryGetValue(KeyWhen, out var whenRaw);
             ConditionExpressionDefinition? when = null;
             if (whenRaw is not null)
             {
@@ -811,10 +826,10 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                 when = ParseConditionWhen(whenDict, nodeId);
             }
 
-            var order = GetNullableInt(edgeDict, "order");
+            var order = GetNullableInt(edgeDict, KeyOrder);
 
             var isDefaultEdge = false;
-            if (edgeDict.TryGetValue("default", out var defaultRaw) && defaultRaw is not null)
+            if (edgeDict.TryGetValue(KeyDefault, out var defaultRaw) && defaultRaw is not null)
             {
                 switch (defaultRaw)
                 {
@@ -848,7 +863,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         /// </summary>
         private static string ResolveEdgeTargetId(string? nodeId, Dictionary<string, object?> edgeDict)
         {
-            if (!edgeDict.TryGetValue("to", out var toRaw) || toRaw is null)
+            if (!edgeDict.TryGetValue(KeyTo, out var toRaw) || toRaw is null)
             {
                 throw new ArgumentException(Format(nodeId, "edge requires 'to'."));
             }
@@ -859,7 +874,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             }
 
             var toDict = ToStringDict(toRaw, StringComparer.OrdinalIgnoreCase);
-            var id = GetStr(toDict, "id");
+            var id = GetStr(toDict, KeyId);
             return id ?? "";
         }
 
