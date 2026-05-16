@@ -9,7 +9,7 @@ using Statevia.Core.Api.Abstractions.Services;
 namespace Statevia.Core.Api.Services;
 
 /// <summary>
-/// GET …/stream 用の SSE。グラフ JSON の変化を <see cref="GraphUpdated"/> 相当の JSON で送出する。
+/// GET …/stream 用の SSE。グラフ JSON の変化を <c>GraphUpdated</c> イベント相当の JSON で送出する。
 /// </summary>
 public sealed class WorkflowStreamService
 {
@@ -154,7 +154,7 @@ public sealed class WorkflowStreamService
         }
     }
 
-    private async Task<bool> ProcessGraphUpdateAsync(
+    private static async Task<bool> ProcessGraphUpdateAsync(
         HttpResponse response,
         string graphJson,
         string displayId,
