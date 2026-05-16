@@ -1,4 +1,5 @@
 using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
@@ -701,16 +702,9 @@ internal sealed class WorkflowService : IWorkflowService
     {
         if (string.IsNullOrEmpty(existing.ResponseBody))
             return null;
-        try
-        {
-            return JsonSerializer.Deserialize<WorkflowResponse>(
-                existing.ResponseBody,
-                CaseInsensitiveJsonSerializerOptions);
-        }
-        catch
-        {
-            return null;
-        }
+        return JsonDeserialize.TryDeserialize<WorkflowResponse>(existing.ResponseBody, CaseInsensitiveJsonSerializerOptions, out var deserialized)
+            ? deserialized
+            : null;
     }
 
     private static string ComputeStartRequestHash(StartWorkflowRequest request)
@@ -1041,9 +1035,12 @@ internal sealed class WorkflowService : IWorkflowService
         {
             await tx.RollbackAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch
+        catch (DbException)
         {
             // 破損済みトランザクションのロールバックで起きうる競合は無視する。
+        }
+        catch (InvalidOperationException)
+        {
         }
     }
 
@@ -1067,6 +1064,20 @@ internal sealed class WorkflowService : IWorkflowService
         {
             await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
             await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct).ConfigureAwait(false);
+
+            async Task PersistFailureAsync(Exception failure)
+            {
+                await TryRollbackSerializableTransactionAsync(tx, ct).ConfigureAwait(false);
+                totalBackoffMs = await ApplySerializablePersistenceFailureAsync(
+                    failure,
+                    tenantId,
+                    workflowId,
+                    clientEventId,
+                    new SerializablePersistenceRetryProgress(attempt, maxAttempts, totalBackoffMs),
+                    retryOptions,
+                    ct).ConfigureAwait(false);
+            }
+
             try
             {
                 await applyAndSaveAsync(db, ct).ConfigureAwait(false);
@@ -1079,17 +1090,17 @@ internal sealed class WorkflowService : IWorkflowService
                 await TryMarkEventDeliveryFailedAsync(tenantId, workflowId, clientEventId, ct).ConfigureAwait(false);
                 throw;
             }
-            catch (Exception ex)
+            catch (DbUpdateException ex)
             {
-                await TryRollbackSerializableTransactionAsync(tx, ct).ConfigureAwait(false);
-                totalBackoffMs = await ApplySerializablePersistenceFailureAsync(
-                    ex,
-                    tenantId,
-                    workflowId,
-                    clientEventId,
-                    new SerializablePersistenceRetryProgress(attempt, maxAttempts, totalBackoffMs),
-                    retryOptions,
-                    ct).ConfigureAwait(false);
+                await PersistFailureAsync(ex).ConfigureAwait(false);
+            }
+            catch (InvalidOperationException ex)
+            {
+                await PersistFailureAsync(ex).ConfigureAwait(false);
+            }
+            catch (IOException ex)
+            {
+                await PersistFailureAsync(ex).ConfigureAwait(false);
             }
         }
 
