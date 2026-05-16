@@ -1,21 +1,55 @@
 root = false
 
+# =============================================================================
+# Migrations（プロジェクトディレクトリ基準のパス）
+# リポジトリルート .editorconfig の api/Statevia.Core.Api/Migrations と同等。
+# =============================================================================
+
 [Migrations/*.cs]
+
+# CS1591: 公開型の XML ドキュメントがない。
+# 除外理由: EF 生成マイグレーション。手編集・XML 付与の対象外。
+dotnet_diagnostic.CS1591.severity = none
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: EF マイグレーションクラスは public 必須。アプリ外への参照面ではない。
 dotnet_diagnostic.CA1515.severity = none
 
-# CA1515: ** はサブディレクトリ前提の解釈で直下 *.cs にマッチしない環境があるため *.cs を使用
+# =============================================================================
+# HTTP / DI 公開面（CA1515）
+# CA1515 の ** はサブディレクトリ前提の解釈で直下 *.cs にマッチしない環境があるため *.cs を使用。
+# =============================================================================
+
 [Contracts/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: JSON 契約 DTO・例外型は HTTP レスポンス／フィルタの公開面として public を維持する。
 dotnet_diagnostic.CA1515.severity = none
 
 [Controllers/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: ASP.NET Core が Controller を public で発見する。internal 化するとルーティング登録されない。
 dotnet_diagnostic.CA1515.severity = none
 
 [Abstractions/Services/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: Controller コンストラクタ注入のサービス IF は public 必須（同一アセンブリの DI 境界）。
 dotnet_diagnostic.CA1515.severity = none
 
 [Services/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: Controller から直接注入する SSE 等のサービスは public のままとする。
 dotnet_diagnostic.CA1515.severity = none
 
+# =============================================================================
+# 個別ファイル
+# =============================================================================
+
 [Abstractions/Services/IWorkflowProjectionUpdateQueue.cs]
-# CA1711: 既存の DI 契約名。Queue サフィックスへのリネームは公開面の破壊変更となる。
+
+# CA1711: 識別子は接尾辞に型名を使うな（Queue 等の汎用語を避けよ）。
+# 除外理由: 既存の DI 契約名。Queue サフィックスへのリネームは公開面の破壊変更となる。
 dotnet_diagnostic.CA1711.severity = none
