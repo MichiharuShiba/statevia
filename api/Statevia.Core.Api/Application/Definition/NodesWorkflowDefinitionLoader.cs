@@ -171,21 +171,16 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                 continue;
             }
 
-            foreach (var t in n.OutNeighborIds())
+            foreach (var targetId in n.OutNeighborIds().Where(visited.Add))
             {
-                if (visited.Add(t))
-                {
-                    queue.Enqueue(t);
-                }
+                queue.Enqueue(targetId);
             }
         }
 
-        foreach (var n in nodes)
+        var unreachable = nodes.FirstOrDefault(node => !visited.Contains(node.Id));
+        if (unreachable is not null)
         {
-            if (!visited.Contains(n.Id))
-            {
-                throw new ArgumentException($"Unreachable node from start: '{n.Id}'.");
-            }
+            throw new ArgumentException($"Unreachable node from start: '{unreachable.Id}'.");
         }
     }
 
@@ -203,61 +198,6 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         }
 
         return states;
-    }
-
-    /// <summary>単一 fork から各 branch が直接 join に入る MVP パターンのみ。</summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Critical Code Smell",
-        "S3776:Cognitive Complexity of methods should not be too high",
-        Justification = "fork/join の MVP パターン照合を単一メソッドに集約している。")]
-    private static IReadOnlyList<string> ResolveJoinAllOf(ParsedNode joinNode, IReadOnlyDictionary<string, ParsedNode> byId)
-    {
-        var joinId = joinNode.Id;
-        var candidates = new List<(string ForkId, IReadOnlyList<string> Branches)>();
-
-        foreach (var n in byId.Values)
-        {
-            if (n.Kind != NodeKind.Fork || n.Branches == null || n.Branches.Count < 2)
-            {
-                continue;
-            }
-
-            var ok = true;
-            foreach (var b in n.Branches)
-            {
-                if (!byId.TryGetValue(b, out var branchHead) || branchHead.Kind == NodeKind.Join)
-                {
-                    ok = false;
-                    break;
-                }
-
-                if (!string.Equals(branchHead.Next, joinId, StringComparison.OrdinalIgnoreCase))
-                {
-                    ok = false;
-                    break;
-                }
-            }
-
-            if (ok)
-            {
-                candidates.Add((n.Id, n.Branches));
-            }
-        }
-
-        if (candidates.Count == 0)
-        {
-            throw new ArgumentException(
-                $"Join '{joinId}' has no matching fork where each branch node's 'next' points to this join. MVP supports a single fork feeding the join directly (see v2-nodes-to-states-conversion-spec §5.7).");
-        }
-
-        if (candidates.Count > 1)
-        {
-            var names = string.Join(", ", candidates.Select(c => c.ForkId));
-            throw new ArgumentException(
-                $"Join '{joinId}' matches multiple forks ({names}). MVP requires a unique fork (§5.7).");
-        }
-
-        return candidates[0].Branches;
     }
 
     /// <summary>
@@ -572,6 +512,61 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             }
         }
 
+        /// <summary>単一 fork から各 branch が直接 join に入る MVP パターンのみ。</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage(
+            "Critical Code Smell",
+            "S3776:Cognitive Complexity of methods should not be too high",
+            Justification = "fork/join の MVP パターン照合を単一メソッドに集約している。")]
+        private IReadOnlyList<string> ResolveJoinAllOf(IReadOnlyDictionary<string, ParsedNode> byId)
+        {
+            var joinId = Id;
+            var candidates = new List<(string ForkId, IReadOnlyList<string> Branches)>();
+
+            foreach (var n in byId.Values)
+            {
+                if (n.Kind != NodeKind.Fork || n.Branches == null || n.Branches.Count < 2)
+                {
+                    continue;
+                }
+
+                var ok = true;
+                foreach (var b in n.Branches)
+                {
+                    if (!byId.TryGetValue(b, out var branchHead) || branchHead.Kind == NodeKind.Join)
+                    {
+                        ok = false;
+                        break;
+                    }
+
+                    if (!string.Equals(branchHead.Next, joinId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        ok = false;
+                        break;
+                    }
+                }
+
+                if (ok)
+                {
+                    candidates.Add((n.Id, n.Branches));
+                }
+            }
+
+            if (candidates.Count == 0)
+            {
+                throw new ArgumentException(
+                    $"Join '{joinId}' has no matching fork where each branch node's 'next' points to this join. MVP supports a single fork feeding the join directly (see v2-nodes-to-states-conversion-spec §5.7).");
+            }
+
+            if (candidates.Count > 1)
+            {
+                var names = string.Join(", ", candidates.Select(c => c.ForkId));
+                throw new ArgumentException(
+                    $"Join '{joinId}' matches multiple forks ({names}). MVP requires a unique fork (§5.7).");
+            }
+
+            return candidates[0].Branches;
+        }
+
         /// <summary>
         /// ノード種別ごとに StateDefinition へ変換する。
         /// </summary>
@@ -638,7 +633,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                 case NodeKind.Join:
                     return new StateDefinition
                     {
-                        Join = new JoinDefinition { AllOf = ResolveJoinAllOf(self, byId).ToList() },
+                        Join = new JoinDefinition { AllOf = ResolveJoinAllOf(byId).ToList() },
                         On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                         {
                             [Fact.Joined] = BuildLinearTransitionForFact(Id, Next, Edges)
@@ -760,14 +755,14 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
         private static void ForbidKeys(string nodeId, Dictionary<string, object?> raw, params string[] keys)
         {
-            foreach (var k in keys)
+            var forbidden = keys.FirstOrDefault(k => HasKeyIgnoreCase(raw, k));
+            if (forbidden is null)
             {
-                if (HasKeyIgnoreCase(raw, k))
-                {
-                    throw new ArgumentException(
-                        $"Node '{nodeId}': '{k}' is not supported in MVP (see v2-nodes-to-states-conversion-spec §7).");
-                }
+                return;
             }
+
+            throw new ArgumentException(
+                $"Node '{nodeId}': '{forbidden}' is not supported in MVP (see v2-nodes-to-states-conversion-spec §7).");
         }
 
         private static StateInputDefinition? ParseActionInput(string nodeId, object? inputVal) =>
