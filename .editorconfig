@@ -76,8 +76,9 @@ dotnet_diagnostic.CA1515.severity = none
 generated_code = true
 dotnet_analyzer_diagnostic.severity = none
 
-# S1192: 同一リテラル文字列の定数化を推奨（Sonar）。
+# S1192: 同一リテラル文字列の定数化を推奨（Sonar Standalone 向け）。
 # 除外理由: EF マイグレーションの列型・インデックス定義は生成物に近く、定数抽出の実益がない。
+# 補足: Sonar Connected mode では .editorconfig が無視されることがある。Migrations/SonarScopeSuppressions.cs を参照。
 dotnet_diagnostic.S1192.severity = none
 
 # =============================================================================
