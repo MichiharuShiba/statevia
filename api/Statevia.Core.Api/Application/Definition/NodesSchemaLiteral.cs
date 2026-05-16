@@ -1,7 +1,7 @@
 namespace Statevia.Core.Api.Application.Definition;
 
 /// <summary>
-/// nodes スキーマ JSON の繰り返しキー・型名・列挙値。
+/// nodes 形式（UI スキーマ・<see cref="NodesWorkflowDefinitionLoader"/> 共通）の JSON キー・型名・列挙値。
 /// </summary>
 internal static class NodesSchemaLiteral
 {
@@ -19,21 +19,52 @@ internal static class NodesSchemaLiteral
 
     public const string TypeNull = "null";
 
-    public const string Version = "version";
+    public const string KeyVersion = "version";
 
-    public const string Workflow = "workflow";
+    public const string KeyWorkflow = "workflow";
 
-    public const string Nodes = "nodes";
+    public const string KeyNodes = "nodes";
 
-    public const string Id = "id";
+    public const string KeyControls = "controls";
 
-    public const string Type = "type";
+    public const string KeyId = "id";
 
-    public const string To = "to";
+    public const string KeyType = "type";
 
-    public const string Path = "path";
+    public const string KeyName = "name";
 
-    public const string Op = "op";
+    public const string KeyNext = "next";
+
+    public const string KeyError = "error";
+
+    public const string KeyAction = "action";
+
+    public const string KeyEvent = "event";
+
+    public const string KeyBranches = "branches";
+
+    public const string KeyInput = "input";
+
+    public const string KeyOutput = "output";
+
+    public const string KeyMode = "mode";
+
+    public const string KeyEdges = "edges";
+
+    public const string KeyTo = "to";
+
+    public const string KeyWhen = "when";
+
+    public const string KeyPath = "path";
+
+    public const string KeyOp = "op";
+
+    public const string KeyOrder = "order";
+
+    public const string KeyDefault = "default";
+
+    /// <summary>検証メッセージ用の論理フィールドパス（<c>edges[].to</c>）。</summary>
+    public const string KeyEdgesTo = "edges.to";
 
     public const string NodeTypeStart = "start";
 

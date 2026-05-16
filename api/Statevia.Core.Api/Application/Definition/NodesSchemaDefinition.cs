@@ -13,7 +13,7 @@ internal static class NodesSchemaDefinition
     public static object CreateSchemaDocument() => new
     {
         type = TypeObject,
-        required = new[] { Version, Workflow, Nodes },
+        required = new[] { KeyVersion, KeyWorkflow, KeyNodes },
         properties = new
         {
             version = new
@@ -42,7 +42,7 @@ internal static class NodesSchemaDefinition
                 items = new
                 {
                     type = TypeObject,
-                    required = new[] { Id, Type },
+                    required = new[] { KeyId, KeyType },
                     properties = new
                     {
                         id = new { type = TypeString },
@@ -72,7 +72,7 @@ internal static class NodesSchemaDefinition
                                     {
                                         id = new { type = TypeString }
                                     },
-                                    required = new[] { Id }
+                                    required = new[] { KeyId }
                                 }
                             }
                         },
@@ -108,7 +108,7 @@ internal static class NodesSchemaDefinition
                             items = new
                             {
                                 type = TypeObject,
-                                required = new[] { To },
+                                required = new[] { KeyTo },
                                 properties = new
                                 {
                                     to = new
@@ -129,7 +129,7 @@ internal static class NodesSchemaDefinition
                                     when = new
                                     {
                                         type = TypeObject,
-                                        required = new[] { Path, Op },
+                                        required = new[] { KeyPath, KeyOp },
                                         properties = new
                                         {
                                             path = new { type = TypeString },
