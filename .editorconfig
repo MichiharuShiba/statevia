@@ -150,6 +150,11 @@ dotnet_diagnostic.CA2007.severity = none
 #            static readonly への抽出はボイラープレートが増えるだけで実益が小さい。
 dotnet_diagnostic.CA1861.severity = none
 
+# CA1307: 文字列比較に StringComparison を指定せよ。
+# 除外理由: xUnit の Assert.Contains / DoesNotContain はテスト意図の可読性を優先し、
+#            既定の序数比較で十分。Sonar external_roslyn:CA1307 のノイズ低減にも寄与する。
+dotnet_diagnostic.CA1307.severity = none
+
 # =============================================================================
 # engine/Statevia.Cli
 # =============================================================================
