@@ -105,7 +105,7 @@ internal sealed class WorkflowProjectionUpdateQueueService : BackgroundService, 
             if (state.IsDeadLettered)
             {
                 // dead-letter 済みの workflow は自動再開しない（手動オペレーション対象）。
-                _logger.LogWarning("Skip enqueue because workflow is dead-lettered WorkflowId={WorkflowId}", workflowId);
+                _logger.SkipEnqueueDeadLettered(workflowId);
                 return;
             }
 
@@ -192,9 +192,7 @@ internal sealed class WorkflowProjectionUpdateQueueService : BackgroundService, 
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             var remainingCount = CountActiveWorkflows();
-            _logger.LogWarning(
-                "Projection queue drain on shutdown timed out RemainingWorkflows={RemainingWorkflows}",
-                remainingCount);
+            _logger.DrainShutdownTimeout(remainingCount);
             throw;
         }
     }
@@ -326,17 +324,12 @@ internal sealed class WorkflowProjectionUpdateQueueService : BackgroundService, 
                 // NOTE: 現状はプロセス内メモリへ退避するのみ。永続 DLQ（DB/外部キュー）は未対応。
                 _deadLetters[workflowId] = deadLetterEntry;
 
-                _logger.LogError(
-                    exception,
-                    "Projection queue moved workflow to dead-letter WorkflowId={WorkflowId} RetryCount={RetryCount}",
-                    workflowId,
-                    retryCount);
+                _logger.MovedToDeadLetter(exception, workflowId, retryCount);
                 return;
             }
 
-            _logger.LogWarning(
+            _logger.ProcessingFailedRetryScheduled(
                 exception,
-                "Projection queue processing failed. Retry scheduled WorkflowId={WorkflowId} Attempt={Attempt}/{MaxAttempts} DelayMs={DelayMs}",
                 workflowId,
                 retryCount,
                 _maxRetryAttempts,
