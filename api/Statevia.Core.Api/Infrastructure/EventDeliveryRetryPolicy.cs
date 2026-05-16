@@ -107,9 +107,11 @@ internal static class EventDeliveryRetryPolicy
         if (!options.Jitter || capped == 0)
             return capped;
 
-        // 指数値の 50%〜100% の範囲でジッタ（平均を下げつつスパイク回避）
+        // 指数値の 50%〜100% の範囲でジッタ（平均を下げつつスパイク回避）。暗号用途ではないため Random を使用する。
         var low = (int)(capped * 0.5);
+#pragma warning disable CA5394 // 再試行ジッタは暗号学的乱数不要
         return low + random.Next(0, Math.Max(1, capped - low + 1));
+#pragma warning restore CA5394
     }
 
     /// <summary>
