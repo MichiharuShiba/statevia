@@ -135,13 +135,15 @@ internal sealed class TraceContextEnrichmentMiddleware
 
     private static void TryLog(Action logAction)
     {
+#pragma warning disable CA1031 // 構造化ログ提供側の異常でもミドルウェアを中断しない
         try
         {
             logAction();
         }
-        catch
+        catch (Exception)
         {
             // ログ失敗でリクエストを壊さない
         }
+#pragma warning restore CA1031
     }
 }
