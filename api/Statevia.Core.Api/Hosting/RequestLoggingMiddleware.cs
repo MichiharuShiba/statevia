@@ -182,19 +182,7 @@ internal sealed class RequestLoggingMiddleware
         }
         finally
         {
-            try
-            {
-                request.Body.Position = 0;
-            }
-            catch (IOException)
-            {
-            }
-            catch (NotSupportedException)
-            {
-            }
-            catch (InvalidOperationException)
-            {
-            }
+            TryRewindRequestBody(request.Body);
         }
 
         if (read == 0)
@@ -255,6 +243,30 @@ internal sealed class RequestLoggingMiddleware
             // ログ失敗でリクエストを壊さない
         }
 #pragma warning restore CA1031
+    }
+
+    /// <summary>
+    /// リクエスト本文ストリームを先頭へ戻す。非シーク可能なストリームでは false を返す。
+    /// </summary>
+    private static bool TryRewindRequestBody(Stream body)
+    {
+        try
+        {
+            body.Position = 0;
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     /// <summary>
