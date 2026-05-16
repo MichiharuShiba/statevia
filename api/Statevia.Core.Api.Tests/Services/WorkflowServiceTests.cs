@@ -1649,7 +1649,7 @@ public sealed class WorkflowServiceTests
 
     /// <summary>非公開投影更新処理が実行行とスナップショットを更新する。</summary>
     [Fact]
-    public async Task UpdateProjectionAsync_PrivateMethod_UpdatesWorkflowAndSnapshot()
+    public async Task UpdateProjectionFromEngineAsync_PrivateMethod_UpdatesWorkflowAndSnapshot()
     {
         // Arrange
         var workflowId = Guid.NewGuid();
@@ -1690,17 +1690,8 @@ public sealed class WorkflowServiceTests
             DefaultEventDeliveryRetryOptions,
             UnitTestHttpContextAccessor());
 
-        var method = typeof(WorkflowService).GetMethod(
-            "UpdateProjectionAsync",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-        Assert.NotNull(method);
-
         // Act
-        var task = (Task?)method!.Invoke(sut, new object[] { workflowId, CancellationToken.None });
-        Assert.NotNull(task);
-
-        await task!;
+        await sut.UpdateProjectionFromEngineAsync(workflowId, CancellationToken.None);
 
         // Assert
         Assert.Single(workflowRepo.Updates);

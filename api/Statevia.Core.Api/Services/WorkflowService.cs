@@ -159,13 +159,13 @@ internal sealed class WorkflowService : IWorkflowService
             }
         }
 
-        var defUuid = await _displayIds.ResolveAsync("definition", request.DefinitionId!, ct).ConfigureAwait(false);
+        var defUuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, request.DefinitionId!, ct).ConfigureAwait(false);
         if (defUuid is null)
-            throw new NotFoundException("Definition not found");
+            throw new NotFoundException(WorkflowValidationMessages.DefinitionNotFound);
 
         var defRow = await _definitions.GetByIdAsync(tenantId, defUuid.Value, ct).ConfigureAwait(false);
         if (defRow is null)
-            throw new NotFoundException("Definition not found");
+            throw new NotFoundException(WorkflowValidationMessages.DefinitionNotFound);
 
         var (compiled, _) = _compiler.ValidateAndCompile(defRow.Name, defRow.SourceYaml);
 
@@ -173,8 +173,8 @@ internal sealed class WorkflowService : IWorkflowService
         var engineId = workflowId.ToString();
         _engine.Start(compiled, engineId, request.Input);
 
-        var displayId = await _displayIds.AllocateAsync("workflow", workflowId, ct).ConfigureAwait(false);
-        var graphId = await _displayIds.GetDisplayIdAsync("definition", defUuid.Value.ToString("D"), ct).ConfigureAwait(false)
+        var displayId = await _displayIds.AllocateAsync(DisplayIdResourceTypes.Workflow, workflowId, ct).ConfigureAwait(false);
+        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, defUuid.Value.ToString("D"), ct).ConfigureAwait(false)
             ?? defUuid.Value.ToString("D");
         var status = MapStatus(_engine.GetSnapshot(engineId));
         var graphJson = _engine.ExportExecutionGraph(engineId);
@@ -269,7 +269,7 @@ internal sealed class WorkflowService : IWorkflowService
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var offset = query.Offset;
+        var offset = query.Offset ?? 0;
         var limit = query.Limit ?? throw new ArgumentException("limit is required for paged list");
         var status = query.Status;
         var definitionId = query.DefinitionId;
@@ -280,7 +280,7 @@ internal sealed class WorkflowService : IWorkflowService
         Guid? definitionIdFilter = null;
         if (!string.IsNullOrWhiteSpace(definitionId))
         {
-            var defUuid = await _displayIds.ResolveAsync("definition", definitionId!.Trim(), ct).ConfigureAwait(false);
+            var defUuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, definitionId!.Trim(), ct).ConfigureAwait(false);
             if (defUuid is null)
             {
                 return new PagedResult<WorkflowResponse>
@@ -329,16 +329,16 @@ internal sealed class WorkflowService : IWorkflowService
 
     public async Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (workflow is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
-        var displayId = await _displayIds.GetDisplayIdAsync("workflow", idOrUuid, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
-        var graphId = await _displayIds.GetDisplayIdAsync("definition", workflow.DefinitionId.ToString("D"), ct).ConfigureAwait(false)
+        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
+        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, workflow.DefinitionId.ToString("D"), ct).ConfigureAwait(false)
             ?? workflow.DefinitionId.ToString("D");
 
         return new WorkflowResponse
@@ -356,19 +356,19 @@ internal sealed class WorkflowService : IWorkflowService
 
     public async Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
         await EnsureWorkflowExistsAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         var row = await _workflows.GetSnapshotByWorkflowIdAsync(uuid.Value, ct).ConfigureAwait(false);
-        return row is null ? throw new NotFoundException("Workflow not found") : row.GraphJson;
+        return row is null ? throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound) : row.GraphJson;
     }
 
     public async Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct)
     {
         var workflow = await _workflows.GetByIdAsync(tenantId, workflowId, ct).ConfigureAwait(false);
         if (workflow is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
     }
 
     public async Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
@@ -395,13 +395,13 @@ internal sealed class WorkflowService : IWorkflowService
                 return;
         }
 
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (workflow is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
@@ -495,13 +495,13 @@ internal sealed class WorkflowService : IWorkflowService
                 return;
         }
 
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (workflow is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
@@ -578,9 +578,9 @@ internal sealed class WorkflowService : IWorkflowService
 
     public async Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         return await BuildWorkflowViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
     }
@@ -590,9 +590,9 @@ internal sealed class WorkflowService : IWorkflowService
         if (atSeq < 1)
             throw new ArgumentException("atSeq must be >= 1");
 
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         var maxSeq = await _eventStore.GetMaxSeqAsync(uuid.Value, ct).ConfigureAwait(false);
         if (maxSeq == 0)
@@ -616,15 +616,15 @@ internal sealed class WorkflowService : IWorkflowService
         if (limit is < 1 or > 5000)
             throw new ArgumentException("limit must be between 1 and 5000");
 
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (workflow is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
-        var displayId = await _displayIds.GetDisplayIdAsync("workflow", idOrUuid, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
+        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
         var graphJson = await GetGraphJsonAsync(tenantId, idOrUuid, ct).ConfigureAwait(false);
         var patchNodes = WorkflowViewMapper.MapGraphPatchNodes(graphJson);
 
@@ -693,14 +693,14 @@ internal sealed class WorkflowService : IWorkflowService
     {
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid, ct).ConfigureAwait(false);
         if (workflow is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         var snapshot = await _workflows.GetSnapshotByWorkflowIdAsync(uuid, ct).ConfigureAwait(false);
         if (snapshot is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
-        var displayId = await _displayIds.GetDisplayIdAsync("workflow", idOrUuidForDisplay, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
-        var graphId = await _displayIds.GetDisplayIdAsync("definition", workflow.DefinitionId.ToString("D"), ct).ConfigureAwait(false) ?? workflow.DefinitionId.ToString("D");
+        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Workflow, idOrUuidForDisplay, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
+        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, workflow.DefinitionId.ToString("D"), ct).ConfigureAwait(false) ?? workflow.DefinitionId.ToString("D");
         return WorkflowViewMapper.BuildWorkflowView(workflow, snapshot.GraphJson, displayId, graphId);
     }
 
@@ -752,13 +752,11 @@ internal sealed class WorkflowService : IWorkflowService
         if (IsTerminalWorkflowProjectionStatus(workflow.Status))
         {
             throw new ArgumentException(
-                "The workflow is already in a terminal state in the database projection, but there is no in-memory instance in this API process. Cancel or event delivery cannot be applied.",
-                paramName: null);
+                "The workflow is already in a terminal state in the database projection, but there is no in-memory instance in this API process. Cancel or event delivery cannot be applied.");
         }
 
         throw new ArgumentException(
-            "The workflow execution state is not loaded in this API process (for example after a restart). Commands cannot be applied while the in-memory runtime is missing.",
-            paramName: null);
+            "The workflow execution state is not loaded in this API process (for example after a restart). Commands cannot be applied while the in-memory runtime is missing.");
     }
 
     public async Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct)
@@ -774,9 +772,6 @@ internal sealed class WorkflowService : IWorkflowService
             graphJson,
             ct).ConfigureAwait(false);
     }
-
-    private Task UpdateProjectionAsync(Guid workflowId, CancellationToken ct) =>
-        UpdateProjectionFromEngineAsync(workflowId, ct);
 
     private (string Status, bool? CancelRequested, string GraphJson) BuildProjectionFromEngine(Guid workflowId)
     {
@@ -864,6 +859,10 @@ internal sealed class WorkflowService : IWorkflowService
     /// 既に APPLIED なら true（呼び出し側は即 return）。それ以外は false（処理継続）。
     /// DB 一時障害時は設定に従い段階的バックオフで再試行する（タイムアウト系は再試行しない）。
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Critical Code Smell",
+        "S3776:Cognitive Complexity of methods should not be too high",
+        Justification = "イベント配送 dedup の再試行・ログ分岐を一箇所に集約している。")]
     private async Task<bool> TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(
         string tenantId,
         Guid workflowId,
@@ -1009,8 +1008,6 @@ internal sealed class WorkflowService : IWorkflowService
                 totalBackoffMs += delayMs;
                 if (delayMs > 0)
                     await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
-
-                continue;
             }
             catch (Exception exception)
             {
