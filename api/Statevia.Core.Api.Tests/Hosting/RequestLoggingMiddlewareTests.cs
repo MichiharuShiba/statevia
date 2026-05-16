@@ -60,12 +60,72 @@ public sealed class RequestLoggingMiddlewareTests
             EmitXTraceIdResponseHeader = true
         });
 
-        RequestDelegate next = async c => await c.Response.WriteAsync("ok").ConfigureAwait(false);
+        RequestDelegate next = c => c.Response.WriteAsync("ok");
 
         var mw = new RequestLoggingMiddleware(next);
-        await mw.InvokeAsync(ctx, logger, opts).ConfigureAwait(false);
+        await mw.InvokeAsync(ctx, logger, opts);
 
         Assert.False(ctx.Response.Headers.ContainsKey("X-Trace-Id"));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_LogsResponseBodySnippet_WhenResponseBodyLoggingEnabled()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "POST";
+        ctx.Request.Path = "/v1/workflows/wf-1/events";
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions
+        {
+            LogRequestBody = false,
+            LogResponseBody = true,
+            MaxResponseBodyLogBytes = 64
+        });
+
+        RequestDelegate next = c => c.Response.WriteAsync("""{"secret":"token-xyz"}""");
+
+        var mw = new RequestLoggingMiddleware(next);
+
+        // Act
+        await mw.InvokeAsync(ctx, logger, opts);
+
+        // Assert
+        var completeLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request complete", StringComparison.Ordinal));
+        Assert.DoesNotContain("token-xyz", completeLog, StringComparison.Ordinal);
+        Assert.Contains("[redacted]", completeLog, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_RedactsSensitiveQueryParameters()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/workflows";
+        ctx.Request.QueryString = new QueryString("?password=secret-value&limit=10");
+        ctx.Response.StatusCode = 200;
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions { LogRequestBody = false, LogResponseBody = false });
+
+        RequestDelegate next = c => Task.CompletedTask;
+        var mw = new RequestLoggingMiddleware(next);
+
+        // Act
+        await mw.InvokeAsync(ctx, logger, opts);
+
+        // Assert
+        var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
+        Assert.DoesNotContain("secret-value", startLog, StringComparison.Ordinal);
+        Assert.Contains("password=[redacted]", startLog, StringComparison.Ordinal);
+        Assert.Contains("limit=10", startLog, StringComparison.Ordinal);
     }
 
     [Fact]
