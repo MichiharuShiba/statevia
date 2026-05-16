@@ -39,13 +39,8 @@ internal static class TraceIdResolver
         if (parts.Length != 4)
             return false;
         // version (2 hex) - trace-id (32 hex) - parent-id (16 hex) - flags (2 hex)
-        if (parts[1].Length != 32)
+        if (parts[1].Length != 32 || !parts[1].All(Uri.IsHexDigit))
             return false;
-        foreach (var c in parts[1])
-        {
-            if (!Uri.IsHexDigit(c))
-                return false;
-        }
 
         traceId = parts[1];
         return true;
