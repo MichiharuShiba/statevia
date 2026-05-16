@@ -5,6 +5,10 @@ namespace Statevia.Core.Api.Hosting;
 /// </summary>
 internal sealed class ResponseBodyLoggingStream : Stream
 {
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Usage",
+        "CA2213:DisposableFieldsShouldBeDisposed",
+        Justification = "_inner のライフタイムは HttpContext.Response.Body の所有者が管理する。ラッパーは破棄しない。")]
     private readonly Stream _inner;
     private readonly int _maxCaptureBytes;
     private readonly MemoryStream _capture = new();
