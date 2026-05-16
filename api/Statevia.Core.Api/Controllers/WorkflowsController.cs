@@ -15,6 +15,10 @@ namespace Statevia.Core.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("v1/workflows")]
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Major Code Smell",
+    "S6960:Controllers should not have mixed responsibilities",
+    Justification = "ワークフロー CRUD と SSE は同一リソース境界のため当面は単一コントローラで維持する。")]
 public class WorkflowsController : ControllerBase
 {
     private const string IdempotencyKeyHeaderName = "X-Idempotency-Key";
@@ -74,7 +78,8 @@ public class WorkflowsController : ControllerBase
             return Ok(list);
         }
 
-        ArgumentOutOfRangeException.ThrowIfNegative(query.Offset);
+        var offset = query.Offset ?? 0;
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
         ArgumentOutOfRangeException.ThrowIfLessThan(query.Limit.Value, 1);
         if (query.Limit.Value > 500)
             throw new ArgumentException("limit must be at most 500");

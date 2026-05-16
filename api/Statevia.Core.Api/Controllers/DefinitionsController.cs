@@ -70,7 +70,8 @@ public class DefinitionsController : ControllerBase
             return Ok(list);
         }
 
-        ArgumentOutOfRangeException.ThrowIfNegative(query.Offset);
+        var offset = query.Offset ?? 0;
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
         ArgumentOutOfRangeException.ThrowIfLessThan(query.Limit.Value, 1);
         if (query.Limit.Value > 500)
             throw new ArgumentException("limit must be at most 500");
