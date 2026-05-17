@@ -56,4 +56,17 @@ public class SchedulerTests
         await Assert.ThrowsAsync<ObjectDisposedException>(() =>
             limiter.RunAsync(_ => Task.FromResult(0)));
     }
+
+    /// <summary>二重 Dispose が例外を投げないことを検証する。</summary>
+    [Fact]
+    public void ExecutionLimiter_DisposeTwice_DoesNotThrow()
+    {
+        // Arrange
+        var limiter = new ExecutionLimiter(1);
+        limiter.Dispose();
+
+        // Act / Assert
+        var ex = Record.Exception(() => limiter.Dispose());
+        Assert.Null(ex);
+    }
 }
