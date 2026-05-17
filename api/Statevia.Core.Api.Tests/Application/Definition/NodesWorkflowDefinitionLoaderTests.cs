@@ -910,4 +910,255 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         // Assert
         Assert.Contains("references unknown id", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>start に outgoing が無いとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenStartHasNoOutgoing()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: StartNoOut
+            nodes:
+              - id: start
+                type: start
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("must have 'next' or 'edges'", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>action に outgoing が無いとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenActionHasNoOutgoing()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: ActionNoOut
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                action: noop
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("must have 'next' or 'edges'", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>wait に event が無いとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenWaitMissingEvent()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: WaitNoEvent
+            nodes:
+              - id: start
+                type: start
+                next: wait1
+              - id: wait1
+                type: wait
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("must have 'event'", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>fork の branches が 1 件のとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenForkHasSingleBranch()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: ForkOneBranch
+            nodes:
+              - id: start
+                type: start
+                next: fork1
+              - id: fork1
+                type: fork
+                branches: [b1]
+              - id: b1
+                type: action
+                action: noop
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("at least 2", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>join に outgoing が無いとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenJoinHasNoOutgoing()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: JoinNoOut
+            nodes:
+              - id: start
+                type: start
+                next: fork1
+              - id: fork1
+                type: fork
+                branches: [b1, b2]
+              - id: b1
+                type: action
+                action: noop
+                next: join1
+              - id: b2
+                type: action
+                action: noop
+                next: join1
+              - id: join1
+                type: join
+                mode: all
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("must have 'next' or 'edges'", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>start の edges が未知 ID を指すとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenStartEdgeReferencesUnknown()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: StartBadEdge
+            nodes:
+              - id: start
+                type: start
+                edges:
+                  - to: missing
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("references unknown id", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>条件付き edges に default が無いとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenConditionalEdgesMissingDefault()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: NoDefaultEdge
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                action: noop
+                edges:
+                  - to: high
+                    when:
+                      path: $.x
+                      op: gt
+                      value: 0
+                  - to: low
+                    when:
+                      path: $.x
+                      op: lte
+                      value: 0
+              - id: high
+                type: action
+                action: noop
+                next: endNode
+              - id: low
+                type: action
+                action: noop
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("default/unconditional edge", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>無条件 edges が複数あるとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenMultipleUnconditionalEdges()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: MultiUncondEdge
+            nodes:
+              - id: start
+                type: start
+                next: a
+              - id: a
+                type: action
+                action: noop
+                edges:
+                  - to: b
+                  - to: endNode
+              - id: b
+                type: action
+                action: noop
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("exactly one edge is required", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }
