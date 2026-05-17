@@ -24,6 +24,52 @@ public sealed class LogRedactionTests
         Assert.Contains("ok", redacted, StringComparison.Ordinal);
     }
 
+    /// <summary>null / 空文字は空文字列を返すことを検証する。</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Redact_NullOrEmpty_ReturnsEmpty(string? text)
+    {
+        // Act
+        var redacted = LogRedaction.Redact(text, 100);
+
+        // Assert
+        Assert.Equal("", redacted);
+    }
+
+    /// <summary>クエリのみ（値なし）のとき "?" を維持することを検証する。</summary>
+    [Fact]
+    public void RedactQueryParameters_EmptyAfterQuestionMark_ReturnsQuestionMark()
+    {
+        // Act
+        var redacted = LogRedaction.RedactQueryParameters("?");
+
+        // Assert
+        Assert.Equal("?", redacted);
+    }
+
+    /// <summary>先頭が ? でない文字列はそのまま返すことを検証する。</summary>
+    [Fact]
+    public void RedactQueryParameters_WithoutLeadingQuestion_ReturnsUnchanged()
+    {
+        // Act
+        var redacted = LogRedaction.RedactQueryParameters("user=1&token=secret");
+
+        // Assert
+        Assert.Equal("user=1&token=secret", redacted);
+    }
+
+    /// <summary>= を含まないクエリ片はそのまま連結されることを検証する。</summary>
+    [Fact]
+    public void RedactQueryParameters_FlagWithoutEquals_IsPreserved()
+    {
+        // Act
+        var redacted = LogRedaction.RedactQueryParameters("?verbose&user=1");
+
+        // Assert
+        Assert.Equal("?verbose&user=1", redacted);
+    }
+
     /// <summary>クエリ文字列の機微キーがマスクされることを検証する。</summary>
     [Fact]
     public void Redact_QuerySensitiveKeys_AreMasked()
