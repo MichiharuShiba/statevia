@@ -143,6 +143,33 @@ public sealed class TraceContextEnrichmentMiddlewareTests
         Assert.True(opaque!.Length <= TracestateHelper.MaxOpaqueValueChars);
     }
 
+    /// <summary>グラフルートで graph ID を Items と enrich ログへ載せる。</summary>
+    [Fact]
+    public async Task InvokeAsync_LogsEnrich_ForGraphRoute()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/graphs/graph-42";
+        ctx.Request.RouteValues["graphId"] = "graph-42";
+        ctx.Items[RequestLogContext.TraceIdItemKey] = "tid-graph";
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<TraceContextEnrichmentMiddleware>();
+        var opts = Options.Create(new RequestLogOptions { EmitTracestateWithDomainIds = true });
+        var middleware = new TraceContextEnrichmentMiddleware(_ => Task.CompletedTask);
+
+        // Act
+        await middleware.InvokeAsync(ctx, logger, opts);
+
+        // Assert
+        Assert.Contains(collector.Entries, e => e.Contains("HTTP trace enrich", StringComparison.Ordinal));
+        Assert.Contains(collector.Entries, e => e.Contains("graph-42", StringComparison.Ordinal));
+        Assert.Equal("graph-42", ctx.Items[RequestLogContext.GraphDefinitionIdItemKey]);
+    }
+
     /// <summary>構造化ログ出力を捕捉するテスト用 <see cref="ILoggerProvider"/>。</summary>
     private sealed class LogCollector : ILoggerProvider, IDisposable
     {
