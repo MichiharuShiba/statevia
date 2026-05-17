@@ -157,6 +157,26 @@ public sealed partial class WorkflowEngineLoggingTests
                 e.Message.Contains("Fact=Completed", StringComparison.Ordinal));
     }
 
+    /// <summary>ログ実装が例外を投げてもワークフロー完走が継続することを検証する（STV-404 SafeLog）。</summary>
+    [Fact]
+    public async Task Logging_ThrowingLogger_DoesNotFailWorkflow()
+    {
+        // Arrange
+        var def = CreateMinimalDefinition();
+        using var engine = WorkflowEngineTestHarness.Create(
+            maxParallelism: 1,
+            executionLogger: new ThrowingWorkflowExecutionLogger());
+
+        // Act
+        var workflowId = engine.Start(def);
+        await Task.Delay(200);
+
+        // Assert
+        var snapshot = engine.GetSnapshot(workflowId);
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+    }
+
     /// <summary>ctx.Logger のログに WorkflowId/StateName の文脈が自動付与されることを検証する（STV-406）。</summary>
     [Fact]
     public async Task Logging_StateContextLogger_ContainsWorkflowAndStateScope()
@@ -193,6 +213,27 @@ public sealed partial class WorkflowEngineLoggingTests
                 e.Message.Contains("StateContext user log", StringComparison.Ordinal) &&
                 e.Message.Contains($"WorkflowId={workflowId}", StringComparison.Ordinal) &&
                 e.Message.Contains("StateName=Start", StringComparison.Ordinal));
+    }
+
+    private sealed class ThrowingWorkflowExecutionLogger : ILogger<WorkflowEngine.WorkflowExecutionLogger>
+    {
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) =>
+            throw new InvalidOperationException("logger failure");
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+            public void Dispose() { }
+        }
     }
 
     private sealed class ListLogger : ILogger<WorkflowEngine.WorkflowExecutionLogger>
