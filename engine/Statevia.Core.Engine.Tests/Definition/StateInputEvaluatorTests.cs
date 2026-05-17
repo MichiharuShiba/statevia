@@ -83,6 +83,77 @@ public class StateInputEvaluatorTests
         Assert.Equal(SimpleJsonPathResolver.IgnoredNonDollarDotPath, result.Warnings[0].Reason);
     }
 
+    /// <summary>values が空のとき raw がそのまま返ることを検証する。</summary>
+    [Fact]
+    public void ApplyWithDiagnostics_EmptyValues_ReturnsRawInput()
+    {
+        // Arrange
+        var raw = new Dictionary<string, object?> { ["x"] = 1 };
+        var spec = new StateInputDefinition { Values = new Dictionary<string, StateInputValueDefinition>() };
+
+        // Act
+        var result = StateInputEvaluator.ApplyWithDiagnostics(spec, raw);
+
+        // Assert
+        Assert.Same(raw, result.Value);
+        Assert.Empty(result.Warnings);
+    }
+
+    /// <summary>path が "$" のとき raw がそのまま返ることを検証する。</summary>
+    [Fact]
+    public void ApplyWithDiagnostics_RootPath_ReturnsRawInput()
+    {
+        // Arrange
+        var raw = new Dictionary<string, object?> { ["x"] = 1 };
+        var spec = new StateInputDefinition { Path = "$" };
+
+        // Act
+        var result = StateInputEvaluator.ApplyWithDiagnostics(spec, raw);
+
+        // Assert
+        Assert.Same(raw, result.Value);
+        Assert.Empty(result.Warnings);
+    }
+
+    /// <summary><see cref="StateInputEvaluator.Apply"/> が診断付き評価の値を返すことを検証する。</summary>
+    [Fact]
+    public void Apply_ReturnsValueFromDiagnostics()
+    {
+        // Arrange
+        var raw = new Dictionary<string, object?> { ["n"] = 7 };
+        var spec = new StateInputDefinition { Path = "$.n" };
+
+        // Act
+        var value = StateInputEvaluator.Apply(spec, raw);
+
+        // Assert
+        Assert.Equal(7, value);
+    }
+
+    /// <summary>空のドットキーは結果辞書へ書き込まれないことを検証する。</summary>
+    [Fact]
+    public void ApplyWithDiagnostics_EmptyDottedKey_IsIgnored()
+    {
+        // Arrange
+        var raw = new Dictionary<string, object?> { ["x"] = 1 };
+        var spec = new StateInputDefinition
+        {
+            Values = new Dictionary<string, StateInputValueDefinition>
+            {
+                ["."] = new() { Literal = "ignored" },
+                ["ok"] = new() { Literal = 1 }
+            }
+        };
+
+        // Act
+        var result = StateInputEvaluator.ApplyWithDiagnostics(spec, raw);
+        var dict = Assert.IsType<Dictionary<string, object?>>(result.Value);
+
+        // Assert
+        Assert.Equal(1, dict["ok"]);
+        Assert.False(dict.ContainsKey(""));
+    }
+
     /// <summary>同一キー・理由の警告は重複抑制されることを検証する。</summary>
     [Fact]
     public void ApplyWithDiagnostics_DuplicateWarnings_AreDeduped()
