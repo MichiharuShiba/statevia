@@ -5,7 +5,7 @@ namespace Statevia.Core.Api.Abstractions.Persistence;
 /// <summary>
 /// イベント配送冪等テーブル <c>event_delivery_dedup</c> の永続化。
 /// </summary>
-public interface IEventDeliveryDedupRepository
+internal interface IEventDeliveryDedupRepository
 {
     /// <summary>
     /// 主キーで行を取得する（読み取り専用）。
@@ -17,7 +17,7 @@ public interface IEventDeliveryDedupRepository
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// 独立した <see cref="CoreDbContext"/> で RECEIVED 行を挿入し <see cref="CoreDbContext.SaveChangesAsync"/> する。
+    /// 独立した <see cref="CoreDbContext"/> で RECEIVED 行を挿入し、変更を保存する。
     /// 一意制約違反は <see cref="Microsoft.EntityFrameworkCore.DbUpdateException"/>。
     /// </summary>
     Task InsertReceivedAsync(EventDeliveryDedupRow row, CancellationToken cancellationToken);
@@ -36,9 +36,6 @@ public interface IEventDeliveryDedupRepository
         string tenantId,
         Guid workflowId,
         Guid clientEventId,
-        string status,
-        DateTime utcNow,
-        DateTime? appliedAt,
-        string? errorCode,
+        EventDeliveryDedupStatusUpdate update,
         CancellationToken cancellationToken);
 }

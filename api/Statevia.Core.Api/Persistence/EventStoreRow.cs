@@ -1,7 +1,7 @@
 namespace Statevia.Core.Api.Persistence;
 
 /// <summary>event_store テーブル（イベントソース専用・U2 案 A）。</summary>
-public class EventStoreRow
+internal class EventStoreRow
 {
     public Guid EventId { get; set; }
     public Guid WorkflowId { get; set; }

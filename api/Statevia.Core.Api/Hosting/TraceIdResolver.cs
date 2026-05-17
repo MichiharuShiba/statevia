@@ -5,7 +5,7 @@ namespace Statevia.Core.Api.Hosting;
 /// <summary>
 /// W3C <c>traceparent</c> またはフォールバックヘッダからログ用 trace ID を決定する。
 /// </summary>
-public static class TraceIdResolver
+internal static class TraceIdResolver
 {
     private const int MaxCustomHeaderLength = 128;
 
@@ -15,7 +15,7 @@ public static class TraceIdResolver
     public static string ResolveTraceId(HttpRequest request)
     {
         // 分散トレース標準: 有効な trace-id（32 hex）のみ採用
-        var traceParent = request.Headers["traceparent"].FirstOrDefault();
+        var traceParent = request.Headers.TraceParent.FirstOrDefault();
         if (!string.IsNullOrEmpty(traceParent) && TryParseTraceParent(traceParent, out var fromParent))
             return fromParent;
 
@@ -39,13 +39,8 @@ public static class TraceIdResolver
         if (parts.Length != 4)
             return false;
         // version (2 hex) - trace-id (32 hex) - parent-id (16 hex) - flags (2 hex)
-        if (parts[1].Length != 32)
+        if (parts[1].Length != 32 || !parts[1].All(Uri.IsHexDigit))
             return false;
-        foreach (var c in parts[1])
-        {
-            if (!Uri.IsHexDigit(c))
-                return false;
-        }
 
         traceId = parts[1];
         return true;

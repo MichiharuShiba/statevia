@@ -1,4 +1,5 @@
 using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
@@ -21,7 +22,7 @@ using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Core.Api.Services;
 
-public sealed class WorkflowService : IWorkflowService
+internal sealed class WorkflowService : IWorkflowService
 {
     /// <summary>
     /// イベント本文・冪等キャッシュ応答・リクエストハッシュ入力など、camelCase でシリアル化する際の共有オプション（都度 new しない）。
@@ -84,6 +85,10 @@ public sealed class WorkflowService : IWorkflowService
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IWorkflowProjectionUpdateQueue _projectionUpdateQueue;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Major Code Smell",
+        "S107:Methods should not have too many parameters",
+        Justification = "ASP.NET Core DI による明示的コンストラクタ注入。")]
     public WorkflowService(
         IWorkflowEngine engine,
         IDisplayIdService displayIds,
@@ -122,12 +127,12 @@ public sealed class WorkflowService : IWorkflowService
         string tenantId,
         StartWorkflowRequest request,
         string? idempotencyKey,
-        string method,
-        string path,
+        CommandRequestContext requestContext,
         CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(requestContext);
         var requestHash = ComputeStartRequestHash(request);
-        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, method, path, requestHash);
+        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, requestContext.Method, requestContext.Path, requestHash);
 
         if (dedupKey is { } key)
         {
@@ -154,13 +159,13 @@ public sealed class WorkflowService : IWorkflowService
             }
         }
 
-        var defUuid = await _displayIds.ResolveAsync("definition", request.DefinitionId!, ct).ConfigureAwait(false);
+        var defUuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, request.DefinitionId!, ct).ConfigureAwait(false);
         if (defUuid is null)
-            throw new NotFoundException("Definition not found");
+            throw new NotFoundException(WorkflowValidationMessages.DefinitionNotFound);
 
         var defRow = await _definitions.GetByIdAsync(tenantId, defUuid.Value, ct).ConfigureAwait(false);
         if (defRow is null)
-            throw new NotFoundException("Definition not found");
+            throw new NotFoundException(WorkflowValidationMessages.DefinitionNotFound);
 
         var (compiled, _) = _compiler.ValidateAndCompile(defRow.Name, defRow.SourceYaml);
 
@@ -168,8 +173,8 @@ public sealed class WorkflowService : IWorkflowService
         var engineId = workflowId.ToString();
         _engine.Start(compiled, engineId, request.Input);
 
-        var displayId = await _displayIds.AllocateAsync("workflow", workflowId, ct).ConfigureAwait(false);
-        var graphId = await _displayIds.GetDisplayIdAsync("definition", defUuid.Value.ToString("D"), ct).ConfigureAwait(false)
+        var displayId = await _displayIds.AllocateAsync(DisplayIdResourceTypes.Workflow, workflowId, ct).ConfigureAwait(false);
+        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, defUuid.Value.ToString("D"), ct).ConfigureAwait(false)
             ?? defUuid.Value.ToString("D");
         var status = MapStatus(_engine.GetSnapshot(engineId));
         var graphJson = _engine.ExportExecutionGraph(engineId);
@@ -260,24 +265,27 @@ public sealed class WorkflowService : IWorkflowService
 
     public async Task<PagedResult<WorkflowResponse>> ListPagedAsync(
         string tenantId,
-        int offset,
-        int limit,
-        string? status,
-        string? definitionId,
-        string? nameContains,
-        string? sortBy,
-        string? sortOrder,
+        WorkflowListQuery query,
         CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(query);
+        var offset = query.Offset ?? 0;
+        var limit = query.Limit ?? throw new ArgumentException("limit is required for paged list");
+        var status = query.Status;
+        var definitionId = query.DefinitionId;
+        var nameContains = query.Name;
+        var sortBy = query.SortBy;
+        var sortOrder = query.SortOrder;
+
         Guid? definitionIdFilter = null;
         if (!string.IsNullOrWhiteSpace(definitionId))
         {
-            var defUuid = await _displayIds.ResolveAsync("definition", definitionId!.Trim(), ct).ConfigureAwait(false);
+            var defUuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, definitionId!.Trim(), ct).ConfigureAwait(false);
             if (defUuid is null)
             {
                 return new PagedResult<WorkflowResponse>
                 {
-                    Items = new List<WorkflowResponse>(),
+                    Items = [],
                     TotalCount = 0,
                     Offset = offset,
                     Limit = limit,
@@ -287,15 +295,15 @@ public sealed class WorkflowService : IWorkflowService
             definitionIdFilter = defUuid;
         }
 
-        var name = string.IsNullOrWhiteSpace(nameContains) ? null : nameContains.Trim();
-        var query = new WorkflowListPageQuery(
+        var nameFilter = string.IsNullOrWhiteSpace(nameContains) ? null : nameContains.Trim();
+        var pageQuery = new WorkflowListPageQuery(
             Page: new PageQuery(offset, limit),
             Sort: new SortQuery(sortBy, sortOrder),
             StatusFilter: status,
             DefinitionIdFilter: definitionIdFilter,
-            NameContains: name);
+            NameContains: nameFilter);
         var (total, pairs) = await _workflows
-            .ListWithDisplayIdsPageAsync(tenantId, query, ct)
+            .ListWithDisplayIdsPageAsync(tenantId, pageQuery, ct)
             .ConfigureAwait(false);
         var items = pairs.Select(p => new WorkflowResponse
         {
@@ -321,16 +329,16 @@ public sealed class WorkflowService : IWorkflowService
 
     public async Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (workflow is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
-        var displayId = await _displayIds.GetDisplayIdAsync("workflow", idOrUuid, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
-        var graphId = await _displayIds.GetDisplayIdAsync("definition", workflow.DefinitionId.ToString("D"), ct).ConfigureAwait(false)
+        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
+        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, workflow.DefinitionId.ToString("D"), ct).ConfigureAwait(false)
             ?? workflow.DefinitionId.ToString("D");
 
         return new WorkflowResponse
@@ -348,19 +356,19 @@ public sealed class WorkflowService : IWorkflowService
 
     public async Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
         await EnsureWorkflowExistsAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         var row = await _workflows.GetSnapshotByWorkflowIdAsync(uuid.Value, ct).ConfigureAwait(false);
-        return row is null ? throw new NotFoundException("Workflow not found") : row.GraphJson;
+        return row is null ? throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound) : row.GraphJson;
     }
 
     public async Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct)
     {
         var workflow = await _workflows.GetByIdAsync(tenantId, workflowId, ct).ConfigureAwait(false);
         if (workflow is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
     }
 
     public async Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
@@ -373,11 +381,11 @@ public sealed class WorkflowService : IWorkflowService
         string tenantId,
         string idOrUuid,
         string? idempotencyKey,
-        string method,
-        string path,
+        CommandRequestContext requestContext,
         CancellationToken ct)
     {
-        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, method, path);
+        ArgumentNullException.ThrowIfNull(requestContext);
+        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, requestContext.Method, requestContext.Path);
 
         if (dedupKey is { } key)
         {
@@ -387,13 +395,13 @@ public sealed class WorkflowService : IWorkflowService
                 return;
         }
 
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (workflow is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
@@ -416,7 +424,6 @@ public sealed class WorkflowService : IWorkflowService
             tenantId,
             uuid.Value,
             clientEventId,
-            ct,
             async (dbCancel, ctInner) =>
             {
                 await _workflows.UpdateWorkflowAndSnapshotAsync(dbCancel, uuid.Value, projStatus, projCancel, projGraphJson, ctInner).ConfigureAwait(false);
@@ -457,14 +464,16 @@ public sealed class WorkflowService : IWorkflowService
                     tenantId,
                     uuid.Value,
                     clientEventId,
-                    EventDeliveryDedupStatuses.Applied,
-                    nowUtc,
-                    appliedAt: nowUtc,
-                    errorCode: null,
+                    new EventDeliveryDedupStatusUpdate(
+                        EventDeliveryDedupStatuses.Applied,
+                        nowUtc,
+                        AppliedAt: nowUtc,
+                        ErrorCode: null),
                     ctInner).ConfigureAwait(false);
 
                 await dbCancel.SaveChangesAsync(ctInner).ConfigureAwait(false);
-            }).ConfigureAwait(false);
+            },
+            ct).ConfigureAwait(false);
     }
 
     public async Task PublishEventAsync(
@@ -472,11 +481,11 @@ public sealed class WorkflowService : IWorkflowService
         string idOrUuid,
         string eventName,
         string? idempotencyKey,
-        string method,
-        string path,
+        CommandRequestContext requestContext,
         CancellationToken ct)
     {
-        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, method, path);
+        ArgumentNullException.ThrowIfNull(requestContext);
+        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, requestContext.Method, requestContext.Path);
 
         if (dedupKey is { } key)
         {
@@ -486,13 +495,13 @@ public sealed class WorkflowService : IWorkflowService
                 return;
         }
 
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (workflow is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
@@ -515,7 +524,6 @@ public sealed class WorkflowService : IWorkflowService
             tenantId,
             uuid.Value,
             clientEventId,
-            ct,
             async (dbPub, ctInner) =>
             {
                 await _workflows.UpdateWorkflowAndSnapshotAsync(dbPub, uuid.Value, pubStatus, pubCancel, pubGraphJson, ctInner).ConfigureAwait(false);
@@ -556,21 +564,23 @@ public sealed class WorkflowService : IWorkflowService
                     tenantId,
                     uuid.Value,
                     clientEventId,
-                    EventDeliveryDedupStatuses.Applied,
-                    nowUtc,
-                    appliedAt: nowUtc,
-                    errorCode: null,
+                    new EventDeliveryDedupStatusUpdate(
+                        EventDeliveryDedupStatuses.Applied,
+                        nowUtc,
+                        AppliedAt: nowUtc,
+                        ErrorCode: null),
                     ctInner).ConfigureAwait(false);
 
                 await dbPub.SaveChangesAsync(ctInner).ConfigureAwait(false);
-            }).ConfigureAwait(false);
+            },
+            ct).ConfigureAwait(false);
     }
 
     public async Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         return await BuildWorkflowViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
     }
@@ -580,9 +590,9 @@ public sealed class WorkflowService : IWorkflowService
         if (atSeq < 1)
             throw new ArgumentException("atSeq must be >= 1");
 
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         var maxSeq = await _eventStore.GetMaxSeqAsync(uuid.Value, ct).ConfigureAwait(false);
         if (maxSeq == 0)
@@ -606,15 +616,15 @@ public sealed class WorkflowService : IWorkflowService
         if (limit is < 1 or > 5000)
             throw new ArgumentException("limit must be between 1 and 5000");
 
-        var uuid = await _displayIds.ResolveAsync("workflow", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (workflow is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
-        var displayId = await _displayIds.GetDisplayIdAsync("workflow", idOrUuid, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
+        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Workflow, idOrUuid, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
         var graphJson = await GetGraphJsonAsync(tenantId, idOrUuid, ct).ConfigureAwait(false);
         var patchNodes = WorkflowViewMapper.MapGraphPatchNodes(graphJson);
 
@@ -669,46 +679,38 @@ public sealed class WorkflowService : IWorkflowService
         string nodeId,
         string? resumeKey,
         string? idempotencyKey,
-        string method,
-        string path,
+        CommandRequestContext requestContext,
         CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
         if (string.IsNullOrWhiteSpace(resumeKey))
             throw new ArgumentException("resumeKey is required");
 
-        return PublishEventAsync(tenantId, idOrUuid, resumeKey!, idempotencyKey, method, path, ct);
+        return PublishEventAsync(tenantId, idOrUuid, resumeKey!, idempotencyKey, requestContext, ct);
     }
 
     private async Task<WorkflowViewDto> BuildWorkflowViewInternalAsync(string tenantId, Guid uuid, string idOrUuidForDisplay, CancellationToken ct)
     {
         var workflow = await _workflows.GetByIdAsync(tenantId, uuid, ct).ConfigureAwait(false);
         if (workflow is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
         var snapshot = await _workflows.GetSnapshotByWorkflowIdAsync(uuid, ct).ConfigureAwait(false);
         if (snapshot is null)
-            throw new NotFoundException("Workflow not found");
+            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
-        var displayId = await _displayIds.GetDisplayIdAsync("workflow", idOrUuidForDisplay, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
-        var graphId = await _displayIds.GetDisplayIdAsync("definition", workflow.DefinitionId.ToString("D"), ct).ConfigureAwait(false) ?? workflow.DefinitionId.ToString("D");
+        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Workflow, idOrUuidForDisplay, ct).ConfigureAwait(false) ?? workflow.WorkflowId.ToString("D");
+        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, workflow.DefinitionId.ToString("D"), ct).ConfigureAwait(false) ?? workflow.DefinitionId.ToString("D");
         return WorkflowViewMapper.BuildWorkflowView(workflow, snapshot.GraphJson, displayId, graphId);
     }
 
-    private WorkflowResponse? DeserializeCachedWorkflowResponse(CommandDedupRow existing)
+    private static WorkflowResponse? DeserializeCachedWorkflowResponse(CommandDedupRow existing)
     {
         if (string.IsNullOrEmpty(existing.ResponseBody))
             return null;
-        try
-        {
-            return JsonSerializer.Deserialize<WorkflowResponse>(
-                existing.ResponseBody,
-                CaseInsensitiveJsonSerializerOptions);
-        }
-        catch
-        {
-            return null;
-        }
+        return JsonDeserialize.TryDeserialize<WorkflowResponse>(existing.ResponseBody, CaseInsensitiveJsonSerializerOptions, out var deserialized)
+            ? deserialized
+            : null;
     }
 
     private static string ComputeStartRequestHash(StartWorkflowRequest request)
@@ -750,13 +752,11 @@ public sealed class WorkflowService : IWorkflowService
         if (IsTerminalWorkflowProjectionStatus(workflow.Status))
         {
             throw new ArgumentException(
-                "The workflow is already in a terminal state in the database projection, but there is no in-memory instance in this API process. Cancel or event delivery cannot be applied.",
-                paramName: null);
+                "The workflow is already in a terminal state in the database projection, but there is no in-memory instance in this API process. Cancel or event delivery cannot be applied.");
         }
 
         throw new ArgumentException(
-            "The workflow execution state is not loaded in this API process (for example after a restart). Commands cannot be applied while the in-memory runtime is missing.",
-            paramName: null);
+            "The workflow execution state is not loaded in this API process (for example after a restart). Commands cannot be applied while the in-memory runtime is missing.");
     }
 
     public async Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct)
@@ -773,9 +773,6 @@ public sealed class WorkflowService : IWorkflowService
             ct).ConfigureAwait(false);
     }
 
-    private Task UpdateProjectionAsync(Guid workflowId, CancellationToken ct) =>
-        UpdateProjectionFromEngineAsync(workflowId, ct);
-
     private (string Status, bool? CancelRequested, string GraphJson) BuildProjectionFromEngine(Guid workflowId)
     {
         var engineId = workflowId.ToString();
@@ -791,7 +788,7 @@ public sealed class WorkflowService : IWorkflowService
         var snapshot = _engine.GetSnapshot(engineId);
         if (snapshot is null)
         {
-            _logger.LogDebug("Skip projection queue update because runtime is missing for workflow {WorkflowId}", workflowId);
+            _logger.SkipProjectionQueueUpdateDebug(workflowId);
             return (null, null, null);
         }
 
@@ -825,36 +822,22 @@ public sealed class WorkflowService : IWorkflowService
     /// <summary>
     /// イベント配送 dedup の観測性用に必須キーを構造化ログへ書き出す。
     /// </summary>
-    private void LogEventDeliveryDecision(
-        string traceId,
-        string tenantId,
-        Guid workflowId,
-        Guid clientEventId,
-        string decision,
-        int attempt,
-        long elapsedMs,
-        string errorCode,
-        Exception? exception = null)
+    private void LogEventDeliveryDecision(EventDeliveryDecisionDetails details, Exception? exception = null)
     {
-        var level = decision switch
+        switch (details.Decision)
         {
-            EventDeliveryLogDecisions.Failed or EventDeliveryLogDecisions.BackoffBudgetExhausted => LogLevel.Error,
-            EventDeliveryLogDecisions.Retry or EventDeliveryLogDecisions.AbortedTimeout => LogLevel.Warning,
-            _ => LogLevel.Information
-        };
-
-        _logger.Log(
-            level,
-            exception,
-            "event_delivery_decision traceId={TraceId} workflowId={WorkflowId} tenantId={TenantId} clientEventId={ClientEventId} decision={Decision} attempt={Attempt} elapsedMs={ElapsedMs} errorCode={ErrorCode}",
-            traceId,
-            workflowId,
-            tenantId,
-            clientEventId,
-            decision,
-            attempt,
-            elapsedMs,
-            errorCode);
+            case EventDeliveryLogDecisions.Failed:
+            case EventDeliveryLogDecisions.BackoffBudgetExhausted:
+                _logger.EventDeliveryDecisionError(exception!, details);
+                break;
+            case EventDeliveryLogDecisions.Retry:
+            case EventDeliveryLogDecisions.AbortedTimeout:
+                _logger.EventDeliveryDecisionWarning(exception!, details);
+                break;
+            default:
+                _logger.EventDeliveryDecisionInformation(details);
+                break;
+        }
     }
 
     /// <summary>
@@ -876,6 +859,10 @@ public sealed class WorkflowService : IWorkflowService
     /// 既に APPLIED なら true（呼び出し側は即 return）。それ以外は false（処理継続）。
     /// DB 一時障害時は設定に従い段階的バックオフで再試行する（タイムアウト系は再試行しない）。
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Critical Code Smell",
+        "S3776:Cognitive Complexity of methods should not be too high",
+        Justification = "イベント配送 dedup の再試行・ログ分岐を一箇所に集約している。")]
     private async Task<bool> TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(
         string tenantId,
         Guid workflowId,
@@ -907,30 +894,34 @@ public sealed class WorkflowService : IWorkflowService
             {
                 await _eventDeliveryDedup.InsertReceivedAsync(row, cancellationToken).ConfigureAwait(false);
                 attemptStopwatch.Stop();
-                LogEventDeliveryDecision(
-                    traceId,
-                    tenantId,
-                    workflowId,
-                    clientEventId,
-                    decision: EventDeliveryLogDecisions.Inserted,
-                    attempt,
-                    attemptStopwatch.ElapsedMilliseconds,
-                    errorCode: EventDeliveryLogErrorCodes.None);
+                LogEventDeliveryDecision(new EventDeliveryDecisionDetails
+                {
+                    TraceId = traceId,
+                    TenantId = tenantId,
+                    WorkflowId = workflowId,
+                    ClientEventId = clientEventId,
+                    Decision = EventDeliveryLogDecisions.Inserted,
+                    Attempt = attempt,
+                    ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
+                    ErrorCode = EventDeliveryLogErrorCodes.None,
+                });
                 return false;
             }
             catch (DbUpdateException dbUpdateException)
                 when (EventDeliveryRetryPolicy.IsUniqueConstraintViolation(dbUpdateException))
             {
                 attemptStopwatch.Stop();
-                LogEventDeliveryDecision(
-                    traceId,
-                    tenantId,
-                    workflowId,
-                    clientEventId,
-                    decision: EventDeliveryLogDecisions.DuplicateKey,
-                    attempt,
-                    attemptStopwatch.ElapsedMilliseconds,
-                    errorCode: EventDeliveryLogErrorCodes.UniqueViolation);
+                LogEventDeliveryDecision(new EventDeliveryDecisionDetails
+                {
+                    TraceId = traceId,
+                    TenantId = tenantId,
+                    WorkflowId = workflowId,
+                    ClientEventId = clientEventId,
+                    Decision = EventDeliveryLogDecisions.DuplicateKey,
+                    Attempt = attempt,
+                    ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
+                    ErrorCode = EventDeliveryLogErrorCodes.UniqueViolation,
+                });
 
                 var existing = await _eventDeliveryDedup
                     .FindAsync(tenantId, workflowId, clientEventId, cancellationToken)
@@ -948,14 +939,17 @@ public sealed class WorkflowService : IWorkflowService
             {
                 attemptStopwatch.Stop();
                 LogEventDeliveryDecision(
-                    traceId,
-                    tenantId,
-                    workflowId,
-                    clientEventId,
-                    decision: EventDeliveryLogDecisions.AbortedTimeout,
-                    attempt,
-                    attemptStopwatch.ElapsedMilliseconds,
-                    MapErrorCode(exception),
+                    new EventDeliveryDecisionDetails
+                    {
+                        TraceId = traceId,
+                        TenantId = tenantId,
+                        WorkflowId = workflowId,
+                        ClientEventId = clientEventId,
+                        Decision = EventDeliveryLogDecisions.AbortedTimeout,
+                        Attempt = attempt,
+                        ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
+                        ErrorCode = MapErrorCode(exception),
+                    },
                     exception);
                 throw;
             }
@@ -965,14 +959,17 @@ public sealed class WorkflowService : IWorkflowService
             {
                 attemptStopwatch.Stop();
                 LogEventDeliveryDecision(
-                    traceId,
-                    tenantId,
-                    workflowId,
-                    clientEventId,
-                    decision: EventDeliveryLogDecisions.Retry,
-                    attempt,
-                    attemptStopwatch.ElapsedMilliseconds,
-                    MapErrorCode(exception),
+                    new EventDeliveryDecisionDetails
+                    {
+                        TraceId = traceId,
+                        TenantId = tenantId,
+                        WorkflowId = workflowId,
+                        ClientEventId = clientEventId,
+                        Decision = EventDeliveryLogDecisions.Retry,
+                        Attempt = attempt,
+                        ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
+                        ErrorCode = MapErrorCode(exception),
+                    },
                     exception);
 
                 var failureIndex = attempt - 1;
@@ -988,14 +985,17 @@ public sealed class WorkflowService : IWorkflowService
                     {
                         attemptStopwatch.Stop();
                         LogEventDeliveryDecision(
-                            traceId,
-                            tenantId,
-                            workflowId,
-                            clientEventId,
-                            decision: EventDeliveryLogDecisions.BackoffBudgetExhausted,
-                            attempt,
-                            attemptStopwatch.ElapsedMilliseconds,
-                            errorCode: EventDeliveryLogDecisions.BackoffBudgetExhausted,
+                            new EventDeliveryDecisionDetails
+                            {
+                                TraceId = traceId,
+                                TenantId = tenantId,
+                                WorkflowId = workflowId,
+                                ClientEventId = clientEventId,
+                                Decision = EventDeliveryLogDecisions.BackoffBudgetExhausted,
+                                Attempt = attempt,
+                                ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
+                                ErrorCode = EventDeliveryLogDecisions.BackoffBudgetExhausted,
+                            },
                             exception);
                         throw new InvalidOperationException(
                             "Event delivery insert retry stopped: total backoff budget exhausted.",
@@ -1008,21 +1008,22 @@ public sealed class WorkflowService : IWorkflowService
                 totalBackoffMs += delayMs;
                 if (delayMs > 0)
                     await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
-
-                continue;
             }
             catch (Exception exception)
             {
                 attemptStopwatch.Stop();
                 LogEventDeliveryDecision(
-                    traceId,
-                    tenantId,
-                    workflowId,
-                    clientEventId,
-                    decision: EventDeliveryLogDecisions.Failed,
-                    attempt,
-                    attemptStopwatch.ElapsedMilliseconds,
-                    MapErrorCode(exception),
+                    new EventDeliveryDecisionDetails
+                    {
+                        TraceId = traceId,
+                        TenantId = tenantId,
+                        WorkflowId = workflowId,
+                        ClientEventId = clientEventId,
+                        Decision = EventDeliveryLogDecisions.Failed,
+                        Attempt = attempt,
+                        ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
+                        ErrorCode = MapErrorCode(exception),
+                    },
                     exception);
                 throw;
             }
@@ -1039,9 +1040,13 @@ public sealed class WorkflowService : IWorkflowService
         {
             await tx.RollbackAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch
+        catch (DbException)
         {
             // 破損済みトランザクションのロールバックで起きうる競合は無視する。
+        }
+        catch (InvalidOperationException)
+        {
+            // 接続切断後など、既に破棄されたトランザクションのロールバック失敗は無視する。
         }
     }
 
@@ -1054,8 +1059,8 @@ public sealed class WorkflowService : IWorkflowService
         string tenantId,
         Guid workflowId,
         Guid clientEventId,
-        CancellationToken ct,
-        Func<CoreDbContext, CancellationToken, Task> applyAndSaveAsync)
+        Func<CoreDbContext, CancellationToken, Task> applyAndSaveAsync,
+        CancellationToken ct)
     {
         var retryOptions = _eventDeliveryRetryOptions.Value;
         var maxAttempts = Math.Max(1, retryOptions.SerializablePersistenceMaxAttempts);
@@ -1065,6 +1070,20 @@ public sealed class WorkflowService : IWorkflowService
         {
             await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
             await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct).ConfigureAwait(false);
+
+            async Task PersistFailureAsync(Exception failure)
+            {
+                await TryRollbackSerializableTransactionAsync(tx, ct).ConfigureAwait(false);
+                totalBackoffMs = await ApplySerializablePersistenceFailureAsync(
+                    failure,
+                    tenantId,
+                    workflowId,
+                    clientEventId,
+                    new SerializablePersistenceRetryProgress(attempt, maxAttempts, totalBackoffMs),
+                    retryOptions,
+                    ct).ConfigureAwait(false);
+            }
+
             try
             {
                 await applyAndSaveAsync(db, ct).ConfigureAwait(false);
@@ -1077,17 +1096,17 @@ public sealed class WorkflowService : IWorkflowService
                 await TryMarkEventDeliveryFailedAsync(tenantId, workflowId, clientEventId, ct).ConfigureAwait(false);
                 throw;
             }
-            catch (Exception ex)
+            catch (DbUpdateException ex)
             {
-                await TryRollbackSerializableTransactionAsync(tx, ct).ConfigureAwait(false);
-                totalBackoffMs = await ApplySerializablePersistenceFailureAsync(
-                    ex,
-                    tenantId,
-                    workflowId,
-                    clientEventId,
-                    new SerializablePersistenceRetryProgress(attempt, maxAttempts, totalBackoffMs),
-                    retryOptions,
-                    ct).ConfigureAwait(false);
+                await PersistFailureAsync(ex).ConfigureAwait(false);
+            }
+            catch (InvalidOperationException ex)
+            {
+                await PersistFailureAsync(ex).ConfigureAwait(false);
+            }
+            catch (IOException ex)
+            {
+                await PersistFailureAsync(ex).ConfigureAwait(false);
             }
         }
 
@@ -1178,17 +1197,17 @@ public sealed class WorkflowService : IWorkflowService
         int delayMs,
         string failureMessage)
     {
-        var traceId = GetTraceIdOrEmpty();
-        _logger.LogInformation(
-            "serializable_persist_retry traceId={TraceId} workflowId={WorkflowId} tenantId={TenantId} clientEventId={ClientEventId} attempt={Attempt} maxAttempts={MaxAttempts} delayMs={DelayMs} failureMessage={FailureMessage}",
-            traceId,
-            workflowId,
-            tenantId,
-            clientEventId,
-            attempt,
-            maxAttempts,
-            delayMs,
-            failureMessage);
+        _logger.SerializablePersistRetry(new SerializablePersistRetryDetails
+        {
+            TraceId = GetTraceIdOrEmpty(),
+            WorkflowId = workflowId,
+            TenantId = tenantId,
+            ClientEventId = clientEventId,
+            Attempt = attempt,
+            MaxAttempts = maxAttempts,
+            DelayMs = delayMs,
+            FailureMessage = failureMessage,
+        });
     }
 
     /// <summary>
@@ -1209,10 +1228,11 @@ public sealed class WorkflowService : IWorkflowService
                 tenantId,
                 workflowId,
                 clientEventId,
-                EventDeliveryDedupStatuses.Failed,
-                nowUtc,
-                appliedAt: null,
-                errorCode: EventDeliveryLogErrorCodes.PersistFailed,
+                new EventDeliveryDedupStatusUpdate(
+                    EventDeliveryDedupStatuses.Failed,
+                    nowUtc,
+                    AppliedAt: null,
+                    ErrorCode: EventDeliveryLogErrorCodes.PersistFailed),
                 cancellationToken).ConfigureAwait(false);
         }
 #pragma warning disable CA1031 // Do not catch general exception types — 補助更新の失敗は本例外に影響させない

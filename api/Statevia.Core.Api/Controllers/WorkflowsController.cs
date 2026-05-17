@@ -10,8 +10,15 @@ using Statevia.Core.Api.Services;
 
 namespace Statevia.Core.Api.Controllers;
 
+/// <summary>
+/// ワークフロー REST API（<c>/v1/workflows</c>）。
+/// </summary>
 [ApiController]
 [Route("v1/workflows")]
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Major Code Smell",
+    "S6960:Controllers should not have mixed responsibilities",
+    Justification = "ワークフロー CRUD と SSE は同一リソース境界のため当面は単一コントローラで維持する。")]
 public class WorkflowsController : ControllerBase
 {
     private const string IdempotencyKeyHeaderName = "X-Idempotency-Key";
@@ -19,6 +26,11 @@ public class WorkflowsController : ControllerBase
     private readonly IWorkflowService _workflows;
     private readonly WorkflowStreamService _stream;
 
+    /// <summary>
+    /// <see cref="WorkflowsController"/> を生成する。
+    /// </summary>
+    /// <param name="workflows">ワークフローサービス。</param>
+    /// <param name="stream">SSE 用ストリームサービス。</param>
     public WorkflowsController(
         IWorkflowService workflows,
         WorkflowStreamService stream)
@@ -41,8 +53,7 @@ public class WorkflowsController : ControllerBase
             tenantId,
             request,
             resolvedIdempotencyKey,
-            Request.Method,
-            Request.Path.Value ?? string.Empty,
+            new CommandRequestContext(Request.Method, Request.Path.Value ?? string.Empty),
             ct).ConfigureAwait(false);
 
         return CreatedAtAction(nameof(Get), new { id = created.DisplayId }, created);
@@ -55,31 +66,25 @@ public class WorkflowsController : ControllerBase
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> List(
-        [FromQuery] int? limit,
-        [FromQuery] int offset = 0,
-        [FromQuery] string? status = null,
-        [FromQuery] string? definitionId = null,
-        [FromQuery] string? name = null,
-        [FromQuery] string? sortBy = null,
-        [FromQuery] string? sortOrder = null,
+        [FromQuery] WorkflowListQuery query,
         [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        if (limit is null)
+        if (query.Limit is null)
         {
             var list = await _workflows.ListAsync(tenantId, ct).ConfigureAwait(false);
             return Ok(list);
         }
 
+        var offset = query.Offset ?? 0;
         ArgumentOutOfRangeException.ThrowIfNegative(offset);
-        ArgumentOutOfRangeException.ThrowIfLessThan(limit.Value, 1);
-        if (limit.Value > 500)
+        ArgumentOutOfRangeException.ThrowIfLessThan(query.Limit.Value, 1);
+        if (query.Limit.Value > 500)
             throw new ArgumentException("limit must be at most 500");
 
-        var paged = await _workflows
-            .ListPagedAsync(tenantId, offset, limit.Value, status, definitionId, name, sortBy, sortOrder, ct)
-            .ConfigureAwait(false);
+        var paged = await _workflows.ListPagedAsync(tenantId, query, ct).ConfigureAwait(false);
         return Ok(paged);
     }
 
@@ -159,8 +164,7 @@ public class WorkflowsController : ControllerBase
             tenantId,
             id,
             resolvedIdempotencyKey,
-            Request.Method,
-            Request.Path.Value ?? string.Empty,
+            new CommandRequestContext(Request.Method, Request.Path.Value ?? string.Empty),
             ct).ConfigureAwait(false);
 
         return NoContent();
@@ -185,8 +189,7 @@ public class WorkflowsController : ControllerBase
             nodeId,
             body?.ResumeKey,
             resolvedIdempotencyKey,
-            Request.Method,
-            Request.Path.Value ?? string.Empty,
+            new CommandRequestContext(Request.Method, Request.Path.Value ?? string.Empty),
             ct).ConfigureAwait(false);
         return NoContent();
     }
@@ -200,6 +203,8 @@ public class WorkflowsController : ControllerBase
         [FromHeader(Name = IdempotencyKeyHeaderName)] string? idempotencyKey = null,
         CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(body);
+
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         var resolvedIdempotencyKey = idempotencyKey;
         await _workflows.PublishEventAsync(
@@ -207,49 +212,63 @@ public class WorkflowsController : ControllerBase
             id,
             body.Name,
             resolvedIdempotencyKey,
-            Request.Method,
-            Request.Path.Value ?? string.Empty,
+            new CommandRequestContext(Request.Method, Request.Path.Value ?? string.Empty),
             ct).ConfigureAwait(false);
         return NoContent();
     }
 }
 
+/// <summary>POST /v1/workflows のリクエスト本文。</summary>
 public class StartWorkflowRequest
 {
+    /// <summary>開始に用いる定義 ID（display または UUID）。</summary>
     [Required]
     public string DefinitionId { get; set; } = "";
+
+    /// <summary>ワークフロー入力（任意）。</summary>
     public JsonElement? Input { get; set; }
 }
 
+/// <summary>POST …/events のリクエスト本文。</summary>
 public class PublishEventRequest
 {
+    /// <summary>発行するイベント名。</summary>
     [Required]
     public string Name { get; set; } = "";
 }
 
+/// <summary>ワークフロー一覧・単票の JSON 応答形（U4）。</summary>
 public class WorkflowResponse
 {
+    /// <summary>表示用ワークフロー ID。</summary>
     [JsonPropertyName("displayId")]
     public string DisplayId { get; set; } = "";
 
+    /// <summary>ワークフローのリソース UUID。</summary>
     [JsonPropertyName("resourceId")]
     public Guid ResourceId { get; set; }
 
+    /// <summary>定義グラフ ID。</summary>
     [JsonPropertyName("graphId")]
     public string GraphId { get; set; } = "";
 
+    /// <summary>状態文字列。</summary>
     [JsonPropertyName("status")]
     public string Status { get; set; } = "";
 
+    /// <summary>開始日時（UTC）。</summary>
     [JsonPropertyName("startedAt")]
     public DateTime StartedAt { get; set; }
 
+    /// <summary>最終更新日時（UTC）。</summary>
     [JsonPropertyName("updatedAt")]
     public DateTime? UpdatedAt { get; set; }
 
+    /// <summary>キャンセル要求フラグ。</summary>
     [JsonPropertyName("cancelRequested")]
     public bool CancelRequested { get; set; }
 
+    /// <summary>再起動喪失フラグ。</summary>
     [JsonPropertyName("restartLost")]
     public bool RestartLost { get; set; }
 }

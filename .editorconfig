@@ -58,6 +58,126 @@ dotnet_diagnostic.CA2007.severity = none
 dotnet_diagnostic.CA1861.severity = none
 
 # =============================================================================
+# api/Statevia.Core.Api/Migrations
+# =============================================================================
+
+[api/Statevia.Core.Api/Migrations/*.cs]
+
+# CS1591: 公開型の XML ドキュメントがない。
+# 除外理由: EF 生成マイグレーション。手編集・XML 付与の対象外。
+dotnet_diagnostic.CS1591.severity = none
+
+# CA1515: アセンブリ API を internal にせよ（インスタンス化されない型は internal に）。
+# 除外理由: EF マイグレーションクラスは public 必須。アプリ外への参照面ではない。
+dotnet_diagnostic.CA1515.severity = none
+
+# generated_code / dotnet_analyzer_diagnostic: IDE・ビルドの Roslyn 波線を抑止。
+# 除外理由: Migrations は品質リファクタ対象外（スキーマ定義のスナップショット）。
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none
+
+# S1192: 同一リテラル文字列の定数化を推奨（Sonar Standalone 向け）。
+# 除外理由: EF マイグレーションの列型・インデックス定義は生成物に近く、定数抽出の実益がない。
+# 補足: Sonar Connected mode では .editorconfig が無視されることがある。Migrations/SonarScopeSuppressions.cs を参照。
+dotnet_diagnostic.S1192.severity = none
+
+# =============================================================================
+# api/Statevia.Core.Api — HTTP / DI 公開面（CA1515）
+# =============================================================================
+
+[api/Statevia.Core.Api/Controllers/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ（インスタンス化されない型は internal に）。
+# 除外理由: ASP.NET Core が Controller を public で発見する。internal 化するとルーティング登録されない。
+dotnet_diagnostic.CA1515.severity = none
+
+[api/Statevia.Core.Api/Contracts/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: JSON 契約 DTO・例外型は HTTP レスポンス／フィルタの公開面として public を維持する。
+dotnet_diagnostic.CA1515.severity = none
+
+[api/Statevia.Core.Api/Abstractions/Services/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: Controller コンストラクタ注入のサービス IF は public 必須（同一アセンブリの DI 境界）。
+dotnet_diagnostic.CA1515.severity = none
+
+[api/Statevia.Core.Api/Services/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: Controller から直接注入する SSE 等のサービスは public のままとする。
+dotnet_diagnostic.CA1515.severity = none
+
+# =============================================================================
+# api/Statevia.Core.Api — 個別ファイル
+# =============================================================================
+
+[api/Statevia.Core.Api/Hosting/**/*.cs]
+
+# ASP0015: ヘッダ辞書の推奨 API を使え。
+# 除外理由: W3C traceparent や X-Trace-Id 等のカスタムヘッダは文字列キー指定が契約どおり。
+dotnet_diagnostic.ASP0015.severity = none
+
+[api/Statevia.Core.Api/Abstractions/Services/IWorkflowProjectionUpdateQueue.cs]
+
+# CA1711: 識別子は接尾辞に型名を使うな（Queue 等の汎用語を避けよ）。
+# 除外理由: 既存の DI 契約名。Queue サフィックスへのリネームは公開面の破壊変更となる。
+dotnet_diagnostic.CA1711.severity = none
+
+# =============================================================================
+# api/Statevia.Core.Api.Tests
+# =============================================================================
+
+[api/Statevia.Core.Api.Tests/**/*.cs]
+
+# CA1515: インスタンス化されない型は internal にせよ（アセンブリ API 表面を狭める）。
+# 除外理由: xUnit は public なテストクラスを反射で検出する。internal 化すると xUnit1000 でビルド失敗する。
+#            `dotnet format` 実行時に CA1515 がテスト型へ掛かり、意図せず internal 化されるのを防ぐ。
+dotnet_diagnostic.CA1515.severity = none
+
+# CA1707: メンバー名からアンダースコアを削除せよ（PascalCase / camelCase 規約）。
+# 除外理由: テストメソッド名を Method_State_Expected 形式（アンダースコア区切り）で統一している。
+#            Sonar external_roslyn:CA1707 のノイズ低減にも寄与する。
+dotnet_diagnostic.CA1707.severity = none
+
+# CA2000: スコープを抜ける前に IDisposable を破棄せよ。
+# 除外理由: 短い統合テストでは DbContext / ハーネスを毎回 Dispose しないパターンが多く、
+#            テスト終了時のプロセス終了に任せる運用としている。
+dotnet_diagnostic.CA2000.severity = none
+
+# CA2007: await に ConfigureAwait を付けよ（ライブラリコード向けの同期コンテキスト回避）。
+# 除外理由: xUnit1030 に合わせテストでは ConfigureAwait(false) を付けない方針。
+#            CA2007（付けろ）と方針が両立しない。
+dotnet_diagnostic.CA2007.severity = none
+
+# CA1861: 繰り返し呼ぶメソッドには定数配列引数より static readonly フィールドを使え。
+# 除外理由: テストの Assert やフィクスチャでインライン配列リテラルを使う方が読みやすい。
+#            static readonly への抽出はボイラープレートが増えるだけで実益が小さい。
+dotnet_diagnostic.CA1861.severity = none
+
+# CA1307: 文字列比較に StringComparison を指定せよ。
+# 除外理由: xUnit の Assert.Contains / DoesNotContain はテスト意図の可読性を優先し、
+#            既定の序数比較で十分。Sonar external_roslyn:CA1307 のノイズ低減にも寄与する。
+dotnet_diagnostic.CA1307.severity = none
+
+# ASP0015: ヘッダ辞書の推奨 API を使え。
+# 除外理由: テストの DefaultHttpContext では文字列キー指定の方が意図が明確。
+dotnet_diagnostic.ASP0015.severity = none
+
+# CA1859: 具象型で戻り値・ローカルを宣言せよ。
+# 除外理由: テストのヘルパーはインターフェース戻り値の方が差し替えやすい。
+dotnet_diagnostic.CA1859.severity = none
+
+# CA1869: JsonSerializerOptions をキャッシュせよ。
+# 除外理由: 単発テストでのオプション生成は可読性を優先する。
+dotnet_diagnostic.CA1869.severity = none
+
+# CA2201: 十分に特定された例外型を使え。
+# 除外理由: フィルタの汎用 Exception 経路を意図的に検証する。
+dotnet_diagnostic.CA2201.severity = none
+
+# =============================================================================
 # engine/Statevia.Cli
 # =============================================================================
 

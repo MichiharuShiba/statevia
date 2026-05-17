@@ -7,8 +7,13 @@ using Statevia.Core.Api.Persistence;
 namespace Statevia.Core.Api.Services;
 
 /// <summary>定義の compiled_json から契約の Graph Definition（nodes / edges）を組み立てる。</summary>
-public sealed class GraphDefinitionService : IGraphDefinitionService
+internal sealed class GraphDefinitionService : IGraphDefinitionService
 {
+    private static readonly JsonSerializerOptions CaseInsensitiveJsonSerializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
     private readonly IDisplayIdService _displayIds;
 
@@ -59,8 +64,7 @@ public sealed class GraphDefinitionService : IGraphDefinitionService
     /// </summary>
     private static CompiledDefinitionDto? DeserializeCompiledDefinition(string compiledJson)
     {
-        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        return JsonSerializer.Deserialize<CompiledDefinitionDto>(compiledJson, opts);
+        return JsonSerializer.Deserialize<CompiledDefinitionDto>(compiledJson, CaseInsensitiveJsonSerializerOptions);
     }
 
     /// <summary>
@@ -288,11 +292,11 @@ public sealed class GraphDefinitionService : IGraphDefinitionService
     {
         public string Name { get; set; } = string.Empty;
         public string InitialState { get; set; } = string.Empty;
-        public Dictionary<string, Dictionary<string, TransitionTargetDto>?>? Transitions { get; set; } = new();
-        public Dictionary<string, Dictionary<string, CompiledFactTransitionDto>?>? ConditionalTransitions { get; set; } = new();
-        public Dictionary<string, List<string>?>? ForkTable { get; set; } = new();
-        public Dictionary<string, List<string>?>? JoinTable { get; set; } = new();
-        public Dictionary<string, string>? WaitTable { get; set; } = new();
+        public Dictionary<string, Dictionary<string, TransitionTargetDto>?>? Transitions { get; set; } = [];
+        public Dictionary<string, Dictionary<string, CompiledFactTransitionDto>?>? ConditionalTransitions { get; set; } = [];
+        public Dictionary<string, List<string>?>? ForkTable { get; set; } = [];
+        public Dictionary<string, List<string>?>? JoinTable { get; set; } = [];
+        public Dictionary<string, string>? WaitTable { get; set; } = [];
     }
 
     private sealed class CompiledFactTransitionDto
@@ -311,6 +315,14 @@ public sealed class GraphDefinitionService : IGraphDefinitionService
     {
         public string? Next { get; set; } = string.Empty;
         public List<string>? Fork { get; set; } = [];
-        public bool End { get; set; } = false;
+        [System.Diagnostics.CodeAnalysis.SuppressMessage(
+            "Major Code Smell",
+            "S1144:Unused private types or members should be removed",
+            Justification = "JSON 逆シリアル化が setter を使用する。")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage(
+            "Minor Code Smell",
+            "S3459:Unassigned members should be set or removed",
+            Justification = "JSON 逆シリアル化で代入される。")]
+        public bool End { get; set; }
     }
 }

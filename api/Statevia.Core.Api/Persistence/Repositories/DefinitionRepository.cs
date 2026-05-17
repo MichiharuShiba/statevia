@@ -5,7 +5,7 @@ using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Persistence.Repositories;
 
-public sealed class DefinitionRepository : IDefinitionRepository
+internal sealed class DefinitionRepository : IDefinitionRepository
 {
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
 
@@ -101,9 +101,9 @@ public sealed class DefinitionRepository : IDefinitionRepository
     {
         var displayIdsForDefinition = db.DisplayIds.Where(x => x.Kind == "definition");
         return from def in db.WorkflowDefinitions.AsNoTracking().Where(x => x.TenantId == tenantId)
-            join d in displayIdsForDefinition on def.DefinitionId equals d.ResourceId into dGroup
-            from d in dGroup.DefaultIfEmpty()
-            select new DefinitionWithDisplay { Def = def, DisplayId = d != null ? d.DisplayId : null };
+               join d in displayIdsForDefinition on def.DefinitionId equals d.ResourceId into dGroup
+               from d in dGroup.DefaultIfEmpty()
+               select new DefinitionWithDisplay { Def = def, DisplayId = d != null ? d.DisplayId : null };
     }
 
     private static IQueryable<DefinitionWithDisplay> ApplyDefinitionsSort(

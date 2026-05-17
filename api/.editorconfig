@@ -1,0 +1,54 @@
+root = false
+
+# =============================================================================
+# Statevia.Core.Api/Migrations（api/ ディレクトリ基準のパス）
+# リポジトリルート .editorconfig の api/Statevia.Core.Api/Migrations と同等。
+# =============================================================================
+
+[Statevia.Core.Api/Migrations/*.cs]
+
+# CS1591: 公開型の XML ドキュメントがない。
+# 除外理由: EF 生成マイグレーション。手編集・XML 付与の対象外。
+dotnet_diagnostic.CS1591.severity = none
+
+# CA1515: アセンブリ API を internal にせよ（インスタンス化されない型は internal に）。
+# 除外理由: EF マイグレーションクラスは public 必須。アプリ外への参照面ではない。
+dotnet_diagnostic.CA1515.severity = none
+
+# generated_code / dotnet_analyzer_diagnostic: IDE・ビルドの Roslyn 波線を抑止。
+# 除外理由: Migrations は品質リファクタ対象外（スキーマ定義のスナップショット）。
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none
+
+# S1192: 同一リテラル文字列の定数化を推奨（Sonar Standalone 向け）。
+# 除外理由: EF マイグレーションの列型・インデックス定義は生成物に近く、定数抽出の実益がない。
+# 補足: Sonar Connected mode では Migrations/SonarScopeSuppressions.cs を参照。
+dotnet_diagnostic.S1192.severity = none
+
+# =============================================================================
+# Statevia.Core.Api — HTTP / DI 公開面（CA1515）
+# =============================================================================
+
+[Statevia.Core.Api/Controllers/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: ASP.NET Core が Controller を public で発見する。internal 化するとルーティング登録されない。
+dotnet_diagnostic.CA1515.severity = none
+
+[Statevia.Core.Api/Contracts/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: JSON 契約 DTO・例外型は HTTP レスポンス／フィルタの公開面として public を維持する。
+dotnet_diagnostic.CA1515.severity = none
+
+[Statevia.Core.Api/Abstractions/Services/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: Controller コンストラクタ注入のサービス IF は public 必須（同一アセンブリの DI 境界）。
+dotnet_diagnostic.CA1515.severity = none
+
+[Statevia.Core.Api/Services/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: Controller から直接注入する SSE 等のサービスは public のままとする。
+dotnet_diagnostic.CA1515.severity = none

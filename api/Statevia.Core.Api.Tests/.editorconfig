@@ -1,0 +1,5 @@
+root = false
+
+# テスト専用 DTO・スタブはリフレクション／シリアライザ経由で使うため CA1812 を抑止する。
+[*.cs]
+dotnet_diagnostic.CA1812.severity = none

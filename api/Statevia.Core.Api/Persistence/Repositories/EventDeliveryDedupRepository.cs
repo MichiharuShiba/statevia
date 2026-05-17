@@ -7,7 +7,7 @@ namespace Statevia.Core.Api.Persistence.Repositories;
 /// <summary>
 /// <see cref="IEventDeliveryDedupRepository"/> の EF Core 実装。
 /// </summary>
-public sealed class EventDeliveryDedupRepository : IEventDeliveryDedupRepository
+internal sealed class EventDeliveryDedupRepository : IEventDeliveryDedupRepository
 {
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
 
@@ -55,20 +55,18 @@ public sealed class EventDeliveryDedupRepository : IEventDeliveryDedupRepository
         string tenantId,
         Guid workflowId,
         Guid clientEventId,
-        string status,
-        DateTime utcNow,
-        DateTime? appliedAt,
-        string? errorCode,
+        EventDeliveryDedupStatusUpdate update,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(update);
         var affected = await db.EventDeliveryDedup
             .Where(x => x.TenantId == tenantId && x.WorkflowId == workflowId && x.ClientEventId == clientEventId)
             .ExecuteUpdateAsync(
                 s => s
-                    .SetProperty(x => x.Status, status)
-                    .SetProperty(x => x.UpdatedAt, utcNow)
-                    .SetProperty(x => x.AppliedAt, appliedAt)
-                    .SetProperty(x => x.ErrorCode, errorCode),
+                    .SetProperty(x => x.Status, update.Status)
+                    .SetProperty(x => x.UpdatedAt, update.UtcNow)
+                    .SetProperty(x => x.AppliedAt, update.AppliedAt)
+                    .SetProperty(x => x.ErrorCode, update.ErrorCode),
                 cancellationToken)
             .ConfigureAwait(false);
 

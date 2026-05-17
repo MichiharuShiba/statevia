@@ -20,11 +20,10 @@ public sealed class WorkflowStreamServiceTests
             _status = status;
         }
 
-        public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+        public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
-        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
-            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
+        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, WorkflowListQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new WorkflowResponse { Status = _status });
@@ -42,9 +41,9 @@ public sealed class WorkflowStreamServiceTests
         public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<WorkflowViewDto> GetWorkflowViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
-        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
-        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
-        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
+        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
     }
 
@@ -57,11 +56,10 @@ public sealed class WorkflowStreamServiceTests
 
         public int GetGraphJsonCalls => _getGraphCalls;
 
-        public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+        public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
-        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
-            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
+        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, WorkflowListQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new WorkflowResponse { Status = "Running" });
@@ -81,9 +79,9 @@ public sealed class WorkflowStreamServiceTests
         public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<WorkflowViewDto> GetWorkflowViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
-        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
-        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
-        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
+        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
     }
 
@@ -99,13 +97,12 @@ public sealed class WorkflowStreamServiceTests
         /// <summary>2 回目以降のグラフ取得呼び出しについて、直前呼び出し開始からの経過時間。</summary>
         public TimeSpan? TimeSincePreviousGetGraphStarted { get; private set; }
 
-        public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+        public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
 
-        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
-            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
+        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, WorkflowListQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
@@ -137,13 +134,13 @@ public sealed class WorkflowStreamServiceTests
         public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
@@ -151,11 +148,10 @@ public sealed class WorkflowStreamServiceTests
 
     private sealed class ThrowingWorkflowService : IWorkflowService
     {
-        public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+        public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
-        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
-            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
+        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, WorkflowListQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new WorkflowResponse { Status = "Running" });
@@ -165,9 +161,9 @@ public sealed class WorkflowStreamServiceTests
         public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<WorkflowViewDto> GetWorkflowViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
-        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
-        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
-        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
+        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
     }
 
@@ -176,11 +172,10 @@ public sealed class WorkflowStreamServiceTests
     {
         public int TryGetSnapshotCalls { get; private set; }
 
-        public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct) =>
+        public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) => throw new NotSupportedException();
-        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(
-            string tenantId, int offset, int limit, string? status, string? definitionId, string? nameContains, string? sortBy, string? sortOrder, CancellationToken ct) =>
+        public Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, WorkflowListQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<WorkflowResponse> GetWorkflowResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new WorkflowResponse { Status = "Running" });
@@ -194,9 +189,9 @@ public sealed class WorkflowStreamServiceTests
         public Task<WorkflowViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<WorkflowViewDto> GetWorkflowViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
-        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
-        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
-        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct) => throw new NotSupportedException();
+        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
     }
 

@@ -9,7 +9,7 @@ namespace Statevia.Core.Api.Hosting;
 /// <summary>
 /// リクエスト開始・完了・未処理例外を <see cref="ILogger"/> に記録する。
 /// </summary>
-public sealed class RequestLoggingMiddleware
+internal sealed class RequestLoggingMiddleware
 {
     private readonly RequestDelegate _next;
 
@@ -43,29 +43,22 @@ public sealed class RequestLoggingMiddleware
         var path = (context.Request.PathBase + context.Request.Path).Value ?? "";
         var queryForLog = BuildQueryForLog(context.Request.QueryString, opts);
 
-        string? requestBodyLog = null;
-        try
-        {
-            requestBodyLog = await BuildRequestBodyLogAsync(context.Request, opts).ConfigureAwait(false);
-        }
-        catch
-        {
-            requestBodyLog = "[request body read error]";
-        }
+        var requestBodyLog = await TryBuildRequestBodyLogAsync(context.Request, opts).ConfigureAwait(false);
 
         var userAgent = TruncateUserAgent(context.Request.Headers.UserAgent.ToString());
 
         // Path と Query は分離（要件: 一覧検索・相関しやすくする）
         TryLog(() =>
-            logger.LogInformation(
-                "HTTP request start TraceId={TraceId} Method={Method} Path={Path} Query={Query} TenantId={TenantId} UserAgent={UserAgent} RequestBody={RequestBody}",
-                traceId,
-                context.Request.Method,
-                path,
-                queryForLog,
-                tenantId,
-                string.IsNullOrEmpty(userAgent) ? null : userAgent,
-                requestBodyLog));
+            logger.HttpRequestStart(new RequestLogStartDetails
+            {
+                TraceId = traceId,
+                Method = context.Request.Method,
+                Path = path,
+                QueryForLog = queryForLog,
+                TenantId = tenantId,
+                UserAgent = string.IsNullOrEmpty(userAgent) ? null : userAgent,
+                RequestBody = requestBodyLog,
+            }));
 
         var sw = Stopwatch.StartNew();
         Stream? originalBody = null;
@@ -85,8 +78,8 @@ public sealed class RequestLoggingMiddleware
         catch (Exception ex)
         {
             TryLog(() =>
-                logger.LogError(ex,
-                    "HTTP request unhandled exception TraceId={TraceId} ExceptionType={ExceptionType} Message={Message}",
+                logger.HttpRequestUnhandledException(
+                    ex,
                     traceId,
                     ex.GetType().FullName,
                     ex.Message));
@@ -94,43 +87,81 @@ public sealed class RequestLoggingMiddleware
         }
         finally
         {
-            sw.Stop();
-            long? responseSize = null;
-            string responseBodyLog = "";
-
-            // ラップを外して実ストリームへ戻し、保持バイトからログ用文字列を組み立てる
-            if (captureStream != null && originalBody != null)
-            {
-                context.Response.Body = originalBody;
-                responseSize = captureStream.TotalBytesWritten;
-                var bytes = captureStream.GetCapturedBytes();
-                try
-                {
-                    responseBodyLog = BuildResponseBodyLog(bytes, context.Response.ContentType, opts);
-                }
-                catch
-                {
-                    responseBodyLog = "[response body decode error]";
-                }
-
-                captureStream.Dispose();
-            }
-            // 本文キャプチャ無しでも Content-Length があればサイズだけ記録
-            else if (context.Response.ContentLength is { } clen)
-            {
-                responseSize = clen;
-            }
-
-            var status = context.Response.StatusCode;
-            TryLog(() =>
-                logger.LogInformation(
-                    "HTTP request complete TraceId={TraceId} StatusCode={StatusCode} ElapsedMs={ElapsedMs} ResponseSize={ResponseSize} ResponseBody={ResponseBody}",
-                    traceId,
-                    status,
-                    sw.ElapsedMilliseconds,
-                    responseSize,
-                    string.IsNullOrEmpty(responseBodyLog) ? null : responseBodyLog));
+            await LogRequestCompleteAsync(
+                context,
+                logger,
+                traceId,
+                sw,
+                opts,
+                originalBody,
+                captureStream).ConfigureAwait(false);
         }
+    }
+
+    private static async Task<string?> TryBuildRequestBodyLogAsync(HttpRequest request, RequestLogOptions opts)
+    {
+        try
+        {
+            return await BuildRequestBodyLogAsync(request, opts).ConfigureAwait(false);
+        }
+        catch (IOException)
+        {
+            return "[request body read error]";
+        }
+        catch (NotSupportedException)
+        {
+            return "[request body read error]";
+        }
+        catch (InvalidOperationException)
+        {
+            return "[request body read error]";
+        }
+    }
+
+    private static async Task LogRequestCompleteAsync(
+        HttpContext context,
+        ILogger<RequestLoggingMiddleware> logger,
+        string traceId,
+        Stopwatch stopwatch,
+        RequestLogOptions opts,
+        Stream? originalBody,
+        ResponseBodyLoggingStream? captureStream)
+    {
+        stopwatch.Stop();
+        long? responseSize = null;
+        string responseBodyLog = "";
+
+        if (captureStream != null && originalBody != null)
+        {
+            context.Response.Body = originalBody;
+            responseSize = captureStream.TotalBytesWritten;
+            var bytes = captureStream.GetCapturedBytes();
+            try
+            {
+                responseBodyLog = BuildResponseBodyLog(bytes, context.Response.ContentType, opts);
+            }
+#pragma warning disable CA1031 // 応答ログ用デコード／マスキング失敗でもリクエスト完了ログは続行する
+            catch (Exception)
+            {
+                responseBodyLog = "[response body decode error]";
+            }
+#pragma warning restore CA1031
+
+            await captureStream.DisposeAsync().ConfigureAwait(false);
+        }
+        else if (context.Response.ContentLength is { } contentLength)
+        {
+            responseSize = contentLength;
+        }
+
+        var status = context.Response.StatusCode;
+        TryLog(() =>
+            logger.HttpRequestComplete(
+                traceId,
+                status,
+                stopwatch.ElapsedMilliseconds,
+                responseSize,
+                string.IsNullOrEmpty(responseBodyLog) ? null : responseBodyLog));
     }
 
     private static string BuildQueryForLog(QueryString queryString, RequestLogOptions opts)
@@ -170,14 +201,7 @@ public sealed class RequestLoggingMiddleware
         }
         finally
         {
-            try
-            {
-                request.Body.Position = 0;
-            }
-            catch
-            {
-                // ignore
-            }
+            TryRewindRequestBody(request.Body);
         }
 
         if (read == 0)
@@ -210,7 +234,7 @@ public sealed class RequestLoggingMiddleware
     {
         if (string.IsNullOrEmpty(contentType))
             return true; // 未指定はテキスト扱いで試す
-        var semi = contentType.IndexOf(';');
+        var semi = contentType.IndexOf(';', StringComparison.Ordinal);
         var media = semi >= 0 ? contentType[..semi] : contentType;
         media = media.Trim();
         return media.Equals("application/json", StringComparison.OrdinalIgnoreCase)
@@ -228,13 +252,38 @@ public sealed class RequestLoggingMiddleware
 
     private static void TryLog(Action logAction)
     {
+#pragma warning disable CA1031 // 構造化ログ提供側の異常でもパイプラインへ影響を与えない
         try
         {
             logAction();
         }
-        catch
+        catch (Exception)
         {
             // ログ失敗でリクエストを壊さない
+        }
+#pragma warning restore CA1031
+    }
+
+    /// <summary>
+    /// リクエスト本文ストリームを先頭へ戻す。非シーク可能なストリームでは false を返す。
+    /// </summary>
+    private static void TryRewindRequestBody(Stream body)
+    {
+        try
+        {
+            body.Position = 0;
+        }
+        catch (IOException)
+        {
+            // 非シーク可能なストリーム — 下流の再読はできないがログは続行する。
+        }
+        catch (NotSupportedException)
+        {
+            // 非シーク可能なストリーム — 下流の再読はできないがログは続行する。
+        }
+        catch (InvalidOperationException)
+        {
+            // 既に消費済みなど — 下流の再読はできないがログは続行する。
         }
     }
 

@@ -2,7 +2,7 @@ using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Abstractions.Persistence;
 
-public interface ICommandDedupRepository
+internal interface ICommandDedupRepository
 {
     Task<CommandDedupRow?> FindValidAsync(string dedupKey, DateTime utcNow, CancellationToken ct);
 

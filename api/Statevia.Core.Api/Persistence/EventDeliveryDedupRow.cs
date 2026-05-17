@@ -1,7 +1,7 @@
 namespace Statevia.Core.Api.Persistence;
 
 /// <summary>event_delivery_dedup テーブル（イベント配送の冪等制御）。</summary>
-public class EventDeliveryDedupRow
+internal class EventDeliveryDedupRow
 {
     public required string TenantId { get; set; }
     public Guid WorkflowId { get; set; }

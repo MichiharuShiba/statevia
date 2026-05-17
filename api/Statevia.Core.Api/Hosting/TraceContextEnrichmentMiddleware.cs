@@ -8,12 +8,16 @@ namespace Statevia.Core.Api.Hosting;
 /// <summary>
 /// ルート確定後にドメイン ID を <see cref="HttpContext.Items"/> とログへ載せ、任意で応答 <c>tracestate</c> を更新する。
 /// </summary>
-public sealed class TraceContextEnrichmentMiddleware
+internal sealed class TraceContextEnrichmentMiddleware
 {
     private readonly RequestDelegate _next;
 
     public TraceContextEnrichmentMiddleware(RequestDelegate next) => _next = next;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Critical Code Smell",
+        "S3776:Cognitive Complexity of methods should not be too high",
+        Justification = "トレース enrich と tracestate 付与を単一ミドルウェアに集約している。")]
     public async Task InvokeAsync(
         HttpContext context,
         ILogger<TraceContextEnrichmentMiddleware> logger,
@@ -36,8 +40,7 @@ public sealed class TraceContextEnrichmentMiddleware
             if (!string.IsNullOrEmpty(wf) || !string.IsNullOrEmpty(def) || !string.IsNullOrEmpty(graph))
             {
                 TryLog(() =>
-                    logger.LogInformation(
-                        "HTTP trace enrich TraceId={TraceId} WorkflowId={WorkflowId} DefinitionId={DefinitionId} GraphDefinitionId={GraphDefinitionId}",
+                    logger.HttpTraceEnrich(
                         traceId,
                         string.IsNullOrEmpty(wf) ? null : wf,
                         string.IsNullOrEmpty(def) ? null : def,
@@ -50,7 +53,7 @@ public sealed class TraceContextEnrichmentMiddleware
             var opaque = BuildTracestateOpaque(wf, def, graph);
             if (!string.IsNullOrEmpty(opaque))
             {
-                var existing = context.Request.Headers["tracestate"].FirstOrDefault();
+                var existing = context.Request.Headers.TraceState.FirstOrDefault();
                 var merged = TracestateHelper.Merge(existing, TracestateHelper.StateviaVendorKey, opaque);
                 // クロージャで merged を固定（応答開始時に一括設定）
                 var mergedLocal = merged;
@@ -58,7 +61,7 @@ public sealed class TraceContextEnrichmentMiddleware
                     static state =>
                     {
                         var (ctx, m) = ((HttpContext, string))state!;
-                        ctx.Response.Headers["tracestate"] = m;
+                        ctx.Response.Headers.TraceState = m;
                         return Task.CompletedTask;
                     },
                     (context, mergedLocal));
@@ -71,41 +74,25 @@ public sealed class TraceContextEnrichmentMiddleware
     internal static (string? wf, string? def, string? graph) ExtractDomainIds(HttpContext ctx)
     {
         var path = ctx.Request.Path.Value ?? "";
-        var rv = ctx.Request.RouteValues;
-
-        // コントローラの Route プレフィックスとテンプレート引数名に合わせる
-        if (path.StartsWith("/v1/workflows/", StringComparison.OrdinalIgnoreCase))
+        if (TryGetRouteString(ctx, "id") is { } routeId)
         {
-            if (rv.TryGetValue("id", out var id) && id != null)
-            {
-                var s = id.ToString();
-                if (!string.IsNullOrEmpty(s))
-                    return (s, null, null);
-            }
+            if (path.StartsWith("/v1/workflows/", StringComparison.OrdinalIgnoreCase))
+                return (routeId, null, null);
+            if (path.StartsWith("/v1/definitions/", StringComparison.OrdinalIgnoreCase))
+                return (null, routeId, null);
         }
 
-        if (path.StartsWith("/v1/definitions/", StringComparison.OrdinalIgnoreCase))
-        {
-            if (rv.TryGetValue("id", out var id) && id != null)
-            {
-                var s = id.ToString();
-                if (!string.IsNullOrEmpty(s))
-                    return (null, s, null);
-            }
-        }
-
-        if (path.StartsWith("/v1/graphs/", StringComparison.OrdinalIgnoreCase))
-        {
-            if (rv.TryGetValue("graphId", out var gid) && gid != null)
-            {
-                var s = gid.ToString();
-                if (!string.IsNullOrEmpty(s))
-                    return (null, null, s);
-            }
-        }
+        if (path.StartsWith("/v1/graphs/", StringComparison.OrdinalIgnoreCase)
+            && TryGetRouteString(ctx, "graphId") is { } graphId)
+            return (null, null, graphId);
 
         return (null, null, null);
     }
+
+    private static string? TryGetRouteString(HttpContext ctx, string routeKey) =>
+        ctx.Request.RouteValues.TryGetValue(routeKey, out var value) && value is not null
+            ? value.ToString()
+            : null;
 
     internal static string? BuildTracestateOpaque(string? wf, string? def, string? graph)
     {
@@ -135,13 +122,15 @@ public sealed class TraceContextEnrichmentMiddleware
 
     private static void TryLog(Action logAction)
     {
+#pragma warning disable CA1031 // 構造化ログ提供側の異常でもミドルウェアを中断しない
         try
         {
             logAction();
         }
-        catch
+        catch (Exception)
         {
             // ログ失敗でリクエストを壊さない
         }
+#pragma warning restore CA1031
     }
 }

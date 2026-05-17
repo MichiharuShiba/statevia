@@ -1,3 +1,4 @@
+using System;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -8,7 +9,7 @@ using Statevia.Core.Api.Abstractions.Services;
 namespace Statevia.Core.Api.Services;
 
 /// <summary>
-/// GET …/stream 用の SSE。グラフ JSON の変化を <see cref="GraphUpdated"/> 相当の JSON で送出する。
+/// GET …/stream 用の SSE。グラフ JSON の変化を <c>GraphUpdated</c> イベント相当の JSON で送出する。
 /// </summary>
 public sealed class WorkflowStreamService
 {
@@ -20,21 +21,35 @@ public sealed class WorkflowStreamService
     };
 
     /// <summary>
-    /// 投影済みグラフ JSON の取得・比較ループ間隔（ms）。フェーズ 1 は 2 秒固定（`docs/statevia-data-integration-contract.md` の SSE 節と整合）。
+    /// 投影グラフ取得のポーリング間隔（ミリ秒）。
     /// </summary>
     internal const int GraphPollingIntervalMilliseconds = 2000;
 
     private readonly IWorkflowService _workflows;
     private readonly IDisplayIdService _displayIds;
 
+    /// <summary>
+    /// <see cref="WorkflowStreamService"/> を生成する。
+    /// </summary>
+    /// <param name="workflows">ワークフローサービス。</param>
+    /// <param name="displayIds">表示 ID 解決。</param>
     public WorkflowStreamService(IWorkflowService workflows, IDisplayIdService displayIds)
     {
         _workflows = workflows;
         _displayIds = displayIds;
     }
 
+    /// <summary>
+    /// Server-Sent Events としてグラフ JSON の変化を書き込む。
+    /// </summary>
+    /// <param name="response">HTTP レスポンス。</param>
+    /// <param name="tenantId">テナント ID。</param>
+    /// <param name="idOrUuid">ワークフロー表示 ID または UUID。</param>
+    /// <param name="ct">キャンセルトークン。</param>
     public async Task WriteStreamAsync(HttpResponse response, string tenantId, string idOrUuid, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(response);
+
         if (ct.IsCancellationRequested)
             return;
 
@@ -112,11 +127,13 @@ public sealed class WorkflowStreamService
         {
             return (false, null);
         }
-        catch
+#pragma warning disable CA1031 // SSE ポーリング: DB／実行時の未取得例外でも接続維持のためポーリングを継続する
+        catch (Exception)
         {
             var canContinue = await DelayNextPollAsync(response, ct).ConfigureAwait(false);
             return (canContinue, null);
         }
+#pragma warning restore CA1031
     }
 
     private static async Task<bool> TryWriteAsync(HttpResponse response, string payload, CancellationToken ct)
@@ -137,7 +154,7 @@ public sealed class WorkflowStreamService
         }
     }
 
-    private async Task<bool> ProcessGraphUpdateAsync(
+    private static async Task<bool> ProcessGraphUpdateAsync(
         HttpResponse response,
         string graphJson,
         string displayId,
@@ -179,7 +196,7 @@ public sealed class WorkflowStreamService
             return nodesElement.EnumerateArray().Any(node =>
                 IsTerminalNodeFact(node) || IsCompletedSinkNode(node, sinkNodeIds));
         }
-        catch
+        catch (JsonException)
         {
             // 不正 JSON は終端扱いにせず次回ポーリングで再評価する。
             return false;

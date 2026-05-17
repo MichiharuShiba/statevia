@@ -1,197 +1,16 @@
-using System.Text.Json;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Statevia.Core.Api.Abstractions.Persistence;
-using Statevia.Core.Api.Abstractions.Services;
-using Statevia.Core.Api.Application.Actions.Abstractions;
-using Statevia.Core.Api.Application.Actions.Registry;
-using Statevia.Core.Api.Application.Definition;
-using Statevia.Core.Api.Configuration;
-using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Hosting;
-using Statevia.Core.Api.Infrastructure;
-using Statevia.Core.Api.Persistence;
-using Statevia.Core.Api.Persistence.Repositories;
-using Statevia.Core.Api.Services;
-using Statevia.Core.Engine.Abstractions;
-using Statevia.Core.Engine.Definition;
-using Statevia.Core.Engine.DependencyInjection;
-using Statevia.Core.Engine.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// DbContext（EF Core + PostgreSQL）
-// Docker / CI では DATABASE_URL を優先して接続先を差し替える。
-// ただし Npgsql は `Host=...;Database=...` 形式を期待するため、postgres:// 形式は正規化する。
-static string NormalizeDatabaseUrl(string url)
-{
-    if (url.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
-        url.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
-    {
-        var uri = new Uri(url);
-        var dbName = uri.AbsolutePath.TrimStart('/');
-
-        var user = "";
-        var pass = "";
-        if (!string.IsNullOrEmpty(uri.UserInfo))
-        {
-            var parts = uri.UserInfo.Split(':', 2);
-            user = Uri.UnescapeDataString(parts[0]);
-            pass = parts.Length > 1 ? Uri.UnescapeDataString(parts[1]) : "";
-        }
-
-        var port = uri.IsDefaultPort ? 5432 : uri.Port;
-        return $"Host={uri.Host};Port={port};Database={dbName};Username={user};Password={pass}";
-    }
-
-    return url;
-}
-
-var rawDatabaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-var conn =
-    (string.IsNullOrWhiteSpace(rawDatabaseUrl) ? null : NormalizeDatabaseUrl(rawDatabaseUrl))
-    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Host=localhost;Database=statevia;Username=statevia;Password=statevia";
-builder.Services.AddDbContextFactory<CoreDbContext>(options =>
-    options.UseNpgsql(conn, o => o.MigrationsHistoryTable("__ef_migrations_history")));
-
-builder.Services.AddScoped<IDisplayIdService, DisplayIdServiceImpl>();
-builder.Services.AddScoped<IExecutionReadModelService, ExecutionReadModelService>();
-builder.Services.AddSingleton<IIdGenerator, UuidV7Generator>();
-
-// WorkflowEngine（Singleton）: IScheduler をプロセス単位で共有。登録は AddStateviaWorkflowEngine。
-// IWorkflowInstanceIdGenerator: Start で workflowId 未指定のとき、IIdGenerator（UUID v7）と同一経路で ID を採番する。
-builder.Services.AddSingleton<IWorkflowInstanceIdGenerator>(
-    sp => new DelegateWorkflowInstanceIdGenerator(() => sp.GetRequiredService<IIdGenerator>().NewGuid().ToString()));
-builder.Services.AddStateviaWorkflowEngine();
-builder.Services.AddScoped<ICommandDedupService, CommandDedupService>();
-builder.Services.AddScoped<IDefinitionRepository, DefinitionRepository>();
-builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
-builder.Services.AddScoped<ICommandDedupRepository, CommandDedupRepository>();
-builder.Services.AddScoped<IEventDeliveryDedupRepository, EventDeliveryDedupRepository>();
-builder.Services.AddScoped<IEventStoreRepository, EventStoreRepository>();
-builder.Services.AddScoped<IDefinitionService, DefinitionService>();
-builder.Services.AddSingleton<IDefinitionSchemaService, DefinitionSchemaService>();
-builder.Services.AddScoped<IWorkflowService, WorkflowService>();
-builder.Services.AddOptions<WorkflowProjectionQueueOptions>()
-    .Bind(builder.Configuration.GetSection("WorkflowProjectionQueue"))
-    .Validate(o => o.MaxGlobalQueueSize >= 1, "WorkflowProjectionQueue:MaxGlobalQueueSize must be >= 1.")
-    .Validate(o => o.ProjectionFlushDebounceMs is >= 0 and <= 250, "WorkflowProjectionQueue:ProjectionFlushDebounceMs must be between 0 and 250.")
-    .Validate(o => o.MaxRetryAttempts is >= 1 and <= 100, "WorkflowProjectionQueue:MaxRetryAttempts must be between 1 and 100.")
-    .Validate(o => o.RetryBaseDelayMs is >= 0 and <= 60_000, "WorkflowProjectionQueue:RetryBaseDelayMs must be between 0 and 60000.")
-    .Validate(o => o.RetryMaxDelayMs is >= 0 and <= 600_000, "WorkflowProjectionQueue:RetryMaxDelayMs must be between 0 and 600000.")
-    .Validate(o => o.RetryMaxDelayMs >= o.RetryBaseDelayMs, "WorkflowProjectionQueue:RetryMaxDelayMs must be >= RetryBaseDelayMs.");
-builder.Services.AddSingleton<WorkflowProjectionUpdateQueueService>();
-builder.Services.AddSingleton<IWorkflowProjectionUpdateQueue>(sp => sp.GetRequiredService<WorkflowProjectionUpdateQueueService>());
-builder.Services.AddHostedService(sp => sp.GetRequiredService<WorkflowProjectionUpdateQueueService>());
-builder.Services.AddScoped<WorkflowStreamService>();
-builder.Services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
-builder.Services.AddSingleton<IActionRegistry>(_ =>
-{
-    var registry = new InMemoryActionRegistry();
-    DefinitionCompilerService.RegisterBuiltinActions(registry);
-    return registry;
-});
-builder.Services.AddSingleton<StateWorkflowDefinitionLoader>();
-builder.Services.AddSingleton<NodesWorkflowDefinitionLoader>();
-builder.Services.AddSingleton<IDefinitionLoadStrategy, DefinitionLoadStrategy>();
-builder.Services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
-// STV-403: 本番は本文ログ既定オフ（IO-14）。開発時は詳細、必要なら環境変数で本番もオン。
-builder.Services.AddOptions<RequestLogOptions>()
-    .Configure<IHostEnvironment>((o, env) =>
-    {
-        if (env.IsProduction())
-        {
-            o.LogRequestBody = false;
-            o.LogResponseBody = false;
-        }
-        else
-        {
-            o.LogRequestBody = true;
-            o.LogResponseBody = true;
-        }
-
-        // 運用デバッグ用に本番でも一時的に本文を載せる場合
-        if (string.Equals(Environment.GetEnvironmentVariable("STATEVIA_LOG_HTTP_BODIES"), "true",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            o.LogRequestBody = true;
-            o.LogResponseBody = true;
-        }
-    });
-
-builder.Services.AddOptions<EventDeliveryRetryOptions>()
-    .Bind(builder.Configuration.GetSection("EventDelivery:Retry"))
-    .Validate(o => o.MaxAttempts is >= 1 and <= 50, "EventDelivery:Retry:MaxAttempts must be between 1 and 50.")
-    .Validate(o => o.BaseDelayMs is >= 0 and <= 600_000, "EventDelivery:Retry:BaseDelayMs is out of range.")
-    .Validate(o => o.MaxDelayMs is >= 0 and <= 600_000, "EventDelivery:Retry:MaxDelayMs is out of range.")
-    .Validate(o => o.MaxTotalBackoffMs is >= 0 and <= 600_000, "EventDelivery:Retry:MaxTotalBackoffMs is out of range.")
-    .Validate(
-        o => o.SerializablePersistenceMaxAttempts is >= 1 and <= 50,
-        "EventDelivery:Retry:SerializablePersistenceMaxAttempts must be between 1 and 50.");
-
-builder.Services.AddHttpContextAccessor();
-
-builder.Services.AddCors();
-builder.Services.AddControllers(options =>
-    {
-        // 例外 -> 契約エラー（404/422/500）を一箇所に集約する。
-        options.Filters.Add<ApiExceptionFilter>();
-    })
-    .AddControllersAsServices()
-    .AddJsonOptions(o =>
-    {
-        o.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-        o.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
-    });
-
-// ASP.NET 標準のモデルバリデーション（[Required] 等）を契約の 422 形式に寄せる。
-builder.Services.Configure<ApiBehaviorOptions>(options =>
-{
-    options.InvalidModelStateResponseFactory = context =>
-    {
-        var errors = context.ModelState
-            .Where(kvp => kvp.Value?.Errors.Count > 0)
-            .SelectMany(kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage))
-            .Where(m => !string.IsNullOrWhiteSpace(m))
-            .ToArray();
-
-        var message = errors.Length > 0 ? string.Join("; ", errors) : "Validation failed";
-
-        var details = context.ModelState.ToDictionary(
-            kvp => kvp.Key,
-            kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray() ?? Array.Empty<string>()
-        );
-
-        return new UnprocessableEntityObjectResult(
-            new ErrorResponse
-            {
-                Error = new ApiError
-                {
-                    Code = "VALIDATION_ERROR",
-                    Message = message,
-                    Details = details
-                }
-            }
-        );
-    };
-});
+builder.Services.AddStateviaCoreApi(builder.Configuration);
 
 var app = builder.Build();
 
-// STV-403: リクエストログ（CORS より前で OPTIONS 等も記録）
 app.UseMiddleware<RequestLoggingMiddleware>();
-
-// Phase 3.2: UI からの跨域アクセスを許可（v2 では認証なし）
 app.UseCors(policy => policy
     .AllowAnyOrigin()
     .AllowAnyMethod()
     .AllowAnyHeader());
 
-// STV-403 タスク 8: ルート確定後にのみ RouteValues / ドメイン ID を参照する
 app.UseRouting();
 app.UseMiddleware<TraceContextEnrichmentMiddleware>();
 
@@ -199,4 +18,3 @@ app.MapControllers();
 app.MapGet("/v1/health", () => Results.Ok(new { status = "ok" }));
 
 app.Run();
-

@@ -131,4 +131,40 @@ public sealed class EventDeliveryRetryPolicyTests
         // Act & Assert
         Assert.True(EventDeliveryRetryPolicy.IsUniqueConstraintViolation(dbUpdate));
     }
+
+    /// <summary>ジッタ有効時は遅延が 50%〜100% の範囲に収まる。</summary>
+    [Fact]
+    public void ComputeBackoffDelayMs_WithJitter_StaysWithinHalfToFullRange()
+    {
+        // Arrange
+        var options = new EventDeliveryRetryOptions
+        {
+            BaseDelayMs = 100,
+            MaxDelayMs = 10_000,
+            Jitter = true
+        };
+        var random = new Random(42);
+
+        // Act
+        var delay = EventDeliveryRetryPolicy.ComputeBackoffDelayMs(2, options, random);
+
+        // Assert
+        Assert.InRange(delay, 200, 400);
+    }
+
+    /// <summary>DbUpdate の一意制約違反は一時障害とみなさない。</summary>
+    [Fact]
+    public void IsTransientInfrastructureFailure_ReturnsFalse_ForUniqueViolation()
+    {
+        // Arrange
+        var inner = new PostgresException(
+            messageText: "duplicate",
+            severity: "ERROR",
+            invariantSeverity: "ERROR",
+            sqlState: "23505");
+        var dbUpdate = new DbUpdateException("dup", inner);
+
+        // Act & Assert
+        Assert.False(EventDeliveryRetryPolicy.IsTransientInfrastructureFailure(dbUpdate));
+    }
 }

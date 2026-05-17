@@ -4,10 +4,10 @@ namespace Statevia.Core.Api.Application.Actions.Builtins;
 
 /// <summary>
 /// Registry 用の組み込み IState 実装（no-op）。
-/// 処理は行わず <see cref="T:Statevia.Core.Engine.Engine.WorkflowEngine"/> が渡す入力をそのまま出力として返す。
+/// 処理は行わず <see cref="Statevia.Core.Engine.Engine.WorkflowEngine"/> が渡す入力をそのまま出力として返す。
 /// 条件付き edges が前段の <c>workflowInput</c>／直前状態の出力を <c>$.path</c> で解決できるようにする。
 /// </summary>
-public sealed class NoOpState : IState<object?, object?>
+internal sealed class NoOpState : IState<object?, object?>
 {
     /// <inheritdoc />
     public Task<object?> ExecuteAsync(StateContext ctx, object? input, CancellationToken ct) => Task.FromResult(input);
@@ -16,7 +16,7 @@ public sealed class NoOpState : IState<object?, object?>
 /// <summary>
 /// 指定時間だけ待機してから完了する（入出力なし）。Playground や YAML 検証で「実行中」を体感させる用途。
 /// </summary>
-public sealed class DelayCompleteState : IState<Unit, Unit>
+internal sealed class DelayCompleteState : IState<Unit, Unit>
 {
     private readonly TimeSpan _delay;
 
@@ -32,8 +32,8 @@ public sealed class DelayCompleteState : IState<Unit, Unit>
     }
 }
 
-/// <summary>wait ブロック用。イベント名は状態ごとに <see cref="ActionExecutorFactory"/> が束ねる。</summary>
-public sealed class WaitOnlyState : IState<Unit, Unit>
+/// <summary>wait ブロック用。イベント名は状態ごとに <see cref="Statevia.Core.Api.Application.Definition.ActionExecutorFactory"/> が束ねる。</summary>
+internal sealed class WaitOnlyState : IState<Unit, Unit>
 {
     private readonly string _eventName;
 

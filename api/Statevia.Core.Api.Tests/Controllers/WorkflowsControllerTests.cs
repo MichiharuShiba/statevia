@@ -62,8 +62,8 @@ public sealed class WorkflowsControllerTests
         public string? LastIdempotencyKey { get; private set; }
 
         public WorkflowResponse StartResult { get; set; } = new WorkflowResponse();
-        public List<WorkflowResponse> ListResult { get; set; } = new();
-        public PagedResult<WorkflowResponse> ListPagedResult { get; set; } = new() { Items = new List<WorkflowResponse>(), TotalCount = 0, Offset = 0, Limit = 0, HasMore = false };
+        public List<WorkflowResponse> ListResult { get; set; } = [];
+        public PagedResult<WorkflowResponse> ListPagedResult { get; set; } = new() { Items = [], TotalCount = 0, Offset = 0, Limit = 0, HasMore = false };
         public WorkflowResponse GetResult { get; set; } = new WorkflowResponse();
         public string GraphJsonResult { get; set; } = "{\"nodes\":[]}";
         public WorkflowViewDto ViewResult { get; set; } = new WorkflowViewDto();
@@ -78,7 +78,7 @@ public sealed class WorkflowsControllerTests
         public string? PublishIdempotencyKey { get; private set; }
         public string? ResumeResumeKey { get; private set; }
 
-        public async Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, string method, string path, CancellationToken ct)
+        public async Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
@@ -95,14 +95,7 @@ public sealed class WorkflowsControllerTests
             return ListResult;
         }
 
-        public async Task<PagedResult<WorkflowResponse>> ListPagedAsync(
-            string tenantId,
-            int offset,
-            int limit,
-            string? status,
-            string? definitionId,
-            string? nameContains,
-            string? sortBy, string? sortOrder, CancellationToken ct)
+        public async Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, WorkflowListQuery query, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
@@ -162,7 +155,7 @@ public sealed class WorkflowsControllerTests
             return EventsResult;
         }
 
-        public async Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, string method, string path, CancellationToken ct)
+        public async Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct)
         {
             ResumeCalled = true;
             ResumeResumeKey = resumeKey;
@@ -173,7 +166,7 @@ public sealed class WorkflowsControllerTests
             if (ExceptionToThrow is { } ex) throw ex;
         }
 
-        public async Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, string method, string path, CancellationToken ct)
+        public async Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct)
         {
             CancelCalled = true;
             CancelIdempotencyKey = idempotencyKey;
@@ -183,7 +176,7 @@ public sealed class WorkflowsControllerTests
             if (ExceptionToThrow is { } ex) throw ex;
         }
 
-        public async Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, string method, string path, CancellationToken ct)
+        public async Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct)
         {
             PublishCalled = true;
             PublishIdempotencyKey = idempotencyKey;
@@ -253,17 +246,17 @@ public sealed class WorkflowsControllerTests
         // Act
         var workflows = new FakeWorkflowService
         {
-            ListResult = new List<WorkflowResponse>
-            {
+            ListResult =
+            [
                 new WorkflowResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow },
-            }
+            ]
         };
 
         var stream = new WorkflowStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, workflows, stream);
 
         // Assert
-        var result = await controller.List(limit: null, offset: 0, status: null, ct: CancellationToken.None);
+        var result = await controller.List(new WorkflowListQuery(), ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(result);
         var value = Assert.IsAssignableFrom<List<WorkflowResponse>>(ok.Value);
         Assert.Single(value);
@@ -282,17 +275,17 @@ public sealed class WorkflowsControllerTests
         // Act
         var workflows = new FakeWorkflowService
         {
-            ListResult = new List<WorkflowResponse>
-            {
+            ListResult =
+            [
                 new WorkflowResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow },
-            }
+            ]
         };
 
         var stream = new WorkflowStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, workflows, stream);
 
         // Assert
-        var result = await controller.List(limit: null, offset: 0, status: null, ct: CancellationToken.None);
+        var result = await controller.List(new WorkflowListQuery(), ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(result);
         var value = Assert.IsAssignableFrom<List<WorkflowResponse>>(ok.Value);
         Assert.Single(value);
@@ -314,10 +307,10 @@ public sealed class WorkflowsControllerTests
         {
             ListPagedResult = new PagedResult<WorkflowResponse>
             {
-                Items = new List<WorkflowResponse>
-                {
+                Items =
+                [
                     new WorkflowResponse { DisplayId = "D2", ResourceId = Guid.NewGuid(), Status = "Completed", StartedAt = DateTime.UtcNow }
-                },
+                ],
                 TotalCount = 1,
                 Offset = 0,
                 Limit = 1,
@@ -329,7 +322,7 @@ public sealed class WorkflowsControllerTests
         var controller = CreateController(http, workflows, stream);
 
         // Assert
-        var result = await controller.List(limit: 1, offset: 0, status: null, ct: CancellationToken.None);
+        var result = await controller.List(new WorkflowListQuery { Limit = 1, Offset = 0 }, ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(result);
         var paged = Assert.IsType<PagedResult<WorkflowResponse>>(ok.Value);
         Assert.Single(paged.Items);
@@ -350,7 +343,7 @@ public sealed class WorkflowsControllerTests
         var stream = new WorkflowStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, workflows, stream);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => controller.List(limit: 501, offset: 0, status: null, ct: CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() => controller.List(new WorkflowListQuery { Limit = 501, Offset = 0 }, ct: CancellationToken.None));
     }
 
     /// <summary>
@@ -367,7 +360,7 @@ public sealed class WorkflowsControllerTests
         var stream = new WorkflowStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, workflows, stream);
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => controller.List(limit: 1, offset: -1, status: null, ct: CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => controller.List(new WorkflowListQuery { Limit = 1, Offset = -1 }, ct: CancellationToken.None));
     }
 
     /// <summary>
@@ -384,7 +377,7 @@ public sealed class WorkflowsControllerTests
         var stream = new WorkflowStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, workflows, stream);
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => controller.List(limit: 0, offset: 0, status: null, ct: CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => controller.List(new WorkflowListQuery { Limit = 0, Offset = 0 }, ct: CancellationToken.None));
     }
 
     /// <summary>
@@ -458,8 +451,8 @@ public sealed class WorkflowsControllerTests
                 UpdatedAt = null,
                 CancelRequested = false,
                 RestartLost = false,
-                Nodes = new List<WorkflowViewNodeDto>
-                {
+                Nodes =
+                [
                     new WorkflowViewNodeDto
                     {
                         ExecutionNodeId = "n1",
@@ -478,7 +471,7 @@ public sealed class WorkflowsControllerTests
                             }
                             """).RootElement.Clone()
                     }
-                }
+                ]
             }
         };
 
@@ -512,10 +505,10 @@ public sealed class WorkflowsControllerTests
         {
             EventsResult = new ExecutionEventsResponseDto
             {
-                Events = new List<TimelineEventDto>
-                {
+                Events =
+                [
                     new TimelineEventDto { Seq = 1, Type = "ExecutionStatusChanged", ExecutionId = "E1", To = "Running", At = DateTime.UtcNow.ToString("O") }
-                },
+                ],
                 HasMore = false
             }
         };
@@ -1089,7 +1082,7 @@ public sealed class WorkflowsControllerTests
         // Act
         var workflows = new FakeWorkflowService
         {
-            ViewResult = new WorkflowViewDto { DisplayId = "E1", ResourceId = Guid.NewGuid().ToString("D"), GraphId = "G1", Status = "ACTIVE", StartedAt = DateTime.UtcNow, UpdatedAt = null, CancelRequested = false, RestartLost = false, Nodes = new List<WorkflowViewNodeDto>() }
+            ViewResult = new WorkflowViewDto { DisplayId = "E1", ResourceId = Guid.NewGuid().ToString("D"), GraphId = "G1", Status = "ACTIVE", StartedAt = DateTime.UtcNow, UpdatedAt = null, CancelRequested = false, RestartLost = false, Nodes = [] }
         };
         var stream = new WorkflowStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, workflows, stream);
@@ -1115,7 +1108,7 @@ public sealed class WorkflowsControllerTests
         // Act
         var workflows = new FakeWorkflowService
         {
-            EventsResult = new ExecutionEventsResponseDto { Events = new List<TimelineEventDto>(), HasMore = false }
+            EventsResult = new ExecutionEventsResponseDto { Events = [], HasMore = false }
         };
         var stream = new WorkflowStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, workflows, stream);

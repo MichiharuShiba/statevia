@@ -2,6 +2,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Statevia.Core.Api.Contracts;
+using Statevia.Core.Api.Infrastructure;
 using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Services;
@@ -11,11 +12,6 @@ namespace Statevia.Core.Api.Services;
 /// </summary>
 internal static class WorkflowViewMapper
 {
-    private static readonly JsonSerializerOptions s_graphJsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
     public static WorkflowViewDto BuildWorkflowView(
         WorkflowRow workflow,
         string graphJson,
@@ -41,16 +37,8 @@ internal static class WorkflowViewMapper
         if (string.IsNullOrWhiteSpace(graphJson))
             return Array.Empty<WorkflowViewNodeDto>();
 
-        ExecutionGraphSnapshotDto? dto;
-        try
-        {
-            // 既存DBに残る PascalCase スナップショットとの後方互換を維持する。
-            dto = JsonSerializer.Deserialize<ExecutionGraphSnapshotDto>(graphJson, s_graphJsonOptions);
-        }
-        catch
-        {
+        if (!JsonDeserialize.TryDeserialize(graphJson, JsonDeserialize.CaseInsensitiveDeserializeOptions, out ExecutionGraphSnapshotDto? dto))
             return Array.Empty<WorkflowViewNodeDto>();
-        }
 
         if (dto?.Nodes is null || dto.Nodes.Count == 0)
             return Array.Empty<WorkflowViewNodeDto>();

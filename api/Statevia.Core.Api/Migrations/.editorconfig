@@ -1,0 +1,10 @@
+root = true
+
+# Migrations 配下のみ。親の [Migrations/*.cs] より優先される。
+# Roslyn: generated_code / dotnet_analyzer_diagnostic
+# Sonar Standalone: S1192（Connected mode では SuppressMessage またはサーバー sonar.exclusions）
+
+[*.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none
+dotnet_diagnostic.S1192.severity = none

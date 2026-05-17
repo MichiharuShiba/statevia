@@ -3,7 +3,7 @@ namespace Statevia.Core.Api.Hosting;
 /// <summary>
 /// リクエストログ用の <see cref="Microsoft.AspNetCore.Http.HttpContext.Items"/> キー。
 /// </summary>
-public static class RequestLogContext
+internal static class RequestLogContext
 {
     /// <summary>ミドルウェアが決定した相関用 ID（後続の enrich やログで共有）。</summary>
     public const string TraceIdItemKey = "Statevia.TraceId";

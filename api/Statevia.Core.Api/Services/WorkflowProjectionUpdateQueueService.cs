@@ -11,7 +11,7 @@ namespace Statevia.Core.Api.Services;
 /// <summary>
 /// ノード完了通知を受け、ワークフロー投影更新を逐次処理するキューサービス。
 /// </summary>
-public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IWorkflowProjectionUpdateQueue
+internal sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IWorkflowProjectionUpdateQueue
 {
     /// <summary>
     /// 再試行上限に達して退避したワークフロー情報。
@@ -44,6 +44,18 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
         internal bool IsDeadLettered { get; set; }
         // drain 待ちの同期に使う。idle になったら完了させる。
         internal TaskCompletionSource<bool> IdleSignal { get; set; } = CreateCompletedSignal();
+
+        /// <summary>drain 待機用の未完了シグナルを生成する。</summary>
+        internal static TaskCompletionSource<bool> CreatePendingSignal() =>
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>初期状態（idle）を表す完了済みシグナルを生成する。</summary>
+        internal static TaskCompletionSource<bool> CreateCompletedSignal()
+        {
+            var taskCompletionSource = CreatePendingSignal();
+            _ = taskCompletionSource.TrySetResult(true);
+            return taskCompletionSource;
+        }
     }
 
     private readonly Channel<Guid> _globalQueue;
@@ -105,7 +117,7 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
             if (state.IsDeadLettered)
             {
                 // dead-letter 済みの workflow は自動再開しない（手動オペレーション対象）。
-                _logger.LogWarning("Skip enqueue because workflow is dead-lettered WorkflowId={WorkflowId}", workflowId);
+                _logger.SkipEnqueueDeadLettered(workflowId);
                 return;
             }
 
@@ -114,7 +126,7 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
             {
                 // idle -> active 遷移。drain 待ちが同期できるよう pending signal を作り直す。
                 if (state.IdleSignal.Task.IsCompleted)
-                    state.IdleSignal = CreatePendingSignal();
+                    state.IdleSignal = WorkflowQueueState.CreatePendingSignal();
                 state.IsQueued = true;
                 shouldWrite = true;
             }
@@ -192,9 +204,7 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             var remainingCount = CountActiveWorkflows();
-            _logger.LogWarning(
-                "Projection queue drain on shutdown timed out RemainingWorkflows={RemainingWorkflows}",
-                remainingCount);
+            _logger.DrainShutdownTimeout(remainingCount);
             throw;
         }
     }
@@ -284,6 +294,7 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
             }
             throw;
         }
+#pragma warning disable CA1031 // BackgroundService 投影キュー: 未取得例外も試行カウント・DLQ へ確実に集約する
         catch (Exception exception)
         {
             var retryDelayMs = 0;
@@ -308,7 +319,7 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
                     shouldRetry = true;
                     retryDelayMs = GetRetryDelayMs(state.ConsecutiveFailureCount, _retryBaseDelayMs, _retryMaxDelayMs);
                     if (state.IdleSignal.Task.IsCompleted)
-                        state.IdleSignal = CreatePendingSignal();
+                        state.IdleSignal = WorkflowQueueState.CreatePendingSignal();
                 }
             }
 
@@ -325,17 +336,12 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
                 // NOTE: 現状はプロセス内メモリへ退避するのみ。永続 DLQ（DB/外部キュー）は未対応。
                 _deadLetters[workflowId] = deadLetterEntry;
 
-                _logger.LogError(
-                    exception,
-                    "Projection queue moved workflow to dead-letter WorkflowId={WorkflowId} RetryCount={RetryCount}",
-                    workflowId,
-                    retryCount);
+                _logger.MovedToDeadLetter(exception, workflowId, retryCount);
                 return;
             }
 
-            _logger.LogWarning(
+            _logger.ProcessingFailedRetryScheduled(
                 exception,
-                "Projection queue processing failed. Retry scheduled WorkflowId={WorkflowId} Attempt={Attempt}/{MaxAttempts} DelayMs={DelayMs}",
                 workflowId,
                 retryCount,
                 _maxRetryAttempts,
@@ -343,6 +349,7 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
 
             await ScheduleRetryAsync(workflowId, retryDelayMs, stoppingToken).ConfigureAwait(false);
         }
+#pragma warning restore CA1031
     }
 
     /// <summary>
@@ -409,19 +416,4 @@ public sealed class WorkflowProjectionUpdateQueueService : BackgroundService, IW
         return Math.Min(maxMs, Math.Max(baseMs, delay));
     }
 
-    /// <summary>
-    /// drain 待機用の未完了シグナルを生成する。
-    /// </summary>
-    private static TaskCompletionSource<bool> CreatePendingSignal() =>
-        new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-    /// <summary>
-    /// 初期状態（idle）を表す完了済みシグナルを生成する。
-    /// </summary>
-    private static TaskCompletionSource<bool> CreateCompletedSignal()
-    {
-        var taskCompletionSource = CreatePendingSignal();
-        taskCompletionSource.TrySetResult(true);
-        return taskCompletionSource;
-    }
 }

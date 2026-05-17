@@ -2,15 +2,15 @@ using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Abstractions.Persistence;
 
-public interface IWorkflowRepository
+internal interface IWorkflowRepository
 {
     Task<WorkflowRow?> GetByIdAsync(string tenantId, Guid workflowId, CancellationToken ct);
     Task<List<(WorkflowRow Workflow, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct);
 
     /// <summary>
-    /// 一覧のページング。<paramref name="statusFilter"/> は workflows.status 完全一致。
-    /// <paramref name="definitionIdFilter"/> がある場合は <c>workflows.definition_id</c> 一致。 <paramref name="nameContains"/>
-    /// は <c>display_id</c> 部分一致または単一 <see cref="Guid"/> の <c>workflow_id</c> 一致（UI の検索用）。
+    /// 一覧のページング。<paramref name="query"/> の
+    /// <see cref="WorkflowListPageQuery.StatusFilter"/>、<see cref="WorkflowListPageQuery.DefinitionIdFilter"/>、
+    /// <see cref="WorkflowListPageQuery.NameContains"/> を適用する。
     /// </summary>
     Task<(int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
         string tenantId,

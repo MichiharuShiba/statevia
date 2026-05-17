@@ -14,8 +14,17 @@ RUN dotnet publish ./api/Statevia.Core.Api/Statevia.Core.Api.csproj -c Release -
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 
+ARG APP_UID=10001
+ARG APP_GID=10001
+
+RUN groupadd --gid "$APP_GID" statevia \
+    && useradd --uid "$APP_UID" --gid "$APP_GID" --no-create-home --shell /usr/sbin/nologin statevia
+
 WORKDIR /app
 COPY --from=build /app/publish .
+RUN chown -R statevia:statevia /app
+
+USER statevia
 
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080

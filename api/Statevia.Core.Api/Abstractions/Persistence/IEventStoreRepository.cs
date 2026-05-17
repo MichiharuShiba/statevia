@@ -6,7 +6,7 @@ namespace Statevia.Core.Api.Abstractions.Persistence;
 /// <summary>
 /// workflow_id 単位で seq を採番し <c>event_store</c> に追記する。
 /// </summary>
-public interface IEventStoreRepository
+internal interface IEventStoreRepository
 {
     /// <summary>専用 DbContext + トランザクションで追記（単体利用向け）。</summary>
     Task AppendAsync(Guid workflowId, EventStoreEventType eventType, string? payloadJson, CancellationToken ct = default);

@@ -7,7 +7,7 @@ using Statevia.Core.Api.Contracts;
 
 namespace Statevia.Core.Api.Services;
 
-public sealed class DefinitionService : IDefinitionService
+internal sealed class DefinitionService : IDefinitionService
 {
     private readonly IDisplayIdService _displayIds;
     private readonly IDefinitionCompilerService _compiler;
@@ -30,16 +30,16 @@ public sealed class DefinitionService : IDefinitionService
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
-            throw new ApiValidationException("Definition name is required.", new[]
+            throw new ApiValidationException(DefinitionValidationMessages.NameRequired, new[]
             {
-                new { message = "Definition name is required.", field = "name" }
+                new { message = DefinitionValidationMessages.NameRequired, field = "name" }
             });
         }
         if (string.IsNullOrWhiteSpace(request.Yaml))
         {
-            throw new ApiValidationException("Definition YAML is required.", new[]
+            throw new ApiValidationException(DefinitionValidationMessages.YamlRequired, new[]
             {
-                new { message = "Definition YAML is required.", field = "yaml" }
+                new { message = DefinitionValidationMessages.YamlRequired, field = "yaml" }
             });
         }
 
@@ -50,14 +50,14 @@ public sealed class DefinitionService : IDefinitionService
         }
         catch (ArgumentException ex)
         {
-            throw new ApiValidationException("Definition validation failed.", new[]
+            throw new ApiValidationException(DefinitionValidationMessages.ValidationFailed, new[]
             {
                 new { message = ex.Message, field = "yaml" }
             }, ex);
         }
 
         var id = _idGenerator.NewGuid();
-        var displayId = await _displayIds.AllocateAsync("definition", id, ct).ConfigureAwait(false);
+        var displayId = await _displayIds.AllocateAsync(DisplayIdResourceTypes.Definition, id, ct).ConfigureAwait(false);
 
         var now = DateTime.UtcNow;
         await _definitions.AddAsync(new WorkflowDefinitionRow
@@ -96,19 +96,18 @@ public sealed class DefinitionService : IDefinitionService
 
     public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(
         string tenantId,
-        int offset,
-        int limit,
-        string? nameContains,
-        string? sortBy,
-        string? sortOrder,
+        DefinitionListQuery query,
         CancellationToken ct)
     {
-        var query = new DefinitionListPageQuery(
+        ArgumentNullException.ThrowIfNull(query);
+        var limit = query.Limit ?? throw new ArgumentException("limit is required for paged list");
+        var offset = query.Offset ?? 0;
+        var pageQuery = new DefinitionListPageQuery(
             Page: new PageQuery(offset, limit),
-            Sort: new SortQuery(sortBy, sortOrder),
-            NameContains: nameContains);
+            Sort: new SortQuery(query.SortBy, query.SortOrder),
+            NameContains: query.Name);
         var (total, pairs) = await _definitions
-            .ListWithDisplayIdsPageAsync(tenantId, query, ct)
+            .ListWithDisplayIdsPageAsync(tenantId, pageQuery, ct)
             .ConfigureAwait(false);
         var items = pairs.Select(p => new DefinitionResponse
         {
@@ -131,15 +130,15 @@ public sealed class DefinitionService : IDefinitionService
 
     public async Task<DefinitionResponse> GetAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
-        var uuid = await _displayIds.ResolveAsync("definition", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Definition not found");
+            throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
         var row = await _definitions.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (row is null)
-            throw new NotFoundException("Definition not found");
+            throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
-        var displayId = await _displayIds.GetDisplayIdAsync("definition", idOrUuid, ct).ConfigureAwait(false);
+        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, idOrUuid, ct).ConfigureAwait(false);
         return new DefinitionResponse
         {
             DisplayId = displayId ?? row.DefinitionId.ToString(),
@@ -155,22 +154,22 @@ public sealed class DefinitionService : IDefinitionService
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
-            throw new ApiValidationException("Definition name is required.", new[]
+            throw new ApiValidationException(DefinitionValidationMessages.NameRequired, new[]
             {
-                new { message = "Definition name is required.", field = "name" }
+                new { message = DefinitionValidationMessages.NameRequired, field = "name" }
             });
         }
         if (string.IsNullOrWhiteSpace(request.Yaml))
         {
-            throw new ApiValidationException("Definition YAML is required.", new[]
+            throw new ApiValidationException(DefinitionValidationMessages.YamlRequired, new[]
             {
-                new { message = "Definition YAML is required.", field = "yaml" }
+                new { message = DefinitionValidationMessages.YamlRequired, field = "yaml" }
             });
         }
 
-        var uuid = await _displayIds.ResolveAsync("definition", idOrUuid, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException("Definition not found");
+            throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
         string compiledJson;
         try
@@ -179,7 +178,7 @@ public sealed class DefinitionService : IDefinitionService
         }
         catch (ArgumentException ex)
         {
-            throw new ApiValidationException("Definition validation failed.", new[]
+            throw new ApiValidationException(DefinitionValidationMessages.ValidationFailed, new[]
             {
                 new { message = ex.Message, field = "yaml" }
             }, ex);
@@ -189,13 +188,13 @@ public sealed class DefinitionService : IDefinitionService
             .UpdateAsync(tenantId, uuid.Value, request.Name, request.Yaml, compiledJson, ct)
             .ConfigureAwait(false);
         if (!updated)
-            throw new NotFoundException("Definition not found");
+            throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
         var row = await _definitions.GetByIdAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         if (row is null)
-            throw new NotFoundException("Definition not found");
+            throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
-        var displayId = await _displayIds.GetDisplayIdAsync("definition", idOrUuid, ct).ConfigureAwait(false);
+        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, idOrUuid, ct).ConfigureAwait(false);
         return new DefinitionResponse
         {
             DisplayId = displayId ?? row.DefinitionId.ToString(),

@@ -14,7 +14,7 @@ namespace Statevia.Core.Api.Hosting;
 /// YAML を検証・コンパイルして CompiledWorkflowDefinition を返す。Action Registry で action を検証・解決する。
 /// <see cref="ValidateAndCompile"/> の JSON には <c>transitions</c> に加え <c>conditionalTransitions</c>・<c>stateInputs</c> を含め、条件遷移のデバッグ・UI 表示に利用できる。
 /// </summary>
-public sealed class DefinitionCompilerService : IDefinitionCompilerService
+internal sealed class DefinitionCompilerService : IDefinitionCompilerService
 {
     private static readonly System.Text.Json.JsonSerializerOptions s_compiledJsonOptions = new()
     {

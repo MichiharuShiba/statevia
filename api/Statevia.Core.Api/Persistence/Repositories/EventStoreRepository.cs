@@ -10,7 +10,7 @@ using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Persistence.Repositories;
 
-public sealed class EventStoreRepository : IEventStoreRepository
+internal sealed class EventStoreRepository : IEventStoreRepository
 {
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
     private readonly IIdGenerator _ids;

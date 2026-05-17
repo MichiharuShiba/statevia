@@ -68,6 +68,8 @@
 ### 4.3 リンター・ビルド警告・静的チェック
 
 - **C#**: `dotnet build` / `dotnet test` で出る **コンパイラエラー・Analyzer 警告**は、自分の変更に起因するものは **解消してから** PR に出す。触れていないファイルの既存警告をまとめて直すのは必須ではないが、**新規コードで警告を増やさない**こと。
+- **Core-API 厳格 Analyzer**: `api/Directory.Build.props` で `AnalysisMode=AllEnabledByDefault` が有効。Api 配下の本番プロジェクトは **`dotnet build api/statevia-api.sln` で警告 0** を維持する。
+- **Core-API テスト向け抑制**: ルート `.editorconfig` に加え、`api/Statevia.Core.Api.Tests/.editorconfig` で xUnit 向け CA（例: CA1812）を抑制している。テストの命名・`ConfigureAwait` 方針は Engine.Tests と同趣旨。
 - **Markdown**: リポジトリ直下の **`.markdownlint.json`** に従う。`.spec-workflow/**/*.md` などを編集したときは例として次で確認できる。
 
   ```bash
@@ -75,7 +77,7 @@
   ```
 
 - **UI（TypeScript）**: **`tsc --noEmit`** と **`npm run test:run`** を品質の主なチェックとする（ESLint は未設定。既知の軽微な警告については `AGENTS.md` の Lint 節を参照）。
-- **SonarQube 等の外部解析**を使う場合は、**変更したファイル**について指摘があれば、ルールと工数のバランスで可能な範囲で対応する。
+- **SonarQube（Core-API）**: プロジェクトキー **`StateviaCoreAPI`**。新規コードの Quality Gate（`new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.1**。
 
 ---
 
@@ -88,6 +90,47 @@
 | UI | `cd services/ui && npm run test:run` |
 
 変更した領域に対応するテストを追加または更新し、ローカルで green を確認してから共有する。
+
+### 5.1 Core-API — カバレッジと Sonar（手動）
+
+**前提**
+
+- ローカル SonarQube が起動していること（既定 URL: `http://localhost:9000`）
+- 環境変数 **`SONAR_TOKEN`** を設定していること
+- グローバルツール: `dotnet-sonarscanner`、`dotnet-coverage`（スクリプトが利用する）
+
+**カバレッジ runsettings（単体テストのみ確認するとき）**
+
+`api/coverage.runsettings` では Engine アセンブリと `Program.cs` / `Migrations/` を cobertura から除外する。Api 本体の行が計測対象に含まれることを確認する。
+
+```powershell
+cd api
+dotnet test --settings coverage.runsettings --collect:"XPlat Code Coverage"
+```
+
+**Sonar スキャン（正本スクリプト）**
+
+リポジトリルートから実行する（カレントディレクトリに依存しない）。
+
+```powershell
+# ビルドロック回避（IDE で obj 内ファイルを開いている場合）
+dotnet build-server shutdown
+
+# トークン設定後
+./sonar/sonar-scanner-api.ps1
+```
+
+スクリプトは次を順に実行する。
+
+1. `dotnet sonarscanner begin`（キー `StateviaCoreAPI`、除外は Engine / UI / Program / Migrations 等）
+2. `dotnet build api/statevia-api.sln`
+3. `dotnet-coverage collect "dotnet test"` → `sonar/core-api-coverage.xml`
+4. `dotnet sonarscanner end`
+
+**注意**
+
+- `api/sonar-project.properties` は **Scanner for .NET では使わない**（設定は `begin` の `/d:` で渡す）。
+- スキャン直後は Sonar UI の数値が遅れて反映されることがある。Quality Gate 判定は Sonar のプロジェクト画面を正とする。
 
 ---
 
@@ -125,5 +168,6 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-05-17 | §4.3 / §5.1 に Core-API 厳格ビルド・coverlet runsettings・`sonar-scanner-api.ps1` 手順を追記 |
 | 2026-04-05 | §4 再編（4.1 C#・4.2 TypeScript・4.3 静的チェック）、`typescript-standards.mdc` 追加、正本表に TypeScript 細則を追記 |
 | 2026-03-28 | 初版・ブランチ命名を追加 |

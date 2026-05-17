@@ -15,17 +15,11 @@ public sealed class GraphsControllerTests
     public async Task GetByGraphId_WhenGraphIdIsWhitespace_ReturnsValidationError422()
     {
         // Arrange
-        var http = new DefaultHttpContext();
-        http.Request.Headers["X-Tenant-Id"] = "t1";
         var fakeSvc = new FakeGraphDefinitionService();
 
         // Act
-        var controller = new GraphsController(fakeSvc)
-        {
-            ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = http }
-        };
-
-        var result = await controller.GetByGraphId("   ", CancellationToken.None);
+        var controller = new GraphsController(fakeSvc);
+        var result = await controller.GetByGraphId("   ", tenantIdHeader: "t1", ct: CancellationToken.None);
 
         // Assert
         var obj = Assert.IsType<ObjectResult>(result.Result);
@@ -41,15 +35,12 @@ public sealed class GraphsControllerTests
     public async Task GetByGraphId_WhenSuccess_ReturnsOkGraph()
     {
         // Arrange
-        var http = new DefaultHttpContext();
-        http.Request.Headers["X-Tenant-Id"] = "t1";
-
         // Act
         var expected = new GraphDefinitionResponse
         {
             GraphId = "g1",
-            Nodes = new GraphNodeDefinition[0],
-            Edges = new GraphEdgeDefinition[0]
+            Nodes = Array.Empty<GraphNodeDefinition>(),
+            Edges = Array.Empty<GraphEdgeDefinition>()
         };
 
         var fakeSvc = new FakeGraphDefinitionService
@@ -57,12 +48,8 @@ public sealed class GraphsControllerTests
             ResolveResult = expected
         };
 
-        var controller = new GraphsController(fakeSvc)
-        {
-            ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = http }
-        };
-
-        var result = await controller.GetByGraphId("graph-id", CancellationToken.None);
+        var controller = new GraphsController(fakeSvc);
+        var result = await controller.GetByGraphId("graph-id", tenantIdHeader: "t1", ct: CancellationToken.None);
 
         // Assert
         var ok = Assert.IsType<OkObjectResult>(result.Result);

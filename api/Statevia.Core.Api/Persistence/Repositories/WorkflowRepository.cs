@@ -5,7 +5,7 @@ using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Persistence.Repositories;
 
-public sealed class WorkflowRepository : IWorkflowRepository
+internal sealed class WorkflowRepository : IWorkflowRepository
 {
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
 
@@ -86,9 +86,9 @@ public sealed class WorkflowRepository : IWorkflowRepository
     {
         var displayIdsForWorkflow = db.DisplayIds.Where(x => x.Kind == "workflow");
         return from w in db.Workflows.AsNoTracking().Where(x => x.TenantId == tenantId)
-            join d in displayIdsForWorkflow on w.WorkflowId equals d.ResourceId into dGroup
-            from d in dGroup.DefaultIfEmpty()
-            select new WorkflowWithDisplay { Workflow = w, DisplayId = d != null ? d.DisplayId : null };
+               join d in displayIdsForWorkflow on w.WorkflowId equals d.ResourceId into dGroup
+               from d in dGroup.DefaultIfEmpty()
+               select new WorkflowWithDisplay { Workflow = w, DisplayId = d != null ? d.DisplayId : null };
     }
 
     private static IQueryable<WorkflowWithDisplay> ApplyWorkflowsSort(
