@@ -83,6 +83,44 @@ public sealed class ApiExceptionFilterTests
         Assert.NotNull(payload.Error.Details);
     }
 
+    /// <summary>IdempotencyConflictException を 409 に写像する。</summary>
+    [Fact]
+    public void OnException_MapsIdempotencyConflictExceptionTo409()
+    {
+        // Arrange
+        var http = new DefaultHttpContext();
+        var filter = new ApiExceptionFilter();
+        var ctx = CreateContext(http, new IdempotencyConflictException());
+
+        // Act
+        filter.OnException(ctx);
+
+        // Assert
+        Assert.True(ctx.ExceptionHandled);
+        var result = Assert.IsType<ObjectResult>(ctx.Result);
+        Assert.Equal(StatusCodes.Status409Conflict, result.StatusCode);
+        var payload = Assert.IsType<ErrorResponse>(result.Value);
+        Assert.Equal("IDEMPOTENCY_KEY_CONFLICT", payload.Error.Code);
+    }
+
+    /// <summary>パラメータ無し NotFoundException を 404 に写像する。</summary>
+    [Fact]
+    public void OnException_MapsDefaultNotFoundExceptionTo404()
+    {
+        // Arrange
+        var http = new DefaultHttpContext();
+        var filter = new ApiExceptionFilter();
+        var ctx = CreateContext(http, new NotFoundException());
+
+        // Act
+        filter.OnException(ctx);
+
+        // Assert
+        Assert.True(ctx.ExceptionHandled);
+        var result = Assert.IsType<ObjectResult>(ctx.Result);
+        Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+    }
+
     /// <summary>
     /// その他の例外を500の内部エラーとして返す。
     /// </summary>
