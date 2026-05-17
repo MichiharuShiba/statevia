@@ -126,6 +126,21 @@ public class WorkflowEngineTests
         Assert.Null(ex);
     }
 
+    /// <summary>単一ワークフロー ID 指定の PublishEvent が例外を投げないことを検証する。</summary>
+    [Fact]
+    public void PublishEvent_ToWorkflowId_DoesNotThrow()
+    {
+        // Arrange
+        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var workflowId = engine.Start(CreateMinimalDefinition());
+
+        // Act
+        var ex = Record.Exception(() => engine.PublishEvent(workflowId, "SomeEvent"));
+
+        // Assert
+        Assert.Null(ex);
+    }
+
     /// <summary>複数ワークフローが存在するとき、イベント名のみのブロードキャストが例外で終了しないこと。</summary>
     [Fact]
     public void PublishEvent_BroadcastByEventName_DoesNotThrow_WhenMultipleWorkflows()
