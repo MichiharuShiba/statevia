@@ -264,6 +264,121 @@ public sealed class RequestLoggingMiddlewareTests
         Assert.Contains(collector.Entries, e => e.Contains("unhandled exception", StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>非テキスト Content-Type のリクエスト本文は省略する。</summary>
+    [Fact]
+    public async Task InvokeAsync_OmitsNonTextRequestBody()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "POST";
+        ctx.Request.Path = "/v1/workflows";
+        ctx.Request.ContentType = "application/octet-stream";
+        ctx.Request.Body = new MemoryStream([1, 2, 3]);
+        ctx.Request.ContentLength = 3;
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions { LogRequestBody = true, LogResponseBody = false });
+        var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
+
+        // Act
+        await middleware.InvokeAsync(ctx, logger, opts);
+
+        // Assert
+        var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
+        Assert.Contains("non-text body omitted", startLog, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>上限を超えるリクエスト本文は省略する。</summary>
+    [Fact]
+    public async Task InvokeAsync_OmitsOversizedRequestBody()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "POST";
+        ctx.Request.Path = "/v1/workflows";
+        ctx.Request.ContentType = "application/json";
+        ctx.Request.Body = new MemoryStream("x"u8.ToArray());
+        ctx.Request.ContentLength = 4096;
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions
+        {
+            LogRequestBody = true,
+            LogResponseBody = false,
+            MaxRequestBodyLogBytes = 64
+        });
+        var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
+
+        // Act
+        await middleware.InvokeAsync(ctx, logger, opts);
+
+        // Assert
+        var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
+        Assert.Contains("larger than 64 bytes", startLog, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>長い User-Agent は切り詰めてログに載せる。</summary>
+    [Fact]
+    public async Task InvokeAsync_TruncatesLongUserAgent()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/health";
+        ctx.Request.Headers.UserAgent = new string('u', 300);
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions { LogRequestBody = false, LogResponseBody = false });
+        var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
+
+        // Act
+        await middleware.InvokeAsync(ctx, logger, opts);
+
+        // Assert
+        var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
+        Assert.Contains("...", startLog, StringComparison.Ordinal);
+    }
+
+    /// <summary>非テキスト応答本文はスナップショットを省略する。</summary>
+    [Fact]
+    public async Task InvokeAsync_OmitsNonTextResponseBody()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/health";
+        ctx.Response.Body = new MemoryStream();
+        ctx.Response.ContentType = "application/octet-stream";
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions
+        {
+            LogRequestBody = false,
+            LogResponseBody = true,
+            MaxResponseBodyLogBytes = 64
+        });
+        RequestDelegate next = async c => await c.Response.Body.WriteAsync(new byte[] { 1, 2, 3 });
+        var middleware = new RequestLoggingMiddleware(next);
+
+        // Act
+        await middleware.InvokeAsync(ctx, logger, opts);
+
+        // Assert
+        var completeLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request complete", StringComparison.Ordinal));
+        Assert.Contains("non-text response omitted", completeLog, StringComparison.OrdinalIgnoreCase);
+    }
+
     private sealed class LogCollector : ILoggerProvider, IDisposable
     {
         public List<string> Entries { get; } = [];
