@@ -86,14 +86,14 @@ The Cloud VM runs inside a container. Docker needs `fuse-overlayfs` storage driv
 ### Tests
 
 - **engine (C#):** `cd engine && dotnet test statevia-engine.sln` — xunit
-- **core-api (C#):** `cd api && dotnet test statevia-api.sln` — xunit (when tests exist)
+- **core-api (C#):** `cd api && dotnet test statevia-api.sln` — xunit。厳格 Analyzer・Sonar 手順は `docs/development-guidelines.md` §4.3 / §5.1
 - **ui:** `npm run test:run` from `services/ui/` — vitest
 
 ### Lint
 
 No ESLint is configured. TypeScript compilation (`tsc --noEmit`) serves as the primary code quality check. The UI test files have minor pre-existing TS2783 warnings (harmless spread-override pattern).
 
-Comment rules, Markdownlint (e.g. `.spec-workflow/`), and how to treat build or analyzer warnings: see **`docs/development-guidelines.md`** (sections 4.1–4.3).
+Comment rules, Markdownlint (e.g. `.spec-workflow/`), build or analyzer warnings, and Core-API Sonar/coverage: see **`docs/development-guidelines.md`** (sections 4.1–4.3, 5.1).
 
 ### Key env vars
 
