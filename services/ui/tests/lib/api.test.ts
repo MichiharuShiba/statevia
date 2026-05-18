@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { apiGet, apiPost, buildWorkflowsListPath, getApiConfig, getApiHeaders } from "../../app/lib/api";
+import {
+  apiGet,
+  apiPost,
+  apiPut,
+  buildDefinitionsListPath,
+  buildWorkflowsListPath,
+  getApiConfig,
+  getApiHeaders
+} from "../../app/lib/api";
 
 describe("apiGet", () => {
   beforeEach(() => {
@@ -226,6 +234,52 @@ describe("api (境界値)", () => {
       "/api/core/test",
       expect.objectContaining({ body: "{}" })
     );
+  });
+});
+
+describe("apiPut", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          statusText: "OK",
+          text: () => Promise.resolve(JSON.stringify({ ok: true }))
+        } as Response)
+      )
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("PUT で JSON body と冪等キーを送る", async () => {
+    await apiPut("/definitions/def-1", { name: "updated" });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/core/definitions/def-1",
+      expect.objectContaining({
+        method: "PUT",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": expect.any(String)
+        }),
+        body: JSON.stringify({ name: "updated" })
+      })
+    );
+  });
+});
+
+describe("buildDefinitionsListPath", () => {
+  it("空の値は除き、limit/offset 必須、name / sort を含める", () => {
+    const path = buildDefinitionsListPath({
+      pagination: { limit: 10, offset: 0 },
+      sort: { sortBy: "name", sortOrder: "asc" },
+      name: "demo"
+    });
+    expect(path).toBe("/definitions?limit=10&offset=0&name=demo&sortBy=name&sortOrder=asc");
   });
 });
 
