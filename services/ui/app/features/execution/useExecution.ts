@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiGet, apiPost } from "../../lib/api";
 import { startWorkflowStreamLifecycle } from "./workflowStreamLifecycle";
-
-export { getReconnectDelayMs } from "./workflowStreamLifecycle";
 import { isWithinMaxLength, matchesPattern } from "../../lib/validation/primitives";
 import { EVENT_NAME_MAX_LENGTH, EVENT_NAME_PATTERN } from "../../lib/validation/formRules";
 import { buildWorkflowView } from "../../lib/workflowView";
