@@ -5,6 +5,7 @@ import type {
   ValidateGraphDocumentResult
 } from "./types";
 
+/** グラフ検証メッセージのオプション。 */
 export type ValidateGraphDocumentMessageOptions = {
   nodesRequired: () => string;
   nodeIdRequired: () => string;
@@ -59,7 +60,7 @@ function collectEdgeTargets(node: DefinitionGraphNode): string[] {
 /** IN / BETWEEN 用: YAML 配列または JSON 配列文字列を配列として解釈する */
 function asWhenConditionArray(value: unknown): unknown[] | null {
   if (Array.isArray(value)) {
-    return value;
+    return value as unknown[];
   }
   if (typeof value === "string") {
     const t = value.trim();
