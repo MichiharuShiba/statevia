@@ -632,6 +632,8 @@ describe("useExecution", () => {
     await act(async () => {
       result.current.loadExecution();
     });
+    expect(result.current.execution?.displayId).toBe("ex-1");
     unmount();
+    expect(result.current.execution?.displayId).toBe("ex-1");
   });
 });
