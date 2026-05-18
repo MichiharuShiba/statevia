@@ -234,7 +234,12 @@ function toLayoutNodes(document: DefinitionGraphDocument): LayoutNodeInput[] {
   }));
 }
 
-function toGraphEdges(document: DefinitionGraphDocument): GraphEdgeMeta[] {
+type ParallelEdgeCollector = {
+  trackParallel: (edgeMeta: GraphEdgeMeta) => void;
+  finalize: () => GraphEdgeMeta[];
+};
+
+function createParallelEdgeCollector(): ParallelEdgeCollector {
   const edges: GraphEdgeMeta[] = [];
   const parallelKeyToIndices = new Map<string, number[]>();
 
@@ -250,59 +255,72 @@ function toGraphEdges(document: DefinitionGraphDocument): GraphEdgeMeta[] {
     }
   };
 
-  for (const node of document.nodes) {
-    if (node.type === "action" && node.error?.trim()) {
-      trackParallel({
-        id: `error:${node.id}`,
-        source: node.id,
-        target: node.error.trim(),
-        edgeKind: "error"
-      });
-    }
-    if (node.next?.trim()) {
-      trackParallel({
-        id: `next:${node.id}`,
-        source: node.id,
-        target: node.next.trim(),
-        edgeKind: "next"
-      });
-    }
-    for (const [index, edge] of (node.edges ?? []).entries()) {
-      if (!edge.to?.trim()) {
+  const finalize = (): GraphEdgeMeta[] => {
+    for (const indices of parallelKeyToIndices.values()) {
+      if (indices.length < 2) {
         continue;
       }
-      trackParallel({
-        id: `edge:${node.id}:${index}`,
-        source: node.id,
-        target: edge.to.trim(),
-        edgeKind: "edge",
-        edgeIndex: index
-      });
-    }
-    for (const [index, branch] of (node.branches ?? []).entries()) {
-      if (!branch?.trim()) {
-        continue;
+      for (let i = 0; i < indices.length; i += 1) {
+        const edge = edges[indices[i]];
+        edge.parallelIndex = i;
+        edge.parallelCount = indices.length;
       }
-      trackParallel({
-        id: `branch:${node.id}:${index}`,
-        source: node.id,
-        target: branch.trim(),
-        edgeKind: "branch",
-        edgeIndex: index
-      });
     }
+    return edges;
+  };
+
+  return { trackParallel, finalize };
+}
+
+function appendNodeGraphEdges(node: DefinitionGraphNode, trackParallel: (edgeMeta: GraphEdgeMeta) => void): void {
+  if (node.type === "action" && node.error?.trim()) {
+    trackParallel({
+      id: `error:${node.id}`,
+      source: node.id,
+      target: node.error.trim(),
+      edgeKind: "error"
+    });
   }
-  for (const indices of parallelKeyToIndices.values()) {
-    if (indices.length < 2) {
+  if (node.next?.trim()) {
+    trackParallel({
+      id: `next:${node.id}`,
+      source: node.id,
+      target: node.next.trim(),
+      edgeKind: "next"
+    });
+  }
+  for (const [index, edge] of (node.edges ?? []).entries()) {
+    if (!edge.to?.trim()) {
       continue;
     }
-    for (let i = 0; i < indices.length; i += 1) {
-      const edge = edges[indices[i]];
-      edge.parallelIndex = i;
-      edge.parallelCount = indices.length;
-    }
+    trackParallel({
+      id: `edge:${node.id}:${index}`,
+      source: node.id,
+      target: edge.to.trim(),
+      edgeKind: "edge",
+      edgeIndex: index
+    });
   }
-  return edges;
+  for (const [index, branch] of (node.branches ?? []).entries()) {
+    if (!branch?.trim()) {
+      continue;
+    }
+    trackParallel({
+      id: `branch:${node.id}:${index}`,
+      source: node.id,
+      target: branch.trim(),
+      edgeKind: "branch",
+      edgeIndex: index
+    });
+  }
+}
+
+function toGraphEdges(document: DefinitionGraphDocument): GraphEdgeMeta[] {
+  const collector = createParallelEdgeCollector();
+  for (const node of document.nodes) {
+    appendNodeGraphEdges(node, collector.trackParallel);
+  }
+  return collector.finalize();
 }
 
 function edgeOffsetForRendering(edge: GraphEdgeMeta): number {
