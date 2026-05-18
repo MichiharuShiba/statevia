@@ -9,7 +9,16 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],
-      exclude: ["node_modules/", ".next/", "**/*.test.ts", "**/*.test.tsx", "**/*.config.ts"]
+      exclude: [
+        "node_modules/",
+        ".next/",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.config.ts",
+        "app/lib/uiText.ts",
+        "app/lib/uiText.en.ts",
+        "tests/**"
+      ]
     }
   }
 });
