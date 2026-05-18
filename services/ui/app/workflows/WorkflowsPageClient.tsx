@@ -135,7 +135,7 @@ function WorkflowsPageClientInner() {
     goTo({
       pagination: { ...listQuery.pagination, offset: 0 },
       sort: listQuery.sort,
-      status: (currentStatus || undefined) as WorkflowsListQuery["status"],
+      status: (currentStatus || undefined),
       name: nameDraft || undefined,
       definitionId: definitionDraft || undefined
     });
@@ -184,7 +184,7 @@ function WorkflowsPageClientInner() {
               goTo({
                 pagination: { ...listQuery.pagination, offset: 0 },
                 sort: listQuery.sort,
-                status: (currentStatus || undefined) as WorkflowsListQuery["status"],
+                status: (currentStatus || undefined),
                 name: nameDraft || undefined
               });
             }}
@@ -257,7 +257,7 @@ function WorkflowsPageClientInner() {
                 goTo({
                   ...listQuery,
                   pagination: { ...listQuery.pagination, offset: 0 },
-                  sort: { ...listQuery.sort, sortBy: e.target.value as SortBy }
+                  sort: { ...listQuery.sort, sortBy: e.target.value }
                 })
               }
             >
