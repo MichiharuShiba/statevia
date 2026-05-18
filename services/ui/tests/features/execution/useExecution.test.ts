@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { useExecution, getReconnectDelayMs } from "../../../app/features/execution/useExecution";
+import { useExecution } from "../../../app/features/execution/useExecution";
+import { getReconnectDelayMs } from "../../../app/features/execution/workflowStreamLifecycle";
 import type { WorkflowDTO, WorkflowGraphDTO } from "../../../app/lib/types";
 import * as api from "../../../app/lib/api";
 
