@@ -6,6 +6,7 @@ import type { ExecutionEventWithSeq, ExecutionEventsResponse } from "../../lib/t
 
 const DEFAULT_LIMIT = 500;
 
+/** 実行イベントタイムライン用の取得フック。 */
 export function useExecutionEvents(executionId: string | null, options?: { limit?: number }) {
   const limit = options?.limit ?? DEFAULT_LIMIT;
   const [events, setEvents] = useState<ExecutionEventWithSeq[]>([]);
@@ -83,7 +84,7 @@ export function useExecutionEvents(executionId: string | null, options?: { limit
     if (!executionId || loading || loadingMore || !hasMore) return;
     const lastSeq = events.length > 0 ? events[events.length - 1].seq : 0;
     if (lastSeq <= 0) return;
-    fetchChunk(lastSeq, true);
+    void fetchChunk(lastSeq, true);
   }, [executionId, events, hasMore, loading, loadingMore, fetchChunk]);
 
   return { events, hasMore, loading, loadingMore, error, loadMore };
