@@ -31,11 +31,9 @@ function graphDto(nodes: Array<{ nodeId: string; stateName: string; completedAt?
 
 /** v2: apiGet を workflow と graph の2回呼び出し用にモックする。 */
 function mockApiGetForWorkflowAndGraph(workflow: WorkflowDTO, graph: WorkflowGraphDTO) {
-  let callIndex = 0;
   vi.mocked(api.apiGet).mockImplementation(async (path: string) => {
-    if (path.includes("/graph")) return graph as never;
-    callIndex++;
-    return workflow as never;
+    if (path.includes("/graph")) return graph;
+    return workflow;
   });
 }
 
