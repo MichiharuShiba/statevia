@@ -109,7 +109,7 @@ export function DefinitionsPageClient() {
         name: trimmedKeyword || undefined
       });
     },
-    [goTo, listQuery.pagination, listQuery.sort, searchInput]
+    [goTo, listQuery.pagination, listQuery.sort, searchInput, uiText.definitionsPage.search.invalidName]
   );
 
   const empty = !loading && items !== null && items.length === 0;
@@ -188,7 +188,7 @@ export function DefinitionsPageClient() {
                 goTo({
                   ...listQuery,
                   pagination: { ...listQuery.pagination, offset: 0 },
-                  sort: { ...listQuery.sort, sortBy: event.target.value as DefinitionsSortBy }
+                  sort: { ...listQuery.sort, sortBy: event.target.value }
                 })
               }
           >
