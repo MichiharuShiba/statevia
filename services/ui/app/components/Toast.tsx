@@ -18,6 +18,7 @@ function getToneClass(tone: ToastState["tone"]): string {
   return TOAST_TONE_CLASS_MAP[tone];
 }
 
+/** 画面上部に一時メッセージを表示するトースト。 */
 export function Toast({ toast, onClose }: Readonly<ToastProps>) {
   const uiText = useUiText();
   if (!toast) return null;

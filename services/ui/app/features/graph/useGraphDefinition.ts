@@ -6,8 +6,10 @@ import type { GraphDefinition } from "../../graphs/types";
 import { apiGet } from "../../lib/api";
 import { mapGraphDefinitionResponse } from "./mapGraphDefinitionResponse";
 
+/** GraphDefinitionSource の型定義。 */
 export type GraphDefinitionSource = "api" | "registry" | "none";
 
+/** UseGraphDefinitionResult の型定義。 */
 export type UseGraphDefinitionResult = {
   definition: GraphDefinition | null;
   loading: boolean;

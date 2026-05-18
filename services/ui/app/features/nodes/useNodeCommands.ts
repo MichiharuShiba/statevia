@@ -12,6 +12,7 @@ function isTerminalExecution(status: WorkflowView["status"]): boolean {
   return TERMINAL_STATUSES.has(status);
 }
 
+/** getResumeDisabledReason。 */
 export function getResumeDisabledReason(
   execution: WorkflowView | null,
   node: ExecutionNodeDTO | null,
@@ -29,12 +30,14 @@ export function getResumeDisabledReason(
   return null;
 }
 
+/** useNodeCommands のオプション。 */
 export type UseNodeCommandsOptions = {
   onSuccess?: () => void;
   onError?: (error: unknown) => void;
   commandsEnabled?: boolean;
 };
 
+/** ノードへの Resume 等コマンドを発行するフック。 */
 export function useNodeCommands(
   execution: WorkflowView | null,
   options: UseNodeCommandsOptions = {}

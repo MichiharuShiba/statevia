@@ -6,6 +6,7 @@ import { useUiText } from "../../lib/uiTextContext";
 
 type ActionLinkPriority = "primary" | "secondary";
 
+/** ActionLinkItem の型定義。 */
 export type ActionLinkItem = {
   label: string;
   href: string;

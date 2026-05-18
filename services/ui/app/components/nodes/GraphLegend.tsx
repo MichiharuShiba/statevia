@@ -14,6 +14,7 @@ const NODE_STATUSES: NodeStatus[] = [
   "CANCELED"
 ];
 
+/** グラフ凡例。 */
 export function GraphLegend() {
   const uiText = useUiText();
   const edgeItems: { type: string; label: string; stroke: string; strokeWidth: number; dash?: string }[] = [

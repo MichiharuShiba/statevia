@@ -1,7 +1,10 @@
+/** UI でサポートするテーマ一覧。 */
 export const SUPPORTED_THEMES = ["light", "dark"] as const;
 
+/** カラーテーマ（`light` | `dark`）。 */
 export type Theme = (typeof SUPPORTED_THEMES)[number];
 
+/** テーマ未指定時の既定値。 */
 export const DEFAULT_THEME: Theme = "light";
 
 /**

@@ -28,6 +28,7 @@ import { useUiText } from "../../lib/uiTextContext";
 import { GraphLegend } from "./GraphLegend";
 import { GraphNodeShell } from "./GraphNodeShell";
 
+/** NodeDiffHighlight の型定義。 */
 export type NodeDiffHighlight = Record<string, { isFailureOrCancel: boolean }>;
 
 type ExecutionNodeData = {
@@ -184,6 +185,7 @@ function mergeLayoutWithPositions(prev: Node[], layout: Node[]): Node[] {
   });
 }
 
+/** React Flow のビューポート（ズーム・パン）。 */
 export type GraphViewport = Viewport;
 
 type NodeGraphViewProps = {
@@ -203,6 +205,7 @@ type NodeGraphViewProps = {
   nodeDiffHighlight?: NodeDiffHighlight;
 };
 
+/** 実行ノードを React Flow で描画する。 */
 export function NodeGraphView({
   nodes,
   edges,

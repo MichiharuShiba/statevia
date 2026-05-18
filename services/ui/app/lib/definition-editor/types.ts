@@ -3,8 +3,10 @@
  * 永続化対象は既存スキーマ（version/workflow/nodes）のみを扱う。
  */
 export const NODE_TYPES = ["start", "action", "wait", "fork", "join", "end"] as const;
+/** 定義グラフノードの種別。 */
 export type NodeType = (typeof NODE_TYPES)[number];
 
+/** 定義グラフ辺の条件式。 */
 export type EdgeCondition = {
   path: string;
   op: string;
@@ -12,6 +14,7 @@ export type EdgeCondition = {
   value?: unknown;
 };
 
+/** 定義グラフドキュメント内の辺。 */
 export type DefinitionGraphEdge = {
   to: string;
   when?: EdgeCondition;
@@ -19,6 +22,7 @@ export type DefinitionGraphEdge = {
   default?: boolean;
 };
 
+/** 定義グラフドキュメント内のノード。 */
 export type DefinitionGraphNode = {
   id: string;
   type: NodeType;
@@ -41,6 +45,7 @@ export type DefinitionGraphMeta = {
   layout?: Record<string, { x: number; y: number }>;
 };
 
+/** 定義エディタが編集するグラフドキュメント。 */
 export type DefinitionGraphDocument = {
   version: number;
   workflow: {
@@ -53,11 +58,13 @@ export type DefinitionGraphDocument = {
   meta?: DefinitionGraphMeta;
 };
 
+/** YAML パース結果。 */
 export type ParseDefinitionYamlResult = {
   document: DefinitionGraphDocument | null;
   diagnostics: string[];
 };
 
+/** グラフドキュメント検証結果。 */
 export type ValidateGraphDocumentResult = {
   isValid: boolean;
   messages: string[];

@@ -23,8 +23,10 @@ function softDarkContainerBackground(semantic: DarkSoftContainerSemantic): strin
   return darkSoftContainerBgClass[semantic];
 }
 
+/** ステータスバッジ用の状態型。 */
 export type StatusLike = WorkflowStatus | NodeStatus;
 
+/** ステータス表示の色・ラベル。 */
 export type StatusStyle = {
   badgeClass: string;
   borderClass: string;
@@ -134,10 +136,12 @@ const DEFAULT_STYLE: StatusStyle = {
   emphasisRank: 0
 };
 
+/** 状態から表示スタイルを返す。 */
 export function getStatusStyle(status: StatusLike): StatusStyle {
   return STATUS_STYLE[status] ?? DEFAULT_STYLE;
 }
 
+/** 一覧ソート用のノード状態ウェイト。 */
 export function getNodeSortWeight(status: NodeStatus): number {
   const order: Record<NodeStatus, number> = {
     WAITING: 1,

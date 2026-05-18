@@ -9,6 +9,7 @@ const GRAPH_DEFINITIONS: Record<string, GraphDefinition> = {
   [nodesFormatShowcaseGraphDefinition.graphId]: nodesFormatShowcaseGraphDefinition
 };
 
+/** graphId から静的定義グラフを取得する。 */
 export function getGraphDefinition(graphId: string): GraphDefinition | null {
   return GRAPH_DEFINITIONS[graphId] ?? null;
 }

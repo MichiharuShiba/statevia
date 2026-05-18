@@ -25,6 +25,7 @@ function isTerminalExecution(status: WorkflowView["status"]): boolean {
   return TERMINAL_STATUSES.has(status);
 }
 
+/** useExecution のコールバックオプション。 */
 export type UseExecutionOptions = {
   onError?: (error: unknown) => void;
   onCancelSuccess?: () => void;
@@ -35,6 +36,7 @@ export type UseExecutionOptions = {
   streamRefreshDebounceMs?: number;
 };
 
+/** 単一実行の読み込み・更新・SSE 再接続を管理するフック。 */
 export function useExecution(workflowDisplayId: string, options: UseExecutionOptions = {}) {
   const {
     onError,

@@ -1,6 +1,7 @@
 /** v2: C# API のワークフロー状態。 */
 export type WorkflowStatus = "Running" | "Completed" | "Cancelled" | "Failed";
 
+/** 実行ノードの状態（Engine / Core-API 準拠）。 */
 export type NodeStatus = "IDLE" | "READY" | "RUNNING" | "WAITING" | "SUCCEEDED" | "FAILED" | "CANCELED";
 
 /** v2: GET /v1/workflows/:id のレスポンス（C# WorkflowResponse）。 */
@@ -42,6 +43,7 @@ export type WorkflowGraphEdgeDTO = {
   type?: number;
 };
 
+/** ランタイムグラフの辺（from / to / type）。 */
 export type RuntimeGraphEdgeDTO = {
   from: string;
   to: string;
@@ -82,6 +84,7 @@ export type WorkflowView = WorkflowDTO & {
   runtimeEdges?: RuntimeGraphEdgeDTO[];
 };
 
+/** コマンド受理レスポンス（Core-API）。 */
 export type CommandAccepted = {
   executionId: string; // v2 では displayId を格納
   command: string;
@@ -90,6 +93,7 @@ export type CommandAccepted = {
   idempotencyKey: string;
 };
 
+/** Core-API エラー応答のクライアント側表現。 */
 export type ApiError = {
   status?: number;
   error: {
@@ -113,6 +117,7 @@ export type GraphPatchNode = {
   cancelReason?: string | null;
 };
 
+/** SSE: グラフノードが更新されたイベント。 */
 export type GraphUpdatedEvent = {
   type: "GraphUpdated";
   executionId: string;
@@ -122,6 +127,7 @@ export type GraphUpdatedEvent = {
   at?: string;
 };
 
+/** SSE: ワークフロー状態が変化したイベント。 */
 export type ExecutionStatusChangedEvent = {
   type: "ExecutionStatusChanged";
   executionId: string;
@@ -131,6 +137,7 @@ export type ExecutionStatusChangedEvent = {
   at?: string;
 };
 
+/** SSE: ノードがキャンセルされたイベント。 */
 export type NodeCancelledEvent = {
   type: "NodeCancelled";
   executionId: string;
@@ -145,6 +152,7 @@ export type NodeCancelledEvent = {
   at?: string;
 };
 
+/** SSE: ノードが失敗したイベント。 */
 export type NodeFailedEvent = {
   type: "NodeFailed";
   executionId: string;
@@ -156,14 +164,17 @@ export type NodeFailedEvent = {
   at?: string;
 };
 
+/** 実行ストリームのイベント判別共用体。 */
 export type ExecutionStreamEvent =
   | GraphUpdatedEvent
   | ExecutionStatusChangedEvent
   | NodeCancelledEvent
   | NodeFailedEvent;
 
+/** シーケンス番号付き実行イベント。 */
 export type ExecutionEventWithSeq = { seq: number } & ExecutionStreamEvent;
 
+/** 実行イベント一覧 API のレスポンス。 */
 export type ExecutionEventsResponse = {
   events: ExecutionEventWithSeq[];
   hasMore?: boolean;
@@ -178,6 +189,7 @@ export type PagedResult<T> = {
   hasMore: boolean;
 };
 
+/** ページング付きワークフロー一覧。 */
 export type PagedWorkflows = PagedResult<WorkflowDTO>;
 
 /** GET /v1/definitions の要素（Core-API `DefinitionResponse`）。 */
@@ -190,8 +202,10 @@ export type DefinitionDTO = {
   yaml?: string;
 };
 
+/** ページング付き定義一覧。 */
 export type PagedDefinitions = PagedResult<DefinitionDTO>;
 
+/** 定義スキーマ取得 API のレスポンス。 */
 export type DefinitionSchemaResponse = {
   schemaVersion: string;
   nodesVersion: number;

@@ -6,6 +6,7 @@ type ReplayBannerProps = {
   onBackToCurrent: () => void;
 };
 
+/** リプレイ中であることを示すバナー。 */
 export function ReplayBanner({ onBackToCurrent }: Readonly<ReplayBannerProps>) {
   const uiText = useUiText();
   return (

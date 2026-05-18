@@ -43,6 +43,7 @@ type NodeDetailProps = {
   className?: string;
 };
 
+/** 選択ノードの詳細パネル。 */
 export function NodeDetail({
   execution,
   node,

@@ -10,6 +10,7 @@ import type {
   ParseDefinitionYamlResult
 } from "./types";
 
+/** YAML パースエラーメッセージのオプション。 */
 export type ParseDefinitionYamlMessageOptions = {
   rootObjectRequired: () => string;
   nodesArrayRequired: () => string;
