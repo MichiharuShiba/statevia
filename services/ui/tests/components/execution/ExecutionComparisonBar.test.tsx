@@ -105,7 +105,7 @@ describe("ExecutionComparisonBar", () => {
         onExecutionIdRightChange={() => {}}
         onLoadRight={() => {}}
         loadingRight={false}
-        diff={diff!}
+        diff={diff}
       />
     );
     expect(screen.getByText(uiText.executionComparison.summary.failedOrCancelled)).toBeInTheDocument();
@@ -127,7 +127,7 @@ describe("ExecutionComparisonBar", () => {
         onExecutionIdRightChange={() => {}}
         onLoadRight={() => {}}
         loadingRight={false}
-        diff={diff!}
+        diff={diff}
         onSelectDiffNode={onSelectDiffNode}
       />
     );
@@ -149,7 +149,7 @@ describe("ExecutionComparisonBar", () => {
         onExecutionIdRightChange={() => {}}
         onLoadRight={() => {}}
         loadingRight={false}
-        diff={diff!}
+        diff={diff}
       />
     );
     expect(screen.getByText(uiText.executionComparison.summary.noDiff)).toBeInTheDocument();
