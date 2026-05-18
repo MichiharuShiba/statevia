@@ -412,7 +412,7 @@ function parseWhenValueInput(input: string, op?: string): unknown {
 
   if ((upperOp === "IN" || upperOp === "BETWEEN") && trimmed.startsWith("[") && trimmed.endsWith("]")) {
     try {
-      const parsed = JSON.parse(trimmed);
+      const parsed: unknown = JSON.parse(trimmed);
       if (Array.isArray(parsed)) {
         return parsed;
       }
@@ -440,6 +440,7 @@ function parseWhenValueInput(input: string, op?: string): unknown {
   return input;
 }
 
+/** DefinitionGraphEditor。 */
 export function DefinitionGraphEditor({
   document,
   onDocumentChange,
@@ -829,7 +830,7 @@ function GraphNodeInspector({
       setActionInputDraft(formatActionInputForEditor(node.input));
       setActionInputError(null);
     }
-  }, [node.id, node.type, actionInputSig]);
+  }, [node.id, node.type, node.input, actionInputSig]);
 
   return (
     <section className="space-y-2 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] p-3">
@@ -996,7 +997,7 @@ function GraphInspector({
   }
 
   const conditionalEdge: NonNullable<DefinitionGraphNode["edges"]>[number] | undefined =
-    selection.edgeKind === "edge" ? (targetEdge as NonNullable<DefinitionGraphNode["edges"]>[number]) : undefined;
+    selection.edgeKind === "edge" ? (targetEdge) : undefined;
   const selectedWhenOp = (conditionalEdge?.when?.op ?? "").toUpperCase();
   const isDefaultEdge = conditionalEdge?.default === true;
   const isWhenFieldsDisabled = isDefaultEdge;
