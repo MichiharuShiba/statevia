@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { ExecutionDashboard } from "../../../app/components/execution/ExecutionDashboard";
 import { renderWithUiText } from "../../testUtils";
 import type { WorkflowView } from "../../../app/lib/types";
@@ -47,8 +47,10 @@ vi.mock("../../../app/features/graph/useGraphDefinition", () => ({
   })
 }));
 
+const useGraphDataMock = vi.fn();
+
 vi.mock("../../../app/features/graph/useGraphData", () => ({
-  useGraphData: () => ({ nodes: [], edges: [] }),
+  useGraphData: (...args: unknown[]) => useGraphDataMock(...args),
   getNodeWithFallback: vi.fn()
 }));
 
@@ -70,10 +72,35 @@ import { useExecution } from "../../../app/features/execution/useExecution";
 
 describe("ExecutionDashboard", () => {
   beforeEach(() => {
+    useGraphDataMock.mockReturnValue({
+      nodes: [
+        {
+          nodeId: "n-1",
+          executionNodeId: "n-1",
+          stateName: "task",
+          nodeType: "Task",
+          label: "Task node",
+          status: "RUNNING",
+          attempt: 1,
+          workerId: null,
+          waitKey: null,
+          canceledByExecution: false,
+          x: 0,
+          y: 0,
+          w: 200,
+          h: 80
+        }
+      ],
+      edges: [],
+      groups: [],
+      mergedNodes: [],
+      graphId: "g-1",
+      definitionBased: false
+    });
     vi.mocked(useExecution).mockReturnValue({
       execution: workflowView(),
       loading: false,
-      canCancel: false,
+      canCancel: true,
       terminal: false,
       loadExecution: vi.fn(),
       cancelExecution: vi.fn(),
@@ -88,6 +115,38 @@ describe("ExecutionDashboard", () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText(/実行 ID/i)).toBeInTheDocument();
+    });
+  });
+
+  it("Cancel ボタンで cancelExecution を呼ぶ", async () => {
+    const cancelExecution = vi.fn();
+    vi.mocked(useExecution).mockReturnValue({
+      execution: workflowView(),
+      loading: false,
+      canCancel: true,
+      terminal: false,
+      loadExecution: vi.fn(),
+      cancelExecution,
+      publishEvent: vi.fn(),
+      selectedNodeId: null,
+      setSelectedNodeId: vi.fn()
+    });
+
+    renderWithUiText(
+      <ExecutionDashboard initialExecutionId="ex-1" autoLoadOnMount={false} operationsEnabled />
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /キャンセル/i }));
+    expect(cancelExecution).toHaveBeenCalled();
+  });
+
+  it("グラフ表示に切り替えられる", async () => {
+    renderWithUiText(<ExecutionDashboard initialExecutionId="ex-1" autoLoadOnMount={false} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "グラフ" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Task node")).toBeInTheDocument();
     });
   });
 });
