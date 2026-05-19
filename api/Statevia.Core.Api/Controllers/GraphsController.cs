@@ -25,6 +25,7 @@ public class GraphsController : ControllerBase
 
     /// <summary>GET /v1/graphs/{graphId} — 契約 4.1 Graph Definition（nodes / edges）を返す。graphId は definition の display_id。X-Tenant-Id でスコープ。</summary>
     [HttpGet("{graphId}")]
+    [ProducesResponseType(typeof(GraphDefinitionResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<GraphDefinitionResponse>> GetByGraphId(
         string graphId,
         [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
