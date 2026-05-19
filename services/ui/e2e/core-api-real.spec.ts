@@ -43,8 +43,8 @@ test.describe("Core API (direct)", () => {
     expect(json.status).toBe("ok");
   });
 
-  test("GET /v1/workflows は 200（テナント default）", async ({ request }) => {
-    const res = await request.get(`${apiBase}/v1/workflows`, {
+  test("GET /v1/workflows?limit=1 は 200（テナント default）", async ({ request }) => {
+    const res = await request.get(`${apiBase}/v1/workflows?limit=1&offset=0`, {
       headers: { "X-Tenant-Id": "default" }
     });
     expect(res.status()).toBe(200);
