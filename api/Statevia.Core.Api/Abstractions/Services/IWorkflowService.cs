@@ -16,11 +16,8 @@ public interface IWorkflowService
         CommandRequestContext requestContext,
         CancellationToken ct);
 
-    /// <summary>テナント内のワークフローを全件（非ページング）で返す。</summary>
-    Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct);
-
     /// <summary>
-    /// ページング一覧を返す。クエリの status・definitionId・name 等で絞り込む。
+    /// ページング一覧を返す。クエリの status・definitionId・name 等で絞り込む。<paramref name="query"/>.<see cref="WorkflowListQuery.Limit"/> は必須。
     /// </summary>
     Task<PagedResult<WorkflowResponse>> ListPagedAsync(
         string tenantId,

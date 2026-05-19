@@ -62,7 +62,6 @@ public sealed class WorkflowsControllerTests
         public string? LastIdempotencyKey { get; private set; }
 
         public WorkflowResponse StartResult { get; set; } = new WorkflowResponse();
-        public List<WorkflowResponse> ListResult { get; set; } = [];
         public PagedResult<WorkflowResponse> ListPagedResult { get; set; } = new() { Items = [], TotalCount = 0, Offset = 0, Limit = 0, HasMore = false };
         public WorkflowResponse GetResult { get; set; } = new WorkflowResponse();
         public string GraphJsonResult { get; set; } = "{\"nodes\":[]}";
@@ -85,14 +84,6 @@ public sealed class WorkflowsControllerTests
             LastTenantId = tenantId;
             LastIdempotencyKey = idempotencyKey;
             return StartResult;
-        }
-
-        public async Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct)
-        {
-            await Task.Yield(); // async boundary for coverage
-            if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
-            return ListResult;
         }
 
         public async Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, WorkflowListQuery query, CancellationToken ct)
@@ -234,32 +225,21 @@ public sealed class WorkflowsControllerTests
     }
 
     /// <summary>
-    /// 一覧取得で成功応答を返す。
+    /// limit 未指定の一覧取得で検証例外を投げる。
     /// </summary>
     [Fact]
-    public async Task List_LimitNull_ReturnsOkList()
+    public async Task List_LimitNull_ThrowsArgumentException()
     {
         // Arrange
         var http = new DefaultHttpContext();
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
-        // Act
-        var workflows = new FakeWorkflowService
-        {
-            ListResult =
-            [
-                new WorkflowResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow },
-            ]
-        };
-
+        var workflows = new FakeWorkflowService();
         var stream = new WorkflowStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, workflows, stream);
 
-        // Assert
-        var result = await controller.List(new WorkflowListQuery(), ct: CancellationToken.None);
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var value = Assert.IsAssignableFrom<List<WorkflowResponse>>(ok.Value);
-        Assert.Single(value);
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => controller.List(new WorkflowListQuery(), ct: CancellationToken.None));
     }
 
     /// <summary>
@@ -275,20 +255,27 @@ public sealed class WorkflowsControllerTests
         // Act
         var workflows = new FakeWorkflowService
         {
-            ListResult =
-            [
-                new WorkflowResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow },
-            ]
+            ListPagedResult = new PagedResult<WorkflowResponse>
+            {
+                Items =
+                [
+                    new WorkflowResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow },
+                ],
+                TotalCount = 1,
+                Offset = 0,
+                Limit = 1,
+                HasMore = false
+            }
         };
 
         var stream = new WorkflowStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, workflows, stream);
 
         // Assert
-        var result = await controller.List(new WorkflowListQuery(), ct: CancellationToken.None);
+        var result = await controller.List(new WorkflowListQuery { Limit = 1, Offset = 0 }, ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(result);
-        var value = Assert.IsAssignableFrom<List<WorkflowResponse>>(ok.Value);
-        Assert.Single(value);
+        var paged = Assert.IsType<PagedResult<WorkflowResponse>>(ok.Value);
+        Assert.Single(paged.Items);
         Assert.Equal("default", workflows.LastTenantId);
     }
 

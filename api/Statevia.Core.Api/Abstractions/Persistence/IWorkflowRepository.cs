@@ -5,8 +5,6 @@ namespace Statevia.Core.Api.Abstractions.Persistence;
 internal interface IWorkflowRepository
 {
     Task<WorkflowRow?> GetByIdAsync(string tenantId, Guid workflowId, CancellationToken ct);
-    Task<List<(WorkflowRow Workflow, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct);
-
     /// <summary>
     /// 一覧のページング。<paramref name="query"/> の
     /// <see cref="WorkflowListPageQuery.StatusFilter"/>、<see cref="WorkflowListPageQuery.DefinitionIdFilter"/>、

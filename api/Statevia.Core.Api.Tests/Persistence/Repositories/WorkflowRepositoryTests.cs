@@ -28,7 +28,7 @@ public sealed class WorkflowRepositoryTests
     /// 開始時刻の降順で並べて表示用識別子を結合する。
     /// </summary>
     [Fact]
-    public async Task ListWithDisplayIdsAsync_OrdersByStartedAtDesc_AndUsesLeftJoin()
+    public async Task ListWithDisplayIdsPageAsync_OrdersByUpdatedAtDesc_AndUsesLeftJoin()
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
@@ -81,11 +81,19 @@ public sealed class WorkflowRepositoryTests
         }
 
         // Assert
-        var list = await repo.ListWithDisplayIdsAsync(tenantId, default);
-        Assert.Equal(2, list.Count);
-        Assert.Equal("WF-DISP-2", list[0].DisplayId);
-        Assert.Null(list[1].DisplayId);
-        Assert.Equal(wfId2, list[0].Workflow.WorkflowId);
+        var (_, items) = await repo.ListWithDisplayIdsPageAsync(
+            tenantId,
+            new WorkflowListPageQuery(
+                Page: new PageQuery(0, 10),
+                Sort: new SortQuery(null, null),
+                StatusFilter: null,
+                DefinitionIdFilter: null,
+                NameContains: null),
+            default);
+        Assert.Equal(2, items.Count);
+        Assert.Equal("WF-DISP-2", items[0].DisplayId);
+        Assert.Null(items[1].DisplayId);
+        Assert.Equal(wfId2, items[0].Workflow.WorkflowId);
     }
 
     /// <summary>

@@ -28,16 +28,6 @@ internal sealed class WorkflowRepository : IWorkflowRepository
             .ConfigureAwait(false);
     }
 
-    public async Task<List<(WorkflowRow Workflow, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        var rows = await QueryWorkflowsWithDisplayIds(db, tenantId)
-            .OrderByDescending(x => x.Workflow.StartedAt)
-            .ToListAsync(ct)
-            .ConfigureAwait(false);
-        return rows.ConvertAll(x => (Workflow: x.Workflow, DisplayId: x.DisplayId));
-    }
-
     public async Task<(int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
         string tenantId,
         WorkflowListPageQuery query,

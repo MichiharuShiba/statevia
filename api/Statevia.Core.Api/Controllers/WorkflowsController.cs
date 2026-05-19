@@ -60,7 +60,7 @@ public class WorkflowsController : ControllerBase
     }
 
     /// <summary>
-    /// GET /v1/workflows — 一覧（U4）。クエリなしは従来どおり配列。
+    /// GET /v1/workflows — ページング一覧（U4）。<c>limit</c> は必須。
     /// <c>?limit=&amp;offset=&amp;status=&amp;definitionId=&amp;name=&amp;sortBy=&amp;sortOrder=</c> で <see cref="PagedResult{T}"/>（O1/O2）。
     /// <c>definitionId</c> は定義の display / UUID。 <c>name</c> は workflow の <c>displayId</c> 部分一致、または workflow の UUID 完全一致で絞り込み。
     /// </summary>
@@ -73,10 +73,7 @@ public class WorkflowsController : ControllerBase
         ArgumentNullException.ThrowIfNull(query);
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         if (query.Limit is null)
-        {
-            var list = await _workflows.ListAsync(tenantId, ct).ConfigureAwait(false);
-            return Ok(list);
-        }
+            throw new ArgumentException("limit is required");
 
         var offset = query.Offset ?? 0;
         ArgumentOutOfRangeException.ThrowIfNegative(offset);

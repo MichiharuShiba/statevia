@@ -84,9 +84,6 @@ public sealed class WorkflowProjectionUpdateQueueServiceTests
         public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) =>
-            throw new NotSupportedException();
-
         public Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, WorkflowListQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
 
@@ -137,9 +134,6 @@ public sealed class WorkflowProjectionUpdateQueueServiceTests
         }
 
         public Task<WorkflowResponse> StartAsync(string tenantId, StartWorkflowRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
-            throw new NotSupportedException();
-
-        public Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<PagedResult<WorkflowResponse>> ListPagedAsync(string tenantId, WorkflowListQuery query, CancellationToken ct) =>
