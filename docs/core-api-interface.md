@@ -15,6 +15,18 @@ Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
 - **Policy**: 終端の優先順位はエンジン内で保証
 - **Style**: RESTful
 
+## OpenAPI / Scalar（機械可読な契約）
+
+| 項目 | 内容 |
+| --- | --- |
+| スキーマ・操作の正本 | Swashbuckle 生成の `/swagger/v1/swagger.json`、およびリポジトリ内 [`api/openapi/core-api-v1.openapi.json`](../api/openapi/core-api-v1.openapi.json) |
+| 閲覧 UI（Development） | Scalar — 例: `http://localhost:8080/scalar/v1`（`ASPNETCORE_URLS` に依存） |
+| 本番 | OpenAPI / Scalar は **既定オフ**。Staging または `STATEVIA_ENABLE_API_DOCS=true` で有効化 |
+| export | リポジトリルートから `.\scripts\export-core-api-openapi.ps1` |
+| 本書の役割 | SSE・冪等・IO-14・Read-model 注意など、OpenAPI に載せにくい運用叙述を維持 |
+
+エンドポイント詳細は段階的に OpenAPI へ寄せる。以下 §2 以降の JSON 例は移行期の参考であり、差異がある場合は OpenAPI を優先する。
+
 ---
 
 ## 1. エンドポイント一覧
@@ -45,28 +57,7 @@ Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
 
 ### 2.1 定義登録
 
-**POST /v1/definitions**
-
-Request:
-
-```json
-{
-  "name": "string",
-  "yaml": "string"
-}
-```
-
-Response: 201 Created
-
-```json
-{
-  "displayId": "string",
-  "resourceId": "uuid",
-  "name": "string",
-  "createdAt": "date-time",
-  "updatedAt": "date-time"
-}
-```
+**POST /v1/definitions** — リクエスト / 応答スキーマは OpenAPI の `CreateDefinitionRequest` / `DefinitionResponse`（`201 Created`）を参照。
 
 - `name` / `yaml` 必須。検証・コンパイルして保存。新規行では `updatedAt` は `createdAt` と同一。不正時は 422（`error.details` に field/message を含む）。
 
