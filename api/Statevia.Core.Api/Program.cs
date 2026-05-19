@@ -14,7 +14,8 @@ app.UseCors(policy => policy
 app.UseRouting();
 app.UseMiddleware<TraceContextEnrichmentMiddleware>();
 
+app.UseStateviaOpenApi();
+
 app.MapControllers();
-app.MapGet("/v1/health", () => Results.Ok(new { status = "ok" }));
 
 app.Run();
