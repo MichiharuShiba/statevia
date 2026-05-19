@@ -91,12 +91,14 @@ Response: 201 Created
 
 **GET /v1/definitions**
 
-- クエリなし: Response 200 OK、`DefinitionResponse[]`（displayId, resourceId, name, createdAt, updatedAt）
-- **`?limit=&offset=&name=&sortBy=&sortOrder=`**（いずれか指定時）: 200 OK、`PagedResult<DefinitionResponse>`（`items`, `totalCount`, `offset`, `limit`, `hasMore`）。
+- **`?limit=&offset=&name=&sortBy=&sortOrder=`**（`limit` 必須）: 200 OK、`PagedResult<DefinitionResponse>`（`items`, `totalCount`, `offset`, `limit`, `hasMore`）。
   - `name`: 名前の部分一致
   - `sortBy`: `createdAt` / `name`（未指定時は `createdAt`）
   - `sortOrder`: `asc` / `desc`（未指定時は `desc`）
-  - `limit`: 1〜500、`offset`: 0 以上
+  - `limit`: 1〜500（必須）、`offset`: 0 以上（省略時 0）
+- `limit` 未指定・不正: **422**
+
+**移行:** 一覧取得は `?limit=N&offset=M` を必須とする。全件が必要な場合は `limit=500` と `hasMore` を用いてページを繰り返す。
 
 ### 2.3 定義取得
 
@@ -167,14 +169,14 @@ Request:
 
 **GET /v1/workflows**
 
-- クエリなし: Response 200 OK、`WorkflowResponse[]`（displayId, resourceId, status, startedAt, updatedAt, cancelRequested, restartLost）
-- **`?limit=&offset=&status=&name=&definitionId=&sortBy=&sortOrder=`**（いずれか指定時）: 200 OK、`PagedResult<WorkflowResponse>`。
+- **`?limit=&offset=&status=&name=&definitionId=&sortBy=&sortOrder=`**（`limit` 必須）: 200 OK、`PagedResult<WorkflowResponse>`。
   - `status`: `workflows.status` 列と**完全一致**
   - `name`: `display_id` の部分一致（`Guid` 形式入力時は `workflow_id` 完全一致も許容）
   - `definitionId`: Definition の displayId または UUID
   - `sortBy`: `updatedAt` / `displayId`（未指定時は `updatedAt`）
   - `sortOrder`: `asc` / `desc`（未指定時は `desc`）
-  - `limit`: 1〜500、`offset`: 0 以上
+  - `limit`: 1〜500（必須）、`offset`: 0 以上（省略時 0）
+- `limit` 未指定・不正: **422**
 
 ### 3.3 ワークフロー取得
 
