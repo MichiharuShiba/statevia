@@ -35,6 +35,7 @@
 - **Service**: ユースケース。Repository・DisplayId・command dedup・`IWorkflowEngine` を組み合わせる。
 - **Repository**: 永続化のみ。`IDbContextFactory<CoreDbContext>` は Repository 実装内に閉じる。
 - **例外**: `ApiExceptionFilter` と契約に沿ったエラー JSON（404 / 422 / 500）。
+- **OpenAPI / Scalar**: Development では `http://localhost:8080/scalar/v1`（起動 URL に依存）。JSON は `/swagger/v1/swagger.json`。コミット用 export はリポジトリルートから `.\scripts\export-core-api-openapi.ps1` → `api/openapi/core-api-v1.openapi.json`。本番は既定オフ、`STATEVIA_ENABLE_API_DOCS=true` で有効化可。手書き契約は `docs/core-api-interface.md`（運用叙述は Markdown に残す）。
 
 ### 3.2 Engine（`engine/`）
 
