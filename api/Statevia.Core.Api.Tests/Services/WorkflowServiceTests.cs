@@ -376,19 +376,12 @@ public sealed class WorkflowServiceTests
 
         public List<(WorkflowRow Workflow, ExecutionGraphSnapshotRow Snapshot)> Added { get; } = [];
         public List<(Guid WorkflowId, string Status, bool? CancelRequested, string GraphJson)> Updates { get; } = [];
-        public List<(WorkflowRow Workflow, string? DisplayId)> ListWithDisplayIdsResult { get; set; } = [];
         public (int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items) ListWithDisplayIdsPageResult { get; set; } = (0, []);
 
         public async Task<WorkflowRow?> GetByIdAsync(string tenantId, Guid workflowId, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             return ByIdResult;
-        }
-
-        public async Task<List<(WorkflowRow Workflow, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct)
-        {
-            await Task.Yield(); // async boundary for coverage
-            return ListWithDisplayIdsResult;
         }
 
         public async Task<(int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
@@ -647,7 +640,6 @@ public sealed class WorkflowServiceTests
         public Task AddAsync(WorkflowDefinitionRow row, CancellationToken ct) => Task.CompletedTask;
         public Task<bool> UpdateAsync(string tenantId, Guid definitionId, string name, string sourceYaml, string compiledJson, CancellationToken ct) => Task.FromResult(false);
         public Task<WorkflowDefinitionRow?> GetByIdAsync(string tenantId, Guid definitionId, CancellationToken ct) => Task.FromResult<WorkflowDefinitionRow?>(null);
-        public Task<List<(WorkflowDefinitionRow Def, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct) => Task.FromResult(new List<(WorkflowDefinitionRow, string?)>());
         public Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
             string tenantId,
             DefinitionListPageQuery query,
@@ -870,9 +862,6 @@ public sealed class WorkflowServiceTests
                     UpdatedAt = DateTime.UtcNow
                 }
                 : null);
-
-        public Task<List<(WorkflowDefinitionRow Def, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct) =>
-            Task.FromResult(new List<(WorkflowDefinitionRow, string?)>());
 
         public Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
             string tenantId,
@@ -2550,7 +2539,7 @@ public sealed class WorkflowServiceTests
 
     /// <summary>一覧で表示用識別子が空値の行は識別子文字列を表示値に使う。</summary>
     [Fact]
-    public async Task ListAsync_WhenDisplayIdMissing_FallsBackToWorkflowIdString()
+    public async Task ListPagedAsync_WhenDisplayIdMissing_FallsBackToWorkflowIdString()
     {
         // Arrange
         var tenantId = "t1";
@@ -2579,11 +2568,11 @@ public sealed class WorkflowServiceTests
 
         var workflowRepo = new FakeWorkflowRepository
         {
-            ListWithDisplayIdsResult =
-            [
+            ListWithDisplayIdsPageResult = (2, new List<(WorkflowRow Workflow, string? DisplayId)>
+            {
                 (w1, null),
                 (w2, "WF-DISP-2")
-            ]
+            })
         };
 
         var sut = MakeSut(
@@ -2595,17 +2584,17 @@ public sealed class WorkflowServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var res = await sut.ListAsync(tenantId, CancellationToken.None);
+        var page = await sut.ListPagedAsync(tenantId, new WorkflowListQuery { Offset = 0, Limit = 10 }, CancellationToken.None);
 
         // Assert
-        Assert.Equal(2, res.Count);
-        Assert.Equal(w1.WorkflowId.ToString("D"), res[0].DisplayId);
-        Assert.Equal(w1.WorkflowId, res[0].ResourceId);
-        Assert.Equal("Running", res[0].Status);
-        Assert.Equal(w2.WorkflowId, res[1].ResourceId);
-        Assert.Equal("WF-DISP-2", res[1].DisplayId);
-        Assert.True(res[1].CancelRequested);
-        Assert.True(res[1].RestartLost);
+        Assert.Equal(2, page.Items.Count);
+        Assert.Equal(w1.WorkflowId.ToString("D"), page.Items[0].DisplayId);
+        Assert.Equal(w1.WorkflowId, page.Items[0].ResourceId);
+        Assert.Equal("Running", page.Items[0].Status);
+        Assert.Equal(w2.WorkflowId, page.Items[1].ResourceId);
+        Assert.Equal("WF-DISP-2", page.Items[1].DisplayId);
+        Assert.True(page.Items[1].CancelRequested);
+        Assert.True(page.Items[1].RestartLost);
     }
 
     /// <summary>ページングで総件数と件数上限から続き有無を切り替える。</summary>

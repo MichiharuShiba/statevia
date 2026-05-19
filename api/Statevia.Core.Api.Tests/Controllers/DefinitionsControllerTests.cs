@@ -14,7 +14,6 @@ public sealed class DefinitionsControllerTests
         public string? LastTenantId { get; private set; }
 
         public DefinitionResponse CreateResult { get; set; } = new DefinitionResponse();
-        public List<DefinitionResponse> ListResult { get; set; } = [];
         public PagedResult<DefinitionResponse> ListPagedResult { get; set; } = new() { Items = [], TotalCount = 0, Offset = 0, Limit = 0, HasMore = false };
         public DefinitionResponse GetResult { get; set; } = new DefinitionResponse();
         public DefinitionResponse UpdateResult { get; set; } = new DefinitionResponse();
@@ -25,14 +24,6 @@ public sealed class DefinitionsControllerTests
             if (ExceptionToThrow is { } ex) throw ex;
             LastTenantId = tenantId;
             return CreateResult;
-        }
-
-        public async Task<List<DefinitionResponse>> ListAsync(string tenantId, CancellationToken ct)
-        {
-            await Task.Yield(); // async boundary for coverage
-            if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
-            return ListResult;
         }
 
         public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(string tenantId, DefinitionListQuery query, CancellationToken ct)
@@ -93,34 +84,23 @@ public sealed class DefinitionsControllerTests
     }
 
     /// <summary>
-    /// 一覧取得で成功応答を返す。
+    /// limit 未指定の一覧取得で検証例外を投げる。
     /// </summary>
     [Fact]
-    public async Task List_LimitNull_ReturnsOkList()
+    public async Task List_LimitNull_ThrowsArgumentException()
     {
         // Arrange
         var http = new DefaultHttpContext();
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
-        // Act
-        var fake = new FakeDefinitionService
-        {
-            ListResult =
-            [
-                new DefinitionResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Name = "a", CreatedAt = DateTime.UtcNow }
-            ]
-        };
-
+        var fake = new FakeDefinitionService();
         var controller = new DefinitionsController(fake)
         {
             ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = http }
         };
 
-        // Assert
-        var res = await controller.List(new DefinitionListQuery(), ct: CancellationToken.None);
-        var ok = Assert.IsType<OkObjectResult>(res);
-        var list = Assert.IsType<List<DefinitionResponse>>(ok.Value);
-        Assert.Single(list);
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => controller.List(new DefinitionListQuery(), ct: CancellationToken.None));
     }
 
     /// <summary>
@@ -136,10 +116,14 @@ public sealed class DefinitionsControllerTests
         // Act
         var fake = new FakeDefinitionService
         {
-            ListResult =
-            [
-                new DefinitionResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Name = "a", CreatedAt = DateTime.UtcNow }
-            ]
+            ListPagedResult = new PagedResult<DefinitionResponse>
+            {
+                Items = [new DefinitionResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Name = "a", CreatedAt = DateTime.UtcNow }],
+                TotalCount = 1,
+                Offset = 0,
+                Limit = 1,
+                HasMore = false
+            }
         };
 
         var controller = new DefinitionsController(fake)
@@ -148,10 +132,10 @@ public sealed class DefinitionsControllerTests
         };
 
         // Assert
-        var res = await controller.List(new DefinitionListQuery(), ct: CancellationToken.None);
+        var res = await controller.List(new DefinitionListQuery { Limit = 1, Offset = 0 }, ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(res);
-        var list = Assert.IsType<List<DefinitionResponse>>(ok.Value);
-        Assert.Single(list);
+        var paged = Assert.IsType<PagedResult<DefinitionResponse>>(ok.Value);
+        Assert.Single(paged.Items);
         Assert.Equal("default", fake.LastTenantId);
     }
 

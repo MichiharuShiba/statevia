@@ -14,11 +14,8 @@ public interface IDefinitionService
     /// <summary>表示 ID または UUID で定義を更新する。</summary>
     Task<DefinitionResponse> UpdateAsync(string tenantId, string idOrUuid, UpdateDefinitionRequest request, CancellationToken ct);
 
-    /// <summary>テナント内の定義を全件（非ページング）で返す。</summary>
-    Task<List<DefinitionResponse>> ListAsync(string tenantId, CancellationToken ct);
-
     /// <summary>
-    /// ページング付き一覧を返す。
+    /// ページング付き一覧を返す。<paramref name="query"/>.<see cref="DefinitionListQuery.Limit"/> は必須。
     /// </summary>
     Task<PagedResult<DefinitionResponse>> ListPagedAsync(
         string tenantId,

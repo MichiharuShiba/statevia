@@ -59,7 +59,7 @@ public sealed class DefinitionRepositoryTests
     /// 表示用識別子がない定義も一覧に含める。
     /// </summary>
     [Fact]
-    public async Task ListWithDisplayIdsAsync_UsesLeftJoin_ForMissingDisplayId()
+    public async Task ListWithDisplayIdsPageAsync_UsesLeftJoin_ForMissingDisplayId()
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
@@ -108,12 +108,18 @@ public sealed class DefinitionRepositoryTests
             await ctx.SaveChangesAsync();
         }
 
-        var list = await repo.ListWithDisplayIdsAsync(tenantId, default);
+        var (_, items) = await repo.ListWithDisplayIdsPageAsync(
+            tenantId,
+            new DefinitionListPageQuery(
+                Page: new PageQuery(0, 10),
+                Sort: new SortQuery("createdAt", "asc"),
+                NameContains: null),
+            default);
 
         // Assert
-        Assert.Equal(2, list.Count);
-        Assert.Equal("DISP-A", list[0].DisplayId);
-        Assert.Null(list[1].DisplayId);
+        Assert.Equal(2, items.Count);
+        Assert.Equal("DISP-A", items[0].DisplayId);
+        Assert.Null(items[1].DisplayId);
     }
 
     /// <summary>

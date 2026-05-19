@@ -60,16 +60,6 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         return true;
     }
 
-    public async Task<List<(WorkflowDefinitionRow Def, string? DisplayId)>> ListWithDisplayIdsAsync(string tenantId, CancellationToken ct)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        var rows = await QueryDefinitionsWithDisplayIds(db, tenantId)
-            .OrderBy(x => x.Def.CreatedAt)
-            .ToListAsync(ct)
-            .ConfigureAwait(false);
-        return rows.ConvertAll(x => (Def: x.Def, DisplayId: x.DisplayId));
-    }
-
     public async Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
         string tenantId,
         DefinitionListPageQuery query,

@@ -125,7 +125,7 @@ public sealed class DefinitionServiceTests
     /// 表示用識別子がない行は識別子文字列を返す。
     /// </summary>
     [Fact]
-    public async Task ListAsync_WhenDisplayIdMissing_FallsBackToDefinitionIdString()
+    public async Task ListPagedAsync_WhenDisplayIdMissing_FallsBackToDefinitionIdString()
     {
         // Arrange
         using var inDb = new InMemoryTestDatabase();
@@ -154,12 +154,16 @@ public sealed class DefinitionServiceTests
         var sut = new DefinitionService(display, compiler, definitionsRepo, idGen);
 
         // Assert
-        var res = await sut.ListAsync("t1", CancellationToken.None);
-        Assert.Equal(2, res.Count);
+        var page = await sut.ListPagedAsync(
+            "t1",
+            new DefinitionListQuery { Offset = 0, Limit = 10, SortBy = "createdAt", SortOrder = "asc" },
+            CancellationToken.None);
+        Assert.Equal(2, page.TotalCount);
+        Assert.Equal(2, page.Items.Count);
 
-        // CreatedAt 順（定義リポジトリが CreatedAt 昇順）
-        Assert.Equal(def1.ToString(), res[0].DisplayId);
-        Assert.Equal("DISP-B", res[1].DisplayId);
+        // CreatedAt 昇順
+        Assert.Equal(def1.ToString(), page.Items[0].DisplayId);
+        Assert.Equal("DISP-B", page.Items[1].DisplayId);
     }
 
     /// <summary>

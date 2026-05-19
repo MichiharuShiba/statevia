@@ -247,22 +247,6 @@ internal sealed class WorkflowService : IWorkflowService
         return response;
     }
 
-    public async Task<List<WorkflowResponse>> ListAsync(string tenantId, CancellationToken ct)
-    {
-        var pairs = await _workflows.ListWithDisplayIdsAsync(tenantId, ct).ConfigureAwait(false);
-        return pairs.Select(p => new WorkflowResponse
-        {
-            DisplayId = p.DisplayId ?? p.Workflow.WorkflowId.ToString(),
-            ResourceId = p.Workflow.WorkflowId,
-            GraphId = p.Workflow.DefinitionId.ToString("D"),
-            Status = p.Workflow.Status,
-            StartedAt = p.Workflow.StartedAt,
-            UpdatedAt = p.Workflow.UpdatedAt,
-            CancelRequested = p.Workflow.CancelRequested,
-            RestartLost = p.Workflow.RestartLost
-        }).ToList();
-    }
-
     public async Task<PagedResult<WorkflowResponse>> ListPagedAsync(
         string tenantId,
         WorkflowListQuery query,
