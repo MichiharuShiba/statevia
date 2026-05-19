@@ -71,6 +71,8 @@ Further HTTP contract: `docs/core-api-interface.md`.
    Or with env: `DATABASE_URL="postgres://statevia:statevia@localhost:5432/statevia" ASPNETCORE_URLS="http://0.0.0.0:8080" dotnet run --project Statevia.Core.Api --no-launch-profile`
    **Gotcha**: `launchSettings.json` hardcodes ports 62427/62428. Use `--no-launch-profile` + `ASPNETCORE_URLS` to bind to port 8080.
    Migrations: `cd api && dotnet ef database update --project Statevia.Core.Api`.
+
+   **OpenAPI / Scalar**: Core-API 起動後、`/scalar/v1` で閲覧（OpenAPI JSON は `/swagger/v1/swagger.json`）。`docker compose` の core-api は `ASPNETCORE_ENVIRONMENT=Development` で有効。本番イメージ単体（Production）では既定オフ — `STATEVIA_ENABLE_API_DOCS=true` で有効化。export は `.\scripts\export-core-api-openapi.ps1`。
 3. **ui** — run dev server:
 
    ```bash
@@ -104,6 +106,7 @@ Comment rules, Markdownlint (e.g. `.spec-workflow/`), build or analyzer warnings
 | `PORT`                   | core-api (C#) | `8080` (via ASP.NET Core)                                                                                              |
 | `CORE_API_INTERNAL_BASE` | ui            | `http://localhost:8080`                                                                                                |
 | `STATEVIA_LOG_HTTP_BODIES` | core-api (C#) | 未設定時は従来どおり。`true` のとき本番でも HTTP リクエスト/レスポンス本文をログに載せる（機密に注意）。 |
+| `STATEVIA_ENABLE_API_DOCS` | core-api (C#) | 未設定時は Production で OpenAPI / Scalar 無効。`true` で Staging / Production でも `/swagger`・`/scalar` を公開（API 構造露出に注意）。 |
 
 ### Core-API: HTTP リクエストログ（STV-403）
 
