@@ -58,6 +58,15 @@ dotnet_diagnostic.CA1515.severity = none
 # 個別ファイル
 # =============================================================================
 
+[Hosting/OpenApi/*.cs]
+
+# S2325: インスタンスデータ未使用のメソッドは static にせよ。
+# 除外理由: Swashbuckle IOperationFilter.Apply はインスタンスメソッドが契約上必須。処理本体は static ヘルパーへ分離する。
+dotnet_diagnostic.S2325.severity = none
+
+# CA1822: アクセスしていないメンバーは static にせよ（Roslyn。IOperationFilter と同趣旨）。
+dotnet_diagnostic.CA1822.severity = none
+
 [Abstractions/Services/IWorkflowProjectionUpdateQueue.cs]
 
 # CA1711: 識別子は接尾辞に型名を使うな（Queue 等の汎用語を避けよ）。
