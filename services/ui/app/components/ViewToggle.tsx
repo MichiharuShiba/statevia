@@ -2,6 +2,7 @@
 
 import { useUiText } from "../lib/uiTextContext";
 
+/** 実行画面の表示モード（一覧 / グラフ）。 */
 export type ViewMode = "list" | "graph";
 
 type ViewToggleProps = {
@@ -9,6 +10,7 @@ type ViewToggleProps = {
   onChange: (mode: ViewMode) => void;
 };
 
+/** 一覧・グラフ表示を切り替えるトグル UI。 */
 export function ViewToggle({ value, onChange }: Readonly<ViewToggleProps>) {
   const uiText = useUiText();
   return (

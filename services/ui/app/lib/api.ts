@@ -49,11 +49,14 @@ function getErrorCode(res: Response, json: unknown): string {
   return `HTTP_${res.status}`;
 }
 
-function buildApiError(res: Response, json: unknown): ApiError {
-  return {
+/** HTTP エラー応答を Error として投げる（`toToastError` の `ApiError` 形状を維持）。 */
+function buildApiError(res: Response, json: unknown): Error & ApiError {
+  const message = getErrorMessage(res, json);
+  const apiError: ApiError = {
     status: res.status,
-    error: { code: getErrorCode(res, json), message: getErrorMessage(res, json) }
+    error: { code: getErrorCode(res, json), message }
   };
+  return Object.assign(new Error(message), apiError);
 }
 
 function toRecord(h: Headers | Record<string, string> | undefined): Record<string, string> {
@@ -88,17 +91,20 @@ export type PaginationQuery = {
 /** ソート方向の共通型。 */
 export type SortOrder = "asc" | "desc";
 
+/** 一覧 API のソート指定。 */
 export type SortQuery = {
   sortBy?: string;
   sortOrder?: SortOrder;
 };
 
+/** 定義一覧 API のクエリパラメータ。 */
 export type DefinitionsListQuery = {
   pagination: PaginationQuery;
   sort: SortQuery;
   name?: string;
 };
 
+/** ワークフロー一覧 API のクエリパラメータ。 */
 export type WorkflowsListQuery = {
   pagination: PaginationQuery;
   sort: SortQuery;
@@ -135,10 +141,12 @@ export function buildDefinitionsListPath(params: DefinitionsListQuery): string {
   return `/definitions?${query.toString()}`;
 }
 
+/** Core-API へ GET し JSON をパースして返す。 */
 export async function apiGet<T>(path: string): Promise<T> {
   return fetchAndParse<T>(path);
 }
 
+/** Core-API へ POST（冪等キー付き）し JSON を返す。 */
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return fetchAndParse<T>(path, {
     method: "POST",
@@ -150,6 +158,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   });
 }
 
+/** Core-API へ PUT（冪等キー付き）し JSON を返す。 */
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   return fetchAndParse<T>(path, {
     method: "PUT",

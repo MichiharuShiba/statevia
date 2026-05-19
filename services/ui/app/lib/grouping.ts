@@ -2,6 +2,7 @@ import type { GraphDefinitionMeta, GraphGroupDef } from "../graphs/types";
 import type { LayoutEdgeInput, PositionedNode } from "./graphLayout";
 import type { WorkflowView } from "./types";
 
+/** グループ矩形の境界。 */
 export type GroupBounds = {
   groupId: string;
   label: string;
@@ -12,6 +13,7 @@ export type GroupBounds = {
   h: number;
 };
 
+/** ノード一覧からグループ境界を構築する。 */
 export function buildGroups(nodes: WorkflowView["nodes"]): {
   groups: Array<{ groupId: string; label: string; nodeIds: string[] }>;
   nodeToGroup: Record<string, string>;
@@ -82,6 +84,7 @@ function inferGroupsFromGraph(nodes: PositionedNode[], edges: LayoutEdgeInput[])
     .filter((group): group is GraphGroupDef => !!group);
 }
 
+/** グループ ID から境界矩形を解決する。 */
 export function resolveGroupBounds(
   positionedNodes: PositionedNode[],
   positionedEdges: LayoutEdgeInput[],

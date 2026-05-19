@@ -10,6 +10,7 @@ import type {
   ParseDefinitionYamlResult
 } from "./types";
 
+/** YAML パースエラーメッセージのオプション。 */
 export type ParseDefinitionYamlMessageOptions = {
   rootObjectRequired: () => string;
   nodesArrayRequired: () => string;
@@ -85,23 +86,11 @@ function parseVersion(value: unknown): number {
   return 1;
 }
 
-function parseNode(value: unknown): DefinitionGraphNode | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-  const id = typeof value.id === "string" ? value.id : "";
-  const type = parseNodeType(value.type);
-  if (!id || type == null) {
-    return null;
-  }
-  const node: DefinitionGraphNode = {
-    id,
-    type
-  };
+function applyOptionalNodeFields(node: DefinitionGraphNode, value: Record<string, unknown>): void {
   if (typeof value.action === "string") {
     node.action = value.action;
   }
-  if (type === "action") {
+  if (node.type === "action") {
     const errorTarget = resolveEdgeToId(value.error);
     if (errorTarget.trim().length > 0) {
       node.error = errorTarget;
@@ -124,13 +113,57 @@ function parseNode(value: unknown): DefinitionGraphNode | null {
   if (typeof value.input === "string" || isRecord(value.input)) {
     node.input = value.input;
   }
-  if (type === "join") {
+  if (node.type === "join") {
     const modeRaw = value.mode;
     if (typeof modeRaw === "string" && modeRaw.trim().toLowerCase() === "all") {
       node.mode = "all";
     }
   }
+}
+
+function parseNode(value: unknown): DefinitionGraphNode | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const id = typeof value.id === "string" ? value.id : "";
+  const type = parseNodeType(value.type);
+  if (!id || type == null) {
+    return null;
+  }
+  const node: DefinitionGraphNode = { id, type };
+  applyOptionalNodeFields(node, value);
   return node;
+}
+
+function parseLayoutRecord(raw: unknown): Record<string, { x: number; y: number }> | null {
+  if (!isRecord(raw)) {
+    return null;
+  }
+  const graphPositions: Record<string, { x: number; y: number }> = {};
+  for (const [id, val] of Object.entries(raw)) {
+    if (!id.trim() || !isRecord(val)) {
+      continue;
+    }
+    const x = typeof val.x === "number" && Number.isFinite(val.x) ? val.x : null;
+    const y = typeof val.y === "number" && Number.isFinite(val.y) ? val.y : null;
+    if (x != null && y != null) {
+      graphPositions[id] = { x, y };
+    }
+  }
+  return Object.keys(graphPositions).length > 0 ? graphPositions : null;
+}
+
+function buildDocumentMeta(root: Record<string, unknown>): DefinitionGraphMeta | undefined {
+  const metaLayout = isRecord(root.meta) ? parseLayoutRecord((root.meta as DefinitionGraphMeta).layout) : null;
+  const legacyGraphPositions = parseLayoutRecord(root.graphPositions);
+  const mergedLayout: Record<string, { x: number; y: number }> = {};
+  if (legacyGraphPositions) {
+    Object.assign(mergedLayout, legacyGraphPositions);
+  }
+  if (metaLayout) {
+    Object.assign(mergedLayout, metaLayout);
+  }
+  return Object.keys(mergedLayout).length > 0 ? { layout: mergedLayout } : undefined;
 }
 
 /**
@@ -175,39 +208,7 @@ export function parseDefinitionYaml(
     .filter((entry): entry is DefinitionGraphNode => entry !== null);
 
   const version = parseVersion(root.version);
-
-  function parseLayoutRecord(raw: unknown): Record<string, { x: number; y: number }> | null {
-    if (!isRecord(raw)) {
-      return null;
-    }
-    const gp: Record<string, { x: number; y: number }> = {};
-    for (const [id, val] of Object.entries(raw)) {
-      if (!id.trim() || !isRecord(val)) {
-        continue;
-      }
-      const x = typeof val.x === "number" && Number.isFinite(val.x) ? val.x : null;
-      const y = typeof val.y === "number" && Number.isFinite(val.y) ? val.y : null;
-      if (x != null && y != null) {
-        gp[id] = { x, y };
-      }
-    }
-    return Object.keys(gp).length > 0 ? gp : null;
-  }
-
-  const metaLayout = isRecord(root.meta) ? parseLayoutRecord((root.meta as DefinitionGraphMeta).layout) : null;
-  const legacyGraphPositions = parseLayoutRecord(root.graphPositions);
-  const mergedLayout: Record<string, { x: number; y: number }> = {};
-  if (legacyGraphPositions) {
-    Object.assign(mergedLayout, legacyGraphPositions);
-  }
-  if (metaLayout) {
-    Object.assign(mergedLayout, metaLayout);
-  }
-
-  let meta: DefinitionGraphMeta | undefined;
-  if (Object.keys(mergedLayout).length > 0) {
-    meta = { layout: mergedLayout };
-  }
+  const meta = buildDocumentMeta(root);
 
   const workflowDoc: DefinitionGraphDocument["workflow"] = { name: workflowName };
   if (idTrim !== undefined) {

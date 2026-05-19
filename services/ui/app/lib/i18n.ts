@@ -1,7 +1,10 @@
+/** UI でサポートするロケール一覧。 */
 export const SUPPORTED_LOCALES = ["ja", "en"] as const;
 
+/** UI ロケール（`ja` | `en`）。 */
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
+/** ロケール未指定時の既定値。 */
 export const DEFAULT_LOCALE: Locale = "ja";
 
 /**

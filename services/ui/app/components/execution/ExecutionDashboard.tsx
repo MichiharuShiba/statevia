@@ -33,6 +33,7 @@ type GraphViewportByExecutionId = Record<string, GraphViewport>;
 
 const STREAM_PREF_STORAGE_KEY = "statevia.execution.streamEnabled";
 
+/** 実行ダッシュボードの props。 */
 export type ExecutionDashboardProps = {
   /** 初期の実行 ID（URL から渡す場合は key と併用） */
   initialExecutionId: string;
@@ -173,7 +174,11 @@ export function ExecutionDashboard({
       onPublishSuccess: () => setToast({ tone: "success", message: uiText.executionDashboard.toasts.publishAccepted }),
       streamEnabled
     }),
-    [streamEnabled]
+    [
+      streamEnabled,
+      uiText.executionDashboard.toasts.cancelAccepted,
+      uiText.executionDashboard.toasts.publishAccepted
+    ]
   );
 
   const {
@@ -229,7 +234,7 @@ export function ExecutionDashboard({
     commandsEnabled: operationsEnabled,
     onSuccess: () => {
       setToast({ tone: "success", message: uiText.executionDashboard.toasts.resumeAccepted });
-      loadExecution();
+      void loadExecution();
     },
     onError: (err) => setToast(toToastError(err))
   });
@@ -317,7 +322,15 @@ export function ExecutionDashboard({
         ? uiText.executionDashboard.replayDisabledReason
         : getResumeDisabledReason(execution, node, operationsEnabled, locale);
     },
-    [displayExecution, graphData, isReplaying, execution, operationsEnabled, locale]
+    [
+      displayExecution,
+      graphData,
+      isReplaying,
+      execution,
+      operationsEnabled,
+      locale,
+      uiText.executionDashboard.replayDisabledReason
+    ]
   );
 
   const handleToggleGraphFullscreen = useCallback(() => {
@@ -342,11 +355,17 @@ export function ExecutionDashboard({
       executionId={executionId}
       executionIdEditable={executionIdEditable}
       onExecutionIdChange={setExecutionId}
-      onLoadExecution={loadExecution}
-      onCancelExecution={cancelExecution}
+      onLoadExecution={() => {
+        void loadExecution();
+      }}
+      onCancelExecution={() => {
+        void cancelExecution();
+      }}
       loading={loading}
       canCancel={canCancel}
-      onPublishEvent={publishEvent}
+      onPublishEvent={(eventName) => {
+        void publishEvent(eventName);
+      }}
       execution={execution}
       viewMode={viewMode}
       onViewModeChange={(mode) => {
@@ -364,7 +383,9 @@ export function ExecutionDashboard({
       executionB={executionB}
       executionIdB={executionIdB}
       onExecutionIdBChange={setExecutionIdB}
-      onLoadExecutionB={loadExecutionB}
+      onLoadExecutionB={() => {
+        void loadExecutionB();
+      }}
       loadingB={loadingB}
       executionDiff={executionDiff}
       onSelectNode={setSelectedNodeId}
@@ -383,7 +404,9 @@ export function ExecutionDashboard({
       selectedNodeId={selectedNodeId}
       graphData={graphData}
       onToggleGraphFullscreen={handleToggleGraphFullscreen}
-      onResumeNode={resumeNode}
+      onResumeNode={(nodeId) => {
+        void resumeNode(nodeId);
+      }}
       getResumeDisabledReasonForNode={getResumeDisabledReasonForNode}
       savedGraphViewport={savedGraphViewport}
       onGraphViewportChange={handleGraphViewportChange}

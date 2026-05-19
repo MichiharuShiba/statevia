@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { useExecution, getReconnectDelayMs } from "../../../app/features/execution/useExecution";
+import { useExecution } from "../../../app/features/execution/useExecution";
+import { getReconnectDelayMs } from "../../../app/features/execution/workflowStreamLifecycle";
 import type { WorkflowDTO, WorkflowGraphDTO } from "../../../app/lib/types";
 import * as api from "../../../app/lib/api";
 
@@ -31,11 +32,9 @@ function graphDto(nodes: Array<{ nodeId: string; stateName: string; completedAt?
 
 /** v2: apiGet を workflow と graph の2回呼び出し用にモックする。 */
 function mockApiGetForWorkflowAndGraph(workflow: WorkflowDTO, graph: WorkflowGraphDTO) {
-  let callIndex = 0;
   vi.mocked(api.apiGet).mockImplementation(async (path: string) => {
-    if (path.includes("/graph")) return graph as never;
-    callIndex++;
-    return workflow as never;
+    if (path.includes("/graph")) return graph;
+    return workflow;
   });
 }
 
@@ -628,12 +627,72 @@ describe("useExecution", () => {
     expect(result.current.selectedNodeId).toBe("n-2");
   });
 
+  it("publishEvent は有効なイベント名で POST 後にスナップショットを再取得する", async () => {
+    const onPublishSuccess = vi.fn();
+    const { result } = renderHook(() => useExecution("ex-1", { onPublishSuccess }));
+
+    await act(async () => {
+      await result.current.loadExecution();
+    });
+
+    await act(async () => {
+      await result.current.publishEvent("Resume.Wait");
+    });
+
+    expect(api.apiPost).toHaveBeenCalledWith("/workflows/ex-1/events", { name: "Resume.Wait" });
+    expect(onPublishSuccess).toHaveBeenCalled();
+  });
+
+  it("publishEvent は不正なイベント名のとき POST しない", async () => {
+    const { result } = renderHook(() => useExecution("ex-1"));
+
+    await act(async () => {
+      await result.current.loadExecution();
+    });
+    const postCallsBefore = vi.mocked(api.apiPost).mock.calls.length;
+
+    await act(async () => {
+      await result.current.publishEvent("  ");
+    });
+    await act(async () => {
+      await result.current.publishEvent("1invalid");
+    });
+
+    expect(vi.mocked(api.apiPost).mock.calls.length).toBe(postCallsBefore);
+  });
+
+  it("publishEvent が POST 後に refresh 失敗したとき execution をクリアする", async () => {
+    const onError = vi.fn();
+    const { result } = renderHook(() => useExecution("ex-1", { onError }));
+
+    await act(async () => {
+      await result.current.loadExecution();
+    });
+
+    vi.mocked(api.apiPost).mockResolvedValueOnce({
+      executionId: "ex-1",
+      command: "publish",
+      accepted: true,
+      idempotencyKey: "k-1"
+    });
+    vi.mocked(api.apiGet).mockRejectedValue(new Error("refresh failed"));
+
+    await act(async () => {
+      await result.current.publishEvent("Resume.Wait");
+    });
+
+    expect(onError).toHaveBeenCalled();
+    expect(result.current.execution).toBeNull();
+  });
+
   it("アンマウント時は clearReconnectTimer が timer 未設定でも安全に実行される", async () => {
     const { result, unmount } = renderHook(() => useExecution("ex-1"));
 
     await act(async () => {
       result.current.loadExecution();
     });
+    expect(result.current.execution?.displayId).toBe("ex-1");
     unmount();
+    expect(result.current.execution?.displayId).toBe("ex-1");
   });
 });

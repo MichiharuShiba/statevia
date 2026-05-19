@@ -1,3 +1,4 @@
+/** 定義グラフ上のノード定義。 */
 export type GraphNodeDef = {
   /** 定義グラフ上のノード ID（エッジ・レイアウトのキー）。 */
   nodeId: string;
@@ -14,6 +15,7 @@ export type GraphNodeDef = {
 /** エッジの意味（視覚仕様: Next=実線, Resume=破線+イベント名, Cancel=太線+Cancel表示） */
 export type EdgeType = "Next" | "Resume" | "Cancel";
 
+/** 定義グラフ上の辺定義。 */
 export type GraphEdgeDef = {
   from: string;
   to: string;
@@ -28,6 +30,7 @@ export type GraphEdgeDef = {
   cancelCause?: string;
 };
 
+/** 定義グラフのグループ（ノードのまとまり）。 */
 export type GraphGroupDef = {
   groupId: string;
   label: string;
@@ -53,6 +56,7 @@ export type GraphDefinitionMeta = {
   groupPadding?: { x: number; y: number; header: number };
 };
 
+/** 定義グラフ全体（ノード・辺・メタ）。 */
 export type GraphDefinition = {
   graphId: string;
   nodes: GraphNodeDef[];

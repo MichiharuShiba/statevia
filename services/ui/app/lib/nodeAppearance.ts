@@ -1,5 +1,7 @@
+/** ノード形状の種別（React Flow 描画用）。 */
 export type NodeShapeKind = "stadium" | "roundedRect" | "gatewayFork" | "gatewayJoin";
 
+/** ノード種別ごとの見た目属性。 */
 export type NodeAppearance = {
   label: string;
   icon: string;
@@ -10,6 +12,7 @@ function normalizeNodeType(nodeType: string): string {
   return nodeType.trim().toUpperCase();
 }
 
+/** nodeType からノード見た目を返す。 */
 export function getNodeAppearance(nodeType: string): NodeAppearance {
   const normalized = normalizeNodeType(nodeType);
   switch (normalized) {

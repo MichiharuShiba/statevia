@@ -9,6 +9,7 @@ import type { GroupBounds } from "../../lib/grouping";
 import type { LayoutEdgeInput, PositionedNode } from "../../lib/graphLayout";
 import type { GraphDefinition } from "../../graphs/types";
 
+/** GraphData の型定義。 */
 export type GraphData = {
   graphId: string;
   definitionBased: boolean;
@@ -18,6 +19,7 @@ export type GraphData = {
   groups: GroupBounds[];
 };
 
+/** 実行ビューと定義グラフを合成したグラフデータを組み立てる。 */
 export function useGraphData(
   execution: WorkflowView | null,
   graphDefinition: GraphDefinition | null

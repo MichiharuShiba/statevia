@@ -105,6 +105,7 @@ function applyNodeFailed(execution: WorkflowView, event: Extract<ExecutionStream
   };
 }
 
+/** SSE ペイロード文字列を実行イベントにパースする。 */
 export function parseExecutionStreamEvent(payload: string): ExecutionStreamEvent | null {
   if (!payload) return null;
 

@@ -65,6 +65,7 @@ function DiffRow({
   );
 }
 
+/** 2実行の比較モード用バー UI。 */
 export function ExecutionComparisonBar({
   executionLeft,
   executionRight,

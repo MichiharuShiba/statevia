@@ -5,6 +5,7 @@ import type {
   ValidateGraphDocumentResult
 } from "./types";
 
+/** グラフ検証メッセージのオプション。 */
 export type ValidateGraphDocumentMessageOptions = {
   nodesRequired: () => string;
   nodeIdRequired: () => string;
@@ -31,35 +32,36 @@ export type ValidateGraphDocumentMessageOptions = {
   missingTargetNode: (nodeId: string, targetId: string) => string;
 };
 
+function collectConfiguredEdgeTargets(node: DefinitionGraphNode): string[] {
+  return (node.edges ?? [])
+    .map((edge) => edge.to?.trim())
+    .filter((to): to is string => Boolean(to));
+}
+
+function collectForkBranchTargets(node: DefinitionGraphNode): string[] {
+  if (node.type !== "fork" || !Array.isArray(node.branches)) {
+    return [];
+  }
+  return node.branches
+    .map((branchId) => branchId?.trim())
+    .filter((branchId): branchId is string => Boolean(branchId));
+}
+
 function collectEdgeTargets(node: DefinitionGraphNode): string[] {
-  const targets: string[] = [];
-  if (node.next?.trim()) {
-    targets.push(node.next.trim());
-  }
-  if (Array.isArray(node.edges)) {
-    for (const edge of node.edges) {
-      if (edge.to?.trim()) {
-        targets.push(edge.to.trim());
-      }
-    }
-  }
-  if (node.type === "action" && node.error?.trim()) {
-    targets.push(node.error.trim());
-  }
-  if (node.type === "fork" && Array.isArray(node.branches)) {
-    for (const branchId of node.branches) {
-      if (branchId?.trim()) {
-        targets.push(branchId.trim());
-      }
-    }
-  }
-  return targets;
+  const nextTarget = node.next?.trim();
+  const errorTarget = node.type === "action" ? node.error?.trim() : undefined;
+  return [
+    ...(nextTarget ? [nextTarget] : []),
+    ...collectConfiguredEdgeTargets(node),
+    ...(errorTarget ? [errorTarget] : []),
+    ...collectForkBranchTargets(node)
+  ];
 }
 
 /** IN / BETWEEN 用: YAML 配列または JSON 配列文字列を配列として解釈する */
 function asWhenConditionArray(value: unknown): unknown[] | null {
   if (Array.isArray(value)) {
-    return value;
+    return value as unknown[];
   }
   if (typeof value === "string") {
     const t = value.trim();

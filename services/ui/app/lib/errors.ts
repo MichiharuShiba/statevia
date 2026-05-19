@@ -2,6 +2,7 @@ import type { ApiError } from "./types";
 import { DEFAULT_LOCALE, type Locale } from "./i18n";
 import { getUiText } from "./uiTextLocale";
 
+/** トースト通知の表示状態。 */
 export type ToastState = {
   tone: "success" | "error" | "info";
   message: string;
@@ -17,6 +18,7 @@ function isApiError(value: unknown): value is ApiError {
   );
 }
 
+/** 未知の例外をトースト表示用メッセージに変換する。 */
 export function toToastError(error: unknown, locale: Locale = DEFAULT_LOCALE): ToastState {
   const uiText = getUiText(locale);
   const status = isApiError(error) ? error.status : undefined;

@@ -10,8 +10,10 @@ import { useEffect, useRef } from "react";
 const FONT_STACK =
   "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace";
 
+/** ActionInputSyntaxHighlight の型定義。 */
 export type ActionInputSyntaxHighlight = "auto" | "jsonOnly";
 
+/** アクション input 用 CodeMirror エディタの props。 */
 export type ActionInputCodeEditorProps = {
   /** 編集テキスト（パス文字列または JSON オブジェクト文字列） */
   value: string;

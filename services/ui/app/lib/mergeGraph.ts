@@ -1,6 +1,7 @@
 import type { GraphDefinition, GraphEdgeDef, GraphGroupDef, GraphDefinitionMeta } from "../graphs/types";
 import type { ExecutionNodeDTO, NodeStatus, WorkflowView } from "./types";
 
+/** 実行＋定義をマージしたグラフノード。 */
 export type MergedGraphNode = {
   nodeId: string;
   /** ExecutionGraph のノード ID（差分ハイライト・ランタイム行と対応）。定義のみの IDLE 行では `nodeId` と同一の合成値。 */
@@ -18,6 +19,7 @@ export type MergedGraphNode = {
   canceledByExecution: boolean;
 };
 
+/** 実行＋定義をマージしたグラフ辺。 */
 export type MergedGraphEdge = {
   id: string;
   from: string;
@@ -30,6 +32,7 @@ export type MergedGraphEdge = {
   traversed?: boolean;
 };
 
+/** マージ済みグラフ全体。 */
 export type MergedGraph = {
   graphId: string;
   nodes: MergedGraphNode[];
@@ -67,6 +70,7 @@ function toEdge(edge: GraphEdgeDef, index: number): MergedGraphEdge {
   };
 }
 
+/** 実行グラフと定義グラフをマージする。 */
 export function mergeGraph(execution: WorkflowView, definition: GraphDefinition | null): MergedGraph {
   const byRuntimeId = new Map<string, ExecutionNodeDTO>();
   const byStateNameKey = new Map<string, ExecutionNodeDTO>();

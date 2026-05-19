@@ -1,30 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { apiGet, apiPost, getApiConfig } from "../../lib/api";
-import { applyExecutionStreamEvent, parseExecutionStreamEvent } from "../../lib/executionStream";
+import { apiGet, apiPost } from "../../lib/api";
+import { startWorkflowStreamLifecycle } from "./workflowStreamLifecycle";
 import { isWithinMaxLength, matchesPattern } from "../../lib/validation/primitives";
 import { EVENT_NAME_MAX_LENGTH, EVENT_NAME_PATTERN } from "../../lib/validation/formRules";
 import { buildWorkflowView } from "../../lib/workflowView";
 import type { CommandAccepted, WorkflowDTO, WorkflowGraphDTO, WorkflowView } from "../../lib/types";
 
 const TERMINAL_STATUSES = new Set<string>(["Completed", "Cancelled", "Failed"]);
-const STREAM_RECONNECT_BASE_MS = 1000;
-const STREAM_RECONNECT_MAX_MS = 30000;
 /** SSE 受信後に GET で Read Model を確定するまでの待ち（ms）。 */
 export const DEFAULT_STREAM_REFRESH_DEBOUNCE_MS = 500;
 /** SSE オフ時のポーリング間隔（ms）。 */
 const POLL_INTERVAL_MS = 2500;
 
-/** 指数バックオフの遅延（ms）を計算する。テスト・再利用用に export。 */
-export function getReconnectDelayMs(attempt: number, baseMs: number, maxMs: number): number {
-  return Math.min(baseMs * 2 ** attempt, maxMs);
-}
-
 function isTerminalExecution(status: WorkflowView["status"]): boolean {
   return TERMINAL_STATUSES.has(status);
 }
 
+/** useExecution のコールバックオプション。 */
 export type UseExecutionOptions = {
   onError?: (error: unknown) => void;
   onCancelSuccess?: () => void;
@@ -35,6 +29,7 @@ export type UseExecutionOptions = {
   streamRefreshDebounceMs?: number;
 };
 
+/** 単一実行の読み込み・更新・SSE 再接続を管理するフック。 */
 export function useExecution(workflowDisplayId: string, options: UseExecutionOptions = {}) {
   const {
     onError,
@@ -87,105 +82,13 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
     if (!execution?.displayId) return;
     if (terminal) return;
 
-    const currentDisplayId = execution.displayId;
-    let disposed = false;
-    let reconnectAttempt = 0;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let getDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-    let hasConnectedOnce = false;
-
-    const clearReconnectTimer = () => {
-      if (reconnectTimer !== null) {
-        globalThis.clearTimeout(reconnectTimer);
-        reconnectTimer = null;
-      }
-    };
-
-    const clearGetDebounce = () => {
-      if (getDebounceTimer !== null) {
-        globalThis.clearTimeout(getDebounceTimer);
-        getDebounceTimer = null;
-      }
-    };
-
-    const scheduleDebouncedGet = () => {
-      clearGetDebounce();
-      getDebounceTimer = globalThis.setTimeout(() => {
-        getDebounceTimer = null;
-        if (!disposed) void refreshSnapshotRef.current(currentDisplayId).catch(() => {});
-      }, streamRefreshDebounceMs);
-    };
-
-    const scheduleReconnect = () => {
-      if (disposed) return;
-      clearReconnectTimer();
-      const delay = getReconnectDelayMs(reconnectAttempt, STREAM_RECONNECT_BASE_MS, STREAM_RECONNECT_MAX_MS);
-      reconnectAttempt += 1;
-      reconnectTimer = globalThis.setTimeout(() => {
-        if (!disposed) connectStream();
-      }, delay);
-    };
-
-    const applyRawEvent = (raw: string) => {
-      const parsed = parseExecutionStreamEvent(raw);
-      if (!parsed) return;
-      setExecution((current) => (current ? applyExecutionStreamEvent(current, parsed) : current));
-      scheduleDebouncedGet();
-    };
-
-    const noop = () => {};
-    const onStreamOpen = () => {
-      reconnectAttempt = 0;
-      if (!hasConnectedOnce) {
-        hasConnectedOnce = true;
-        return;
-      }
-      void refreshSnapshotRef.current(currentDisplayId).catch(noop);
-    };
-
-    const connectStream = () => {
-      if (disposed) return;
-      // 念のため既存接続をクローズしてから再接続する。
-      activeStreamRef.current?.close();
-      activeStreamRef.current = null;
-
-      const { tenantId } = getApiConfig();
-      const streamPath = `/api/core/workflows/${encodeURIComponent(currentDisplayId)}/stream`;
-      const streamUrl = tenantId
-        ? `${streamPath}?${new URLSearchParams({ tenantId }).toString()}`
-        : streamPath;
-      const next = new EventSource(streamUrl);
-      activeStreamRef.current = next;
-
-      next.onopen = onStreamOpen;
-
-      next.onmessage = (event: MessageEvent<string>) => applyRawEvent(event.data);
-      next.addEventListener("GraphUpdated", (e) => applyRawEvent((e as MessageEvent<string>).data));
-      next.addEventListener("ExecutionStatusChanged", (e) => applyRawEvent((e as MessageEvent<string>).data));
-      next.addEventListener("NodeCancelled", (e) => applyRawEvent((e as MessageEvent<string>).data));
-      next.addEventListener("NodeFailed", (e) => applyRawEvent((e as MessageEvent<string>).data));
-
-      next.onerror = () => {
-        if (disposed) return;
-        next.close();
-        if (activeStreamRef.current === next) {
-          activeStreamRef.current = null;
-        }
-        scheduleReconnect();
-      };
-    };
-
-    connectStream();
-
-    return () => {
-      disposed = true;
-      clearReconnectTimer();
-      clearGetDebounce();
-      if (activeStreamRef.current) {
-        activeStreamRef.current.close();
-        activeStreamRef.current = null;
-      }
-    };
+    return startWorkflowStreamLifecycle({
+      displayId: execution.displayId,
+      streamRefreshDebounceMs,
+      refreshSnapshot: (displayId) => refreshSnapshotRef.current(displayId),
+      setExecution,
+      activeStreamRef
+    });
   }, [execution?.displayId, streamEnabled, streamRefreshDebounceMs, terminal]);
 
   useEffect(() => {

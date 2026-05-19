@@ -30,6 +30,7 @@ type ExecutionHeaderProps = {
   showViewToggle?: boolean;
 };
 
+/** 実行画面のヘッダ（ID・操作ボタン）。 */
 export function ExecutionHeader({
   executionId,
   onExecutionIdChange,

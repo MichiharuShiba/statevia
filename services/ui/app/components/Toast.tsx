@@ -18,6 +18,7 @@ function getToneClass(tone: ToastState["tone"]): string {
   return TOAST_TONE_CLASS_MAP[tone];
 }
 
+/** 画面上部に一時メッセージを表示するトースト。 */
 export function Toast({ toast, onClose }: Readonly<ToastProps>) {
   const uiText = useUiText();
   if (!toast) return null;
@@ -27,12 +28,11 @@ export function Toast({ toast, onClose }: Readonly<ToastProps>) {
   return (
     <div
       className={`rounded-2xl border px-4 py-3 text-sm ${toneClass}`}
-      role="status"
-      aria-live="polite"
-      aria-label={toast.message}
     >
       <div className="flex items-start justify-between gap-4">
-        <p>{toast.message}</p>
+        <output className="flex-1" aria-live="polite" aria-atomic="true">
+          {toast.message}
+        </output>
         <button className="text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]" onClick={onClose} aria-label={uiText.actions.closeToast}>
           ✕
         </button>

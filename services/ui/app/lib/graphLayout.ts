@@ -1,12 +1,14 @@
 import dagre from "dagre";
 import type { GraphDefinitionMeta } from "../graphs/types";
 
+/** レイアウト計算へのノード入力。 */
 export type LayoutNodeInput = {
   nodeId: string;
   nodeType: string;
   branch?: string;
 };
 
+/** レイアウト計算への辺入力。 */
 export type LayoutEdgeInput = {
   id: string;
   from: string;
@@ -19,6 +21,7 @@ export type LayoutEdgeInput = {
   traversed?: boolean;
 };
 
+/** 座標付きノード。 */
 export type PositionedNode<T extends LayoutNodeInput = LayoutNodeInput> = T & {
   x: number;
   y: number;
@@ -57,6 +60,7 @@ function getFallbackSortWeight(nodeType: string): number {
   return 35;
 }
 
+/** 辺未定義時にノード順からフォールバック辺を生成する。 */
 export function buildFallbackEdges(nodes: LayoutNodeInput[]): LayoutEdgeInput[] {
   const sorted = [...nodes].sort((a, b) => getFallbackSortWeight(a.nodeType) - getFallbackSortWeight(b.nodeType));
   const edges: LayoutEdgeInput[] = [];
@@ -116,6 +120,7 @@ function applyBranchOffsets<T extends LayoutNodeInput>(
   });
 }
 
+/** dagre でノード座標を計算する。 */
 export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: LayoutEdgeInput[], hints?: GraphDefinitionMeta): {
   nodes: Array<PositionedNode<T>>;
   edges: LayoutEdgeInput[];

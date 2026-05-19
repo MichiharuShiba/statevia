@@ -6,8 +6,10 @@ function isFailureOrCancel(status: NodeStatus): boolean {
   return FAILURE_OR_CANCEL.has(status);
 }
 
+/** 実行比較におけるノード差分の種別。 */
 export type NodeDiffKind = "status_diff" | "only_in_left" | "only_in_right";
 
+/** 実行比較の1ノード分の差分。 */
 export type NodeDiffItem = {
   executionNodeId: string;
   kind: NodeDiffKind;
@@ -17,6 +19,7 @@ export type NodeDiffItem = {
   isFailureOrCancel: boolean;
 };
 
+/** 2つの実行ビューの差分結果。 */
 export type ExecutionDiffResult = {
   /** ノード単位の差分一覧（Failed/Canceled を先頭にした並び） */
   nodeDiffs: NodeDiffItem[];

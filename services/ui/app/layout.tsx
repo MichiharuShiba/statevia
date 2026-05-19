@@ -11,6 +11,7 @@ import { DEFAULT_THEME, resolveTheme } from "./lib/theme";
 import { UiTextProvider } from "./lib/uiTextContext";
 import { getUiText } from "./lib/uiTextLocale";
 
+/** Next.js のルートメタデータ（ファビコン等）。 */
 export const metadata: Metadata = {
   icons: {
     icon: "/brand/icon-mark.png",
@@ -18,6 +19,9 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * アプリ全体のルートレイアウト。テーマ・ロケール・共通ヘッダを子ページへ提供する。
+ */
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {

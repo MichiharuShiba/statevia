@@ -27,7 +27,7 @@ function toErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   if (typeof error === "object" && error !== null && "message" in error) {
-    return String((error as { message: unknown }).message);
+    return String((error).message);
   }
   return fallbackMessage;
 }
@@ -45,6 +45,7 @@ type ExecutionTimelineProps = {
   onLoadMore?: () => void;
 };
 
+/** 実行イベントのタイムライン一覧。 */
 export function ExecutionTimeline({
   events,
   loading,

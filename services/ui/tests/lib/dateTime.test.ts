@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { formatExecutionDuration, formatExecutionInstant } from "../../app/lib/dateTime";
+import { formatDateTimeLocalized, formatExecutionDuration, formatExecutionInstant } from "../../app/lib/dateTime";
 
 describe("dateTime", () => {
+  it("formatDateTimeLocalized は null/undefined で fallback、不正 ISO はそのまま返す", () => {
+    expect(formatDateTimeLocalized(null, "ja")).toBe("—");
+    expect(formatDateTimeLocalized(undefined, "ja", undefined, "N/A")).toBe("N/A");
+    expect(formatDateTimeLocalized("not-a-date", "ja")).toBe("not-a-date");
+    expect(formatDateTimeLocalized("2026-01-15T10:00:00.000Z", "ja").length).toBeGreaterThan(0);
+  });
+
   it("formatExecutionInstant はロケールに応じて日時を返す", () => {
     const s = formatExecutionInstant("2026-01-15T10:00:00.000Z", "ja");
     expect(s.length).toBeGreaterThan(0);

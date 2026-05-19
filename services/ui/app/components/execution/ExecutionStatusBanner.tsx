@@ -7,6 +7,7 @@ type ExecutionStatusBannerProps = {
   terminal?: boolean;
 };
 
+/** 実行状態を要約表示するバナー。 */
 export function ExecutionStatusBanner({ cancelRequested, terminal }: Readonly<ExecutionStatusBannerProps>) {
   const uiText = useUiText();
   if (cancelRequested) {

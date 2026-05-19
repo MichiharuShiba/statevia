@@ -290,6 +290,7 @@ export function YamlCodeEditor({
       view.destroy();
       viewRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 初回マウントのみ EditorView を生成。value 同期は次の effect。
   }, [extensions]);
 
   /**

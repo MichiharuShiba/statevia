@@ -1,5 +1,6 @@
 import type { GraphDefinition } from "../types";
 
+/** サンプル用の hello 定義グラフ。 */
 export const helloGraphDefinition: GraphDefinition = {
   graphId: "hello",
   nodes: [
