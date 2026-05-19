@@ -44,7 +44,7 @@
 ### 3.3 UI（`services/ui/`）
 
 - Core-API へは Next.js の route handler 経由でプロキシ（CORS 回避）。環境変数は `AGENTS.md` の表を参照。
-- 型チェック: `tsc --noEmit`（プロジェクト方針）。テスト: `npm run test:run`（Vitest）。
+- 静的解析: `npm run lint`（ESLint 9 strict）。型チェック: `npm run typecheck`（`tsc --noEmit`）。テスト: `npm run test:run`（Vitest）。Sonar は **§5.2**。
 
 ---
 
@@ -76,8 +76,9 @@
   npx markdownlint-cli2 ".spec-workflow/**/*.md"
   ```
 
-- **UI（TypeScript）**: **`tsc --noEmit`** と **`npm run test:run`** を品質の主なチェックとする（ESLint は未設定。既知の軽微な警告については `AGENTS.md` の Lint 節を参照）。
+- **UI（TypeScript）**: **`npm run lint`**（error 厳格）、**`npm run typecheck`**、**`npm run test:run`** を PR 前の必須チェックとする。設定は `services/ui/eslint.config.js`（`typescript-eslint` strict、`react-hooks`、`jsx-a11y`、`jsdoc`）。
 - **SonarQube（Core-API）**: プロジェクトキー **`StateviaCoreAPI`**。新規コードの Quality Gate（`new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.1**。
+- **SonarQube（Service UI）**: プロジェクトキー **`StateviaServiceUI`**。全体・新規コードの Quality Gate（`coverage` / `new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.2**。
 
 ---
 
@@ -87,9 +88,10 @@
 |------|----------------|
 | Engine | `cd engine && dotnet test statevia-engine.sln` |
 | Core-API | `cd api && dotnet test statevia-api.sln` |
-| UI | `cd services/ui && npm run test:run` |
+| UI | `cd services/ui && npm run lint && npm run typecheck && npm run test:run` |
+| UI（Sonar 前） | `cd services/ui && npm run test:coverage` |
 
-変更した領域に対応するテストを追加または更新し、ローカルで green を確認してから共有する。
+変更した領域に対応するテストを追加または更新し、ローカルで green を確認してから共有する。UI を Sonar に送る前はカバレッジ付きテストを実行する（**§5.2**）。
 
 ### 5.1 Core-API — カバレッジと Sonar（手動）
 
@@ -132,6 +134,52 @@ dotnet build-server shutdown
 - `api/sonar-project.properties` は **Scanner for .NET では使わない**（設定は `begin` の `/d:` で渡す）。
 - スキャン直後は Sonar UI の数値が遅れて反映されることがある。Quality Gate 判定は Sonar のプロジェクト画面を正とする。
 
+### 5.2 Service UI — カバレッジと Sonar（手動）
+
+**前提**
+
+- ローカル SonarQube が起動していること（既定 URL: `http://localhost:9000`。`sonar/docker-compose.yaml` 参照）
+- 環境変数 **`SONAR_TOKEN`** を設定していること
+- Node.js / npm が PATH にあり、`services/ui` で `npm install` 済みであること
+- グローバルまたは `npx` で **`sonar-scanner`** が実行できること
+
+**カバレッジ（Vitest のみ確認するとき）**
+
+```powershell
+cd services/ui
+npm run test:coverage
+```
+
+`coverage/lcov.info` が生成される。除外方針は `services/ui/sonar-project.properties` の `sonar.coverage.exclusions` と `vitest.config.ts` の `coverage.exclude` を揃える（正本の説明: `.spec-workflow/specs/ui-quality-refactor/sonar-scan-results.md`）。
+
+**Sonar スキャン（正本スクリプト）**
+
+リポジトリルートから実行する（カレントディレクトリに依存しない）。
+
+```powershell
+# トークン設定後
+./sonar/sonar-scanner-ui.ps1
+```
+
+スクリプトは次を順に実行する。
+
+1. `npm run test:coverage`（`services/ui/coverage/lcov.info` を生成）
+2. `npx sonar-scanner`（キー **`StateviaServiceUI`**、`services/ui/sonar-project.properties` を読み込み）
+
+**手動（`services/ui` をカレントに）**
+
+```powershell
+cd services/ui
+npm run test:coverage
+npx --yes sonar-scanner "-Dsonar.token=$($env:SONAR_TOKEN)"
+```
+
+**注意**
+
+- HTTP 契約・プロキシ挙動は本リファクタの対象外（`docs/core-api-interface.md` 等は変更しない）。
+- スキャン直後は Sonar UI の数値が遅れて反映されることがある。Quality Gate 判定は Sonar のプロジェクト画面を正とする。
+- 詳細は `sonar/README.md` も参照。
+
 ---
 
 ## 6. ブランチ命名
@@ -168,6 +216,7 @@ dotnet build-server shutdown
 
 | 日付 | 内容 |
 |------|------|
+| 2026-05-19 | §4.3 / §5 に UI の ESLint・`StateviaServiceUI` Sonar 手順（§5.2・`sonar-scanner-ui.ps1`）を追記 |
 | 2026-05-17 | §4.3 / §5.1 に Core-API 厳格ビルド・coverlet runsettings・`sonar-scanner-api.ps1` 手順を追記 |
 | 2026-04-05 | §4 再編（4.1 C#・4.2 TypeScript・4.3 静的チェック）、`typescript-standards.mdc` 追加、正本表に TypeScript 細則を追記 |
 | 2026-03-28 | 初版・ブランチ命名を追加 |
