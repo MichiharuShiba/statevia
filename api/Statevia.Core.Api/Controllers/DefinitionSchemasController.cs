@@ -27,6 +27,7 @@ public class DefinitionSchemasController : ControllerBase
     /// UI の補完/Lint 源泉として利用する。
     /// </summary>
     [HttpGet("nodes")]
+    [ProducesResponseType(typeof(DefinitionNodesSchemaResponse), StatusCodes.Status200OK)]
     public ActionResult<DefinitionNodesSchemaResponse> GetNodesSchema()
     {
         return Ok(new DefinitionNodesSchemaResponse

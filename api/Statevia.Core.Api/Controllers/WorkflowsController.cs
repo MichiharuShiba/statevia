@@ -41,6 +41,7 @@ public class WorkflowsController : ControllerBase
 
     /// <summary>POST /v1/workflows — definitionId で定義を取得し、Engine.Start を呼ぶ。display_id と resource_id を返す（U4）。</summary>
     [HttpPost]
+    [ProducesResponseType(typeof(WorkflowResponse), StatusCodes.Status201Created)]
     public async Task<ActionResult<WorkflowResponse>> Create(
         [FromBody] StartWorkflowRequest request,
         [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
@@ -65,6 +66,7 @@ public class WorkflowsController : ControllerBase
     /// <c>definitionId</c> は定義の display / UUID。 <c>name</c> は workflow の <c>displayId</c> 部分一致、または workflow の UUID 完全一致で絞り込み。
     /// </summary>
     [HttpGet]
+    [ProducesResponseType(typeof(PagedResult<WorkflowResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> List(
         [FromQuery] WorkflowListQuery query,
         [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
@@ -87,6 +89,7 @@ public class WorkflowsController : ControllerBase
 
     /// <summary>GET /v1/workflows/{id} — 一覧と同一の <see cref="WorkflowResponse"/>（UI WorkflowDTO 向け）。X-Tenant-Id でスコープ。</summary>
     [HttpGet("{id}")]
+    [ProducesResponseType(typeof(WorkflowResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<WorkflowResponse>> Get(
         string id,
         [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
@@ -99,6 +102,8 @@ public class WorkflowsController : ControllerBase
 
     /// <summary>GET /v1/workflows/{id}/graph — execution_graph_snapshots から取得。X-Tenant-Id でスコープ。</summary>
     [HttpGet("{id}/graph")]
+    [Produces("application/json")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<string>> GetGraph(
         string id,
         [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
@@ -111,6 +116,7 @@ public class WorkflowsController : ControllerBase
 
     /// <summary>GET /v1/workflows/{id}/state?atSeq= — UI 用 WorkflowView（リプレイは現状スナップショット近似）。</summary>
     [HttpGet("{id}/state")]
+    [ProducesResponseType(typeof(WorkflowViewDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<WorkflowViewDto>> GetState(
         string id,
         [FromQuery] long atSeq,
@@ -124,6 +130,7 @@ public class WorkflowsController : ControllerBase
 
     /// <summary>GET /v1/workflows/{id}/events — event_store 由来のタイムライン（limit / afterSeq）。</summary>
     [HttpGet("{id}/events")]
+    [ProducesResponseType(typeof(ExecutionEventsResponseDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ExecutionEventsResponseDto>> GetEvents(
         string id,
         [FromQuery] long afterSeq = 0,
@@ -138,6 +145,8 @@ public class WorkflowsController : ControllerBase
 
     /// <summary>GET /v1/workflows/{id}/stream — SSE（グラフ JSON の変化を GraphUpdated として送出）。</summary>
     [HttpGet("{id}/stream")]
+    [Produces("text/event-stream")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task GetStream(
         string id,
         [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
@@ -149,6 +158,7 @@ public class WorkflowsController : ControllerBase
 
     /// <summary>POST /v1/workflows/{id}/cancel — Engine.CancelAsync を呼び、projection を更新。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。</summary>
     [HttpPost("{id}/cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult> Cancel(
         string id,
         [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
@@ -169,6 +179,7 @@ public class WorkflowsController : ControllerBase
 
     /// <summary>POST /v1/workflows/{id}/nodes/{nodeId}/resume — body: { "resumeKey": "..." }。PublishEvent と同様。X-Idempotency-Key で冪等。</summary>
     [HttpPost("{id}/nodes/{nodeId}/resume")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     public async Task<ActionResult> ResumeNode(
         string id,
@@ -193,6 +204,7 @@ public class WorkflowsController : ControllerBase
 
     /// <summary>POST /v1/workflows/{id}/events — body: { "name": "Approve" }。Engine.PublishEvent(workflowId, eventName)。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。</summary>
     [HttpPost("{id}/events")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult> PublishEvent(
         string id,
         [FromBody] PublishEventRequest body,

@@ -1,0 +1,2248 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Statevia Core API",
+    "description": "Core-API HTTP 契約。運用・SSE・冪等・IO-14 等の叙述は docs/core-api-interface.md を参照。",
+    "version": "v1"
+  },
+  "paths": {
+    "/v1/definitions": {
+      "post": {
+        "tags": [
+          "Definitions"
+        ],
+        "summary": "POST /v1/definitions — 定義を登録。name + yaml を受け取り、検証・コンパイルして保存。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDefinitionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDefinitionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDefinitionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Definitions"
+        ],
+        "summary": "GET /v1/definitions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&name=&sortBy=&sortOrder=` で Statevia.Core.Api.Contracts.PagedResult`1（name は部分一致）。",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "ページサイズ（必須。1〜500）。",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "先頭からのオフセット（0 以上）。",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "定義名の部分一致。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "description": "ソート列。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "description": "ソート順。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponsePagedResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponsePagedResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponsePagedResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/definitions/{id}": {
+      "put": {
+        "tags": [
+          "Definitions"
+        ],
+        "summary": "PUT /v1/definitions/{id} — 定義を更新。name + yaml を受け取り、検証・コンパイルして保存。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDefinitionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDefinitionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDefinitionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Definitions"
+        ],
+        "summary": "GET /v1/definitions/{id} — 表示用 ID または UUID で取得（U4）。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/definitions/schema/nodes": {
+      "get": {
+        "tags": [
+          "DefinitionSchemas"
+        ],
+        "summary": "GET /v1/definitions/schema/nodes — nodes 形式の入力スキーマを返す。\r\nUI の補完/Lint 源泉として利用する。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionNodesSchemaResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionNodesSchemaResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionNodesSchemaResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/graphs/{graphId}": {
+      "get": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "GET /v1/graphs/{graphId} — 契約 4.1 Graph Definition（nodes / edges）を返す。graphId は definition の display_id。X-Tenant-Id でスコープ。",
+        "parameters": [
+          {
+            "name": "graphId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "実行グラフ JSON（engine 契約）。詳細は docs/core-engine-execution-graph-spec.md を参照。"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "GET /v1/health — サービス死活。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows": {
+      "post": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "POST /v1/workflows — definitionId で定義を取得し、Engine.Start を呼ぶ。display_id と resource_id を返す（U4）。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          },
+          {
+            "name": "X-Idempotency-Key",
+            "in": "header",
+            "description": "冪等キー（同一キー・同一コマンドの重複は 409）。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartWorkflowRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartWorkflowRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartWorkflowRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "GET /v1/workflows — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&status=&definitionId=&name=&sortBy=&sortOrder=` で Statevia.Core.Api.Contracts.PagedResult`1（O1/O2）。\r\n`definitionId` は定義の display / UUID。 `name` は workflow の `displayId` 部分一致、または workflow の UUID 完全一致で絞り込み。",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "ページサイズ（必須。1〜500）。",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "先頭からのオフセット（0 以上）。",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "ステータスフィルタ。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "definitionId",
+            "in": "query",
+            "description": "定義 ID（display または UUID）。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "表示 ID 部分一致または workflow UUID 完全一致。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "description": "ソート列。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "description": "ソート順。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponsePagedResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponsePagedResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponsePagedResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows/{id}": {
+      "get": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "GET /v1/workflows/{id} — 一覧と同一の Statevia.Core.Api.Controllers.WorkflowResponse（UI WorkflowDTO 向け）。X-Tenant-Id でスコープ。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows/{id}/graph": {
+      "get": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "GET /v1/workflows/{id}/graph — execution_graph_snapshots から取得。X-Tenant-Id でスコープ。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "実行グラフ JSON（engine 契約）。詳細は docs/core-engine-execution-graph-spec.md を参照。"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows/{id}/state": {
+      "get": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "GET /v1/workflows/{id}/state?atSeq= — UI 用 WorkflowView（リプレイは現状スナップショット近似）。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "atSeq",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowViewDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowViewDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowViewDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows/{id}/events": {
+      "get": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "GET /v1/workflows/{id}/events — event_store 由来のタイムライン（limit / afterSeq）。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "afterSeq",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 500
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionEventsResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionEventsResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionEventsResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "POST /v1/workflows/{id}/events — body: { \"name\": \"Approve\" }。Engine.PublishEvent(workflowId, eventName)。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          },
+          {
+            "name": "X-Idempotency-Key",
+            "in": "header",
+            "description": "冪等キー（同一キー・同一コマンドの重複は 409）。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishEventRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishEventRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishEventRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows/{id}/stream": {
+      "get": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "GET /v1/workflows/{id}/stream — SSE（グラフ JSON の変化を GraphUpdated として送出）。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "POST /v1/workflows/{id}/cancel — Engine.CancelAsync を呼び、projection を更新。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          },
+          {
+            "name": "X-Idempotency-Key",
+            "in": "header",
+            "description": "冪等キー（同一キー・同一コマンドの重複は 409）。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows/{id}/nodes/{nodeId}/resume": {
+      "post": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "POST /v1/workflows/{id}/nodes/{nodeId}/resume — body: { \"resumeKey\": \"...\" }。PublishEvent と同様。X-Idempotency-Key で冪等。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          },
+          {
+            "name": "X-Idempotency-Key",
+            "in": "header",
+            "description": "冪等キー（同一キー・同一コマンドの重複は 409）。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeNodeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeNodeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeNodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "機械可読なエラーコード。",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "description": "人が読む説明メッセージ。",
+            "nullable": true
+          },
+          "details": {
+            "description": "追加の構造化詳細（任意）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "契約の error オブジェクト。"
+      },
+      "CreateDefinitionRequest": {
+        "required": [
+          "name",
+          "yaml"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "type": "string",
+            "description": "定義名。"
+          },
+          "yaml": {
+            "minLength": 1,
+            "type": "string",
+            "description": "定義ソース YAML。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "POST /v1/definitions のリクエスト本文。"
+      },
+      "DefinitionNodesSchemaResponse": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "description": "スキーマ文書のバージョン文字列。",
+            "nullable": true
+          },
+          "nodesVersion": {
+            "type": "integer",
+            "description": "nodes スキーマの整数バージョン。",
+            "format": "int32"
+          },
+          "schema": {
+            "description": "スキーマ JSON オブジェクト。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "GET …/schema/nodes のレスポンス本文。"
+      },
+      "DefinitionResponse": {
+        "type": "object",
+        "properties": {
+          "displayId": {
+            "type": "string",
+            "description": "表示用定義 ID。",
+            "nullable": true
+          },
+          "resourceId": {
+            "type": "string",
+            "description": "定義のリソース UUID。",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "定義名。",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "作成日時（UTC）。",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "更新日時（UTC）。",
+            "format": "date-time"
+          },
+          "yaml": {
+            "type": "string",
+            "description": "ソース YAML（取得時のみ。任意）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "定義の JSON 応答形（U4）。"
+      },
+      "DefinitionResponsePagedResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DefinitionResponse"
+            },
+            "description": "ページ内の要素。",
+            "nullable": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "description": "条件に一致する総件数。",
+            "format": "int32"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "先頭からのオフセット。",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "ページサイズ。",
+            "format": "int32"
+          },
+          "hasMore": {
+            "type": "boolean",
+            "description": "次ページが存在するか。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "一覧 API のページング（O1）。"
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ApiError"
+          }
+        },
+        "additionalProperties": false,
+        "description": "データ連携契約に基づく HTTP エラーレスポンス。{ \"error\": { \"code\", \"message\", \"details\" } }。"
+      },
+      "ExecutionEventsResponseDto": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimelineEventDto"
+            },
+            "description": "タイムラインイベントの列。",
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean",
+            "description": "さらに後続イベントがあるか。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "GET …/events のレスポンス（UI `ExecutionEventsResponse`）。"
+      },
+      "GraphDefinitionResponse": {
+        "type": "object",
+        "properties": {
+          "graphId": {
+            "type": "string",
+            "description": "グラフ ID（定義の display 等）。",
+            "nullable": true
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeDefinition"
+            },
+            "description": "ノード定義の列。",
+            "nullable": true
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphEdgeDefinition"
+            },
+            "description": "辺定義の列。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "契約 4.1 Graph Definition（UI 描画用の構造）。"
+      },
+      "GraphEdgeDefinition": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "始点ノード ID。",
+            "nullable": true
+          },
+          "to": {
+            "type": "string",
+            "description": "終点ノード ID。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "グラフ上の 1 辺。"
+      },
+      "GraphNodeDefinition": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string",
+            "description": "ノード ID（キャンバス上のキー）。",
+            "nullable": true
+          },
+          "nodeType": {
+            "type": "string",
+            "description": "ノード種別。",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "description": "表示ラベル。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "グラフ上の 1 ノード。"
+      },
+      "GraphPatchNodeDto": {
+        "type": "object",
+        "properties": {
+          "executionNodeId": {
+            "type": "string",
+            "description": "実行ノード ID。",
+            "nullable": true
+          },
+          "stateName": {
+            "type": "string",
+            "description": "状態名（任意）。",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "ノード状態（任意）。",
+            "nullable": true
+          },
+          "attempt": {
+            "type": "integer",
+            "description": "試行番号（任意）。",
+            "format": "int32",
+            "nullable": true
+          },
+          "workerId": {
+            "type": "string",
+            "description": "ワーカー ID（任意）。",
+            "nullable": true
+          },
+          "waitKey": {
+            "type": "string",
+            "description": "Wait キー（任意）。",
+            "nullable": true
+          },
+          "canceledByExecution": {
+            "type": "boolean",
+            "description": "実行キャンセルフラグ（任意）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "グラフ差分の 1 ノード分。"
+      },
+      "GraphUpdatedPatchDto": {
+        "type": "object",
+        "properties": {
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphPatchNodeDto"
+            },
+            "description": "更新されたノードの列（任意）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "GraphUpdated イベント内の patch 本体。"
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "死活状態（例: ok）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "GET /v1/health の応答本文。"
+      },
+      "PublishEventRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "type": "string",
+            "description": "発行するイベント名。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "POST …/events のリクエスト本文。"
+      },
+      "ResumeNodeRequest": {
+        "type": "object",
+        "properties": {
+          "resumeKey": {
+            "type": "string",
+            "description": "Wait を再開するイベント名（Engine.PublishEvent に渡す）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "POST …/nodes/…/resume のリクエスト本文。"
+      },
+      "StartWorkflowRequest": {
+        "required": [
+          "definitionId"
+        ],
+        "type": "object",
+        "properties": {
+          "definitionId": {
+            "minLength": 1,
+            "type": "string",
+            "description": "開始に用いる定義 ID（display または UUID）。"
+          },
+          "input": {
+            "type": "object",
+            "description": "ワークフロー入力（任意）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "POST /v1/workflows のリクエスト本文。"
+      },
+      "TimelineEventDto": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "description": "event_store 上のシーケンス番号。",
+            "format": "int64"
+          },
+          "type": {
+            "type": "string",
+            "description": "イベント種別。",
+            "nullable": true
+          },
+          "executionId": {
+            "type": "string",
+            "description": "実行（ワークフロー表示）ID。",
+            "nullable": true
+          },
+          "to": {
+            "type": "string",
+            "description": "遷移先ノード ID（任意）。",
+            "nullable": true
+          },
+          "from": {
+            "type": "string",
+            "description": "遷移元ノード ID（任意）。",
+            "nullable": true
+          },
+          "patch": {
+            "$ref": "#/components/schemas/GraphUpdatedPatchDto"
+          },
+          "at": {
+            "type": "string",
+            "description": "イベント発生時刻の ISO 文字列（任意）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "タイムライン／SSE 用のイベント（UI の `ExecutionStreamEvent` + seq）。"
+      },
+      "UpdateDefinitionRequest": {
+        "required": [
+          "name",
+          "yaml"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "type": "string",
+            "description": "定義名。"
+          },
+          "yaml": {
+            "minLength": 1,
+            "type": "string",
+            "description": "定義ソース YAML。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "PUT /v1/definitions/{id} のリクエスト本文。"
+      },
+      "WorkflowResponse": {
+        "type": "object",
+        "properties": {
+          "displayId": {
+            "type": "string",
+            "description": "表示用ワークフロー ID。",
+            "nullable": true
+          },
+          "resourceId": {
+            "type": "string",
+            "description": "ワークフローのリソース UUID。",
+            "format": "uuid"
+          },
+          "graphId": {
+            "type": "string",
+            "description": "定義グラフ ID。",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "状態文字列。",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "description": "開始日時（UTC）。",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "最終更新日時（UTC）。",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancelRequested": {
+            "type": "boolean",
+            "description": "キャンセル要求フラグ。"
+          },
+          "restartLost": {
+            "type": "boolean",
+            "description": "再起動喪失フラグ。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "ワークフロー一覧・単票の JSON 応答形（U4）。"
+      },
+      "WorkflowResponsePagedResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowResponse"
+            },
+            "description": "ページ内の要素。",
+            "nullable": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "description": "条件に一致する総件数。",
+            "format": "int32"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "先頭からのオフセット。",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "ページサイズ。",
+            "format": "int32"
+          },
+          "hasMore": {
+            "type": "boolean",
+            "description": "次ページが存在するか。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "一覧 API のページング（O1）。"
+      },
+      "WorkflowViewDto": {
+        "type": "object",
+        "properties": {
+          "displayId": {
+            "type": "string",
+            "description": "表示用ワークフロー ID。",
+            "nullable": true
+          },
+          "resourceId": {
+            "type": "string",
+            "description": "ワークフローのリソース UUID。",
+            "nullable": true
+          },
+          "graphId": {
+            "type": "string",
+            "description": "定義グラフ ID（定義の resource_id の文字列化）。",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "ワークフロー状態文字列（Running 等）。",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "description": "開始日時（UTC）。",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "最終更新日時（UTC）。未更新なら null。",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancelRequested": {
+            "type": "boolean",
+            "description": "キャンセル要求が出ているか。"
+          },
+          "restartLost": {
+            "type": "boolean",
+            "description": "再起動でランタイム状態が失われた疑いがあるか。"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowViewNodeDto"
+            },
+            "description": "実行ノードの一覧。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "UI `WorkflowView` に近い形（camelCase JSON）。GET …/state 等で返す。"
+      },
+      "WorkflowViewNodeDto": {
+        "type": "object",
+        "properties": {
+          "executionNodeId": {
+            "type": "string",
+            "description": "ExecutionGraph が付与するノード識別子（試行単位）。定義キャンバスのノードキーとは別。",
+            "nullable": true
+          },
+          "stateName": {
+            "type": "string",
+            "description": "ワークフロー定義上の状態名（Statevia.Core.Api.Contracts.WorkflowViewNodeDto.ExecutionNodeId とは別）。",
+            "nullable": true
+          },
+          "nodeType": {
+            "type": "string",
+            "description": "ノード種別（例: Action, Wait）。",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "ノードの実行状態。",
+            "nullable": true
+          },
+          "attempt": {
+            "type": "integer",
+            "description": "試行番号（1 始まり）。",
+            "format": "int32"
+          },
+          "workerId": {
+            "type": "string",
+            "description": "ワーカー識別子（任意）。",
+            "nullable": true
+          },
+          "waitKey": {
+            "type": "string",
+            "description": "Wait 解除キー（任意）。",
+            "nullable": true
+          },
+          "canceledByExecution": {
+            "type": "boolean",
+            "description": "実行キャンセルにより打ち切られたか。"
+          },
+          "input": {
+            "type": "object",
+            "description": "ノード入力（デバッグ用途。機密の可能性あり）。",
+            "nullable": true
+          },
+          "output": {
+            "type": "object",
+            "description": "ノード出力（デバッグ用途。機密の可能性あり）。",
+            "nullable": true
+          },
+          "conditionRouting": {
+            "type": "object",
+            "description": "条件遷移の評価情報（ExecutionGraph の conditionRouting をそのまま透過）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "ワークフロービュー上の 1 ノード。"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "DefinitionSchemas",
+      "description": "nodes 入力スキーマ REST API（`/v1/definitions/schema`）。"
+    },
+    {
+      "name": "Definitions",
+      "description": "ワークフロー定義 REST API（`/v1/definitions`）。"
+    },
+    {
+      "name": "Graphs",
+      "description": "グラフ定義 REST API（`/v1/graphs`）。"
+    },
+    {
+      "name": "Health",
+      "description": "死活監視（`/v1/health`）。"
+    },
+    {
+      "name": "Workflows",
+      "description": "ワークフロー REST API（`/v1/workflows`）。"
+    }
+  ]
+}

@@ -29,6 +29,7 @@ public class DefinitionsController : ControllerBase
 
     /// <summary>POST /v1/definitions — 定義を登録。name + yaml を受け取り、検証・コンパイルして保存。</summary>
     [HttpPost]
+    [ProducesResponseType(typeof(DefinitionResponse), StatusCodes.Status201Created)]
     public async Task<ActionResult<DefinitionResponse>> Create(
         [FromBody] CreateDefinitionRequest request,
         [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
@@ -41,6 +42,7 @@ public class DefinitionsController : ControllerBase
 
     /// <summary>PUT /v1/definitions/{id} — 定義を更新。name + yaml を受け取り、検証・コンパイルして保存。</summary>
     [HttpPut("{id}")]
+    [ProducesResponseType(typeof(DefinitionResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<DefinitionResponse>> Update(
         string id,
         [FromBody] UpdateDefinitionRequest request,
@@ -57,6 +59,7 @@ public class DefinitionsController : ControllerBase
     /// <c>?limit=&amp;offset=&amp;name=&amp;sortBy=&amp;sortOrder=</c> で <see cref="PagedResult{T}"/>（name は部分一致）。
     /// </summary>
     [HttpGet]
+    [ProducesResponseType(typeof(PagedResult<DefinitionResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> List(
         [FromQuery] DefinitionListQuery query,
         [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
@@ -79,6 +82,7 @@ public class DefinitionsController : ControllerBase
 
     /// <summary>GET /v1/definitions/{id} — 表示用 ID または UUID で取得（U4）。</summary>
     [HttpGet("{id}")]
+    [ProducesResponseType(typeof(DefinitionResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<DefinitionResponse>> Get(
         string id,
         [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,

@@ -20,6 +20,8 @@ services:
       context: .
       dockerfile: api/Dockerfile
     environment:
+      # ローカル compose は Development（OpenAPI / Scalar を /scalar/v1 で公開）。本番イメージ単体では Production のまま。
+      ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: "http://+:8080"
       DATABASE_URL: "postgres://statevia:statevia@postgres:5432/statevia"
     depends_on:

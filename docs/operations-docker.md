@@ -24,6 +24,15 @@ docker compose up -d
 
 - Core-API: `GET http://localhost:8080/v1/health` → `{ "status": "ok" }`
 
+## API ドキュメント（OpenAPI / Scalar）
+
+`docker compose` の **core-api** は `ASPNETCORE_ENVIRONMENT=Development` のため、次にアクセスできます。
+
+- Scalar UI: `http://localhost:8080/scalar/v1`
+- OpenAPI JSON: `http://localhost:8080/swagger/v1/swagger.json`
+
+**本番向けに core-api イメージだけ**を Production で動かす場合は、上記は **既定で無効**です。意図的に有効化する場合は `STATEVIA_ENABLE_API_DOCS=true` を設定してください（API 構造の露出に注意）。
+
 ## トラブルシュート
 
 - マイグレーション未適用で API が失敗する → `database update` を実行してから `core-api` を再起動
@@ -33,7 +42,7 @@ docker compose up -d
 
 | サービス   | 主な変数 |
 | ---------- | -------- |
-| core-api   | `DATABASE_URL`, `ASPNETCORE_URLS` |
+| core-api   | `DATABASE_URL`, `ASPNETCORE_URLS`, `ASPNETCORE_ENVIRONMENT`（compose では `Development`） |
 | ui         | `CORE_API_INTERNAL_BASE` |
 
 詳細は `docker-compose.yml` と `AGENTS.md` を参照してください。

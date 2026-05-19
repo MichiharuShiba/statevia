@@ -93,6 +93,7 @@ internal static class ServiceCollectionExtensions
 
         services.AddHttpContextAccessor();
         services.AddCors();
+        services.AddStateviaOpenApi();
         services.AddControllers(options => options.Filters.Add<ApiExceptionFilter>())
             .AddControllersAsServices()
             .AddJsonOptions(jsonOptions =>
