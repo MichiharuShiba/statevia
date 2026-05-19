@@ -7,7 +7,7 @@ namespace Statevia.Core.Api.Contracts;
 /// </summary>
 public sealed class DefinitionListQuery
 {
-    /// <summary>ページサイズ。未指定時は非ページング一覧。</summary>
+    /// <summary>ページサイズ（必須。1〜500）。</summary>
     [FromQuery(Name = "limit")]
     public int? Limit { get; init; }
 

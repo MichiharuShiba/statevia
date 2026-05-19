@@ -53,7 +53,7 @@ public class DefinitionsController : ControllerBase
     }
 
     /// <summary>
-    /// GET /v1/definitions — 一覧（U4）。クエリなしは従来どおり配列。
+    /// GET /v1/definitions — ページング一覧（U4）。<c>limit</c> は必須。
     /// <c>?limit=&amp;offset=&amp;name=&amp;sortBy=&amp;sortOrder=</c> で <see cref="PagedResult{T}"/>（name は部分一致）。
     /// </summary>
     [HttpGet]
@@ -65,10 +65,7 @@ public class DefinitionsController : ControllerBase
         ArgumentNullException.ThrowIfNull(query);
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         if (query.Limit is null)
-        {
-            var list = await _definitions.ListAsync(tenantId, ct).ConfigureAwait(false);
-            return Ok(list);
-        }
+            throw new ArgumentException("limit is required");
 
         var offset = query.Offset ?? 0;
         ArgumentOutOfRangeException.ThrowIfNegative(offset);
