@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Abstractions.Persistence;
+using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Services;
 using Statevia.Core.Api.Tests.Infrastructure;
@@ -7,114 +9,6 @@ namespace Statevia.Core.Api.Tests.Services;
 
 public sealed class DisplayIdServiceImplTests
 {
-    private sealed class ThrowingSaveChangesDbContext : CoreDbContext
-    {
-        private readonly Func<bool> _shouldThrow;
-
-        public ThrowingSaveChangesDbContext(DbContextOptions<CoreDbContext> options, Func<bool> shouldThrow)
-            : base(options) => _shouldThrow = shouldThrow;
-
-        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-        {
-            if (_shouldThrow())
-                throw new DbUpdateException("Simulated DbUpdateException during testing.");
-
-            return base.SaveChangesAsync(cancellationToken);
-        }
-    }
-
-    private sealed class ThrowingSaveChangesDbContextFactory : Microsoft.EntityFrameworkCore.IDbContextFactory<CoreDbContext>
-    {
-        private readonly DbContextOptions<CoreDbContext> _options;
-        private readonly Func<bool> _shouldThrow;
-        private int _saveCalls;
-
-        public ThrowingSaveChangesDbContextFactory(DbContextOptions<CoreDbContext> options, bool throwAlways)
-        {
-            _options = options;
-            _shouldThrow = () =>
-            {
-                _saveCalls++;
-                if (throwAlways) return true;
-                return _saveCalls == 1;
-            };
-        }
-
-        public int SaveCalls => _saveCalls;
-
-        public CoreDbContext CreateDbContext() => new ThrowingSaveChangesDbContext(_options, _shouldThrow);
-
-        public Task<CoreDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(CreateDbContext());
-    }
-
-    /// <summary>
-    /// 表示用識別子を発番して保存する。
-    /// </summary>
-    [Fact]
-    public async Task AllocateAsync_ReturnsDisplayId_AndPersistsRow()
-    {
-        // Arrange
-        using var db = new InMemoryTestDatabase();
-        var sut = new DisplayIdServiceImpl(db.Factory);
-
-        // Act
-        var uuid = Guid.NewGuid();
-        var displayId = await sut.AllocateAsync("definition", uuid, CancellationToken.None);
-
-        await using var verify = new CoreDbContext(db.Options);
-        // Assert
-        var row = await verify.DisplayIds.FirstOrDefaultAsync(x => x.Kind == "definition" && x.ResourceId == uuid);
-        Assert.NotNull(row);
-        Assert.Equal(displayId, row!.DisplayId);
-    }
-
-    /// <summary>
-    /// 保存が一度失敗しても再試行で発番に成功する。
-    /// </summary>
-    [Fact]
-    public async Task AllocateAsync_WhenSaveChangesThrowsOnce_RetriesAndReturnsDisplayId()
-    {
-        // Arrange
-        using var db = new InMemoryTestDatabase();
-        var factory = new ThrowingSaveChangesDbContextFactory(db.Options, throwAlways: false);
-        var sut = new DisplayIdServiceImpl(factory);
-
-        // Act
-        var uuid = Guid.NewGuid();
-        var displayId = await sut.AllocateAsync("definition", uuid, CancellationToken.None);
-
-        // Assert
-        Assert.Equal(2, factory.SaveCalls);
-
-        await using var verify = new CoreDbContext(db.Options);
-        var row = await verify.DisplayIds.FirstOrDefaultAsync(x => x.Kind == "definition" && x.ResourceId == uuid);
-        Assert.NotNull(row);
-        Assert.Equal(displayId, row!.DisplayId);
-    }
-
-    /// <summary>
-    /// 保存が連続失敗したとき最大試行後に操作不能例外を投げる。
-    /// </summary>
-    [Fact]
-    public async Task AllocateAsync_WhenSaveChangesAlwaysThrows_ThrowsInvalidOperationAfterMaxAttempts()
-    {
-        // Arrange
-        using var db = new InMemoryTestDatabase();
-        var factory = new ThrowingSaveChangesDbContextFactory(db.Options, throwAlways: true);
-        var sut = new DisplayIdServiceImpl(factory);
-
-        // Act
-        var uuid = Guid.NewGuid();
-
-        // Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.AllocateAsync("definition", uuid, CancellationToken.None));
-
-        Assert.Contains("Failed to allocate display_id", ex.Message);
-        Assert.Equal(10, factory.SaveCalls); // maxAttempts = 10
-    }
-
     /// <summary>
     /// 識別子文字列が形式に合うとき同じ識別子を返す。
     /// </summary>
@@ -123,7 +17,7 @@ public sealed class DisplayIdServiceImplTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var sut = new DisplayIdServiceImpl(db.Factory);
+        var sut = new DisplayIdServiceImpl(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)));
 
         // Act
         var uuid = Guid.NewGuid();
@@ -146,7 +40,7 @@ public sealed class DisplayIdServiceImplTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var sut = new DisplayIdServiceImpl(db.Factory);
+        var sut = new DisplayIdServiceImpl(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)));
 
         // Act
         var uuid = Guid.NewGuid();
@@ -179,7 +73,7 @@ public sealed class DisplayIdServiceImplTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var sut = new DisplayIdServiceImpl(db.Factory);
+        var sut = new DisplayIdServiceImpl(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)));
 
         // Act
         var uuid = Guid.NewGuid();
@@ -212,7 +106,7 @@ public sealed class DisplayIdServiceImplTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var sut = new DisplayIdServiceImpl(db.Factory);
+        var sut = new DisplayIdServiceImpl(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)));
 
         // Act
         var uuid = Guid.NewGuid();
@@ -229,7 +123,7 @@ public sealed class DisplayIdServiceImplTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var sut = new DisplayIdServiceImpl(db.Factory);
+        var sut = new DisplayIdServiceImpl(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)));
 
         // Act
         var uuid = Guid.NewGuid();
@@ -252,7 +146,7 @@ public sealed class DisplayIdServiceImplTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var sut = new DisplayIdServiceImpl(db.Factory);
+        var sut = new DisplayIdServiceImpl(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)));
 
         // Act
         var res = await sut.GetDisplayIdAsync("definition", "not-a-guid", CancellationToken.None);
@@ -268,7 +162,7 @@ public sealed class DisplayIdServiceImplTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var sut = new DisplayIdServiceImpl(db.Factory);
+        var sut = new DisplayIdServiceImpl(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)));
 
         // Act
         var uuid = Guid.NewGuid();
@@ -291,7 +185,7 @@ public sealed class DisplayIdServiceImplTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var sut = new DisplayIdServiceImpl(db.Factory);
+        var sut = new DisplayIdServiceImpl(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)));
 
         // Act
         var uuid = Guid.NewGuid();
@@ -308,7 +202,7 @@ public sealed class DisplayIdServiceImplTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var sut = new DisplayIdServiceImpl(db.Factory);
+        var sut = new DisplayIdServiceImpl(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)));
 
         // Act
         var dict = await sut.GetDisplayIdsAsync("definition", Array.Empty<Guid>(), CancellationToken.None);
@@ -324,7 +218,7 @@ public sealed class DisplayIdServiceImplTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var sut = new DisplayIdServiceImpl(db.Factory);
+        var sut = new DisplayIdServiceImpl(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)));
 
         // Act
         var id1 = Guid.NewGuid();

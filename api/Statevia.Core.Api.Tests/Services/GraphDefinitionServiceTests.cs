@@ -1,3 +1,4 @@
+using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Persistence;
@@ -13,8 +14,7 @@ public sealed class GraphDefinitionServiceTests
         private readonly Guid? _resolveResult;
         public StubDisplayIdService(Guid? resolveResult) => _resolveResult = resolveResult;
 
-        public Task<string> AllocateAsync(string kind, Guid uuid, CancellationToken ct = default) =>
-            throw new NotSupportedException();
+        
 
         public Task<Guid?> ResolveAsync(string kind, string idOrUuid, CancellationToken ct = default) =>
             Task.FromResult(_resolveResult);
@@ -34,7 +34,7 @@ public sealed class GraphDefinitionServiceTests
     {
         // Act & Assert
         using var db = new InMemoryTestDatabase();
-        var sut = new GraphDefinitionService(db.Factory, new StubDisplayIdService(resolveResult: null));
+        var sut = new GraphDefinitionService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), new StubDisplayIdService(resolveResult: null));
 
         await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByGraphIdAsync("G", "t1", CancellationToken.None));
     }
@@ -48,7 +48,7 @@ public sealed class GraphDefinitionServiceTests
         // Act & Assert
         using var db = new InMemoryTestDatabase();
         var uuid = Guid.NewGuid();
-        var sut = new GraphDefinitionService(db.Factory, new StubDisplayIdService(uuid));
+        var sut = new GraphDefinitionService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), new StubDisplayIdService(uuid));
 
         await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByGraphIdAsync("G", "t1", CancellationToken.None));
     }
@@ -120,7 +120,7 @@ public sealed class GraphDefinitionServiceTests
             await ctx.SaveChangesAsync();
         }
 
-        var sut = new GraphDefinitionService(db.Factory, new StubDisplayIdService(uuid));
+        var sut = new GraphDefinitionService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), new StubDisplayIdService(uuid));
         var res = await sut.GetByGraphIdAsync(graphId, "t1", CancellationToken.None);
 
         // Assert
@@ -193,7 +193,7 @@ public sealed class GraphDefinitionServiceTests
             await ctx.SaveChangesAsync();
         }
 
-        var sut = new GraphDefinitionService(db.Factory, new StubDisplayIdService(uuid));
+        var sut = new GraphDefinitionService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), new StubDisplayIdService(uuid));
         var res = await sut.GetByGraphIdAsync(graphId, "t1", CancellationToken.None);
 
         var nodeById = new Dictionary<string, GraphNodeDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -269,7 +269,7 @@ public sealed class GraphDefinitionServiceTests
             await ctx.SaveChangesAsync();
         }
 
-        var sut = new GraphDefinitionService(db.Factory, new StubDisplayIdService(uuid));
+        var sut = new GraphDefinitionService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), new StubDisplayIdService(uuid));
 
         // Act
         var res = await sut.GetByGraphIdAsync(graphId, "t1", CancellationToken.None);
@@ -308,7 +308,7 @@ public sealed class GraphDefinitionServiceTests
             await ctx.SaveChangesAsync();
         }
 
-        var sut = new GraphDefinitionService(db.Factory, new StubDisplayIdService(uuid));
+        var sut = new GraphDefinitionService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), new StubDisplayIdService(uuid));
         var res = await sut.GetByGraphIdAsync(graphId, "t1", CancellationToken.None);
 
         // Assert
