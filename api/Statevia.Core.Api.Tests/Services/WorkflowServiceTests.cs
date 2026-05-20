@@ -6,11 +6,11 @@ using Microsoft.Extensions.Options;
 using Npgsql;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
+using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Hosting;
 using Statevia.Core.Api.Configuration;
-using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Services;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Api.Tests.Infrastructure;
@@ -56,16 +56,17 @@ public sealed class WorkflowServiceTests
         public (CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(string name, string yaml) => _ret;
     }
 
-    private sealed class FakeDisplayIdService : IDisplayIdService
+    private sealed class FakeDisplayIdService : IDisplayIdService, IDisplayIdWriteService
     {
         public Guid? ResolveResultDefinition { get; set; }
         public Guid? ResolveResultWorkflow { get; set; }
         public string? AllocateResultWorkflow { get; set; } = "WF-DISP-1";
         public string? GetDisplayIdResult { get; set; }
-        public async Task<string> AllocateAsync(string kind, Guid uuid, CancellationToken ct = default)
+
+        public Task<string> AllocateAsync(ICoreUnitOfWork uow, string kind, Guid uuid, CancellationToken ct = default)
         {
-            await Task.Yield(); // async boundary for coverage
-            return AllocateResultWorkflow ?? uuid.ToString("D");
+            _ = uow;
+            return Task.FromResult(AllocateResultWorkflow ?? uuid.ToString("D"));
         }
 
         public async Task<Guid?> ResolveAsync(string kind, string idOrUuid, CancellationToken ct = default)
@@ -204,13 +205,20 @@ public sealed class WorkflowServiceTests
         public void SeedRow(EventDeliveryDedupRow row) =>
             _rows[(row.TenantId, row.WorkflowId, row.ClientEventId)] = Clone(row);
 
-        public Task<EventDeliveryDedupRow?> FindAsync(string tenantId, Guid workflowId, Guid clientEventId, CancellationToken cancellationToken)
+        public Task<EventDeliveryDedupRow?> FindAsync(
+            ICoreUnitOfWork uow,
+            string tenantId,
+            Guid workflowId,
+            Guid clientEventId,
+            CancellationToken cancellationToken)
         {
+            _ = uow;
             return Task.FromResult(_rows.TryGetValue((tenantId, workflowId, clientEventId), out var row) ? Clone(row) : null);
         }
 
-        public Task InsertReceivedAsync(EventDeliveryDedupRow row, CancellationToken cancellationToken)
+        public Task AddReceivedAsync(ICoreUnitOfWork uow, EventDeliveryDedupRow row, CancellationToken cancellationToken)
         {
+            _ = uow;
             var key = (row.TenantId, row.WorkflowId, row.ClientEventId);
             if (!_rows.TryAdd(key, Clone(row)))
             {
@@ -225,11 +233,8 @@ public sealed class WorkflowServiceTests
             return Task.CompletedTask;
         }
 
-        public Task AddReceivedAsync(CoreDbContext db, EventDeliveryDedupRow row, CancellationToken cancellationToken) =>
-            InsertReceivedAsync(row, cancellationToken);
-
         public Task<bool> TryUpdateStatusAsync(
-            CoreDbContext db,
+            ICoreUnitOfWork uow,
             string tenantId,
             Guid workflowId,
             Guid clientEventId,
@@ -279,33 +284,31 @@ public sealed class WorkflowServiceTests
         public int InsertReceivedCallCount { get; private set; }
 
         public Task<EventDeliveryDedupRow?> FindAsync(
+            ICoreUnitOfWork uow,
             string tenantId,
             Guid workflowId,
             Guid clientEventId,
             CancellationToken cancellationToken) =>
-            _inner.FindAsync(tenantId, workflowId, clientEventId, cancellationToken);
+            _inner.FindAsync(uow, tenantId, workflowId, clientEventId, cancellationToken);
 
-        public Task InsertReceivedAsync(EventDeliveryDedupRow row, CancellationToken cancellationToken)
+        public Task AddReceivedAsync(ICoreUnitOfWork uow, EventDeliveryDedupRow row, CancellationToken cancellationToken)
         {
             InsertReceivedCallCount++;
             if (InsertReceivedCallCount <= _transientFailuresBeforeSuccess)
                 throw _transientFailure;
 
-            return _inner.InsertReceivedAsync(row, cancellationToken);
+            return _inner.AddReceivedAsync(uow, row, cancellationToken);
         }
 
-        public Task AddReceivedAsync(CoreDbContext db, EventDeliveryDedupRow row, CancellationToken cancellationToken) =>
-            InsertReceivedAsync(row, cancellationToken);
-
         public Task<bool> TryUpdateStatusAsync(
-            CoreDbContext db,
+            ICoreUnitOfWork uow,
             string tenantId,
             Guid workflowId,
             Guid clientEventId,
             EventDeliveryDedupStatusUpdate update,
             CancellationToken cancellationToken) =>
             _inner.TryUpdateStatusAsync(
-                db,
+                uow,
                 tenantId,
                 workflowId,
                 clientEventId,
@@ -338,13 +341,15 @@ public sealed class WorkflowServiceTests
 
         public List<CommandDedupRow> SavedRows { get; } = [];
 
-        public async Task<CommandDedupRow?> FindValidAsync(string dedupKey, DateTime utcNow, CancellationToken ct)
+        public async Task<CommandDedupRow?> FindValidAsync(ICoreUnitOfWork uow, string dedupKey, DateTime utcNow, CancellationToken ct)
         {
+            _ = uow;
             await Task.Yield(); // async boundary for coverage
             return NextFindValid;
         }
 
         public async Task<CommandDedupRow?> FindValidConflictingRequestHashAsync(
+            ICoreUnitOfWork uow,
             string tenantId,
             string endpoint,
             string idempotencyKey,
@@ -352,18 +357,14 @@ public sealed class WorkflowServiceTests
             DateTime utcNow,
             CancellationToken ct)
         {
+            _ = uow;
             await Task.Yield();
             return NextConflictingRow;
         }
 
-        public async Task SaveAsync(CommandDedupRow row, CancellationToken ct)
+        public async Task SaveAsync(ICoreUnitOfWork uow, CommandDedupRow row, CancellationToken ct)
         {
-            SavedRows.Add(row);
-            await Task.Yield(); // async boundary for coverage
-        }
-
-        public async Task SaveAsync(CoreDbContext db, CommandDedupRow row, CancellationToken ct)
-        {
+            _ = uow;
             SavedRows.Add(row);
             await Task.Yield(); // async boundary for coverage
         }
@@ -378,47 +379,51 @@ public sealed class WorkflowServiceTests
         public List<(Guid WorkflowId, string Status, bool? CancelRequested, string GraphJson)> Updates { get; } = [];
         public (int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items) ListWithDisplayIdsPageResult { get; set; } = (0, []);
 
-        public async Task<WorkflowRow?> GetByIdAsync(string tenantId, Guid workflowId, CancellationToken ct)
+        public async Task<WorkflowRow?> GetByIdAsync(ICoreUnitOfWork uow, string tenantId, Guid workflowId, CancellationToken ct)
         {
+            _ = uow;
             await Task.Yield(); // async boundary for coverage
             return ByIdResult;
         }
 
         public async Task<(int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
+            ICoreUnitOfWork uow,
             string tenantId,
             WorkflowListPageQuery query,
             CancellationToken ct)
         {
+            _ = uow;
             await Task.Yield(); // async boundary for coverage
             return ListWithDisplayIdsPageResult;
         }
 
-        public async Task AddWorkflowAndSnapshotAsync(WorkflowRow workflow, ExecutionGraphSnapshotRow snapshot, CancellationToken ct)
+        public async Task AddWorkflowAndSnapshotAsync(
+            ICoreUnitOfWork uow,
+            WorkflowRow workflow,
+            ExecutionGraphSnapshotRow snapshot,
+            CancellationToken ct)
         {
+            _ = uow;
             Added.Add((workflow, snapshot));
             await Task.Yield(); // async boundary for coverage
         }
 
-        public async Task AddWorkflowAndSnapshotAsync(CoreDbContext db, WorkflowRow workflow, ExecutionGraphSnapshotRow snapshot, CancellationToken ct)
+        public async Task<ExecutionGraphSnapshotRow?> GetSnapshotByWorkflowIdAsync(ICoreUnitOfWork uow, Guid workflowId, CancellationToken ct)
         {
-            Added.Add((workflow, snapshot));
-            await Task.Yield(); // async boundary for coverage
-        }
-
-        public async Task<ExecutionGraphSnapshotRow?> GetSnapshotByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
-        {
+            _ = uow;
             await Task.Yield(); // async boundary for coverage
             return SnapshotByWorkflowId;
         }
 
-        public async Task UpdateWorkflowAndSnapshotAsync(Guid workflowId, string status, bool? cancelRequested, string graphJson, CancellationToken ct)
+        public async Task UpdateWorkflowAndSnapshotAsync(
+            ICoreUnitOfWork uow,
+            Guid workflowId,
+            string status,
+            bool? cancelRequested,
+            string graphJson,
+            CancellationToken ct)
         {
-            Updates.Add((workflowId, status, cancelRequested, graphJson));
-            await Task.Yield(); // async boundary for coverage
-        }
-
-        public async Task UpdateWorkflowAndSnapshotAsync(CoreDbContext db, Guid workflowId, string status, bool? cancelRequested, string graphJson, CancellationToken ct)
-        {
+            _ = uow;
             Updates.Add((workflowId, status, cancelRequested, graphJson));
             await Task.Yield(); // async boundary for coverage
         }
@@ -436,11 +441,14 @@ public sealed class WorkflowServiceTests
         /// <summary>設定時に追記処理で例外を投げて巻き戻し分岐を通す。</summary>
         public Exception? ThrowFromAppendWithDb { get; set; }
 
-        public Task AppendAsync(Guid workflowId, EventStoreEventType eventType, string? payloadJson, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-
-        public async Task AppendAsync(CoreDbContext db, Guid workflowId, EventStoreEventType eventType, string? payloadJson, CancellationToken ct = default)
+        public async Task AppendAsync(
+            ICoreUnitOfWork uow,
+            Guid workflowId,
+            EventStoreEventType eventType,
+            string? payloadJson,
+            CancellationToken ct = default)
         {
+            _ = uow;
             if (ThrowFromAppendWithDb is { } ex)
                 throw ex;
 
@@ -449,13 +457,14 @@ public sealed class WorkflowServiceTests
         }
 
         public Task<bool> TryAppendIfAbsentByClientEventAsync(
-            CoreDbContext db,
+            ICoreUnitOfWork uow,
             Guid workflowId,
             Guid clientEventId,
             EventStoreEventType eventType,
             string? payloadJson,
             CancellationToken cancellationToken)
         {
+            _ = uow;
             if (ThrowFromAppendWithDb is { } ex)
                 throw ex;
 
@@ -467,14 +476,21 @@ public sealed class WorkflowServiceTests
             return Task.FromResult(true);
         }
 
-        public async Task<(IReadOnlyList<EventStoreRow> Items, bool HasMore)> ListAfterSeqAsync(Guid workflowId, long afterSeq, int limit, CancellationToken ct = default)
+        public async Task<(IReadOnlyList<EventStoreRow> Items, bool HasMore)> ListAfterSeqAsync(
+            ICoreUnitOfWork uow,
+            Guid workflowId,
+            long afterSeq,
+            int limit,
+            CancellationToken ct = default)
         {
+            _ = uow;
             await Task.Yield(); // async boundary for coverage
             return ((IReadOnlyList<EventStoreRow>)AfterSeqItems, AfterSeqHasMore);
         }
 
-        public async Task<long> GetMaxSeqAsync(Guid workflowId, CancellationToken ct = default)
+        public async Task<long> GetMaxSeqAsync(ICoreUnitOfWork uow, Guid workflowId, CancellationToken ct = default)
         {
+            _ = uow;
             await Task.Yield(); // async boundary for coverage
             return MaxSeq;
         }
@@ -536,9 +552,8 @@ public sealed class WorkflowServiceTests
         var eventStore = new FakeEventStoreRepository();
 
         using var sqlite = new SqliteTestDatabase();
-        var dbFactory = sqlite.Factory;
-
-        var sut = new WorkflowService(
+        var sut = BuildWorkflowService(
+            sqlite,
             engine,
             display,
             compiler,
@@ -548,11 +563,7 @@ public sealed class WorkflowServiceTests
             definitionsRepo,
             dedupRepoRepo,
             eventStore,
-            new FakeEventDeliveryDedupRepository(),
-            dbFactory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+            new FakeEventDeliveryDedupRepository());
 
         using var inputDoc = JsonDocument.Parse("{\"a\":1}");
         var request = new StartWorkflowRequest { DefinitionId = "def-1", Input = inputDoc.RootElement };
@@ -606,7 +617,8 @@ public sealed class WorkflowServiceTests
         var eventStore = new FakeEventStoreRepository();
 
         using var sqlite = new SqliteTestDatabase();
-        var sut = new WorkflowService(
+        var sut = BuildWorkflowService(
+            sqlite,
             engine,
             display,
             compiler,
@@ -616,11 +628,7 @@ public sealed class WorkflowServiceTests
             definitionsRepo,
             dedupRepo,
             eventStore,
-            new FakeEventDeliveryDedupRepository(),
-            sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+            new FakeEventDeliveryDedupRepository());
 
         using var inputDoc = JsonDocument.Parse("{}");
         var request = new StartWorkflowRequest { DefinitionId = "def-1", Input = inputDoc.RootElement };
@@ -637,10 +645,11 @@ public sealed class WorkflowServiceTests
 
     private sealed class FakeDefinitionsRepoStub : IDefinitionRepository
     {
-        public Task AddAsync(WorkflowDefinitionRow row, CancellationToken ct) => Task.CompletedTask;
-        public Task<bool> UpdateAsync(string tenantId, Guid definitionId, string name, string sourceYaml, string compiledJson, CancellationToken ct) => Task.FromResult(false);
-        public Task<WorkflowDefinitionRow?> GetByIdAsync(string tenantId, Guid definitionId, CancellationToken ct) => Task.FromResult<WorkflowDefinitionRow?>(null);
+        public Task AddAsync(ICoreUnitOfWork uow, WorkflowDefinitionRow row, CancellationToken ct) => Task.CompletedTask;
+        public Task<WorkflowDefinitionRow?> UpdateAsync(ICoreUnitOfWork uow, string tenantId, Guid definitionId, string name, string sourceYaml, string compiledJson, CancellationToken ct) => Task.FromResult<WorkflowDefinitionRow?>(null);
+        public Task<WorkflowDefinitionRow?> GetByIdAsync(ICoreUnitOfWork uow, string tenantId, Guid definitionId, CancellationToken ct) => Task.FromResult<WorkflowDefinitionRow?>(null);
         public Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
+            ICoreUnitOfWork uow,
             string tenantId,
             DefinitionListPageQuery query,
             CancellationToken ct) =>
@@ -705,7 +714,8 @@ public sealed class WorkflowServiceTests
         var eventStore = new FakeEventStoreRepository();
 
         using var sqlite = new SqliteTestDatabase();
-        var sut = new WorkflowService(
+        var sut = BuildWorkflowService(
+            sqlite,
             engine,
             display,
             compiler,
@@ -715,11 +725,7 @@ public sealed class WorkflowServiceTests
             definitionsRepo,
             dedupRepo,
             eventStore,
-            new FakeEventDeliveryDedupRepository(),
-            sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+            new FakeEventDeliveryDedupRepository());
 
         using var inputDoc = JsonDocument.Parse("{\"x\":true}");
         var request = new StartWorkflowRequest { DefinitionId = "def-2", Input = inputDoc.RootElement };
@@ -802,7 +808,8 @@ public sealed class WorkflowServiceTests
         var eventStore = new FakeEventStoreRepository();
 
         using var sqlite = new SqliteTestDatabase();
-        var sut = new WorkflowService(
+        var sut = BuildWorkflowService(
+            sqlite,
             engine,
             display,
             compiler,
@@ -812,11 +819,7 @@ public sealed class WorkflowServiceTests
             definitionsRepo,
             dedupRepo,
             eventStore,
-            new FakeEventDeliveryDedupRepository(),
-            sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+            new FakeEventDeliveryDedupRepository());
 
         using var inputDoc = JsonDocument.Parse("{\"x\":true}");
         var request = new StartWorkflowRequest { DefinitionId = "def-2", Input = inputDoc.RootElement };
@@ -847,9 +850,9 @@ public sealed class WorkflowServiceTests
     {
         private readonly Guid _defUuid;
         public FakeDefinitionsRepoStub2(Guid defUuid) => _defUuid = defUuid;
-        public Task AddAsync(WorkflowDefinitionRow row, CancellationToken ct) => Task.CompletedTask;
-        public Task<bool> UpdateAsync(string tenantId, Guid definitionId, string name, string sourceYaml, string compiledJson, CancellationToken ct) => Task.FromResult(false);
-        public Task<WorkflowDefinitionRow?> GetByIdAsync(string tenantId, Guid definitionId, CancellationToken ct) =>
+        public Task AddAsync(ICoreUnitOfWork uow, WorkflowDefinitionRow row, CancellationToken ct) => Task.CompletedTask;
+        public Task<WorkflowDefinitionRow?> UpdateAsync(ICoreUnitOfWork uow, string tenantId, Guid definitionId, string name, string sourceYaml, string compiledJson, CancellationToken ct) => Task.FromResult<WorkflowDefinitionRow?>(null);
+        public Task<WorkflowDefinitionRow?> GetByIdAsync(ICoreUnitOfWork uow, string tenantId, Guid definitionId, CancellationToken ct) =>
             Task.FromResult(definitionId == _defUuid
                 ? new WorkflowDefinitionRow
                 {
@@ -864,10 +867,12 @@ public sealed class WorkflowServiceTests
                 : null);
 
         public Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
+            ICoreUnitOfWork uow,
             string tenantId,
             DefinitionListPageQuery query,
             CancellationToken ct) =>
             Task.FromResult((0, new List<(WorkflowDefinitionRow, string?)>()));
+
     }
 
     /// <summary>定義を解決できないとき未検出例外を投げる。</summary>
@@ -887,7 +892,8 @@ public sealed class WorkflowServiceTests
         var eventStore = new FakeEventStoreRepository();
 
         using var sqlite = new SqliteTestDatabase();
-        var sut = new WorkflowService(
+        var sut = BuildWorkflowService(
+            sqlite,
             engine,
             display,
             compiler,
@@ -897,11 +903,7 @@ public sealed class WorkflowServiceTests
             definitionsRepo,
             dedupRepo,
             eventStore,
-            new FakeEventDeliveryDedupRepository(),
-            sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+            new FakeEventDeliveryDedupRepository());
 
         var request = new StartWorkflowRequest { DefinitionId = "missing" };
 
@@ -938,7 +940,8 @@ public sealed class WorkflowServiceTests
         var dedupRepo = new FakeCommandDedupRepository();
         var eventStore = new FakeEventStoreRepository();
 
-        return new WorkflowService(
+        return BuildWorkflowService(
+            sqlite,
             engine,
             display,
             compiler,
@@ -948,11 +951,7 @@ public sealed class WorkflowServiceTests
             definitionsRepo,
             dedupRepo,
             eventStore,
-            new FakeEventDeliveryDedupRepository(),
-            sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+            new FakeEventDeliveryDedupRepository());
     }
 
     /// <summary>最大連番が零でも連番一の表示を返す。</summary>
@@ -998,7 +997,8 @@ public sealed class WorkflowServiceTests
             GetDisplayIdResult = null
         };
 
-        var sut = new WorkflowService(
+        var sut = BuildWorkflowService(
+            sqlite,
             engine,
             display,
             new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
@@ -1008,11 +1008,7 @@ public sealed class WorkflowServiceTests
             new FakeDefinitionsRepoStub(),
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository { MaxSeq = 0 },
-            new FakeEventDeliveryDedupRepository(),
-            sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+            new FakeEventDeliveryDedupRepository());
 
         // Act
         var view = await sut.GetWorkflowViewAtSeqAsync("t1", idOrUuid: "display-or-uuid", atSeq: 1, CancellationToken.None);
@@ -1037,21 +1033,18 @@ public sealed class WorkflowServiceTests
         using var sqlite = new SqliteTestDatabase();
 
         var display = new FakeDisplayIdService { ResolveResultWorkflow = null };
-        var sut = new WorkflowService(
-            engine: new FakeWorkflowEngine(),
-            displayIds: display,
-            compiler: new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            idGenerator: new FixedIdGenerator(Guid.NewGuid()),
-            dedupService: new FakeCommandDedupService(null),
-            workflows: new FakeWorkflowRepository(),
-            definitions: new FakeDefinitionsRepoStub(),
-            dedup: new FakeCommandDedupRepository(),
-            eventStore: new FakeEventStoreRepository(),
-            eventDeliveryDedup: new FakeEventDeliveryDedupRepository(),
-            dbFactory: sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+        var sut = BuildWorkflowService(
+            sqlite,
+            new FakeWorkflowEngine(),
+            display,
+            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            new FakeWorkflowRepository(),
+            new FakeDefinitionsRepoStub(),
+            new FakeCommandDedupRepository(),
+            new FakeEventStoreRepository(),
+            new FakeEventDeliveryDedupRepository());
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
@@ -1101,21 +1094,18 @@ public sealed class WorkflowServiceTests
             GetDisplayIdResult = null
         };
 
-        var sut = new WorkflowService(
-            engine: engine,
-            displayIds: display,
-            compiler: new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            idGenerator: new FixedIdGenerator(Guid.NewGuid()),
-            dedupService: new FakeCommandDedupService(null),
-            workflows: workflowRepo,
-            definitions: new FakeDefinitionsRepoStub(),
-            dedup: new FakeCommandDedupRepository(),
-            eventStore: new FakeEventStoreRepository { MaxSeq = 5 },
-            eventDeliveryDedup: new FakeEventDeliveryDedupRepository(),
-            dbFactory: sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+        var sut = BuildWorkflowService(
+            sqlite,
+            engine,
+            display,
+            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            workflowRepo,
+            new FakeDefinitionsRepoStub(),
+            new FakeCommandDedupRepository(),
+            new FakeEventStoreRepository { MaxSeq = 5 },
+            new FakeEventDeliveryDedupRepository());
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
@@ -1165,21 +1155,18 @@ public sealed class WorkflowServiceTests
             GetDisplayIdResult = null
         };
 
-        var sut = new WorkflowService(
-            engine: engine,
-            displayIds: display,
-            compiler: new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            idGenerator: new FixedIdGenerator(Guid.NewGuid()),
-            dedupService: new FakeCommandDedupService(null),
-            workflows: workflowRepo,
-            definitions: new FakeDefinitionsRepoStub(),
-            dedup: new FakeCommandDedupRepository(),
-            eventStore: new FakeEventStoreRepository { MaxSeq = 5 },
-            eventDeliveryDedup: new FakeEventDeliveryDedupRepository(),
-            dbFactory: sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+        var sut = BuildWorkflowService(
+            sqlite,
+            engine,
+            display,
+            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            workflowRepo,
+            new FakeDefinitionsRepoStub(),
+            new FakeCommandDedupRepository(),
+            new FakeEventStoreRepository { MaxSeq = 5 },
+            new FakeEventDeliveryDedupRepository());
 
         // Act
         var view = await sut.GetWorkflowViewAtSeqAsync("t1", idOrUuid: "display-or-uuid", atSeq: 2, CancellationToken.None);
@@ -1251,21 +1238,18 @@ public sealed class WorkflowServiceTests
         };
 
         using var sqlite = new SqliteTestDatabase();
-        var sut = new WorkflowService(
-            engine: new FakeWorkflowEngine(),
-            displayIds: display,
-            compiler: new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            idGenerator: new FixedIdGenerator(Guid.NewGuid()),
-            dedupService: new FakeCommandDedupService(null),
-            workflows: workflowRepo,
-            definitions: new FakeDefinitionsRepoStub(),
-            dedup: new FakeCommandDedupRepository(),
-            eventStore: eventStore,
-            eventDeliveryDedup: new FakeEventDeliveryDedupRepository(),
-            dbFactory: sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+        var sut = BuildWorkflowService(
+            sqlite,
+            new FakeWorkflowEngine(),
+            display,
+            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            workflowRepo,
+            new FakeDefinitionsRepoStub(),
+            new FakeCommandDedupRepository(),
+            eventStore,
+            new FakeEventDeliveryDedupRepository());
 
         // Act
         var res = await sut.ListEventsAsync("t1", idOrUuid: "idOrUuid", afterSeq: 0, limit: 10, CancellationToken.None);
@@ -1663,21 +1647,18 @@ public sealed class WorkflowServiceTests
         var workflowRepo = new FakeWorkflowRepository();
         var eventStore = new FakeEventStoreRepository();
 
-        var sut = new WorkflowService(
-            engine: engine,
-            displayIds: display,
-            compiler: new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            idGenerator: new FixedIdGenerator(Guid.NewGuid()),
-            dedupService: new FakeCommandDedupService(null),
-            workflows: workflowRepo,
-            definitions: new FakeDefinitionsRepoStub(),
-            dedup: new FakeCommandDedupRepository(),
-            eventStore: eventStore,
-            eventDeliveryDedup: new FakeEventDeliveryDedupRepository(),
-            dbFactory: sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+        var sut = BuildWorkflowService(
+            sqlite,
+            engine,
+            display,
+            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            workflowRepo,
+            new FakeDefinitionsRepoStub(),
+            new FakeCommandDedupRepository(),
+            eventStore,
+            new FakeEventDeliveryDedupRepository());
 
         // Act
         await sut.UpdateProjectionFromEngineAsync(workflowId, CancellationToken.None);
@@ -2189,21 +2170,18 @@ public sealed class WorkflowServiceTests
 
         using var sqlite = new SqliteTestDatabase();
         var eventStore = new FakeEventStoreRepository();
-        var sut = new WorkflowService(
+        var sut = BuildWorkflowService(
+            sqlite,
             engine,
             display,
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
             workflowRepo,
             new FakeDefinitionsRepoStub(),
             new FakeCommandDedupRepository(),
             eventStore,
-            eventDedup,
-            sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+            eventDedup);
 
         // Act
         await sut.PublishEventAsync(
@@ -2498,21 +2476,18 @@ public sealed class WorkflowServiceTests
 
         var eventStore = new FakeEventStoreRepository();
 
-        var sut = new WorkflowService(
-            engine: engine,
-            displayIds: display,
-            compiler: new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            idGenerator: new FixedIdGenerator(Guid.NewGuid()),
-            dedupService: new FakeCommandDedupService(null),
-            workflows: workflowRepo,
-            definitions: new FakeDefinitionsRepoStub(),
-            dedup: new FakeCommandDedupRepository(),
-            eventStore: eventStore,
-            eventDeliveryDedup: new FakeEventDeliveryDedupRepository(),
-            dbFactory: sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+        var sut = BuildWorkflowService(
+            sqlite,
+            engine,
+            display,
+            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            workflowRepo,
+            new FakeDefinitionsRepoStub(),
+            new FakeCommandDedupRepository(),
+            eventStore,
+            new FakeEventDeliveryDedupRepository());
 
         // Act
         await sut.ResumeNodeAsync(tenantId, idOrUuid: "X", nodeId: nodeId, resumeKey: resumeKey, idempotencyKey: null, new CommandRequestContext("POST", "/v1/workflows"), CancellationToken.None);
@@ -3122,21 +3097,18 @@ public sealed class WorkflowServiceTests
         var flakyEventDelivery = new FlakyThenSuccessEventDeliveryDedupRepository(2, new IOException("transient db"));
 
         using var sqlite = new SqliteTestDatabase();
-        var sut = new WorkflowService(
+        var sut = BuildWorkflowService(
+            sqlite,
             engine,
             display,
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(dedupKey),
             workflowRepo,
             new FakeDefinitionsRepoStub(),
             dedupRepo,
             eventStore,
-            flakyEventDelivery,
-            sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+            flakyEventDelivery);
 
         // Act
         await sut.PublishEventAsync(
@@ -3189,21 +3161,18 @@ public sealed class WorkflowServiceTests
 
         var flakyEventDelivery = new FlakyThenSuccessEventDeliveryDedupRepository(5, new TaskCanceledException("canceled"));
         using var sqlite = new SqliteTestDatabase();
-        var sut = new WorkflowService(
+        var sut = BuildWorkflowService(
+            sqlite,
             engine,
             display,
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(dedupKey),
             workflowRepo,
             new FakeDefinitionsRepoStub(),
             dedupRepo,
             new FakeEventStoreRepository(),
-            flakyEventDelivery,
-            sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+            flakyEventDelivery);
 
         // Act & Assert
         await Assert.ThrowsAsync<TaskCanceledException>(() => sut.PublishEventAsync(
@@ -3263,10 +3232,11 @@ public sealed class WorkflowServiceTests
             });
 
         using var sqlite = new SqliteTestDatabase();
-        var sut = new WorkflowService(
+        var sut = BuildWorkflowService(
+            sqlite,
             engine,
             display,
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(dedupKey),
             workflowRepo,
@@ -3274,10 +3244,7 @@ public sealed class WorkflowServiceTests
             dedupRepo,
             new FakeEventStoreRepository(),
             flakyEventDelivery,
-            sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            strictRetryOptions,
-            UnitTestHttpContextAccessor());
+            eventDeliveryRetryOptions: strictRetryOptions);
 
         // Act & Assert
         await Assert.ThrowsAsync<IOException>(() => sut.PublishEventAsync(
@@ -3470,21 +3437,18 @@ public sealed class WorkflowServiceTests
         var display = new FakeDisplayIdService { ResolveResultDefinition = defUuid };
         var eventStore = new FakeEventStoreRepository { ThrowFromAppendWithDb = new InvalidOperationException("db fail") };
         using var sqlite = new SqliteTestDatabase();
-        var sut = new WorkflowService(
+        var sut = BuildWorkflowService(
+            sqlite,
             new FakeWorkflowEngine(),
             display,
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
             new FakeWorkflowRepository(),
             new FakeDefinitionsRepoStub2(defUuid),
             new FakeCommandDedupRepository(),
             eventStore,
-            new FakeEventDeliveryDedupRepository(),
-            sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+            new FakeEventDeliveryDedupRepository());
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -3572,7 +3536,8 @@ public sealed class WorkflowServiceTests
         var workflowId = Guid.NewGuid();
         var workflowRepo = new FakeWorkflowRepository();
         using var sqlite = new SqliteTestDatabase();
-        var sut = new WorkflowService(
+        var sut = BuildWorkflowService(
+            sqlite,
             new FakeWorkflowEngine { SnapshotToReturn = null },
             new FakeDisplayIdService(),
             new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
@@ -3582,11 +3547,7 @@ public sealed class WorkflowServiceTests
             new FakeDefinitionsRepoStub(),
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor());
+            new FakeEventDeliveryDedupRepository());
 
         // Act
         await sut.UpdateProjectionFromEngineAsync(workflowId, CancellationToken.None);
@@ -3645,8 +3606,8 @@ public sealed class WorkflowServiceTests
         IWorkflowProjectionUpdateQueue? projectionQueue = null)
     {
         var sqlite = new SqliteTestDatabase();
-
-        return new WorkflowService(
+        return BuildWorkflowService(
+            sqlite,
             engine,
             display,
             new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
@@ -3657,11 +3618,56 @@ public sealed class WorkflowServiceTests
             dedupRepo,
             eventStore,
             new FakeEventDeliveryDedupRepository(),
-            sqlite.Factory,
-            NullLogger<WorkflowService>.Instance,
-            DefaultEventDeliveryRetryOptions,
-            UnitTestHttpContextAccessor(),
             projectionQueue);
+    }
+
+    private static WorkflowService BuildWorkflowService(
+        SqliteTestDatabase sqlite,
+        IWorkflowEngine engine,
+        IDisplayIdService displayIds,
+        IDefinitionCompilerService compiler,
+        IIdGenerator idGenerator,
+        ICommandDedupService dedupService,
+        IWorkflowRepository workflows,
+        IDefinitionRepository definitions,
+        ICommandDedupRepository dedup,
+        IEventStoreRepository eventStore,
+        IEventDeliveryDedupRepository eventDeliveryDedup,
+        IWorkflowProjectionUpdateQueue? projectionUpdateQueue = null,
+        Microsoft.Extensions.Options.IOptions<EventDeliveryRetryOptions>? eventDeliveryRetryOptions = null,
+        IWorkflowMutationPersistence? mutationPersistence = null)
+    {
+        if (displayIds is not IDisplayIdWriteService displayIdWrites)
+            throw new InvalidOperationException("Test display id service must implement IDisplayIdWriteService.");
+
+        var uowFactory = new TestCoreUnitOfWorkFactory(sqlite.Factory);
+        var executor = new TestCoreTransactionExecutor(uowFactory);
+        var retryOptions = eventDeliveryRetryOptions ?? DefaultEventDeliveryRetryOptions;
+        mutationPersistence ??= new WorkflowMutationPersistence(
+            uowFactory,
+            eventDeliveryDedup,
+            retryOptions,
+            UnitTestHttpContextAccessor(),
+            NullLogger<WorkflowMutationPersistence>.Instance);
+
+        return new WorkflowService(
+            engine,
+            displayIds,
+            compiler,
+            idGenerator,
+            dedupService,
+            workflows,
+            definitions,
+            dedup,
+            eventStore,
+            eventDeliveryDedup,
+            displayIdWrites,
+            executor,
+            mutationPersistence,
+            NullLogger<WorkflowService>.Instance,
+            retryOptions,
+            UnitTestHttpContextAccessor(),
+            projectionUpdateQueue);
     }
 }
 

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Infrastructure;
@@ -11,14 +12,14 @@ namespace Statevia.Core.Api.Services;
 /// </summary>
 internal sealed class ExecutionReadModelService : IExecutionReadModelService
 {
-    private readonly IDbContextFactory<CoreDbContext> _dbFactory;
+    private readonly ICoreTransactionExecutor _executor;
     private readonly IDisplayIdService _displayIds;
 
     public ExecutionReadModelService(
-        IDbContextFactory<CoreDbContext> dbFactory,
+        ICoreTransactionExecutor executor,
         IDisplayIdService displayIds)
     {
-        _dbFactory = dbFactory;
+        _executor = executor;
         _displayIds = displayIds;
     }
 
@@ -28,26 +29,30 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
         if (uuid is null)
             throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        return await _executor.ExecuteReadOnlyAsync(
+            async (uow, innerCt) =>
+            {
+                var workflow = await uow.Db.Workflows.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.WorkflowId == uuid && x.TenantId == tenantId, innerCt)
+                    .ConfigureAwait(false);
+                if (workflow is null)
+                    throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
-        var workflow = await db.Workflows.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.WorkflowId == uuid && x.TenantId == tenantId, ct)
-            .ConfigureAwait(false);
-        if (workflow is null)
-            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
+                var snapshot = await uow.Db.ExecutionGraphSnapshots.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.WorkflowId == uuid, innerCt)
+                    .ConfigureAwait(false);
+                if (snapshot is null)
+                    throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
 
-        var snapshot = await db.ExecutionGraphSnapshots.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.WorkflowId == uuid, ct)
-            .ConfigureAwait(false);
-        if (snapshot is null)
-            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
+                var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Workflow, id, innerCt)
+                    .ConfigureAwait(false) ?? workflow.WorkflowId.ToString();
+                var graphId = await _displayIds
+                    .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, workflow.DefinitionId.ToString(), innerCt)
+                    .ConfigureAwait(false) ?? workflow.DefinitionId.ToString();
 
-        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Workflow, id, ct)
-            .ConfigureAwait(false) ?? workflow.WorkflowId.ToString();
-        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, workflow.DefinitionId.ToString(), ct)
-            .ConfigureAwait(false) ?? workflow.DefinitionId.ToString();
-
-        return MapToReadModel(workflow, snapshot, displayId, graphId);
+                return MapToReadModel(workflow, snapshot, displayId, graphId);
+            },
+            ct).ConfigureAwait(false);
     }
 
     private static ExecutionReadModel MapToReadModel(
@@ -58,7 +63,6 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
     {
         var status = ExecutionStatusMapper.ToContractStatus(workflow.Status);
 
-        // Note: cancelRequestedAt / canceledAt / failedAt / completedAt は reducer / event 由来の正確な時刻に差し替える。
         DateTimeOffset? canceledAt = status is "CANCELED" ? workflow.UpdatedAt : null;
         DateTimeOffset? failedAt = status is "FAILED" ? workflow.UpdatedAt : null;
         DateTimeOffset? completedAt = status is "COMPLETED" ? workflow.UpdatedAt : null;
@@ -154,4 +158,3 @@ internal static class ExecutionStatusMapper
             _ => "UNKNOWN"
         };
 }
-

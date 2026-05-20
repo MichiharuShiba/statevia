@@ -1,3 +1,4 @@
+using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Persistence;
@@ -16,8 +17,7 @@ public sealed class ExecutionReadModelServiceTests
         public string? WorkflowDisplayId { get; set; }
         public string? DefinitionDisplayId { get; set; }
 
-        public Task<string> AllocateAsync(string kind, Guid uuid, CancellationToken ct = default) =>
-            throw new NotSupportedException();
+        
 
         public Task<Guid?> ResolveAsync(string kind, string idOrUuid, CancellationToken ct = default)
         {
@@ -52,7 +52,7 @@ public sealed class ExecutionReadModelServiceTests
         // Act & Assert
         using var db = new InMemoryTestDatabase();
         var display = new StubDisplayIdService { WorkflowResolveResult = null };
-        var sut = new ExecutionReadModelService(db.Factory, display);
+        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
 
         await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByDisplayIdAsync("DISP", tenantId: "t1", CancellationToken.None));
     }
@@ -67,7 +67,7 @@ public sealed class ExecutionReadModelServiceTests
         using var db = new InMemoryTestDatabase();
         var uuid = Guid.NewGuid();
         var display = new StubDisplayIdService { WorkflowResolveResult = uuid };
-        var sut = new ExecutionReadModelService(db.Factory, display);
+        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
 
         await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByDisplayIdAsync("DISP", tenantId: "t1", CancellationToken.None));
     }
@@ -100,7 +100,7 @@ public sealed class ExecutionReadModelServiceTests
         }
 
         var display = new StubDisplayIdService { WorkflowResolveResult = uuid };
-        var sut = new ExecutionReadModelService(db.Factory, display);
+        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
 
         await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByDisplayIdAsync("DISP", tenantId: "t1", CancellationToken.None));
     }
@@ -155,7 +155,7 @@ public sealed class ExecutionReadModelServiceTests
             DefinitionDisplayId = null // fallback to workflow.DefinitionId string
         };
 
-        var sut = new ExecutionReadModelService(db.Factory, display);
+        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
         var res = await sut.GetByDisplayIdAsync("DISP", "t1", CancellationToken.None);
 
         // Assert
@@ -238,7 +238,7 @@ public sealed class ExecutionReadModelServiceTests
             DefinitionDisplayId = null // fallback to workflow.DefinitionId string
         };
 
-        var sut = new ExecutionReadModelService(db.Factory, display);
+        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
         var res = await sut.GetByDisplayIdAsync("DISP", "t1", CancellationToken.None);
 
         // Assert
@@ -296,7 +296,7 @@ public sealed class ExecutionReadModelServiceTests
         }
 
         var display = new StubDisplayIdService { WorkflowResolveResult = uuid, WorkflowDisplayId = "EXEC-1", DefinitionDisplayId = null };
-        var sut = new ExecutionReadModelService(db.Factory, display);
+        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
 
         // Assert
         var res = await sut.GetByDisplayIdAsync("DISP", "t1", CancellationToken.None);
@@ -343,7 +343,7 @@ public sealed class ExecutionReadModelServiceTests
         }
 
         var display = new StubDisplayIdService { WorkflowResolveResult = uuid, WorkflowDisplayId = "EXEC-1", DefinitionDisplayId = null };
-        var sut = new ExecutionReadModelService(db.Factory, display);
+        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
 
         // Assert
         var res = await sut.GetByDisplayIdAsync("DISP", "t1", CancellationToken.None);
@@ -386,7 +386,7 @@ public sealed class ExecutionReadModelServiceTests
         }
 
         var display = new StubDisplayIdService { WorkflowResolveResult = uuid, WorkflowDisplayId = "EXEC-2", DefinitionDisplayId = "G-1" };
-        var sut = new ExecutionReadModelService(db.Factory, display);
+        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
 
         // Assert
         var res = await sut.GetByDisplayIdAsync("DISP", "t1", CancellationToken.None);

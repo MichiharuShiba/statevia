@@ -7,32 +7,23 @@ namespace Statevia.Core.Api.Abstractions.Persistence;
 /// </summary>
 internal interface IEventDeliveryDedupRepository
 {
-    /// <summary>
-    /// 主キーで行を取得する（読み取り専用）。
-    /// </summary>
+    /// <summary>主キーで行を取得する（読み取り専用）。</summary>
     Task<EventDeliveryDedupRow?> FindAsync(
+        ICoreUnitOfWork uow,
         string tenantId,
         Guid workflowId,
         Guid clientEventId,
         CancellationToken cancellationToken);
 
-    /// <summary>
-    /// 独立した <see cref="CoreDbContext"/> で RECEIVED 行を挿入し、変更を保存する。
-    /// 一意制約違反は <see cref="Microsoft.EntityFrameworkCore.DbUpdateException"/>。
-    /// </summary>
-    Task InsertReceivedAsync(EventDeliveryDedupRow row, CancellationToken cancellationToken);
+    /// <summary>同一 UoW に RECEIVED 行を追加する。SaveChanges は呼び出し側。</summary>
+    Task AddReceivedAsync(ICoreUnitOfWork uow, EventDeliveryDedupRow row, CancellationToken cancellationToken);
 
     /// <summary>
-    /// 同一 <see cref="CoreDbContext"/> に RECEIVED 行を追加する。SaveChanges は呼び出し側。
-    /// </summary>
-    Task AddReceivedAsync(CoreDbContext db, EventDeliveryDedupRow row, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// 主キー一致行のステータスと関連列を更新する。SaveChanges は呼び出し側不要（一括更新）。
+    /// 主キー一致行のステータスと関連列を更新する（ExecuteUpdate。SaveChanges は不要）。
     /// </summary>
     /// <returns>更新できたとき true（0 件なら false）。</returns>
     Task<bool> TryUpdateStatusAsync(
-        CoreDbContext db,
+        ICoreUnitOfWork uow,
         string tenantId,
         Guid workflowId,
         Guid clientEventId,

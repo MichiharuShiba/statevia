@@ -38,7 +38,13 @@ internal static class ServiceCollectionExtensions
         services.AddDbContextFactory<CoreDbContext>(options =>
             options.UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__ef_migrations_history")));
 
-        services.AddScoped<IDisplayIdService, DisplayIdServiceImpl>();
+        services.AddScoped<ICoreUnitOfWorkFactory, CoreUnitOfWorkFactory>();
+        services.AddScoped<ICoreTransactionExecutor, CoreTransactionExecutor>();
+        services.AddScoped<IWorkflowMutationPersistence, WorkflowMutationPersistence>();
+
+        services.AddScoped<DisplayIdServiceImpl>();
+        services.AddScoped<IDisplayIdService>(sp => sp.GetRequiredService<DisplayIdServiceImpl>());
+        services.AddScoped<IDisplayIdWriteService>(sp => sp.GetRequiredService<DisplayIdServiceImpl>());
         services.AddScoped<IExecutionReadModelService, ExecutionReadModelService>();
         services.AddSingleton<IIdGenerator, UuidV7Generator>();
 

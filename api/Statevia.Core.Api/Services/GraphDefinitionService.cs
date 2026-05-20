@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Persistence;
@@ -14,14 +15,14 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly IDbContextFactory<CoreDbContext> _dbFactory;
+    private readonly ICoreTransactionExecutor _executor;
     private readonly IDisplayIdService _displayIds;
 
     public GraphDefinitionService(
-        IDbContextFactory<CoreDbContext> dbFactory,
+        ICoreTransactionExecutor executor,
         IDisplayIdService displayIds)
     {
-        _dbFactory = dbFactory;
+        _executor = executor;
         _displayIds = displayIds;
     }
 
@@ -31,14 +32,18 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
         if (uuid == null)
             throw new NotFoundException("Graph not found");
 
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        var row = await db.WorkflowDefinitions.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.DefinitionId == uuid && x.TenantId == tenantId, ct)
-            .ConfigureAwait(false);
-        if (row is null)
-            throw new NotFoundException("Graph not found");
+        return await _executor.ExecuteReadOnlyAsync(
+            async (uow, innerCt) =>
+            {
+                var row = await uow.Db.WorkflowDefinitions.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.DefinitionId == uuid && x.TenantId == tenantId, innerCt)
+                    .ConfigureAwait(false);
+                if (row is null)
+                    throw new NotFoundException("Graph not found");
 
-        return BuildFromCompiledJson(graphId, row.Name, row.CompiledJson);
+                return BuildFromCompiledJson(graphId, row.Name, row.CompiledJson);
+            },
+            ct).ConfigureAwait(false);
     }
 
     internal static GraphDefinitionResponse BuildFromCompiledJson(string graphId, string definitionName, string compiledJson)

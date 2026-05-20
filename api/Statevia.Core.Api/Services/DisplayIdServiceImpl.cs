@@ -1,87 +1,119 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Services;
 
 /// <summary>表示用 ID の実装。62 文字種・10 桁・衝突時再生成（U3）。</summary>
-internal sealed class DisplayIdServiceImpl : IDisplayIdService
+internal sealed class DisplayIdServiceImpl : IDisplayIdService, IDisplayIdWriteService
 {
     private static readonly char[] Chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
     private const int Length = 10;
-    private readonly IDbContextFactory<CoreDbContext> _dbFactory;
+    private readonly ICoreTransactionExecutor _executor;
 
-    public DisplayIdServiceImpl(IDbContextFactory<CoreDbContext> dbFactory) => _dbFactory = dbFactory;
+    public DisplayIdServiceImpl(ICoreTransactionExecutor executor) => _executor = executor;
 
-    public async Task<string> AllocateAsync(string kind, Guid uuid, CancellationToken ct = default)
+    /// <inheritdoc />
+    public async Task<string> AllocateAsync(ICoreUnitOfWork uow, string kind, Guid uuid, CancellationToken ct = default)
     {
         const int maxAttempts = 10;
         for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
             var displayId = GenerateDisplayId();
-            await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-            var exists = await db.DisplayIds.AnyAsync(x => x.DisplayId == displayId, ct).ConfigureAwait(false);
+            var exists = await uow.Db.DisplayIds.AnyAsync(x => x.DisplayId == displayId, ct).ConfigureAwait(false);
             if (exists)
                 continue;
-            db.DisplayIds.Add(new DisplayIdRow
+
+            uow.Db.DisplayIds.Add(new DisplayIdRow
             {
                 Kind = kind,
                 DisplayId = displayId,
                 ResourceId = uuid,
                 CreatedAt = DateTime.UtcNow
             });
-            try
-            {
-                await db.SaveChangesAsync(ct).ConfigureAwait(false);
-                return displayId;
-            }
-            catch (DbUpdateException)
-            {
-                // キー違反で衝突 → 再生成
-            }
+
+            return displayId;
         }
+
         throw new InvalidOperationException($"Failed to allocate display_id for {kind} after {maxAttempts} attempts.");
     }
 
-    public async Task<Guid?> ResolveAsync(string kind, string idOrUuid, CancellationToken ct = default)
+    /// <inheritdoc />
+    public Task<Guid?> ResolveAsync(string kind, string idOrUuid, CancellationToken ct = default) =>
+        _executor.ExecuteReadOnlyAsync(
+            async (uow, innerCt) => await ResolveCoreAsync(uow, kind, idOrUuid, innerCt).ConfigureAwait(false),
+            ct);
+
+    /// <inheritdoc />
+    public Task<string?> GetDisplayIdAsync(string kind, string idOrUuid, CancellationToken ct = default) =>
+        _executor.ExecuteReadOnlyAsync(
+            async (uow, innerCt) => await GetDisplayIdCoreAsync(uow, kind, idOrUuid, innerCt).ConfigureAwait(false),
+            ct);
+
+    /// <inheritdoc />
+    public Task<IReadOnlyDictionary<Guid, string>> GetDisplayIdsAsync(
+        string kind,
+        IEnumerable<Guid> resourceIds,
+        CancellationToken ct = default) =>
+        _executor.ExecuteReadOnlyAsync(
+            async (uow, innerCt) => await GetDisplayIdsCoreAsync(uow, kind, resourceIds, innerCt).ConfigureAwait(false),
+            ct);
+
+    private static async Task<Guid?> ResolveCoreAsync(
+        ICoreUnitOfWork uow,
+        string kind,
+        string idOrUuid,
+        CancellationToken ct)
     {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         if (Guid.TryParse(idOrUuid, out var guid))
         {
-            var byDisplay = await db.DisplayIds.FirstOrDefaultAsync(x => x.Kind == kind && x.ResourceId == guid, ct).ConfigureAwait(false);
+            var byDisplay = await uow.Db.DisplayIds.FirstOrDefaultAsync(x => x.Kind == kind && x.ResourceId == guid, ct)
+                .ConfigureAwait(false);
             if (byDisplay is not null) return guid;
-            if (kind is "definition" && await db.WorkflowDefinitions.AnyAsync(x => x.DefinitionId == guid, ct).ConfigureAwait(false)) return guid;
-            if (kind is "workflow" && await db.Workflows.AnyAsync(x => x.WorkflowId == guid, ct).ConfigureAwait(false)) return guid;
+            if (kind is "definition" && await uow.Db.WorkflowDefinitions.AnyAsync(x => x.DefinitionId == guid, ct).ConfigureAwait(false))
+                return guid;
+            if (kind is "workflow" && await uow.Db.Workflows.AnyAsync(x => x.WorkflowId == guid, ct).ConfigureAwait(false))
+                return guid;
             return null;
         }
-        var row = await db.DisplayIds.FirstOrDefaultAsync(x => x.Kind == kind && x.DisplayId == idOrUuid, ct).ConfigureAwait(false);
+
+        var row = await uow.Db.DisplayIds.FirstOrDefaultAsync(x => x.Kind == kind && x.DisplayId == idOrUuid, ct)
+            .ConfigureAwait(false);
         return row?.ResourceId;
     }
 
-    public async Task<string?> GetDisplayIdAsync(string kind, string idOrUuid, CancellationToken ct = default)
+    private static async Task<string?> GetDisplayIdCoreAsync(
+        ICoreUnitOfWork uow,
+        string kind,
+        string idOrUuid,
+        CancellationToken ct)
     {
         if (!Guid.TryParse(idOrUuid, out var guid))
             return idOrUuid;
 
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        var displayId = await db.DisplayIds.AsNoTracking()
+        return await uow.Db.DisplayIds.AsNoTracking()
             .Where(x => x.Kind == kind && x.ResourceId == guid)
             .Select(x => x.DisplayId)
-            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
-        return displayId;
+            .FirstOrDefaultAsync(ct)
+            .ConfigureAwait(false);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, string>> GetDisplayIdsAsync(string kind, IEnumerable<Guid> resourceIds, CancellationToken ct = default)
+    private static async Task<IReadOnlyDictionary<Guid, string>> GetDisplayIdsCoreAsync(
+        ICoreUnitOfWork uow,
+        string kind,
+        IEnumerable<Guid> resourceIds,
+        CancellationToken ct)
     {
         var ids = resourceIds.Distinct().ToList();
         if (ids.Count == 0) return new Dictionary<Guid, string>();
 
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        var pairs = await db.DisplayIds.AsNoTracking()
+        var pairs = await uow.Db.DisplayIds.AsNoTracking()
             .Where(x => x.Kind == kind && ids.Contains(x.ResourceId))
             .Select(x => new { x.ResourceId, x.DisplayId })
-            .ToListAsync(ct).ConfigureAwait(false);
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
         return pairs.ToDictionary(x => x.ResourceId, x => x.DisplayId);
     }
 

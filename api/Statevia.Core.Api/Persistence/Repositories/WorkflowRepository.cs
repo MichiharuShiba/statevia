@@ -7,34 +7,23 @@ namespace Statevia.Core.Api.Persistence.Repositories;
 
 internal sealed class WorkflowRepository : IWorkflowRepository
 {
-    private readonly IDbContextFactory<CoreDbContext> _dbFactory;
-
     private sealed class WorkflowWithDisplay
     {
         public required WorkflowRow Workflow { get; init; }
         public string? DisplayId { get; init; }
     }
 
-    public WorkflowRepository(IDbContextFactory<CoreDbContext> dbFactory)
-    {
-        _dbFactory = dbFactory;
-    }
-
-    public async Task<WorkflowRow?> GetByIdAsync(string tenantId, Guid workflowId, CancellationToken ct)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        return await db.Workflows.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.WorkflowId == workflowId && x.TenantId == tenantId, ct)
-            .ConfigureAwait(false);
-    }
+    public Task<WorkflowRow?> GetByIdAsync(ICoreUnitOfWork uow, string tenantId, Guid workflowId, CancellationToken ct) =>
+        uow.Db.Workflows.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.WorkflowId == workflowId && x.TenantId == tenantId, ct);
 
     public async Task<(int TotalCount, List<(WorkflowRow Workflow, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
+        ICoreUnitOfWork uow,
         string tenantId,
         WorkflowListPageQuery query,
         CancellationToken ct)
     {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        var joinQuery = QueryWorkflowsWithDisplayIds(db, tenantId);
+        var joinQuery = QueryWorkflowsWithDisplayIds(uow.Db, tenantId);
 
         if (!string.IsNullOrWhiteSpace(query.StatusFilter))
             joinQuery = joinQuery.Where(x => x.Workflow.Status == query.StatusFilter);
@@ -69,9 +58,48 @@ internal sealed class WorkflowRepository : IWorkflowRepository
         return (total, list);
     }
 
-    /// <summary>
-    /// テナントのワークフロー行と <c>display_ids</c>（kind=workflow）の左外部結合。一覧・ページングで共通。
-    /// </summary>
+    public Task AddWorkflowAndSnapshotAsync(
+        ICoreUnitOfWork uow,
+        WorkflowRow workflow,
+        ExecutionGraphSnapshotRow snapshot,
+        CancellationToken ct)
+    {
+        uow.Db.Workflows.Add(workflow);
+        uow.Db.ExecutionGraphSnapshots.Add(snapshot);
+        return Task.CompletedTask;
+    }
+
+    public Task<ExecutionGraphSnapshotRow?> GetSnapshotByWorkflowIdAsync(ICoreUnitOfWork uow, Guid workflowId, CancellationToken ct) =>
+        uow.Db.ExecutionGraphSnapshots.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.WorkflowId == workflowId, ct);
+
+    public async Task UpdateWorkflowAndSnapshotAsync(
+        ICoreUnitOfWork uow,
+        Guid workflowId,
+        string status,
+        bool? cancelRequested,
+        string graphJson,
+        CancellationToken ct)
+    {
+        var w = await uow.Db.Workflows.FirstOrDefaultAsync(x => x.WorkflowId == workflowId, ct).ConfigureAwait(false);
+        if (w is not null)
+        {
+            w.Status = status;
+            w.UpdatedAt = DateTime.UtcNow;
+            if (cancelRequested is not null)
+            {
+                w.CancelRequested = cancelRequested.Value;
+            }
+        }
+
+        var g = await uow.Db.ExecutionGraphSnapshots.FirstOrDefaultAsync(x => x.WorkflowId == workflowId, ct).ConfigureAwait(false);
+        if (g is not null)
+        {
+            g.GraphJson = graphJson;
+            g.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
     private static IQueryable<WorkflowWithDisplay> QueryWorkflowsWithDisplayIds(CoreDbContext db, string tenantId)
     {
         var displayIdsForWorkflow = db.DisplayIds.Where(x => x.Kind == "workflow");
@@ -101,71 +129,4 @@ internal sealed class WorkflowRepository : IWorkflowRepository
                     .ThenByDescending(x => x.Workflow.StartedAt)
         };
     }
-
-    public async Task AddWorkflowAndSnapshotAsync(WorkflowRow workflow, ExecutionGraphSnapshotRow snapshot, CancellationToken ct)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        AddWorkflowAndSnapshotCore(db, workflow, snapshot);
-        await db.SaveChangesAsync(ct).ConfigureAwait(false);
-    }
-
-    public Task AddWorkflowAndSnapshotAsync(CoreDbContext db, WorkflowRow workflow, ExecutionGraphSnapshotRow snapshot, CancellationToken ct)
-    {
-        AddWorkflowAndSnapshotCore(db, workflow, snapshot);
-        return Task.CompletedTask;
-    }
-
-    private static void AddWorkflowAndSnapshotCore(CoreDbContext db, WorkflowRow workflow, ExecutionGraphSnapshotRow snapshot)
-    {
-        db.Workflows.Add(workflow);
-        db.ExecutionGraphSnapshots.Add(snapshot);
-    }
-
-    public async Task<ExecutionGraphSnapshotRow?> GetSnapshotByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        return await db.ExecutionGraphSnapshots.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.WorkflowId == workflowId, ct)
-            .ConfigureAwait(false);
-    }
-
-    public async Task UpdateWorkflowAndSnapshotAsync(Guid workflowId, string status, bool? cancelRequested, string graphJson, CancellationToken ct)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        await UpdateWorkflowAndSnapshotCoreAsync(db, workflowId, status, cancelRequested, graphJson, ct).ConfigureAwait(false);
-        await db.SaveChangesAsync(ct).ConfigureAwait(false);
-    }
-
-    public async Task UpdateWorkflowAndSnapshotAsync(CoreDbContext db, Guid workflowId, string status, bool? cancelRequested, string graphJson, CancellationToken ct)
-    {
-        await UpdateWorkflowAndSnapshotCoreAsync(db, workflowId, status, cancelRequested, graphJson, ct).ConfigureAwait(false);
-    }
-
-    private static async Task UpdateWorkflowAndSnapshotCoreAsync(
-        CoreDbContext db,
-        Guid workflowId,
-        string status,
-        bool? cancelRequested,
-        string graphJson,
-        CancellationToken ct)
-    {
-        var w = await db.Workflows.FirstOrDefaultAsync(x => x.WorkflowId == workflowId, ct).ConfigureAwait(false);
-        if (w is not null)
-        {
-            w.Status = status;
-            w.UpdatedAt = DateTime.UtcNow;
-            if (cancelRequested is not null)
-            {
-                w.CancelRequested = cancelRequested.Value;
-            }
-        }
-
-        var g = await db.ExecutionGraphSnapshots.FirstOrDefaultAsync(x => x.WorkflowId == workflowId, ct).ConfigureAwait(false);
-        if (g is not null)
-        {
-            g.GraphJson = graphJson;
-            g.UpdatedAt = DateTime.UtcNow;
-        }
-    }
 }
-

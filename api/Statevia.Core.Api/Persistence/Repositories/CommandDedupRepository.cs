@@ -6,22 +6,16 @@ namespace Statevia.Core.Api.Persistence.Repositories;
 
 internal sealed class CommandDedupRepository : ICommandDedupRepository
 {
-    private readonly IDbContextFactory<CoreDbContext> _dbFactory;
+    public Task<CommandDedupRow?> FindValidAsync(
+        ICoreUnitOfWork uow,
+        string dedupKey,
+        DateTime utcNow,
+        CancellationToken ct) =>
+        uow.Db.CommandDedup.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.DedupKey == dedupKey && x.ExpiresAt > utcNow, ct);
 
-    public CommandDedupRepository(IDbContextFactory<CoreDbContext> dbFactory)
-    {
-        _dbFactory = dbFactory;
-    }
-
-    public async Task<CommandDedupRow?> FindValidAsync(string dedupKey, DateTime utcNow, CancellationToken ct)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        return await db.CommandDedup.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.DedupKey == dedupKey && x.ExpiresAt > utcNow, ct)
-            .ConfigureAwait(false);
-    }
-
-    public async Task<CommandDedupRow?> FindValidConflictingRequestHashAsync(
+    public Task<CommandDedupRow?> FindValidConflictingRequestHashAsync(
+        ICoreUnitOfWork uow,
         string tenantId,
         string endpoint,
         string idempotencyKey,
@@ -29,30 +23,20 @@ internal sealed class CommandDedupRepository : ICommandDedupRepository
         DateTime utcNow,
         CancellationToken ct)
     {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         var tenantPrefix = $"{tenantId}|";
-        return await db.CommandDedup.AsNoTracking()
+        return uow.Db.CommandDedup.AsNoTracking()
             .Where(x =>
                 x.ExpiresAt > utcNow
                 && x.Endpoint == endpoint
                 && x.IdempotencyKey == idempotencyKey
                 && x.DedupKey.StartsWith(tenantPrefix)
                 && (x.RequestHash == null || x.RequestHash != requestHash))
-            .FirstOrDefaultAsync(ct)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(ct);
     }
 
-    public async Task SaveAsync(CommandDedupRow row, CancellationToken ct)
+    public Task SaveAsync(ICoreUnitOfWork uow, CommandDedupRow row, CancellationToken ct)
     {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        db.CommandDedup.Add(row);
-        await db.SaveChangesAsync(ct).ConfigureAwait(false);
-    }
-
-    public Task SaveAsync(CoreDbContext db, CommandDedupRow row, CancellationToken ct)
-    {
-        db.CommandDedup.Add(row);
+        uow.Db.CommandDedup.Add(row);
         return Task.CompletedTask;
     }
 }
-

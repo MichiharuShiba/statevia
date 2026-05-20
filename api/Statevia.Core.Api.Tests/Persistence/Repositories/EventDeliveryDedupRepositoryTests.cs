@@ -16,12 +16,14 @@ public sealed class EventDeliveryDedupRepositoryTests
     {
         // Arrange
         using var db = new SqliteTestDatabase();
-        var repo = new EventDeliveryDedupRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new EventDeliveryDedupRepository();
         var workflowId = Guid.NewGuid();
         var clientEventId = Guid.NewGuid();
 
         // Act
-        var row = await repo.FindAsync("tenant-a", workflowId, clientEventId, default);
+        await using var uow = await uowFactory.CreateAsync();
+        var row = await repo.FindAsync(uow, "tenant-a", workflowId, clientEventId, default);
 
         // Assert
         Assert.Null(row);
@@ -29,11 +31,12 @@ public sealed class EventDeliveryDedupRepositoryTests
 
     /// <summary>InsertReceivedAsync で RECEIVED 行が永続化される。</summary>
     [Fact]
-    public async Task InsertReceivedAsync_PersistsReceivedRow()
+    public async Task AddReceivedAsync_PersistsReceivedRow()
     {
         // Arrange
         using var db = new SqliteTestDatabase();
-        var repo = new EventDeliveryDedupRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new EventDeliveryDedupRepository();
         var workflowId = Guid.NewGuid();
         var clientEventId = Guid.NewGuid();
         var acceptedAt = new DateTime(2026, 5, 16, 12, 0, 0, DateTimeKind.Utc);
@@ -49,8 +52,11 @@ public sealed class EventDeliveryDedupRepositoryTests
         };
 
         // Act
-        await repo.InsertReceivedAsync(row, default);
-        var found = await repo.FindAsync("tenant-a", workflowId, clientEventId, default);
+        await using var uow = await uowFactory.CreateAsync();
+        await repo.AddReceivedAsync(uow, row, default);
+        await uow.SaveChangesAsync(CancellationToken.None);
+        await using var readUow = await uowFactory.CreateAsync();
+        var found = await repo.FindAsync(readUow, "tenant-a", workflowId, clientEventId, default);
 
         // Assert
         Assert.NotNull(found);
@@ -61,11 +67,12 @@ public sealed class EventDeliveryDedupRepositoryTests
 
     /// <summary>同一キーの二重 INSERT は DbUpdateException となり一意制約違反と判定できる。</summary>
     [Fact]
-    public async Task InsertReceivedAsync_ThrowsDbUpdateException_WhenDuplicateKey()
+    public async Task AddReceivedAsync_ThrowsDbUpdateException_WhenDuplicateKey()
     {
         // Arrange
         using var db = new SqliteTestDatabase();
-        var repo = new EventDeliveryDedupRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new EventDeliveryDedupRepository();
         var workflowId = Guid.NewGuid();
         var clientEventId = Guid.NewGuid();
         var acceptedAt = DateTime.UtcNow;
@@ -79,11 +86,17 @@ public sealed class EventDeliveryDedupRepositoryTests
             UpdatedAt = acceptedAt
         };
 
-        await repo.InsertReceivedAsync(row, default);
+        await using var uow = await uowFactory.CreateAsync();
+        await repo.AddReceivedAsync(uow, row, default);
+        await uow.SaveChangesAsync(CancellationToken.None);
 
         // Act
-        var ex = await Assert.ThrowsAsync<DbUpdateException>(() =>
-            repo.InsertReceivedAsync(row, default));
+        var ex = await Assert.ThrowsAsync<DbUpdateException>(async () =>
+        {
+            await using var uow2 = await uowFactory.CreateAsync();
+            await repo.AddReceivedAsync(uow2, row, default);
+            await uow2.SaveChangesAsync(CancellationToken.None);
+        });
 
         // Assert
         Assert.True(EventDeliveryRetryPolicy.IsUniqueConstraintViolation(ex));
@@ -95,7 +108,8 @@ public sealed class EventDeliveryDedupRepositoryTests
     {
         // Arrange
         using var db = new SqliteTestDatabase();
-        var repo = new EventDeliveryDedupRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new EventDeliveryDedupRepository();
         var workflowId = Guid.NewGuid();
         var clientEventId = Guid.NewGuid();
         var acceptedAt = new DateTime(2026, 5, 16, 10, 0, 0, DateTimeKind.Utc);
@@ -112,14 +126,14 @@ public sealed class EventDeliveryDedupRepositoryTests
                 AcceptedAt = acceptedAt,
                 UpdatedAt = acceptedAt
             });
-            await seed.SaveChangesAsync();
+            await seed.SaveChangesAsync(CancellationToken.None);
         }
 
-        await using var ctx = new CoreDbContext(db.Options);
+        await using var uow = await uowFactory.CreateAsync();
 
         // Act
         var updated = await repo.TryUpdateStatusAsync(
-            ctx,
+            uow,
             "tenant-a",
             workflowId,
             clientEventId,
@@ -132,7 +146,9 @@ public sealed class EventDeliveryDedupRepositoryTests
 
         // Assert
         Assert.True(updated);
-        var found = await repo.FindAsync("tenant-a", workflowId, clientEventId, default);
+        await uow.SaveChangesAsync(CancellationToken.None);
+        await using var readUow = await uowFactory.CreateAsync();
+        var found = await repo.FindAsync(readUow, "tenant-a", workflowId, clientEventId, default);
         Assert.NotNull(found);
         Assert.Equal(EventDeliveryDedupStatuses.Applied, found.Status);
         Assert.Equal(appliedAt, found.AppliedAt);
@@ -145,12 +161,13 @@ public sealed class EventDeliveryDedupRepositoryTests
     {
         // Arrange
         using var db = new SqliteTestDatabase();
-        var repo = new EventDeliveryDedupRepository(db.Factory);
-        await using var ctx = new CoreDbContext(db.Options);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new EventDeliveryDedupRepository();
+        await using var uow = await uowFactory.CreateAsync();
 
         // Act
         var updated = await repo.TryUpdateStatusAsync(
-            ctx,
+            uow,
             "tenant-a",
             Guid.NewGuid(),
             Guid.NewGuid(),
@@ -171,7 +188,8 @@ public sealed class EventDeliveryDedupRepositoryTests
     {
         // Arrange
         using var db = new SqliteTestDatabase();
-        var repo = new EventDeliveryDedupRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new EventDeliveryDedupRepository();
         var workflowId = Guid.NewGuid();
         var clientEventId = Guid.NewGuid();
         var acceptedAt = DateTime.UtcNow;
@@ -185,13 +203,13 @@ public sealed class EventDeliveryDedupRepositoryTests
             UpdatedAt = acceptedAt
         };
 
-        await using var ctx = new CoreDbContext(db.Options);
-
         // Act
-        await repo.AddReceivedAsync(ctx, row, default);
-        var beforeSave = await repo.FindAsync("tenant-a", workflowId, clientEventId, default);
-        await ctx.SaveChangesAsync();
-        var afterSave = await repo.FindAsync("tenant-a", workflowId, clientEventId, default);
+        await using var uow = await uowFactory.CreateAsync();
+        await repo.AddReceivedAsync(uow, row, default);
+        var beforeSave = await repo.FindAsync(uow, "tenant-a", workflowId, clientEventId, default);
+        await uow.SaveChangesAsync(CancellationToken.None);
+        await using var readUow = await uowFactory.CreateAsync();
+        var afterSave = await repo.FindAsync(readUow, "tenant-a", workflowId, clientEventId, default);
 
         // Assert
         Assert.Null(beforeSave);
