@@ -15,10 +15,13 @@ public sealed class CommandDedupRepositoryTests
     {
         // Arrange
         using var db = new SqliteTestDatabase();
-        var repo = new CommandDedupRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new CommandDedupRepository();
 
         // Act
-        var row = await repo.FindValidAsync("missing", DateTime.UtcNow, default);
+        await using var uow = await uowFactory.CreateAsync();
+        var row = await repo.FindValidAsync(uow, "missing", DateTime.UtcNow, default);
+
         // Assert
         Assert.Null(row);
     }
@@ -31,9 +34,8 @@ public sealed class CommandDedupRepositoryTests
     {
         // Arrange
         using var db = new SqliteTestDatabase();
-        var repo = new CommandDedupRepository(db.Factory);
-
-        // Act
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new CommandDedupRepository();
         var dedupKey = "tenant|POST /v1/workflows:abc123";
         var now = DateTime.UtcNow;
 
@@ -50,11 +52,14 @@ public sealed class CommandDedupRepositoryTests
                 CreatedAt = now,
                 ExpiresAt = now.AddSeconds(-1)
             });
-            await ctx.SaveChangesAsync();
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var row = await repo.FindValidAsync(uow, dedupKey, now, default);
+
         // Assert
-        var row = await repo.FindValidAsync(dedupKey, now, default);
         Assert.Null(row);
     }
 
@@ -66,9 +71,8 @@ public sealed class CommandDedupRepositoryTests
     {
         // Arrange
         using var db = new SqliteTestDatabase();
-        var repo = new CommandDedupRepository(db.Factory);
-
-        // Act
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new CommandDedupRepository();
         var dedupKey = "tenant|POST /v1/workflows:abc123";
         var now = DateTime.UtcNow;
 
@@ -85,26 +89,28 @@ public sealed class CommandDedupRepositoryTests
                 CreatedAt = now,
                 ExpiresAt = now.AddHours(1)
             });
-            await ctx.SaveChangesAsync();
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var row = await repo.FindValidAsync(uow, dedupKey, now, default);
+
         // Assert
-        var row = await repo.FindValidAsync(dedupKey, now, default);
         Assert.NotNull(row);
         Assert.Equal("hash-1", row!.RequestHash);
     }
 
     /// <summary>
-    /// 行を永続化する の挙動を確認する。
+    /// 行を永続化する挙動を確認する。
     /// </summary>
     [Fact]
     public async Task SaveAsync_PersistsRow()
     {
         // Arrange
         using var db = new SqliteTestDatabase();
-        var repo = new CommandDedupRepository(db.Factory);
-
-        // Act
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new CommandDedupRepository();
         var now = DateTime.UtcNow;
         var row = new CommandDedupRow
         {
@@ -118,9 +124,13 @@ public sealed class CommandDedupRepositoryTests
             ExpiresAt = now.AddHours(24)
         };
 
-        await repo.SaveAsync(row, default);
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        await repo.SaveAsync(uow, row, default);
+        await uow.SaveChangesAsync(CancellationToken.None);
 
         await using var verify = new CoreDbContext(db.Options);
+
         // Assert
         var saved = await verify.CommandDedup.FirstOrDefaultAsync(x => x.DedupKey == "k1");
         Assert.NotNull(saved);
@@ -128,17 +138,17 @@ public sealed class CommandDedupRepositoryTests
     }
 
     /// <summary>
-    /// 既存文脈への追加は保存前に永続化されない。
+    /// 同一 UoW への追加は SaveChanges 前に永続化されない。
     /// </summary>
     [Fact]
     public async Task SaveAsync_WithDb_AddsWithoutSaveChanges()
     {
         // Arrange
         using var db = new SqliteTestDatabase();
-        var repo = new CommandDedupRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new CommandDedupRepository();
 
-        // Act
-        await using var ctx = new CoreDbContext(db.Options);
+        await using var uow = await uowFactory.CreateAsync();
         var row = new CommandDedupRow
         {
             DedupKey = "k2",
@@ -149,24 +159,29 @@ public sealed class CommandDedupRepositoryTests
             ExpiresAt = DateTime.UtcNow.AddHours(1)
         };
 
-        await repo.SaveAsync(ctx, row, default);
+        // Act
+        await repo.SaveAsync(uow, row, default);
 
-        // SaveChangesAsync していないので、まだ永続化されていない（db コンテキスト外では見えない）
         await using var verify = new CoreDbContext(db.Options);
+
         // Assert
         Assert.Null(await verify.CommandDedup.FirstOrDefaultAsync(x => x.DedupKey == "k2"));
 
-        // SaveChanges 後に現れる
-        await ctx.SaveChangesAsync();
+        await uow.SaveChangesAsync(CancellationToken.None);
         await using var verify2 = new CoreDbContext(db.Options);
         Assert.NotNull(await verify2.CommandDedup.FirstOrDefaultAsync(x => x.DedupKey == "k2"));
     }
 
+    /// <summary>
+    /// 同一冪等キーでリクエストハッシュが異なる有効行があるとき、その行を返す。
+    /// </summary>
     [Fact]
     public async Task FindValidConflictingRequestHashAsync_ReturnsRow_WhenSameIdempotencyKeyButDifferentHash()
     {
+        // Arrange
         using var db = new SqliteTestDatabase();
-        var repo = new CommandDedupRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new CommandDedupRepository();
         var now = DateTime.UtcNow;
         const string tenantId = "default";
         const string idem = "idem-e2e-test";
@@ -184,10 +199,13 @@ public sealed class CommandDedupRepositoryTests
                 CreatedAt = now,
                 ExpiresAt = now.AddHours(1)
             });
-            await ctx.SaveChangesAsync();
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
         var conflict = await repo.FindValidConflictingRequestHashAsync(
+            uow,
             tenantId,
             "POST /v1/workflows",
             idem,
@@ -195,15 +213,21 @@ public sealed class CommandDedupRepositoryTests
             now,
             default);
 
+        // Assert
         Assert.NotNull(conflict);
         Assert.Equal("AAA", conflict!.RequestHash);
     }
 
+    /// <summary>
+    /// リクエストハッシュが一致するときは空値を返す。
+    /// </summary>
     [Fact]
     public async Task FindValidConflictingRequestHashAsync_ReturnsNull_WhenHashMatches()
     {
+        // Arrange
         using var db = new SqliteTestDatabase();
-        var repo = new CommandDedupRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new CommandDedupRepository();
         var now = DateTime.UtcNow;
         const string tenantId = "default";
         const string hash = "SAME";
@@ -221,10 +245,13 @@ public sealed class CommandDedupRepositoryTests
                 CreatedAt = now,
                 ExpiresAt = now.AddHours(1)
             });
-            await ctx.SaveChangesAsync();
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
         var conflict = await repo.FindValidConflictingRequestHashAsync(
+            uow,
             tenantId,
             "POST /v1/workflows",
             "key1",
@@ -232,7 +259,7 @@ public sealed class CommandDedupRepositoryTests
             now,
             default);
 
+        // Assert
         Assert.Null(conflict);
     }
 }
-

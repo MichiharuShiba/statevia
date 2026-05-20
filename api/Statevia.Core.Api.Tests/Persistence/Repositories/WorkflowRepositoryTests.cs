@@ -16,10 +16,12 @@ public sealed class WorkflowRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new WorkflowRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new WorkflowRepository();
 
         // Act
-        var res = await repo.GetByIdAsync("t1", Guid.NewGuid(), default);
+        await using var uow = await uowFactory.CreateAsync();
+        var res = await repo.GetByIdAsync(uow, "t1", Guid.NewGuid(), default);
         // Assert
         Assert.Null(res);
     }
@@ -32,7 +34,8 @@ public sealed class WorkflowRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new WorkflowRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new WorkflowRepository();
 
         // Act
         var tenantId = "t1";
@@ -77,11 +80,13 @@ public sealed class WorkflowRepositoryTests
                 CreatedAt = t2
             });
 
-            await ctx.SaveChangesAsync();
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
         // Assert
+        await using var uow = await uowFactory.CreateAsync();
         var (_, items) = await repo.ListWithDisplayIdsPageAsync(
+            uow,
             tenantId,
             new WorkflowListPageQuery(
                 Page: new PageQuery(0, 10),
@@ -104,7 +109,8 @@ public sealed class WorkflowRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new WorkflowRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new WorkflowRepository();
 
         // Act
         var tenantId = "t1";
@@ -136,11 +142,13 @@ public sealed class WorkflowRepositoryTests
                     RestartLost = false
                 });
 
-            await ctx.SaveChangesAsync();
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
         // Assert
+        await using var uow = await uowFactory.CreateAsync();
         var (total, items) = await repo.ListWithDisplayIdsPageAsync(
+            uow,
             tenantId,
             new WorkflowListPageQuery(
                 Page: new PageQuery(0, 10),
@@ -160,7 +168,8 @@ public sealed class WorkflowRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new WorkflowRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new WorkflowRepository();
         var tenantId = "t1";
         var def1 = Guid.NewGuid();
         var def2 = Guid.NewGuid();
@@ -193,11 +202,13 @@ public sealed class WorkflowRepositoryTests
                     CancelRequested = false,
                     RestartLost = false
                 });
-            await ctx.SaveChangesAsync();
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
         // Act
+        await using var uow = await uowFactory.CreateAsync();
         var (total, items) = await repo.ListWithDisplayIdsPageAsync(
+            uow,
             tenantId,
             new WorkflowListPageQuery(
                 Page: new PageQuery(0, 10),
@@ -219,7 +230,8 @@ public sealed class WorkflowRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new WorkflowRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new WorkflowRepository();
         var tenantId = "t1";
         var defId = Guid.NewGuid();
         var wfId = Guid.NewGuid();
@@ -259,11 +271,13 @@ public sealed class WorkflowRepositoryTests
                     CancelRequested = false,
                     RestartLost = false
                 });
-            await ctx.SaveChangesAsync();
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
         // Act
+        await using var uow = await uowFactory.CreateAsync();
         var (total, items) = await repo.ListWithDisplayIdsPageAsync(
+            uow,
             tenantId,
             new WorkflowListPageQuery(
                 Page: new PageQuery(0, 10),
@@ -287,7 +301,8 @@ public sealed class WorkflowRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new WorkflowRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new WorkflowRepository();
 
         // Act
         var tenantId = "t1";
@@ -312,7 +327,9 @@ public sealed class WorkflowRepositoryTests
             UpdatedAt = DateTime.UtcNow
         };
 
-        await repo.AddWorkflowAndSnapshotAsync(workflow, snapshot, default);
+        await using var uow = await uowFactory.CreateAsync();
+        await repo.AddWorkflowAndSnapshotAsync(uow, workflow, snapshot, default);
+        await uow.SaveChangesAsync(CancellationToken.None);
 
         await using var ctx = await db.Factory.CreateDbContextAsync();
         // Assert
@@ -328,12 +345,14 @@ public sealed class WorkflowRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new WorkflowRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new WorkflowRepository();
 
         // Act
         var wfId = Guid.NewGuid();
         // Assert
-        var snapshot = await repo.GetSnapshotByWorkflowIdAsync(wfId, default);
+        await using var uow = await uowFactory.CreateAsync();
+        var snapshot = await repo.GetSnapshotByWorkflowIdAsync(uow, wfId, default);
         Assert.Null(snapshot);
     }
 
@@ -345,7 +364,8 @@ public sealed class WorkflowRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new WorkflowRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new WorkflowRepository();
 
         // Act
         var tenantId = "t1";
@@ -371,10 +391,12 @@ public sealed class WorkflowRepositoryTests
                 GraphJson = "{\"nodes\":[1]}",
                 UpdatedAt = DateTime.UtcNow.AddMinutes(-10)
             });
-            await ctx.SaveChangesAsync();
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
-        await repo.UpdateWorkflowAndSnapshotAsync(wfId, status: "Completed", cancelRequested: null, graphJson: "{\"nodes\":[2]}", default);
+        await using var uow = await uowFactory.CreateAsync();
+        await repo.UpdateWorkflowAndSnapshotAsync(uow, wfId, "Completed", null, "{\"nodes\":[2]}", default);
+        await uow.SaveChangesAsync(CancellationToken.None);
 
         await using var verify = new CoreDbContext(db.Options);
         // Assert
@@ -393,7 +415,8 @@ public sealed class WorkflowRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new WorkflowRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new WorkflowRepository();
 
         // Act
         var wfId = Guid.NewGuid();
@@ -406,10 +429,12 @@ public sealed class WorkflowRepositoryTests
                 GraphJson = "{\"nodes\":[1]}",
                 UpdatedAt = DateTime.UtcNow.AddMinutes(-10)
             });
-            await ctx.SaveChangesAsync();
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
-        await repo.UpdateWorkflowAndSnapshotAsync(wfId, status: "Completed", cancelRequested: true, graphJson: "{\"nodes\":[2]}", default);
+        await using var uow = await uowFactory.CreateAsync();
+        await repo.UpdateWorkflowAndSnapshotAsync(uow, wfId, "Completed", true, "{\"nodes\":[2]}", default);
+        await uow.SaveChangesAsync(CancellationToken.None);
 
         await using var verify = new CoreDbContext(db.Options);
         // Assert
@@ -425,7 +450,8 @@ public sealed class WorkflowRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new WorkflowRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new WorkflowRepository();
 
         // Act
         var tenantId = "t1";
@@ -445,10 +471,12 @@ public sealed class WorkflowRepositoryTests
                 CancelRequested = false,
                 RestartLost = false
             });
-            await ctx.SaveChangesAsync();
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
-        await repo.UpdateWorkflowAndSnapshotAsync(wfId, status: "Completed", cancelRequested: true, graphJson: "{\"nodes\":[2]}", default);
+        await using var uow = await uowFactory.CreateAsync();
+        await repo.UpdateWorkflowAndSnapshotAsync(uow, wfId, "Completed", true, "{\"nodes\":[2]}", default);
+        await uow.SaveChangesAsync(CancellationToken.None);
 
         await using var verify = new CoreDbContext(db.Options);
         // Assert

@@ -15,10 +15,12 @@ public sealed class DefinitionRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new DefinitionRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new DefinitionRepository();
 
         // Act
-        var res = await repo.GetByIdAsync("t1", Guid.NewGuid(), default);
+        await using var uow = await uowFactory.CreateAsync();
+        var res = await repo.GetByIdAsync(uow, "t1", Guid.NewGuid(), default);
         // Assert
         Assert.Null(res);
     }
@@ -31,13 +33,15 @@ public sealed class DefinitionRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new DefinitionRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new DefinitionRepository();
 
         // Act
         var tenantId = "t1";
         var defId = Guid.NewGuid();
         var created = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        await repo.AddAsync(new WorkflowDefinitionRow
+        await using var uow = await uowFactory.CreateAsync();
+        await repo.AddAsync(uow, new WorkflowDefinitionRow
         {
             DefinitionId = defId,
             TenantId = tenantId,
@@ -47,9 +51,11 @@ public sealed class DefinitionRepositoryTests
             CreatedAt = created,
             UpdatedAt = created
         }, default);
+        await uow.SaveChangesAsync(CancellationToken.None);
 
         // Assert
-        var res = await repo.GetByIdAsync(tenantId, defId, default);
+        await using var readUow = await uowFactory.CreateAsync();
+        var res = await repo.GetByIdAsync(readUow, tenantId, defId, default);
         Assert.NotNull(res);
         Assert.Equal(defId, res!.DefinitionId);
         Assert.Equal("def-1", res.Name);
@@ -63,7 +69,8 @@ public sealed class DefinitionRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new DefinitionRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new DefinitionRepository();
 
         // Act
         var tenantId = "t1";
@@ -105,10 +112,12 @@ public sealed class DefinitionRepositoryTests
                 CreatedAt = created1
             });
 
-            await ctx.SaveChangesAsync();
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
+        await using var uow = await uowFactory.CreateAsync();
         var (_, items) = await repo.ListWithDisplayIdsPageAsync(
+            uow,
             tenantId,
             new DefinitionListPageQuery(
                 Page: new PageQuery(0, 10),
@@ -130,7 +139,8 @@ public sealed class DefinitionRepositoryTests
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
-        var repo = new DefinitionRepository(db.Factory);
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new DefinitionRepository();
 
         // Act
         var tenantId = "t1";
@@ -175,10 +185,12 @@ public sealed class DefinitionRepositoryTests
                     CreatedAt = created3,
                     UpdatedAt = created3
                 });
-            await ctx.SaveChangesAsync();
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
+        await using var uow = await uowFactory.CreateAsync();
         var (total, items) = await repo.ListWithDisplayIdsPageAsync(
+            uow,
             tenantId,
             new DefinitionListPageQuery(
                 Page: new PageQuery(0, 1),
