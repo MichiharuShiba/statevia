@@ -7,35 +7,28 @@ namespace Statevia.Core.Api.Persistence.Repositories;
 
 internal sealed class DefinitionRepository : IDefinitionRepository
 {
-    private readonly IDbContextFactory<CoreDbContext> _dbFactory;
-
     private sealed class DefinitionWithDisplay
     {
         public required WorkflowDefinitionRow Def { get; init; }
         public string? DisplayId { get; init; }
     }
 
-    public DefinitionRepository(IDbContextFactory<CoreDbContext> dbFactory)
+    public Task<WorkflowDefinitionRow?> GetByIdAsync(
+        ICoreUnitOfWork uow,
+        string tenantId,
+        Guid definitionId,
+        CancellationToken ct) =>
+        uow.Db.WorkflowDefinitions.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.TenantId == tenantId, ct);
+
+    public Task AddAsync(ICoreUnitOfWork uow, WorkflowDefinitionRow row, CancellationToken ct)
     {
-        _dbFactory = dbFactory;
+        uow.Db.WorkflowDefinitions.Add(row);
+        return Task.CompletedTask;
     }
 
-    public async Task<WorkflowDefinitionRow?> GetByIdAsync(string tenantId, Guid definitionId, CancellationToken ct)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        return await db.WorkflowDefinitions.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.TenantId == tenantId, ct)
-            .ConfigureAwait(false);
-    }
-
-    public async Task AddAsync(WorkflowDefinitionRow row, CancellationToken ct)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        db.WorkflowDefinitions.Add(row);
-        await db.SaveChangesAsync(ct).ConfigureAwait(false);
-    }
-
-    public async Task<bool> UpdateAsync(
+    public async Task<WorkflowDefinitionRow?> UpdateAsync(
+        ICoreUnitOfWork uow,
         string tenantId,
         Guid definitionId,
         string name,
@@ -43,30 +36,28 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         string compiledJson,
         CancellationToken ct)
     {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        var row = await db.WorkflowDefinitions
+        var row = await uow.Db.WorkflowDefinitions
             .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.TenantId == tenantId, ct)
             .ConfigureAwait(false);
         if (row is null)
         {
-            return false;
+            return null;
         }
 
         row.Name = name;
         row.SourceYaml = sourceYaml;
         row.CompiledJson = compiledJson;
         row.UpdatedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync(ct).ConfigureAwait(false);
-        return true;
+        return row;
     }
 
     public async Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
+        ICoreUnitOfWork uow,
         string tenantId,
         DefinitionListPageQuery query,
         CancellationToken ct)
     {
-        await using var db = await _dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        var joinQuery = QueryDefinitionsWithDisplayIds(db, tenantId);
+        var joinQuery = QueryDefinitionsWithDisplayIds(uow.Db, tenantId);
 
         if (!string.IsNullOrWhiteSpace(query.NameContains))
             joinQuery = joinQuery.Where(x => x.Def.Name.Contains(query.NameContains));
@@ -84,9 +75,6 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         return (total, list);
     }
 
-    /// <summary>
-    /// テナントの定義行と <c>display_ids</c>（kind=definition）の左外部結合。一覧・ページングで共通。
-    /// </summary>
     private static IQueryable<DefinitionWithDisplay> QueryDefinitionsWithDisplayIds(CoreDbContext db, string tenantId)
     {
         var displayIdsForDefinition = db.DisplayIds.Where(x => x.Kind == "definition");
@@ -115,4 +103,3 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         };
     }
 }
-
