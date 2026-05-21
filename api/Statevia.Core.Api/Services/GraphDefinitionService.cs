@@ -35,13 +35,20 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
         return await _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
-                var row = await uow.Db.WorkflowDefinitions.AsNoTracking()
-                    .FirstOrDefaultAsync(x => x.DefinitionId == uuid && x.TenantId == tenantId, innerCt)
+                var detail = await uow.Db.Definitions.AsNoTracking()
+                    .Where(x => x.DefinitionId == uuid && x.TenantId == tenantId)
+                    .Join(
+                        uow.Db.DefinitionVersions.AsNoTracking(),
+                        definition => new { definition.DefinitionId, Version = definition.LatestVersion },
+                        version => new { version.DefinitionId, version.Version },
+                        (definition, version) => new { definition, version })
+                    .Select(x => new DefinitionDetail { Definition = x.definition, Version = x.version })
+                    .FirstOrDefaultAsync(innerCt)
                     .ConfigureAwait(false);
-                if (row is null)
+                if (detail is null)
                     throw new NotFoundException("Graph not found");
 
-                return BuildFromCompiledJson(graphId, row.Name, row.CompiledJson);
+                return BuildFromCompiledJson(graphId, detail.Definition.Name, detail.Version.CompiledJson);
             },
             ct).ConfigureAwait(false);
     }
