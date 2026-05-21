@@ -59,6 +59,15 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
         return (compiled, compiledJson);
     }
 
+    /// <inheritdoc />
+    public CompiledWorkflowDefinition RestoreFromStoredVersion(string sourceYaml, string compiledJson)
+    {
+        var def = _definitionLoadStrategy.Load(sourceYaml);
+        ValidateRegisteredActions(def);
+        var factory = new ActionExecutorFactory(def, _actionRegistry);
+        return CompiledDefinitionJsonReader.Read(compiledJson, factory);
+    }
+
     private void ValidateRegisteredActions(WorkflowDefinition def)
     {
         foreach (var (stateName, state) in def.States)
