@@ -142,6 +142,10 @@ public class DefinitionResponse
     [JsonPropertyName("updatedAt")]
     public DateTime UpdatedAt { get; set; }
 
+    /// <summary>最新版番号（投影。truth は definition_versions）。</summary>
+    [JsonPropertyName("latestVersion")]
+    public int LatestVersion { get; set; }
+
     /// <summary>ソース YAML（取得時のみ。任意）。</summary>
     [JsonPropertyName("yaml")]
     public string? Yaml { get; set; }

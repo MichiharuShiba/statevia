@@ -9,49 +9,117 @@ internal sealed class DefinitionRepository : IDefinitionRepository
 {
     private sealed class DefinitionWithDisplay
     {
-        public required WorkflowDefinitionRow Def { get; init; }
+        public required DefinitionRow Definition { get; init; }
+        public required DefinitionVersionRow Version { get; init; }
         public string? DisplayId { get; init; }
     }
 
-    public Task<WorkflowDefinitionRow?> GetByIdAsync(
+    /// <inheritdoc />
+    public async Task<DefinitionDetail?> GetLatestByIdAsync(
         ICoreUnitOfWork uow,
         string tenantId,
         Guid definitionId,
-        CancellationToken ct) =>
-        uow.Db.WorkflowDefinitions.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.TenantId == tenantId, ct);
-
-    public Task AddAsync(ICoreUnitOfWork uow, WorkflowDefinitionRow row, CancellationToken ct)
-    {
-        uow.Db.WorkflowDefinitions.Add(row);
-        return Task.CompletedTask;
-    }
-
-    public async Task<WorkflowDefinitionRow?> UpdateAsync(
-        ICoreUnitOfWork uow,
-        string tenantId,
-        Guid definitionId,
-        string name,
-        string sourceYaml,
-        string compiledJson,
         CancellationToken ct)
     {
-        var row = await uow.Db.WorkflowDefinitions
+        var definition = await uow.Db.Definitions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.TenantId == tenantId, ct)
             .ConfigureAwait(false);
-        if (row is null)
+        if (definition is null)
         {
             return null;
         }
 
-        row.Name = name;
-        row.SourceYaml = sourceYaml;
-        row.CompiledJson = compiledJson;
-        row.UpdatedAt = DateTime.UtcNow;
-        return row;
+        var version = await uow.Db.DefinitionVersions.AsNoTracking()
+            .FirstOrDefaultAsync(
+                x => x.DefinitionId == definitionId && x.Version == definition.LatestVersion,
+                ct)
+            .ConfigureAwait(false);
+        if (version is null)
+        {
+            return null;
+        }
+
+        return new DefinitionDetail { Definition = definition, Version = version };
     }
 
-    public async Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
+    /// <inheritdoc />
+    public Task<DefinitionVersionRow?> GetVersionByIdAsync(
+        ICoreUnitOfWork uow,
+        string tenantId,
+        Guid definitionVersionId,
+        CancellationToken ct) =>
+        (from version in uow.Db.DefinitionVersions.AsNoTracking()
+         join definition in uow.Db.Definitions.AsNoTracking()
+             on version.DefinitionId equals definition.DefinitionId
+         where version.DefinitionVersionId == definitionVersionId
+               && definition.TenantId == tenantId
+         select version).FirstOrDefaultAsync(ct);
+
+    /// <inheritdoc />
+    public Task<DefinitionVersionRow?> GetVersionAsync(
+        ICoreUnitOfWork uow,
+        string tenantId,
+        Guid definitionId,
+        int version,
+        CancellationToken ct) =>
+        (from versionRow in uow.Db.DefinitionVersions.AsNoTracking()
+         join definition in uow.Db.Definitions.AsNoTracking()
+             on versionRow.DefinitionId equals definition.DefinitionId
+         where versionRow.DefinitionId == definitionId
+               && versionRow.Version == version
+               && definition.TenantId == tenantId
+         select versionRow).FirstOrDefaultAsync(ct);
+
+    /// <inheritdoc />
+    public Task AddWithInitialVersionAsync(
+        ICoreUnitOfWork uow,
+        DefinitionRow definition,
+        DefinitionVersionRow version,
+        CancellationToken ct)
+    {
+        uow.Db.Definitions.Add(definition);
+        uow.Db.DefinitionVersions.Add(version);
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public async Task<DefinitionDetail?> PublishVersionAsync(
+        ICoreUnitOfWork uow,
+        DefinitionVersionPublishCommand command,
+        CancellationToken ct)
+    {
+        var definition = await uow.Db.Definitions
+            .FirstOrDefaultAsync(
+                x => x.DefinitionId == command.DefinitionId && x.TenantId == command.TenantId,
+                ct)
+            .ConfigureAwait(false);
+        if (definition is null)
+        {
+            return null;
+        }
+
+        var nextVersion = definition.LatestVersion + 1;
+        var now = DateTime.UtcNow;
+        var versionRow = new DefinitionVersionRow
+        {
+            DefinitionVersionId = command.NewVersionId,
+            DefinitionId = command.DefinitionId,
+            Version = nextVersion,
+            SourceYaml = command.SourceYaml,
+            CompiledJson = command.CompiledJson,
+            CreatedAt = now
+        };
+        uow.Db.DefinitionVersions.Add(versionRow);
+
+        definition.Name = command.Name;
+        definition.LatestVersion = nextVersion;
+        definition.UpdatedAt = now;
+
+        return new DefinitionDetail { Definition = definition, Version = versionRow };
+    }
+
+    /// <inheritdoc />
+    public async Task<(int TotalCount, List<(DefinitionDetail Detail, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
         ICoreUnitOfWork uow,
         string tenantId,
         DefinitionListPageQuery query,
@@ -60,7 +128,9 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         var joinQuery = QueryDefinitionsWithDisplayIds(uow.Db, tenantId);
 
         if (!string.IsNullOrWhiteSpace(query.NameContains))
-            joinQuery = joinQuery.Where(x => x.Def.Name.Contains(query.NameContains));
+        {
+            joinQuery = joinQuery.Where(x => x.Definition.Name.Contains(query.NameContains));
+        }
 
         var sortedQuery = ApplyDefinitionsSort(joinQuery, query.Sort.SortBy, query.Sort.SortOrder);
 
@@ -71,17 +141,27 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             .ToListAsync(ct)
             .ConfigureAwait(false);
 
-        List<(WorkflowDefinitionRow Def, string? DisplayId)> list = page.ConvertAll(x => (Def: x.Def, DisplayId: x.DisplayId));
+        var list = page.ConvertAll(x => (
+            Detail: new DefinitionDetail { Definition = x.Definition, Version = x.Version },
+            DisplayId: x.DisplayId));
         return (total, list);
     }
 
     private static IQueryable<DefinitionWithDisplay> QueryDefinitionsWithDisplayIds(CoreDbContext db, string tenantId)
     {
         var displayIdsForDefinition = db.DisplayIds.Where(x => x.Kind == "definition");
-        return from def in db.WorkflowDefinitions.AsNoTracking().Where(x => x.TenantId == tenantId)
-               join d in displayIdsForDefinition on def.DefinitionId equals d.ResourceId into dGroup
-               from d in dGroup.DefaultIfEmpty()
-               select new DefinitionWithDisplay { Def = def, DisplayId = d != null ? d.DisplayId : null };
+        return from definition in db.Definitions.AsNoTracking().Where(x => x.TenantId == tenantId)
+               join version in db.DefinitionVersions.AsNoTracking()
+                   on new { definition.DefinitionId, Version = definition.LatestVersion }
+                   equals new { version.DefinitionId, version.Version }
+               join display in displayIdsForDefinition on definition.DefinitionId equals display.ResourceId into displayGroup
+               from display in displayGroup.DefaultIfEmpty()
+               select new DefinitionWithDisplay
+               {
+                   Definition = definition,
+                   Version = version,
+                   DisplayId = display != null ? display.DisplayId : null
+               };
     }
 
     private static IQueryable<DefinitionWithDisplay> ApplyDefinitionsSort(
@@ -95,11 +175,11 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         return normalizedSortBy switch
         {
             "name" => isAsc
-                ? query.OrderBy(x => x.Def.Name).ThenBy(x => x.Def.CreatedAt)
-                : query.OrderByDescending(x => x.Def.Name).ThenByDescending(x => x.Def.CreatedAt),
+                ? query.OrderBy(x => x.Definition.Name).ThenBy(x => x.Definition.CreatedAt)
+                : query.OrderByDescending(x => x.Definition.Name).ThenByDescending(x => x.Definition.CreatedAt),
             _ => isAsc
-                ? query.OrderBy(x => x.Def.CreatedAt)
-                : query.OrderByDescending(x => x.Def.CreatedAt)
+                ? query.OrderBy(x => x.Definition.CreatedAt)
+                : query.OrderByDescending(x => x.Definition.CreatedAt)
         };
     }
 }
