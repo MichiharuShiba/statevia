@@ -127,47 +127,21 @@ internal sealed class WorkflowService : IWorkflowService
         var requestHash = ComputeStartRequestHash(request);
         var dedupKey = _dedupService.Create(tenantId, idempotencyKey, requestContext.Method, requestContext.Path, requestHash);
 
-        if (dedupKey is { } key)
+        var cachedStart = await TryGetIdempotentStartResponseAsync(tenantId, dedupKey, requestHash, ct).ConfigureAwait(false);
+        if (cachedStart is not null)
         {
-            var dedupCheckTime = DateTime.UtcNow;
-            var existing = await _executor.ExecuteReadOnlyAsync(
-                (uow, innerCt) => _dedup.FindValidAsync(uow, key.DedupKey, dedupCheckTime, innerCt),
-                ct).ConfigureAwait(false);
-            if (existing is not null)
-            {
-                var cached = DeserializeCachedWorkflowResponse(existing);
-                if (cached is not null)
-                    return cached;
-            }
-
-            var conflicting = await _executor.ExecuteReadOnlyAsync(
-                (uow, innerCt) => _dedup.FindValidConflictingRequestHashAsync(
-                    uow,
-                    tenantId,
-                    key.Endpoint,
-                    key.IdempotencyKey,
-                    requestHash,
-                    dedupCheckTime,
-                    innerCt),
-                ct).ConfigureAwait(false);
-            if (conflicting is not null)
-            {
-                throw new IdempotencyConflictException(
-                    "The same X-Idempotency-Key was used with a different request body.");
-            }
+            return cachedStart;
         }
 
         var defUuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, request.DefinitionId!, ct).ConfigureAwait(false);
         if (defUuid is null)
             throw new NotFoundException(WorkflowValidationMessages.DefinitionNotFound);
 
-        var defRow = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _definitions.GetByIdAsync(uow, tenantId, defUuid.Value, innerCt),
-            ct).ConfigureAwait(false);
-        if (defRow is null)
+        var versionRow = await ResolveStartDefinitionVersionAsync(tenantId, defUuid.Value, request, ct).ConfigureAwait(false);
+        if (versionRow is null)
             throw new NotFoundException(WorkflowValidationMessages.DefinitionNotFound);
 
-        var (compiled, _) = _compiler.ValidateAndCompile(defRow.Name, defRow.SourceYaml);
+        var compiled = RestoreCompiledDefinitionFromVersion(versionRow);
 
         var workflowId = _idGenerator.NewGuid();
         var engineId = workflowId.ToString();
@@ -179,7 +153,13 @@ internal sealed class WorkflowService : IWorkflowService
         var graphJson = _engine.ExportExecutionGraph(engineId);
 
         var startedPayload = JsonSerializer.Serialize(
-            new { definitionId = defUuid.Value.ToString(), tenantId },
+            new
+            {
+                definitionId = defUuid.Value.ToString(),
+                definitionVersionId = versionRow.DefinitionVersionId.ToString(),
+                definitionVersion = versionRow.Version,
+                tenantId
+            },
             CamelCaseJsonSerializerOptions);
 
         return await _executor.ExecuteReadCommittedAsync(
@@ -195,6 +175,7 @@ internal sealed class WorkflowService : IWorkflowService
                     WorkflowId = workflowId,
                     TenantId = tenantId,
                     DefinitionId = defUuid.Value,
+                    DefinitionVersionId = versionRow.DefinitionVersionId,
                     Status = status,
                     StartedAt = createdAt,
                     UpdatedAt = createdAt,
@@ -744,12 +725,97 @@ internal sealed class WorkflowService : IWorkflowService
             : null;
     }
 
+    private async Task<WorkflowResponse?> TryGetIdempotentStartResponseAsync(
+        string tenantId,
+        CommandDedupKey? dedupKey,
+        string requestHash,
+        CancellationToken ct)
+    {
+        if (dedupKey is not { } key)
+        {
+            return null;
+        }
+
+        var dedupCheckTime = DateTime.UtcNow;
+        var existing = await _executor.ExecuteReadOnlyAsync(
+            (uow, innerCt) => _dedup.FindValidAsync(uow, key.DedupKey, dedupCheckTime, innerCt),
+            ct).ConfigureAwait(false);
+        if (existing is not null)
+        {
+            var cached = DeserializeCachedWorkflowResponse(existing);
+            if (cached is not null)
+            {
+                return cached;
+            }
+        }
+
+        var conflicting = await _executor.ExecuteReadOnlyAsync(
+            (uow, innerCt) => _dedup.FindValidConflictingRequestHashAsync(
+                uow,
+                tenantId,
+                key.Endpoint,
+                key.IdempotencyKey,
+                requestHash,
+                dedupCheckTime,
+                innerCt),
+            ct).ConfigureAwait(false);
+        if (conflicting is not null)
+        {
+            throw new IdempotencyConflictException(
+                "The same X-Idempotency-Key was used with a different request body.");
+        }
+
+        return null;
+    }
+
+    private Task<DefinitionVersionRow?> ResolveStartDefinitionVersionAsync(
+        string tenantId,
+        Guid definitionId,
+        StartWorkflowRequest request,
+        CancellationToken ct) =>
+        _executor.ExecuteReadOnlyAsync(
+            async (uow, innerCt) =>
+            {
+                if (request.DefinitionVersionId is { } versionId)
+                {
+                    var byId = await _definitions.GetVersionByIdAsync(uow, tenantId, versionId, innerCt)
+                        .ConfigureAwait(false);
+                    return byId is not null && byId.DefinitionId == definitionId ? byId : null;
+                }
+
+                if (request.DefinitionVersion is { } versionNumber)
+                {
+                    return await _definitions
+                        .GetVersionAsync(uow, tenantId, definitionId, versionNumber, innerCt)
+                        .ConfigureAwait(false);
+                }
+
+                var latest = await _definitions.GetLatestByIdAsync(uow, tenantId, definitionId, innerCt)
+                    .ConfigureAwait(false);
+                return latest?.Version;
+            },
+            ct);
+
+    private CompiledWorkflowDefinition RestoreCompiledDefinitionFromVersion(DefinitionVersionRow versionRow)
+    {
+        try
+        {
+            return _compiler.RestoreFromStoredVersion(versionRow.SourceYaml, versionRow.CompiledJson);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidOperationException("Stored definition version is invalid.", ex);
+        }
+    }
+
     private static string ComputeStartRequestHash(StartWorkflowRequest request)
     {
         var normalized = JsonSerializer.Serialize(
             new
             {
                 definitionId = request.DefinitionId,
+                definitionVersion = request.DefinitionVersion,
+                definitionVersionId = request.DefinitionVersionId,
                 input = request.Input
             },
             CamelCaseJsonSerializerOptions);
