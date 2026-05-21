@@ -12,4 +12,11 @@ public interface IDefinitionCompilerService
     /// <param name="yaml">定義ソース YAML。</param>
     /// <returns>コンパイル済み定義とその JSON 文字列。</returns>
     (CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(string name, string yaml);
+
+    /// <summary>
+    /// 保存済み版（compiled_json + 同版 source_yaml）から Engine 投入用定義を復元する。
+    /// </summary>
+    /// <param name="sourceYaml">当該版の source_yaml。</param>
+    /// <param name="compiledJson">当該版の compiled_json。</param>
+    CompiledWorkflowDefinition RestoreFromStoredVersion(string sourceYaml, string compiledJson);
 }

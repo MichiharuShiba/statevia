@@ -49,13 +49,6 @@ public sealed class WorkflowServiceTests
         public IStateExecutor? GetExecutor(string stateName) => null;
     }
 
-    private sealed class FakeDefinitionCompilerService : IDefinitionCompilerService
-    {
-        private readonly (CompiledWorkflowDefinition Compiled, string CompiledJson) _ret;
-        public FakeDefinitionCompilerService((CompiledWorkflowDefinition Compiled, string CompiledJson) ret) => _ret = ret;
-        public (CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(string name, string yaml) => _ret;
-    }
-
     private sealed class FakeDisplayIdService : IDisplayIdService, IDisplayIdWriteService
     {
         public Guid? ResolveResultDefinition { get; set; }
@@ -544,10 +537,10 @@ public sealed class WorkflowServiceTests
 
         var engine = new FakeWorkflowEngine();
         var display = new FakeDisplayIdService();
-        var compiler = new FakeDefinitionCompilerService((DummyCompiledDefinition("x"), "{}"));
+        var compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("x"), "{}"));
         var idGen = new FixedIdGenerator(Guid.NewGuid());
         var workflowRepo = new FakeWorkflowRepository();
-        var definitionsRepo = new FakeDefinitionsRepoStub();
+        var definitionsRepo = new StubDefinitionRepository();
         var dedupRepoRepo = dedupRepo;
         var eventStore = new FakeEventStoreRepository();
 
@@ -610,10 +603,10 @@ public sealed class WorkflowServiceTests
 
         var engine = new FakeWorkflowEngine();
         var display = new FakeDisplayIdService();
-        var compiler = new FakeDefinitionCompilerService((DummyCompiledDefinition("x"), "{}"));
+        var compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("x"), "{}"));
         var idGen = new FixedIdGenerator(Guid.NewGuid());
         var workflowRepo = new FakeWorkflowRepository();
-        var definitionsRepo = new FakeDefinitionsRepoStub();
+        var definitionsRepo = new StubDefinitionRepository();
         var eventStore = new FakeEventStoreRepository();
 
         using var sqlite = new SqliteTestDatabase();
@@ -641,19 +634,6 @@ public sealed class WorkflowServiceTests
             CancellationToken.None));
 
         Assert.False(engine.StartCalled);
-    }
-
-    private sealed class FakeDefinitionsRepoStub : IDefinitionRepository
-    {
-        public Task AddAsync(ICoreUnitOfWork uow, WorkflowDefinitionRow row, CancellationToken ct) => Task.CompletedTask;
-        public Task<WorkflowDefinitionRow?> UpdateAsync(ICoreUnitOfWork uow, string tenantId, Guid definitionId, string name, string sourceYaml, string compiledJson, CancellationToken ct) => Task.FromResult<WorkflowDefinitionRow?>(null);
-        public Task<WorkflowDefinitionRow?> GetByIdAsync(ICoreUnitOfWork uow, string tenantId, Guid definitionId, CancellationToken ct) => Task.FromResult<WorkflowDefinitionRow?>(null);
-        public Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
-            ICoreUnitOfWork uow,
-            string tenantId,
-            DefinitionListPageQuery query,
-            CancellationToken ct) =>
-            Task.FromResult((0, new List<(WorkflowDefinitionRow, string?)>()));
     }
 
     /// <summary>冪等一致でもキャッシュ本文が壊れているとき通常起動して要求要約を保存する。</summary>
@@ -699,7 +679,7 @@ public sealed class WorkflowServiceTests
             GetDisplayIdResult = null
         };
 
-        var compiler = new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}"));
+        var compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}"));
         var idGen = new FixedIdGenerator(workflowId);
         var engine = new FakeWorkflowEngine
         {
@@ -709,7 +689,7 @@ public sealed class WorkflowServiceTests
 
         var workflowRepo = new FakeWorkflowRepository();
 
-        var definitionsRepo = new FakeDefinitionsRepoStub2(defUuid);
+        var definitionsRepo = StubDefinitionRepositoryFactory.ForDefinition(defUuid, "t1", "def");
 
         var eventStore = new FakeEventStoreRepository();
 
@@ -795,7 +775,7 @@ public sealed class WorkflowServiceTests
             GetDisplayIdResult = null
         };
 
-        var compiler = new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}"));
+        var compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}"));
         var idGen = new FixedIdGenerator(workflowId);
         var engine = new FakeWorkflowEngine
         {
@@ -804,7 +784,7 @@ public sealed class WorkflowServiceTests
         };
 
         var workflowRepo = new FakeWorkflowRepository();
-        var definitionsRepo = new FakeDefinitionsRepoStub2(defUuid);
+        var definitionsRepo = StubDefinitionRepositoryFactory.ForDefinition(defUuid, "t1", "def");
         var eventStore = new FakeEventStoreRepository();
 
         using var sqlite = new SqliteTestDatabase();
@@ -846,35 +826,6 @@ public sealed class WorkflowServiceTests
         Assert.Equal(EventStoreEventType.WorkflowStarted, eventStore.Appended[0].Type);
     }
 
-    private sealed class FakeDefinitionsRepoStub2 : IDefinitionRepository
-    {
-        private readonly Guid _defUuid;
-        public FakeDefinitionsRepoStub2(Guid defUuid) => _defUuid = defUuid;
-        public Task AddAsync(ICoreUnitOfWork uow, WorkflowDefinitionRow row, CancellationToken ct) => Task.CompletedTask;
-        public Task<WorkflowDefinitionRow?> UpdateAsync(ICoreUnitOfWork uow, string tenantId, Guid definitionId, string name, string sourceYaml, string compiledJson, CancellationToken ct) => Task.FromResult<WorkflowDefinitionRow?>(null);
-        public Task<WorkflowDefinitionRow?> GetByIdAsync(ICoreUnitOfWork uow, string tenantId, Guid definitionId, CancellationToken ct) =>
-            Task.FromResult(definitionId == _defUuid
-                ? new WorkflowDefinitionRow
-                {
-                    DefinitionId = _defUuid,
-                    TenantId = tenantId,
-                    Name = "def",
-                    SourceYaml = "yaml",
-                    CompiledJson = "{}",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                }
-                : null);
-
-        public Task<(int TotalCount, List<(WorkflowDefinitionRow Def, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
-            ICoreUnitOfWork uow,
-            string tenantId,
-            DefinitionListPageQuery query,
-            CancellationToken ct) =>
-            Task.FromResult((0, new List<(WorkflowDefinitionRow, string?)>()));
-
-    }
-
     /// <summary>定義を解決できないとき未検出例外を投げる。</summary>
     [Fact]
     public async Task StartAsync_WhenDefinitionNotFound_ThrowsNotFoundException()
@@ -885,10 +836,10 @@ public sealed class WorkflowServiceTests
 
         var display = new FakeDisplayIdService { ResolveResultDefinition = null };
         var engine = new FakeWorkflowEngine();
-        var compiler = new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}"));
+        var compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}"));
         var idGen = new FixedIdGenerator(Guid.NewGuid());
         var workflowRepo = new FakeWorkflowRepository();
-        var definitionsRepo = new FakeDefinitionsRepoStub();
+        var definitionsRepo = new StubDefinitionRepository();
         var eventStore = new FakeEventStoreRepository();
 
         using var sqlite = new SqliteTestDatabase();
@@ -933,10 +884,10 @@ public sealed class WorkflowServiceTests
 
         var engine = new FakeWorkflowEngine();
         var display = new FakeDisplayIdService { ResolveResultWorkflow = Guid.NewGuid(), ResolveResultDefinition = Guid.NewGuid() };
-        var compiler = new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}"));
+        var compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}"));
         var idGen = new FixedIdGenerator(Guid.NewGuid());
         var dedupService = new FakeCommandDedupService(null);
-        var definitionsRepo = new FakeDefinitionsRepoStub();
+        var definitionsRepo = new StubDefinitionRepository();
         var dedupRepo = new FakeCommandDedupRepository();
         var eventStore = new FakeEventStoreRepository();
 
@@ -1001,11 +952,11 @@ public sealed class WorkflowServiceTests
             sqlite,
             engine,
             display,
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
             workflowRepo,
-            new FakeDefinitionsRepoStub(),
+            new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository { MaxSeq = 0 },
             new FakeEventDeliveryDedupRepository());
@@ -1037,11 +988,11 @@ public sealed class WorkflowServiceTests
             sqlite,
             new FakeWorkflowEngine(),
             display,
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
             new FakeWorkflowRepository(),
-            new FakeDefinitionsRepoStub(),
+            new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository(),
             new FakeEventDeliveryDedupRepository());
@@ -1098,11 +1049,11 @@ public sealed class WorkflowServiceTests
             sqlite,
             engine,
             display,
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
             workflowRepo,
-            new FakeDefinitionsRepoStub(),
+            new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository { MaxSeq = 5 },
             new FakeEventDeliveryDedupRepository());
@@ -1159,11 +1110,11 @@ public sealed class WorkflowServiceTests
             sqlite,
             engine,
             display,
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
             workflowRepo,
-            new FakeDefinitionsRepoStub(),
+            new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository { MaxSeq = 5 },
             new FakeEventDeliveryDedupRepository());
@@ -1242,11 +1193,11 @@ public sealed class WorkflowServiceTests
             sqlite,
             new FakeWorkflowEngine(),
             display,
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
             workflowRepo,
-            new FakeDefinitionsRepoStub(),
+            new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             eventStore,
             new FakeEventDeliveryDedupRepository());
@@ -1651,11 +1602,11 @@ public sealed class WorkflowServiceTests
             sqlite,
             engine,
             display,
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
             workflowRepo,
-            new FakeDefinitionsRepoStub(),
+            new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             eventStore,
             new FakeEventDeliveryDedupRepository());
@@ -2174,11 +2125,11 @@ public sealed class WorkflowServiceTests
             sqlite,
             engine,
             display,
-new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
             workflowRepo,
-            new FakeDefinitionsRepoStub(),
+            new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             eventStore,
             eventDedup);
@@ -2480,11 +2431,11 @@ new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             sqlite,
             engine,
             display,
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
             workflowRepo,
-            new FakeDefinitionsRepoStub(),
+            new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             eventStore,
             new FakeEventDeliveryDedupRepository());
@@ -3101,11 +3052,11 @@ new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             sqlite,
             engine,
             display,
-new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(dedupKey),
             workflowRepo,
-            new FakeDefinitionsRepoStub(),
+            new StubDefinitionRepository(),
             dedupRepo,
             eventStore,
             flakyEventDelivery);
@@ -3165,11 +3116,11 @@ new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             sqlite,
             engine,
             display,
-new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(dedupKey),
             workflowRepo,
-            new FakeDefinitionsRepoStub(),
+            new StubDefinitionRepository(),
             dedupRepo,
             new FakeEventStoreRepository(),
             flakyEventDelivery);
@@ -3236,11 +3187,11 @@ new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             sqlite,
             engine,
             display,
-new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(dedupKey),
             workflowRepo,
-            new FakeDefinitionsRepoStub(),
+            new StubDefinitionRepository(),
             dedupRepo,
             new FakeEventStoreRepository(),
             flakyEventDelivery,
@@ -3441,11 +3392,11 @@ new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             sqlite,
             new FakeWorkflowEngine(),
             display,
-new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
             new FakeWorkflowRepository(),
-            new FakeDefinitionsRepoStub2(defUuid),
+            StubDefinitionRepositoryFactory.ForDefinition(defUuid, "t1", "def"),
             new FakeCommandDedupRepository(),
             eventStore,
             new FakeEventDeliveryDedupRepository());
@@ -3540,11 +3491,11 @@ new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             sqlite,
             new FakeWorkflowEngine { SnapshotToReturn = null },
             new FakeDisplayIdService(),
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
             workflowRepo,
-            new FakeDefinitionsRepoStub(),
+            new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository(),
             new FakeEventDeliveryDedupRepository());
@@ -3610,11 +3561,11 @@ new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             sqlite,
             engine,
             display,
-            new FakeDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             dedupService,
             workflowRepo,
-            new FakeDefinitionsRepoStub(),
+            new StubDefinitionRepository(),
             dedupRepo,
             eventStore,
             new FakeEventDeliveryDedupRepository(),

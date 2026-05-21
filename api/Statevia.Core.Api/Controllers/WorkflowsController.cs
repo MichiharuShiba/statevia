@@ -234,6 +234,14 @@ public class StartWorkflowRequest
     [Required]
     public string DefinitionId { get; set; } = "";
 
+    /// <summary>開始に用いる版番号（省略時は latestVersion）。</summary>
+    [JsonPropertyName("definitionVersion")]
+    public int? DefinitionVersion { get; set; }
+
+    /// <summary>開始に用いる版 UUID（definitionVersion より優先）。</summary>
+    [JsonPropertyName("definitionVersionId")]
+    public Guid? DefinitionVersionId { get; set; }
+
     /// <summary>ワークフロー入力（任意）。</summary>
     public JsonElement? Input { get; set; }
 }

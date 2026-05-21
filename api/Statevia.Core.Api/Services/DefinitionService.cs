@@ -63,6 +63,7 @@ internal sealed class DefinitionService : IDefinitionService
         }
 
         var id = _idGenerator.NewGuid();
+        var versionId = _idGenerator.NewGuid();
 
         return await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
@@ -72,25 +73,33 @@ internal sealed class DefinitionService : IDefinitionService
                     .ConfigureAwait(false);
 
                 var now = DateTime.UtcNow;
-                await _definitions.AddAsync(
-                    uow,
-                    new WorkflowDefinitionRow
-                    {
-                        DefinitionId = id,
-                        TenantId = tenantId,
-                        Name = request.Name!,
-                        SourceYaml = request.Yaml!,
-                        CompiledJson = compiledJson,
-                        CreatedAt = now,
-                        UpdatedAt = now
-                    },
-                    innerCt).ConfigureAwait(false);
+                var definition = new DefinitionRow
+                {
+                    DefinitionId = id,
+                    TenantId = tenantId,
+                    Slug = DefinitionSlug.FromName(id, request.Name!),
+                    Name = request.Name!,
+                    LatestVersion = 1,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                var version = new DefinitionVersionRow
+                {
+                    DefinitionVersionId = versionId,
+                    DefinitionId = id,
+                    Version = 1,
+                    SourceYaml = request.Yaml!,
+                    CompiledJson = compiledJson,
+                    CreatedAt = now
+                };
+                await _definitions.AddWithInitialVersionAsync(uow, definition, version, innerCt).ConfigureAwait(false);
 
                 return new DefinitionResponse
                 {
                     DisplayId = displayId,
                     ResourceId = id,
                     Name = request.Name!,
+                    LatestVersion = 1,
                     CreatedAt = now,
                     UpdatedAt = now
                 };
@@ -117,14 +126,7 @@ internal sealed class DefinitionService : IDefinitionService
                 var (total, pairs) = await _definitions
                     .ListWithDisplayIdsPageAsync(uow, tenantId, pageQuery, innerCt)
                     .ConfigureAwait(false);
-                var items = pairs.Select(p => new DefinitionResponse
-                {
-                    DisplayId = p.DisplayId ?? p.Def.DefinitionId.ToString(),
-                    ResourceId = p.Def.DefinitionId,
-                    Name = p.Def.Name,
-                    CreatedAt = p.Def.CreatedAt,
-                    UpdatedAt = p.Def.UpdatedAt
-                }).ToList();
+                var items = pairs.Select(p => ToResponse(p.Detail, p.DisplayId)).ToList();
 
                 return new PagedResult<DefinitionResponse>
                 {
@@ -147,21 +149,13 @@ internal sealed class DefinitionService : IDefinitionService
         return await _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
-                var row = await _definitions.GetByIdAsync(uow, tenantId, uuid.Value, innerCt).ConfigureAwait(false);
-                if (row is null)
+                var detail = await _definitions.GetLatestByIdAsync(uow, tenantId, uuid.Value, innerCt).ConfigureAwait(false);
+                if (detail is null)
                     throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
                 var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, idOrUuid, innerCt)
                     .ConfigureAwait(false);
-                return new DefinitionResponse
-                {
-                    DisplayId = displayId ?? row.DefinitionId.ToString(),
-                    ResourceId = row.DefinitionId,
-                    Name = row.Name,
-                    CreatedAt = row.CreatedAt,
-                    UpdatedAt = row.UpdatedAt,
-                    Yaml = row.SourceYaml
-                };
+                return ToResponse(detail, displayId, includeYaml: true);
             },
             ct).ConfigureAwait(false);
     }
@@ -204,27 +198,42 @@ internal sealed class DefinitionService : IDefinitionService
             }, ex);
         }
 
+        var newVersionId = _idGenerator.NewGuid();
+
         return await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
             {
-                var row = await _definitions
-                    .UpdateAsync(uow, tenantId, uuid.Value, request.Name, request.Yaml, compiledJson, innerCt)
+                var detail = await _definitions
+                    .PublishVersionAsync(
+                        uow,
+                        new DefinitionVersionPublishCommand(
+                            tenantId,
+                            uuid.Value,
+                            request.Name,
+                            request.Yaml,
+                            compiledJson,
+                            newVersionId),
+                        innerCt)
                     .ConfigureAwait(false);
-                if (row is null)
+                if (detail is null)
                     throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
                 var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, idOrUuid, innerCt)
                     .ConfigureAwait(false);
-                return new DefinitionResponse
-                {
-                    DisplayId = displayId ?? row.DefinitionId.ToString(),
-                    ResourceId = row.DefinitionId,
-                    Name = row.Name,
-                    CreatedAt = row.CreatedAt,
-                    UpdatedAt = row.UpdatedAt,
-                    Yaml = row.SourceYaml
-                };
+                return ToResponse(detail, displayId, includeYaml: true);
             },
             ct).ConfigureAwait(false);
     }
+
+    private static DefinitionResponse ToResponse(DefinitionDetail detail, string? displayId, bool includeYaml = false) =>
+        new()
+        {
+            DisplayId = displayId ?? detail.Definition.DefinitionId.ToString(),
+            ResourceId = detail.Definition.DefinitionId,
+            Name = detail.Definition.Name,
+            LatestVersion = detail.Definition.LatestVersion,
+            CreatedAt = detail.Definition.CreatedAt,
+            UpdatedAt = detail.Definition.UpdatedAt,
+            Yaml = includeYaml ? detail.Version.SourceYaml : null
+        };
 }

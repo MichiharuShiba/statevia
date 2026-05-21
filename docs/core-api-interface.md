@@ -1,13 +1,11 @@
 # Core API 契約（HTTP）
 
-Version: 1.5
+Version: 1.6
 Project: 実行型ステートマシン
 
 Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
 
-**Version 1.3（2026-05-01）**: Definitions / Workflows 一覧に `sortBy` / `sortOrder` を追加。一覧検索・入力検証に伴う 422 details 契約を更新。
-
-**Version 1.4（2026-05-05）**: `PUT /v1/definitions/{id}`（定義更新）を追記。`DefinitionResponse` に `updatedAt` を追加（一覧・ページング・取得・作成・更新で返却）。`GET /v1/definitions/{id}` の本文に `yaml` を含む旨を明記。
+**Version 1.6（2026-05-20）**: immutable 定義版（`definitions` / `definition_versions`）と実行時の `definitionVersionId` 固定を追記。`PUT /v1/definitions/{id}` は **版追加（publish）** として記述。Start リクエストに `definitionVersion` / `definitionVersionId` を追加。
 
 **Version 1.5（2026-05-11）**: 実行グラフ JSON の **`edges[*].from` / `edges[*].to`**（実行ノード ID）と、`GET …/state` の **`WorkflowViewDto.nodes[*]`**（`executionNodeId` と `stateName` の分離、運用メタ・入出力）を契約本文に明記。
 
@@ -26,6 +24,26 @@ Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
 | 本書の役割 | SSE・冪等・IO-14・Read-model 注意など、OpenAPI に載せにくい運用叙述を維持 |
 
 エンドポイント詳細は段階的に OpenAPI へ寄せる。以下 §2 以降の JSON 例は移行期の参考であり、差異がある場合は OpenAPI を優先する。
+
+---
+
+## 1.1 定義データモデル（truth / projection）
+
+| 対象 | 役割 |
+| --- | --- |
+| `definition_versions` + `UNIQUE(definition_id, version)` | 定義版の **truth**（immutable） |
+| `definitions.latest_version` | **投影**（非権威。省略時 Start の版解決にのみ使用） |
+| `workflows.definition_version_id` | 実行開始時に固定した版への FK（execution correctness） |
+
+**禁止事項:**
+
+- 既存 `definition_versions` 行の `source_yaml` / `compiled_json` を **上書きしない**（更新は新版 INSERT のみ）。
+- publish トランザクションで **`latest_version` のみ先行コミット** しない（同一 ReadCommitted tx 内で version INSERT → latest 更新）。
+- Start 時に **mutable な定義行**や **latest だけ**から `compiled_json` を取得しない（必ず解決した **version 行**の `compiled_json` を使用）。
+
+**移行期（フェーズ 1a）:** `definitions.project_id` は NULL 可。テナント境界は `definitions.tenant_id` で担保（`projects` / `project_accesses` 導入後に認可 truth を移行）。
+
+**publish トランザクション:** `ICoreTransactionExecutor.ExecuteReadCommittedAsync` の 1 コールバック内で `definition_versions` INSERT → `definitions.latest_version` 更新。
 
 ---
 
@@ -59,24 +77,18 @@ Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
 
 **POST /v1/definitions** — リクエスト / 応答スキーマは OpenAPI の `CreateDefinitionRequest` / `DefinitionResponse`（`201 Created`）を参照。
 
-- `name` / `yaml` 必須。検証・コンパイルして保存。新規行では `updatedAt` は `createdAt` と同一。不正時は 422（`error.details` に field/message を含む）。
+- `name` / `yaml` 必須。検証・コンパイルして **初版（version=1）** を `definition_versions` に保存し、`definitions` 行を作成。新規行では `updatedAt` は `createdAt` と同一。`latestVersion` は `1`。不正時は 422（`error.details` に field/message を含む）。
 
-### 2.1.1 定義更新
+### 2.1.1 定義 publish（版追加）
 
 **PUT /v1/definitions/{id}**
 
 - `id`: displayId または UUID
 - Request: `POST` と同形（`name`, `yaml` 必須）
-
-```json
-{
-  "name": "string",
-  "yaml": "string"
-}
-```
-
-- Response: **200 OK**、`DefinitionResponse`（`GET` と同様に `yaml` を含む。`updatedAt` は保存直後の値）。
+- 既存版は変更せず **新版を append** する（mutable 上書きではない）。
+- Response: **200 OK**、`DefinitionResponse`（`latestVersion` が増加。`GET` と同様に **最新版**の `yaml` を含む）。
 - 存在しない／他テナント: **404**。検証・コンパイル失敗: **422**（`POST` と同様の `error.details`）。
+- 並行 publish で `UNIQUE(definition_id, version)` 競合: **422**（成功した版のみ truth）。
 
 ### 2.2 定義一覧
 
@@ -96,7 +108,7 @@ Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
 **GET /v1/definitions/{id}**
 
 - `id`: displayId または UUID
-- Response: 200 OK で 1 件（`displayId`, `resourceId`, `name`, `createdAt`, `updatedAt`, **`yaml`**（保存済みソース））。存在しなければ 404。
+- Response: 200 OK で 1 件（`displayId`, `resourceId`, `name`, `latestVersion`, `createdAt`, `updatedAt`, **`yaml`**（**最新版**の保存済みソース））。存在しなければ 404。
 
 ### 2.4 Graph Definition（構造）
 
@@ -135,14 +147,21 @@ Request:
 ```json
 {
   "definitionId": "string",
+  "definitionVersion": 1,
+  "definitionVersionId": "uuid",
   "input": {
     "foo": "bar"
   }
 }
 ```
 
-- `definitionId`: 定義の displayId または UUID
-- `input`: 任意の JSON 値（省略可）。初期状態へ `workflowInput` として渡される。
+- `definitionId`: 定義の displayId または UUID（必須）
+- `definitionVersion`: 版番号（任意）。省略時は `definitions.latest_version` を使用
+- `definitionVersionId`: 版 UUID（任意）。**指定時は `definitionVersion` より優先**。他テナント・他定義の版は **404**
+- **再現性:** 本番運用では `definitionVersion` または `definitionVersionId` の **明示を推奨**（latest 省略は開発・探索用途）
+- `input`: 任意の JSON 値（省略可）。初期状態へ `workflowInput` として渡される
+- Engine 投入は解決した **version 行の `compiled_json`**（同一版の `source_yaml` で executor を復元）
+- 永続化: `workflows.definition_version_id` に開始版を必ず保存（Start は ReadCommitted 1 tx: `workflows` + snapshot + `event_store` + dedup）
 - Response: 201 Created
 
 ```json

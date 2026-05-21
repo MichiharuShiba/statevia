@@ -107,16 +107,7 @@ public sealed class GraphDefinitionServiceTests
         await using (var ctx = new CoreDbContext(db.Options))
         {
             var now = DateTime.UtcNow;
-            ctx.WorkflowDefinitions.Add(new WorkflowDefinitionRow
-            {
-                DefinitionId = uuid,
-                TenantId = "t1",
-                Name = "def",
-                SourceYaml = "x",
-                CompiledJson = compiledJson,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
+            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", uuid, "def", compiledJson: compiledJson, createdAt: now);
             await ctx.SaveChangesAsync();
         }
 
@@ -180,16 +171,7 @@ public sealed class GraphDefinitionServiceTests
         await using (var ctx = new CoreDbContext(db.Options))
         {
             var now = DateTime.UtcNow;
-            ctx.WorkflowDefinitions.Add(new WorkflowDefinitionRow
-            {
-                DefinitionId = uuid,
-                TenantId = "t1",
-                Name = "def",
-                SourceYaml = "x",
-                CompiledJson = compiledJson,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
+            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", uuid, "def", compiledJson: compiledJson, createdAt: now);
             await ctx.SaveChangesAsync();
         }
 
@@ -256,16 +238,7 @@ public sealed class GraphDefinitionServiceTests
         await using (var ctx = new CoreDbContext(db.Options))
         {
             var now = DateTime.UtcNow;
-            ctx.WorkflowDefinitions.Add(new WorkflowDefinitionRow
-            {
-                DefinitionId = uuid,
-                TenantId = "t1",
-                Name = "def",
-                SourceYaml = "x",
-                CompiledJson = compiledJson,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
+            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", uuid, "def", compiledJson: compiledJson, createdAt: now);
             await ctx.SaveChangesAsync();
         }
 
@@ -295,16 +268,7 @@ public sealed class GraphDefinitionServiceTests
         await using (var ctx = new CoreDbContext(db.Options))
         {
             var now = DateTime.UtcNow;
-            ctx.WorkflowDefinitions.Add(new WorkflowDefinitionRow
-            {
-                DefinitionId = uuid,
-                TenantId = "t1",
-                Name = "def",
-                SourceYaml = "x",
-                CompiledJson = "null",
-                CreatedAt = now,
-                UpdatedAt = now
-            });
+            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", uuid, "def", compiledJson: "null", createdAt: now);
             await ctx.SaveChangesAsync();
         }
 

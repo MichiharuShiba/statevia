@@ -47,16 +47,7 @@ public sealed class DisplayIdServiceImplTests
         await using (var ctx = new CoreDbContext(db.Options))
         {
             var now = DateTime.UtcNow;
-            ctx.WorkflowDefinitions.Add(new WorkflowDefinitionRow
-            {
-                DefinitionId = uuid,
-                TenantId = "t1",
-                Name = "def",
-                SourceYaml = "x",
-                CompiledJson = "{}",
-                CreatedAt = now,
-                UpdatedAt = now
-            });
+            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", uuid, "def", createdAt: now);
             await ctx.SaveChangesAsync();
         }
 

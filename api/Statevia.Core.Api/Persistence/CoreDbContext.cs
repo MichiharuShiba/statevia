@@ -11,6 +11,11 @@ internal class CoreDbContext : DbContext
         public const string TenantId = "tenant_id";
         public const string WorkflowId = "workflow_id";
         public const string DefinitionId = "definition_id";
+        public const string DefinitionVersionId = "definition_version_id";
+        public const string ProjectId = "project_id";
+        public const string Slug = "slug";
+        public const string LatestVersion = "latest_version";
+        public const string Version = "version";
         public const string DisplayId = "display_id";
         public const string ResourceId = "resource_id";
         public const string Kind = "kind";
@@ -51,6 +56,8 @@ internal class CoreDbContext : DbContext
 
     public DbSet<DisplayIdRow> DisplayIds => Set<DisplayIdRow>();
     public DbSet<WorkflowDefinitionRow> WorkflowDefinitions => Set<WorkflowDefinitionRow>();
+    public DbSet<DefinitionRow> Definitions => Set<DefinitionRow>();
+    public DbSet<DefinitionVersionRow> DefinitionVersions => Set<DefinitionVersionRow>();
     public DbSet<WorkflowRow> Workflows => Set<WorkflowRow>();
     public DbSet<EventStoreRow> EventStore => Set<EventStoreRow>();
     public DbSet<WorkflowEventRow> WorkflowEvents => Set<WorkflowEventRow>();
@@ -72,7 +79,7 @@ internal class CoreDbContext : DbContext
             e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
         });
 
-        // workflow_definitions
+        // workflow_definitions（レガシー。新規書き込みは definitions / definition_versions のみ）
         modelBuilder.Entity<WorkflowDefinitionRow>(e =>
         {
             e.ToTable("workflow_definitions");
@@ -86,6 +93,40 @@ internal class CoreDbContext : DbContext
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
         });
 
+        // definitions（論理定義メタ）
+        modelBuilder.Entity<DefinitionRow>(e =>
+        {
+            e.ToTable("definitions");
+            e.HasKey(x => x.DefinitionId);
+            e.Property(x => x.DefinitionId).HasColumnName(Columns.DefinitionId);
+            e.Property(x => x.TenantId).HasMaxLength(64).HasColumnName(Columns.TenantId);
+            e.Property(x => x.ProjectId).HasColumnName(Columns.ProjectId);
+            e.Property(x => x.Slug).HasMaxLength(128).HasColumnName(Columns.Slug);
+            e.Property(x => x.Name).HasMaxLength(512).HasColumnName(Columns.Name);
+            e.Property(x => x.LatestVersion).HasColumnName(Columns.LatestVersion);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
+            e.HasIndex(x => new { x.TenantId, x.Slug }).IsUnique();
+        });
+
+        // definition_versions（immutable truth）
+        modelBuilder.Entity<DefinitionVersionRow>(e =>
+        {
+            e.ToTable("definition_versions");
+            e.HasKey(x => x.DefinitionVersionId);
+            e.Property(x => x.DefinitionVersionId).HasColumnName(Columns.DefinitionVersionId);
+            e.Property(x => x.DefinitionId).HasColumnName(Columns.DefinitionId);
+            e.Property(x => x.Version).HasColumnName(Columns.Version);
+            e.Property(x => x.SourceYaml).HasColumnName(Columns.SourceYaml);
+            e.Property(x => x.CompiledJson).HasColumnName(Columns.CompiledJson);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.HasIndex(x => new { x.DefinitionId, x.Version }).IsUnique();
+            e.HasOne<DefinitionRow>()
+                .WithMany()
+                .HasForeignKey(x => x.DefinitionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         // workflows (projection)
         modelBuilder.Entity<WorkflowRow>(e =>
         {
@@ -94,7 +135,12 @@ internal class CoreDbContext : DbContext
             e.Property(x => x.WorkflowId).HasColumnName(Columns.WorkflowId);
             e.Property(x => x.TenantId).HasMaxLength(64).HasColumnName(Columns.TenantId);
             e.Property(x => x.DefinitionId).HasColumnName(Columns.DefinitionId);
+            e.Property(x => x.DefinitionVersionId).HasColumnName(Columns.DefinitionVersionId);
             e.Property(x => x.Status).HasMaxLength(64).HasColumnName(Columns.Status);
+            e.HasOne<DefinitionVersionRow>()
+                .WithMany()
+                .HasForeignKey(x => x.DefinitionVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
             e.Property(x => x.StartedAt).HasColumnName(Columns.StartedAt);
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
             e.Property(x => x.CancelRequested).HasColumnName(Columns.CancelRequested);
