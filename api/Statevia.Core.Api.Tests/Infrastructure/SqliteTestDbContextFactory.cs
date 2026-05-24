@@ -1,5 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Abstractions.Security;
+using Statevia.Core.Api.Application.Security;
 using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Tests.Infrastructure;
@@ -7,18 +9,27 @@ namespace Statevia.Core.Api.Tests.Infrastructure;
 internal sealed class SqliteTestDbContextFactory : IDbContextFactory<CoreDbContext>
 {
     private readonly DbContextOptions<CoreDbContext> _options;
+    private readonly SettableTenantContextAccessor _tenantAccessor;
 
-    public SqliteTestDbContextFactory(DbContextOptions<CoreDbContext> options) => _options = options;
+    public SqliteTestDbContextFactory(
+        DbContextOptions<CoreDbContext> options,
+        SettableTenantContextAccessor tenantAccessor)
+    {
+        _options = options;
+        _tenantAccessor = tenantAccessor;
+    }
 
-    public CoreDbContext CreateDbContext() => new CoreDbContext(_options);
+    public CoreDbContext CreateDbContext() =>
+        new(_options, _tenantAccessor, DisabledTenantQueryFilterOptions.Instance);
 
     public Task<CoreDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(new CoreDbContext(_options));
+        Task.FromResult(CreateDbContext());
 }
 
 internal sealed class SqliteTestDatabase : IDisposable
 {
     public SqliteConnection Connection { get; }
+    public SettableTenantContextAccessor TenantAccessor { get; }
     public IDbContextFactory<CoreDbContext> Factory { get; }
     public DbContextOptions<CoreDbContext> Options { get; }
 
@@ -27,19 +38,37 @@ internal sealed class SqliteTestDatabase : IDisposable
         Connection = new SqliteConnection("DataSource=:memory:");
         Connection.Open();
 
+        TenantAccessor = new SettableTenantContextAccessor();
+
         Options = new DbContextOptionsBuilder<CoreDbContext>()
             .UseSqlite(Connection)
             .Options;
 
-        Factory = new SqliteTestDbContextFactory(Options);
+        Factory = new SqliteTestDbContextFactory(Options, TenantAccessor);
 
-        using var db = new CoreDbContext(Options);
+        using var db = Factory.CreateDbContext();
         db.Database.EnsureCreated();
+        SeedDefaultTenant(db);
+        TenantAccessor.Set(TestTenantIds.DefaultContext);
     }
 
-    public void Dispose()
+    private static void SeedDefaultTenant(CoreDbContext db)
     {
-        Connection.Dispose();
-    }
-}
+        if (db.Tenants.IgnoreQueryFilters().Any())
+            return;
 
+        var now = DateTime.UtcNow;
+        db.Tenants.Add(new TenantRow
+        {
+            TenantId = TestTenantIds.DefaultInternalId,
+            TenantKey = "default",
+            DisplayName = "Default",
+            Lifecycle = TenantLifecycle.Active,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        db.SaveChanges();
+    }
+
+    public void Dispose() => Connection.Dispose();
+}

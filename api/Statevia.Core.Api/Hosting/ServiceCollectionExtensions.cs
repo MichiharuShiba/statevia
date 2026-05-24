@@ -8,9 +8,11 @@ using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Application.Actions.Abstractions;
 using Statevia.Core.Api.Application.Actions.Registry;
 using Statevia.Core.Api.Application.Definition;
+using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Configuration;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Infrastructure;
+using Statevia.Core.Api.Infrastructure.Security;
 using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Persistence.Repositories;
 using Statevia.Core.Api.Services;
@@ -35,8 +37,18 @@ internal static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         var connectionString = DatabaseConnection.Resolve(configuration);
-        services.AddDbContextFactory<CoreDbContext>(options =>
+        services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
+        services.AddSingleton<ITenantQueryFilterOptions>(EnabledTenantQueryFilterOptions.Instance);
+        services.AddDbContextFactory<CoreDbContext>((serviceProvider, options) =>
             options.UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__ef_migrations_history")));
+
+        services.AddSingleton<JwtTokenService>();
+        services.AddSingleton<PasswordCredentialService>();
+        services.AddScoped<IPlatformDataAccess, PlatformDataAccess>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddHostedService<TenantBootstrapHostedService>();
+        services.AddOptions<JwtAuthOptions>()
+            .Bind(configuration.GetSection(JwtAuthOptions.SectionName));
 
         services.AddScoped<ICoreUnitOfWorkFactory, CoreUnitOfWorkFactory>();
         services.AddScoped<ICoreTransactionExecutor, CoreTransactionExecutor>();

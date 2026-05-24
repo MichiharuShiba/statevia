@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Persistence;
 
 namespace Statevia.Core.Api.Tests.Infrastructure;
@@ -9,7 +10,8 @@ internal sealed class InMemoryTestDbContextFactory : IDbContextFactory<CoreDbCon
 
     public InMemoryTestDbContextFactory(DbContextOptions<CoreDbContext> options) => _options = options;
 
-    public CoreDbContext CreateDbContext() => new CoreDbContext(_options);
+    public CoreDbContext CreateDbContext() =>
+        new(_options, NullTenantContextAccessor.Instance, DisabledTenantQueryFilterOptions.Instance);
 
     public Task<CoreDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(new CoreDbContext(_options));

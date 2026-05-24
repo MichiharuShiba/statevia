@@ -20,6 +20,22 @@ public static class ApiErrorResult
         => new(new ErrorResponse { Error = new ApiError { Code = "VALIDATION_ERROR", Message = message, Details = details } })
         { StatusCode = StatusCodes.Status422UnprocessableEntity };
 
+    /// <summary>401 Unauthorized の <see cref="ObjectResult"/> を生成する。</summary>
+    /// <param name="code">エラーコード。</param>
+    /// <param name="message">説明メッセージ。</param>
+    /// <returns>指定コードのエラーボディ。</returns>
+    public static ObjectResult Unauthorized(string code, string message)
+        => new(new ErrorResponse { Error = new ApiError { Code = code, Message = message } })
+        { StatusCode = StatusCodes.Status401Unauthorized };
+
+    /// <summary>403 Forbidden の <see cref="ObjectResult"/> を生成する。</summary>
+    /// <param name="code">エラーコード。</param>
+    /// <param name="message">説明メッセージ。</param>
+    /// <returns>指定コードのエラーボディ。</returns>
+    public static ObjectResult Forbidden(string code, string message)
+        => new(new ErrorResponse { Error = new ApiError { Code = code, Message = message } })
+        { StatusCode = StatusCodes.Status403Forbidden };
+
     /// <summary>409 Conflict の <see cref="ObjectResult"/> を生成する。</summary>
     /// <param name="code">衝突種別のコード。</param>
     /// <param name="message">説明メッセージ。</param>

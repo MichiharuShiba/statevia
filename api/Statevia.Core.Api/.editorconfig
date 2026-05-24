@@ -48,6 +48,36 @@ dotnet_diagnostic.CA1515.severity = none
 # 除外理由: Controller コンストラクタ注入のサービス IF は public 必須（同一アセンブリの DI 境界）。
 dotnet_diagnostic.CA1515.severity = none
 
+[Abstractions/Security/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: AuthController / ミドルウェアの DI 境界として public を維持する。
+dotnet_diagnostic.CA1515.severity = none
+
+[Contracts/Auth/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: 認証 API の JSON 契約 DTO は HTTP 公開面として public を維持する。
+dotnet_diagnostic.CA1515.severity = none
+
+[Application/Security/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: 同一アセンブリ内のセキュリティドメイン型。public はテスト InternalsVisibleTo で十分。
+dotnet_diagnostic.CA1515.severity = none
+
+[Configuration/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: Options バインド用。アセンブリ外参照なし。
+dotnet_diagnostic.CA1515.severity = none
+
+[Infrastructure/Security/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: Worker スコープ入口は同一アセンブリ内利用。
+dotnet_diagnostic.CA1515.severity = none
+
 [Services/*.cs]
 
 # CA1515: アセンブリ API を internal にせよ。

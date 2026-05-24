@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Abstractions.Security;
 
 namespace Statevia.Core.Api.Persistence;
 
@@ -50,9 +51,49 @@ internal class CoreDbContext : DbContext
         public const string AcceptedAt = "accepted_at";
         public const string AppliedAt = "applied_at";
         public const string ErrorCode = "error_code";
+        public const string TenantKey = "tenant_key";
+        public const string DisplayName = "display_name";
+        public const string Lifecycle = "lifecycle";
+        public const string Email = "email";
+        public const string PasswordHash = "password_hash";
+        public const string IsTenantAdmin = "is_tenant_admin";
+        public const string IsPlatformAdmin = "is_platform_admin";
+        public const string IsActive = "is_active";
+        public const string DisabledAt = "disabled_at";
+        public const string IsSystem = "is_system";
+        public const string PrincipalScope = "principal_scope";
+        public const string PrincipalType = "principal_type";
+        public const string PrincipalId = "principal_id";
+        public const string UserId = "user_id";
+        public const string GroupId = "group_id";
+        public const string PermissionKey = "permission_key";
+        public const string DisplayLabel = "display_label";
+        public const string DisplayKey = "display_key";
+        public const string OwnerType = "owner_type";
+        public const string OwnerKey = "owner_key";
+        public const string IsDeprecated = "is_deprecated";
+        public const string DeletedAt = "deleted_at";
+        public const string KeyPrefix = "key_prefix";
+        public const string KeyHash = "key_hash";
+        public const string AllowedScopesJson = "allowed_scopes_json";
+        public const string LastUsedAt = "last_used_at";
+        public const string PermissionDefinitionId = "permission_definition_id";
+        public const string ServiceAccountId = "service_account_id";
+        public const string ApiKeyId = "api_key_id";
     }
 
-    public CoreDbContext(DbContextOptions<CoreDbContext> options) : base(options) { }
+    private readonly ITenantContextAccessor _tenantAccessor;
+    private readonly ITenantQueryFilterOptions _queryFilterOptions;
+
+    /// <summary>新しいインスタンスを初期化する。</summary>
+    public CoreDbContext(
+        DbContextOptions<CoreDbContext> options,
+        ITenantContextAccessor? tenantAccessor = null,
+        ITenantQueryFilterOptions? queryFilterOptions = null) : base(options)
+    {
+        _tenantAccessor = tenantAccessor ?? NullTenantContextAccessor.Instance;
+        _queryFilterOptions = queryFilterOptions ?? DisabledTenantQueryFilterOptions.Instance;
+    }
 
     public DbSet<DisplayIdRow> DisplayIds => Set<DisplayIdRow>();
     public DbSet<WorkflowDefinitionRow> WorkflowDefinitions => Set<WorkflowDefinitionRow>();
@@ -64,6 +105,16 @@ internal class CoreDbContext : DbContext
     public DbSet<ExecutionGraphSnapshotRow> ExecutionGraphSnapshots => Set<ExecutionGraphSnapshotRow>();
     public DbSet<CommandDedupRow> CommandDedup => Set<CommandDedupRow>();
     public DbSet<EventDeliveryDedupRow> EventDeliveryDedup => Set<EventDeliveryDedupRow>();
+    public DbSet<TenantRow> Tenants => Set<TenantRow>();
+    public DbSet<PermissionDefinitionRow> PermissionDefinitions => Set<PermissionDefinitionRow>();
+    public DbSet<PrincipalRow> Principals => Set<PrincipalRow>();
+    public DbSet<UserPrincipalRow> UserPrincipals => Set<UserPrincipalRow>();
+    public DbSet<UserRow> Users => Set<UserRow>();
+    public DbSet<GroupRow> Groups => Set<GroupRow>();
+    public DbSet<GroupPermissionRow> GroupPermissions => Set<GroupPermissionRow>();
+    public DbSet<UserGroupMemberRow> UserGroupMembers => Set<UserGroupMemberRow>();
+    public DbSet<ServiceAccountRow> ServiceAccounts => Set<ServiceAccountRow>();
+    public DbSet<ApiKeyRow> ApiKeys => Set<ApiKeyRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -223,6 +274,194 @@ internal class CoreDbContext : DbContext
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
 
             e.HasIndex(x => new { x.TenantId, x.WorkflowId, x.BatchId });
+        });
+
+        ConfigureTenantScopedFilters(modelBuilder);
+        ConfigureSecurityEntities(modelBuilder);
+    }
+
+    /// <summary>
+    /// 既存 <c>tenant_id</c> varchar は移行期 <c>tenant_key</c> と同値。未解決時は fail-closed。
+    /// </summary>
+    private void ConfigureTenantScopedFilters(ModelBuilder modelBuilder)
+    {
+        ConfigureTenantKeyEntityFilters(modelBuilder);
+        ConfigureTenantInternalIdEntityFilters(modelBuilder);
+    }
+
+    private void ConfigureTenantKeyEntityFilters(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<WorkflowDefinitionRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantKey));
+
+        modelBuilder.Entity<DefinitionRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantKey));
+
+        modelBuilder.Entity<WorkflowRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantKey));
+
+        modelBuilder.Entity<EventDeliveryDedupRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantKey));
+    }
+
+    private void ConfigureTenantInternalIdEntityFilters(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<TenantRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantInternalId));
+
+        modelBuilder.Entity<PrincipalRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantInternalId));
+
+        modelBuilder.Entity<UserRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantInternalId));
+
+        modelBuilder.Entity<GroupRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantInternalId));
+
+        modelBuilder.Entity<ServiceAccountRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantInternalId));
+
+        modelBuilder.Entity<ApiKeyRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantInternalId));
+    }
+
+    private static void ConfigureSecurityEntities(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<TenantRow>(e =>
+        {
+            e.ToTable("tenants");
+            e.HasKey(x => x.TenantId);
+            e.Property(x => x.TenantId).HasColumnName(Columns.TenantId);
+            e.Property(x => x.TenantKey).HasMaxLength(64).HasColumnName(Columns.TenantKey);
+            e.HasIndex(x => x.TenantKey).IsUnique();
+            e.Property(x => x.DisplayName).HasMaxLength(256).HasColumnName(Columns.DisplayName);
+            e.Property(x => x.Lifecycle).HasConversion<string>().HasMaxLength(32).HasColumnName(Columns.Lifecycle);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
+        });
+
+        modelBuilder.Entity<PermissionDefinitionRow>(e =>
+        {
+            e.ToTable("permission_definitions");
+            e.HasKey(x => x.PermissionDefinitionId);
+            e.Property(x => x.PermissionDefinitionId).HasColumnName(Columns.PermissionDefinitionId);
+            e.Property(x => x.PermissionKey).HasMaxLength(128).HasColumnName(Columns.PermissionKey);
+            e.HasIndex(x => x.PermissionKey).IsUnique();
+            e.Property(x => x.DisplayLabel).HasMaxLength(256).HasColumnName(Columns.DisplayLabel);
+            e.Property(x => x.DisplayKey).HasMaxLength(128).HasColumnName(Columns.DisplayKey);
+            e.Property(x => x.OwnerType).HasMaxLength(64).HasColumnName(Columns.OwnerType);
+            e.Property(x => x.OwnerKey).HasMaxLength(128).HasColumnName(Columns.OwnerKey);
+            e.Property(x => x.IsSystem).HasColumnName(Columns.IsSystem);
+            e.Property(x => x.IsDeprecated).HasColumnName(Columns.IsDeprecated);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+        });
+
+        modelBuilder.Entity<PrincipalRow>(e =>
+        {
+            e.ToTable("principals");
+            e.HasKey(x => x.PrincipalId);
+            e.Property(x => x.PrincipalId).HasColumnName(Columns.PrincipalId);
+            e.Property(x => x.TenantId).HasColumnName(Columns.TenantId);
+            e.Property(x => x.PrincipalScope).HasConversion<string>().HasMaxLength(32).HasColumnName(Columns.PrincipalScope);
+            e.Property(x => x.PrincipalType).HasConversion<string>().HasMaxLength(32).HasColumnName(Columns.PrincipalType);
+            e.Property(x => x.DisplayName).HasMaxLength(256).HasColumnName(Columns.DisplayName);
+            e.Property(x => x.IsSystem).HasColumnName(Columns.IsSystem);
+            e.Property(x => x.IsActive).HasColumnName(Columns.IsActive);
+            e.Property(x => x.DisabledAt).HasColumnName(Columns.DisabledAt);
+            e.Property(x => x.DeletedAt).HasColumnName(Columns.DeletedAt);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
+        });
+
+        modelBuilder.Entity<UserPrincipalRow>(e =>
+        {
+            e.ToTable("user_principals");
+            e.HasKey(x => x.PrincipalId);
+            e.Property(x => x.PrincipalId).HasColumnName(Columns.PrincipalId);
+            e.Property(x => x.UserId).HasColumnName(Columns.UserId);
+        });
+
+        modelBuilder.Entity<UserRow>(e =>
+        {
+            e.ToTable("users");
+            e.HasKey(x => x.UserId);
+            e.Property(x => x.UserId).HasColumnName(Columns.UserId);
+            e.Property(x => x.TenantId).HasColumnName(Columns.TenantId);
+            e.Property(x => x.Email).HasMaxLength(320).HasColumnName(Columns.Email);
+            e.HasIndex(x => new { x.TenantId, x.Email }).IsUnique();
+            e.Property(x => x.PasswordHash).HasColumnName(Columns.PasswordHash);
+            e.Property(x => x.IsTenantAdmin).HasColumnName(Columns.IsTenantAdmin);
+            e.Property(x => x.IsPlatformAdmin).HasColumnName(Columns.IsPlatformAdmin);
+            e.Property(x => x.IsActive).HasColumnName(Columns.IsActive);
+            e.Property(x => x.DisabledAt).HasColumnName(Columns.DisabledAt);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
+        });
+
+        modelBuilder.Entity<GroupRow>(e =>
+        {
+            e.ToTable("groups");
+            e.HasKey(x => x.GroupId);
+            e.Property(x => x.GroupId).HasColumnName(Columns.GroupId);
+            e.Property(x => x.TenantId).HasColumnName(Columns.TenantId);
+            e.Property(x => x.Name).HasMaxLength(128).HasColumnName(Columns.Name);
+            e.Property(x => x.IsSystem).HasColumnName(Columns.IsSystem);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
+            e.HasIndex(x => new { x.TenantId, x.Name }).IsUnique();
+        });
+
+        modelBuilder.Entity<GroupPermissionRow>(e =>
+        {
+            e.ToTable("group_permissions");
+            e.HasKey(x => new { x.GroupId, x.PermissionKey });
+            e.Property(x => x.GroupId).HasColumnName(Columns.GroupId);
+            e.Property(x => x.PermissionKey).HasMaxLength(128).HasColumnName(Columns.PermissionKey);
+        });
+
+        modelBuilder.Entity<UserGroupMemberRow>(e =>
+        {
+            e.ToTable("user_group_members");
+            e.HasKey(x => new { x.UserId, x.GroupId });
+            e.Property(x => x.UserId).HasColumnName(Columns.UserId);
+            e.Property(x => x.GroupId).HasColumnName(Columns.GroupId);
+        });
+
+        modelBuilder.Entity<ServiceAccountRow>(e =>
+        {
+            e.ToTable("service_accounts");
+            e.HasKey(x => x.ServiceAccountId);
+            e.Property(x => x.ServiceAccountId).HasColumnName(Columns.ServiceAccountId);
+            e.Property(x => x.TenantId).HasColumnName(Columns.TenantId);
+            e.Property(x => x.PrincipalId).HasColumnName(Columns.PrincipalId);
+            e.Property(x => x.Name).HasMaxLength(128).HasColumnName(Columns.Name);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+        });
+
+        modelBuilder.Entity<ApiKeyRow>(e =>
+        {
+            e.ToTable("api_keys");
+            e.HasKey(x => x.ApiKeyId);
+            e.Property(x => x.ApiKeyId).HasColumnName(Columns.ApiKeyId);
+            e.Property(x => x.TenantId).HasColumnName(Columns.TenantId);
+            e.Property(x => x.PrincipalId).HasColumnName(Columns.PrincipalId);
+            e.Property(x => x.KeyPrefix).HasMaxLength(16).HasColumnName(Columns.KeyPrefix);
+            e.Property(x => x.KeyHash).HasMaxLength(128).HasColumnName(Columns.KeyHash);
+            e.Property(x => x.AllowedScopesJson).HasColumnName(Columns.AllowedScopesJson);
+            e.Property(x => x.ExpiresAt).HasColumnName(Columns.ExpiresAt);
+            e.Property(x => x.LastUsedAt).HasColumnName(Columns.LastUsedAt);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.HasIndex(x => new { x.TenantId, x.KeyPrefix });
         });
     }
 }

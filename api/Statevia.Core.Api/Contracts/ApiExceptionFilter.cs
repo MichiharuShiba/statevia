@@ -26,6 +26,8 @@ public sealed class ApiExceptionFilter : IExceptionFilter
         {
             ApiValidationException validation => ApiErrorResult.ValidationError(validation.Message, validation.Details),
             NotFoundException nf => ApiErrorResult.NotFound(nf.Message),
+            UnauthorizedException unauthorized => ApiErrorResult.Unauthorized(unauthorized.Code, unauthorized.Message),
+            ForbiddenException forbidden => ApiErrorResult.Forbidden(forbidden.Code, forbidden.Message),
             IdempotencyConflictException idem => ApiErrorResult.Conflict("IDEMPOTENCY_KEY_CONFLICT", idem.Message),
             ArgumentException arg => ApiErrorResult.ValidationError(arg.Message),
             _ => new ObjectResult(new ErrorResponse
