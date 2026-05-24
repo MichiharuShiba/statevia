@@ -293,7 +293,33 @@ Request（JSON、省略可）:
 ### 4.1 ヘッダ
 
 - **Content-Type**: application/json（Body がある場合）
+- **Authorization**: `Bearer <JWT>`（ログイン後）。初版では **Definitions / Workflows 等は JWT なし + `X-Tenant-Id` でも可**（移行期）。
+- **X-Tenant-Id**: 移行専用。JWT あり時は **`tenant_key` と一致必須**。不一致は **403**（`TENANT_HEADER_MISMATCH`）。JWT なし時は省略で `"default"`。
 - **X-Idempotency-Key**: 任意。`POST /v1/workflows` では `definitionId + input` を含むリクエストハッシュで冪等キーを分離する（同一キーでも input が異なれば別リクエスト扱い）。
+
+### 4.1.1 認証 API（初版）
+
+**POST /v1/auth/login**
+
+Request:
+
+```json
+{
+  "tenantKey": "default",
+  "email": "user@example.com",
+  "password": "string"
+}
+```
+
+- Response: 200 OK、`{ "accessToken", "expiresAt", "tenantId", "tenantKey", "principalId" }`
+- 失敗: 401（資格情報不正）、403（テナント停止）
+
+**GET /v1/auth/me**
+
+- **Authorization** 必須。
+- Response: 200 OK、`{ "tenantId", "tenantKey", "principalId", "email", "isTenantAdmin" }`
+
+JWT クレーム: `tenant_id`（内部 UUID）、`tenant_key`、`principal_id` / `sub`。詳細は `docs/runtime-security-boundary.md`。
 
 ### 4.2 JSON 命名ポリシー（実装準拠）
 
@@ -311,6 +337,8 @@ Request（JSON、省略可）:
 | 存在しない         | 404  |
 | 冪等キー再利用（別リクエスト本文） | 409 。`error.code` は `IDEMPOTENCY_KEY_CONFLICT`（`POST /v1/workflows` のみ） |
 | コマンド適用不可（例: Engine にワークフローが無い） | 422 。`ArgumentException` / `ApiValidationException` がマッピングされる（`ApiValidationException` は `details` 付き） |
+| 認証失敗・資格情報不正 | 401 。`error.code` は `UNAUTHORIZED` 等 |
+| テナント停止・ヘッダ不一致 | 403 。`TENANT_SUSPENDED` / `TENANT_ARCHIVED` / `TENANT_HEADER_MISMATCH` |
 
 ---
 
