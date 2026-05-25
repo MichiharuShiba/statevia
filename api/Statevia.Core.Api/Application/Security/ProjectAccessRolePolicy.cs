@@ -11,16 +11,23 @@ public static class ProjectAccessRolePolicy
 
     /// <summary>DB 文字列を <see cref="ProjectAccessRole"/> に変換する。</summary>
     /// <param name="value">永続化された role 文字列。</param>
-    /// <param name="role">変換結果。</param>
-    public static bool TryParse(string? value, out ProjectAccessRole role)
+    /// <param name="role">変換結果。失敗時は <see langword="null"/>。</param>
+    public static bool TryParse(string? value, out ProjectAccessRole? role)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            role = default;
+            role = null;
             return false;
         }
 
-        return Enum.TryParse(value, ignoreCase: true, out role);
+        if (Enum.TryParse(value, ignoreCase: true, out ProjectAccessRole parsed))
+        {
+            role = parsed;
+            return true;
+        }
+
+        role = null;
+        return false;
     }
 
     /// <summary>永続化用の role 文字列を返す。</summary>
