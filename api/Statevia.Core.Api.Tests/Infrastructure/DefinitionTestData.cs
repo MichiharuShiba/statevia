@@ -11,6 +11,7 @@ internal static class DefinitionTestData
         string tenantId,
         Guid definitionId,
         string name,
+        Guid projectId,
         string sourceYaml = "x",
         string compiledJson = "{}",
         int version = 1,
@@ -22,6 +23,7 @@ internal static class DefinitionTestData
         {
             DefinitionId = definitionId,
             TenantId = tenantId,
+            ProjectId = projectId,
             Slug = DefinitionSlug.FromName(definitionId, name),
             Name = name,
             LatestVersion = version,
