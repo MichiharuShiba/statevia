@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
+using Statevia.Core.Api.Application.Security;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Persistence;
@@ -21,7 +22,31 @@ public sealed class DefinitionServiceTests
         IIdGenerator idGen)
     {
         var executor = new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(inDb.Factory));
-        return new DefinitionService(display, display, compiler, definitionsRepo, idGen, executor);
+        var projectRepo = new ProjectRepository();
+        var tenantAccessor = new FixedTenantContextAccessor(TestTenantIds.DefaultContext);
+        return new DefinitionService(display, compiler, definitionsRepo, projectRepo, tenantAccessor, idGen, executor);
+    }
+
+    private static async Task<Guid> SeedDefaultTenantAndProjectAsync(DbContextOptions<CoreDbContext> options)
+    {
+        await using var ctx = new CoreDbContext(options);
+        if (!await ctx.Tenants.AnyAsync().ConfigureAwait(false))
+        {
+            var now = DateTime.UtcNow;
+            ctx.Tenants.Add(new TenantRow
+            {
+                TenantId = TestTenantIds.DefaultInternalId,
+                TenantKey = "default",
+                DisplayName = "Default",
+                Lifecycle = TenantLifecycle.Active,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        var project = ProjectTestData.AddDefaultProject(ctx, TestTenantIds.DefaultInternalId, "default");
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
+        return project.ProjectId;
     }
 
 
@@ -135,7 +160,8 @@ public sealed class DefinitionServiceTests
         // Arrange
         var defGuid = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var inDb = new InMemoryTestDatabase();
-        var definitionsRepo = new DefinitionRepository();
+        var projectId = await SeedDefaultTenantAndProjectAsync(inDb.Options);
+        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
 
         // Act
         var display = new StubDisplayIdService { AllocateValue = "DEF-DISP" };
@@ -147,7 +173,7 @@ public sealed class DefinitionServiceTests
         var request = new CreateDefinitionRequest { Name = "my-def", Yaml = "workflow:\n  name: x\nstates: {}" };
 
         // Assert
-        var res = await sut.CreateAsync("t1", request, CancellationToken.None);
+        var res = await sut.CreateAsync("default", request, CancellationToken.None);
         Assert.Equal("DEF-DISP", res.DisplayId);
         Assert.Equal(defGuid, res.ResourceId);
 
@@ -170,6 +196,7 @@ public sealed class DefinitionServiceTests
         // Arrange
         var defGuid = Guid.Parse("22222222-2222-2222-2222-222222222222");
         using var inDb = new InMemoryTestDatabase();
+        _ = await SeedDefaultTenantAndProjectAsync(inDb.Options);
         var display = new PersistingStubDisplayIdService { AllocateValue = "DEF-PARTIAL" };
         var compiler = new StubCompiler(compiledJson: "{}");
         var idGen = new FixedIdGenerator(defGuid);
@@ -186,7 +213,7 @@ public sealed class DefinitionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.CreateAsync("t1", request, CancellationToken.None));
+            sut.CreateAsync("default", request, CancellationToken.None));
 
         await using var verifyDb = new CoreDbContext(inDb.Options);
         Assert.Equal(0, await verifyDb.DisplayIds.CountAsync());
@@ -202,7 +229,8 @@ public sealed class DefinitionServiceTests
     {
         // Arrange
         using var inDb = new InMemoryTestDatabase();
-        var definitionsRepo = new DefinitionRepository();
+        var projectId = await SeedDefaultTenantAndProjectAsync(inDb.Options);
+        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
 
         // Act
         // display_ids(kind=definition) を片方だけ入れて、もう片方は DisplayId が null になる状況を作る。
@@ -213,8 +241,8 @@ public sealed class DefinitionServiceTests
 
         await using (var ctx = new CoreDbContext(inDb.Options))
         {
-            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", def1, "A", createdAt: t1);
-            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", def2, "B", createdAt: t2);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, "default", def1, "A", projectId, createdAt: t1);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, "default", def2, "B", projectId, createdAt: t2);
             ctx.DisplayIds.Add(new DisplayIdRow { Kind = "definition", DisplayId = "DISP-B", ResourceId = def2, CreatedAt = t2 });
             await ctx.SaveChangesAsync();
         }
@@ -226,7 +254,7 @@ public sealed class DefinitionServiceTests
 
         // Assert
         var page = await sut.ListPagedAsync(
-            "t1",
+            "default",
             new DefinitionListQuery { Offset = 0, Limit = 10, SortBy = "createdAt", SortOrder = "asc" },
             CancellationToken.None);
         Assert.Equal(2, page.TotalCount);
@@ -245,7 +273,8 @@ public sealed class DefinitionServiceTests
     {
         // Arrange
         using var inDb = new InMemoryTestDatabase();
-        var definitionsRepo = new DefinitionRepository();
+        var projectId = await SeedDefaultTenantAndProjectAsync(inDb.Options);
+        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
 
         // Act
         var def1 = Guid.NewGuid();
@@ -254,9 +283,9 @@ public sealed class DefinitionServiceTests
 
         await using (var ctx = new CoreDbContext(inDb.Options))
         {
-            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", def1, "order-1", createdAt: DateTime.UtcNow.AddDays(-3));
-            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", def2, "order-2", createdAt: DateTime.UtcNow.AddDays(-2));
-            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", def3, "payment", createdAt: DateTime.UtcNow.AddDays(-1));
+            DefinitionTestData.AddDefinitionWithVersion(ctx, "default", def1, "order-1", projectId, createdAt: DateTime.UtcNow.AddDays(-3));
+            DefinitionTestData.AddDefinitionWithVersion(ctx, "default", def2, "order-2", projectId, createdAt: DateTime.UtcNow.AddDays(-2));
+            DefinitionTestData.AddDefinitionWithVersion(ctx, "default", def3, "payment", projectId, createdAt: DateTime.UtcNow.AddDays(-1));
             await ctx.SaveChangesAsync();
         }
 
@@ -266,7 +295,7 @@ public sealed class DefinitionServiceTests
         var sut = CreateDefinitionService(inDb, display, compiler, definitionsRepo, idGen);
 
         // Assert
-        var page = await sut.ListPagedAsync("t1", new DefinitionListQuery { Offset = 0, Limit = 1, Name = "order" }, CancellationToken.None);
+        var page = await sut.ListPagedAsync("default", new DefinitionListQuery { Offset = 0, Limit = 1, Name = "order" }, CancellationToken.None);
         Assert.Equal(2, page.TotalCount);
         Assert.Single(page.Items);
         Assert.True(page.HasMore);
@@ -280,7 +309,7 @@ public sealed class DefinitionServiceTests
     {
         // Arrange
         using var inDb = new InMemoryTestDatabase();
-        var definitionsRepo = new DefinitionRepository();
+        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
 
         var display = new StubDisplayIdService();
         var compiler = new StubCompiler("{}");
@@ -288,7 +317,7 @@ public sealed class DefinitionServiceTests
         var sut = CreateDefinitionService(inDb, display, compiler, definitionsRepo, idGen);
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetAsync("t1", Guid.NewGuid().ToString(), CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetAsync("default", Guid.NewGuid().ToString(), CancellationToken.None));
     }
 
     /// <summary>
@@ -299,7 +328,7 @@ public sealed class DefinitionServiceTests
     {
         // Arrange
         using var inDb = new InMemoryTestDatabase();
-        var definitionsRepo = new DefinitionRepository();
+        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
 
         var guid = Guid.NewGuid();
         var display = new StubDisplayIdService();
@@ -310,7 +339,7 @@ public sealed class DefinitionServiceTests
         var sut = CreateDefinitionService(inDb, display, compiler, definitionsRepo, idGen);
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetAsync("t1", guid.ToString(), CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetAsync("default", guid.ToString(), CancellationToken.None));
     }
 
     /// <summary>
@@ -321,13 +350,14 @@ public sealed class DefinitionServiceTests
     {
         // Arrange
         using var inDb = new InMemoryTestDatabase();
-        var definitionsRepo = new DefinitionRepository();
+        var projectId = await SeedDefaultTenantAndProjectAsync(inDb.Options);
+        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
 
         // Act
         var guid = Guid.NewGuid();
         await using (var ctx = new CoreDbContext(inDb.Options))
         {
-            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", guid, "def");
+            DefinitionTestData.AddDefinitionWithVersion(ctx, "default", guid, "def", projectId);
             await ctx.SaveChangesAsync();
         }
 
@@ -340,7 +370,7 @@ public sealed class DefinitionServiceTests
         var sut = CreateDefinitionService(inDb, display, compiler, definitionsRepo, idGen);
 
         // Assert
-        var res = await sut.GetAsync("t1", guid.ToString(), CancellationToken.None);
+        var res = await sut.GetAsync("default", guid.ToString(), CancellationToken.None);
         Assert.Equal(guid.ToString(), res.DisplayId);
         Assert.Equal("def", res.Name);
     }
@@ -353,7 +383,7 @@ public sealed class DefinitionServiceTests
     {
         // Arrange
         using var inDb = new InMemoryTestDatabase();
-        var definitionsRepo = new DefinitionRepository();
+        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
         var display = new StubDisplayIdService();
         var compiler = new StubCompiler("{}");
         var idGen = new FixedIdGenerator(Guid.NewGuid());
@@ -361,7 +391,7 @@ public sealed class DefinitionServiceTests
         var request = new CreateDefinitionRequest { Name = " ", Yaml = "workflow:\n  name: x" };
 
         // Act
-        var ex = await Assert.ThrowsAsync<ApiValidationException>(() => sut.CreateAsync("t1", request, CancellationToken.None));
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() => sut.CreateAsync("default", request, CancellationToken.None));
 
         // Assert
         Assert.Equal("Definition name is required.", ex.Message);
@@ -376,7 +406,7 @@ public sealed class DefinitionServiceTests
     {
         // Arrange
         using var inDb = new InMemoryTestDatabase();
-        var definitionsRepo = new DefinitionRepository();
+        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
         var display = new StubDisplayIdService();
         var compiler = new ThrowingCompiler(new ArgumentException("yaml parse failed"));
         var idGen = new FixedIdGenerator(Guid.NewGuid());
@@ -384,7 +414,7 @@ public sealed class DefinitionServiceTests
         var request = new CreateDefinitionRequest { Name = "def", Yaml = "invalid: [" };
 
         // Act
-        var ex = await Assert.ThrowsAsync<ApiValidationException>(() => sut.CreateAsync("t1", request, CancellationToken.None));
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() => sut.CreateAsync("default", request, CancellationToken.None));
 
         // Assert
         Assert.Equal(DefinitionValidationMessages.ValidationFailed, ex.Message);
@@ -399,16 +429,18 @@ public sealed class DefinitionServiceTests
     public async Task UpdateAsync_UpdatesExistingDefinition()
     {
         using var inDb = new InMemoryTestDatabase();
-        var definitionsRepo = new DefinitionRepository();
+        var projectId = await SeedDefaultTenantAndProjectAsync(inDb.Options);
+        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
         var guid = Guid.NewGuid();
         var createdAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         await using (var ctx = new CoreDbContext(inDb.Options))
         {
             DefinitionTestData.AddDefinitionWithVersion(
                 ctx,
-                "t1",
+                "default",
                 guid,
                 "old",
+                projectId,
                 sourceYaml: "workflow:\n  name: old",
                 compiledJson: "{\"old\":true}",
                 createdAt: createdAt);
@@ -422,7 +454,7 @@ public sealed class DefinitionServiceTests
         var idGen = new FixedIdGenerator(Guid.NewGuid());
         var sut = CreateDefinitionService(inDb, display, compiler, definitionsRepo, idGen);
 
-        var res = await sut.UpdateAsync("t1", "DEF-1", new UpdateDefinitionRequest
+        var res = await sut.UpdateAsync("default", "DEF-1", new UpdateDefinitionRequest
         {
             Name = "new",
             Yaml = "workflow:\n  name: new"
@@ -456,16 +488,18 @@ public sealed class DefinitionServiceTests
     {
         // Arrange
         using var inDb = new InMemoryTestDatabase();
-        var definitionsRepo = new DefinitionRepository();
+        var projectId = await SeedDefaultTenantAndProjectAsync(inDb.Options);
+        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
         var guid = Guid.NewGuid();
         var createdAt = DateTime.UtcNow;
         await using (var ctx = new CoreDbContext(inDb.Options))
         {
             DefinitionTestData.AddDefinitionWithVersion(
                 ctx,
-                "t1",
+                "default",
                 guid,
                 "old",
+                projectId,
                 sourceYaml: "workflow:\n  name: old",
                 createdAt: createdAt);
             await ctx.SaveChangesAsync();
@@ -478,7 +512,7 @@ public sealed class DefinitionServiceTests
 
         // Act
         var ex = await Assert.ThrowsAsync<ApiValidationException>(() =>
-            sut.UpdateAsync("t1", "DEF-1", new UpdateDefinitionRequest { Name = "n", Yaml = "bad" }, CancellationToken.None));
+            sut.UpdateAsync("default", "DEF-1", new UpdateDefinitionRequest { Name = "n", Yaml = "bad" }, CancellationToken.None));
 
         // Assert
         Assert.Equal(DefinitionValidationMessages.ValidationFailed, ex.Message);
