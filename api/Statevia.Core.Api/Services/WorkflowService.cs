@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Statevia.Core.Api.Abstractions.Persistence;
+using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Contracts;
@@ -63,6 +64,8 @@ internal sealed class WorkflowService : IWorkflowService
     private readonly ICommandDedupService _dedupService;
     private readonly IWorkflowRepository _workflows;
     private readonly IDefinitionRepository _definitions;
+    private readonly IProjectAuthorizationService _projectAuth;
+    private readonly ITenantContextAccessor _tenantContext;
     private readonly ICommandDedupRepository _dedup;
     private readonly IEventStoreRepository _eventStore;
     private readonly IEventDeliveryDedupRepository _eventDeliveryDedup;
@@ -86,6 +89,8 @@ internal sealed class WorkflowService : IWorkflowService
         ICommandDedupService dedupService,
         IWorkflowRepository workflows,
         IDefinitionRepository definitions,
+        IProjectAuthorizationService projectAuth,
+        ITenantContextAccessor tenantContext,
         ICommandDedupRepository dedup,
         IEventStoreRepository eventStore,
         IEventDeliveryDedupRepository eventDeliveryDedup,
@@ -104,6 +109,8 @@ internal sealed class WorkflowService : IWorkflowService
         _dedupService = dedupService;
         _workflows = workflows;
         _definitions = definitions;
+        _projectAuth = projectAuth;
+        _tenantContext = tenantContext;
         _dedup = dedup;
         _eventStore = eventStore;
         _eventDeliveryDedup = eventDeliveryDedup;
@@ -137,9 +144,12 @@ internal sealed class WorkflowService : IWorkflowService
         if (defUuid is null)
             throw new NotFoundException(WorkflowValidationMessages.DefinitionNotFound);
 
-        var versionRow = await ResolveStartDefinitionVersionAsync(tenantId, defUuid.Value, request, ct).ConfigureAwait(false);
+        var tenantInternalId = RequireTenantInternalId();
+        var versionRow = await ResolveStartDefinitionVersionAsync(tenantInternalId, defUuid.Value, request, ct).ConfigureAwait(false);
         if (versionRow is null)
             throw new NotFoundException(WorkflowValidationMessages.DefinitionNotFound);
+
+        await EnsureCanExecuteOnDefinitionAsync(tenantInternalId, defUuid.Value, ct).ConfigureAwait(false);
 
         var compiled = RestoreCompiledDefinitionFromVersion(versionRow);
 
@@ -769,7 +779,7 @@ internal sealed class WorkflowService : IWorkflowService
     }
 
     private Task<DefinitionVersionRow?> ResolveStartDefinitionVersionAsync(
-        string tenantId,
+        Guid tenantInternalId,
         Guid definitionId,
         StartWorkflowRequest request,
         CancellationToken ct) =>
@@ -778,7 +788,7 @@ internal sealed class WorkflowService : IWorkflowService
             {
                 if (request.DefinitionVersionId is { } versionId)
                 {
-                    var byId = await _definitions.GetVersionByIdAsync(uow, tenantId, versionId, innerCt)
+                    var byId = await _definitions.GetVersionByIdAsync(uow, tenantInternalId, versionId, innerCt)
                         .ConfigureAwait(false);
                     return byId is not null && byId.DefinitionId == definitionId ? byId : null;
                 }
@@ -786,15 +796,38 @@ internal sealed class WorkflowService : IWorkflowService
                 if (request.DefinitionVersion is { } versionNumber)
                 {
                     return await _definitions
-                        .GetVersionAsync(uow, tenantId, definitionId, versionNumber, innerCt)
+                        .GetVersionAsync(uow, tenantInternalId, definitionId, versionNumber, innerCt)
                         .ConfigureAwait(false);
                 }
 
-                var latest = await _definitions.GetLatestByIdAsync(uow, tenantId, definitionId, innerCt)
+                var latest = await _definitions.GetLatestByIdAsync(uow, tenantInternalId, definitionId, innerCt)
                     .ConfigureAwait(false);
                 return latest?.Version;
             },
             ct);
+
+    private Task EnsureCanExecuteOnDefinitionAsync(
+        Guid tenantInternalId,
+        Guid definitionId,
+        CancellationToken ct) =>
+        _executor.ExecuteReadOnlyAsync(
+            async (uow, innerCt) =>
+            {
+                var projectId = await _definitions
+                    .ResolveProjectIdAsync(uow, tenantInternalId, definitionId, innerCt)
+                    .ConfigureAwait(false);
+                if (projectId is null)
+                    throw new NotFoundException(WorkflowValidationMessages.DefinitionNotFound);
+
+                await _projectAuth
+                    .EnsureCanExecuteAsync(uow, tenantInternalId, projectId.Value, innerCt)
+                    .ConfigureAwait(false);
+            },
+            ct);
+
+    private Guid RequireTenantInternalId() =>
+        _tenantContext.TenantInternalId
+        ?? throw new InvalidOperationException("Tenant context is not resolved.");
 
     private CompiledWorkflowDefinition RestoreCompiledDefinitionFromVersion(DefinitionVersionRow versionRow)
     {
