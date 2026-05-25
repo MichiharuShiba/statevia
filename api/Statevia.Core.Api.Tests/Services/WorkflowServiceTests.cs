@@ -5,8 +5,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using Statevia.Core.Api.Abstractions.Persistence;
+using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Abstractions.Services;
+using Statevia.Core.Api.Application.Security;
 using Statevia.Core.Api.Persistence;
+using Statevia.Core.Api.Persistence.Repositories;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Hosting;
@@ -3586,7 +3589,8 @@ public sealed class WorkflowServiceTests
         IEventDeliveryDedupRepository eventDeliveryDedup,
         IWorkflowProjectionUpdateQueue? projectionUpdateQueue = null,
         Microsoft.Extensions.Options.IOptions<EventDeliveryRetryOptions>? eventDeliveryRetryOptions = null,
-        IWorkflowMutationPersistence? mutationPersistence = null)
+        IWorkflowMutationPersistence? mutationPersistence = null,
+        IProjectAuthorizationService? projectAuthorization = null)
     {
         if (displayIds is not IDisplayIdWriteService displayIdWrites)
             throw new InvalidOperationException("Test display id service must implement IDisplayIdWriteService.");
@@ -3609,6 +3613,8 @@ public sealed class WorkflowServiceTests
             dedupService,
             workflows,
             definitions,
+            projectAuthorization ?? new AllowAllProjectAuthorizationService(),
+            sqlite.TenantAccessor,
             dedup,
             eventStore,
             eventDeliveryDedup,
@@ -3619,6 +3625,118 @@ public sealed class WorkflowServiceTests
             retryOptions,
             UnitTestHttpContextAccessor(),
             projectionUpdateQueue);
+    }
+
+    /// <summary>Reader 付与テナントは Start（Executor）が 403。</summary>
+    [Fact]
+    public async Task StartAsync_ReaderGrant_ReturnsForbidden()
+    {
+        // Arrange
+        var (sqlite, defId) = await SeedSharedDefinitionForStartAsync(ProjectAccessRole.Reader);
+        var display = new FakeDisplayIdService { ResolveResultDefinition = defId };
+        var sut = BuildWorkflowService(
+            sqlite,
+            new FakeWorkflowEngine(),
+            display,
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            new FakeWorkflowRepository(),
+            TestRepositoryFactory.CreateDefinitionRepository(),
+            new FakeCommandDedupRepository(),
+            new FakeEventStoreRepository(),
+            new FakeEventDeliveryDedupRepository(),
+            projectAuthorization: new ProjectAuthorizationService(new ProjectRepository()));
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
+            sut.StartAsync(
+                "reader",
+                new StartWorkflowRequest { DefinitionId = defId.ToString("D") },
+                idempotencyKey: null,
+                new CommandRequestContext("POST", "/v1/workflows"),
+                CancellationToken.None));
+
+        Assert.Equal("PROJECT_ACCESS_DENIED", ex.Code);
+    }
+
+    /// <summary>Executor 付与テナントは Start できる。</summary>
+    [Fact]
+    public async Task StartAsync_ExecutorGrant_Succeeds()
+    {
+        // Arrange
+        var (sqlite, defId) = await SeedSharedDefinitionForStartAsync(ProjectAccessRole.Executor);
+        var display = new FakeDisplayIdService { ResolveResultDefinition = defId };
+        var sut = BuildWorkflowService(
+            sqlite,
+            new FakeWorkflowEngine(),
+            display,
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            new FakeWorkflowRepository(),
+            TestRepositoryFactory.CreateDefinitionRepository(),
+            new FakeCommandDedupRepository(),
+            new FakeEventStoreRepository(),
+            new FakeEventDeliveryDedupRepository(),
+            projectAuthorization: new ProjectAuthorizationService(new ProjectRepository()));
+
+        // Act
+        var response = await sut.StartAsync(
+            "executor",
+            new StartWorkflowRequest { DefinitionId = defId.ToString("D") },
+            idempotencyKey: null,
+            new CommandRequestContext("POST", "/v1/workflows"),
+            CancellationToken.None);
+
+        // Assert
+        Assert.NotEqual(Guid.Empty, response.ResourceId);
+    }
+
+    private static async Task<(SqliteTestDatabase Database, Guid DefinitionId)> SeedSharedDefinitionForStartAsync(
+        ProjectAccessRole grantRole)
+    {
+        var sqlite = new SqliteTestDatabase();
+        var ownerTenantId = Guid.NewGuid();
+        var granteeTenantId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var granteeKey = grantRole == ProjectAccessRole.Reader ? "reader" : "executor";
+
+        await using (var seed = sqlite.Factory.CreateDbContext())
+        {
+            seed.Tenants.Add(new TenantRow
+            {
+                TenantId = ownerTenantId,
+                TenantKey = "owner",
+                DisplayName = "Owner",
+                Lifecycle = TenantLifecycle.Active,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            seed.Tenants.Add(new TenantRow
+            {
+                TenantId = granteeTenantId,
+                TenantKey = granteeKey,
+                DisplayName = "Grantee",
+                Lifecycle = TenantLifecycle.Active,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            ProjectTestData.AddDefaultProject(seed, ownerTenantId, "owner", projectId);
+            DefinitionTestData.AddDefinitionWithVersion(seed, "owner", defId, "shared-def", projectId, compiledJson: "{}");
+            ProjectTestData.GrantAccess(seed, projectId, granteeTenantId, grantRole);
+            await seed.SaveChangesAsync();
+        }
+
+        sqlite.TenantAccessor.Set(new TenantContextState(
+            granteeTenantId,
+            granteeKey,
+            Guid.NewGuid(),
+            TenantLifecycle.Active));
+
+        return (sqlite, defId);
     }
 }
 

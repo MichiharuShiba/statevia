@@ -16,59 +16,52 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
 
     public Task<DefinitionDetail?> GetLatestByIdAsync(
         ICoreUnitOfWork uow,
-        string tenantId,
+        Guid tenantInternalId,
         Guid definitionId,
         CancellationToken ct)
     {
         _ = uow;
+        _ = tenantInternalId;
         _ = ct;
         if (LatestDetail is null || LatestDetail.Definition.DefinitionId != definitionId)
-        {
             return Task.FromResult<DefinitionDetail?>(null);
-        }
 
-        return LatestDetail.Definition.TenantId == tenantId
-            ? Task.FromResult<DefinitionDetail?>(LatestDetail)
-            : Task.FromResult<DefinitionDetail?>(null);
+        return Task.FromResult<DefinitionDetail?>(LatestDetail);
     }
 
     public Task<DefinitionVersionRow?> GetVersionByIdAsync(
         ICoreUnitOfWork uow,
-        string tenantId,
+        Guid tenantInternalId,
         Guid definitionVersionId,
         CancellationToken ct)
     {
         _ = uow;
+        _ = tenantInternalId;
         _ = ct;
         if (VersionById is null || VersionById.DefinitionVersionId != definitionVersionId)
-        {
             return Task.FromResult<DefinitionVersionRow?>(null);
-        }
 
-        return LatestDetail is { } detail
-               && detail.Definition.TenantId == tenantId
-               && VersionById.DefinitionId == detail.Definition.DefinitionId
+        return LatestDetail is { } detail && VersionById.DefinitionId == detail.Definition.DefinitionId
             ? Task.FromResult<DefinitionVersionRow?>(VersionById)
             : Task.FromResult<DefinitionVersionRow?>(null);
     }
 
     public Task<DefinitionVersionRow?> GetVersionAsync(
         ICoreUnitOfWork uow,
-        string tenantId,
+        Guid tenantInternalId,
         Guid definitionId,
         int version,
         CancellationToken ct)
     {
         _ = uow;
+        _ = tenantInternalId;
         _ = ct;
         if (VersionByNumber is null
             || VersionByNumber.DefinitionId != definitionId
             || VersionByNumber.Version != version)
-        {
             return Task.FromResult<DefinitionVersionRow?>(null);
-        }
 
-        return LatestDetail is { } detail && detail.Definition.TenantId == tenantId
+        return LatestDetail is not null
             ? Task.FromResult<DefinitionVersionRow?>(VersionByNumber)
             : Task.FromResult<DefinitionVersionRow?>(null);
     }
@@ -84,9 +77,7 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
         _ = version;
         _ = ct;
         if (AddWithInitialVersionException is not null)
-        {
             throw AddWithInitialVersionException;
-        }
 
         return Task.CompletedTask;
     }
@@ -99,10 +90,31 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
 
     public Task<(int TotalCount, List<(DefinitionDetail Detail, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
         ICoreUnitOfWork uow,
-        string tenantId,
+        Guid tenantInternalId,
         DefinitionListPageQuery query,
-        CancellationToken ct) =>
-        Task.FromResult((0, new List<(DefinitionDetail, string?)>()));
+        CancellationToken ct)
+    {
+        _ = uow;
+        _ = tenantInternalId;
+        _ = query;
+        _ = ct;
+        return Task.FromResult((0, new List<(DefinitionDetail, string?)>()));
+    }
+
+    public Task<Guid?> ResolveProjectIdAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantInternalId,
+        Guid definitionId,
+        CancellationToken ct)
+    {
+        _ = uow;
+        _ = tenantInternalId;
+        _ = ct;
+        if (LatestDetail is null || LatestDetail.Definition.DefinitionId != definitionId)
+            return Task.FromResult<Guid?>(null);
+
+        return Task.FromResult<Guid?>(LatestDetail.Definition.ProjectId);
+    }
 }
 
 /// <summary>definitionId に紐づく最新版を返すスタブを生成する。</summary>
@@ -112,6 +124,7 @@ internal static class StubDefinitionRepositoryFactory
         Guid definitionId,
         string tenantId,
         string name,
+        Guid? projectId = null,
         string sourceYaml = "yaml",
         string compiledJson = "{}")
     {
@@ -120,6 +133,7 @@ internal static class StubDefinitionRepositoryFactory
         {
             DefinitionId = definitionId,
             TenantId = tenantId,
+            ProjectId = projectId ?? Guid.NewGuid(),
             Slug = DefinitionSlug.FromName(definitionId, name),
             Name = name,
             LatestVersion = 1,

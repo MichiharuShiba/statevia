@@ -43,6 +43,16 @@ Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
 
 **移行期（フェーズ 1a）:** `definitions.project_id` は NULL 可。テナント境界は `definitions.tenant_id` で担保（`projects` / `project_accesses` 導入後に認可 truth を移行）。
 
+**フェーズ 1b（projects / project_accesses）:**
+
+| 対象 | 役割 |
+| --- | --- |
+| `project_accesses` + オーナーテナント | **認可 truth**（`reader` / `executor` / `publisher` / `admin`） |
+| `projects.visibility` | **discoverability ヒント**（認可には使わない） |
+| `definitions.project_id` | NOT NULL。`UNIQUE(project_id, slug)` |
+
+定義取得・publish・Start は `ITenantContext.TenantInternalId` と `project_accesses` で評価する。Reader 未満は 404（存在秘匿）、Reader のみが Start した場合は 403（`PROJECT_ACCESS_DENIED`）。
+
 **publish トランザクション:** `ICoreTransactionExecutor.ExecuteReadCommittedAsync` の 1 コールバック内で `definition_versions` INSERT → `definitions.latest_version` 更新。
 
 ---
