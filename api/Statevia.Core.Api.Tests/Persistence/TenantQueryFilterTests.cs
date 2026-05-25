@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Application.Security;
+using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Tests.Infrastructure;
 
@@ -19,25 +20,38 @@ public sealed class TenantQueryFilterTests
         var accessor = database.TenantAccessor;
         accessor.Set(null);
 
+        var workflowId = Guid.NewGuid();
         var definitionId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
         await using (var seed = new CoreDbContext(enabledOptions, accessor, DisabledTenantQueryFilterOptions.Instance))
         {
-            seed.Definitions.Add(new DefinitionRow
+            ProjectTestData.AddDefaultProject(seed, TestTenantIds.DefaultInternalId, "default", projectId);
+            DefinitionTestData.AddDefinitionWithVersion(
+                seed,
+                "default",
+                definitionId,
+                "wf-filter",
+                projectId,
+                versionId: versionId);
+            seed.Workflows.Add(new WorkflowRow
             {
-                DefinitionId = definitionId,
+                WorkflowId = workflowId,
                 TenantId = "default",
-                Slug = "fail-closed-test",
-                Name = "test",
-                LatestVersion = 1,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                DefinitionId = definitionId,
+                DefinitionVersionId = versionId,
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
             });
             await seed.SaveChangesAsync();
         }
 
         // Act
         await using var db = new CoreDbContext(enabledOptions, accessor, EnabledTenantQueryFilterOptions.Instance);
-        var rows = await db.Definitions.AsNoTracking().ToListAsync();
+        var rows = await db.Workflows.AsNoTracking().ToListAsync();
 
         // Assert
         Assert.Empty(rows);
@@ -70,25 +84,41 @@ public sealed class TenantQueryFilterTests
             await seed.SaveChangesAsync();
 
             accessor.Set(null);
-            seed.Definitions.Add(new DefinitionRow
+            var defaultProjectId = Guid.NewGuid();
+            var otherProjectId = Guid.NewGuid();
+            var defaultDefinitionId = Guid.NewGuid();
+            var otherDefinitionId = Guid.NewGuid();
+            var defaultVersionId = Guid.NewGuid();
+            var otherVersionId = Guid.NewGuid();
+            ProjectTestData.AddDefaultProject(seed, TestTenantIds.DefaultInternalId, "default", defaultProjectId);
+            ProjectTestData.AddDefaultProject(seed, otherTenantId, "other", otherProjectId);
+            DefinitionTestData.AddDefinitionWithVersion(
+                seed, "default", defaultDefinitionId, "default-def", defaultProjectId, versionId: defaultVersionId);
+            DefinitionTestData.AddDefinitionWithVersion(
+                seed, "other", otherDefinitionId, "other-def", otherProjectId, versionId: otherVersionId);
+            seed.Workflows.Add(new WorkflowRow
             {
-                DefinitionId = Guid.NewGuid(),
+                WorkflowId = Guid.NewGuid(),
                 TenantId = "default",
-                Slug = "default-slug",
-                Name = "default",
-                LatestVersion = 1,
-                CreatedAt = now,
-                UpdatedAt = now
+                DefinitionId = defaultDefinitionId,
+                DefinitionVersionId = defaultVersionId,
+                Status = "Running",
+                StartedAt = now,
+                UpdatedAt = now,
+                CancelRequested = false,
+                RestartLost = false
             });
-            seed.Definitions.Add(new DefinitionRow
+            seed.Workflows.Add(new WorkflowRow
             {
-                DefinitionId = Guid.NewGuid(),
+                WorkflowId = Guid.NewGuid(),
                 TenantId = "other",
-                Slug = "other-slug",
-                Name = "other",
-                LatestVersion = 1,
-                CreatedAt = now,
-                UpdatedAt = now
+                DefinitionId = otherDefinitionId,
+                DefinitionVersionId = otherVersionId,
+                Status = "Running",
+                StartedAt = now,
+                UpdatedAt = now,
+                CancelRequested = false,
+                RestartLost = false
             });
             await seed.SaveChangesAsync();
         }
@@ -97,7 +127,7 @@ public sealed class TenantQueryFilterTests
 
         // Act
         await using var db = new CoreDbContext(options, accessor, EnabledTenantQueryFilterOptions.Instance);
-        var rows = await db.Definitions.AsNoTracking().ToListAsync();
+        var rows = await db.Workflows.AsNoTracking().ToListAsync();
 
         // Assert
         Assert.Single(rows);
