@@ -135,7 +135,7 @@ namespace Statevia.Core.Api.Migrations
                         .HasColumnType("character varying(512)")
                         .HasColumnName("name");
 
-                    b.Property<Guid?>("ProjectId")
+                    b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
@@ -157,7 +157,7 @@ namespace Statevia.Core.Api.Migrations
 
                     b.HasKey("DefinitionId");
 
-                    b.HasIndex("TenantId", "Slug")
+                    b.HasIndex("ProjectId", "Slug")
                         .IsUnique();
 
                     b.ToTable("definitions", (string)null);
@@ -445,12 +445,6 @@ namespace Statevia.Core.Api.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_system");
 
-                    b.Property<string>("PermissionKey")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("permission_key");
-
                     b.Property<string>("OwnerKey")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
@@ -460,6 +454,12 @@ namespace Statevia.Core.Api.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("owner_type");
+
+                    b.Property<string>("PermissionKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("permission_key");
 
                     b.HasKey("PermissionDefinitionId");
 
@@ -525,6 +525,78 @@ namespace Statevia.Core.Api.Migrations
                     b.HasKey("PrincipalId");
 
                     b.ToTable("principals", (string)null);
+                });
+
+            modelBuilder.Entity("Statevia.Core.Api.Persistence.ProjectAccessRow", b =>
+                {
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("role");
+
+                    b.HasKey("ProjectId", "TenantId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("project_accesses", (string)null);
+                });
+
+            modelBuilder.Entity("Statevia.Core.Api.Persistence.ProjectRow", b =>
+                {
+                    b.Property<Guid>("ProjectId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("display_name");
+
+                    b.Property<Guid>("OwnerTenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_tenant_id");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("slug");
+
+                    b.Property<string>("Visibility")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("visibility");
+
+                    b.HasKey("ProjectId");
+
+                    b.HasIndex("OwnerTenantId", "Slug")
+                        .IsUnique();
+
+                    b.ToTable("projects", (string)null);
                 });
 
             modelBuilder.Entity("Statevia.Core.Api.Persistence.ServiceAccountRow", b =>
@@ -809,11 +881,44 @@ namespace Statevia.Core.Api.Migrations
                     b.ToTable("workflows", (string)null);
                 });
 
+            modelBuilder.Entity("Statevia.Core.Api.Persistence.DefinitionRow", b =>
+                {
+                    b.HasOne("Statevia.Core.Api.Persistence.ProjectRow", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Statevia.Core.Api.Persistence.DefinitionVersionRow", b =>
                 {
                     b.HasOne("Statevia.Core.Api.Persistence.DefinitionRow", null)
                         .WithMany()
                         .HasForeignKey("DefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Statevia.Core.Api.Persistence.ProjectAccessRow", b =>
+                {
+                    b.HasOne("Statevia.Core.Api.Persistence.ProjectRow", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Statevia.Core.Api.Persistence.TenantRow", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Statevia.Core.Api.Persistence.ProjectRow", b =>
+                {
+                    b.HasOne("Statevia.Core.Api.Persistence.TenantRow", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerTenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
