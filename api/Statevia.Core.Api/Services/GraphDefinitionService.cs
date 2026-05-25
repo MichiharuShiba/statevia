@@ -35,8 +35,7 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     public async Task<GraphDefinitionResponse> GetByGraphIdAsync(string graphId, string tenantId, CancellationToken ct = default)
     {
         _ = tenantId;
-        var tenantInternalId = _tenantContext.TenantInternalId
-            ?? throw new InvalidOperationException("Tenant context is not resolved.");
+        var tenantInternalId = _tenantContext.GetRequiredTenantInternalId();
 
         var uuid = await _displayIds.ResolveAsync("definition", graphId, ct).ConfigureAwait(false);
         if (uuid == null)

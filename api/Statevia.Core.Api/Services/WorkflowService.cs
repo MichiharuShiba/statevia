@@ -144,7 +144,7 @@ internal sealed class WorkflowService : IWorkflowService
         if (defUuid is null)
             throw new NotFoundException(WorkflowValidationMessages.DefinitionNotFound);
 
-        var tenantInternalId = RequireTenantInternalId();
+        var tenantInternalId = _tenantContext.GetRequiredTenantInternalId();
         var versionRow = await ResolveStartDefinitionVersionAsync(tenantInternalId, defUuid.Value, request, ct).ConfigureAwait(false);
         if (versionRow is null)
             throw new NotFoundException(WorkflowValidationMessages.DefinitionNotFound);
@@ -824,10 +824,6 @@ internal sealed class WorkflowService : IWorkflowService
                     .ConfigureAwait(false);
             },
             ct);
-
-    private Guid RequireTenantInternalId() =>
-        _tenantContext.TenantInternalId
-        ?? throw new InvalidOperationException("Tenant context is not resolved.");
 
     private CompiledWorkflowDefinition RestoreCompiledDefinitionFromVersion(DefinitionVersionRow versionRow)
     {

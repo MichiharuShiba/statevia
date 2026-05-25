@@ -69,7 +69,7 @@ internal sealed class DefinitionService : IDefinitionService
             }, ex);
         }
 
-        var tenantInternalId = RequireTenantInternalId();
+        var tenantInternalId = _tenantContext.GetRequiredTenantInternalId();
         var id = _idGenerator.NewGuid();
         var versionId = _idGenerator.NewGuid();
 
@@ -126,7 +126,7 @@ internal sealed class DefinitionService : IDefinitionService
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var tenantInternalId = RequireTenantInternalId();
+        var tenantInternalId = _tenantContext.GetRequiredTenantInternalId();
         var limit = query.Limit ?? throw new ArgumentException("limit is required for paged list");
         var offset = query.Offset ?? 0;
         var pageQuery = new DefinitionListPageQuery(
@@ -160,7 +160,7 @@ internal sealed class DefinitionService : IDefinitionService
         if (uuid is null)
             throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
-        var tenantInternalId = RequireTenantInternalId();
+        var tenantInternalId = _tenantContext.GetRequiredTenantInternalId();
         return await _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
@@ -213,7 +213,7 @@ internal sealed class DefinitionService : IDefinitionService
             }, ex);
         }
 
-        var tenantInternalId = RequireTenantInternalId();
+        var tenantInternalId = _tenantContext.GetRequiredTenantInternalId();
         var newVersionId = _idGenerator.NewGuid();
 
         return await _executor.ExecuteReadCommittedAsync(
@@ -252,8 +252,4 @@ internal sealed class DefinitionService : IDefinitionService
             UpdatedAt = detail.Definition.UpdatedAt,
             Yaml = includeYaml ? detail.Version.SourceYaml : null
         };
-
-    private Guid RequireTenantInternalId() =>
-        _tenantContext.TenantInternalId
-        ?? throw new InvalidOperationException("Tenant context is not resolved.");
 }
