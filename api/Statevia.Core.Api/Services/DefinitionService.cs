@@ -1,4 +1,5 @@
 using Statevia.Core.Api.Abstractions.Persistence;
+using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Hosting;
@@ -13,21 +14,27 @@ internal sealed class DefinitionService : IDefinitionService
     private readonly IDisplayIdWriteService _displayIdWrites;
     private readonly IDefinitionCompilerService _compiler;
     private readonly IDefinitionRepository _definitions;
+    private readonly IProjectRepository _projects;
+    private readonly ITenantContextAccessor _tenantContext;
     private readonly IIdGenerator _idGenerator;
     private readonly ICoreTransactionExecutor _executor;
 
     public DefinitionService(
         IDisplayIdService displayIds,
-        IDisplayIdWriteService displayIdWrites,
         IDefinitionCompilerService compiler,
         IDefinitionRepository definitions,
+        IProjectRepository projects,
+        ITenantContextAccessor tenantContext,
         IIdGenerator idGenerator,
         ICoreTransactionExecutor executor)
     {
         _displayIds = displayIds;
-        _displayIdWrites = displayIdWrites;
+        _displayIdWrites = displayIds as IDisplayIdWriteService
+            ?? throw new InvalidOperationException("IDisplayIdService must implement IDisplayIdWriteService.");
         _compiler = compiler;
         _definitions = definitions;
+        _projects = projects;
+        _tenantContext = tenantContext;
         _idGenerator = idGenerator;
         _executor = executor;
     }
@@ -62,12 +69,17 @@ internal sealed class DefinitionService : IDefinitionService
             }, ex);
         }
 
+        var tenantInternalId = RequireTenantInternalId();
         var id = _idGenerator.NewGuid();
         var versionId = _idGenerator.NewGuid();
 
         return await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
             {
+                var project = await _projects
+                    .EnsureDefaultProjectAsync(uow, tenantInternalId, tenantId, innerCt)
+                    .ConfigureAwait(false);
+
                 var displayId = await _displayIdWrites
                     .AllocateAsync(uow, DisplayIdResourceTypes.Definition, id, innerCt)
                     .ConfigureAwait(false);
@@ -77,6 +89,7 @@ internal sealed class DefinitionService : IDefinitionService
                 {
                     DefinitionId = id,
                     TenantId = tenantId,
+                    ProjectId = project.ProjectId,
                     Slug = DefinitionSlug.FromName(id, request.Name!),
                     Name = request.Name!,
                     LatestVersion = 1,
@@ -113,6 +126,7 @@ internal sealed class DefinitionService : IDefinitionService
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(query);
+        var tenantInternalId = RequireTenantInternalId();
         var limit = query.Limit ?? throw new ArgumentException("limit is required for paged list");
         var offset = query.Offset ?? 0;
         var pageQuery = new DefinitionListPageQuery(
@@ -124,7 +138,7 @@ internal sealed class DefinitionService : IDefinitionService
             async (uow, innerCt) =>
             {
                 var (total, pairs) = await _definitions
-                    .ListWithDisplayIdsPageAsync(uow, tenantId, pageQuery, innerCt)
+                    .ListWithDisplayIdsPageAsync(uow, tenantInternalId, pageQuery, innerCt)
                     .ConfigureAwait(false);
                 var items = pairs.Select(p => ToResponse(p.Detail, p.DisplayId)).ToList();
 
@@ -146,10 +160,11 @@ internal sealed class DefinitionService : IDefinitionService
         if (uuid is null)
             throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
+        var tenantInternalId = RequireTenantInternalId();
         return await _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
-                var detail = await _definitions.GetLatestByIdAsync(uow, tenantId, uuid.Value, innerCt).ConfigureAwait(false);
+                var detail = await _definitions.GetLatestByIdAsync(uow, tenantInternalId, uuid.Value, innerCt).ConfigureAwait(false);
                 if (detail is null)
                     throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
@@ -198,6 +213,7 @@ internal sealed class DefinitionService : IDefinitionService
             }, ex);
         }
 
+        var tenantInternalId = RequireTenantInternalId();
         var newVersionId = _idGenerator.NewGuid();
 
         return await _executor.ExecuteReadCommittedAsync(
@@ -207,7 +223,7 @@ internal sealed class DefinitionService : IDefinitionService
                     .PublishVersionAsync(
                         uow,
                         new DefinitionVersionPublishCommand(
-                            tenantId,
+                            tenantInternalId,
                             uuid.Value,
                             request.Name,
                             request.Yaml,
@@ -236,4 +252,8 @@ internal sealed class DefinitionService : IDefinitionService
             UpdatedAt = detail.Definition.UpdatedAt,
             Yaml = includeYaml ? detail.Version.SourceYaml : null
         };
+
+    private Guid RequireTenantInternalId() =>
+        _tenantContext.TenantInternalId
+        ?? throw new InvalidOperationException("Tenant context is not resolved.");
 }
