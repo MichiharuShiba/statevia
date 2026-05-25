@@ -65,6 +65,8 @@ internal static class ServiceCollectionExtensions
         services.AddStateviaWorkflowEngine();
         services.AddScoped<ICommandDedupService, CommandDedupService>();
         services.AddScoped<IDefinitionRepository, DefinitionRepository>();
+        services.AddScoped<IProjectRepository, ProjectRepository>();
+        services.AddScoped<IProjectAuthorizationService, ProjectAuthorizationService>();
         services.AddScoped<IWorkflowRepository, WorkflowRepository>();
         services.AddScoped<ICommandDedupRepository, CommandDedupRepository>();
         services.AddScoped<IEventDeliveryDedupRepository, EventDeliveryDedupRepository>();
