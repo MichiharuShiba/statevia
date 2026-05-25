@@ -1,12 +1,16 @@
 using Statevia.Core.Api.Abstractions.Persistence;
+using Statevia.Core.Api.Application.Security;
+using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Persistence;
-using Statevia.Core.Api.Persistence.Repositories;
 using Statevia.Core.Api.Tests.Infrastructure;
 
 namespace Statevia.Core.Api.Tests.Persistence.Repositories;
 
 public sealed class DefinitionRepositoryTests
 {
+    private static readonly Guid OwnerTenantInternalId = TestTenantIds.DefaultInternalId;
+    private const string OwnerTenantKey = "default";
+
     /// <summary>
     /// 未存在の識別子では空値を返す。
     /// </summary>
@@ -14,13 +18,13 @@ public sealed class DefinitionRepositoryTests
     public async Task GetLatestByIdAsync_ReturnsNull_WhenNotFound()
     {
         // Arrange
-        using var db = new InMemoryTestDatabase();
+        using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new DefinitionRepository();
+        var repo = TestRepositoryFactory.CreateDefinitionRepository();
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        var res = await repo.GetLatestByIdAsync(uow, "t1", Guid.NewGuid(), default);
+        var res = await repo.GetLatestByIdAsync(uow, OwnerTenantInternalId, Guid.NewGuid(), default);
 
         // Assert
         Assert.Null(res);
@@ -33,13 +37,19 @@ public sealed class DefinitionRepositoryTests
     public async Task AddWithInitialVersionAsync_PersistsRows_ThenGetLatestByIdAsyncReturns()
     {
         // Arrange
-        using var db = new InMemoryTestDatabase();
+        using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new DefinitionRepository();
-        var tenantId = "t1";
+        var repo = TestRepositoryFactory.CreateDefinitionRepository();
         var defId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         var created = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var projectId = Guid.NewGuid();
+
+        await using (var seed = db.Factory.CreateDbContext())
+        {
+            ProjectTestData.AddDefaultProject(seed, OwnerTenantInternalId, OwnerTenantKey, projectId);
+            await seed.SaveChangesAsync();
+        }
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
@@ -48,7 +58,8 @@ public sealed class DefinitionRepositoryTests
             new DefinitionRow
             {
                 DefinitionId = defId,
-                TenantId = tenantId,
+                TenantId = OwnerTenantKey,
+                ProjectId = projectId,
                 Slug = DefinitionSlug.FromName(defId, "def-1"),
                 Name = "def-1",
                 LatestVersion = 1,
@@ -69,7 +80,7 @@ public sealed class DefinitionRepositoryTests
 
         // Assert
         await using var readUow = await uowFactory.CreateAsync();
-        var res = await repo.GetLatestByIdAsync(readUow, tenantId, defId, default);
+        var res = await repo.GetLatestByIdAsync(readUow, OwnerTenantInternalId, defId, default);
         Assert.NotNull(res);
         Assert.Equal(defId, res!.Definition.DefinitionId);
         Assert.Equal("def-1", res.Definition.Name);
@@ -83,38 +94,18 @@ public sealed class DefinitionRepositoryTests
     public async Task PublishVersionAsync_AppendsVersionAndUpdatesLatest()
     {
         // Arrange
-        using var db = new InMemoryTestDatabase();
+        using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new DefinitionRepository();
-        var tenantId = "t1";
+        var repo = TestRepositoryFactory.CreateDefinitionRepository();
         var defId = Guid.NewGuid();
         var created = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var projectId = Guid.NewGuid();
 
-        await using (var seedUow = await uowFactory.CreateAsync())
+        await using (var seed = db.Factory.CreateDbContext())
         {
-            await repo.AddWithInitialVersionAsync(
-                seedUow,
-                new DefinitionRow
-                {
-                    DefinitionId = defId,
-                    TenantId = tenantId,
-                    Slug = DefinitionSlug.FromName(defId, "def-1"),
-                    Name = "def-1",
-                    LatestVersion = 1,
-                    CreatedAt = created,
-                    UpdatedAt = created
-                },
-                new DefinitionVersionRow
-                {
-                    DefinitionVersionId = Guid.NewGuid(),
-                    DefinitionId = defId,
-                    Version = 1,
-                    SourceYaml = "old",
-                    CompiledJson = "{\"old\":true}",
-                    CreatedAt = created
-                },
-                default);
-            await seedUow.SaveChangesAsync(CancellationToken.None);
+            ProjectTestData.AddDefaultProject(seed, OwnerTenantInternalId, OwnerTenantKey, projectId);
+            DefinitionTestData.AddDefinitionWithVersion(seed, OwnerTenantKey, defId, "def-1", projectId, createdAt: created);
+            await seed.SaveChangesAsync();
         }
 
         // Act
@@ -122,7 +113,7 @@ public sealed class DefinitionRepositoryTests
         await using var uow = await uowFactory.CreateAsync();
         var published = await repo.PublishVersionAsync(
             uow,
-            new DefinitionVersionPublishCommand(tenantId, defId, "def-2", "new", "{\"new\":true}", newVersionId),
+            new DefinitionVersionPublishCommand(OwnerTenantInternalId, defId, "def-2", "new", "{\"new\":true}", newVersionId),
             default);
         await uow.SaveChangesAsync(CancellationToken.None);
 
@@ -134,9 +125,9 @@ public sealed class DefinitionRepositoryTests
         Assert.Equal("{\"new\":true}", published.Version.CompiledJson);
 
         await using var verify = await uowFactory.CreateAsync();
-        var v1 = await repo.GetVersionAsync(verify, tenantId, defId, 1, default);
+        var v1 = await repo.GetVersionAsync(verify, OwnerTenantInternalId, defId, 1, default);
         Assert.NotNull(v1);
-        Assert.Equal("{\"old\":true}", v1!.CompiledJson);
+        Assert.Equal("{}", v1!.CompiledJson);
     }
 
     /// <summary>
@@ -146,24 +137,48 @@ public sealed class DefinitionRepositoryTests
     public async Task GetVersionByIdAsync_ReturnsNull_ForOtherTenant()
     {
         // Arrange
-        using var db = new InMemoryTestDatabase();
+        using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new DefinitionRepository();
+        var repo = TestRepositoryFactory.CreateDefinitionRepository();
+        var ownerTenantId = Guid.NewGuid();
+        var otherTenantId = Guid.NewGuid();
         var defId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
 
-        await using (var ctx = new CoreDbContext(db.Options))
+        await using (var ctx = db.Factory.CreateDbContext())
         {
-            DefinitionTestData.AddDefinitionWithVersion(ctx, "t-owner", defId, "def", versionId: versionId);
+            ctx.Tenants.Add(new TenantRow
+            {
+                TenantId = ownerTenantId,
+                TenantKey = "t-owner",
+                DisplayName = "Owner",
+                Lifecycle = TenantLifecycle.Active,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            ctx.Tenants.Add(new TenantRow
+            {
+                TenantId = otherTenantId,
+                TenantKey = "t-other",
+                DisplayName = "Other",
+                Lifecycle = TenantLifecycle.Active,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            ProjectTestData.AddDefaultProject(ctx, ownerTenantId, "t-owner", projectId);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, "t-owner", defId, "def", projectId, versionId: versionId);
             await ctx.SaveChangesAsync();
         }
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        var res = await repo.GetVersionByIdAsync(uow, "t-other", versionId, default);
+        var ex = await Assert.ThrowsAsync<NotFoundException>(() =>
+            repo.GetVersionByIdAsync(uow, otherTenantId, versionId, default));
 
         // Assert
-        Assert.Null(res);
+        Assert.NotNull(ex);
     }
 
     /// <summary>
@@ -173,19 +188,20 @@ public sealed class DefinitionRepositoryTests
     public async Task ListWithDisplayIdsPageAsync_UsesLeftJoin_ForMissingDisplayId()
     {
         // Arrange
-        using var db = new InMemoryTestDatabase();
+        using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new DefinitionRepository();
-        var tenantId = "t1";
+        var repo = TestRepositoryFactory.CreateDefinitionRepository();
         var defId1 = Guid.NewGuid();
         var defId2 = Guid.NewGuid();
         var created1 = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var created2 = new DateTime(2020, 1, 2, 0, 0, 0, DateTimeKind.Utc);
+        var projectId = Guid.NewGuid();
 
-        await using (var ctx = new CoreDbContext(db.Options))
+        await using (var ctx = db.Factory.CreateDbContext())
         {
-            DefinitionTestData.AddDefinitionWithVersion(ctx, tenantId, defId1, "A", createdAt: created1);
-            DefinitionTestData.AddDefinitionWithVersion(ctx, tenantId, defId2, "B", createdAt: created2);
+            ProjectTestData.AddDefaultProject(ctx, OwnerTenantInternalId, OwnerTenantKey, projectId);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, OwnerTenantKey, defId1, "A", projectId, createdAt: created1);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, OwnerTenantKey, defId2, "B", projectId, createdAt: created2);
             ctx.DisplayIds.Add(new DisplayIdRow
             {
                 Kind = "definition",
@@ -200,7 +216,7 @@ public sealed class DefinitionRepositoryTests
         await using var uow = await uowFactory.CreateAsync();
         var (_, items) = await repo.ListWithDisplayIdsPageAsync(
             uow,
-            tenantId,
+            OwnerTenantInternalId,
             new DefinitionListPageQuery(
                 Page: new PageQuery(0, 10),
                 Sort: new SortQuery("createdAt", "asc"),
@@ -220,22 +236,23 @@ public sealed class DefinitionRepositoryTests
     public async Task ListWithDisplayIdsPageAsync_FiltersByNameContains_AndPaginates()
     {
         // Arrange
-        using var db = new InMemoryTestDatabase();
+        using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new DefinitionRepository();
-        var tenantId = "t1";
+        var repo = TestRepositoryFactory.CreateDefinitionRepository();
         var defId1 = Guid.NewGuid();
         var defId2 = Guid.NewGuid();
         var defId3 = Guid.NewGuid();
         var created1 = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var created2 = new DateTime(2020, 1, 2, 0, 0, 0, DateTimeKind.Utc);
         var created3 = new DateTime(2020, 1, 3, 0, 0, 0, DateTimeKind.Utc);
+        var projectId = Guid.NewGuid();
 
-        await using (var ctx = new CoreDbContext(db.Options))
+        await using (var ctx = db.Factory.CreateDbContext())
         {
-            DefinitionTestData.AddDefinitionWithVersion(ctx, tenantId, defId1, "order-flow", createdAt: created1);
-            DefinitionTestData.AddDefinitionWithVersion(ctx, tenantId, defId2, "payment-flow", createdAt: created2);
-            DefinitionTestData.AddDefinitionWithVersion(ctx, tenantId, defId3, "order-detail", createdAt: created3);
+            ProjectTestData.AddDefaultProject(ctx, OwnerTenantInternalId, OwnerTenantKey, projectId);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, OwnerTenantKey, defId1, "order-flow", projectId, createdAt: created1);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, OwnerTenantKey, defId2, "payment-flow", projectId, createdAt: created2);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, OwnerTenantKey, defId3, "order-detail", projectId, createdAt: created3);
             await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
@@ -243,7 +260,7 @@ public sealed class DefinitionRepositoryTests
         await using var uow = await uowFactory.CreateAsync();
         var (total, items) = await repo.ListWithDisplayIdsPageAsync(
             uow,
-            tenantId,
+            OwnerTenantInternalId,
             new DefinitionListPageQuery(
                 Page: new PageQuery(0, 1),
                 Sort: new SortQuery(null, null),
