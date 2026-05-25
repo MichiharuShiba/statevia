@@ -47,7 +47,7 @@ public sealed class DisplayIdServiceImplTests
         await using (var ctx = new CoreDbContext(db.Options))
         {
             var now = DateTime.UtcNow;
-            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", uuid, "def", createdAt: now);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", uuid, "def", Guid.NewGuid(), createdAt: now);
             await ctx.SaveChangesAsync();
         }
 
