@@ -1,6 +1,6 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Api.Abstractions.Persistence;
+using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Persistence;
@@ -17,17 +17,27 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
 
     private readonly ICoreTransactionExecutor _executor;
     private readonly IDisplayIdService _displayIds;
+    private readonly IDefinitionRepository _definitions;
+    private readonly ITenantContextAccessor _tenantContext;
 
     public GraphDefinitionService(
         ICoreTransactionExecutor executor,
-        IDisplayIdService displayIds)
+        IDisplayIdService displayIds,
+        IDefinitionRepository definitions,
+        ITenantContextAccessor tenantContext)
     {
         _executor = executor;
         _displayIds = displayIds;
+        _definitions = definitions;
+        _tenantContext = tenantContext;
     }
 
     public async Task<GraphDefinitionResponse> GetByGraphIdAsync(string graphId, string tenantId, CancellationToken ct = default)
     {
+        _ = tenantId;
+        var tenantInternalId = _tenantContext.TenantInternalId
+            ?? throw new InvalidOperationException("Tenant context is not resolved.");
+
         var uuid = await _displayIds.ResolveAsync("definition", graphId, ct).ConfigureAwait(false);
         if (uuid == null)
             throw new NotFoundException("Graph not found");
@@ -35,15 +45,8 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
         return await _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
-                var detail = await uow.Db.Definitions.AsNoTracking()
-                    .Where(x => x.DefinitionId == uuid && x.TenantId == tenantId)
-                    .Join(
-                        uow.Db.DefinitionVersions.AsNoTracking(),
-                        definition => new { definition.DefinitionId, Version = definition.LatestVersion },
-                        version => new { version.DefinitionId, version.Version },
-                        (definition, version) => new { definition, version })
-                    .Select(x => new DefinitionDetail { Definition = x.definition, Version = x.version })
-                    .FirstOrDefaultAsync(innerCt)
+                var detail = await _definitions
+                    .GetLatestByIdAsync(uow, tenantInternalId, uuid.Value, innerCt)
                     .ConfigureAwait(false);
                 if (detail is null)
                     throw new NotFoundException("Graph not found");
