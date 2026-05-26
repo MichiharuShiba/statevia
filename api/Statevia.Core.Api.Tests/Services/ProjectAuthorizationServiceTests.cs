@@ -71,6 +71,46 @@ public sealed class ProjectAuthorizationServiceTests
         Assert.Null(exception);
     }
 
+    /// <summary>Publisher 付与テナントは publish を許可する。</summary>
+    [Fact]
+    public async Task EnsureCanPublishAsync_WithPublisherRole_DoesNotThrow()
+    {
+        // Arrange
+        using var db = new SqliteTestDatabase();
+        var granteeTenantId = Guid.NewGuid();
+        var projectId = await SeedSharedProjectAsync(db, granteeTenantId, ProjectAccessRole.Publisher);
+        var service = new ProjectAuthorizationService(new ProjectRepository());
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var exception = await Record.ExceptionAsync(() =>
+            service.EnsureCanPublishAsync(uow, granteeTenantId, projectId, default));
+
+        // Assert
+        Assert.Null(exception);
+    }
+
+    /// <summary>Executor のみのテナントが publish を試行すると 403 になる。</summary>
+    [Fact]
+    public async Task EnsureCanPublishAsync_ExecutorOnly_ThrowsForbidden()
+    {
+        // Arrange
+        using var db = new SqliteTestDatabase();
+        var granteeTenantId = Guid.NewGuid();
+        var projectId = await SeedSharedProjectAsync(db, granteeTenantId, ProjectAccessRole.Executor);
+        var service = new ProjectAuthorizationService(new ProjectRepository());
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
+            service.EnsureCanPublishAsync(uow, granteeTenantId, projectId, default));
+
+        // Assert
+        Assert.Equal("PROJECT_ACCESS_DENIED", ex.Code);
+    }
+
     /// <summary>未付与テナントは存在秘匿の 404 になる。</summary>
     [Fact]
     public async Task EnsureCanReadAsync_NoAccess_ThrowsNotFound()
