@@ -60,9 +60,9 @@ internal static class ServiceCollectionExtensions
         services.AddScoped<IExecutionReadModelService, ExecutionReadModelService>();
         services.AddSingleton<IIdGenerator, UuidV7Generator>();
 
-        services.AddSingleton<IWorkflowInstanceIdGenerator>(
-            sp => new DelegateWorkflowInstanceIdGenerator(() => sp.GetRequiredService<IIdGenerator>().NewGuid().ToString()));
-        services.AddStateviaWorkflowEngine();
+        services.AddSingleton<IExecutionIdGenerator>(
+            sp => new DelegateExecutionIdGenerator(() => sp.GetRequiredService<IIdGenerator>().NewGuid().ToString()));
+        services.AddStateviaExecutionEngine();
         services.AddScoped<ICommandDedupService, CommandDedupService>();
         services.AddScoped<IDefinitionRepository, DefinitionRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();

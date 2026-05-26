@@ -55,7 +55,7 @@ public sealed class ExecutionServiceTests
     private sealed class FakeDisplayIdService : IDisplayIdService, IDisplayIdWriteService
     {
         public Guid? ResolveResultDefinition { get; set; }
-        public Guid? ResolveResultWorkflow { get; set; }
+        public Guid? ResolveResultExecution { get; set; }
         public string? AllocateResultWorkflow { get; set; } = "WF-DISP-1";
         public string? GetDisplayIdResult { get; set; }
 
@@ -71,7 +71,7 @@ public sealed class ExecutionServiceTests
             return kind switch
             {
                 "definition" => ResolveResultDefinition,
-                "execution" => ResolveResultWorkflow,
+                "execution" => ResolveResultExecution,
                 _ => null
             };
         }
@@ -86,9 +86,9 @@ public sealed class ExecutionServiceTests
             throw new NotSupportedException();
     }
 
-    private sealed class FakeWorkflowEngine : IWorkflowEngine
+    private sealed class FakeExecutionEngine : IExecutionEngine
     {
-        public WorkflowSnapshot? SnapshotToReturn { get; set; }
+        public ExecutionSnapshot? SnapshotToReturn { get; set; }
         public string GraphJsonToReturn { get; set; } = "{\"nodes\":[]}";
         public bool StartCalled { get; private set; }
         public object? LastInput { get; private set; }
@@ -96,7 +96,7 @@ public sealed class ExecutionServiceTests
         public CompiledWorkflowDefinition? LastDefinition { get; private set; }
 
         public bool CancelCalled { get; private set; }
-        public string? PublishEventLastWorkflowId { get; private set; }
+        public string? PublishEventLastExecutionId { get; private set; }
         public string? PublishEventLastName { get; private set; }
         public Guid? PublishEventLastClientEventId { get; private set; }
         public Guid? CancelAsyncLastClientEventId { get; private set; }
@@ -107,25 +107,25 @@ public sealed class ExecutionServiceTests
         /// <summary>設定時、一致する <c>clientEventId</c> の Cancel で <see cref="ApplyResult.AlreadyApplied"/> を返す。</summary>
         public Guid? CancelAlreadyAppliedWhenClientEventIdEquals { get; set; }
 
-        public string Start(CompiledWorkflowDefinition definition, string? workflowId = null, object? workflowInput = null)
+        public string Start(CompiledWorkflowDefinition definition, string? executionId = null, object? input = null)
         {
             StartCalled = true;
             LastDefinition = definition;
-            LastInput = workflowInput;
-            LastEngineId = workflowId;
-            return workflowId ?? "generated";
+            LastInput = input;
+            LastEngineId = executionId;
+            return executionId ?? "generated";
         }
 
-        public void PublishEvent(string workflowId, string eventName)
+        public void PublishEvent(string executionId, string eventName)
         {
-            PublishEventLastWorkflowId = workflowId;
+            PublishEventLastExecutionId = executionId;
             PublishEventLastName = eventName;
             PublishEventLastClientEventId = null;
         }
 
-        public ApplyResult PublishEvent(string workflowId, string eventName, Guid clientEventId)
+        public ApplyResult PublishEvent(string executionId, string eventName, Guid clientEventId)
         {
-            PublishEventLastWorkflowId = workflowId;
+            PublishEventLastExecutionId = executionId;
             PublishEventLastName = eventName;
             PublishEventLastClientEventId = clientEventId;
             if (PublishAlreadyAppliedWhenClientEventIdEquals is { } publishDup && publishDup == clientEventId)
@@ -140,14 +140,14 @@ public sealed class ExecutionServiceTests
         public ApplyResult PublishEvent(string eventName, Guid clientEventId)
             => throw new NotSupportedException();
 
-        public Task CancelAsync(string workflowId)
+        public Task CancelAsync(string executionId)
         {
             CancelCalled = true;
             CancelAsyncLastClientEventId = null;
             return Task.CompletedTask;
         }
 
-        public Task<ApplyResult> CancelAsync(string workflowId, Guid clientEventId)
+        public Task<ApplyResult> CancelAsync(string executionId, Guid clientEventId)
         {
             CancelCalled = true;
             CancelAsyncLastClientEventId = clientEventId;
@@ -157,9 +157,9 @@ public sealed class ExecutionServiceTests
             return Task.FromResult(ApplyResult.Applied);
         }
 
-        public WorkflowSnapshot? GetSnapshot(string workflowId) => SnapshotToReturn;
+        public ExecutionSnapshot? GetSnapshot(string executionId) => SnapshotToReturn;
 
-        public string ExportExecutionGraph(string workflowId) => GraphJsonToReturn;
+        public string ExportExecutionGraph(string executionId) => GraphJsonToReturn;
 
         public void SetNodeCompletedHandler(Func<string, Task>? handler)
         {
@@ -171,21 +171,21 @@ public sealed class ExecutionServiceTests
     {
         public int DrainCalls { get; private set; }
         public int EnqueueCalls { get; private set; }
-        public Guid? LastDrainWorkflowId { get; private set; }
-        public Guid? LastEnqueueWorkflowId { get; private set; }
+        public Guid? LastDrainExecutionId { get; private set; }
+        public Guid? LastEnqueueExecutionId { get; private set; }
         public Exception? DrainException { get; set; }
 
-        public Task EnqueueAsync(Guid workflowId, CancellationToken ct)
+        public Task EnqueueAsync(Guid executionId, CancellationToken ct)
         {
             EnqueueCalls += 1;
-            LastEnqueueWorkflowId = workflowId;
+            LastEnqueueExecutionId = executionId;
             return Task.CompletedTask;
         }
 
-        public Task DrainAsync(Guid workflowId, CancellationToken ct)
+        public Task DrainAsync(Guid executionId, CancellationToken ct)
         {
             DrainCalls += 1;
-            LastDrainWorkflowId = workflowId;
+            LastDrainExecutionId = executionId;
             if (DrainException is not null)
                 return Task.FromException(DrainException);
 
@@ -204,12 +204,12 @@ public sealed class ExecutionServiceTests
         public Task<EventDeliveryDedupRow?> FindAsync(
             ICoreUnitOfWork uow,
             string tenantId,
-            Guid workflowId,
+            Guid executionId,
             Guid clientEventId,
             CancellationToken cancellationToken)
         {
             _ = uow;
-            return Task.FromResult(_rows.TryGetValue((tenantId, workflowId, clientEventId), out var row) ? Clone(row) : null);
+            return Task.FromResult(_rows.TryGetValue((tenantId, executionId, clientEventId), out var row) ? Clone(row) : null);
         }
 
         public Task AddReceivedAsync(ICoreUnitOfWork uow, EventDeliveryDedupRow row, CancellationToken cancellationToken)
@@ -232,13 +232,13 @@ public sealed class ExecutionServiceTests
         public Task<bool> TryUpdateStatusAsync(
             ICoreUnitOfWork uow,
             string tenantId,
-            Guid workflowId,
+            Guid executionId,
             Guid clientEventId,
             EventDeliveryDedupStatusUpdate update,
             CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(update);
-            var key = (tenantId, workflowId, clientEventId);
+            var key = (tenantId, executionId, clientEventId);
             if (!_rows.TryGetValue(key, out var row))
                 return Task.FromResult(false);
 
@@ -282,10 +282,10 @@ public sealed class ExecutionServiceTests
         public Task<EventDeliveryDedupRow?> FindAsync(
             ICoreUnitOfWork uow,
             string tenantId,
-            Guid workflowId,
+            Guid executionId,
             Guid clientEventId,
             CancellationToken cancellationToken) =>
-            _inner.FindAsync(uow, tenantId, workflowId, clientEventId, cancellationToken);
+            _inner.FindAsync(uow, tenantId, executionId, clientEventId, cancellationToken);
 
         public Task AddReceivedAsync(ICoreUnitOfWork uow, EventDeliveryDedupRow row, CancellationToken cancellationToken)
         {
@@ -299,14 +299,14 @@ public sealed class ExecutionServiceTests
         public Task<bool> TryUpdateStatusAsync(
             ICoreUnitOfWork uow,
             string tenantId,
-            Guid workflowId,
+            Guid executionId,
             Guid clientEventId,
             EventDeliveryDedupStatusUpdate update,
             CancellationToken cancellationToken) =>
             _inner.TryUpdateStatusAsync(
                 uow,
                 tenantId,
-                workflowId,
+                executionId,
                 clientEventId,
                 update,
                 cancellationToken);
@@ -369,20 +369,20 @@ public sealed class ExecutionServiceTests
     private sealed class FakeExecutionRepository : IExecutionRepository
     {
         public ExecutionRow? ByIdResult { get; set; }
-        public ExecutionGraphSnapshotRow? SnapshotByWorkflowId { get; set; }
+        public ExecutionGraphSnapshotRow? SnapshotByExecutionId { get; set; }
 
-        public List<(ExecutionRow Workflow, ExecutionGraphSnapshotRow Snapshot)> Added { get; } = [];
+        public List<(ExecutionRow Execution, ExecutionGraphSnapshotRow Snapshot)> Added { get; } = [];
         public List<(Guid ExecutionId, string Status, bool? CancelRequested, string GraphJson)> Updates { get; } = [];
-        public (int TotalCount, List<(ExecutionRow Workflow, string? DisplayId)> Items) ListWithDisplayIdsPageResult { get; set; } = (0, []);
+        public (int TotalCount, List<(ExecutionRow Execution, string? DisplayId)> Items) ListWithDisplayIdsPageResult { get; set; } = (0, []);
 
-        public async Task<ExecutionRow?> GetByIdAsync(ICoreUnitOfWork uow, string tenantId, Guid workflowId, CancellationToken ct)
+        public async Task<ExecutionRow?> GetByIdAsync(ICoreUnitOfWork uow, string tenantId, Guid executionId, CancellationToken ct)
         {
             _ = uow;
             await Task.Yield(); // async boundary for coverage
             return ByIdResult;
         }
 
-        public async Task<(int TotalCount, List<(ExecutionRow Workflow, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
+        public async Task<(int TotalCount, List<(ExecutionRow Execution, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
             ICoreUnitOfWork uow,
             string tenantId,
             ExecutionListPageQuery query,
@@ -395,32 +395,32 @@ public sealed class ExecutionServiceTests
 
         public async Task AddExecutionAndSnapshotAsync(
             ICoreUnitOfWork uow,
-            ExecutionRow workflow,
+            ExecutionRow execution,
             ExecutionGraphSnapshotRow snapshot,
             CancellationToken ct)
         {
             _ = uow;
-            Added.Add((workflow, snapshot));
+            Added.Add((execution, snapshot));
             await Task.Yield(); // async boundary for coverage
         }
 
-        public async Task<ExecutionGraphSnapshotRow?> GetSnapshotByExecutionIdAsync(ICoreUnitOfWork uow, Guid workflowId, CancellationToken ct)
+        public async Task<ExecutionGraphSnapshotRow?> GetSnapshotByExecutionIdAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct)
         {
             _ = uow;
             await Task.Yield(); // async boundary for coverage
-            return SnapshotByWorkflowId;
+            return SnapshotByExecutionId;
         }
 
         public async Task UpdateExecutionAndSnapshotAsync(
             ICoreUnitOfWork uow,
-            Guid workflowId,
+            Guid executionId,
             string status,
             bool? cancelRequested,
             string graphJson,
             CancellationToken ct)
         {
             _ = uow;
-            Updates.Add((workflowId, status, cancelRequested, graphJson));
+            Updates.Add((executionId, status, cancelRequested, graphJson));
             await Task.Yield(); // async boundary for coverage
         }
     }
@@ -439,7 +439,7 @@ public sealed class ExecutionServiceTests
 
         public async Task AppendAsync(
             ICoreUnitOfWork uow,
-            Guid workflowId,
+            Guid executionId,
             EventStoreEventType eventType,
             string? payloadJson,
             CancellationToken ct = default)
@@ -448,13 +448,13 @@ public sealed class ExecutionServiceTests
             if (ThrowFromAppendWithDb is { } ex)
                 throw ex;
 
-            Appended.Add((eventType, workflowId, payloadJson));
+            Appended.Add((eventType, executionId, payloadJson));
             await Task.Yield(); // async boundary for coverage
         }
 
         public Task<bool> TryAppendIfAbsentByClientEventAsync(
             ICoreUnitOfWork uow,
-            Guid workflowId,
+            Guid executionId,
             Guid clientEventId,
             EventStoreEventType eventType,
             string? payloadJson,
@@ -464,17 +464,17 @@ public sealed class ExecutionServiceTests
             if (ThrowFromAppendWithDb is { } ex)
                 throw ex;
 
-            var key = (workflowId, clientEventId, eventType);
+            var key = (executionId, clientEventId, eventType);
             if (!_clientEventDedupKeys.Add(key))
                 return Task.FromResult(false);
 
-            Appended.Add((eventType, workflowId, payloadJson));
+            Appended.Add((eventType, executionId, payloadJson));
             return Task.FromResult(true);
         }
 
         public async Task<(IReadOnlyList<EventStoreRow> Items, bool HasMore)> ListAfterSeqAsync(
             ICoreUnitOfWork uow,
-            Guid workflowId,
+            Guid executionId,
             long afterSeq,
             int limit,
             CancellationToken ct = default)
@@ -484,7 +484,7 @@ public sealed class ExecutionServiceTests
             return ((IReadOnlyList<EventStoreRow>)AfterSeqItems, AfterSeqHasMore);
         }
 
-        public async Task<long> GetMaxSeqAsync(ICoreUnitOfWork uow, Guid workflowId, CancellationToken ct = default)
+        public async Task<long> GetMaxSeqAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct = default)
         {
             _ = uow;
             await Task.Yield(); // async boundary for coverage
@@ -538,11 +538,11 @@ public sealed class ExecutionServiceTests
         var dedupKey = new CommandDedupKey { DedupKey = "d1", Endpoint = "POST /v1/executions", IdempotencyKey = "idem" };
         var dedupService = new FakeCommandDedupService(dedupKey);
 
-        var engine = new FakeWorkflowEngine();
+        var engine = new FakeExecutionEngine();
         var display = new FakeDisplayIdService();
         var compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("x"), "{}"));
         var idGen = new FixedIdGenerator(Guid.NewGuid());
-        var workflowRepo = new FakeExecutionRepository();
+        var executionRepo = new FakeExecutionRepository();
         var definitionsRepo = new StubDefinitionRepository();
         var dedupRepoRepo = dedupRepo;
         var eventStore = new FakeEventStoreRepository();
@@ -555,7 +555,7 @@ public sealed class ExecutionServiceTests
             compiler,
             idGen,
             dedupService,
-            workflowRepo,
+            executionRepo,
             definitionsRepo,
             dedupRepoRepo,
             eventStore,
@@ -604,11 +604,11 @@ public sealed class ExecutionServiceTests
         var dedupKey = new CommandDedupKey { DedupKey = "d-new", Endpoint = "POST /v1/executions", IdempotencyKey = "idem" };
         var dedupService = new FakeCommandDedupService(dedupKey);
 
-        var engine = new FakeWorkflowEngine();
+        var engine = new FakeExecutionEngine();
         var display = new FakeDisplayIdService();
         var compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("x"), "{}"));
         var idGen = new FixedIdGenerator(Guid.NewGuid());
-        var workflowRepo = new FakeExecutionRepository();
+        var executionRepo = new FakeExecutionRepository();
         var definitionsRepo = new StubDefinitionRepository();
         var eventStore = new FakeEventStoreRepository();
 
@@ -620,7 +620,7 @@ public sealed class ExecutionServiceTests
             compiler,
             idGen,
             dedupService,
-            workflowRepo,
+            executionRepo,
             definitionsRepo,
             dedupRepo,
             eventStore,
@@ -645,10 +645,10 @@ public sealed class ExecutionServiceTests
     {
         // Arrange
         var defUuid = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
-        var workflowId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
-        var engineSnapshot = new WorkflowSnapshot
+        var executionId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+        var engineSnapshot = new ExecutionSnapshot
         {
-            WorkflowId = workflowId.ToString(),
+            ExecutionId = executionId.ToString(),
             WorkflowName = "wf",
             ActiveStates = Array.Empty<string>(),
             IsCompleted = true,
@@ -677,20 +677,20 @@ public sealed class ExecutionServiceTests
         var display = new FakeDisplayIdService
         {
             ResolveResultDefinition = defUuid,
-            ResolveResultWorkflow = workflowId,
+            ResolveResultExecution = executionId,
             AllocateResultWorkflow = "WF-DISP-2",
             GetDisplayIdResult = null
         };
 
         var compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}"));
-        var idGen = new FixedIdGenerator(workflowId);
-        var engine = new FakeWorkflowEngine
+        var idGen = new FixedIdGenerator(executionId);
+        var engine = new FakeExecutionEngine
         {
             SnapshotToReturn = engineSnapshot,
             GraphJsonToReturn = "{\"nodes\":[{\"nodeId\":\"n1\",\"stateName\":\"S\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}]}"
         };
 
-        var workflowRepo = new FakeExecutionRepository();
+        var executionRepo = new FakeExecutionRepository();
 
         var definitionsRepo = StubDefinitionRepositoryFactory.ForDefinition(defUuid, "t1", "def");
 
@@ -704,7 +704,7 @@ public sealed class ExecutionServiceTests
             compiler,
             idGen,
             dedupService,
-            workflowRepo,
+            executionRepo,
             definitionsRepo,
             dedupRepo,
             eventStore,
@@ -724,10 +724,10 @@ public sealed class ExecutionServiceTests
         // Assert
         // Assert
         Assert.True(engine.StartCalled);
-        Assert.Single(workflowRepo.Added);
+        Assert.Single(executionRepo.Added);
         Assert.Single(dedupRepo.SavedRows);
         Assert.Equal("WF-DISP-2", res.DisplayId);
-        Assert.Equal(workflowId, res.ResourceId);
+        Assert.Equal(executionId, res.ResourceId);
         Assert.Equal("Completed", res.Status);
         Assert.False(string.IsNullOrWhiteSpace(dedupService.LastRequestHash));
         Assert.Equal(dedupService.LastRequestHash, dedupRepo.SavedRows[0].RequestHash);
@@ -742,10 +742,10 @@ public sealed class ExecutionServiceTests
     {
         // Arrange
         var defUuid = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
-        var workflowId = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
-        var engineSnapshot = new WorkflowSnapshot
+        var executionId = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
+        var engineSnapshot = new ExecutionSnapshot
         {
-            WorkflowId = workflowId.ToString(),
+            ExecutionId = executionId.ToString(),
             WorkflowName = "wf",
             ActiveStates = Array.Empty<string>(),
             IsCompleted = true,
@@ -773,20 +773,20 @@ public sealed class ExecutionServiceTests
         var display = new FakeDisplayIdService
         {
             ResolveResultDefinition = defUuid,
-            ResolveResultWorkflow = workflowId,
+            ResolveResultExecution = executionId,
             AllocateResultWorkflow = "WF-DISP-3",
             GetDisplayIdResult = null
         };
 
         var compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}"));
-        var idGen = new FixedIdGenerator(workflowId);
-        var engine = new FakeWorkflowEngine
+        var idGen = new FixedIdGenerator(executionId);
+        var engine = new FakeExecutionEngine
         {
             SnapshotToReturn = engineSnapshot,
             GraphJsonToReturn = "{\"nodes\":[]}"
         };
 
-        var workflowRepo = new FakeExecutionRepository();
+        var executionRepo = new FakeExecutionRepository();
         var definitionsRepo = StubDefinitionRepositoryFactory.ForDefinition(defUuid, "t1", "def");
         var eventStore = new FakeEventStoreRepository();
 
@@ -798,7 +798,7 @@ public sealed class ExecutionServiceTests
             compiler,
             idGen,
             dedupService,
-            workflowRepo,
+            executionRepo,
             definitionsRepo,
             dedupRepo,
             eventStore,
@@ -817,10 +817,10 @@ public sealed class ExecutionServiceTests
 
         // Assert
         Assert.True(engine.StartCalled);
-        Assert.Single(workflowRepo.Added);
+        Assert.Single(executionRepo.Added);
         Assert.Single(dedupRepo.SavedRows);
         Assert.Equal("WF-DISP-3", res.DisplayId);
-        Assert.Equal(workflowId, res.ResourceId);
+        Assert.Equal(executionId, res.ResourceId);
         Assert.Equal("Completed", res.Status);
         Assert.False(string.IsNullOrWhiteSpace(dedupService.LastRequestHash));
         Assert.Equal(dedupService.LastRequestHash, dedupRepo.SavedRows[0].RequestHash);
@@ -838,10 +838,10 @@ public sealed class ExecutionServiceTests
         var dedupRepo = new FakeCommandDedupRepository { NextFindValid = null };
 
         var display = new FakeDisplayIdService { ResolveResultDefinition = null };
-        var engine = new FakeWorkflowEngine();
+        var engine = new FakeExecutionEngine();
         var compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}"));
         var idGen = new FixedIdGenerator(Guid.NewGuid());
-        var workflowRepo = new FakeExecutionRepository();
+        var executionRepo = new FakeExecutionRepository();
         var definitionsRepo = new StubDefinitionRepository();
         var eventStore = new FakeEventStoreRepository();
 
@@ -853,7 +853,7 @@ public sealed class ExecutionServiceTests
             compiler,
             idGen,
             dedupService,
-            workflowRepo,
+            executionRepo,
             definitionsRepo,
             dedupRepo,
             eventStore,
@@ -881,12 +881,12 @@ public sealed class ExecutionServiceTests
             sut.GetExecutionViewAtSeqAsync("t1", idOrUuid: "x", atSeq: 0, CancellationToken.None));
     }
 
-    private static ExecutionService MakeSut(SqliteTestDatabase sqlite, out FakeExecutionRepository workflowRepo)
+    private static ExecutionService MakeSut(SqliteTestDatabase sqlite, out FakeExecutionRepository executionRepo)
     {
-        workflowRepo = new FakeExecutionRepository();
+        executionRepo = new FakeExecutionRepository();
 
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = Guid.NewGuid(), ResolveResultDefinition = Guid.NewGuid() };
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = Guid.NewGuid(), ResolveResultDefinition = Guid.NewGuid() };
         var compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}"));
         var idGen = new FixedIdGenerator(Guid.NewGuid());
         var dedupService = new FakeCommandDedupService(null);
@@ -901,7 +901,7 @@ public sealed class ExecutionServiceTests
             compiler,
             idGen,
             dedupService,
-            workflowRepo,
+            executionRepo,
             definitionsRepo,
             dedupRepo,
             eventStore,
@@ -910,19 +910,19 @@ public sealed class ExecutionServiceTests
 
     /// <summary>最大連番が零でも連番一の表示を返す。</summary>
     [Fact]
-    public async Task GetExecutionViewAtSeqAsync_WhenMaxSeqIs0_ReturnsWorkflowView()
+    public async Task GetExecutionViewAtSeqAsync_WhenMaxSeqIs0_ReturnsExecutionView()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
         using var sqlite = new SqliteTestDatabase();
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = "t1",
                 DefinitionId = defId,
                 Status = "Running",
@@ -931,9 +931,9 @@ public sealed class ExecutionServiceTests
                 CancelRequested = false,
                 RestartLost = false
             },
-            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 GraphJson =
                     "{\"nodes\":[" +
                     "{\"nodeId\":\"n1\",\"stateName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
@@ -943,10 +943,10 @@ public sealed class ExecutionServiceTests
             }
         };
 
-        var engine = new FakeWorkflowEngine();
+        var engine = new FakeExecutionEngine();
         var display = new FakeDisplayIdService
         {
-            ResolveResultWorkflow = workflowId,
+            ResolveResultExecution = executionId,
             ResolveResultDefinition = defId,
             GetDisplayIdResult = null
         };
@@ -958,7 +958,7 @@ public sealed class ExecutionServiceTests
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
-            workflowRepo,
+            executionRepo,
             new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository { MaxSeq = 0 },
@@ -969,7 +969,7 @@ public sealed class ExecutionServiceTests
 
         // Assert
         Assert.Equal("Running", view.Status);
-        Assert.Equal(workflowId.ToString("D"), view.ResourceId);
+        Assert.Equal(executionId.ToString("D"), view.ResourceId);
         Assert.Equal(2, view.Nodes.Count);
         Assert.Equal("Task", view.Nodes[0].NodeType);
         Assert.Equal("RUNNING", view.Nodes[0].Status);
@@ -986,10 +986,10 @@ public sealed class ExecutionServiceTests
         // Arrange
         using var sqlite = new SqliteTestDatabase();
 
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = null };
+        var display = new FakeDisplayIdService { ResolveResultExecution = null };
         var sut = BuildExecutionService(
             sqlite,
-            new FakeWorkflowEngine(),
+            new FakeExecutionEngine(),
             display,
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
@@ -1010,16 +1010,16 @@ public sealed class ExecutionServiceTests
     public async Task GetExecutionViewAtSeqAsync_WhenAtSeqOutOfRange_ThrowsNotFoundException()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
         using var sqlite = new SqliteTestDatabase();
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = "t1",
                 DefinitionId = defId,
                 Status = "Running",
@@ -1028,9 +1028,9 @@ public sealed class ExecutionServiceTests
                 CancelRequested = false,
                 RestartLost = false
             },
-            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 GraphJson =
                     "{\"nodes\":[" +
                     "{\"nodeId\":\"n1\",\"stateName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
@@ -1040,10 +1040,10 @@ public sealed class ExecutionServiceTests
             }
         };
 
-        var engine = new FakeWorkflowEngine();
+        var engine = new FakeExecutionEngine();
         var display = new FakeDisplayIdService
         {
-            ResolveResultWorkflow = workflowId,
+            ResolveResultExecution = executionId,
             ResolveResultDefinition = defId,
             GetDisplayIdResult = null
         };
@@ -1055,7 +1055,7 @@ public sealed class ExecutionServiceTests
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
-            workflowRepo,
+            executionRepo,
             new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository { MaxSeq = 5 },
@@ -1068,19 +1068,19 @@ public sealed class ExecutionServiceTests
 
     /// <summary>指定連番が範囲内で最大連番が正のとき表示を返す。</summary>
     [Fact]
-    public async Task GetExecutionViewAtSeqAsync_WhenAtSeqWithinRangeAndMaxSeqNonZero_ReturnsWorkflowView()
+    public async Task GetExecutionViewAtSeqAsync_WhenAtSeqWithinRangeAndMaxSeqNonZero_ReturnsExecutionView()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
         using var sqlite = new SqliteTestDatabase();
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = "t1",
                 DefinitionId = defId,
                 Status = "Running",
@@ -1089,9 +1089,9 @@ public sealed class ExecutionServiceTests
                 CancelRequested = false,
                 RestartLost = false
             },
-            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 GraphJson =
                     "{\"nodes\":[" +
                     "{\"nodeId\":\"n1\",\"stateName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
@@ -1101,10 +1101,10 @@ public sealed class ExecutionServiceTests
             }
         };
 
-        var engine = new FakeWorkflowEngine();
+        var engine = new FakeExecutionEngine();
         var display = new FakeDisplayIdService
         {
-            ResolveResultWorkflow = workflowId,
+            ResolveResultExecution = executionId,
             ResolveResultDefinition = defId,
             GetDisplayIdResult = null
         };
@@ -1116,7 +1116,7 @@ public sealed class ExecutionServiceTests
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
-            workflowRepo,
+            executionRepo,
             new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository { MaxSeq = 5 },
@@ -1127,7 +1127,7 @@ public sealed class ExecutionServiceTests
 
         // Assert
         Assert.Equal("Running", view.Status);
-        Assert.Equal(workflowId.ToString("D"), view.ResourceId);
+        Assert.Equal(executionId.ToString("D"), view.ResourceId);
         Assert.Equal(2, view.Nodes.Count);
         Assert.Equal("Task", view.Nodes[0].NodeType);
         Assert.Equal("RUNNING", view.Nodes[0].Status);
@@ -1142,18 +1142,18 @@ public sealed class ExecutionServiceTests
     public async Task ListEventsAsync_MapsTimelineEventsAndPublishedGraphPatch()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var graphJson =
             "{\"nodes\":[" +
             "{\"nodeId\":\"a\",\"stateName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
             "{\"nodeId\":\"b\",\"stateName\":\"Wait\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Cancelled\"}" +
             "]}";
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = "t1",
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
@@ -1162,9 +1162,9 @@ public sealed class ExecutionServiceTests
                 CancelRequested = false,
                 RestartLost = false
             },
-            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 GraphJson = graphJson,
                 UpdatedAt = DateTime.UtcNow
             }
@@ -1172,17 +1172,17 @@ public sealed class ExecutionServiceTests
 
         var display = new FakeDisplayIdService
         {
-            ResolveResultWorkflow = workflowId,
-            ResolveResultDefinition = workflowRepo.ByIdResult!.DefinitionId,
+            ResolveResultExecution = executionId,
+            ResolveResultDefinition = executionRepo.ByIdResult!.DefinitionId,
             GetDisplayIdResult = null
         };
 
         var afterSeqItems = new List<EventStoreRow>
         {
-            new EventStoreRow { ExecutionId = workflowId, Seq = 1, Type = EventStoreEventType.WorkflowStarted.ToPersistedString(), OccurredAt = DateTime.UtcNow },
-            new EventStoreRow { ExecutionId = workflowId, Seq = 2, Type = EventStoreEventType.WorkflowCancelled.ToPersistedString(), OccurredAt = DateTime.UtcNow },
-            new EventStoreRow { ExecutionId = workflowId, Seq = 3, Type = EventStoreEventType.EventPublished.ToPersistedString(), OccurredAt = DateTime.UtcNow },
-            new EventStoreRow { ExecutionId = workflowId, Seq = 4, Type = "Unknown", OccurredAt = DateTime.UtcNow }
+            new EventStoreRow { ExecutionId = executionId, Seq = 1, Type = EventStoreEventType.WorkflowStarted.ToPersistedString(), OccurredAt = DateTime.UtcNow },
+            new EventStoreRow { ExecutionId = executionId, Seq = 2, Type = EventStoreEventType.WorkflowCancelled.ToPersistedString(), OccurredAt = DateTime.UtcNow },
+            new EventStoreRow { ExecutionId = executionId, Seq = 3, Type = EventStoreEventType.EventPublished.ToPersistedString(), OccurredAt = DateTime.UtcNow },
+            new EventStoreRow { ExecutionId = executionId, Seq = 4, Type = "Unknown", OccurredAt = DateTime.UtcNow }
         };
 
         var eventStore = new FakeEventStoreRepository
@@ -1194,12 +1194,12 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeWorkflowEngine(),
+            new FakeExecutionEngine(),
             display,
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
-            workflowRepo,
+            executionRepo,
             new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             eventStore,
@@ -1239,7 +1239,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.ResumeNodeAsync("t1", idOrUuid: "workflow", nodeId: "  ", resumeKey: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
+            sut.ResumeNodeAsync("t1", idOrUuid: "EXEC-1", nodeId: "  ", resumeKey: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
     }
 
     /// <summary>取消要求で冪等一致かつ有効行があるとき副作用なく即時終了する。</summary>
@@ -1247,7 +1247,7 @@ public sealed class ExecutionServiceTests
     public async Task CancelAsync_WhenDedupHitAndExistingNotNull_ReturnsEarly_WithoutSideEffects()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
 
         var dedupKey = new CommandDedupKey
         {
@@ -1271,13 +1271,13 @@ public sealed class ExecutionServiceTests
             }
         };
 
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = "t1",
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
@@ -1294,7 +1294,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: dedupRepo,
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act
@@ -1302,7 +1302,7 @@ public sealed class ExecutionServiceTests
 
         // Assert
         Assert.False(engine.CancelCalled);
-        Assert.Empty(workflowRepo.Updates);
+        Assert.Empty(executionRepo.Updates);
         Assert.Empty(eventStore.Appended);
         Assert.Empty(dedupRepo.SavedRows);
     }
@@ -1312,12 +1312,12 @@ public sealed class ExecutionServiceTests
     public async Task CancelAsync_WhenDrainFails_ThrowsAndSkipsEngineMutation()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
-        var engine = new FakeWorkflowEngine
+        var executionId = Guid.NewGuid();
+        var engine = new FakeExecutionEngine
         {
-            SnapshotToReturn = new WorkflowSnapshot
+            SnapshotToReturn = new ExecutionSnapshot
             {
-                WorkflowId = workflowId.ToString("D"),
+                ExecutionId = executionId.ToString("D"),
                 WorkflowName = "wf",
                 ActiveStates = Array.Empty<string>(),
                 IsCompleted = false,
@@ -1326,12 +1326,12 @@ public sealed class ExecutionServiceTests
             },
             GraphJsonToReturn = "{\"nodes\":[]}"
         };
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = "t1",
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
@@ -1351,7 +1351,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository(),
             projectionQueue: projectionQueue);
 
@@ -1359,18 +1359,18 @@ public sealed class ExecutionServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None));
         Assert.Equal(1, projectionQueue.DrainCalls);
-        Assert.Equal(workflowId, projectionQueue.LastDrainWorkflowId);
+        Assert.Equal(executionId, projectionQueue.LastDrainExecutionId);
         Assert.False(engine.CancelCalled);
     }
 
     /// <summary>取消時に実行識別子を解決できないとき未検出例外を投げる。</summary>
     [Fact]
-    public async Task CancelAsync_WhenWorkflowResolveReturnsNull_ThrowsNotFoundException()
+    public async Task CancelAsync_WhenExecutionResolveReturnsNull_ThrowsNotFoundException()
     {
         // Arrange
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = null };
-        var workflowRepo = new FakeExecutionRepository();
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = null };
+        var executionRepo = new FakeExecutionRepository();
         var eventStore = new FakeEventStoreRepository();
 
         var sut = MakeSut(
@@ -1378,7 +1378,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act & Assert
@@ -1390,14 +1390,14 @@ public sealed class ExecutionServiceTests
 
     /// <summary>解決後に実行行がないとき未検出例外を投げる。</summary>
     [Fact]
-    public async Task CancelAsync_WhenWorkflowMissingAfterResolve_ThrowsNotFoundException()
+    public async Task CancelAsync_WhenExecutionMissingAfterResolve_ThrowsNotFoundException()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
 
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository { ByIdResult = null };
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository { ByIdResult = null };
         var eventStore = new FakeEventStoreRepository();
 
         var sut = MakeSut(
@@ -1405,7 +1405,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act & Assert
@@ -1417,11 +1417,11 @@ public sealed class ExecutionServiceTests
 
     /// <summary>取消処理が通ると投影更新と追記保存まで実施する。</summary>
     [Fact]
-    public async Task CancelAsync_WhenProceeding_UpdatesWorkflowAndSnapshot_AppendsCancelledEvent_AndSavesDedupRow()
+    public async Task CancelAsync_WhenProceeding_UpdatesExecutionAndSnapshot_AppendsCancelledEvent_AndSavesDedupRow()
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
         var dedupKey = new CommandDedupKey
@@ -1433,11 +1433,11 @@ public sealed class ExecutionServiceTests
 
         var dedupRepo = new FakeCommandDedupRepository { NextFindValid = null };
 
-        var engine = new FakeWorkflowEngine
+        var engine = new FakeExecutionEngine
         {
-            SnapshotToReturn = new WorkflowSnapshot
+            SnapshotToReturn = new ExecutionSnapshot
             {
-                WorkflowId = workflowId.ToString(),
+                ExecutionId = executionId.ToString(),
                 WorkflowName = "wf",
                 ActiveStates = Array.Empty<string>(),
                 IsCompleted = false,
@@ -1449,14 +1449,14 @@ public sealed class ExecutionServiceTests
 
         var display = new FakeDisplayIdService
         {
-            ResolveResultWorkflow = workflowId
+            ResolveResultExecution = executionId
         };
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -1474,7 +1474,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: dedupRepo,
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act
@@ -1484,15 +1484,15 @@ public sealed class ExecutionServiceTests
         Assert.True(engine.CancelCalled);
         var expectedCancelClientEventId = ClientEventIdResolver.FromIdempotencyKey("idem", new FixedIdGenerator(Guid.NewGuid()));
         Assert.Equal(expectedCancelClientEventId, engine.CancelAsyncLastClientEventId);
-        Assert.Single(workflowRepo.Updates);
-        Assert.Equal(workflowId, workflowRepo.Updates[0].ExecutionId);
-        Assert.Equal("Cancelled", workflowRepo.Updates[0].Status);
-        Assert.True(workflowRepo.Updates[0].CancelRequested);
-        Assert.Equal(engine.GraphJsonToReturn, workflowRepo.Updates[0].GraphJson);
+        Assert.Single(executionRepo.Updates);
+        Assert.Equal(executionId, executionRepo.Updates[0].ExecutionId);
+        Assert.Equal("Cancelled", executionRepo.Updates[0].Status);
+        Assert.True(executionRepo.Updates[0].CancelRequested);
+        Assert.Equal(engine.GraphJsonToReturn, executionRepo.Updates[0].GraphJson);
 
         Assert.Single(eventStore.Appended);
         Assert.Equal(EventStoreEventType.WorkflowCancelled, eventStore.Appended[0].Type);
-        Assert.Equal(workflowId, eventStore.Appended[0].ExecutionId);
+        Assert.Equal(executionId, eventStore.Appended[0].ExecutionId);
 
         var payload = eventStore.Appended[0].Payload;
         Assert.NotNull(payload);
@@ -1514,16 +1514,16 @@ public sealed class ExecutionServiceTests
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
         var dedupRepo = new FakeCommandDedupRepository { NextFindValid = null };
 
-        var engine = new FakeWorkflowEngine
+        var engine = new FakeExecutionEngine
         {
-            SnapshotToReturn = new WorkflowSnapshot
+            SnapshotToReturn = new ExecutionSnapshot
             {
-                WorkflowId = workflowId.ToString(),
+                ExecutionId = executionId.ToString(),
                 WorkflowName = "wf",
                 ActiveStates = Array.Empty<string>(),
                 IsCompleted = false,
@@ -1533,13 +1533,13 @@ public sealed class ExecutionServiceTests
             GraphJsonToReturn = "{\"nodes\":[]}"
         };
 
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -1560,7 +1560,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: dedupRepo,
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act
@@ -1576,18 +1576,18 @@ public sealed class ExecutionServiceTests
 
     /// <summary>非公開投影更新処理が実行行とスナップショットを更新する。</summary>
     [Fact]
-    public async Task UpdateProjectionFromEngineAsync_PrivateMethod_UpdatesWorkflowAndSnapshot()
+    public async Task UpdateProjectionFromEngineAsync_PrivateMethod_UpdatesExecutionAndSnapshot()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
 
         using var sqlite = new SqliteTestDatabase();
 
-        var engine = new FakeWorkflowEngine
+        var engine = new FakeExecutionEngine
         {
-            SnapshotToReturn = new WorkflowSnapshot
+            SnapshotToReturn = new ExecutionSnapshot
             {
-                WorkflowId = workflowId.ToString(),
+                ExecutionId = executionId.ToString(),
                 WorkflowName = "wf",
                 ActiveStates = Array.Empty<string>(),
                 IsCompleted = false,
@@ -1598,7 +1598,7 @@ public sealed class ExecutionServiceTests
         };
 
         var display = new FakeDisplayIdService();
-        var workflowRepo = new FakeExecutionRepository();
+        var executionRepo = new FakeExecutionRepository();
         var eventStore = new FakeEventStoreRepository();
 
         var sut = BuildExecutionService(
@@ -1608,20 +1608,20 @@ public sealed class ExecutionServiceTests
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
-            workflowRepo,
+            executionRepo,
             new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             eventStore,
             new FakeEventDeliveryDedupRepository());
 
         // Act
-        await sut.UpdateProjectionFromEngineAsync(workflowId, CancellationToken.None);
+        await sut.UpdateProjectionFromEngineAsync(executionId, CancellationToken.None);
 
         // Assert
-        Assert.Single(workflowRepo.Updates);
-        Assert.Equal("Cancelled", workflowRepo.Updates[0].Status);
-        Assert.True(workflowRepo.Updates[0].CancelRequested.GetValueOrDefault());
-        Assert.Equal(engine.GraphJsonToReturn, workflowRepo.Updates[0].GraphJson);
+        Assert.Single(executionRepo.Updates);
+        Assert.Equal("Cancelled", executionRepo.Updates[0].Status);
+        Assert.True(executionRepo.Updates[0].CancelRequested.GetValueOrDefault());
+        Assert.Equal(engine.GraphJsonToReturn, executionRepo.Updates[0].GraphJson);
     }
 
     /// <summary>イベント公開で冪等一致かつ有効行があるとき副作用なく即時終了する。</summary>
@@ -1629,7 +1629,7 @@ public sealed class ExecutionServiceTests
     public async Task PublishEventAsync_WhenDedupHitAndExistingNotNull_ReturnsEarly_WithoutSideEffects()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
 
         var dedupKey = new CommandDedupKey
         {
@@ -1653,13 +1653,13 @@ public sealed class ExecutionServiceTests
             }
         };
 
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = "t1",
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
@@ -1676,7 +1676,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: dedupRepo,
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act
@@ -1684,7 +1684,7 @@ public sealed class ExecutionServiceTests
 
         // Assert
         Assert.Null(engine.PublishEventLastName);
-        Assert.Empty(workflowRepo.Updates);
+        Assert.Empty(executionRepo.Updates);
         Assert.Empty(eventStore.Appended);
         Assert.Empty(dedupRepo.SavedRows);
     }
@@ -1694,12 +1694,12 @@ public sealed class ExecutionServiceTests
     public async Task PublishEventAsync_WhenDrainFails_ThrowsAndSkipsEngineMutation()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
-        var engine = new FakeWorkflowEngine
+        var executionId = Guid.NewGuid();
+        var engine = new FakeExecutionEngine
         {
-            SnapshotToReturn = new WorkflowSnapshot
+            SnapshotToReturn = new ExecutionSnapshot
             {
-                WorkflowId = workflowId.ToString("D"),
+                ExecutionId = executionId.ToString("D"),
                 WorkflowName = "wf",
                 ActiveStates = Array.Empty<string>(),
                 IsCompleted = false,
@@ -1708,12 +1708,12 @@ public sealed class ExecutionServiceTests
             },
             GraphJsonToReturn = "{\"nodes\":[]}"
         };
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = "t1",
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
@@ -1733,7 +1733,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository(),
             projectionQueue: projectionQueue);
 
@@ -1741,20 +1741,20 @@ public sealed class ExecutionServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sut.PublishEventAsync("t1", idOrUuid: "X", eventName: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None));
         Assert.Equal(1, projectionQueue.DrainCalls);
-        Assert.Equal(workflowId, projectionQueue.LastDrainWorkflowId);
-        Assert.Null(engine.PublishEventLastWorkflowId);
+        Assert.Equal(executionId, projectionQueue.LastDrainExecutionId);
+        Assert.Null(engine.PublishEventLastExecutionId);
     }
 
     /// <summary>解決後に実行行がないとき未検出例外を投げる。</summary>
     [Fact]
-    public async Task PublishEventAsync_WhenWorkflowMissingAfterResolve_ThrowsNotFoundException()
+    public async Task PublishEventAsync_WhenExecutionMissingAfterResolve_ThrowsNotFoundException()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
 
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository { ByIdResult = null };
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository { ByIdResult = null };
         var eventStore = new FakeEventStoreRepository();
 
         var sut = MakeSut(
@@ -1762,24 +1762,24 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
             sut.PublishEventAsync(tenantId: "t1", idOrUuid: "X", eventName: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None));
 
-        Assert.Null(engine.PublishEventLastWorkflowId);
+        Assert.Null(engine.PublishEventLastExecutionId);
         Assert.Null(engine.PublishEventLastName);
     }
 
     /// <summary>イベント公開が通ると通知と投影更新と追記保存まで実施する。</summary>
     [Fact]
-    public async Task PublishEventAsync_WhenProceeding_UpdatesWorkflowAndSnapshot_AppendsEventPublished_AndSavesDedupRow()
+    public async Task PublishEventAsync_WhenProceeding_UpdatesExecutionAndSnapshot_AppendsEventPublished_AndSavesDedupRow()
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
         var dedupKey = new CommandDedupKey
@@ -1791,11 +1791,11 @@ public sealed class ExecutionServiceTests
 
         var dedupRepo = new FakeCommandDedupRepository { NextFindValid = null };
 
-        var engine = new FakeWorkflowEngine
+        var engine = new FakeExecutionEngine
         {
-            SnapshotToReturn = new WorkflowSnapshot
+            SnapshotToReturn = new ExecutionSnapshot
             {
-                WorkflowId = workflowId.ToString(),
+                ExecutionId = executionId.ToString(),
                 WorkflowName = "wf",
                 ActiveStates = Array.Empty<string>(),
                 IsCompleted = false,
@@ -1807,14 +1807,14 @@ public sealed class ExecutionServiceTests
 
         var display = new FakeDisplayIdService
         {
-            ResolveResultWorkflow = workflowId
+            ResolveResultExecution = executionId
         };
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -1832,7 +1832,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: dedupRepo,
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         const string eventName = "Approve";
@@ -1841,20 +1841,20 @@ public sealed class ExecutionServiceTests
         await sut.PublishEventAsync(tenantId: tenantId, idOrUuid: "X", eventName: eventName, idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None);
 
         // Assert
-        Assert.Equal(workflowId.ToString(), engine.PublishEventLastWorkflowId);
+        Assert.Equal(executionId.ToString(), engine.PublishEventLastExecutionId);
         Assert.Equal(eventName, engine.PublishEventLastName);
         var expectedClientEventId = ClientEventIdResolver.FromIdempotencyKey("idem", new FixedIdGenerator(Guid.NewGuid()));
         Assert.Equal(expectedClientEventId, engine.PublishEventLastClientEventId);
 
-        Assert.Single(workflowRepo.Updates);
-        Assert.Equal(workflowId, workflowRepo.Updates[0].ExecutionId);
-        Assert.Equal("Failed", workflowRepo.Updates[0].Status);
-        Assert.False(workflowRepo.Updates[0].CancelRequested);
-        Assert.Equal(engine.GraphJsonToReturn, workflowRepo.Updates[0].GraphJson);
+        Assert.Single(executionRepo.Updates);
+        Assert.Equal(executionId, executionRepo.Updates[0].ExecutionId);
+        Assert.Equal("Failed", executionRepo.Updates[0].Status);
+        Assert.False(executionRepo.Updates[0].CancelRequested);
+        Assert.Equal(engine.GraphJsonToReturn, executionRepo.Updates[0].GraphJson);
 
         Assert.Single(eventStore.Appended);
         Assert.Equal(EventStoreEventType.EventPublished, eventStore.Appended[0].Type);
-        Assert.Equal(workflowId, eventStore.Appended[0].ExecutionId);
+        Assert.Equal(executionId, eventStore.Appended[0].ExecutionId);
 
         var payload = eventStore.Appended[0].Payload;
         Assert.NotNull(payload);
@@ -1877,7 +1877,7 @@ public sealed class ExecutionServiceTests
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
         var dedupKey = new CommandDedupKey
         {
@@ -1888,12 +1888,12 @@ public sealed class ExecutionServiceTests
 
         var expectedClientEventId = ClientEventIdResolver.FromIdempotencyKey("idem", new FixedIdGenerator(Guid.NewGuid()));
 
-        var engine = new FakeWorkflowEngine
+        var engine = new FakeExecutionEngine
         {
             PublishAlreadyAppliedWhenClientEventIdEquals = expectedClientEventId,
-            SnapshotToReturn = new WorkflowSnapshot
+            SnapshotToReturn = new ExecutionSnapshot
             {
-                WorkflowId = workflowId.ToString(),
+                ExecutionId = executionId.ToString(),
                 WorkflowName = "wf",
                 ActiveStates = Array.Empty<string>(),
                 IsCompleted = false,
@@ -1903,12 +1903,12 @@ public sealed class ExecutionServiceTests
             GraphJsonToReturn = "{\"nodes\":[]}"
         };
 
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -1925,7 +1925,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository { NextFindValid = null },
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         const string eventName = "Approve";
@@ -1935,10 +1935,10 @@ public sealed class ExecutionServiceTests
 
         // Assert
         Assert.Equal(expectedClientEventId, engine.PublishEventLastClientEventId);
-        Assert.Single(workflowRepo.Updates);
+        Assert.Single(executionRepo.Updates);
         Assert.Single(eventStore.Appended);
         Assert.Equal(EventStoreEventType.EventPublished, eventStore.Appended[0].Type);
-        Assert.Equal(workflowId, eventStore.Appended[0].ExecutionId);
+        Assert.Equal(executionId, eventStore.Appended[0].ExecutionId);
     }
 
     /// <summary>取消で Engine が AlreadyApplied のときも投影更新し、冪等 event_store 追記が 1 回だけ行われる。</summary>
@@ -1947,7 +1947,7 @@ public sealed class ExecutionServiceTests
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
         var dedupKey = new CommandDedupKey
         {
@@ -1958,12 +1958,12 @@ public sealed class ExecutionServiceTests
 
         var expectedClientEventId = ClientEventIdResolver.FromIdempotencyKey("idem", new FixedIdGenerator(Guid.NewGuid()));
 
-        var engine = new FakeWorkflowEngine
+        var engine = new FakeExecutionEngine
         {
             CancelAlreadyAppliedWhenClientEventIdEquals = expectedClientEventId,
-            SnapshotToReturn = new WorkflowSnapshot
+            SnapshotToReturn = new ExecutionSnapshot
             {
-                WorkflowId = workflowId.ToString(),
+                ExecutionId = executionId.ToString(),
                 WorkflowName = "wf",
                 ActiveStates = Array.Empty<string>(),
                 IsCompleted = false,
@@ -1973,12 +1973,12 @@ public sealed class ExecutionServiceTests
             GraphJsonToReturn = "{\"nodes\":[]}"
         };
 
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -1995,7 +1995,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository { NextFindValid = null },
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act
@@ -2004,10 +2004,10 @@ public sealed class ExecutionServiceTests
         // Assert
         Assert.Equal(expectedClientEventId, engine.CancelAsyncLastClientEventId);
         Assert.True(engine.CancelCalled);
-        Assert.Single(workflowRepo.Updates);
+        Assert.Single(executionRepo.Updates);
         Assert.Single(eventStore.Appended);
         Assert.Equal(EventStoreEventType.WorkflowCancelled, eventStore.Appended[0].Type);
-        Assert.Equal(workflowId, eventStore.Appended[0].ExecutionId);
+        Assert.Equal(executionId, eventStore.Appended[0].ExecutionId);
     }
 
     /// <summary>イベント公開時の追記失敗で巻き戻して例外を再送出する。</summary>
@@ -2016,16 +2016,16 @@ public sealed class ExecutionServiceTests
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
         var dedupRepo = new FakeCommandDedupRepository { NextFindValid = null };
 
-        var engine = new FakeWorkflowEngine
+        var engine = new FakeExecutionEngine
         {
-            SnapshotToReturn = new WorkflowSnapshot
+            SnapshotToReturn = new ExecutionSnapshot
             {
-                WorkflowId = workflowId.ToString(),
+                ExecutionId = executionId.ToString(),
                 WorkflowName = "wf",
                 ActiveStates = Array.Empty<string>(),
                 IsCompleted = false,
@@ -2035,13 +2035,13 @@ public sealed class ExecutionServiceTests
             GraphJsonToReturn = "{\"nodes\":[]}"
         };
 
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -2062,7 +2062,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: dedupRepo,
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         const string eventName = "Approve";
@@ -2073,7 +2073,7 @@ public sealed class ExecutionServiceTests
 
         // Assert
         Assert.Equal("append failed", ex.Message);
-        Assert.Equal(workflowId.ToString(), engine.PublishEventLastWorkflowId);
+        Assert.Equal(executionId.ToString(), engine.PublishEventLastExecutionId);
         Assert.Equal(eventName, engine.PublishEventLastName);
         Assert.NotNull(engine.PublishEventLastClientEventId);
         Assert.Empty(eventStore.Appended);
@@ -2086,7 +2086,7 @@ public sealed class ExecutionServiceTests
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
         var clientEventId = Guid.Parse("550e8400-e29b-41d4-a716-446655440000");
 
@@ -2095,7 +2095,7 @@ public sealed class ExecutionServiceTests
         eventDedup.SeedRow(new EventDeliveryDedupRow
         {
             TenantId = tenantId,
-            ExecutionId = workflowId,
+            ExecutionId = executionId,
             ClientEventId = clientEventId,
             BatchId = null,
             Status = EventDeliveryDedupStatuses.Applied,
@@ -2105,13 +2105,13 @@ public sealed class ExecutionServiceTests
             UpdatedAt = now
         });
 
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -2131,7 +2131,7 @@ public sealed class ExecutionServiceTests
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
-            workflowRepo,
+            executionRepo,
             new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             eventStore,
@@ -2148,7 +2148,7 @@ public sealed class ExecutionServiceTests
 
         // Assert
         Assert.Null(engine.PublishEventLastName);
-        Assert.Empty(workflowRepo.Updates);
+        Assert.Empty(executionRepo.Updates);
         Assert.Empty(eventStore.Appended);
     }
 
@@ -2157,9 +2157,9 @@ public sealed class ExecutionServiceTests
     public async Task GetExecutionResponseAsync_WhenResolveReturnsNull_ThrowsNotFoundException()
     {
         // Arrange
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = null };
-        var workflowRepo = new FakeExecutionRepository();
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = null };
+        var executionRepo = new FakeExecutionRepository();
         var eventStore = new FakeEventStoreRepository();
 
         var sut = MakeSut(
@@ -2167,7 +2167,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act & Assert
@@ -2177,13 +2177,13 @@ public sealed class ExecutionServiceTests
 
     /// <summary>応答取得で実行行がないとき未検出例外を投げる。</summary>
     [Fact]
-    public async Task GetExecutionResponseAsync_WhenWorkflowMissing_ThrowsNotFoundException()
+    public async Task GetExecutionResponseAsync_WhenExecutionMissing_ThrowsNotFoundException()
     {
         // Arrange
-        var engine = new FakeWorkflowEngine();
+        var engine = new FakeExecutionEngine();
         var uuid = Guid.NewGuid();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = uuid };
-        var workflowRepo = new FakeExecutionRepository { ByIdResult = null };
+        var display = new FakeDisplayIdService { ResolveResultExecution = uuid };
+        var executionRepo = new FakeExecutionRepository { ByIdResult = null };
         var eventStore = new FakeEventStoreRepository();
 
         var sut = MakeSut(
@@ -2191,7 +2191,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act & Assert
@@ -2204,9 +2204,9 @@ public sealed class ExecutionServiceTests
     public async Task GetExecutionResponseAsync_WhenDisplayIdMissing_FallsBackToUuidString()
     {
         // Arrange
-        var engine = new FakeWorkflowEngine();
+        var engine = new FakeExecutionEngine();
         var uuid = Guid.NewGuid();
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
@@ -2223,7 +2223,7 @@ public sealed class ExecutionServiceTests
 
         var display = new FakeDisplayIdService
         {
-            ResolveResultWorkflow = uuid,
+            ResolveResultExecution = uuid,
             GetDisplayIdResult = null
         };
         var eventStore = new FakeEventStoreRepository();
@@ -2233,7 +2233,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act
@@ -2250,10 +2250,10 @@ public sealed class ExecutionServiceTests
     public async Task GetGraphJsonAsync_WhenSnapshotMissing_ThrowsNotFoundException()
     {
         // Arrange
-        var engine = new FakeWorkflowEngine();
+        var engine = new FakeExecutionEngine();
         var uuid = Guid.NewGuid();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = uuid };
-        var workflowRepo = new FakeExecutionRepository
+        var display = new FakeDisplayIdService { ResolveResultExecution = uuid };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
@@ -2274,7 +2274,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act & Assert
@@ -2287,9 +2287,9 @@ public sealed class ExecutionServiceTests
     public async Task GetGraphJsonAsync_WhenResolveReturnsNull_ThrowsNotFoundException()
     {
         // Arrange
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = null };
-        var workflowRepo = new FakeExecutionRepository();
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = null };
+        var executionRepo = new FakeExecutionRepository();
         var eventStore = new FakeEventStoreRepository();
 
         var sut = MakeSut(
@@ -2297,7 +2297,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act & Assert
@@ -2307,13 +2307,13 @@ public sealed class ExecutionServiceTests
 
     /// <summary>グラフ取得時に実行行がないとき未検出例外を投げる。</summary>
     [Fact]
-    public async Task GetGraphJsonAsync_WhenWorkflowMissing_ThrowsNotFoundException()
+    public async Task GetGraphJsonAsync_WhenExecutionMissing_ThrowsNotFoundException()
     {
         // Arrange
-        var engine = new FakeWorkflowEngine();
+        var engine = new FakeExecutionEngine();
         var uuid = Guid.NewGuid();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = uuid };
-        var workflowRepo = new FakeExecutionRepository { ByIdResult = null };
+        var display = new FakeDisplayIdService { ResolveResultExecution = uuid };
+        var executionRepo = new FakeExecutionRepository { ByIdResult = null };
         var eventStore = new FakeEventStoreRepository();
 
         var sut = MakeSut(
@@ -2321,7 +2321,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: eventStore);
 
         // Act & Assert
@@ -2335,8 +2335,8 @@ public sealed class ExecutionServiceTests
     {
         // Arrange
         var uuid = Guid.NewGuid();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = uuid };
-        var workflowRepo = new FakeExecutionRepository
+        var display = new FakeDisplayIdService { ResolveResultExecution = uuid };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
@@ -2349,7 +2349,7 @@ public sealed class ExecutionServiceTests
                 CancelRequested = false,
                 RestartLost = false
             },
-            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
             {
                 ExecutionId = uuid,
                 GraphJson = "{\"nodes\":[],\"edges\":[{\"from\":\"a1\",\"to\":\"b1\",\"type\":0}]}"
@@ -2359,9 +2359,9 @@ public sealed class ExecutionServiceTests
         var sut = MakeSut(
             dedupService: new FakeCommandDedupService(null),
             dedupRepo: new FakeCommandDedupRepository(),
-            engine: new FakeWorkflowEngine(),
+            engine: new FakeExecutionEngine(),
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act
@@ -2381,27 +2381,27 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.ResumeNodeAsync("t1", idOrUuid: "workflow", nodeId: "node-1", resumeKey: null, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
+            sut.ResumeNodeAsync("t1", idOrUuid: "EXEC-1", nodeId: "node-1", resumeKey: null, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
     }
 
     /// <summary>有効なノード識別子と再開キーで公開と投影更新を実施する。</summary>
     [Fact]
-    public async Task ResumeNodeAsync_WhenValidNodeAndResumeKey_PublishesEventAndUpdatesWorkflow()
+    public async Task ResumeNodeAsync_WhenValidNodeAndResumeKey_PublishesEventAndUpdatesExecution()
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
         var nodeId = "node-1";
         var resumeKey = "Approve";
 
         using var sqlite = new SqliteTestDatabase();
 
-        var engine = new FakeWorkflowEngine
+        var engine = new FakeExecutionEngine
         {
-            SnapshotToReturn = new WorkflowSnapshot
+            SnapshotToReturn = new ExecutionSnapshot
             {
-                WorkflowId = workflowId.ToString(),
+                ExecutionId = executionId.ToString(),
                 WorkflowName = "wf",
                 ActiveStates = Array.Empty<string>(),
                 IsCompleted = false,
@@ -2411,13 +2411,13 @@ public sealed class ExecutionServiceTests
             GraphJsonToReturn = "{\"nodes\":[]}"
         };
 
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -2437,7 +2437,7 @@ public sealed class ExecutionServiceTests
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
-            workflowRepo,
+            executionRepo,
             new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             eventStore,
@@ -2447,12 +2447,12 @@ public sealed class ExecutionServiceTests
         await sut.ResumeNodeAsync(tenantId, idOrUuid: "X", nodeId: nodeId, resumeKey: resumeKey, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None);
 
         // Assert
-        Assert.Equal(workflowId.ToString(), engine.PublishEventLastWorkflowId);
+        Assert.Equal(executionId.ToString(), engine.PublishEventLastExecutionId);
         Assert.Equal(resumeKey, engine.PublishEventLastName);
 
         Assert.Single(eventStore.Appended);
         Assert.Equal(EventStoreEventType.EventPublished, eventStore.Appended[0].Type);
-        Assert.Equal(workflowId, eventStore.Appended[0].ExecutionId);
+        Assert.Equal(executionId, eventStore.Appended[0].ExecutionId);
 
         var payload = eventStore.Appended[0].Payload;
         Assert.NotNull(payload);
@@ -2460,15 +2460,15 @@ public sealed class ExecutionServiceTests
         Assert.Equal(tenantId, payloadDoc.RootElement.GetProperty("tenantId").GetString());
         Assert.Equal(resumeKey, payloadDoc.RootElement.GetProperty("name").GetString());
 
-        Assert.Single(workflowRepo.Updates);
-        Assert.Equal("Cancelled", workflowRepo.Updates[0].Status);
-        Assert.True(workflowRepo.Updates[0].CancelRequested);
-        Assert.Equal(engine.GraphJsonToReturn, workflowRepo.Updates[0].GraphJson);
+        Assert.Single(executionRepo.Updates);
+        Assert.Equal("Cancelled", executionRepo.Updates[0].Status);
+        Assert.True(executionRepo.Updates[0].CancelRequested);
+        Assert.Equal(engine.GraphJsonToReturn, executionRepo.Updates[0].GraphJson);
     }
 
     /// <summary>一覧で表示用識別子が空値の行は識別子文字列を表示値に使う。</summary>
     [Fact]
-    public async Task ListPagedAsync_WhenDisplayIdMissing_FallsBackToWorkflowIdString()
+    public async Task ListPagedAsync_WhenDisplayIdMissing_FallsBackToExecutionIdString()
     {
         // Arrange
         var tenantId = "t1";
@@ -2495,9 +2495,9 @@ public sealed class ExecutionServiceTests
             RestartLost = true
         };
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
-            ListWithDisplayIdsPageResult = (2, new List<(ExecutionRow Workflow, string? DisplayId)>
+            ListWithDisplayIdsPageResult = (2, new List<(ExecutionRow Execution, string? DisplayId)>
             {
                 (w1, null),
                 (w2, "WF-DISP-2")
@@ -2507,9 +2507,9 @@ public sealed class ExecutionServiceTests
         var sut = MakeSut(
             dedupService: new FakeCommandDedupService(null),
             dedupRepo: new FakeCommandDedupRepository(),
-            engine: new FakeWorkflowEngine(),
+            engine: new FakeExecutionEngine(),
             display: new FakeDisplayIdService(),
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act
@@ -2552,17 +2552,17 @@ public sealed class ExecutionServiceTests
             UpdatedAt = DateTime.UtcNow
         };
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
-            ListWithDisplayIdsPageResult = (3, new List<(ExecutionRow Workflow, string? DisplayId)> { (w1, null), (w2, null) })
+            ListWithDisplayIdsPageResult = (3, new List<(ExecutionRow Execution, string? DisplayId)> { (w1, null), (w2, null) })
         };
 
         var sut = MakeSut(
             dedupService: new FakeCommandDedupService(null),
             dedupRepo: new FakeCommandDedupRepository(),
-            engine: new FakeWorkflowEngine(),
+            engine: new FakeExecutionEngine(),
             display: new FakeDisplayIdService(),
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act
@@ -2573,7 +2573,7 @@ public sealed class ExecutionServiceTests
         Assert.True(page.HasMore);
         Assert.Equal(2, page.Items.Count);
 
-        workflowRepo.ListWithDisplayIdsPageResult = (2, new List<(ExecutionRow Workflow, string? DisplayId)> { (w1, null), (w2, null) });
+        executionRepo.ListWithDisplayIdsPageResult = (2, new List<(ExecutionRow Execution, string? DisplayId)> { (w1, null), (w2, null) });
 
         // Act
         var page2 = await sut.ListPagedAsync(tenantId, new ExecutionListQuery { Offset = 0, Limit = 2 }, CancellationToken.None);
@@ -2589,16 +2589,16 @@ public sealed class ExecutionServiceTests
     {
         // Arrange
         var display = new FakeDisplayIdService { ResolveResultDefinition = null };
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
-            ListWithDisplayIdsPageResult = (5, new List<(ExecutionRow Workflow, string? DisplayId)> { })
+            ListWithDisplayIdsPageResult = (5, new List<(ExecutionRow Execution, string? DisplayId)> { })
         };
         var sut = MakeSut(
             dedupService: new FakeCommandDedupService(null),
             dedupRepo: new FakeCommandDedupRepository(),
-            engine: new FakeWorkflowEngine(),
+            engine: new FakeExecutionEngine(),
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act
@@ -2612,11 +2612,11 @@ public sealed class ExecutionServiceTests
 
     /// <summary>グラフ文字列からノード種別と状態と補完識別子を組み立てる。</summary>
     [Fact]
-    public async Task GetWorkflowViewAsync_Success_BuildsNodesAndGraphIdFallbacks()
+    public async Task GetExecutionViewAsync_Success_BuildsNodesAndGraphIdFallbacks()
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
         var graphJson =
@@ -2628,11 +2628,11 @@ public sealed class ExecutionServiceTests
             "{\"nodeId\":\"n5\",\"stateName\":\"S5\",\"nodeType\":\"Join\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Joined\"}" +
             "]}";
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -2641,9 +2641,9 @@ public sealed class ExecutionServiceTests
                 CancelRequested = false,
                 RestartLost = false
             },
-            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 GraphJson = graphJson,
                 UpdatedAt = DateTime.UtcNow
             }
@@ -2651,24 +2651,24 @@ public sealed class ExecutionServiceTests
 
         var display = new FakeDisplayIdService
         {
-            ResolveResultWorkflow = workflowId,
+            ResolveResultExecution = executionId,
             GetDisplayIdResult = null
         };
 
         var sut = MakeSut(
             dedupService: new FakeCommandDedupService(null),
             dedupRepo: new FakeCommandDedupRepository(),
-            engine: new FakeWorkflowEngine(),
+            engine: new FakeExecutionEngine(),
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var view = await sut.GetWorkflowViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
+        var view = await sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
 
         // Assert
-        Assert.Equal(workflowId.ToString("D"), view.ResourceId);
-        Assert.Equal(workflowId.ToString("D"), view.DisplayId); // displayId fallback
+        Assert.Equal(executionId.ToString("D"), view.ResourceId);
+        Assert.Equal(executionId.ToString("D"), view.DisplayId); // displayId fallback
         Assert.Equal(defId.ToString("D"), view.GraphId); // graphId fallback
 
         Assert.Equal(5, view.Nodes.Count);
@@ -2705,18 +2705,18 @@ public sealed class ExecutionServiceTests
     [Theory]
     [InlineData("   ")]
     [InlineData("\t")]
-    public async Task GetWorkflowViewAsync_WhenGraphJsonIsWhitespace_ReturnsEmptyNodes(string graphJson)
+    public async Task GetExecutionViewAsync_WhenGraphJsonIsWhitespace_ReturnsEmptyNodes(string graphJson)
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -2725,26 +2725,26 @@ public sealed class ExecutionServiceTests
                 CancelRequested = false,
                 RestartLost = false
             },
-            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 GraphJson = graphJson,
                 UpdatedAt = DateTime.UtcNow
             }
         };
 
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId, GetDisplayIdResult = null };
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId, GetDisplayIdResult = null };
 
         var sut = MakeSut(
             dedupService: new FakeCommandDedupService(null),
             dedupRepo: new FakeCommandDedupRepository(),
-            engine: new FakeWorkflowEngine(),
+            engine: new FakeExecutionEngine(),
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var view = await sut.GetWorkflowViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
+        var view = await sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
 
         // Assert
         Assert.Empty(view.Nodes);
@@ -2752,18 +2752,18 @@ public sealed class ExecutionServiceTests
 
     /// <summary>グラフ文字列が不正なとき例外にせずノード一覧を空にする。</summary>
     [Fact]
-    public async Task GetWorkflowViewAsync_WhenGraphJsonInvalid_ReturnsEmptyNodes()
+    public async Task GetExecutionViewAsync_WhenGraphJsonInvalid_ReturnsEmptyNodes()
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -2772,26 +2772,26 @@ public sealed class ExecutionServiceTests
                 CancelRequested = false,
                 RestartLost = false
             },
-            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 GraphJson = "{not-json",
                 UpdatedAt = DateTime.UtcNow
             }
         };
 
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId, GetDisplayIdResult = null };
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId, GetDisplayIdResult = null };
 
         var sut = MakeSut(
             dedupService: new FakeCommandDedupService(null),
             dedupRepo: new FakeCommandDedupRepository(),
-            engine: new FakeWorkflowEngine(),
+            engine: new FakeExecutionEngine(),
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var view = await sut.GetWorkflowViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
+        var view = await sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
 
         // Assert
         Assert.Empty(view.Nodes);
@@ -2799,18 +2799,18 @@ public sealed class ExecutionServiceTests
 
     /// <summary>ノード属性が空値のときノード一覧は空になる。</summary>
     [Fact]
-    public async Task GetWorkflowViewAsync_WhenNodesPropertyIsNull_ReturnsEmptyNodes()
+    public async Task GetExecutionViewAsync_WhenNodesPropertyIsNull_ReturnsEmptyNodes()
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -2819,26 +2819,26 @@ public sealed class ExecutionServiceTests
                 CancelRequested = false,
                 RestartLost = false
             },
-            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 GraphJson = "{\"nodes\":null}",
                 UpdatedAt = DateTime.UtcNow
             }
         };
 
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId, GetDisplayIdResult = null };
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId, GetDisplayIdResult = null };
 
         var sut = MakeSut(
             dedupService: new FakeCommandDedupService(null),
             dedupRepo: new FakeCommandDedupRepository(),
-            engine: new FakeWorkflowEngine(),
+            engine: new FakeExecutionEngine(),
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var view = await sut.GetWorkflowViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
+        var view = await sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
 
         // Assert
         Assert.Empty(view.Nodes);
@@ -2846,18 +2846,18 @@ public sealed class ExecutionServiceTests
 
     /// <summary>ノード属性が空配列のときノード一覧は空になる。</summary>
     [Fact]
-    public async Task GetWorkflowViewAsync_WhenNodesArrayEmpty_ReturnsEmptyNodes()
+    public async Task GetExecutionViewAsync_WhenNodesArrayEmpty_ReturnsEmptyNodes()
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -2866,26 +2866,26 @@ public sealed class ExecutionServiceTests
                 CancelRequested = false,
                 RestartLost = false
             },
-            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 GraphJson = "{\"nodes\":[]}",
                 UpdatedAt = DateTime.UtcNow
             }
         };
 
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId, GetDisplayIdResult = null };
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId, GetDisplayIdResult = null };
 
         var sut = MakeSut(
             dedupService: new FakeCommandDedupService(null),
             dedupRepo: new FakeCommandDedupRepository(),
-            engine: new FakeWorkflowEngine(),
+            engine: new FakeExecutionEngine(),
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var view = await sut.GetWorkflowViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
+        var view = await sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
 
         // Assert
         Assert.Empty(view.Nodes);
@@ -2893,18 +2893,18 @@ public sealed class ExecutionServiceTests
 
     /// <summary>スナップショット行がないとき表示取得で未検出例外を投げる。</summary>
     [Fact]
-    public async Task GetWorkflowViewAsync_WhenSnapshotMissing_ThrowsNotFoundException()
+    public async Task GetExecutionViewAsync_WhenSnapshotMissing_ThrowsNotFoundException()
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -2913,37 +2913,37 @@ public sealed class ExecutionServiceTests
                 CancelRequested = false,
                 RestartLost = false
             },
-            SnapshotByWorkflowId = null
+            SnapshotByExecutionId = null
         };
 
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
 
         var sut = MakeSut(
             dedupService: new FakeCommandDedupService(null),
             dedupRepo: new FakeCommandDedupRepository(),
-            engine: new FakeWorkflowEngine(),
+            engine: new FakeExecutionEngine(),
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetWorkflowViewAsync(tenantId, idOrUuid: "X", CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None));
     }
 
     /// <summary>実行識別子を解決できないとき表示取得で未検出例外を投げる。</summary>
     [Fact]
-    public async Task GetWorkflowViewAsync_WhenResolveReturnsNull_ThrowsNotFoundException()
+    public async Task GetExecutionViewAsync_WhenResolveReturnsNull_ThrowsNotFoundException()
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -2954,34 +2954,34 @@ public sealed class ExecutionServiceTests
             }
         };
 
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = null };
+        var display = new FakeDisplayIdService { ResolveResultExecution = null };
 
         var sut = MakeSut(
             dedupService: new FakeCommandDedupService(null),
             dedupRepo: new FakeCommandDedupRepository(),
-            engine: new FakeWorkflowEngine(),
+            engine: new FakeExecutionEngine(),
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetWorkflowViewAsync(tenantId, idOrUuid: "X", CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None));
     }
 
     /// <summary>解決後に実行行がないとき表示取得で未検出例外を投げる。</summary>
     [Fact]
-    public async Task GetWorkflowViewAsync_WhenWorkflowMissing_ThrowsNotFoundException()
+    public async Task GetExecutionViewAsync_WhenExecutionMissing_ThrowsNotFoundException()
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
-        var workflowRepo = new FakeExecutionRepository { ByIdResult = null };
+        var executionRepo = new FakeExecutionRepository { ByIdResult = null };
 
         var display = new FakeDisplayIdService
         {
-            ResolveResultWorkflow = workflowId,
+            ResolveResultExecution = executionId,
             ResolveResultDefinition = defId,
             GetDisplayIdResult = null
         };
@@ -2989,13 +2989,13 @@ public sealed class ExecutionServiceTests
         var sut = MakeSut(
             dedupService: new FakeCommandDedupService(null),
             dedupRepo: new FakeCommandDedupRepository(),
-            engine: new FakeWorkflowEngine(),
+            engine: new FakeExecutionEngine(),
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetWorkflowViewAsync(tenantId, idOrUuid: "X", CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None));
     }
 
     /// <summary>RECEIVED 先行 INSERT が一時障害で失敗したあと再試行で成功する。</summary>
@@ -3004,7 +3004,7 @@ public sealed class ExecutionServiceTests
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
         var dedupKey = new CommandDedupKey
@@ -3016,11 +3016,11 @@ public sealed class ExecutionServiceTests
 
         var dedupRepo = new FakeCommandDedupRepository { NextFindValid = null };
 
-        var engine = new FakeWorkflowEngine
+        var engine = new FakeExecutionEngine
         {
-            SnapshotToReturn = new WorkflowSnapshot
+            SnapshotToReturn = new ExecutionSnapshot
             {
-                WorkflowId = workflowId.ToString(),
+                ExecutionId = executionId.ToString(),
                 WorkflowName = "wf",
                 ActiveStates = Array.Empty<string>(),
                 IsCompleted = false,
@@ -3030,13 +3030,13 @@ public sealed class ExecutionServiceTests
             GraphJsonToReturn = "{\"nodes\":[]}"
         };
 
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
 
-        var workflowRepo = new FakeExecutionRepository
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -3058,7 +3058,7 @@ public sealed class ExecutionServiceTests
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(dedupKey),
-            workflowRepo,
+            executionRepo,
             new StubDefinitionRepository(),
             dedupRepo,
             eventStore,
@@ -3085,7 +3085,7 @@ public sealed class ExecutionServiceTests
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
         var dedupKey = new CommandDedupKey
@@ -3096,13 +3096,13 @@ public sealed class ExecutionServiceTests
         };
 
         var dedupRepo = new FakeCommandDedupRepository { NextFindValid = null };
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -3122,7 +3122,7 @@ public sealed class ExecutionServiceTests
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(dedupKey),
-            workflowRepo,
+            executionRepo,
             new StubDefinitionRepository(),
             dedupRepo,
             new FakeEventStoreRepository(),
@@ -3146,7 +3146,7 @@ public sealed class ExecutionServiceTests
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
         var dedupKey = new CommandDedupKey
@@ -3157,13 +3157,13 @@ public sealed class ExecutionServiceTests
         };
 
         var dedupRepo = new FakeCommandDedupRepository { NextFindValid = null };
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -3193,7 +3193,7 @@ public sealed class ExecutionServiceTests
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(dedupKey),
-            workflowRepo,
+            executionRepo,
             new StubDefinitionRepository(),
             dedupRepo,
             new FakeEventStoreRepository(),
@@ -3216,20 +3216,20 @@ public sealed class ExecutionServiceTests
     /// エンジンにインスタンスが無く投影が Running のとき、API 再起動喪失として引数例外（HTTP 422）を投げる。
     /// </summary>
     [Fact]
-    public async Task PublishEventAsync_WhenEngineRuntimeMissing_AndWorkflowRunning_ThrowsArgumentException()
+    public async Task PublishEventAsync_WhenEngineRuntimeMissing_AndExecutionRunning_ThrowsArgumentException()
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -3245,7 +3245,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act & Assert
@@ -3259,27 +3259,27 @@ public sealed class ExecutionServiceTests
                 CancellationToken.None));
 
         Assert.Contains("not loaded in this API process", ex.Message, StringComparison.Ordinal);
-        Assert.Null(engine.PublishEventLastWorkflowId);
+        Assert.Null(engine.PublishEventLastExecutionId);
     }
 
     /// <summary>
     /// エンジンにインスタンスが無く投影が Running のとき、キャンセルも同様に引数例外（HTTP 422）を投げる。
     /// </summary>
     [Fact]
-    public async Task CancelAsync_WhenEngineRuntimeMissing_AndWorkflowRunning_ThrowsArgumentException()
+    public async Task CancelAsync_WhenEngineRuntimeMissing_AndExecutionRunning_ThrowsArgumentException()
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Running",
@@ -3295,7 +3295,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act & Assert
@@ -3310,20 +3310,20 @@ public sealed class ExecutionServiceTests
     /// エンジンにインスタンスが無く投影が終了済みのとき、終了後コマンド拒否として引数例外（HTTP 422）を投げる。
     /// </summary>
     [Fact]
-    public async Task PublishEventAsync_WhenEngineRuntimeMissing_AndWorkflowCompleted_ThrowsArgumentException()
+    public async Task PublishEventAsync_WhenEngineRuntimeMissing_AndExecutionCompleted_ThrowsArgumentException()
     {
         // Arrange
         var tenantId = "t1";
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
-        var engine = new FakeWorkflowEngine();
-        var display = new FakeDisplayIdService { ResolveResultWorkflow = workflowId };
-        var workflowRepo = new FakeExecutionRepository
+        var engine = new FakeExecutionEngine();
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = tenantId,
                 DefinitionId = defId,
                 Status = "Completed",
@@ -3339,7 +3339,7 @@ public sealed class ExecutionServiceTests
             dedupRepo: new FakeCommandDedupRepository(),
             engine: engine,
             display: display,
-            workflowRepo: workflowRepo,
+            executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act & Assert
@@ -3353,7 +3353,7 @@ public sealed class ExecutionServiceTests
                 CancellationToken.None));
 
         Assert.Contains("terminal state", ex.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Null(engine.PublishEventLastWorkflowId);
+        Assert.Null(engine.PublishEventLastExecutionId);
     }
 
     /// <summary>定義 ID は解決できるが行が無いとき未検出例外を投げる。</summary>
@@ -3366,7 +3366,7 @@ public sealed class ExecutionServiceTests
         var sut = MakeSut(
             new FakeCommandDedupService(null),
             new FakeCommandDedupRepository(),
-            new FakeWorkflowEngine(),
+            new FakeExecutionEngine(),
             display,
             new FakeExecutionRepository(),
             new FakeEventStoreRepository(),
@@ -3393,7 +3393,7 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeWorkflowEngine(),
+            new FakeExecutionEngine(),
             display,
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
@@ -3416,33 +3416,33 @@ public sealed class ExecutionServiceTests
 
     /// <summary>存在確認でワークフローが無いとき未検出例外を投げる。</summary>
     [Fact]
-    public async Task EnsureWorkflowExistsAsync_Throws_WhenWorkflowMissing()
+    public async Task EnsureExecutionExistsAsync_Throws_WhenExecutionMissing()
     {
         // Arrange
         var sut = MakeSut(
             new FakeCommandDedupService(null),
             new FakeCommandDedupRepository(),
-            new FakeWorkflowEngine(),
+            new FakeExecutionEngine(),
             new FakeDisplayIdService(),
             new FakeExecutionRepository { ByIdResult = null },
             new FakeEventStoreRepository());
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.EnsureWorkflowExistsAsync("t1", Guid.NewGuid(), CancellationToken.None));
+            sut.EnsureExecutionExistsAsync("t1", Guid.NewGuid(), CancellationToken.None));
     }
 
-    /// <summary>スナップショット JSON を workflow ID で取得できる。</summary>
+    /// <summary>スナップショット JSON を execution ID で取得できる。</summary>
     [Fact]
-    public async Task TryGetSnapshotGraphJsonByWorkflowIdAsync_ReturnsGraphJson()
+    public async Task TryGetSnapshotGraphJsonByExecutionIdAsync_ReturnsGraphJson()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
-        var workflowRepo = new FakeExecutionRepository
+        var executionId = Guid.NewGuid();
+        var executionRepo = new FakeExecutionRepository
         {
-            SnapshotByWorkflowId = new ExecutionGraphSnapshotRow
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 GraphJson = """{"nodes":[]}""",
                 UpdatedAt = DateTime.UtcNow
             }
@@ -3450,13 +3450,13 @@ public sealed class ExecutionServiceTests
         var sut = MakeSut(
             new FakeCommandDedupService(null),
             new FakeCommandDedupRepository(),
-            new FakeWorkflowEngine(),
+            new FakeExecutionEngine(),
             new FakeDisplayIdService(),
-            workflowRepo,
+            executionRepo,
             new FakeEventStoreRepository());
 
         // Act
-        var json = await sut.TryGetSnapshotGraphJsonByWorkflowIdAsync(workflowId, CancellationToken.None);
+        var json = await sut.TryGetSnapshotGraphJsonByExecutionIdAsync(executionId, CancellationToken.None);
 
         // Assert
         Assert.Equal("""{"nodes":[]}""", json);
@@ -3464,19 +3464,19 @@ public sealed class ExecutionServiceTests
 
     /// <summary>スナップショット行が無いとき null を返す。</summary>
     [Fact]
-    public async Task TryGetSnapshotGraphJsonByWorkflowIdAsync_ReturnsNull_WhenMissing()
+    public async Task TryGetSnapshotGraphJsonByExecutionIdAsync_ReturnsNull_WhenMissing()
     {
         // Arrange
         var sut = MakeSut(
             new FakeCommandDedupService(null),
             new FakeCommandDedupRepository(),
-            new FakeWorkflowEngine(),
+            new FakeExecutionEngine(),
             new FakeDisplayIdService(),
-            new FakeExecutionRepository { SnapshotByWorkflowId = null },
+            new FakeExecutionRepository { SnapshotByExecutionId = null },
             new FakeEventStoreRepository());
 
         // Act
-        var json = await sut.TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid.NewGuid(), CancellationToken.None);
+        var json = await sut.TryGetSnapshotGraphJsonByExecutionIdAsync(Guid.NewGuid(), CancellationToken.None);
 
         // Assert
         Assert.Null(json);
@@ -3487,27 +3487,27 @@ public sealed class ExecutionServiceTests
     public async Task UpdateProjectionFromEngineAsync_WhenEngineSnapshotNull_DoesNotUpdate()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
-        var workflowRepo = new FakeExecutionRepository();
+        var executionId = Guid.NewGuid();
+        var executionRepo = new FakeExecutionRepository();
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeWorkflowEngine { SnapshotToReturn = null },
+            new FakeExecutionEngine { SnapshotToReturn = null },
             new FakeDisplayIdService(),
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
-            workflowRepo,
+            executionRepo,
             new StubDefinitionRepository(),
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository(),
             new FakeEventDeliveryDedupRepository());
 
         // Act
-        await sut.UpdateProjectionFromEngineAsync(workflowId, CancellationToken.None);
+        await sut.UpdateProjectionFromEngineAsync(executionId, CancellationToken.None);
 
         // Assert
-        Assert.Empty(workflowRepo.Updates);
+        Assert.Empty(executionRepo.Updates);
     }
 
     /// <summary>afterSeq が負のとき引数例外を投げる。</summary>
@@ -3518,8 +3518,8 @@ public sealed class ExecutionServiceTests
         var sut = MakeSut(
             new FakeCommandDedupService(null),
             new FakeCommandDedupRepository(),
-            new FakeWorkflowEngine(),
-            new FakeDisplayIdService { ResolveResultWorkflow = Guid.NewGuid() },
+            new FakeExecutionEngine(),
+            new FakeDisplayIdService { ResolveResultExecution = Guid.NewGuid() },
             new FakeExecutionRepository { ByIdResult = new ExecutionRow { ExecutionId = Guid.NewGuid(), TenantId = "t1", DefinitionId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, CancelRequested = false, RestartLost = false } },
             new FakeEventStoreRepository());
 
@@ -3539,8 +3539,8 @@ public sealed class ExecutionServiceTests
         var sut = MakeSut(
             new FakeCommandDedupService(null),
             new FakeCommandDedupRepository(),
-            new FakeWorkflowEngine(),
-            new FakeDisplayIdService { ResolveResultWorkflow = Guid.NewGuid() },
+            new FakeExecutionEngine(),
+            new FakeDisplayIdService { ResolveResultExecution = Guid.NewGuid() },
             new FakeExecutionRepository { ByIdResult = new ExecutionRow { ExecutionId = Guid.NewGuid(), TenantId = "t1", DefinitionId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, CancelRequested = false, RestartLost = false } },
             new FakeEventStoreRepository());
 
@@ -3553,9 +3553,9 @@ public sealed class ExecutionServiceTests
     private static ExecutionService MakeSut(
         FakeCommandDedupService dedupService,
         FakeCommandDedupRepository dedupRepo,
-        FakeWorkflowEngine engine,
+        FakeExecutionEngine engine,
         FakeDisplayIdService display,
-        FakeExecutionRepository workflowRepo,
+        FakeExecutionRepository executionRepo,
         FakeEventStoreRepository eventStore,
         IExecutionProjectionUpdateQueue? projectionQueue = null)
     {
@@ -3567,7 +3567,7 @@ public sealed class ExecutionServiceTests
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
             dedupService,
-            workflowRepo,
+            executionRepo,
             new StubDefinitionRepository(),
             dedupRepo,
             eventStore,
@@ -3577,12 +3577,12 @@ public sealed class ExecutionServiceTests
 
     private static ExecutionService BuildExecutionService(
         SqliteTestDatabase sqlite,
-        IWorkflowEngine engine,
+        IExecutionEngine engine,
         IDisplayIdService displayIds,
         IDefinitionCompilerService compiler,
         IIdGenerator idGenerator,
         ICommandDedupService dedupService,
-        IExecutionRepository workflows,
+        IExecutionRepository executions,
         IDefinitionRepository definitions,
         ICommandDedupRepository dedup,
         IEventStoreRepository eventStore,
@@ -3611,7 +3611,7 @@ public sealed class ExecutionServiceTests
             compiler,
             idGenerator,
             dedupService,
-            workflows,
+            executions,
             definitions,
             projectAuthorization ?? new AllowAllProjectAuthorizationService(),
             sqlite.TenantAccessor,
@@ -3636,7 +3636,7 @@ public sealed class ExecutionServiceTests
         var display = new FakeDisplayIdService { ResolveResultDefinition = defId };
         var sut = BuildExecutionService(
             sqlite,
-            new FakeWorkflowEngine(),
+            new FakeExecutionEngine(),
             display,
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),
@@ -3669,7 +3669,7 @@ public sealed class ExecutionServiceTests
         var display = new FakeDisplayIdService { ResolveResultDefinition = defId };
         var sut = BuildExecutionService(
             sqlite,
-            new FakeWorkflowEngine(),
+            new FakeExecutionEngine(),
             display,
             new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
             new FixedIdGenerator(Guid.NewGuid()),

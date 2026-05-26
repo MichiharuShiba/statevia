@@ -14,8 +14,8 @@ public sealed class EventProvider : IEventProvider
     /// <summary>
     /// 指定ワークフローに紐づくイベントプロバイダを構築する（相関用の識別子を保持する）。
     /// </summary>
-    /// <param name="workflowId">ワークフローインスタンス ID。</param>
-    public EventProvider(string workflowId) { }
+    /// <param name="executionId">ワークフローインスタンス ID。</param>
+    public EventProvider(string executionId) { }
 
     /// <inheritdoc />
     public Task WaitAsync(string eventName, CancellationToken ct)

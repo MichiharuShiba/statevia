@@ -7,27 +7,27 @@ using Statevia.Core.Engine.Scheduler;
 namespace Statevia.Core.Engine.DependencyInjection;
 
 /// <summary>
-/// <see cref="StateviaWorkflowEngineServiceCollectionExtensions.AddStateviaWorkflowEngine"/> が行う
+/// <see cref="StateviaExecutionEngineServiceCollectionExtensions.AddStateviaExecutionEngine"/> が行う
 /// 既定のサービス登録（スケジューラ・ファクトリ・エンジン）をまとめる。
 /// </summary>
-internal static class WorkflowEngineServiceRegistrations
+internal static class ExecutionEngineServiceRegistrations
 {
     /// <summary>
-    /// 解決済みの <see cref="WorkflowEngineOptions"/> に基づき、エンジン関連の Singleton を登録する。
+    /// 解決済みの <see cref="ExecutionEngineOptions"/> に基づき、エンジン関連の Singleton を登録する。
     /// </summary>
     /// <param name="services">DI コンテナ。</param>
     /// <param name="options">並列度など、登録に用いるオプション。</param>
-    internal static void Register(IServiceCollection services, WorkflowEngineOptions options)
+    internal static void Register(IServiceCollection services, ExecutionEngineOptions options)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(options);
 
         services.AddSingleton<IScheduler>(_ => new DefaultScheduler(options.MaxParallelism));
-        services.AddSingleton<IWorkflowInstanceFactory, DefaultWorkflowInstanceFactory>();
-        services.AddSingleton<IWorkflowEngine>(sp => new WorkflowEngine(
+        services.AddSingleton<IExecutionInstanceFactory, DefaultExecutionInstanceFactory>();
+        services.AddSingleton<IExecutionEngine>(sp => new ExecutionEngine(
             sp.GetRequiredService<IScheduler>(),
-            sp.GetRequiredService<IWorkflowInstanceFactory>(),
-            sp.GetRequiredService<IWorkflowInstanceIdGenerator>(),
+            sp.GetRequiredService<IExecutionInstanceFactory>(),
+            sp.GetRequiredService<IExecutionIdGenerator>(),
             sp.GetRequiredService<ILoggerFactory>()));
     }
 }

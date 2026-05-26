@@ -20,7 +20,7 @@ public sealed class TenantQueryFilterTests
         var accessor = database.TenantAccessor;
         accessor.Set(null);
 
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var definitionId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         var projectId = Guid.NewGuid();
@@ -36,7 +36,7 @@ public sealed class TenantQueryFilterTests
                 versionId: versionId);
             seed.Executions.Add(new ExecutionRow
             {
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 TenantId = "default",
                 DefinitionId = definitionId,
                 DefinitionVersionId = versionId,

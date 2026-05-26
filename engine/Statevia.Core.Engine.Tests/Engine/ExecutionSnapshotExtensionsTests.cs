@@ -6,11 +6,11 @@ using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Engine;
 
-public class WorkflowSnapshotExtensionsTests
+public class ExecutionSnapshotExtensionsTests
 {
-    /// <summary><see cref="WorkflowSnapshotExtensions.ToSnapshot"/> がインスタンスの観測可能な状態を写し取ることを検証する。</summary>
+    /// <summary><see cref="ExecutionSnapshotExtensions.ToSnapshot"/> がインスタンスの観測可能な状態を写し取ることを検証する。</summary>
     [Fact]
-    public void ToSnapshot_MapsWorkflowFieldsAndFlags()
+    public void ToSnapshot_MapsExecutionFieldsAndFlags()
     {
         // Arrange
         var execFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
@@ -25,7 +25,7 @@ public class WorkflowSnapshotExtensionsTests
             InitialState = "S0",
             StateExecutorFactory = execFactory
         };
-        var factory = new DefaultWorkflowInstanceFactory();
+        var factory = new DefaultExecutionInstanceFactory();
         var instance = factory.Create(definition, "wf-abc");
         instance.AddActiveState("S1");
         instance.MarkCompleted();
@@ -34,7 +34,7 @@ public class WorkflowSnapshotExtensionsTests
         var snapshot = instance.ToSnapshot();
 
         // Assert
-        Assert.Equal("wf-abc", snapshot.WorkflowId);
+        Assert.Equal("wf-abc", snapshot.ExecutionId);
         Assert.Equal("UnitFlow", snapshot.WorkflowName);
         Assert.Single(snapshot.ActiveStates);
         Assert.Equal("S1", snapshot.ActiveStates[0]);
@@ -48,10 +48,10 @@ public class WorkflowSnapshotExtensionsTests
     public void ToSnapshot_NullInstance_ThrowsArgumentNullException()
     {
         // Arrange
-        WorkflowInstance? instance = null;
+        ExecutionInstance? instance = null;
 
         // Act / Assert
-        var ex = Assert.Throws<ArgumentNullException>(() => WorkflowSnapshotExtensions.ToSnapshot(instance!));
+        var ex = Assert.Throws<ArgumentNullException>(() => ExecutionSnapshotExtensions.ToSnapshot(instance!));
         Assert.Equal("instance", ex.ParamName);
     }
 }

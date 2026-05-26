@@ -60,7 +60,7 @@ public sealed class DisplayIdServiceImplTests
     /// 実行種別で実行行が存在するとき識別子を返す。
     /// </summary>
     [Fact]
-    public async Task ResolveAsync_WhenKindWorkflowAndExecutionRowExists_ReturnsGuid()
+    public async Task ResolveAsync_WhenKindExecutionAndExecutionRowExists_ReturnsGuid()
     {
         // Arrange
         using var db = new InMemoryTestDatabase();

@@ -16,7 +16,7 @@ public class CancelTests
     {
         // Arrange: 長時間実行する状態を含む定義とエンジンを準備
         var def = CreateDefinitionWithLongRunningState();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
         await Task.Delay(50);
 
@@ -35,7 +35,7 @@ public class CancelTests
     {
         // Arrange
         var def = CreateDefinitionWithLongRunningState();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
         await Task.Delay(50);
         var clientEventId = Guid.Parse("b2c3d4e5-f6a7-4890-b123-456789abcdef");
@@ -75,7 +75,7 @@ public class CancelTests
     {
         // Arrange
         var def = CreateDefinitionWithLongRunningState();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act

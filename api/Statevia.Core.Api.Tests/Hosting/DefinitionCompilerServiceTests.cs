@@ -16,11 +16,11 @@ namespace Statevia.Core.Api.Tests.Hosting;
 
 public sealed class DefinitionCompilerServiceTests
 {
-    private static WorkflowEngine CreateTestEngine(int maxParallelism = 4) =>
+    private static ExecutionEngine CreateTestEngine(int maxParallelism = 4) =>
         new(
             new DefaultScheduler(maxParallelism),
-            new DefaultWorkflowInstanceFactory(),
-            new UuidV7WorkflowInstanceIdGenerator(),
+            new DefaultExecutionInstanceFactory(),
+            new UuidV7ExecutionIdGenerator(),
             NullLoggerFactory.Instance);
 
     private static IDefinitionLoadStrategy CreateDefaultStrategy() =>
@@ -201,7 +201,7 @@ public sealed class DefinitionCompilerServiceTests
 
         // Act
         var engine = CreateTestEngine();
-        var wfId = engine.Start(def, workflowInput: new Dictionary<string, int> { ["x"] = 42 });
+        var wfId = engine.Start(def, input: new Dictionary<string, int> { ["x"] = 42 });
 
         await Task.Delay(200);
 
@@ -705,9 +705,9 @@ public sealed class DefinitionCompilerServiceTests
         using var inputDoc = JsonDocument.Parse("""{"eligible":true,"shared":{"orderId":"ORD-1001"}}""");
 
         // Act
-        var workflowId = engine.Start(compiled, null, inputDoc.RootElement);
+        var executionId = engine.Start(compiled, null, inputDoc.RootElement);
         await Task.Delay(400);
-        var graphJson = engine.ExportExecutionGraph(workflowId);
+        var graphJson = engine.ExportExecutionGraph(executionId);
 
         // Assert
         using var graphDoc = JsonDocument.Parse(graphJson);

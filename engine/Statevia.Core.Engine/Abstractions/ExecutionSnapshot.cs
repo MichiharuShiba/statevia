@@ -4,10 +4,10 @@ namespace Statevia.Core.Engine.Abstractions;
 /// ワークフローインスタンスの現在のスナップショット。
 /// 観測用であり、実行には影響しません。
 /// </summary>
-public sealed class WorkflowSnapshot
+public sealed class ExecutionSnapshot
 {
     /// <summary>ワークフローインスタンス ID。</summary>
-    public required string WorkflowId { get; init; }
+    public required string ExecutionId { get; init; }
 
     /// <summary>ワークフロー定義名。</summary>
     public required string WorkflowName { get; init; }

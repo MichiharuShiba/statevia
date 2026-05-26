@@ -9,7 +9,7 @@ Project: 実行型ステートマシン
 
 本書は、`engine/Statevia.Core.Engine/ExecutionGraph` の**現行実装**が返す JSON 契約を定義する。
 
-- 対象出力: `WorkflowEngine.ExportExecutionGraph(workflowId)`
+- 対象出力: `ExecutionEngine.ExportExecutionGraph(executionId)`
 - 用途: 実行可視化、デバッグ、API/UI 連携
 - 命名: JSON キーは **camelCase**
 
@@ -19,7 +19,7 @@ Project: 実行型ステートマシン
 
 ### 2.1 ワークフローが存在する場合
 
-`ExportExecutionGraph(workflowId)` は次のトップレベル JSON を返す。
+`ExportExecutionGraph(executionId)` は次のトップレベル JSON を返す。
 
 ```json
 {
@@ -30,7 +30,7 @@ Project: 実行型ステートマシン
 
 ### 2.2 ワークフローが存在しない場合
 
-`workflowId` が見つからない場合は、空オブジェクト文字列を返す。
+`executionId` が見つからない場合は、空オブジェクト文字列を返す。
 
 ```json
 {}

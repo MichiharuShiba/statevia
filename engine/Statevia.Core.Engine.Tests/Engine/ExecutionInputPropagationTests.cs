@@ -12,13 +12,13 @@ using Xunit;
 namespace Statevia.Core.Engine.Tests.Engine;
 
 /// <summary>
-/// workflow-input-output-spec フェーズ A: 初期 input・next 伝播・Fork Broadcast・Join 辞書。
+/// workflow-input-output-spec フェーズ A: Start の <c>input</c> 引数・next 伝播・Fork Broadcast・Join 辞書。
 /// </summary>
-public class WorkflowInputPropagationTests
+public class ExecutionInputPropagationTests
 {
-    /// <summary>Start に渡した workflowInput が初期状態の Execute にそのまま渡ることを検証する。</summary>
+    /// <summary>Start に渡した input が初期状態の Execute にそのまま渡ることを検証する。</summary>
     [Fact]
-    public async Task Start_passes_workflowInput_to_initial_state()
+    public async Task Start_passes_input_to_initial_state()
     {
         // Arrange
         object? seen = "unset";
@@ -28,7 +28,7 @@ public class WorkflowInputPropagationTests
                 seen = input;
                 return Task.FromResult<object?>("done");
             })));
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def, null, "workflow-seed");
 
         // Act
@@ -38,13 +38,13 @@ public class WorkflowInputPropagationTests
         Assert.Equal("workflow-seed", seen);
     }
 
-    /// <summary>実行グラフ JSON の初期状態ノードに workflowInput が記録されることを検証する。</summary>
+    /// <summary>実行グラフ JSON の初期状態ノードに Start input が記録されることを検証する。</summary>
     [Fact]
-    public async Task ExportExecutionGraph_records_workflow_input_on_initial_state_node()
+    public async Task ExportExecutionGraph_records_input_on_initial_state_node()
     {
         var def = CreateSingleStateDefinition(
             DefaultStateExecutor.Create(new ImmediateState()));
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var seed = new Dictionary<string, object?> { ["k"] = "v" };
         var id = engine.Start(def, null, seed);
 
@@ -74,7 +74,7 @@ public class WorkflowInputPropagationTests
                 bInput = input;
                 return Task.FromResult<object?>(null);
             })));
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -101,7 +101,7 @@ public class WorkflowInputPropagationTests
                 inputs.Add(input);
                 return Task.FromResult<object?>("b");
             })));
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         await WaitUntilCompletedAsync(engine, id);
@@ -124,7 +124,7 @@ public class WorkflowInputPropagationTests
                 afterInput = input;
                 return Task.FromResult<object?>(null);
             })));
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -147,7 +147,7 @@ public class WorkflowInputPropagationTests
             DefaultStateExecutor.Create(new DelegateState((_, _, _) => Task.FromResult<object?>("out-A"))),
             DefaultStateExecutor.Create(new DelegateState((_, _, _) => Task.FromResult<object?>("out-B"))),
             DefaultStateExecutor.Create(new DelegateState((_, _, _) => Task.FromResult<object?>(null))));
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         await WaitUntilCompletedAsync(engine, id);
@@ -207,7 +207,7 @@ public class WorkflowInputPropagationTests
                 return Task.FromResult<object?>(null);
             })),
             new StateInputDefinition { Path = "$.payload" });
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -242,7 +242,7 @@ public class WorkflowInputPropagationTests
                 ["A"] = new() { Path = "$.v" },
                 ["B"] = new() { Path = "$.v" }
             });
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -268,7 +268,7 @@ public class WorkflowInputPropagationTests
                 return Task.FromResult<object?>(null);
             })),
             new StateInputDefinition { Path = "$.A" });
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -303,7 +303,7 @@ public class WorkflowInputPropagationTests
                     ["enabled"] = new() { Literal = true }
                 }
             });
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -318,12 +318,12 @@ public class WorkflowInputPropagationTests
         Assert.Equal("from-path", foo["bar"]);
     }
 
-    private static async Task WaitUntilCompletedAsync(WorkflowEngine engine, string workflowId, int maxMs = 3000)
+    private static async Task WaitUntilCompletedAsync(ExecutionEngine engine, string executionId, int maxMs = 3000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(maxMs);
         while (DateTime.UtcNow < deadline)
         {
-            var s = engine.GetSnapshot(workflowId);
+            var s = engine.GetSnapshot(executionId);
             if (s is { IsCompleted: true })
             {
                 return;
@@ -332,7 +332,7 @@ public class WorkflowInputPropagationTests
             await Task.Delay(20);
         }
 
-        Assert.Fail("Workflow did not complete in time.");
+        Assert.Fail("Execution did not complete in time.");
     }
 
     private sealed class DelegateState : IState<object?, object?>
@@ -454,7 +454,7 @@ public class WorkflowInputPropagationTests
 
     /// <summary>
     /// A/B には <c>Completed</c> 遷移を置かない（Join へは <see cref="JoinTracker.RecordFact"/> のみ）。
-    /// これにより Join1 は allOf 完了後にのみ <see cref="WorkflowEngine"/> から起動される。
+    /// これにより Join1 は allOf 完了後にのみ <see cref="ExecutionEngine"/> から起動される。
     /// </summary>
     private static CompiledWorkflowDefinition CreateJoinThenNextDefinition(
         IStateExecutor a,

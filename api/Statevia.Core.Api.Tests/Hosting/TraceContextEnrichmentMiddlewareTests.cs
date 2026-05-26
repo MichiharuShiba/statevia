@@ -33,10 +33,10 @@ public sealed class TraceContextEnrichmentMiddlewareTests
     }
 
     /// <summary>
-    /// ワークフロールートで Items へのドメイン ID 設定と enrich ログ出力を行う。
+    /// 実行ルートで Items へのドメイン ID 設定と enrich ログ出力を行う。
     /// </summary>
     [Fact]
-    public async Task InvokeAsync_LogsEnrichAndSetsTracestate_ForWorkflowRoute()
+    public async Task InvokeAsync_LogsEnrichAndSetsTracestate_ForExecutionRoute()
     {
         // Arrange
         // RequestLoggingMiddleware より後段で TraceId が既に Items に入っている状態を模す。
@@ -65,8 +65,8 @@ public sealed class TraceContextEnrichmentMiddlewareTests
         // Assert
         Assert.Contains(collector.Entries, e => e.Contains("HTTP trace enrich", StringComparison.Ordinal));
         Assert.Contains(collector.Entries, e => e.Contains("wf-abc", StringComparison.Ordinal));
-        Assert.True(ctx.Items.ContainsKey(RequestLogContext.WorkflowDisplayIdItemKey));
-        Assert.Equal("wf-abc", ctx.Items[RequestLogContext.WorkflowDisplayIdItemKey]);
+        Assert.True(ctx.Items.ContainsKey(RequestLogContext.ExecutionDisplayIdItemKey));
+        Assert.Equal("wf-abc", ctx.Items[RequestLogContext.ExecutionDisplayIdItemKey]);
     }
 
     /// <summary>
@@ -81,10 +81,10 @@ public sealed class TraceContextEnrichmentMiddlewareTests
         ctx.Request.RouteValues["id"] = "def-1";
 
         // Act
-        var (workflowId, definitionId, graphId) = TraceContextEnrichmentMiddleware.ExtractDomainIds(ctx);
+        var (executionId, definitionId, graphId) = TraceContextEnrichmentMiddleware.ExtractDomainIds(ctx);
 
         // Assert
-        Assert.Null(workflowId);
+        Assert.Null(executionId);
         Assert.Equal("def-1", definitionId);
         Assert.Null(graphId);
     }
@@ -101,25 +101,25 @@ public sealed class TraceContextEnrichmentMiddlewareTests
         ctx.Request.RouteValues["graphId"] = "graph-42";
 
         // Act
-        var (workflowId, definitionId, graphId) = TraceContextEnrichmentMiddleware.ExtractDomainIds(ctx);
+        var (executionId, definitionId, graphId) = TraceContextEnrichmentMiddleware.ExtractDomainIds(ctx);
 
         // Assert
-        Assert.Null(workflowId);
+        Assert.Null(executionId);
         Assert.Null(definitionId);
         Assert.Equal("graph-42", graphId);
     }
 
     /// <summary>
-    /// <see cref="TraceContextEnrichmentMiddleware.BuildTracestateOpaque"/> が workflow ID を不透明値に含める。
+    /// <see cref="TraceContextEnrichmentMiddleware.BuildTracestateOpaque"/> が execution ID を不透明値に含める。
     /// </summary>
     [Fact]
-    public void BuildTracestateOpaque_IncludesWorkflowId()
+    public void BuildTracestateOpaque_IncludesExecutionId()
     {
         // Arrange
-        const string workflowDisplayId = "wf-1";
+        const string executionDisplayId = "wf-1";
 
         // Act
-        var opaque = TraceContextEnrichmentMiddleware.BuildTracestateOpaque(workflowDisplayId, null, null);
+        var opaque = TraceContextEnrichmentMiddleware.BuildTracestateOpaque(executionDisplayId, null, null);
 
         // Assert
         Assert.NotNull(opaque);
@@ -133,10 +133,10 @@ public sealed class TraceContextEnrichmentMiddlewareTests
     public void BuildTracestateOpaque_Truncates()
     {
         // Arrange
-        var longWorkflowId = new string('x', 500);
+        var longExecutionId = new string('x', 500);
 
         // Act
-        var opaque = TraceContextEnrichmentMiddleware.BuildTracestateOpaque(longWorkflowId, null, null);
+        var opaque = TraceContextEnrichmentMiddleware.BuildTracestateOpaque(longExecutionId, null, null);
 
         // Assert
         Assert.NotNull(opaque);

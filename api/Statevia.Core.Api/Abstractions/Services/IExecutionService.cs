@@ -4,11 +4,11 @@ using Statevia.Core.Api.Controllers;
 namespace Statevia.Core.Api.Abstractions.Services;
 
 /// <summary>
-/// ワークフローのユースケース（開始・一覧・取得・イベント・投影更新など）。
+/// 実行インスタンスのユースケース（開始・一覧・取得・イベント・投影更新など）。
 /// </summary>
 public interface IExecutionService
 {
-    /// <summary>ワークフローを開始し、表示用 ID 付きの応答を返す。</summary>
+    /// <summary>実行を開始し、表示用 ID 付きの応答を返す。</summary>
     Task<ExecutionResponse> StartAsync(
         string tenantId,
         StartExecutionRequest request,
@@ -24,22 +24,22 @@ public interface IExecutionService
         ExecutionListQuery query,
         CancellationToken ct);
 
-    /// <summary>単一取得（一覧 <see cref="ExecutionResponse"/> と同一形。UI の WorkflowDTO 向け）。</summary>
+    /// <summary>単一取得（一覧 <see cref="ExecutionResponse"/> と同一形。UI の ExecutionDTO 向け）。</summary>
     Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct);
 
-    /// <summary>指定ワークフローがテナントに存在することを検証する（存在しなければ例外）。</summary>
-    Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct);
+    /// <summary>指定 execution がテナントに存在することを検証する（存在しなければ例外）。</summary>
+    Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct);
 
     /// <summary>投影済み実行グラフ JSON を返す。</summary>
     Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct);
 
     /// <summary>スナップショット行からグラフ JSON を取得する。無ければ <see langword="null"/>。</summary>
-    Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct);
+    Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct);
 
-    /// <summary>現在のワークフロービュー（UI 向け DTO）を返す。</summary>
-    Task<ExecutionViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct);
+    /// <summary>現在の実行ビュー（UI 向け DTO）を返す。</summary>
+    Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct);
 
-    /// <summary>指定シーケンス時点に近いワークフロービューを返す（リプレイ近似）。</summary>
+    /// <summary>指定シーケンス時点に近い実行ビューを返す（リプレイ近似）。</summary>
     Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct);
 
     /// <summary>event_store 由来のタイムラインイベントを返す。</summary>
@@ -55,7 +55,7 @@ public interface IExecutionService
         CommandRequestContext requestContext,
         CancellationToken ct);
 
-    /// <summary>ワークフローをキャンセル要求状態にし、エンジンへ伝播する。</summary>
+    /// <summary>実行をキャンセル要求状態にし、エンジンへ伝播する。</summary>
     Task CancelAsync(
         string tenantId,
         string idOrUuid,
@@ -73,7 +73,7 @@ public interface IExecutionService
         CancellationToken ct);
 
     /// <summary>
-    /// エンジンの現在状態を読み取り、投影（workflows / execution_graph_snapshots）を更新する。
+    /// エンジンの現在状態を読み取り、投影（executions / execution_graph_snapshots）を更新する。
     /// </summary>
-    Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct);
+    Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct);
 }

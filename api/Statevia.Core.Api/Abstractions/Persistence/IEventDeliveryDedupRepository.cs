@@ -11,7 +11,7 @@ internal interface IEventDeliveryDedupRepository
     Task<EventDeliveryDedupRow?> FindAsync(
         ICoreUnitOfWork uow,
         string tenantId,
-        Guid workflowId,
+        Guid executionId,
         Guid clientEventId,
         CancellationToken cancellationToken);
 
@@ -25,7 +25,7 @@ internal interface IEventDeliveryDedupRepository
     Task<bool> TryUpdateStatusAsync(
         ICoreUnitOfWork uow,
         string tenantId,
-        Guid workflowId,
+        Guid executionId,
         Guid clientEventId,
         EventDeliveryDedupStatusUpdate update,
         CancellationToken cancellationToken);

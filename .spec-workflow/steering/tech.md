@@ -20,8 +20,8 @@
 
 ## Application Architecture
 
-- **Engine**: `IWorkflowEngine` をシングルトンとして Core-API が利用。定義コンパイルは専用サービス経由。
-- **Core-API**: Controllers → Services → Repositories / `IWorkflowEngine`。例外は `ApiExceptionFilter` と契約エラー JSON に集約。
+- **Engine**: `IExecutionEngine` をシングルトンとして Core-API が利用。定義コンパイルは専用サービス経由。
+- **Core-API**: Controllers → Services → Repositories / `IExecutionEngine`。例外は `ApiExceptionFilter` と契約エラー JSON に集約。
 - **Persistence**: `CoreDbContext` は `IDbContextFactory<>` を主に使用。書き込み経路はユースケースとトランザクション境界を `AGENTS.md` に従う。
 
 ## Data Storage

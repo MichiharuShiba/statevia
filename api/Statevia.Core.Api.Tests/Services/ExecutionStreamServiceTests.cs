@@ -26,24 +26,24 @@ public sealed class ExecutionStreamServiceTests
             throw new NotSupportedException();
         public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = _status });
-        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) => Task.CompletedTask;
+        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
         {
             GetGraphJsonCalls++;
             return Task.FromResult(_graphJson);
         }
-        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
+        public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct)
         {
             GetGraphJsonCalls++;
             return Task.FromResult<string?>(_graphJson);
         }
-        public Task<ExecutionViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
         public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
-        public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
+        public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
     }
 
     private sealed class FlakyThenStableExecutionService : IExecutionService
@@ -61,12 +61,12 @@ public sealed class ExecutionStreamServiceTests
             throw new NotSupportedException();
         public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = "Running" });
-        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) => Task.CompletedTask;
+        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
         {
             return Task.FromResult(_stableJson);
         }
-        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
+        public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct)
         {
             _getGraphCalls++;
             if (_getGraphCalls == 1)
@@ -74,13 +74,13 @@ public sealed class ExecutionStreamServiceTests
 
             return Task.FromResult<string?>(_stableJson);
         }
-        public Task<ExecutionViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
         public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
-        public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
+        public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
     }
 
     /// <summary>1 回目は例外、2 回目以降は JSON を返し、呼び出し間隔を記録する（SSE の catch 経路の待機時間検証用）。</summary>
@@ -103,12 +103,12 @@ public sealed class ExecutionStreamServiceTests
 
         public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = "Running" });
-        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) => Task.CompletedTask;
+        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
         {
             return Task.FromResult(_stableJson);
         }
-        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
+        public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct)
         {
             var now = DateTime.UtcNow;
             if (_getGraphCalls > 0)
@@ -122,7 +122,7 @@ public sealed class ExecutionStreamServiceTests
             return Task.FromResult<string?>(_stableJson);
         }
 
-        public Task<ExecutionViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
 
         public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) =>
             throw new NotSupportedException();
@@ -139,7 +139,7 @@ public sealed class ExecutionStreamServiceTests
         public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
+        public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
     }
 
     private sealed class ThrowingExecutionService : IExecutionService
@@ -150,16 +150,16 @@ public sealed class ExecutionStreamServiceTests
             throw new NotSupportedException();
         public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = "Running" });
-        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
+        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) => throw new NotSupportedException();
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) => Task.FromResult("{\"nodes\":[]}");
-        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
-        public Task<ExecutionViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
         public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
-        public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
+        public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
     }
 
     /// <summary>開始時の存在確認は成功し、その後 snapshot 取得が null を返すテスト用実装。</summary>
@@ -173,20 +173,20 @@ public sealed class ExecutionStreamServiceTests
             throw new NotSupportedException();
         public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = "Running" });
-        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) => Task.CompletedTask;
+        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) => Task.FromResult("{\"nodes\":[]}");
-        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
+        public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct)
         {
             TryGetSnapshotCalls++;
             return Task.FromResult<string?>(null);
         }
-        public Task<ExecutionViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
         public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
-        public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) => throw new NotSupportedException();
+        public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
     }
 
     private sealed class FakeDisplayIdService : IDisplayIdService
@@ -213,8 +213,8 @@ public sealed class ExecutionStreamServiceTests
     {
         // Arrange
         var display = new FakeDisplayIdService { ResolveResult = null };
-        var workflows = new ThrowingExecutionService();
-        var sut = new ExecutionStreamService(workflows, display);
+        var executions = new ThrowingExecutionService();
+        var sut = new ExecutionStreamService(executions, display);
 
         var http = new DefaultHttpContext();
         http.Response.Body = new MemoryStream();
@@ -238,8 +238,8 @@ public sealed class ExecutionStreamServiceTests
             ResolveResult = uuid,
             GetDisplayIdResult = "EXEC-1"
         };
-        var workflows = new ThrowingExecutionService();
-        var sut = new ExecutionStreamService(workflows, display);
+        var executions = new ThrowingExecutionService();
+        var sut = new ExecutionStreamService(executions, display);
 
         var http = new DefaultHttpContext();
         var body = new MemoryStream();
@@ -265,14 +265,14 @@ public sealed class ExecutionStreamServiceTests
     {
         // Arrange
         var graphJson = "{\"nodes\":[]}";
-        var fakeWorkflows = new FakeExecutionService(graphJson);
+        var fakeExecutions = new FakeExecutionService(graphJson);
         var display = new FakeDisplayIdService
         {
             ResolveResult = Guid.NewGuid(),
             GetDisplayIdResult = "EXEC-1"
         };
 
-        var sut = new ExecutionStreamService(fakeWorkflows, display);
+        var sut = new ExecutionStreamService(fakeExecutions, display);
 
         var http = new DefaultHttpContext();
         http.Response.Body = new MemoryStream();
@@ -286,7 +286,7 @@ public sealed class ExecutionStreamServiceTests
         // Assert
         var bodyText = System.Text.Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray());
         Assert.Contains("GraphUpdated", bodyText);
-        Assert.True(fakeWorkflows.GetGraphJsonCalls >= 1); // 1 周以上の snapshot 取得
+        Assert.True(fakeExecutions.GetGraphJsonCalls >= 1); // 1 周以上の snapshot 取得
     }
 
     /// <summary>二周目で内容が同じなら二回目の更新イベントを書き込まない。</summary>
@@ -295,14 +295,14 @@ public sealed class ExecutionStreamServiceTests
     {
         // Arrange
         var graphJson = "{\"nodes\":[{\"nodeId\":\"n1\",\"stateName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}]}";
-        var fakeWorkflows = new FakeExecutionService(graphJson);
+        var fakeExecutions = new FakeExecutionService(graphJson);
         var display = new FakeDisplayIdService
         {
             ResolveResult = Guid.NewGuid(),
             GetDisplayIdResult = "EXEC-1"
         };
 
-        var sut = new ExecutionStreamService(fakeWorkflows, display);
+        var sut = new ExecutionStreamService(fakeExecutions, display);
 
         var http = new DefaultHttpContext();
         http.Response.Body = new MemoryStream();
@@ -317,7 +317,7 @@ public sealed class ExecutionStreamServiceTests
         var bodyText = System.Text.Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray());
         var count = bodyText.Split("GraphUpdated", StringSplitOptions.None).Length - 1;
         Assert.Equal(1, count);
-        Assert.True(fakeWorkflows.GetGraphJsonCalls >= 2);
+        Assert.True(fakeExecutions.GetGraphJsonCalls >= 2);
     }
 
     /// <summary>表示用識別子がないとき入力識別子を実行識別子として載せる。</summary>
@@ -326,14 +326,14 @@ public sealed class ExecutionStreamServiceTests
     {
         // Arrange
         var graphJson = "{\"nodes\":[]}";
-        var fakeWorkflows = new FakeExecutionService(graphJson);
+        var fakeExecutions = new FakeExecutionService(graphJson);
         var display = new FakeDisplayIdService
         {
             ResolveResult = Guid.NewGuid(),
             GetDisplayIdResult = null
         };
 
-        var sut = new ExecutionStreamService(fakeWorkflows, display);
+        var sut = new ExecutionStreamService(fakeExecutions, display);
 
         var http = new DefaultHttpContext();
         http.Response.Body = new MemoryStream();
@@ -357,14 +357,14 @@ public sealed class ExecutionStreamServiceTests
     {
         // Arrange
         var stableJson = "{\"nodes\":[]}";
-        var fakeWorkflows = new FlakyThenStableExecutionService(stableJson);
+        var fakeExecutions = new FlakyThenStableExecutionService(stableJson);
         var display = new FakeDisplayIdService
         {
             ResolveResult = Guid.NewGuid(),
             GetDisplayIdResult = "EXEC-FLAKY"
         };
 
-        var sut = new ExecutionStreamService(fakeWorkflows, display);
+        var sut = new ExecutionStreamService(fakeExecutions, display);
 
         var http = new DefaultHttpContext();
         http.Response.Body = new MemoryStream();
@@ -376,7 +376,7 @@ public sealed class ExecutionStreamServiceTests
         await sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", cts.Token);
 
         // Assert
-        Assert.True(fakeWorkflows.GetGraphJsonCalls >= 2);
+        Assert.True(fakeExecutions.GetGraphJsonCalls >= 2);
         var bodyText = System.Text.Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray());
         Assert.Contains("GraphUpdated", bodyText);
     }
@@ -387,14 +387,14 @@ public sealed class ExecutionStreamServiceTests
     {
         // Arrange
         var stableJson = "{\"nodes\":[]}";
-        var fakeWorkflows = new FailOnceThenStableWithCallSpacingExecutionService(stableJson);
+        var fakeExecutions = new FailOnceThenStableWithCallSpacingExecutionService(stableJson);
         var display = new FakeDisplayIdService
         {
             ResolveResult = Guid.NewGuid(),
             GetDisplayIdResult = "EXEC-TIMING"
         };
 
-        var sut = new ExecutionStreamService(fakeWorkflows, display);
+        var sut = new ExecutionStreamService(fakeExecutions, display);
 
         var http = new DefaultHttpContext();
         http.Response.Body = new MemoryStream();
@@ -406,10 +406,10 @@ public sealed class ExecutionStreamServiceTests
         await sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", cts.Token);
 
         // Assert
-        Assert.NotNull(fakeWorkflows.TimeSincePreviousGetGraphStarted);
+        Assert.NotNull(fakeExecutions.TimeSincePreviousGetGraphStarted);
         Assert.True(
-            fakeWorkflows.TimeSincePreviousGetGraphStarted >= TimeSpan.FromMilliseconds(ExecutionStreamService.GraphPollingIntervalMilliseconds - 150),
-            $"Expected spacing >= {ExecutionStreamService.GraphPollingIntervalMilliseconds - 150} ms, was {fakeWorkflows.TimeSincePreviousGetGraphStarted!.Value.TotalMilliseconds} ms");
+            fakeExecutions.TimeSincePreviousGetGraphStarted >= TimeSpan.FromMilliseconds(ExecutionStreamService.GraphPollingIntervalMilliseconds - 150),
+            $"Expected spacing >= {ExecutionStreamService.GraphPollingIntervalMilliseconds - 150} ms, was {fakeExecutions.TimeSincePreviousGetGraphStarted!.Value.TotalMilliseconds} ms");
         var bodyText = System.Text.Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray());
         Assert.Contains("GraphUpdated", bodyText);
     }
@@ -419,13 +419,13 @@ public sealed class ExecutionStreamServiceTests
     public async Task WriteStreamAsync_WhenSnapshotMissing_EndsStreamWithoutWriting()
     {
         // Arrange
-        var workflows = new SnapshotMissingExecutionService();
+        var executions = new SnapshotMissingExecutionService();
         var display = new FakeDisplayIdService
         {
             ResolveResult = Guid.NewGuid(),
             GetDisplayIdResult = "EXEC-1"
         };
-        var sut = new ExecutionStreamService(workflows, display);
+        var sut = new ExecutionStreamService(executions, display);
         var http = new DefaultHttpContext();
         var body = new MemoryStream();
         http.Response.Body = body;
@@ -435,13 +435,13 @@ public sealed class ExecutionStreamServiceTests
 
         // Assert
         Assert.Equal("text/event-stream", http.Response.ContentType);
-        Assert.Equal(1, workflows.TryGetSnapshotCalls);
+        Assert.Equal(1, executions.TryGetSnapshotCalls);
         Assert.Equal(0, body.Length);
     }
 
     /// <summary>スナップショットが終端を示したら、次ポーリングを待たずにストリームを終了する。</summary>
     [Fact]
-    public async Task WriteStreamAsync_WhenWorkflowIsTerminal_EndsStreamImmediatelyAfterFirstUpdate()
+    public async Task WriteStreamAsync_WhenExecutionIsTerminal_EndsStreamImmediatelyAfterFirstUpdate()
     {
         // Arrange
         var graphJson = """
@@ -466,13 +466,13 @@ public sealed class ExecutionStreamServiceTests
                           ]
                         }
                         """;
-        var workflows = new FakeExecutionService(graphJson);
+        var executions = new FakeExecutionService(graphJson);
         var display = new FakeDisplayIdService
         {
             ResolveResult = Guid.NewGuid(),
             GetDisplayIdResult = "EXEC-TERMINAL"
         };
-        var sut = new ExecutionStreamService(workflows, display);
+        var sut = new ExecutionStreamService(executions, display);
 
         var http = new DefaultHttpContext();
         var body = new MemoryStream();
@@ -484,7 +484,7 @@ public sealed class ExecutionStreamServiceTests
         // Assert
         var bodyText = System.Text.Encoding.UTF8.GetString(body.ToArray());
         Assert.Contains("GraphUpdated", bodyText);
-        Assert.Equal(1, workflows.GetGraphJsonCalls);
+        Assert.Equal(1, executions.GetGraphJsonCalls);
     }
 }
 

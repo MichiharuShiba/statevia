@@ -11,15 +11,15 @@ using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Engine;
 
-public class WorkflowEngineTests
+public class ExecutionEngineTests
 {
-    /// <summary>Start を呼ぶと空でないワークフロー ID が返ることを検証する。</summary>
+    /// <summary>Start を呼ぶと空でない execution ID が返ることを検証する。</summary>
     [Fact]
-    public void Start_ReturnsWorkflowId()
+    public void Start_ReturnsExecutionId()
     {
         // Arrange
         var def = CreateMinimalDefinition();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -29,12 +29,12 @@ public class WorkflowEngineTests
         Assert.NotEmpty(id);
     }
 
-    /// <summary>存在しないワークフロー ID で GetSnapshot を呼ぶと null が返ることを検証する。</summary>
+    /// <summary>存在しない execution ID で GetSnapshot を呼ぶと null が返ることを検証する。</summary>
     [Fact]
-    public void GetSnapshot_ReturnsNull_WhenWorkflowNotFound()
+    public void GetSnapshot_ReturnsNull_WhenExecutionNotFound()
     {
         // Arrange
-        var engine = WorkflowEngineTestHarness.Create();
+        var engine = ExecutionEngineTestHarness.Create();
 
         // Act
         var snapshot = engine.GetSnapshot("non-existent");
@@ -43,13 +43,13 @@ public class WorkflowEngineTests
         Assert.Null(snapshot);
     }
 
-    /// <summary>存在するワークフロー ID で GetSnapshot を呼ぶと、正しいスナップショットが返ることを検証する。</summary>
+    /// <summary>存在する execution ID で GetSnapshot を呼ぶと、正しいスナップショットが返ることを検証する。</summary>
     [Fact]
-    public void GetSnapshot_ReturnsSnapshot_WhenWorkflowExists()
+    public void GetSnapshot_ReturnsSnapshot_WhenExecutionExists()
     {
         // Arrange
         var def = CreateMinimalDefinition();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -57,18 +57,18 @@ public class WorkflowEngineTests
 
         // Assert
         Assert.NotNull(snapshot);
-        Assert.Equal(id, snapshot.WorkflowId);
+        Assert.Equal(id, snapshot.ExecutionId);
         Assert.Equal("Minimal", snapshot.WorkflowName);
         Assert.NotNull(snapshot.ActiveStates);
     }
 
-    /// <summary>存在するワークフロー ID で ExportExecutionGraph を呼ぶと JSON が返ることを検証する。</summary>
+    /// <summary>存在する execution ID で ExportExecutionGraph を呼ぶと JSON が返ることを検証する。</summary>
     [Fact]
-    public void ExportExecutionGraph_ReturnsJson_WhenWorkflowExists()
+    public void ExportExecutionGraph_ReturnsJson_WhenExecutionExists()
     {
         // Arrange
         var def = CreateMinimalDefinition();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -79,12 +79,12 @@ public class WorkflowEngineTests
         Assert.NotEqual("{}", json);
     }
 
-    /// <summary>存在しないワークフロー ID で ExportExecutionGraph を呼ぶと "{}" が返ることを検証する。</summary>
+    /// <summary>存在しない execution ID で ExportExecutionGraph を呼ぶと "{}" が返ることを検証する。</summary>
     [Fact]
-    public void ExportExecutionGraph_ReturnsEmptyJson_WhenWorkflowNotFound()
+    public void ExportExecutionGraph_ReturnsEmptyJson_WhenExecutionNotFound()
     {
         // Arrange
-        var engine = WorkflowEngineTestHarness.Create();
+        var engine = ExecutionEngineTestHarness.Create();
 
         // Act
         var json = engine.ExportExecutionGraph("non-existent");
@@ -93,16 +93,16 @@ public class WorkflowEngineTests
         Assert.Equal("{}", json);
     }
 
-    /// <summary>end 状態に到達したワークフローが IsCompleted になることを検証する。</summary>
+    /// <summary>end 状態に到達した実行が IsCompleted になることを検証する。</summary>
     [Fact]
-    public async Task Start_WorkflowCompletes_WhenEndStateReached()
+    public async Task Start_ExecutionCompletes_WhenEndStateReached()
     {
         // Arrange
         var def = CreateMinimalDefinition();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
-        // Act: ワークフロー完了を待つ
+        // Act: 実行完了を待つ
         await Task.Delay(200);
 
         // Assert
@@ -116,7 +116,7 @@ public class WorkflowEngineTests
     public void PublishEvent_DoesNotThrow()
     {
         // Arrange
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         engine.Start(CreateMinimalDefinition());
 
         // Act
@@ -126,27 +126,27 @@ public class WorkflowEngineTests
         Assert.Null(ex);
     }
 
-    /// <summary>単一ワークフロー ID 指定の PublishEvent が例外を投げないことを検証する。</summary>
+    /// <summary>単一 execution ID 指定の PublishEvent が例外を投げないことを検証する。</summary>
     [Fact]
-    public void PublishEvent_ToWorkflowId_DoesNotThrow()
+    public void PublishEvent_ToExecutionId_DoesNotThrow()
     {
         // Arrange
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
-        var workflowId = engine.Start(CreateMinimalDefinition());
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+        var executionId = engine.Start(CreateMinimalDefinition());
 
         // Act
-        var ex = Record.Exception(() => engine.PublishEvent(workflowId, "SomeEvent"));
+        var ex = Record.Exception(() => engine.PublishEvent(executionId, "SomeEvent"));
 
         // Assert
         Assert.Null(ex);
     }
 
-    /// <summary>複数ワークフローが存在するとき、イベント名のみのブロードキャストが例外で終了しないこと。</summary>
+    /// <summary>複数実行が存在するとき、イベント名のみのブロードキャストが例外で終了しないこと。</summary>
     [Fact]
-    public void PublishEvent_BroadcastByEventName_DoesNotThrow_WhenMultipleWorkflows()
+    public void PublishEvent_BroadcastByEventName_DoesNotThrow_WhenMultipleExecutions()
     {
         // Arrange
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 2);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2);
         engine.Start(CreateMinimalDefinition());
         engine.Start(CreateMinimalDefinition());
 
@@ -162,23 +162,23 @@ public class WorkflowEngineTests
     public void PublishEvent_WithClientEventId_DoesNotThrow()
     {
         // Arrange
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
-        var workflowId = engine.Start(CreateMinimalDefinition());
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+        var executionId = engine.Start(CreateMinimalDefinition());
         var clientEventId = Guid.Parse("a1b2c3d4-e5f6-4789-a012-3456789abcde");
 
         // Act
-        var result = engine.PublishEvent(workflowId, "SomeEvent", clientEventId);
+        var result = engine.PublishEvent(executionId, "SomeEvent", clientEventId);
 
         // Assert
         Assert.True(result.IsApplied);
     }
 
-    /// <summary>複数ワークフローが存在するとき、clientEventId 付きブロードキャストが全インスタンスに届き、2 回目は冪等になる。</summary>
+    /// <summary>複数実行が存在するとき、clientEventId 付きブロードキャストが全インスタンスに届き、2 回目は冪等になる。</summary>
     [Fact]
-    public void PublishEvent_WithClientEventId_Broadcast_AppliesThenAlreadyApplied_ForMultipleWorkflows()
+    public void PublishEvent_WithClientEventId_Broadcast_AppliesThenAlreadyApplied_ForMultipleExecutions()
     {
         // Arrange
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 2);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2);
         engine.Start(CreateMinimalDefinition());
         engine.Start(CreateMinimalDefinition());
         var clientEventId = Guid.Parse("b2c3d4e5-f6a7-4890-b123-456789abcdef");
@@ -197,7 +197,7 @@ public class WorkflowEngineTests
     public void Dispose_DoesNotThrow()
     {
         // Arrange
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         engine.Start(CreateMinimalDefinition());
 
         // Act
@@ -207,13 +207,13 @@ public class WorkflowEngineTests
         Assert.Null(ex);
     }
 
-    /// <summary>状態が例外を投げるとワークフローが IsFailed になることを検証する。</summary>
+    /// <summary>状態が例外を投げると実行が IsFailed になることを検証する。</summary>
     [Fact]
-    public async Task Start_WorkflowMarksFailed_WhenStateThrows()
+    public async Task Start_ExecutionMarksFailed_WhenStateThrows()
     {
         // Arrange
         var def = CreateDefinitionWithFailingState();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -231,10 +231,10 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateMinimalDefinition();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var callCount = 0;
         var called = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        engine.SetNodeCompletedHandler(workflowId =>
+        engine.SetNodeCompletedHandler(executionId =>
         {
             Interlocked.Increment(ref callCount);
             called.TrySetResult(true);
@@ -256,10 +256,10 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateDefinitionWithForkJoin();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 2);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2);
         var callCount = 0;
         var calledAtJoin = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        engine.SetNodeCompletedHandler(workflowId =>
+        engine.SetNodeCompletedHandler(executionId =>
         {
             var current = Interlocked.Increment(ref callCount);
             if (current >= 4)
@@ -268,10 +268,10 @@ public class WorkflowEngineTests
         });
 
         // Act
-        var workflowId = engine.Start(def);
+        var executionId = engine.Start(def);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
         await calledAtJoin.Task.WaitAsync(timeout.Token);
-        var snapshot = engine.GetSnapshot(workflowId);
+        var snapshot = engine.GetSnapshot(executionId);
 
         // Assert
         Assert.NotNull(snapshot);
@@ -281,11 +281,11 @@ public class WorkflowEngineTests
 
     /// <summary>Fork 遷移で複数状態が並列実行され、Join 後に完了することを検証する。</summary>
     [Fact]
-    public async Task Start_WorkflowCompletes_WithForkAndJoin()
+    public async Task Start_ExecutionCompletes_WithForkAndJoin()
     {
         // Arrange
         var def = CreateDefinitionWithForkJoin();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 2);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2);
         var id = engine.Start(def);
 
         // Act
@@ -324,7 +324,7 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedState = stateName);
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -357,7 +357,7 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedState = stateName);
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -389,7 +389,7 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: _ => { });
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -451,14 +451,14 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedByBetween = stateName);
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
-        var inWorkflowId = engine.Start(inDefinition);
-        var betweenWorkflowId = engine.Start(betweenDefinition);
+        var inExecutionId = engine.Start(inDefinition);
+        var betweenExecutionId = engine.Start(betweenDefinition);
         await Task.Delay(400);
-        var inSnapshot = engine.GetSnapshot(inWorkflowId);
-        var betweenSnapshot = engine.GetSnapshot(betweenWorkflowId);
+        var inSnapshot = engine.GetSnapshot(inExecutionId);
+        var betweenSnapshot = engine.GetSnapshot(betweenExecutionId);
 
         // Assert
         Assert.NotNull(inSnapshot);
@@ -491,7 +491,7 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedState = stateName);
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -526,7 +526,7 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedState = stateName);
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -540,15 +540,15 @@ public class WorkflowEngineTests
     }
 
     /// <summary>
-    /// workflowInput が初期状態に渡り、その状態の出力が条件式（OutputConditionEvaluator）で評価されて遷移先が決まることを検証する。
+    /// Start の <c>input</c> が初期状態に渡り、その状態の出力が条件式（OutputConditionEvaluator）で評価されて遷移先が決まることを検証する。
     /// </summary>
     [Fact]
-    public async Task Start_WorkflowInput_maps_to_route_output_then_conditional_selects_manual()
+    public async Task Start_Input_maps_to_route_output_then_conditional_selects_manual()
     {
         // Arrange
         object? observedRouteInput = null;
         string? selectedState = null;
-        var workflowInput = new Dictionary<string, object?> { ["score"] = 42 };
+        var input = new Dictionary<string, object?> { ["score"] = 42 };
         var def = CreateDefinitionWithConditionalRouteFromWorkflowInput(
             routeOutputFromInput: input =>
             {
@@ -567,30 +567,30 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedState = stateName);
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
-        var id = engine.Start(def, null, workflowInput);
+        var id = engine.Start(def, null, input);
         await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
         Assert.NotNull(snapshot);
         Assert.True(snapshot.IsCompleted);
-        Assert.Same(workflowInput, observedRouteInput);
+        Assert.Same(input, observedRouteInput);
         Assert.Equal("Manual", selectedState);
     }
 
     /// <summary>
-    /// workflowInput 由来の出力が条件に一致しないとき default 遷移へ進むことを検証する。
+    /// input 由来の出力が条件に一致しないとき default 遷移へ進むことを検証する。
     /// </summary>
     [Fact]
-    public async Task Start_WorkflowInput_maps_to_route_output_then_conditional_selects_default_fallback()
+    public async Task Start_Input_maps_to_route_output_then_conditional_selects_default_fallback()
     {
         // Arrange
         object? observedRouteInput = null;
         string? selectedState = null;
-        var workflowInput = new Dictionary<string, object?> { ["score"] = 5 };
+        var input = new Dictionary<string, object?> { ["score"] = 5 };
         var def = CreateDefinitionWithConditionalRouteFromWorkflowInput(
             routeOutputFromInput: input =>
             {
@@ -609,17 +609,17 @@ public class WorkflowEngineTests
             ],
             defaultTarget: new TransitionTarget { Next = "Fallback" },
             onTerminalStateExecuted: stateName => selectedState = stateName);
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
-        var id = engine.Start(def, null, workflowInput);
+        var id = engine.Start(def, null, input);
         await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
         Assert.NotNull(snapshot);
         Assert.True(snapshot.IsCompleted);
-        Assert.Same(workflowInput, observedRouteInput);
+        Assert.Same(input, observedRouteInput);
         Assert.Equal("Fallback", selectedState);
     }
 
@@ -629,7 +629,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateDefinitionWithStateRevisit();
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -654,7 +654,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateDefinitionWithWaitKey();
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
 
         // Act
         var id = engine.Start(def);
@@ -674,7 +674,7 @@ public class WorkflowEngineTests
     {
         // Arrange
         var def = CreateDefinitionWithStoreReader();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -701,7 +701,7 @@ public class WorkflowEngineTests
             InitialState = "Start",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["Start"] = DefaultStateExecutor.Create(new ImmediateState()) })
         };
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -714,9 +714,9 @@ public class WorkflowEngineTests
         Assert.False(snapshot.IsFailed);
     }
 
-    /// <summary>状態実行中に StateContext の WorkflowId と StateName が参照される経路を検証する。</summary>
+    /// <summary>状態実行中に StateContext の ExecutionId と StateName が参照される経路を検証する。</summary>
     [Fact]
-    public async Task Start_StateCanReadWorkflowIdAndStateName()
+    public async Task Start_StateCanReadExecutionIdAndStateName()
     {
         // Arrange
         var def = new CompiledWorkflowDefinition
@@ -729,7 +729,7 @@ public class WorkflowEngineTests
             InitialState = "A",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["A"] = DefaultStateExecutor.Create(new ContextReaderState()) })
         };
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
         // Act
@@ -859,7 +859,7 @@ public class WorkflowEngineTests
 
     /// <summary>
     /// <see cref="CreateDefinitionWithConditionalRoute"/> と同様だが、Route の出力を固定値ではなく
-    /// <paramref name="routeOutputFromInput"/> で workflowInput（初期状態への入力）から生成する。
+    /// <paramref name="routeOutputFromInput"/> で Start <c>input</c>（初期状態への入力）から生成する。
     /// </summary>
     private static CompiledWorkflowDefinition CreateDefinitionWithConditionalRouteFromWorkflowInput(
         Func<object?, object?> routeOutputFromInput,
@@ -956,8 +956,8 @@ public class WorkflowEngineTests
     {
         public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
         {
-            var w = ctx.WorkflowId;
-            var s = ctx.StateName;
+            var executionId = ctx.ExecutionId;
+            var stateName = ctx.StateName;
             return Task.FromResult(Unit.Value);
         }
     }

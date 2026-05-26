@@ -10,37 +10,37 @@ using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Engine;
 
-public sealed partial class WorkflowEngineLoggingTests
+public sealed partial class ExecutionEngineLoggingTests
 {
-    /// <summary>正常完走時に Workflow 開始・State スケジュール・State 完了（ElapsedMs 付き）が Information ログに残ることを検証する。</summary>
+    /// <summary>正常完走時に Execution 開始・State スケジュール・State 完了（ElapsedMs 付き）が Information ログに残ることを検証する。</summary>
     [Fact]
-    public async Task Logging_CapturesWorkflowStart_StateScheduleComplete_WithElapsedMs()
+    public async Task Logging_CapturesExecutionStart_StateScheduleComplete_WithElapsedMs()
     {
         // Arrange
         var sink = new ListLogger();
         var def = CreateMinimalDefinition();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
 
         // Act
         var id = engine.Start(def);
         await Task.Delay(200);
 
         // Assert
-        Assert.Contains(sink.Entries, e => e.Level == LogLevel.Information && e.Message.Contains("Workflow started", StringComparison.Ordinal) && e.Message.Contains(id, StringComparison.Ordinal));
+        Assert.Contains(sink.Entries, e => e.Level == LogLevel.Information && e.Message.Contains("Execution started", StringComparison.Ordinal) && e.Message.Contains(id, StringComparison.Ordinal));
         Assert.Contains(sink.Entries, e => e.Message.Contains("State scheduled", StringComparison.Ordinal) && e.Message.Contains("Start", StringComparison.Ordinal));
         var completed = Assert.Single(sink.Entries, e => e.Message.Contains("State completed", StringComparison.Ordinal) && e.Message.Contains("ElapsedMs=", StringComparison.Ordinal));
         Assert.Equal(LogLevel.Information, completed.Level);
         Assert.Contains("Fact=Completed", completed.Message, StringComparison.Ordinal);
     }
 
-    /// <summary>状態が例外で失敗したときに State execute failed・Fact=Failed・Workflow terminal failure がログに残ることを検証する。</summary>
+    /// <summary>状態が例外で失敗したときに State execute failed・Fact=Failed・Execution terminal failure がログに残ることを検証する。</summary>
     [Fact]
     public async Task Logging_StateFailure_EmitsErrorAndCompletedWithFailedFact()
     {
         // Arrange
         var sink = new ListLogger();
         var def = CreateDefinitionWithFailingState();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
 
         // Act
         engine.Start(def);
@@ -49,7 +49,7 @@ public sealed partial class WorkflowEngineLoggingTests
         // Assert
         Assert.Contains(sink.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("State execute failed", StringComparison.Ordinal));
         Assert.Contains(sink.Entries, e => e.Level == LogLevel.Information && e.Message.Contains("Fact=Failed", StringComparison.Ordinal));
-        Assert.Contains(sink.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("Workflow terminal failure", StringComparison.Ordinal));
+        Assert.Contains(sink.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("Execution terminal failure", StringComparison.Ordinal));
     }
 
     /// <summary>Join 完了ログに ElapsedMs が含まれないことを検証する。</summary>
@@ -59,7 +59,7 @@ public sealed partial class WorkflowEngineLoggingTests
         // Arrange
         var sink = new ListLogger();
         var def = CreateDefinitionWithForkJoin();
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 2, executionLogger: sink);
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2, executionLogger: sink);
 
         // Act
         engine.Start(def);
@@ -102,7 +102,7 @@ public sealed partial class WorkflowEngineLoggingTests
                 ["B"] = DefaultStateExecutor.Create(new ImmediateState())
             })
         };
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
 
         // Act
         engine.Start(def);
@@ -141,7 +141,7 @@ public sealed partial class WorkflowEngineLoggingTests
                 ["Start"] = DefaultStateExecutor.Create(new ImmediateState())
             })
         };
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
 
         // Act
         engine.Start(def);
@@ -157,29 +157,29 @@ public sealed partial class WorkflowEngineLoggingTests
                 e.Message.Contains("Fact=Completed", StringComparison.Ordinal));
     }
 
-    /// <summary>ログ実装が例外を投げてもワークフロー完走が継続することを検証する（STV-404 SafeLog）。</summary>
+    /// <summary>ログ実装が例外を投げても実行完走が継続することを検証する（STV-404 SafeLog）。</summary>
     [Fact]
-    public async Task Logging_ThrowingLogger_DoesNotFailWorkflow()
+    public async Task Logging_ThrowingLogger_DoesNotFailExecution()
     {
         // Arrange
         var def = CreateMinimalDefinition();
-        using var engine = WorkflowEngineTestHarness.Create(
+        using var engine = ExecutionEngineTestHarness.Create(
             maxParallelism: 1,
-            executionLogger: new ThrowingWorkflowExecutionLogger());
+            executionLogger: new ThrowingExecutionEngineLogger());
 
         // Act
-        var workflowId = engine.Start(def);
+        var executionId = engine.Start(def);
         await Task.Delay(200);
 
         // Assert
-        var snapshot = engine.GetSnapshot(workflowId);
+        var snapshot = engine.GetSnapshot(executionId);
         Assert.NotNull(snapshot);
         Assert.True(snapshot.IsCompleted);
     }
 
-    /// <summary>ctx.Logger のログに WorkflowId/StateName の文脈が自動付与されることを検証する（STV-406）。</summary>
+    /// <summary>ctx.Logger のログに ExecutionId/StateName の文脈が自動付与されることを検証する（STV-406）。</summary>
     [Fact]
-    public async Task Logging_StateContextLogger_ContainsWorkflowAndStateScope()
+    public async Task Logging_StateContextLogger_ContainsExecutionAndStateScope()
     {
         // Arrange
         var sink = new ListLogger();
@@ -199,10 +199,10 @@ public sealed partial class WorkflowEngineLoggingTests
                 ["Start"] = DefaultStateExecutor.Create(new LoggingState())
             })
         };
-        using var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1, executionLogger: sink);
 
         // Act
-        var workflowId = engine.Start(def);
+        var executionId = engine.Start(def);
         await Task.Delay(250);
 
         // Assert
@@ -211,11 +211,11 @@ public sealed partial class WorkflowEngineLoggingTests
             e =>
                 e.Level == LogLevel.Information &&
                 e.Message.Contains("StateContext user log", StringComparison.Ordinal) &&
-                e.Message.Contains($"WorkflowId={workflowId}", StringComparison.Ordinal) &&
+                e.Message.Contains($"ExecutionId={executionId}", StringComparison.Ordinal) &&
                 e.Message.Contains("StateName=Start", StringComparison.Ordinal));
     }
 
-    private sealed class ThrowingWorkflowExecutionLogger : ILogger<WorkflowEngine.WorkflowExecutionLogger>
+    private sealed class ThrowingExecutionEngineLogger : ILogger<ExecutionEngine.ExecutionEngineLogger>
     {
         public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
@@ -236,7 +236,7 @@ public sealed partial class WorkflowEngineLoggingTests
         }
     }
 
-    private sealed class ListLogger : ILogger<WorkflowEngine.WorkflowExecutionLogger>
+    private sealed class ListLogger : ILogger<ExecutionEngine.ExecutionEngineLogger>
     {
         public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = [];
         private readonly AsyncLocal<Stack<object>> _scopes = new();

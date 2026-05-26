@@ -18,12 +18,12 @@ public sealed class EventDeliveryDedupRepositoryTests
         using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var repo = new EventDeliveryDedupRepository();
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var clientEventId = Guid.NewGuid();
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        var row = await repo.FindAsync(uow, "tenant-a", workflowId, clientEventId, default);
+        var row = await repo.FindAsync(uow, "tenant-a", executionId, clientEventId, default);
 
         // Assert
         Assert.Null(row);
@@ -37,13 +37,13 @@ public sealed class EventDeliveryDedupRepositoryTests
         using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var repo = new EventDeliveryDedupRepository();
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var clientEventId = Guid.NewGuid();
         var acceptedAt = new DateTime(2026, 5, 16, 12, 0, 0, DateTimeKind.Utc);
         var row = new EventDeliveryDedupRow
         {
             TenantId = "tenant-a",
-            ExecutionId = workflowId,
+            ExecutionId = executionId,
             ClientEventId = clientEventId,
             BatchId = Guid.NewGuid(),
             Status = EventDeliveryDedupStatuses.Received,
@@ -56,7 +56,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         await repo.AddReceivedAsync(uow, row, default);
         await uow.SaveChangesAsync(CancellationToken.None);
         await using var readUow = await uowFactory.CreateAsync();
-        var found = await repo.FindAsync(readUow, "tenant-a", workflowId, clientEventId, default);
+        var found = await repo.FindAsync(readUow, "tenant-a", executionId, clientEventId, default);
 
         // Assert
         Assert.NotNull(found);
@@ -73,13 +73,13 @@ public sealed class EventDeliveryDedupRepositoryTests
         using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var repo = new EventDeliveryDedupRepository();
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var clientEventId = Guid.NewGuid();
         var acceptedAt = DateTime.UtcNow;
         var row = new EventDeliveryDedupRow
         {
             TenantId = "tenant-a",
-            ExecutionId = workflowId,
+            ExecutionId = executionId,
             ClientEventId = clientEventId,
             Status = EventDeliveryDedupStatuses.Received,
             AcceptedAt = acceptedAt,
@@ -110,7 +110,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var repo = new EventDeliveryDedupRepository();
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var clientEventId = Guid.NewGuid();
         var acceptedAt = new DateTime(2026, 5, 16, 10, 0, 0, DateTimeKind.Utc);
         var appliedAt = new DateTime(2026, 5, 16, 10, 1, 0, DateTimeKind.Utc);
@@ -120,7 +120,7 @@ public sealed class EventDeliveryDedupRepositoryTests
             seed.EventDeliveryDedup.Add(new EventDeliveryDedupRow
             {
                 TenantId = "tenant-a",
-                ExecutionId = workflowId,
+                ExecutionId = executionId,
                 ClientEventId = clientEventId,
                 Status = EventDeliveryDedupStatuses.Received,
                 AcceptedAt = acceptedAt,
@@ -135,7 +135,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         var updated = await repo.TryUpdateStatusAsync(
             uow,
             "tenant-a",
-            workflowId,
+            executionId,
             clientEventId,
             new EventDeliveryDedupStatusUpdate(
                 EventDeliveryDedupStatuses.Applied,
@@ -148,7 +148,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         Assert.True(updated);
         await uow.SaveChangesAsync(CancellationToken.None);
         await using var readUow = await uowFactory.CreateAsync();
-        var found = await repo.FindAsync(readUow, "tenant-a", workflowId, clientEventId, default);
+        var found = await repo.FindAsync(readUow, "tenant-a", executionId, clientEventId, default);
         Assert.NotNull(found);
         Assert.Equal(EventDeliveryDedupStatuses.Applied, found.Status);
         Assert.Equal(appliedAt, found.AppliedAt);
@@ -190,13 +190,13 @@ public sealed class EventDeliveryDedupRepositoryTests
         using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var repo = new EventDeliveryDedupRepository();
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var clientEventId = Guid.NewGuid();
         var acceptedAt = DateTime.UtcNow;
         var row = new EventDeliveryDedupRow
         {
             TenantId = "tenant-a",
-            ExecutionId = workflowId,
+            ExecutionId = executionId,
             ClientEventId = clientEventId,
             Status = EventDeliveryDedupStatuses.Received,
             AcceptedAt = acceptedAt,
@@ -206,10 +206,10 @@ public sealed class EventDeliveryDedupRepositoryTests
         // Act
         await using var uow = await uowFactory.CreateAsync();
         await repo.AddReceivedAsync(uow, row, default);
-        var beforeSave = await repo.FindAsync(uow, "tenant-a", workflowId, clientEventId, default);
+        var beforeSave = await repo.FindAsync(uow, "tenant-a", executionId, clientEventId, default);
         await uow.SaveChangesAsync(CancellationToken.None);
         await using var readUow = await uowFactory.CreateAsync();
-        var afterSave = await repo.FindAsync(readUow, "tenant-a", workflowId, clientEventId, default);
+        var afterSave = await repo.FindAsync(readUow, "tenant-a", executionId, clientEventId, default);
 
         // Assert
         Assert.Null(beforeSave);

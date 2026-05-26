@@ -30,7 +30,7 @@ public sealed class BuiltinActionStatesTests
         {
             Events = events,
             Store = store,
-            WorkflowId = Guid.NewGuid().ToString("D"),
+            ExecutionId = Guid.NewGuid().ToString("D"),
             StateName = "S1"
         };
 

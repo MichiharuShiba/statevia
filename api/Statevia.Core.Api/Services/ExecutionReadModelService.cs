@@ -8,7 +8,7 @@ using Statevia.Core.Api.Persistence;
 namespace Statevia.Core.Api.Services;
 
 /// <summary>
-/// workflows / execution_graph_snapshots / display_ids から Execution Read Model を組み立てるサービス。
+/// executions / execution_graph_snapshots / display_ids から Execution Read Model を組み立てるサービス。
 /// </summary>
 internal sealed class ExecutionReadModelService : IExecutionReadModelService
 {
@@ -32,10 +32,10 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
         return await _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
-                var workflow = await uow.Db.Executions.AsNoTracking()
+                var execution = await uow.Db.Executions.AsNoTracking()
                     .FirstOrDefaultAsync(x => x.ExecutionId == uuid && x.TenantId == tenantId, innerCt)
                     .ConfigureAwait(false);
-                if (workflow is null)
+                if (execution is null)
                     throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
                 var snapshot = await uow.Db.ExecutionGraphSnapshots.AsNoTracking()
@@ -45,27 +45,27 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
                     throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
                 var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Execution, id, innerCt)
-                    .ConfigureAwait(false) ?? workflow.ExecutionId.ToString();
+                    .ConfigureAwait(false) ?? execution.ExecutionId.ToString();
                 var graphId = await _displayIds
-                    .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, workflow.DefinitionId.ToString(), innerCt)
-                    .ConfigureAwait(false) ?? workflow.DefinitionId.ToString();
+                    .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, execution.DefinitionId.ToString(), innerCt)
+                    .ConfigureAwait(false) ?? execution.DefinitionId.ToString();
 
-                return MapToReadModel(workflow, snapshot, displayId, graphId);
+                return MapToReadModel(execution, snapshot, displayId, graphId);
             },
             ct).ConfigureAwait(false);
     }
 
     private static ExecutionReadModel MapToReadModel(
-        ExecutionRow workflow,
+        ExecutionRow execution,
         ExecutionGraphSnapshotRow snapshot,
         string displayId,
         string graphId)
     {
-        var status = ExecutionStatusMapper.ToContractStatus(workflow.Status);
+        var status = ExecutionStatusMapper.ToContractStatus(execution.Status);
 
-        DateTimeOffset? canceledAt = status is "CANCELED" ? workflow.UpdatedAt : null;
-        DateTimeOffset? failedAt = status is "FAILED" ? workflow.UpdatedAt : null;
-        DateTimeOffset? completedAt = status is "COMPLETED" ? workflow.UpdatedAt : null;
+        DateTimeOffset? canceledAt = status is "CANCELED" ? execution.UpdatedAt : null;
+        DateTimeOffset? failedAt = status is "FAILED" ? execution.UpdatedAt : null;
+        DateTimeOffset? completedAt = status is "COMPLETED" ? execution.UpdatedAt : null;
 
         var nodes = MapNodes(snapshot.GraphJson);
 

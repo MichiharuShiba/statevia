@@ -25,17 +25,17 @@ public sealed class ExecutionStreamService
     /// </summary>
     internal const int GraphPollingIntervalMilliseconds = 2000;
 
-    private readonly IExecutionService _workflows;
+    private readonly IExecutionService _executions;
     private readonly IDisplayIdService _displayIds;
 
     /// <summary>
     /// <see cref="ExecutionStreamService"/> を生成する。
     /// </summary>
-    /// <param name="workflows">ワークフローサービス。</param>
+    /// <param name="executions">実行サービス。</param>
     /// <param name="displayIds">表示 ID 解決。</param>
-    public ExecutionStreamService(IExecutionService workflows, IDisplayIdService displayIds)
+    public ExecutionStreamService(IExecutionService executions, IDisplayIdService displayIds)
     {
-        _workflows = workflows;
+        _executions = executions;
         _displayIds = displayIds;
     }
 
@@ -60,10 +60,10 @@ public sealed class ExecutionStreamService
             return;
         }
 
-        // 接続開始時に tenant + workflow の存在を一度だけ確認する。
-        await _workflows.EnsureWorkflowExistsAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
+        // 接続開始時に tenant + execution の存在を一度だけ確認する。
+        await _executions.EnsureExecutionExistsAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
 
-        var displayId = await _displayIds.GetDisplayIdAsync("workflow", idOrUuid, ct).ConfigureAwait(false) ?? idOrUuid;
+        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false) ?? idOrUuid;
 
         response.Headers.ContentType = "text/event-stream";
         response.Headers.CacheControl = "no-cache, no-transform";
@@ -111,11 +111,11 @@ public sealed class ExecutionStreamService
         }
     }
 
-    private async Task<(bool ShouldContinue, string? GraphJson)> TryGetSnapshotGraphJsonAsync(HttpResponse response, Guid workflowId, CancellationToken ct)
+    private async Task<(bool ShouldContinue, string? GraphJson)> TryGetSnapshotGraphJsonAsync(HttpResponse response, Guid executionId, CancellationToken ct)
     {
         try
         {
-            var snapshotGraphJson = await _workflows.TryGetSnapshotGraphJsonByWorkflowIdAsync(workflowId, ct).ConfigureAwait(false);
+            var snapshotGraphJson = await _executions.TryGetSnapshotGraphJsonByExecutionIdAsync(executionId, ct).ConfigureAwait(false);
             if (snapshotGraphJson is null)
             {
                 // スナップショット行が消えた場合はストリームを終了する。

@@ -44,7 +44,7 @@ docs/                   # 契約・運用・開発ガイド
 
 ## Module Boundaries
 
-- **Engine ↔ Core-API**: 公開 API（`IWorkflowEngine` 等）越しのみ。
+- **Engine ↔ Core-API**: 公開 API（`IExecutionEngine` 等）越しのみ。
 - **Core-API ↔ PostgreSQL**: DbContext / Repository 経由。イベントストアやトランザクション境界は `AGENTS.md` の event_store 記述に従う。
 - **UI ↔ Core-API**: HTTP（プロキシ）のみ。DB に直接接続しない。
 

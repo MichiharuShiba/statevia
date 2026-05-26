@@ -13,12 +13,12 @@ using Statevia.Core.Engine.Scheduler;
 namespace Statevia.Core.Engine.Engine;
 
 /// <summary>
-/// IWorkflowEngine の実装。定義駆動型ワークフローエンジンの中核クラスです。
+/// IExecutionEngine の実装。定義駆動型ワークフローエンジンの中核クラスです。
 /// 事実駆動型 FSM、Fork/Join、Wait/Resume、協調的キャンセルをサポートします。
 /// </summary>
 /// <remarks>
 /// <para>
-/// ホストが <see cref="IWorkflowEngine"/> を Singleton として登録する場合、コンストラクタに渡した
+/// ホストが <see cref="IExecutionEngine"/> を Singleton として登録する場合、コンストラクタに渡した
 /// <see cref="IScheduler"/> はプロセス内のワークフロー実行で共有される（グローバル並列制御の単一窓口）。
 /// </para>
 /// <para>
@@ -26,14 +26,14 @@ namespace Statevia.Core.Engine.Engine;
 /// 失敗を集約するため、状態実行失敗をグラフへ記録するため、およびログ実装の失敗を遷移へ伝播させない（STV-404）ためである。
 /// </para>
 /// </remarks>
-public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
+public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 {
     private readonly IScheduler _scheduler;
-    private readonly IWorkflowInstanceFactory _instanceFactory;
-    private readonly IWorkflowInstanceIdGenerator _workflowInstanceIdGenerator;
-    private readonly WorkflowExecutionLogger _workflowLog;
+    private readonly IExecutionInstanceFactory _instanceFactory;
+    private readonly IExecutionIdGenerator _executionIdGenerator;
+    private readonly ExecutionEngineLogger _executionLog;
     private readonly string _workerId;
-    private readonly ConcurrentDictionary<string, WorkflowInstance> _instances = new();
+    private readonly ConcurrentDictionary<string, ExecutionInstance> _instances = new();
     private readonly ConcurrentDictionary<string, EventProvider> _eventProviders = new();
     private Func<string, Task>? _nodeCompletedHandler;
 
@@ -42,53 +42,53 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
     /// </summary>
     /// <param name="scheduler">状態実行のスケジューリング（並列度は実装側で解釈）。</param>
     /// <param name="instanceFactory">ワークフローインスタンスの組み立て。</param>
-    /// <param name="workflowInstanceIdGenerator"><see cref="IWorkflowEngine.Start"/> で ID 未指定のときに使う生成器。</param>
-    /// <param name="loggerFactory">実行ログ用 <see cref="WorkflowExecutionLogger"/> の生成に使うファクトリ。</param>
-    public WorkflowEngine(
+    /// <param name="executionIdGenerator"><see cref="IExecutionEngine.Start"/> で ID 未指定のときに使う生成器。</param>
+    /// <param name="loggerFactory">実行ログ用 <see cref="ExecutionEngineLogger"/> の生成に使うファクトリ。</param>
+    public ExecutionEngine(
         IScheduler scheduler,
-        IWorkflowInstanceFactory instanceFactory,
-        IWorkflowInstanceIdGenerator workflowInstanceIdGenerator,
+        IExecutionInstanceFactory instanceFactory,
+        IExecutionIdGenerator executionIdGenerator,
         ILoggerFactory loggerFactory)
     {
         ArgumentNullException.ThrowIfNull(scheduler);
         ArgumentNullException.ThrowIfNull(instanceFactory);
-        ArgumentNullException.ThrowIfNull(workflowInstanceIdGenerator);
+        ArgumentNullException.ThrowIfNull(executionIdGenerator);
         ArgumentNullException.ThrowIfNull(loggerFactory);
 
         _scheduler = scheduler;
         _instanceFactory = instanceFactory;
-        _workflowInstanceIdGenerator = workflowInstanceIdGenerator;
-        _workflowLog = new WorkflowExecutionLogger(loggerFactory.CreateLogger<WorkflowExecutionLogger>());
+        _executionIdGenerator = executionIdGenerator;
+        _executionLog = new ExecutionEngineLogger(loggerFactory.CreateLogger<ExecutionEngineLogger>());
         _workerId = Guid.NewGuid().ToString("D");
     }
 
     /// <inheritdoc />
-    public string Start(CompiledWorkflowDefinition definition, string? workflowId = null, object? workflowInput = null)
+    public string Start(CompiledWorkflowDefinition definition, string? executionId = null, object? input = null)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        workflowId ??= _workflowInstanceIdGenerator.NewWorkflowInstanceId();
-        var eventProvider = new EventProvider(workflowId);
-        var instance = _instanceFactory.Create(definition, workflowId);
-        _instances[workflowId] = instance;
-        _eventProviders[workflowId] = eventProvider;
-        _workflowLog.LogWorkflowStarted(workflowId, definition.Name, definition.InitialState);
-        _ = RunWorkflowAsync(instance, eventProvider, workflowInput);
-        return workflowId;
+        executionId ??= _executionIdGenerator.NewExecutionId();
+        var eventProvider = new EventProvider(executionId);
+        var instance = _instanceFactory.Create(definition, executionId);
+        _instances[executionId] = instance;
+        _eventProviders[executionId] = eventProvider;
+        _executionLog.LogExecutionStarted(executionId, definition.Name, definition.InitialState);
+        _ = RunExecutionAsync(instance, eventProvider, input);
+        return executionId;
     }
 
     /// <inheritdoc />
-    public void PublishEvent(string workflowId, string eventName)
+    public void PublishEvent(string executionId, string eventName)
     {
-        if (_eventProviders.TryGetValue(workflowId, out var ep))
+        if (_eventProviders.TryGetValue(executionId, out var ep))
         {
             ep.Publish(eventName);
         }
     }
 
     /// <inheritdoc />
-    public ApplyResult PublishEvent(string workflowId, string eventName, Guid clientEventId)
+    public ApplyResult PublishEvent(string executionId, string eventName, Guid clientEventId)
     {
-        if (!_eventProviders.TryGetValue(workflowId, out var ep) || !_instances.TryGetValue(workflowId, out var instance))
+        if (!_eventProviders.TryGetValue(executionId, out var ep) || !_instances.TryGetValue(executionId, out var instance))
         {
             return ApplyResult.Applied;
         }
@@ -154,11 +154,11 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
 
         var anyApplied = false;
         List<Exception>? publishFailures = null;
-        foreach (var workflowId in _eventProviders.Keys.ToArray())
+        foreach (var executionId in _eventProviders.Keys.ToArray())
         {
             try
             {
-                if (PublishEvent(workflowId, eventName, clientEventId).IsApplied)
+                if (PublishEvent(executionId, eventName, clientEventId).IsApplied)
                 {
                     anyApplied = true;
                 }
@@ -185,20 +185,20 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
     }
 
     /// <inheritdoc />
-    public async Task CancelAsync(string workflowId)
+    public async Task CancelAsync(string executionId)
     {
-        if (_instances.TryGetValue(workflowId, out var instance))
+        if (_instances.TryGetValue(executionId, out var instance))
         {
             instance.MarkCancelled();
-            _workflowLog.LogWorkflowCancelRequested(workflowId);
+            _executionLog.LogExecutionCancelRequested(executionId);
         }
         await Task.CompletedTask.ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<ApplyResult> CancelAsync(string workflowId, Guid clientEventId)
+    public async Task<ApplyResult> CancelAsync(string executionId, Guid clientEventId)
     {
-        if (!_instances.TryGetValue(workflowId, out var instance))
+        if (!_instances.TryGetValue(executionId, out var instance))
         {
             await Task.CompletedTask.ConfigureAwait(false);
             return ApplyResult.Applied;
@@ -211,18 +211,18 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         }
 
         instance.MarkCancelled();
-        _workflowLog.LogWorkflowCancelRequested(workflowId);
+        _executionLog.LogExecutionCancelRequested(executionId);
         await Task.CompletedTask.ConfigureAwait(false);
         return ApplyResult.Applied;
     }
 
     /// <inheritdoc />
-    public WorkflowSnapshot? GetSnapshot(string workflowId) =>
-        _instances.TryGetValue(workflowId, out var instance) ? instance.ToSnapshot() : null;
+    public ExecutionSnapshot? GetSnapshot(string executionId) =>
+        _instances.TryGetValue(executionId, out var instance) ? instance.ToSnapshot() : null;
 
     /// <inheritdoc />
-    public string ExportExecutionGraph(string workflowId) =>
-        _instances.TryGetValue(workflowId, out var instance) ? instance.Graph.ExportJson() : "{}";
+    public string ExportExecutionGraph(string executionId) =>
+        _instances.TryGetValue(executionId, out var instance) ? instance.Graph.ExportJson() : "{}";
 
     /// <inheritdoc />
     public void SetNodeCompletedHandler(Func<string, Task>? handler)
@@ -230,9 +230,9 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         _nodeCompletedHandler = handler;
     }
 
-    private async Task RunWorkflowAsync(WorkflowInstance instance, EventProvider eventProvider, object? workflowInput)
+    private async Task RunExecutionAsync(ExecutionInstance instance, EventProvider eventProvider, object? input)
     {
-        var initialInput = ApplyStateInput(instance, instance.Definition.InitialState, workflowInput);
+        var initialInput = ApplyStateInput(instance, instance.Definition.InitialState, input);
         try
         {
             await ScheduleStateAsync(instance, eventProvider, instance.Definition.InitialState, null, null, initialInput).ConfigureAwait(false);
@@ -241,12 +241,12 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         catch (Exception ex)
         {
             instance.MarkFailed();
-            _workflowLog.LogWorkflowRunFailed(ex, instance.WorkflowId, instance.Definition.Name);
+            _executionLog.LogExecutionRunFailed(ex, instance.ExecutionId, instance.Definition.Name);
         }
 #pragma warning restore CA1031
     }
 
-    private async Task ScheduleStateAsync(WorkflowInstance instance, EventProvider eventProvider, string stateName, string? fromNodeId, EdgeType? edgeType, object? input)
+    private async Task ScheduleStateAsync(ExecutionInstance instance, EventProvider eventProvider, string stateName, string? fromNodeId, EdgeType? edgeType, object? input)
     {
         var def = instance.Definition;
         if (def.JoinTable.ContainsKey(stateName))
@@ -279,15 +279,15 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         }
         instance.AddActiveState(stateName);
 
-        _workflowLog.LogStateScheduled(instance.WorkflowId, stateName, nodeId);
+        _executionLog.LogStateScheduled(instance.ExecutionId, stateName, nodeId);
 
         var ctx = new StateContext
         {
             Events = eventProvider,
-            Store = new WorkflowStateStore(instance),
-            WorkflowId = instance.WorkflowId,
+            Store = new ExecutionStateStore(instance),
+            ExecutionId = instance.ExecutionId,
             StateName = stateName,
-            Logger = _workflowLog.CreateStateContextLogger(instance.WorkflowId, stateName)
+            Logger = _executionLog.CreateStateContextLogger(instance.ExecutionId, stateName)
         };
 
         var (fact, output) = await _scheduler.RunAsync(async ct =>
@@ -298,27 +298,27 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
                 var o = await executor.ExecuteAsync(ctx, input, ct).ConfigureAwait(false);
                 instance.SetOutput(stateName, o);
                 instance.Graph.CompleteNode(nodeId, Fact.Completed, o);
-                await NotifyNodeCompletedAsync(instance.WorkflowId).ConfigureAwait(false);
+                await NotifyNodeCompletedAsync(instance.ExecutionId).ConfigureAwait(false);
                 sw.Stop();
-                _workflowLog.LogStateCompleted(instance.WorkflowId, stateName, nodeId, Fact.Completed, sw.ElapsedMilliseconds);
+                _executionLog.LogStateCompleted(instance.ExecutionId, stateName, nodeId, Fact.Completed, sw.ElapsedMilliseconds);
                 return (Fact.Completed, o);
             }
             catch (OperationCanceledException)
             {
                 instance.Graph.CompleteNode(nodeId, Fact.Cancelled, null);
-                await NotifyNodeCompletedAsync(instance.WorkflowId).ConfigureAwait(false);
+                await NotifyNodeCompletedAsync(instance.ExecutionId).ConfigureAwait(false);
                 sw.Stop();
-                _workflowLog.LogStateCompleted(instance.WorkflowId, stateName, nodeId, Fact.Cancelled, sw.ElapsedMilliseconds);
+                _executionLog.LogStateCompleted(instance.ExecutionId, stateName, nodeId, Fact.Cancelled, sw.ElapsedMilliseconds);
                 return (Fact.Cancelled, (object?)null);
             }
 #pragma warning disable CA1031 // 例外種別に依らず捕捉し、状態失敗は実行グラフへ記録する
             catch (Exception ex)
             {
                 instance.Graph.CompleteNode(nodeId, Fact.Failed, null);
-                await NotifyNodeCompletedAsync(instance.WorkflowId).ConfigureAwait(false);
+                await NotifyNodeCompletedAsync(instance.ExecutionId).ConfigureAwait(false);
                 sw.Stop();
-                _workflowLog.LogStateExecuteFailed(ex, instance.WorkflowId, stateName, nodeId, ex.GetType().Name);
-                _workflowLog.LogStateCompleted(instance.WorkflowId, stateName, nodeId, Fact.Failed, sw.ElapsedMilliseconds);
+                _executionLog.LogStateExecuteFailed(ex, instance.ExecutionId, stateName, nodeId, ex.GetType().Name);
+                _executionLog.LogStateCompleted(instance.ExecutionId, stateName, nodeId, Fact.Failed, sw.ElapsedMilliseconds);
                 return (Fact.Failed, (object?)null);
             }
 #pragma warning restore CA1031
@@ -328,7 +328,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         ProcessFact(instance, eventProvider, stateName, fact, output, nodeId);
     }
 
-    private async Task RunJoinStateAsync(WorkflowInstance instance, EventProvider eventProvider, string joinStateName, string? fromNodeId, EdgeType? edgeType)
+    private async Task RunJoinStateAsync(ExecutionInstance instance, EventProvider eventProvider, string joinStateName, string? fromNodeId, EdgeType? edgeType)
     {
         if (!instance.JoinTracker.TryBeginJoinExecution(joinStateName))
         {
@@ -351,12 +351,12 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
             instance.Graph.AddEdge(fromNodeId, nodeId, edgeType.Value);
         }
 
-        _workflowLog.LogJoinStateScheduled(instance.WorkflowId, joinStateName, nodeId);
+        _executionLog.LogJoinStateScheduled(instance.ExecutionId, joinStateName, nodeId);
 
         instance.Graph.CompleteNode(nodeId, Fact.Joined, null);
-        await NotifyNodeCompletedAsync(instance.WorkflowId).ConfigureAwait(false);
+        await NotifyNodeCompletedAsync(instance.ExecutionId).ConfigureAwait(false);
 
-        _workflowLog.LogJoinStateCompleted(instance.WorkflowId, joinStateName, nodeId, Fact.Joined);
+        _executionLog.LogJoinStateCompleted(instance.ExecutionId, joinStateName, nodeId, Fact.Joined);
 
         var (transition, routingDiag) = EvaluateTransition(instance, joinStateName, Fact.Joined, joinInputs);
         if (routingDiag is not null)
@@ -372,18 +372,18 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         else if (transition.End)
         {
             instance.MarkCompleted();
-            _workflowLog.LogWorkflowCompleted(instance.WorkflowId, instance.Definition.Name);
+            _executionLog.LogExecutionCompleted(instance.ExecutionId, instance.Definition.Name);
         }
         else
         {
-            _workflowLog.LogWarningNoTransition(instance.WorkflowId, joinStateName, Fact.Joined);
+            _executionLog.LogWarningNoTransition(instance.ExecutionId, joinStateName, Fact.Joined);
         }
     }
 
     /// <summary>
     /// ノード完了通知ハンドラへベストエフォートで通知する。
     /// </summary>
-    private async Task NotifyNodeCompletedAsync(string workflowId)
+    private async Task NotifyNodeCompletedAsync(string executionId)
     {
         var handler = _nodeCompletedHandler;
         if (handler is null)
@@ -393,17 +393,17 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
 
         try
         {
-            await handler(workflowId).ConfigureAwait(false);
+            await handler(executionId).ConfigureAwait(false);
         }
 #pragma warning disable CA1031 // 外部ハンドラの失敗は遷移へ伝播させずログのみ（STV-404 のベストエフォート通知）
         catch (Exception exception)
         {
-            _workflowLog.LogWarningNodeCompletedHandlerFailed(exception, workflowId);
+            _executionLog.LogWarningNodeCompletedHandlerFailed(exception, executionId);
         }
 #pragma warning restore CA1031
     }
 
-    private void ProcessFact(WorkflowInstance instance, EventProvider eventProvider, string stateName, string fact, object? output, string nodeId)
+    private void ProcessFact(ExecutionInstance instance, EventProvider eventProvider, string stateName, string fact, object? output, string nodeId)
     {
         var readyJoin = instance.JoinTracker.RecordFact(stateName, fact, output, nodeId);
         if (readyJoin != null)
@@ -415,7 +415,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         {
             instance.MarkFailed();
             instance.MarkCancelled();
-            _workflowLog.LogWorkflowTerminalFailure(instance.WorkflowId, instance.Definition.Name, stateName, fact);
+            _executionLog.LogExecutionTerminalFailure(instance.ExecutionId, instance.Definition.Name, stateName, fact);
             return;
         }
 
@@ -429,14 +429,14 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         {
             if (!transition.End)
             {
-                _workflowLog.LogWarningNoTransition(instance.WorkflowId, stateName, fact);
+                _executionLog.LogWarningNoTransition(instance.ExecutionId, stateName, fact);
             }
             return;
         }
         if (transition.End)
         {
             instance.MarkCompleted();
-            _workflowLog.LogWorkflowCompleted(instance.WorkflowId, instance.Definition.Name);
+            _executionLog.LogExecutionCompleted(instance.ExecutionId, instance.Definition.Name);
             return;
         }
         if (transition.Fork != null)
@@ -455,7 +455,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         }
     }
 
-    private object? ApplyStateInput(WorkflowInstance instance, string targetState, object? rawInput)
+    private object? ApplyStateInput(ExecutionInstance instance, string targetState, object? rawInput)
     {
         if (!instance.Definition.StateInputs.TryGetValue(targetState, out var spec))
         {
@@ -465,8 +465,8 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
         var evaluated = StateInputEvaluator.ApplyWithDiagnostics(spec, rawInput);
         foreach (var warning in evaluated.Warnings)
         {
-            _workflowLog.LogWarningInputEvaluation(
-                instance.WorkflowId,
+            _executionLog.LogWarningInputEvaluation(
+                instance.ExecutionId,
                 targetState,
                 warning.InputKey,
                 warning.Reason);
@@ -476,7 +476,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
     }
 
     private (TransitionResult Transition, ConditionRoutingDiagnostics? RoutingDiagnostics) EvaluateTransition(
-        WorkflowInstance instance,
+        ExecutionInstance instance,
         string stateName,
         string fact,
         object? output)
@@ -489,7 +489,7 @@ public sealed partial class WorkflowEngine : IWorkflowEngine, IDisposable
                 fact,
                 output,
                 onPathWarning: (path, reason) =>
-                    _workflowLog.LogWarningConditionPathResolution(instance.WorkflowId, stateName, fact, path, reason));
+                    _executionLog.LogWarningConditionPathResolution(instance.ExecutionId, stateName, fact, path, reason));
             return (transition, diagnostics);
         }
 

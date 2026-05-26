@@ -4,22 +4,22 @@ namespace Statevia.Core.Engine.Abstractions;
 /// 定義駆動型ワークフローエンジンのメインインターフェース。
 /// 事実駆動型 FSM に基づき、YAML/JSON で定義されたワークフローを実行します。
 /// </summary>
-public interface IWorkflowEngine
+public interface IExecutionEngine
 {
-    /// <summary>コンパイル済み定義からワークフローインスタンスを開始し、その ID を返します。workflowId を指定した場合はその ID を使用し、null の場合はエンジンが生成します。</summary>
+    /// <summary>コンパイル済み定義からワークフローインスタンスを開始し、その ID を返します。executionId を指定した場合はその ID を使用し、null の場合はエンジンが生成します。</summary>
     /// <param name="definition">コンパイル済みワークフロー定義。</param>
-    /// <param name="workflowId">使用するワークフロー ID。省略時はエンジンが生成する。</param>
-    /// <param name="workflowInput">初期状態の <see cref="IStateExecutor.ExecuteAsync"/> に渡す入力（省略時は <c>null</c>）。</param>
-    string Start(CompiledWorkflowDefinition definition, string? workflowId = null, object? workflowInput = null);
+    /// <param name="executionId">使用する実行インスタンス ID。省略時はエンジンが生成する。</param>
+    /// <param name="input">初期状態の <see cref="IStateExecutor.ExecuteAsync"/> に渡す入力（省略時は <c>null</c>）。</param>
+    string Start(CompiledWorkflowDefinition definition, string? executionId = null, object? input = null);
 
     /// <summary>指定ワークフローにのみイベントを発行し、待機中の状態を再開します（Wait / Resume 仕様）。</summary>
-    void PublishEvent(string workflowId, string eventName);
+    void PublishEvent(string executionId, string eventName);
 
     /// <summary>
     /// <see cref="PublishEvent(string, string)"/> と同様にイベントを発行するが、同一インスタンス内で
     /// <paramref name="clientEventId"/> が既に処理済みのときは発行せず <see cref="ApplyResult.AlreadyApplied"/> を返す。
     /// </summary>
-    ApplyResult PublishEvent(string workflowId, string eventName, Guid clientEventId);
+    ApplyResult PublishEvent(string executionId, string eventName, Guid clientEventId);
 
     /// <summary>
     /// 全ワークフローにイベントをブロードキャストし、待機中の状態を再開する。
@@ -37,22 +37,22 @@ public interface IWorkflowEngine
     ApplyResult PublishEvent(string eventName, Guid clientEventId);
 
     /// <summary>ワークフローに協調的キャンセルをリクエストします。エンジンは強制終了しません。</summary>
-    Task CancelAsync(string workflowId);
+    Task CancelAsync(string executionId);
 
     /// <summary>
     /// <see cref="CancelAsync(string)"/> と同様に協調的キャンセルを行うが、同一 <paramref name="clientEventId"/> の再呼び出しは No-Op となる。
     /// </summary>
-    Task<ApplyResult> CancelAsync(string workflowId, Guid clientEventId);
+    Task<ApplyResult> CancelAsync(string executionId, Guid clientEventId);
 
     /// <summary>ワークフローインスタンスの現在のスナップショットを取得します。</summary>
-    WorkflowSnapshot? GetSnapshot(string workflowId);
+    ExecutionSnapshot? GetSnapshot(string executionId);
 
     /// <summary>実行グラフを JSON としてエクスポートします（デバッグ・可視化用）。</summary>
-    string ExportExecutionGraph(string workflowId);
+    string ExportExecutionGraph(string executionId);
 
     /// <summary>
     /// ノード完了（通常ステート / Join 合成ノード）通知ハンドラを登録または解除します。
-    /// 引数はワークフロー ID です。
+    /// 引数は実行インスタンス ID です。
     /// </summary>
     /// <remarks>
     /// 直近の登録で上書きされます。<paramref name="handler"/> に <c>null</c> を渡すと解除します。
