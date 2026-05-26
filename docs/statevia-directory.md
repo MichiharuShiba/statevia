@@ -36,7 +36,7 @@ statevia/
 │  ├─ statevia-engine.sln
 │  ├─ Directory.Build.props
 │  ├─ Statevia.Core.Engine/      # エンジンコア
-│  │  ├─ Engine/                 # WorkflowEngine, WorkflowInstance
+│  │  ├─ Engine/                 # ExecutionEngine, ExecutionInstance
 │  │  ├─ FSM/                    # 遷移評価
 │  │  ├─ Scheduler/              # 並列制御
 │  │  ├─ Execution/             # DefaultStateExecutor
@@ -75,6 +75,6 @@ statevia/
       └─ Dockerfile
 ```
 
-- **Core-Engine**: `engine/`。定義駆動 FSM / Fork-Join / ExecutionGraph。API から同一プロセスで参照（IWorkflowEngine）。
+- **Core-Engine**: `engine/`。定義駆動 FSM / Fork-Join / ExecutionGraph。API から同一プロセスで参照（`IExecutionEngine`）。
 - **Core-API**: `api/`。v1/definitions（POST 登録・PUT 更新・GET）・v1/workflows・v1/health。PostgreSQL は EF Core マイグレーションで管理。
 - **UI**: `services/ui/`。Next.js。`/api/core/*` で Core-API（C#）にプロキシ。

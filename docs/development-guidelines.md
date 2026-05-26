@@ -32,7 +32,7 @@
 ### 3.1 Core-API（`api/`）
 
 - **Controller**: ルーティング・バインディング・ヘッダ・HTTP ステータスのみ。ビジネスロジックは Service へ。
-- **Service**: ユースケース境界。`ICoreTransactionExecutor` / `IWorkflowMutationPersistence` 経由でコミット境界を決め、Repository・DisplayId・command dedup・`IWorkflowEngine` を組み合わせる。Service から `IDbContextFactory` を直接使わない。
+- **Service**: ユースケース境界。`ICoreTransactionExecutor` / `IExecutionMutationPersistence` 経由でコミット境界を決め、Repository・DisplayId・command dedup・`IExecutionEngine` を組み合わせる。Service から `IDbContextFactory` を直接使わない。
 - **Repository**: 永続化のみ。書き込み API の第一引数は常に `ICoreUnitOfWork`。`SaveChanges` / `BeginTransaction` / `IDbContextFactory` を Repository 内に持たない。
 - **UoW**: `IDbContextFactory<CoreDbContext>` は `CoreUnitOfWork` 実装内に閉じる。
 - **例外**: `ApiExceptionFilter` と契約に沿ったエラー JSON（404 / 422 / 500）。
