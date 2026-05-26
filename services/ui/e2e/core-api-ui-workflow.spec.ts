@@ -8,7 +8,7 @@ import { uiText } from "../app/lib/uiText";
  *
  * 事前: Core-API を起動し、マイグレーション済み DB を用意する。
  * 実行例:
- *   CORE_API_E2E_URL=http://localhost:8080 npx playwright test e2e/core-api-ui-workflow.spec.ts
+ *   CORE_API_E2E_URL=http://localhost:8080 npx playwright test e2e/core-api-ui-execution.spec.ts
  *
  * `playwright.config` は CORE_API_E2E_URL 設定時に CORE_API_INTERNAL_BASE を渡す。
  */
@@ -31,7 +31,7 @@ test.describe("Core API + UI (real)", () => {
     expect(createDef.ok(), await createDef.text()).toBeTruthy();
     const defJson = (await createDef.json()) as { displayId: string };
 
-    const start = await request.post(`${apiBase}/v1/workflows`, {
+    const start = await request.post(`${apiBase}/v1/executions`, {
       headers: tenantHeaders,
       data: { definitionId: defJson.displayId, input: {} }
     });
@@ -67,14 +67,14 @@ test.describe("Core API + UI (real)", () => {
     expect(createDef.ok()).toBeTruthy();
     const defJson = (await createDef.json()) as { displayId: string };
 
-    const start = await request.post(`${apiBase}/v1/workflows`, {
+    const start = await request.post(`${apiBase}/v1/executions`, {
       headers: tenantHeaders,
       data: { definitionId: defJson.displayId, input: {} }
     });
     expect(start.ok()).toBeTruthy();
     const wf = (await start.json()) as { displayId: string };
 
-    await page.route("**/api/core/workflows/*/cancel", async (route) => {
+    await page.route("**/api/core/executions/*/cancel", async (route) => {
       await route.fulfill({
         status: 409,
         contentType: "application/json",

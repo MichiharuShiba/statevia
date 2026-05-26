@@ -4,7 +4,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 namespace Statevia.Core.Api.Hosting.OpenApi;
 
 /// <summary>
-/// <c>GET /v1/workflows/{{id}}/graph</c> の応答を ExecutionGraph 参照付きの弱い object スキーマにする。
+/// <c>GET /v1/executions/{{id}}/graph</c> の応答を ExecutionGraph 参照付きの弱い object スキーマにする。
 /// </summary>
 internal sealed class ExecutionGraphResponseOperationFilter : IOperationFilter
 {

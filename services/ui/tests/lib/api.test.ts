@@ -4,7 +4,7 @@ import {
   apiPost,
   apiPut,
   buildDefinitionsListPath,
-  buildWorkflowsListPath,
+  buildExecutionsListPath,
   getApiConfig,
   getApiHeaders
 } from "../../app/lib/api";
@@ -158,7 +158,7 @@ describe("apiPost", () => {
 
   it("POST で JSON body と idempotency key を送る", async () => {
     // Arrange
-    const path = "/workflows/ex-1/nodes/n-1/resume";
+    const path = "/executions/ex-1/nodes/n-1/resume";
     const body = { resumeKey: "key-1" };
 
     // Act
@@ -169,7 +169,7 @@ describe("apiPost", () => {
     expect(result.body).toEqual(body);
     expect(typeof result.idem).toBe("string");
     expect(fetch).toHaveBeenCalledWith(
-      "/api/core/workflows/ex-1/nodes/n-1/resume",
+      "/api/core/executions/ex-1/nodes/n-1/resume",
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
@@ -283,10 +283,10 @@ describe("buildDefinitionsListPath", () => {
   });
 });
 
-describe("buildWorkflowsListPath", () => {
+describe("buildExecutionsListPath", () => {
   it("空の値は除き、limit/offset 必須、フィルタは name / definitionId / status を含める", () => {
     // Act
-    const a = buildWorkflowsListPath({
+    const a = buildExecutionsListPath({
       pagination: { limit: 20, offset: 40 },
       sort: {},
       status: "Running",
@@ -294,7 +294,7 @@ describe("buildWorkflowsListPath", () => {
       definitionId: "def-1"
     });
     // Assert
-    expect(a).toBe("/workflows?limit=20&offset=40&status=Running&name=x&definitionId=def-1");
+    expect(a).toBe("/executions?limit=20&offset=40&status=Running&name=x&definitionId=def-1");
   });
 });
 

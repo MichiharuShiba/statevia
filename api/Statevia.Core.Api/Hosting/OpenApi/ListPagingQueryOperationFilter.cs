@@ -27,7 +27,7 @@ internal sealed class ListPagingQueryOperationFilter : IOperationFilter
 
     private static bool IsPagedListPath(string relativePath) =>
         string.Equals(relativePath, "v1/definitions", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(relativePath, "v1/workflows", StringComparison.OrdinalIgnoreCase);
+        || string.Equals(relativePath, "v1/executions", StringComparison.OrdinalIgnoreCase);
 
     private static void MarkQueryParameterRequired(OpenApiOperation operation, string name)
     {

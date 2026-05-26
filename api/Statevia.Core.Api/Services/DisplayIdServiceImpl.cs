@@ -74,7 +74,7 @@ internal sealed class DisplayIdServiceImpl : IDisplayIdService, IDisplayIdWriteS
             if (byDisplay is not null) return guid;
             if (kind is "definition" && await uow.Db.Definitions.AnyAsync(x => x.DefinitionId == guid, ct).ConfigureAwait(false))
                 return guid;
-            if (kind is "workflow" && await uow.Db.Workflows.AnyAsync(x => x.WorkflowId == guid, ct).ConfigureAwait(false))
+            if (kind is "execution" && await uow.Db.Executions.AnyAsync(x => x.ExecutionId == guid, ct).ConfigureAwait(false))
                 return guid;
             return null;
         }

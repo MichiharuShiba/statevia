@@ -14,7 +14,7 @@ export const uiTextEn: UiText = {
   navigation: {
     dashboard: "Dashboard",
     definitions: "Definitions",
-    workflows: "Workflows",
+    executions: "Executions",
     health: "Health",
   },
   entities: {
@@ -25,7 +25,7 @@ export const uiTextEn: UiText = {
   },
   lists: {
     ...uiTextJa.lists,
-    workflows: "Workflows",
+    executions: "Executions",
     definitions: "Definitions",
     nodeCount: (count: number) => `${count} items`,
   },
@@ -87,7 +87,7 @@ export const uiTextEn: UiText = {
         `No registered graph definition for graph ID ${graphId}. Showing temporary edges.`,
     },
     errors: {
-      workflowNotFound: "The specified workflow was not found. Please check the ID.",
+      executionNotFound: "The specified execution was not found. Please check the ID.",
     },
     toasts: {
       cancelAccepted: "CancelExecution accepted",
@@ -221,22 +221,22 @@ export const uiTextEn: UiText = {
       fetchFailed: "Failed to fetch data.",
     },
   },
-  workflowsPage: {
-    ...uiTextJa.workflowsPage,
+  executionsPage: {
+    ...uiTextJa.executionsPage,
     loading: "Loading workflows.",
     listSummary: (totalCount: number, page: number) => `Total ${totalCount} (page ${page})`,
     updatedAt: (formattedDateTime: string) => `Updated: ${formattedDateTime}`,
     empty: "No workflows found.",
     error: "Failed to load workflows. Please try again later.",
     pagination: {
-      ...uiTextJa.workflowsPage.pagination,
+      ...uiTextJa.executionsPage.pagination,
       ariaLabel: "Workflows pagination",
       currentPage: (page: number) => `Page ${page}`,
       prev: "Prev",
       next: "Next",
     },
     filter: {
-      ...uiTextJa.workflowsPage.filter,
+      ...uiTextJa.executionsPage.filter,
       contextActivePrefix: "Definition filter:",
       clearDefinition: "Clear definition filter",
       title: "Filters",
@@ -298,24 +298,24 @@ export const uiTextEn: UiText = {
       createNew: "Create new definition",
     },
   },
-  workflowDetailPage: {
-    ...uiTextJa.workflowDetailPage,
+  executionDetailPage: {
+    ...uiTextJa.executionDetailPage,
     title: "Workflow detail",
-    missingWorkflowId: "Workflow ID is missing.",
+    missingExecutionId: "Execution ID is missing.",
     navRun: "Run",
     navGraph: "Graph",
   },
-  workflowGraphPage: {
-    ...uiTextJa.workflowGraphPage,
+  executionGraphPage: {
+    ...uiTextJa.executionGraphPage,
     title: "Workflow graph",
-    missingWorkflowId: "Workflow ID is missing.",
+    missingExecutionId: "Execution ID is missing.",
     navDetail: "Detail",
     navRun: "Run",
   },
-  workflowRunPage: {
-    ...uiTextJa.workflowRunPage,
+  executionRunPage: {
+    ...uiTextJa.executionRunPage,
     title: "Workflow run",
-    missingWorkflowId: "Workflow ID is missing.",
+    missingExecutionId: "Execution ID is missing.",
     navDetail: "Detail",
     navGraph: "Graph",
   },

@@ -25,7 +25,7 @@ npx playwright install
 
 事前に **PostgreSQL と Core-API**（例: `http://localhost:8080`）を起動し、マイグレーション済みであることを前提とします。
 
-環境変数 **`CORE_API_E2E_URL`** に Core-API のオリジンを設定すると、`core-api-real.spec.ts` と `core-api-ui-workflow.spec.ts` が実行されます（未設定のときこれらはスキップ）。
+環境変数 **`CORE_API_E2E_URL`** に Core-API のオリジンを設定すると、`core-api-real.spec.ts` と `core-api-ui-execution.spec.ts` が実行されます（未設定のときこれらはスキップ）。
 
 **PowerShell の例**
 
@@ -34,9 +34,9 @@ cd services/ui
 $env:CI = "true"
 $env:CORE_API_E2E_URL = "http://localhost:8080"
 npx playwright test e2e/core-api-real.spec.ts
-npx playwright test e2e/core-api-ui-workflow.spec.ts
+npx playwright test e2e/core-api-ui-execution.spec.ts
 # 両方まとめて
-npx playwright test e2e/core-api-real.spec.ts e2e/core-api-ui-workflow.spec.ts
+npx playwright test e2e/core-api-real.spec.ts e2e/core-api-ui-execution.spec.ts
 ```
 
 **bash の例**
@@ -44,7 +44,7 @@ npx playwright test e2e/core-api-real.spec.ts e2e/core-api-ui-workflow.spec.ts
 ```bash
 cd services/ui
 CORE_API_E2E_URL=http://localhost:8080 npx playwright test e2e/core-api-real.spec.ts
-CORE_API_E2E_URL=http://localhost:8080 npx playwright test e2e/core-api-ui-workflow.spec.ts
+CORE_API_E2E_URL=http://localhost:8080 npx playwright test e2e/core-api-ui-execution.spec.ts
 ```
 
 `playwright.config.ts` は `CORE_API_E2E_URL` があるとき、Next のプロキシ用に **`CORE_API_INTERNAL_BASE`** を同じ値で渡します。別 URL にしたい場合は **`CORE_API_INTERNAL_BASE`** を明示してください。

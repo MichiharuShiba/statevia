@@ -82,7 +82,7 @@ async function fetchAndParse<T>(path: string, init?: RequestInit): Promise<T> {
   return json as T;
 }
 
-/** `GET /v1/workflows?limit&offset&status&name&definitionId` 向け（Core-API）。 */
+/** `GET /v1/executions?limit&offset&status&name&definitionId` 向け（Core-API）。 */
 export type PaginationQuery = {
   limit: number;
   offset: number;
@@ -105,7 +105,7 @@ export type DefinitionsListQuery = {
 };
 
 /** ワークフロー一覧 API のクエリパラメータ。 */
-export type WorkflowsListQuery = {
+export type ExecutionsListQuery = {
   pagination: PaginationQuery;
   sort: SortQuery;
   status?: string;
@@ -116,7 +116,7 @@ export type WorkflowsListQuery = {
 /**
  * ワークフロー一覧用の相対 API パス `...?...` を組み立てる。空のフィルタは含めない。
  */
-export function buildWorkflowsListPath(params: WorkflowsListQuery): string {
+export function buildExecutionsListPath(params: ExecutionsListQuery): string {
   const query = new URLSearchParams();
   query.set("limit", String(params.pagination.limit));
   query.set("offset", String(params.pagination.offset));
@@ -125,7 +125,7 @@ export function buildWorkflowsListPath(params: WorkflowsListQuery): string {
   if (params.definitionId?.trim()) query.set("definitionId", params.definitionId.trim());
   if (params.sort.sortBy?.trim()) query.set("sortBy", params.sort.sortBy.trim());
   if (params.sort.sortOrder) query.set("sortOrder", params.sort.sortOrder);
-  return `/workflows?${query.toString()}`;
+  return `/executions?${query.toString()}`;
 }
 
 /**

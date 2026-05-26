@@ -11,9 +11,9 @@ function joinUrl(parts: string[]) {
   return `${base()}/${p}`;
 }
 
-/** v2: UI は `/workflows` のみ。Core-API の `/v1/workflows` に転送する。 */
+/** v2: UI は `/executions` のみ。Core-API の `/v1/executions` に転送する。 */
 function pathForBackend(pathParts: string[]): string[] {
-  if (pathParts[0] === "workflows") return ["v1", "workflows", ...pathParts.slice(1)];
+  if (pathParts[0] === "executions") return ["v1", "executions", ...pathParts.slice(1)];
   if (pathParts[0] === "definitions") return ["v1", "definitions", ...pathParts.slice(1)];
   if (pathParts[0] === "graphs") return ["v1", "graphs", ...pathParts.slice(1)];
   return pathParts;

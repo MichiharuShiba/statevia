@@ -25,22 +25,22 @@ describe("api/core route GET", () => {
     vi.unstubAllGlobals();
   });
 
-  it("workflows パスを v1/workflows に転送する", async () => {
-    const req = new NextRequest("http://localhost/api/core/workflows/ex-1?limit=10");
-    await GET(req, { params: Promise.resolve({ path: ["workflows", "ex-1"] }) });
+  it("executions パスを v1/executions に転送する", async () => {
+    const req = new NextRequest("http://localhost/api/core/executions/ex-1?limit=10");
+    await GET(req, { params: Promise.resolve({ path: ["executions", "ex-1"] }) });
 
     expect(fetch).toHaveBeenCalledWith(
-      "http://core.test/v1/workflows/ex-1?limit=10",
+      "http://core.test/v1/executions/ex-1?limit=10",
       expect.objectContaining({ method: "GET" })
     );
   });
 
   it("stream パスではクエリ tenantId をヘッダに載せる", async () => {
-    const req = new NextRequest("http://localhost/api/core/workflows/ex-1/stream?tenantId=t-1");
-    await GET(req, { params: Promise.resolve({ path: ["workflows", "ex-1", "stream"] }) });
+    const req = new NextRequest("http://localhost/api/core/executions/ex-1/stream?tenantId=t-1");
+    await GET(req, { params: Promise.resolve({ path: ["executions", "ex-1", "stream"] }) });
 
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/v1/workflows/ex-1/stream"),
+      expect.stringContaining("/v1/executions/ex-1/stream"),
       expect.objectContaining({
         headers: expect.objectContaining({ "X-Tenant-Id": "t-1" })
       })
@@ -55,8 +55,8 @@ describe("api/core route GET", () => {
       text: () => Promise.resolve("")
     } as Response);
 
-    const req = new NextRequest("http://localhost/api/core/workflows/ex-1");
-    const res = await GET(req, { params: Promise.resolve({ path: ["workflows", "ex-1"] }) });
+    const req = new NextRequest("http://localhost/api/core/executions/ex-1");
+    const res = await GET(req, { params: Promise.resolve({ path: ["executions", "ex-1"] }) });
 
     expect(res.status).toBe(204);
     expect(await res.text()).toBe("");
@@ -70,14 +70,14 @@ describe("api/core route GET", () => {
   });
 
   it("POST で JSON body を転送する", async () => {
-    const req = new NextRequest("http://localhost/api/core/workflows", {
+    const req = new NextRequest("http://localhost/api/core/executions", {
       method: "POST",
       body: JSON.stringify({ definitionId: "def-1" })
     });
-    await POST(req, { params: Promise.resolve({ path: ["workflows"] }) });
+    await POST(req, { params: Promise.resolve({ path: ["executions"] }) });
 
     expect(fetch).toHaveBeenCalledWith(
-      "http://core.test/v1/workflows",
+      "http://core.test/v1/executions",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ definitionId: "def-1" })
@@ -99,11 +99,11 @@ describe("api/core route GET", () => {
   });
 
   it("DELETE を転送する", async () => {
-    const req = new NextRequest("http://localhost/api/core/workflows/ex-1", { method: "DELETE" });
-    await DELETE(req, { params: Promise.resolve({ path: ["workflows", "ex-1"] }) });
+    const req = new NextRequest("http://localhost/api/core/executions/ex-1", { method: "DELETE" });
+    await DELETE(req, { params: Promise.resolve({ path: ["executions", "ex-1"] }) });
 
     expect(fetch).toHaveBeenCalledWith(
-      "http://core.test/v1/workflows/ex-1",
+      "http://core.test/v1/executions/ex-1",
       expect.objectContaining({ method: "DELETE" })
     );
   });
@@ -112,8 +112,8 @@ describe("api/core route GET", () => {
     process.env.CORE_API_AUTH_TOKEN = "secret-token";
     process.env.CORE_API_TENANT_ID = "tenant-env";
 
-    const req = new NextRequest("http://localhost/api/core/workflows");
-    await GET(req, { params: Promise.resolve({ path: ["workflows"] }) });
+    const req = new NextRequest("http://localhost/api/core/executions");
+    await GET(req, { params: Promise.resolve({ path: ["executions"] }) });
 
     expect(fetch).toHaveBeenCalledWith(
       expect.any(String),

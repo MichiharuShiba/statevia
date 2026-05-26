@@ -41,13 +41,13 @@ public sealed class OpenApiDocumentTests : IClassFixture<StateviaApiWebApplicati
         Assert.True(root.TryGetProperty("paths", out var paths));
         AssertRequiredPath(paths, "/v1/health");
         AssertRequiredPath(paths, "/v1/definitions");
-        AssertRequiredPath(paths, "/v1/workflows");
-        AssertRequiredPath(paths, "/v1/workflows/{id}/stream");
+        AssertRequiredPath(paths, "/v1/executions");
+        AssertRequiredPath(paths, "/v1/executions/{id}/stream");
 
         Assert.True(root.TryGetProperty("components", out var components));
         Assert.True(components.TryGetProperty("schemas", out var schemas));
         Assert.True(schemas.TryGetProperty("ErrorResponse", out _));
-        Assert.True(schemas.TryGetProperty("WorkflowResponse", out _));
+        Assert.True(schemas.TryGetProperty("ExecutionResponse", out _));
         Assert.True(ContainsPagedResultSchema(schemas));
     }
 

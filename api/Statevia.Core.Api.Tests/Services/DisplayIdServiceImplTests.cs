@@ -60,7 +60,7 @@ public sealed class DisplayIdServiceImplTests
     /// 実行種別で実行行が存在するとき識別子を返す。
     /// </summary>
     [Fact]
-    public async Task ResolveAsync_WhenKindWorkflowAndWorkflowRowExists_ReturnsGuid()
+    public async Task ResolveAsync_WhenKindWorkflowAndExecutionRowExists_ReturnsGuid()
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
@@ -70,9 +70,9 @@ public sealed class DisplayIdServiceImplTests
         var uuid = Guid.NewGuid();
         await using (var ctx = new CoreDbContext(db.Options))
         {
-            ctx.Workflows.Add(new WorkflowRow
+            ctx.Executions.Add(new ExecutionRow
             {
-                WorkflowId = uuid,
+                ExecutionId = uuid,
                 TenantId = "t1",
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
@@ -85,7 +85,7 @@ public sealed class DisplayIdServiceImplTests
         }
 
         // Assert
-        var resolved = await sut.ResolveAsync("workflow", uuid.ToString(), CancellationToken.None);
+        var resolved = await sut.ResolveAsync("execution", uuid.ToString(), CancellationToken.None);
         Assert.Equal(uuid, resolved);
     }
 

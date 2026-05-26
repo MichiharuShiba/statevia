@@ -21,7 +21,7 @@ public sealed class CommandDedupServiceTests
             tenantId: "tenant-1",
             idempotencyKey: idempotencyKey,
             method: "POST",
-            path: "/v1/workflows");
+            path: "/v1/executions");
 
         // Assert
         Assert.Null(keyOpt);
@@ -43,13 +43,13 @@ public sealed class CommandDedupServiceTests
             tenantId: "tenant-1",
             idempotencyKey: "abc123",
             method: "POST",
-            path: "/v1/workflows",
+            path: "/v1/executions",
             requestHash: requestHash);
 
         // Assert
         Assert.NotNull(keyOpt);
         var key = keyOpt.Value;
-        Assert.Equal("tenant-1|POST /v1/workflows:abc123", key.DedupKey);
+        Assert.Equal("tenant-1|POST /v1/executions:abc123", key.DedupKey);
     }
 
     /// <summary>

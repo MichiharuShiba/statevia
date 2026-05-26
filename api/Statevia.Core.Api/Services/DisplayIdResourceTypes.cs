@@ -7,5 +7,5 @@ internal static class DisplayIdResourceTypes
 {
     public const string Definition = "definition";
 
-    public const string Workflow = "workflow";
+    public const string Execution = "execution";
 }

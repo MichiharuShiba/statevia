@@ -4,7 +4,7 @@ export type WorkflowStatus = "Running" | "Completed" | "Cancelled" | "Failed";
 /** 実行ノードの状態（Engine / Core-API 準拠）。 */
 export type NodeStatus = "IDLE" | "READY" | "RUNNING" | "WAITING" | "SUCCEEDED" | "FAILED" | "CANCELED";
 
-/** v2: GET /v1/workflows/:id のレスポンス（C# WorkflowResponse）。 */
+/** v2: GET /v1/executions/:id のレスポンス（C# WorkflowResponse）。 */
 export type WorkflowDTO = {
   displayId: string;
   resourceId: string;
@@ -17,7 +17,7 @@ export type WorkflowDTO = {
 };
 
 /**
- * v2: GET /v1/workflows/:id/graph のノード（C# ExecutionNode）。JSON は camelCase（Core-API）。
+ * v2: GET /v1/executions/:id/graph のノード（C# ExecutionNode）。JSON は camelCase（Core-API）。
  * ノード ID のキーは API／Engine／永続グラフとも `nodeId` のまま。UI 組み立て後の `ExecutionNodeDTO` だけ `executionNodeId` に正規化する。
  */
 export type WorkflowGraphNodeDTO = {
@@ -36,7 +36,7 @@ export type WorkflowGraphNodeDTO = {
   conditionRouting?: unknown;
 };
 
-/** v2: GET /v1/workflows/:id/graph の辺（C# ExecutionEdge）。 */
+/** v2: GET /v1/executions/:id/graph の辺（C# ExecutionEdge）。 */
 export type WorkflowGraphEdgeDTO = {
   from?: string;
   to?: string;
@@ -50,7 +50,7 @@ export type RuntimeGraphEdgeDTO = {
   type?: number;
 };
 
-/** v2: GET /v1/workflows/:id/graph のレスポンス。 */
+/** v2: GET /v1/executions/:id/graph のレスポンス。 */
 export type WorkflowGraphDTO = {
   nodes: WorkflowGraphNodeDTO[];
   edges: WorkflowGraphEdgeDTO[];
@@ -180,7 +180,7 @@ export type ExecutionEventsResponse = {
   hasMore?: boolean;
 };
 
-/** GET /v1/workflows?limit=&offset= のページング結果（Core-API `PagedResult<T>`）。 */
+/** GET /v1/executions?limit=&offset= のページング結果（Core-API `PagedResult<T>`）。 */
 export type PagedResult<T> = {
   items: T[];
   totalCount: number;

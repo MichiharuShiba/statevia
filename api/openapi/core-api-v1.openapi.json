@@ -601,12 +601,12 @@
         }
       }
     },
-    "/v1/workflows": {
+    "/v1/executions": {
       "post": {
         "tags": [
           "Workflows"
         ],
-        "summary": "POST /v1/workflows — definitionId で定義を取得し、Engine.Start を呼ぶ。display_id と resource_id を返す（U4）。",
+        "summary": "POST /v1/executions — definitionId で定義を取得し、Engine.Start を呼ぶ。display_id と resource_id を返す（U4）。",
         "parameters": [
           {
             "name": "X-Tenant-Id",
@@ -644,17 +644,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/StartWorkflowRequest"
+                "$ref": "#/components/schemas/StartExecutionRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/StartWorkflowRequest"
+                "$ref": "#/components/schemas/StartExecutionRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/StartWorkflowRequest"
+                "$ref": "#/components/schemas/StartExecutionRequest"
               }
             }
           }
@@ -665,17 +665,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowResponse"
+                  "$ref": "#/components/schemas/ExecutionResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowResponse"
+                  "$ref": "#/components/schemas/ExecutionResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowResponse"
+                  "$ref": "#/components/schemas/ExecutionResponse"
                 }
               }
             }
@@ -726,7 +726,7 @@
         "tags": [
           "Workflows"
         ],
-        "summary": "GET /v1/workflows — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&status=&definitionId=&name=&sortBy=&sortOrder=` で Statevia.Core.Api.Contracts.PagedResult`1（O1/O2）。\r\n`definitionId` は定義の display / UUID。 `name` は workflow の `displayId` 部分一致、または workflow の UUID 完全一致で絞り込み。",
+        "summary": "GET /v1/executions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&status=&definitionId=&name=&sortBy=&sortOrder=` で Statevia.Core.Api.Contracts.PagedResult`1（O1/O2）。\r\n`definitionId` は定義の display / UUID。 `name` は workflow の `displayId` 部分一致、または workflow の UUID 完全一致で絞り込み。",
         "parameters": [
           {
             "name": "limit",
@@ -811,17 +811,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowResponsePagedResult"
+                  "$ref": "#/components/schemas/ExecutionResponsePagedResult"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowResponsePagedResult"
+                  "$ref": "#/components/schemas/ExecutionResponsePagedResult"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowResponsePagedResult"
+                  "$ref": "#/components/schemas/ExecutionResponsePagedResult"
                 }
               }
             }
@@ -859,12 +859,12 @@
         }
       }
     },
-    "/v1/workflows/{id}": {
+    "/v1/executions/{id}": {
       "get": {
         "tags": [
           "Workflows"
         ],
-        "summary": "GET /v1/workflows/{id} — 一覧と同一の Statevia.Core.Api.Controllers.WorkflowResponse（UI WorkflowDTO 向け）。X-Tenant-Id でスコープ。",
+        "summary": "GET /v1/executions/{id} — 一覧と同一の Statevia.Core.Api.Controllers.ExecutionResponse（UI WorkflowDTO 向け）。X-Tenant-Id でスコープ。",
         "parameters": [
           {
             "name": "id",
@@ -897,17 +897,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowResponse"
+                  "$ref": "#/components/schemas/ExecutionResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowResponse"
+                  "$ref": "#/components/schemas/ExecutionResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowResponse"
+                  "$ref": "#/components/schemas/ExecutionResponse"
                 }
               }
             }
@@ -945,12 +945,12 @@
         }
       }
     },
-    "/v1/workflows/{id}/graph": {
+    "/v1/executions/{id}/graph": {
       "get": {
         "tags": [
           "Workflows"
         ],
-        "summary": "GET /v1/workflows/{id}/graph — execution_graph_snapshots から取得。X-Tenant-Id でスコープ。",
+        "summary": "GET /v1/executions/{id}/graph — execution_graph_snapshots から取得。X-Tenant-Id でスコープ。",
         "parameters": [
           {
             "name": "id",
@@ -1022,12 +1022,12 @@
         }
       }
     },
-    "/v1/workflows/{id}/state": {
+    "/v1/executions/{id}/state": {
       "get": {
         "tags": [
           "Workflows"
         ],
-        "summary": "GET /v1/workflows/{id}/state?atSeq= — UI 用 WorkflowView（リプレイは現状スナップショット近似）。",
+        "summary": "GET /v1/executions/{id}/state?atSeq= — UI 用 WorkflowView（リプレイは現状スナップショット近似）。",
         "parameters": [
           {
             "name": "id",
@@ -1068,17 +1068,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowViewDto"
+                  "$ref": "#/components/schemas/ExecutionViewDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowViewDto"
+                  "$ref": "#/components/schemas/ExecutionViewDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowViewDto"
+                  "$ref": "#/components/schemas/ExecutionViewDto"
                 }
               }
             }
@@ -1116,12 +1116,12 @@
         }
       }
     },
-    "/v1/workflows/{id}/events": {
+    "/v1/executions/{id}/events": {
       "get": {
         "tags": [
           "Workflows"
         ],
-        "summary": "GET /v1/workflows/{id}/events — event_store 由来のタイムライン（limit / afterSeq）。",
+        "summary": "GET /v1/executions/{id}/events — event_store 由来のタイムライン（limit / afterSeq）。",
         "parameters": [
           {
             "name": "id",
@@ -1223,7 +1223,7 @@
         "tags": [
           "Workflows"
         ],
-        "summary": "POST /v1/workflows/{id}/events — body: { \"name\": \"Approve\" }。Engine.PublishEvent(workflowId, eventName)。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。",
+        "summary": "POST /v1/executions/{id}/events — body: { \"name\": \"Approve\" }。Engine.PublishEvent(workflowId, eventName)。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。",
         "parameters": [
           {
             "name": "id",
@@ -1331,12 +1331,12 @@
         }
       }
     },
-    "/v1/workflows/{id}/stream": {
+    "/v1/executions/{id}/stream": {
       "get": {
         "tags": [
           "Workflows"
         ],
-        "summary": "GET /v1/workflows/{id}/stream — SSE（グラフ JSON の変化を GraphUpdated として送出）。",
+        "summary": "GET /v1/executions/{id}/stream — SSE（グラフ JSON の変化を GraphUpdated として送出）。",
         "parameters": [
           {
             "name": "id",
@@ -1400,12 +1400,12 @@
         }
       }
     },
-    "/v1/workflows/{id}/cancel": {
+    "/v1/executions/{id}/cancel": {
       "post": {
         "tags": [
           "Workflows"
         ],
-        "summary": "POST /v1/workflows/{id}/cancel — Engine.CancelAsync を呼び、projection を更新。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。",
+        "summary": "POST /v1/executions/{id}/cancel — Engine.CancelAsync を呼び、projection を更新。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。",
         "parameters": [
           {
             "name": "id",
@@ -1494,12 +1494,12 @@
         }
       }
     },
-    "/v1/workflows/{id}/nodes/{nodeId}/resume": {
+    "/v1/executions/{id}/nodes/{nodeId}/resume": {
       "post": {
         "tags": [
           "Workflows"
         ],
-        "summary": "POST /v1/workflows/{id}/nodes/{nodeId}/resume — body: { \"resumeKey\": \"...\" }。PublishEvent と同様。X-Idempotency-Key で冪等。",
+        "summary": "POST /v1/executions/{id}/nodes/{nodeId}/resume — body: { \"resumeKey\": \"...\" }。PublishEvent と同様。X-Idempotency-Key で冪等。",
         "parameters": [
           {
             "name": "id",
@@ -1945,7 +1945,7 @@
         "additionalProperties": false,
         "description": "POST …/nodes/…/resume のリクエスト本文。"
       },
-      "StartWorkflowRequest": {
+      "StartExecutionRequest": {
         "required": [
           "definitionId"
         ],
@@ -1963,7 +1963,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "POST /v1/workflows のリクエスト本文。"
+        "description": "POST /v1/executions のリクエスト本文。"
       },
       "TimelineEventDto": {
         "type": "object",
@@ -2026,7 +2026,7 @@
         "additionalProperties": false,
         "description": "PUT /v1/definitions/{id} のリクエスト本文。"
       },
-      "WorkflowResponse": {
+      "ExecutionResponse": {
         "type": "object",
         "properties": {
           "displayId": {
@@ -2072,13 +2072,13 @@
         "additionalProperties": false,
         "description": "ワークフロー一覧・単票の JSON 応答形（U4）。"
       },
-      "WorkflowResponsePagedResult": {
+      "ExecutionResponsePagedResult": {
         "type": "object",
         "properties": {
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/WorkflowResponse"
+              "$ref": "#/components/schemas/ExecutionResponse"
             },
             "description": "ページ内の要素。",
             "nullable": true
@@ -2106,7 +2106,7 @@
         "additionalProperties": false,
         "description": "一覧 API のページング（O1）。"
       },
-      "WorkflowViewDto": {
+      "ExecutionViewDto": {
         "type": "object",
         "properties": {
           "displayId": {
@@ -2151,7 +2151,7 @@
           "nodes": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/WorkflowViewNodeDto"
+              "$ref": "#/components/schemas/ExecutionViewNodeDto"
             },
             "description": "実行ノードの一覧。",
             "nullable": true
@@ -2160,7 +2160,7 @@
         "additionalProperties": false,
         "description": "UI `WorkflowView` に近い形（camelCase JSON）。GET …/state 等で返す。"
       },
-      "WorkflowViewNodeDto": {
+      "ExecutionViewNodeDto": {
         "type": "object",
         "properties": {
           "executionNodeId": {
@@ -2170,7 +2170,7 @@
           },
           "stateName": {
             "type": "string",
-            "description": "ワークフロー定義上の状態名（Statevia.Core.Api.Contracts.WorkflowViewNodeDto.ExecutionNodeId とは別）。",
+            "description": "ワークフロー定義上の状態名（Statevia.Core.Api.Contracts.ExecutionViewNodeDto.ExecutionNodeId とは別）。",
             "nullable": true
           },
           "nodeType": {
@@ -2242,7 +2242,7 @@
     },
     {
       "name": "Workflows",
-      "description": "ワークフロー REST API（`/v1/workflows`）。"
+      "description": "ワークフロー REST API（`/v1/executions`）。"
     }
   ]
 }

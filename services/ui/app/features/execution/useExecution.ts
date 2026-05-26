@@ -63,10 +63,10 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
   };
 
   const refreshExecutionSnapshot = async (displayId: string) => {
-    const workflow = await apiGet<WorkflowDTO>(`/workflows/${displayId}`);
+    const workflow = await apiGet<WorkflowDTO>(`/executions/${displayId}`);
     let graph: WorkflowGraphDTO | null = null;
     try {
-      graph = await apiGet<WorkflowGraphDTO>(`/workflows/${displayId}/graph`);
+      graph = await apiGet<WorkflowGraphDTO>(`/executions/${displayId}/graph`);
     } catch {
       // graph 未取得時は nodes 空で表示
     }
@@ -123,7 +123,7 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
     setLoading(true);
     let cancelPosted = false;
     try {
-      await apiPost<CommandAccepted>(`/workflows/${displayId}/cancel`, { reason: "ui" });
+      await apiPost<CommandAccepted>(`/executions/${displayId}/cancel`, { reason: "ui" });
       cancelPosted = true;
       // loadExecution は失敗を握りつぶすため、キャンセル後の再取得はここで判別する。
       await refreshExecutionSnapshot(displayId);
@@ -148,7 +148,7 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
     setLoading(true);
     let posted = false;
     try {
-      await apiPost<CommandAccepted>(`/workflows/${displayId}/events`, { name });
+      await apiPost<CommandAccepted>(`/executions/${displayId}/events`, { name });
       posted = true;
       await refreshExecutionSnapshot(displayId);
       onPublishSuccess?.();

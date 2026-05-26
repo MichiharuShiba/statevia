@@ -52,7 +52,7 @@ internal static class ServiceCollectionExtensions
 
         services.AddScoped<ICoreUnitOfWorkFactory, CoreUnitOfWorkFactory>();
         services.AddScoped<ICoreTransactionExecutor, CoreTransactionExecutor>();
-        services.AddScoped<IWorkflowMutationPersistence, WorkflowMutationPersistence>();
+        services.AddScoped<IExecutionMutationPersistence, ExecutionMutationPersistence>();
 
         services.AddScoped<DisplayIdServiceImpl>();
         services.AddScoped<IDisplayIdService>(sp => sp.GetRequiredService<DisplayIdServiceImpl>());
@@ -67,25 +67,25 @@ internal static class ServiceCollectionExtensions
         services.AddScoped<IDefinitionRepository, DefinitionRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IProjectAuthorizationService, ProjectAuthorizationService>();
-        services.AddScoped<IWorkflowRepository, WorkflowRepository>();
+        services.AddScoped<IExecutionRepository, ExecutionRepository>();
         services.AddScoped<ICommandDedupRepository, CommandDedupRepository>();
         services.AddScoped<IEventDeliveryDedupRepository, EventDeliveryDedupRepository>();
         services.AddScoped<IEventStoreRepository, EventStoreRepository>();
         services.AddScoped<IDefinitionService, DefinitionService>();
         services.AddSingleton<IDefinitionSchemaService, DefinitionSchemaService>();
-        services.AddScoped<IWorkflowService, WorkflowService>();
-        services.AddOptions<WorkflowProjectionQueueOptions>()
-            .Bind(configuration.GetSection("WorkflowProjectionQueue"))
-            .Validate(o => o.MaxGlobalQueueSize >= 1, "WorkflowProjectionQueue:MaxGlobalQueueSize must be >= 1.")
-            .Validate(o => o.ProjectionFlushDebounceMs is >= 0 and <= 250, "WorkflowProjectionQueue:ProjectionFlushDebounceMs must be between 0 and 250.")
-            .Validate(o => o.MaxRetryAttempts is >= 1 and <= 100, "WorkflowProjectionQueue:MaxRetryAttempts must be between 1 and 100.")
-            .Validate(o => o.RetryBaseDelayMs is >= 0 and <= 60_000, "WorkflowProjectionQueue:RetryBaseDelayMs must be between 0 and 60000.")
-            .Validate(o => o.RetryMaxDelayMs is >= 0 and <= 600_000, "WorkflowProjectionQueue:RetryMaxDelayMs must be between 0 and 600000.")
-            .Validate(o => o.RetryMaxDelayMs >= o.RetryBaseDelayMs, "WorkflowProjectionQueue:RetryMaxDelayMs must be >= RetryBaseDelayMs.");
-        services.AddSingleton<WorkflowProjectionUpdateQueueService>();
-        services.AddSingleton<IWorkflowProjectionUpdateQueue>(sp => sp.GetRequiredService<WorkflowProjectionUpdateQueueService>());
-        services.AddHostedService(sp => sp.GetRequiredService<WorkflowProjectionUpdateQueueService>());
-        services.AddScoped<WorkflowStreamService>();
+        services.AddScoped<IExecutionService, ExecutionService>();
+        services.AddOptions<ExecutionProjectionQueueOptions>()
+            .Bind(configuration.GetSection("ExecutionProjectionQueue"))
+            .Validate(o => o.MaxGlobalQueueSize >= 1, "ExecutionProjectionQueue:MaxGlobalQueueSize must be >= 1.")
+            .Validate(o => o.ProjectionFlushDebounceMs is >= 0 and <= 250, "ExecutionProjectionQueue:ProjectionFlushDebounceMs must be between 0 and 250.")
+            .Validate(o => o.MaxRetryAttempts is >= 1 and <= 100, "ExecutionProjectionQueue:MaxRetryAttempts must be between 1 and 100.")
+            .Validate(o => o.RetryBaseDelayMs is >= 0 and <= 60_000, "ExecutionProjectionQueue:RetryBaseDelayMs must be between 0 and 60000.")
+            .Validate(o => o.RetryMaxDelayMs is >= 0 and <= 600_000, "ExecutionProjectionQueue:RetryMaxDelayMs must be between 0 and 600000.")
+            .Validate(o => o.RetryMaxDelayMs >= o.RetryBaseDelayMs, "ExecutionProjectionQueue:RetryMaxDelayMs must be >= RetryBaseDelayMs.");
+        services.AddSingleton<ExecutionProjectionUpdateQueueService>();
+        services.AddSingleton<IExecutionProjectionUpdateQueue>(sp => sp.GetRequiredService<ExecutionProjectionUpdateQueueService>());
+        services.AddHostedService(sp => sp.GetRequiredService<ExecutionProjectionUpdateQueueService>());
+        services.AddScoped<ExecutionStreamService>();
         services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
         services.AddSingleton<IActionRegistry>(_ =>
         {

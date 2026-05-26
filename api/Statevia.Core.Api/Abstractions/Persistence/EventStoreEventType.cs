@@ -6,7 +6,7 @@ namespace Statevia.Core.Api.Abstractions.Persistence;
 /// </summary>
 internal enum EventStoreEventType
 {
-    /// <summary>POST /v1/workflows による実行開始。</summary>
+    /// <summary>POST /v1/executions による実行開始。</summary>
     WorkflowStarted,
 
     /// <summary>POST .../cancel によるキャンセル処理完了後。</summary>

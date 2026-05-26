@@ -23,13 +23,13 @@ internal sealed class EventStoreRepository : IEventStoreRepository
     {
         var persistedMax = await uow.Db.EventStore
             .AsNoTracking()
-            .Where(e => e.WorkflowId == workflowId)
+            .Where(e => e.ExecutionId == workflowId)
             .Select(e => (long?)e.Seq)
             .MaxAsync(ct)
             .ConfigureAwait(false) ?? 0L;
 
         var localMax = uow.Db.ChangeTracker.Entries<EventStoreRow>()
-            .Where(e => e.Entity.WorkflowId == workflowId && e.State != EntityState.Deleted)
+            .Where(e => e.Entity.ExecutionId == workflowId && e.State != EntityState.Deleted)
             .Select(e => e.Entity.Seq)
             .DefaultIfEmpty(0L)
             .Max();
@@ -40,7 +40,7 @@ internal sealed class EventStoreRepository : IEventStoreRepository
         uow.Db.EventStore.Add(new EventStoreRow
         {
             EventId = _ids.NewGuid(),
-            WorkflowId = workflowId,
+            ExecutionId = workflowId,
             Seq = nextSeq,
             Type = eventType.ToPersistedString(),
             OccurredAt = now,
@@ -71,13 +71,13 @@ internal sealed class EventStoreRepository : IEventStoreRepository
 
         var persistedMax = await uow.Db.EventStore
             .AsNoTracking()
-            .Where(e => e.WorkflowId == workflowId)
+            .Where(e => e.ExecutionId == workflowId)
             .Select(e => (long?)e.Seq)
             .MaxAsync(cancellationToken)
             .ConfigureAwait(false) ?? 0L;
 
         var localMax = uow.Db.ChangeTracker.Entries<EventStoreRow>()
-            .Where(e => e.Entity.WorkflowId == workflowId && e.State != EntityState.Deleted)
+            .Where(e => e.Entity.ExecutionId == workflowId && e.State != EntityState.Deleted)
             .Select(e => e.Entity.Seq)
             .DefaultIfEmpty(0L)
             .Max();
@@ -88,7 +88,7 @@ internal sealed class EventStoreRepository : IEventStoreRepository
         uow.Db.EventStore.Add(new EventStoreRow
         {
             EventId = fingerprintEventId,
-            WorkflowId = workflowId,
+            ExecutionId = workflowId,
             Seq = nextSeq,
             Type = typeString,
             OccurredAt = now,
@@ -112,7 +112,7 @@ internal sealed class EventStoreRepository : IEventStoreRepository
 
         var take = limit + 1;
         var list = await uow.Db.EventStore.AsNoTracking()
-            .Where(e => e.WorkflowId == workflowId && e.Seq > afterSeq)
+            .Where(e => e.ExecutionId == workflowId && e.Seq > afterSeq)
             .OrderBy(e => e.Seq)
             .Take(take)
             .ToListAsync(ct)
@@ -128,7 +128,7 @@ internal sealed class EventStoreRepository : IEventStoreRepository
     public async Task<long> GetMaxSeqAsync(ICoreUnitOfWork uow, Guid workflowId, CancellationToken ct = default)
     {
         var max = await uow.Db.EventStore.AsNoTracking()
-            .Where(e => e.WorkflowId == workflowId)
+            .Where(e => e.ExecutionId == workflowId)
             .Select(e => (long?)e.Seq)
             .MaxAsync(ct)
             .ConfigureAwait(false);

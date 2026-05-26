@@ -31,7 +31,7 @@ describe("useExecutionStateAtSeq", () => {
     });
 
     expect(result.current.state).toEqual(view);
-    expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1/state?atSeq=3");
+    expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1/state?atSeq=3");
   });
 
   it("取得失敗時は error を保持し state を null にする", async () => {

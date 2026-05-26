@@ -91,7 +91,7 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
           <button
             type="button"
             className={NAVIGATION_BUTTON_CLASS}
-            onClick={() => router.push(`/workflows?definitionId=${encodeURIComponent(definitionId)}`)}
+            onClick={() => router.push(`/executions?definitionId=${encodeURIComponent(definitionId)}`)}
           >
             {uiText.definitionDetail.relatedWorkflows.openList}
           </button>

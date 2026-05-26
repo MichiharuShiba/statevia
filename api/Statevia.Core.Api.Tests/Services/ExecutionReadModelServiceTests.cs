@@ -23,7 +23,7 @@ public sealed class ExecutionReadModelServiceTests
         {
             return kind switch
             {
-                "workflow" => Task.FromResult(WorkflowResolveResult),
+                "execution" => Task.FromResult(WorkflowResolveResult),
                 "definition" => Task.FromResult(DefinitionResolveResult),
                 _ => Task.FromResult<Guid?>(null)
             };
@@ -33,7 +33,7 @@ public sealed class ExecutionReadModelServiceTests
         {
             return Task.FromResult(kind switch
             {
-                "workflow" => WorkflowDisplayId,
+                "execution" => WorkflowDisplayId,
                 "definition" => DefinitionDisplayId,
                 _ => null
             });
@@ -85,9 +85,9 @@ public sealed class ExecutionReadModelServiceTests
 
         await using (var ctx = new CoreDbContext(db.Options))
         {
-            ctx.Workflows.Add(new WorkflowRow
+            ctx.Executions.Add(new ExecutionRow
             {
-                WorkflowId = uuid,
+                ExecutionId = uuid,
                 TenantId = "t1",
                 DefinitionId = definitionId,
                 Status = "Running",
@@ -128,9 +128,9 @@ public sealed class ExecutionReadModelServiceTests
 
         await using (var ctx = new CoreDbContext(db.Options))
         {
-            ctx.Workflows.Add(new WorkflowRow
+            ctx.Executions.Add(new ExecutionRow
             {
-                WorkflowId = uuid,
+                ExecutionId = uuid,
                 TenantId = "t1",
                 DefinitionId = definitionId,
                 Status = "Cancelled",
@@ -141,7 +141,7 @@ public sealed class ExecutionReadModelServiceTests
             });
             ctx.ExecutionGraphSnapshots.Add(new ExecutionGraphSnapshotRow
             {
-                WorkflowId = uuid,
+                ExecutionId = uuid,
                 GraphJson = graphJson,
                 UpdatedAt = DateTime.UtcNow.AddHours(-2)
             });
@@ -211,9 +211,9 @@ public sealed class ExecutionReadModelServiceTests
 
         await using (var ctx = new CoreDbContext(db.Options))
         {
-            ctx.Workflows.Add(new WorkflowRow
+            ctx.Executions.Add(new ExecutionRow
             {
-                WorkflowId = uuid,
+                ExecutionId = uuid,
                 TenantId = "t1",
                 DefinitionId = definitionId,
                 Status = internalStatus,
@@ -224,7 +224,7 @@ public sealed class ExecutionReadModelServiceTests
             });
             ctx.ExecutionGraphSnapshots.Add(new ExecutionGraphSnapshotRow
             {
-                WorkflowId = uuid,
+                ExecutionId = uuid,
                 GraphJson = graphJson,
                 UpdatedAt = updatedAt
             });
@@ -275,9 +275,9 @@ public sealed class ExecutionReadModelServiceTests
 
         await using (var ctx = new CoreDbContext(db.Options))
         {
-            ctx.Workflows.Add(new WorkflowRow
+            ctx.Executions.Add(new ExecutionRow
             {
-                WorkflowId = uuid,
+                ExecutionId = uuid,
                 TenantId = "t1",
                 DefinitionId = definitionId,
                 Status = "Running",
@@ -288,7 +288,7 @@ public sealed class ExecutionReadModelServiceTests
             });
             ctx.ExecutionGraphSnapshots.Add(new ExecutionGraphSnapshotRow
             {
-                WorkflowId = uuid,
+                ExecutionId = uuid,
                 GraphJson = graphJson,
                 UpdatedAt = DateTime.UtcNow
             });
@@ -322,9 +322,9 @@ public sealed class ExecutionReadModelServiceTests
 
         await using (var ctx = new CoreDbContext(db.Options))
         {
-            ctx.Workflows.Add(new WorkflowRow
+            ctx.Executions.Add(new ExecutionRow
             {
-                WorkflowId = uuid,
+                ExecutionId = uuid,
                 TenantId = "t1",
                 DefinitionId = definitionId,
                 Status = "Completed",
@@ -335,7 +335,7 @@ public sealed class ExecutionReadModelServiceTests
             });
             ctx.ExecutionGraphSnapshots.Add(new ExecutionGraphSnapshotRow
             {
-                WorkflowId = uuid,
+                ExecutionId = uuid,
                 GraphJson = graphJson,
                 UpdatedAt = DateTime.UtcNow
             });
@@ -365,9 +365,9 @@ public sealed class ExecutionReadModelServiceTests
         // Act
         await using (var ctx = new CoreDbContext(db.Options))
         {
-            ctx.Workflows.Add(new WorkflowRow
+            ctx.Executions.Add(new ExecutionRow
             {
-                WorkflowId = uuid,
+                ExecutionId = uuid,
                 TenantId = "t1",
                 DefinitionId = definitionId,
                 Status = "Running",
@@ -378,7 +378,7 @@ public sealed class ExecutionReadModelServiceTests
             });
             ctx.ExecutionGraphSnapshots.Add(new ExecutionGraphSnapshotRow
             {
-                WorkflowId = uuid,
+                ExecutionId = uuid,
                 GraphJson = "not-json",
                 UpdatedAt = DateTime.UtcNow
             });

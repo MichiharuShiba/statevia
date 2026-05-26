@@ -5,7 +5,7 @@ namespace Statevia.Core.Api.Persistence;
 internal class WorkflowEventRow
 {
     public Guid WorkflowEventId { get; set; }
-    public Guid WorkflowId { get; set; }
+    public Guid ExecutionId { get; set; }
     public long Seq { get; set; }
     public required string Type { get; set; }
     public string? PayloadJson { get; set; }

@@ -36,7 +36,7 @@ public sealed class CommandDedupRepositoryTests
         using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var repo = new CommandDedupRepository();
-        var dedupKey = "tenant|POST /v1/workflows:abc123";
+        var dedupKey = "tenant|POST /v1/executions:abc123";
         var now = DateTime.UtcNow;
 
         await using (var ctx = new CoreDbContext(db.Options))
@@ -44,7 +44,7 @@ public sealed class CommandDedupRepositoryTests
             ctx.CommandDedup.Add(new CommandDedupRow
             {
                 DedupKey = dedupKey,
-                Endpoint = "POST /v1/workflows",
+                Endpoint = "POST /v1/executions",
                 IdempotencyKey = "abc123",
                 RequestHash = null,
                 StatusCode = 201,
@@ -73,7 +73,7 @@ public sealed class CommandDedupRepositoryTests
         using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var repo = new CommandDedupRepository();
-        var dedupKey = "tenant|POST /v1/workflows:abc123";
+        var dedupKey = "tenant|POST /v1/executions:abc123";
         var now = DateTime.UtcNow;
 
         await using (var ctx = new CoreDbContext(db.Options))
@@ -81,7 +81,7 @@ public sealed class CommandDedupRepositoryTests
             ctx.CommandDedup.Add(new CommandDedupRow
             {
                 DedupKey = dedupKey,
-                Endpoint = "POST /v1/workflows",
+                Endpoint = "POST /v1/executions",
                 IdempotencyKey = "abc123",
                 RequestHash = "hash-1",
                 StatusCode = 201,
@@ -115,7 +115,7 @@ public sealed class CommandDedupRepositoryTests
         var row = new CommandDedupRow
         {
             DedupKey = "k1",
-            Endpoint = "POST /v1/workflows",
+            Endpoint = "POST /v1/executions",
             IdempotencyKey = "idem",
             RequestHash = "h",
             StatusCode = 201,
@@ -152,7 +152,7 @@ public sealed class CommandDedupRepositoryTests
         var row = new CommandDedupRow
         {
             DedupKey = "k2",
-            Endpoint = "POST /v1/workflows",
+            Endpoint = "POST /v1/executions",
             IdempotencyKey = "idem2",
             RequestHash = null,
             CreatedAt = DateTime.UtcNow,
@@ -190,8 +190,8 @@ public sealed class CommandDedupRepositoryTests
         {
             ctx.CommandDedup.Add(new CommandDedupRow
             {
-                DedupKey = $"{tenantId}|POST /v1/workflows:{idem}:AAA",
-                Endpoint = "POST /v1/workflows",
+                DedupKey = $"{tenantId}|POST /v1/executions:{idem}:AAA",
+                Endpoint = "POST /v1/executions",
                 IdempotencyKey = idem,
                 RequestHash = "AAA",
                 StatusCode = 201,
@@ -207,7 +207,7 @@ public sealed class CommandDedupRepositoryTests
         var conflict = await repo.FindValidConflictingRequestHashAsync(
             uow,
             tenantId,
-            "POST /v1/workflows",
+            "POST /v1/executions",
             idem,
             "BBB",
             now,
@@ -236,8 +236,8 @@ public sealed class CommandDedupRepositoryTests
         {
             ctx.CommandDedup.Add(new CommandDedupRow
             {
-                DedupKey = $"{tenantId}|POST /v1/workflows:key1:{hash}",
-                Endpoint = "POST /v1/workflows",
+                DedupKey = $"{tenantId}|POST /v1/executions:key1:{hash}",
+                Endpoint = "POST /v1/executions",
                 IdempotencyKey = "key1",
                 RequestHash = hash,
                 StatusCode = 201,
@@ -253,7 +253,7 @@ public sealed class CommandDedupRepositoryTests
         var conflict = await repo.FindValidConflictingRequestHashAsync(
             uow,
             tenantId,
-            "POST /v1/workflows",
+            "POST /v1/executions",
             "key1",
             hash,
             now,
