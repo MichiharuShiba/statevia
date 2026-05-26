@@ -37,7 +37,7 @@ internal class CoreDbContext : DbContext
         public const string CausationId = "causation_id";
         public const string SchemaVersion = "schema_version";
         public const string PayloadJson = "payload_json";
-        public const string WorkflowEventId = "workflow_event_id";
+        public const string ExecutionEventId = "execution_event_id";
         public const string GraphJson = "graph_json";
         public const string DedupKey = "dedup_key";
         public const string Endpoint = "endpoint";
@@ -105,7 +105,7 @@ internal class CoreDbContext : DbContext
     public DbSet<DefinitionVersionRow> DefinitionVersions => Set<DefinitionVersionRow>();
     public DbSet<ExecutionRow> Executions => Set<ExecutionRow>();
     public DbSet<EventStoreRow> EventStore => Set<EventStoreRow>();
-    public DbSet<WorkflowEventRow> WorkflowEvents => Set<WorkflowEventRow>();
+    public DbSet<ExecutionEventRow> ExecutionEvents => Set<ExecutionEventRow>();
     public DbSet<ExecutionGraphSnapshotRow> ExecutionGraphSnapshots => Set<ExecutionGraphSnapshotRow>();
     public DbSet<CommandDedupRow> CommandDedup => Set<CommandDedupRow>();
     public DbSet<EventDeliveryDedupRow> EventDeliveryDedup => Set<EventDeliveryDedupRow>();
@@ -228,12 +228,12 @@ internal class CoreDbContext : DbContext
             e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
         });
 
-        // workflow_events (監査)
-        modelBuilder.Entity<WorkflowEventRow>(e =>
+        // execution_events (監査)
+        modelBuilder.Entity<ExecutionEventRow>(e =>
         {
-            e.ToTable("workflow_events");
-            e.HasKey(x => x.WorkflowEventId);
-            e.Property(x => x.WorkflowEventId).HasColumnName(Columns.WorkflowEventId);
+            e.ToTable("execution_events");
+            e.HasKey(x => x.ExecutionEventId);
+            e.Property(x => x.ExecutionEventId).HasColumnName(Columns.ExecutionEventId);
             e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
             e.Property(x => x.Seq).HasColumnName(Columns.Seq);
             e.Property(x => x.Type).HasMaxLength(128).HasColumnName(Columns.Type);
