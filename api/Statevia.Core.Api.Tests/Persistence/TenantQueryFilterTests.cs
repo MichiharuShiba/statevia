@@ -34,9 +34,9 @@ public sealed class TenantQueryFilterTests
                 "wf-filter",
                 projectId,
                 versionId: versionId);
-            seed.Workflows.Add(new WorkflowRow
+            seed.Executions.Add(new ExecutionRow
             {
-                WorkflowId = workflowId,
+                ExecutionId = workflowId,
                 TenantId = "default",
                 DefinitionId = definitionId,
                 DefinitionVersionId = versionId,
@@ -51,7 +51,7 @@ public sealed class TenantQueryFilterTests
 
         // Act
         await using var db = new CoreDbContext(enabledOptions, accessor, EnabledTenantQueryFilterOptions.Instance);
-        var rows = await db.Workflows.AsNoTracking().ToListAsync();
+        var rows = await db.Executions.AsNoTracking().ToListAsync();
 
         // Assert
         Assert.Empty(rows);
@@ -96,9 +96,9 @@ public sealed class TenantQueryFilterTests
                 seed, "default", defaultDefinitionId, "default-def", defaultProjectId, versionId: defaultVersionId);
             DefinitionTestData.AddDefinitionWithVersion(
                 seed, "other", otherDefinitionId, "other-def", otherProjectId, versionId: otherVersionId);
-            seed.Workflows.Add(new WorkflowRow
+            seed.Executions.Add(new ExecutionRow
             {
-                WorkflowId = Guid.NewGuid(),
+                ExecutionId = Guid.NewGuid(),
                 TenantId = "default",
                 DefinitionId = defaultDefinitionId,
                 DefinitionVersionId = defaultVersionId,
@@ -108,9 +108,9 @@ public sealed class TenantQueryFilterTests
                 CancelRequested = false,
                 RestartLost = false
             });
-            seed.Workflows.Add(new WorkflowRow
+            seed.Executions.Add(new ExecutionRow
             {
-                WorkflowId = Guid.NewGuid(),
+                ExecutionId = Guid.NewGuid(),
                 TenantId = "other",
                 DefinitionId = otherDefinitionId,
                 DefinitionVersionId = otherVersionId,
@@ -127,7 +127,7 @@ public sealed class TenantQueryFilterTests
 
         // Act
         await using var db = new CoreDbContext(options, accessor, EnabledTenantQueryFilterOptions.Instance);
-        var rows = await db.Workflows.AsNoTracking().ToListAsync();
+        var rows = await db.Executions.AsNoTracking().ToListAsync();
 
         // Assert
         Assert.Single(rows);

@@ -4,7 +4,7 @@ namespace Statevia.Core.Api.Persistence;
 internal class EventDeliveryDedupRow
 {
     public required string TenantId { get; set; }
-    public Guid WorkflowId { get; set; }
+    public Guid ExecutionId { get; set; }
     public Guid ClientEventId { get; set; }
     public Guid? BatchId { get; set; }
     public required string Status { get; set; }

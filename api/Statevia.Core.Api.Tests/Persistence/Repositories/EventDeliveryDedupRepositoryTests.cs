@@ -43,7 +43,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         var row = new EventDeliveryDedupRow
         {
             TenantId = "tenant-a",
-            WorkflowId = workflowId,
+            ExecutionId = workflowId,
             ClientEventId = clientEventId,
             BatchId = Guid.NewGuid(),
             Status = EventDeliveryDedupStatuses.Received,
@@ -79,7 +79,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         var row = new EventDeliveryDedupRow
         {
             TenantId = "tenant-a",
-            WorkflowId = workflowId,
+            ExecutionId = workflowId,
             ClientEventId = clientEventId,
             Status = EventDeliveryDedupStatuses.Received,
             AcceptedAt = acceptedAt,
@@ -120,7 +120,7 @@ public sealed class EventDeliveryDedupRepositoryTests
             seed.EventDeliveryDedup.Add(new EventDeliveryDedupRow
             {
                 TenantId = "tenant-a",
-                WorkflowId = workflowId,
+                ExecutionId = workflowId,
                 ClientEventId = clientEventId,
                 Status = EventDeliveryDedupStatuses.Received,
                 AcceptedAt = acceptedAt,
@@ -196,7 +196,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         var row = new EventDeliveryDedupRow
         {
             TenantId = "tenant-a",
-            WorkflowId = workflowId,
+            ExecutionId = workflowId,
             ClientEventId = clientEventId,
             Status = EventDeliveryDedupStatuses.Received,
             AcceptedAt = acceptedAt,

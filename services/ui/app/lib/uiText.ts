@@ -7,7 +7,7 @@ export type UiText = {
   navigation: {
     dashboard: string;
     definitions: string;
-    workflows: string;
+    executions: string;
     health: string;
   };
   entities: {
@@ -17,7 +17,7 @@ export type UiText = {
     node: string;
   };
   lists: {
-    workflows: string;
+    executions: string;
     definitions: string;
     nodeCount: (count: number) => string;
   };
@@ -86,7 +86,7 @@ export type UiText = {
       definitionMissingFallback: (graphId: string) => string;
     };
     errors: {
-      workflowNotFound: string;
+      executionNotFound: string;
     };
     toasts: {
       cancelAccepted: string;
@@ -230,7 +230,7 @@ export type UiText = {
     graphIdLine: (graphIdLabel: string, graphId: string) => string;
     cancelRequestedLine: (cancelRequestedLabel: string, cancelRequested: boolean) => string;
   };
-  workflowsPage: {
+  executionsPage: {
     pagination: {
       ariaLabel: string;
       currentPage: (page: number) => string;
@@ -302,21 +302,21 @@ export type UiText = {
     };
     error: string;
   };
-  workflowDetailPage: {
+  executionDetailPage: {
     title: string;
-    missingWorkflowId: string;
+    missingExecutionId: string;
     navRun: string;
     navGraph: string;
   };
-  workflowGraphPage: {
+  executionGraphPage: {
     title: string;
-    missingWorkflowId: string;
+    missingExecutionId: string;
     navDetail: string;
     navRun: string;
   };
-  workflowRunPage: {
+  executionRunPage: {
     title: string;
-    missingWorkflowId: string;
+    missingExecutionId: string;
     navDetail: string;
     navGraph: string;
   };
@@ -491,7 +491,7 @@ export const uiText: UiText = {
   navigation: {
     dashboard: "ダッシュボード",
     definitions: "定義",
-    workflows: "ワークフロー",
+    executions: "実行",
     health: "ヘルスチェック",
   },
   entities: {
@@ -501,7 +501,7 @@ export const uiText: UiText = {
     node: "ノード",
   },
   lists: {
-    workflows: "ワークフロー一覧",
+    executions: "実行一覧",
     definitions: "定義一覧",
     nodeCount: (count: number) => `${count} 件`,
   },
@@ -572,7 +572,7 @@ export const uiText: UiText = {
         `グラフID: ${graphId} の定義が未登録のため、仮エッジ表示です。`,
     },
     errors: {
-      workflowNotFound: "指定されたワークフローが見つかりませんでした。ID を確認してください。",
+      executionNotFound: "指定された実行が見つかりませんでした。ID を確認してください。",
     },
     toasts: {
       cancelAccepted: "CancelExecution accepted",
@@ -670,13 +670,13 @@ export const uiText: UiText = {
   },
   dashboard: {
     title: "ダッシュボード",
-    descriptionRecent: "直近のワークフロー（最大 10 件）です。",
-    loadingRecent: "直近のワークフローを取得しています。",
-    emptyStartFromDefinitionsOrWorkflows: "定義一覧またはワークフロー一覧から操作を開始できます。",
+    descriptionRecent: "直近の実行（最大 10 件）です。",
+    loadingRecent: "直近の実行を取得しています。",
+    emptyStartFromDefinitionsOrWorkflows: "定義一覧または実行一覧から操作を開始できます。",
     totalCount: (count: number | null) => (count == null ? "合計件数: --" : `合計件数: ${count}`),
     updatedAt: (formattedDateTime: string) => `更新: ${formattedDateTime}`,
     aria: {
-      recentWorkflowsList: "直近ワークフロー一覧",
+      recentWorkflowsList: "直近実行一覧",
     },
     actions: {
       openDetail: "詳細を開く",
@@ -695,14 +695,14 @@ export const uiText: UiText = {
       definitionIdRequired: (definitionIdLabel: string) => `${definitionIdLabel} が指定されていません。`,
       invalidWorkflowInputJson: (workflowInputLabel: string) => `${workflowInputLabel} の JSON が不正です。`,
       workflowInputTooLarge: "入力データは65536バイト（64KiB）以内で指定してください。",
-      workflowStarted: (workflowDisplayId: string) => `ワークフローを開始しました: ${workflowDisplayId}`,
+      workflowStarted: (workflowDisplayId: string) => `実行を開始しました: ${workflowDisplayId}`,
     },
     nav: {
       backToDefinitionDetail: "定義の詳細へ戻る",
     },
     actions: {
       starting: "開始中...",
-      startWorkflow: "ワークフロー開始",
+      startWorkflow: "実行開始",
     },
     help: {
       redirectAfterStart: (runPath: string) => `開始後は実行画面（${runPath}）へ自動遷移します。`,
@@ -718,9 +718,9 @@ export const uiText: UiText = {
     cancelRequestedLine: (cancelRequestedLabel: string, cancelRequested: boolean) =>
       `${cancelRequestedLabel}: ${cancelRequested ? "あり" : "なし"}`,
   },
-  workflowsPage: {
+  executionsPage: {
     pagination: {
-      ariaLabel: "ワークフロー一覧ページネーション",
+      ariaLabel: "実行一覧ページネーション",
       currentPage: (page: number) => `${page} ページ目`,
       prev: "前へ",
       next: "次へ",
@@ -737,7 +737,7 @@ export const uiText: UiText = {
       definitionInputHint: "定義 表示ID / UUID",
       definitionLabelWithHint: (definitionLabel: string) => `${definitionLabel}（定義 表示ID / UUID）`,
       definitionPlaceholder: "例: def-…",
-      nameInputHint: "name（workflow 表示ID 部分一致、または workflow UUID 完全一致）",
+      nameInputHint: "name（execution 表示ID 部分一致、または execution UUID 完全一致）",
       search: "検索",
       clear: "クリア",
       sortByLabel: "ソート項目",
@@ -751,13 +751,13 @@ export const uiText: UiText = {
       pageInfo: (limit: number, offset: number, page: number) =>
         `1 ページあたり: ${limit} 件。 offset: ${offset}（page ≈ ${page}）`,
     },
-    loading: "ワークフロー一覧を読み込み中です。",
+    loading: "実行一覧を読み込み中です。",
     listSummary: (totalCount: number, page: number) => `合計 ${totalCount} 件（${page} ページ目）`,
     updatedAt: (formattedDateTime: string) => `更新: ${formattedDateTime}`,
     actions: {
       openDetail: "詳細",
     },
-    empty: "条件に合うワークフローはありません。",
+    empty: "条件に合う実行はありません。",
     error: "取得に失敗しました。時間をおいて再試行してください。",
   },
   definitionsPage: {
@@ -792,21 +792,21 @@ export const uiText: UiText = {
     },
     error: "定義一覧を取得できませんでした。",
   },
-  workflowDetailPage: {
-    title: "ワークフロー詳細",
-    missingWorkflowId: "ワークフロー ID が指定されていません。",
+  executionDetailPage: {
+    title: "実行詳細",
+    missingExecutionId: "実行 ID が指定されていません。",
     navRun: "実行",
     navGraph: "グラフ",
   },
-  workflowGraphPage: {
-    title: "ワークフローグラフ",
-    missingWorkflowId: "ワークフロー ID が指定されていません。",
+  executionGraphPage: {
+    title: "実行グラフ",
+    missingExecutionId: "実行 ID が指定されていません。",
     navDetail: "詳細",
     navRun: "実行",
   },
-  workflowRunPage: {
-    title: "ワークフロー実行",
-    missingWorkflowId: "ワークフロー ID が指定されていません。",
+  executionRunPage: {
+    title: "実行",
+    missingExecutionId: "実行 ID が指定されていません。",
     navDetail: "詳細",
     navGraph: "グラフ",
   },
@@ -820,9 +820,9 @@ export const uiText: UiText = {
       createdAt: "登録日時",
     },
     relatedWorkflows: {
-      title: "関連ワークフロー",
+      title: "関連実行",
       description: "この定義に紐づく実行の一覧へ進みます。",
-      openList: "ワークフロー一覧を開く",
+      openList: "実行一覧を開く",
     },
     actions: {
       title: "編集・実行",
@@ -989,7 +989,7 @@ export const confirmedMappingTable: MappingEntry[] = [
   { source: "Workflow", target: uiText.entities.workflow, note: "画面表示は日本語へ統一（内部識別子は変更しない）" },
   { source: "Definition", target: uiText.entities.definition, note: "一覧/詳細/説明文で統一" },
   { source: "Execution", target: uiText.entities.execution, note: "見出し・ラベルで統一" },
-  { source: "Workflow 一覧", target: uiText.lists.workflows, note: "一覧名の英日混在を解消" },
+  { source: "Execution 一覧", target: uiText.lists.executions, note: "一覧名の英日混在を解消" },
   { source: "Definition 一覧", target: uiText.lists.definitions, note: "一覧名の英日混在を解消" },
   { source: "Load", target: uiText.actions.load, note: "操作語をカタカナに統一" },
   { source: "Loading... / 読み込み中...", target: uiText.actions.loading, note: "読み込み状態文言を統一" },

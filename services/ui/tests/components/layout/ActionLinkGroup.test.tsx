@@ -18,8 +18,8 @@ describe("ActionLinkGroup", () => {
     // Arrange
     const props = {
       links: [
-        { label: "詳細", href: "/workflows/1", priority: "primary" as const },
-        { label: "一覧", href: "/workflows" }
+        { label: "詳細", href: "/executions/1", priority: "primary" as const },
+        { label: "一覧", href: "/executions" }
       ]
     };
 

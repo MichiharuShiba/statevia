@@ -53,7 +53,7 @@ export function useNodeCommands(
     setLoading(true);
     try {
       await apiPost<CommandAccepted>(
-        `/workflows/${execution.displayId}/nodes/${node.executionNodeId}/resume`,
+        `/executions/${execution.displayId}/nodes/${node.executionNodeId}/resume`,
         { resumeKey: node.waitKey ?? undefined }
       );
       onSuccess?.();

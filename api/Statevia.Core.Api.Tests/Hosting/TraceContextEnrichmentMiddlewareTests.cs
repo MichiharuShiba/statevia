@@ -15,7 +15,7 @@ public sealed class TraceContextEnrichmentMiddlewareTests
         // Arrange
         var ctx = new DefaultHttpContext();
         ctx.Request.Method = "GET";
-        ctx.Request.Path = "/v1/workflows/wf-abc";
+        ctx.Request.Path = "/v1/executions/wf-abc";
         ctx.Request.RouteValues["id"] = "wf-abc";
         ctx.Response.Body = new MemoryStream();
 
@@ -42,7 +42,7 @@ public sealed class TraceContextEnrichmentMiddlewareTests
         // RequestLoggingMiddleware より後段で TraceId が既に Items に入っている状態を模す。
         var ctx = new DefaultHttpContext();
         ctx.Request.Method = "GET";
-        ctx.Request.Path = "/v1/workflows/wf-abc";
+        ctx.Request.Path = "/v1/executions/wf-abc";
         ctx.Request.RouteValues["id"] = "wf-abc";
         ctx.Items[RequestLogContext.TraceIdItemKey] = "tid-1";
         ctx.Response.Body = new MemoryStream();

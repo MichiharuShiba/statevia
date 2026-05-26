@@ -75,7 +75,7 @@ public sealed class RequestLoggingMiddlewareTests
         // Arrange
         var ctx = new DefaultHttpContext();
         ctx.Request.Method = "POST";
-        ctx.Request.Path = "/v1/workflows/wf-1/events";
+        ctx.Request.Path = "/v1/executions/wf-1/events";
         ctx.Response.Body = new MemoryStream();
 
         var collector = new LogCollector();
@@ -107,7 +107,7 @@ public sealed class RequestLoggingMiddlewareTests
         // Arrange
         var ctx = new DefaultHttpContext();
         ctx.Request.Method = "GET";
-        ctx.Request.Path = "/v1/workflows";
+        ctx.Request.Path = "/v1/executions";
         ctx.Request.QueryString = new QueryString("?password=secret-value&limit=10");
         ctx.Response.StatusCode = 200;
 
@@ -196,7 +196,7 @@ public sealed class RequestLoggingMiddlewareTests
         // Arrange
         var ctx = new DefaultHttpContext();
         ctx.Request.Method = "POST";
-        ctx.Request.Path = "/v1/workflows";
+        ctx.Request.Path = "/v1/executions";
         ctx.Request.ContentType = "text/plain";
         ctx.Request.Headers["Transfer-Encoding"] = "chunked";
         ctx.Request.Body = new MemoryStream("data"u8.ToArray());
@@ -271,7 +271,7 @@ public sealed class RequestLoggingMiddlewareTests
         // Arrange
         var ctx = new DefaultHttpContext();
         ctx.Request.Method = "POST";
-        ctx.Request.Path = "/v1/workflows";
+        ctx.Request.Path = "/v1/executions";
         ctx.Request.ContentType = "application/octet-stream";
         ctx.Request.Body = new MemoryStream([1, 2, 3]);
         ctx.Request.ContentLength = 3;
@@ -298,7 +298,7 @@ public sealed class RequestLoggingMiddlewareTests
         // Arrange
         var ctx = new DefaultHttpContext();
         ctx.Request.Method = "POST";
-        ctx.Request.Path = "/v1/workflows";
+        ctx.Request.Path = "/v1/executions";
         ctx.Request.ContentType = "application/json";
         ctx.Request.Body = new MemoryStream("x"u8.ToArray());
         ctx.Request.ContentLength = 4096;

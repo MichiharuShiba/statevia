@@ -62,7 +62,7 @@ public sealed class TenantContextMiddlewareTests
         }, jwt);
 
         var context = new DefaultHttpContext();
-        context.Request.Path = "/v1/workflows";
+        context.Request.Path = "/v1/executions";
         context.Request.Headers.Authorization = $"Bearer {token}";
 
         // Act
@@ -92,7 +92,7 @@ public sealed class TenantContextMiddlewareTests
         }, jwt);
 
         var context = new DefaultHttpContext();
-        context.Request.Path = "/v1/workflows";
+        context.Request.Path = "/v1/executions";
         context.Request.Headers[TenantHeader.HeaderName] = "default";
 
         // Act
@@ -143,7 +143,7 @@ public sealed class TenantContextMiddlewareTests
         var middleware = new TenantContextMiddleware(_ => Task.CompletedTask, jwt);
 
         var context = new DefaultHttpContext();
-        context.Request.Path = "/v1/workflows";
+        context.Request.Path = "/v1/executions";
         context.Request.Headers[TenantHeader.HeaderName] = "unknown-tenant";
 
         // Act & Assert
@@ -167,7 +167,7 @@ public sealed class TenantContextMiddlewareTests
         var middleware = new TenantContextMiddleware(_ => Task.CompletedTask, jwt);
 
         var context = new DefaultHttpContext();
-        context.Request.Path = "/v1/workflows";
+        context.Request.Path = "/v1/executions";
         context.Request.Headers.Authorization = $"Bearer {token}";
 
         // Act & Assert
@@ -200,7 +200,7 @@ public sealed class TenantContextMiddlewareTests
         var middleware = new TenantContextMiddleware(_ => Task.CompletedTask, jwt);
 
         var context = new DefaultHttpContext();
-        context.Request.Path = "/v1/workflows";
+        context.Request.Path = "/v1/executions";
         context.Request.Headers.Authorization = $"Bearer {tokenString}";
 
         // Act & Assert

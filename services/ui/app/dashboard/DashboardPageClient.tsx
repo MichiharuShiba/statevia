@@ -31,7 +31,7 @@ export function DashboardPageClient() {
     setLoading(true);
     setToast(null);
     try {
-      const page = await apiGet<PagedWorkflows>("/workflows?limit=10&offset=0");
+      const page = await apiGet<PagedWorkflows>("/executions?limit=10&offset=0");
       setItems(page.items);
       setTotalCount(page.totalCount);
     } catch (error) {
@@ -96,7 +96,7 @@ export function DashboardPageClient() {
                   <button
                     type="button"
                     className={`shrink-0 ${NAVIGATION_BUTTON_CLASS}`}
-                    onClick={() => router.push(`/workflows/${encodeURIComponent(workflow.displayId)}`)}
+                    onClick={() => router.push(`/executions/${encodeURIComponent(workflow.displayId)}`)}
                   >
                     {uiText.dashboard.actions.openDetail}
                   </button>

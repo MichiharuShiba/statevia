@@ -22,7 +22,7 @@ export type WorkflowStreamLifecycleOptions = {
 
 function buildWorkflowStreamUrl(displayId: string): string {
   const { tenantId } = getApiConfig();
-  const streamPath = `/api/core/workflows/${encodeURIComponent(displayId)}/stream`;
+  const streamPath = `/api/core/executions/${encodeURIComponent(displayId)}/stream`;
   return tenantId ? `${streamPath}?${new URLSearchParams({ tenantId }).toString()}` : streamPath;
 }
 

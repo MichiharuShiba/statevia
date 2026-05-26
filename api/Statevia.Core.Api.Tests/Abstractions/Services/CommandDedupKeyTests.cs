@@ -13,13 +13,13 @@ public sealed class CommandDedupKeyTests
         var left = new CommandDedupKey
         {
             DedupKey = "k1",
-            Endpoint = "POST /v1/workflows",
+            Endpoint = "POST /v1/executions",
             IdempotencyKey = "idem"
         };
         var right = new CommandDedupKey
         {
             DedupKey = "k1",
-            Endpoint = "POST /v1/workflows",
+            Endpoint = "POST /v1/executions",
             IdempotencyKey = "idem"
         };
 

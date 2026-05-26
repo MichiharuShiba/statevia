@@ -61,8 +61,8 @@ export default async function RootLayout({
                   <Link href="/definitions" className="hover:text-[var(--brand-header-fg)] hover:underline">
                     {uiText.navigation.definitions}
                   </Link>
-                  <Link href="/workflows" className="hover:text-[var(--brand-header-fg)] hover:underline">
-                    {uiText.navigation.workflows}
+                  <Link href="/executions" className="hover:text-[var(--brand-header-fg)] hover:underline">
+                    {uiText.navigation.executions}
                   </Link>
                 </nav>
                 <ThemeToggle theme={theme} />

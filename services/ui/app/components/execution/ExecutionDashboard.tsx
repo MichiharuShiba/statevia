@@ -113,7 +113,7 @@ type ExecutionDashboardViewProps = {
 
 /**
  * 実行一覧・グラフ・タイムライン・ノード操作の共通ダッシュボード。
- * `/dashboard` や `/workflows/[workflowId]` から利用する。
+ * `/dashboard` や `/executions/[executionId]` から利用する。
  */
 export function ExecutionDashboard({
   initialExecutionId,
@@ -246,10 +246,10 @@ export function ExecutionDashboard({
     if (!executionIdB.trim()) return;
     setLoadingB(true);
     try {
-      const workflow = await apiGet<WorkflowDTO>(`/workflows/${executionIdB.trim()}`);
+      const workflow = await apiGet<WorkflowDTO>(`/executions/${executionIdB.trim()}`);
       let graph: WorkflowGraphDTO | null = null;
       try {
-        graph = await apiGet<WorkflowGraphDTO>(`/workflows/${executionIdB.trim()}/graph`);
+        graph = await apiGet<WorkflowGraphDTO>(`/executions/${executionIdB.trim()}/graph`);
       } catch {
         // ignore
       }
@@ -489,7 +489,7 @@ function ExecutionDashboardView({
     <ActionLinkGroup
       links={[
         { label: uiText.navigation.dashboard, href: "/dashboard", priority: "primary" },
-        { label: uiText.lists.workflows, href: "/workflows" },
+        { label: uiText.lists.executions, href: "/executions" },
         { label: uiText.navigation.health, href: "/health" }
       ]}
     />
@@ -587,7 +587,7 @@ function ExecutionDashboardView({
           <ExecutionStatusBanner cancelRequested={!!execution?.cancelRequested} terminal={terminal} />
 
           {!loading && !showExecutionPanels && (
-            <PageState state="error" message={uiText.executionDashboard.errors.workflowNotFound} />
+            <PageState state="error" message={uiText.executionDashboard.errors.executionNotFound} />
           )}
 
           {showExecutionPanels && isReplaying && (

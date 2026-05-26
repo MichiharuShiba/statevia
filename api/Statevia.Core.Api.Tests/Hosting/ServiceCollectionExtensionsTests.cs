@@ -27,7 +27,7 @@ public sealed class ServiceCollectionExtensionsTests
         services.AddStateviaCoreApi(config);
 
         // Assert
-        Assert.Contains(services, d => d.ServiceType == typeof(IWorkflowService));
+        Assert.Contains(services, d => d.ServiceType == typeof(IExecutionService));
         Assert.Contains(services, d => d.ServiceType == typeof(IDefinitionSchemaService));
         Assert.Contains(services, d => d.ServiceType == typeof(ICommandDedupService));
     }
@@ -112,11 +112,11 @@ public sealed class ServiceCollectionExtensionsTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test;Username=u;Password=p",
-                ["WorkflowProjectionQueue:MaxGlobalQueueSize"] = "100",
-                ["WorkflowProjectionQueue:ProjectionFlushDebounceMs"] = "50",
-                ["WorkflowProjectionQueue:MaxRetryAttempts"] = "3",
-                ["WorkflowProjectionQueue:RetryBaseDelayMs"] = "10",
-                ["WorkflowProjectionQueue:RetryMaxDelayMs"] = "100",
+                ["ExecutionProjectionQueue:MaxGlobalQueueSize"] = "100",
+                ["ExecutionProjectionQueue:ProjectionFlushDebounceMs"] = "50",
+                ["ExecutionProjectionQueue:MaxRetryAttempts"] = "3",
+                ["ExecutionProjectionQueue:RetryBaseDelayMs"] = "10",
+                ["ExecutionProjectionQueue:RetryMaxDelayMs"] = "100",
                 ["EventDelivery:Retry:MaxAttempts"] = "3",
                 ["EventDelivery:Retry:BaseDelayMs"] = "10",
                 ["EventDelivery:Retry:MaxDelayMs"] = "100",

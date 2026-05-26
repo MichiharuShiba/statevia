@@ -14,7 +14,7 @@ import { WORKFLOW_INPUT_MAX_BYTES } from "../../../lib/validation/formRules";
 
 /**
  * Definition 起点で新規ワークフローを開始する。
- * 開始成功時は `/workflows/[workflowId]/run` へ遷移する。
+ * 開始成功時は `/executions/[executionId]/run` へ遷移する。
  */
 export default function DefinitionRunStartPage() {
   const uiText = useUiText();
@@ -59,9 +59,9 @@ export default function DefinitionRunStartPage() {
     setStarting(true);
     setToast(null);
     try {
-      const created = await apiPost<WorkflowDTO>("/workflows", body);
+      const created = await apiPost<WorkflowDTO>("/executions", body);
       setToast({ tone: "success", message: uiText.definitionRunPage.toasts.workflowStarted(created.displayId) });
-      router.push(`/workflows/${encodeURIComponent(created.displayId)}/run`);
+      router.push(`/executions/${encodeURIComponent(created.displayId)}/run`);
     } catch (error) {
       setToast(toToastError(error));
     } finally {
@@ -106,7 +106,7 @@ export default function DefinitionRunStartPage() {
           {starting ? uiText.definitionRunPage.actions.starting : uiText.definitionRunPage.actions.startWorkflow}
         </button>
         <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-          {uiText.definitionRunPage.help.redirectAfterStart("/workflows/[workflowId]/run")}
+          {uiText.definitionRunPage.help.redirectAfterStart("/executions/[executionId]/run")}
         </p>
       </section>
 
@@ -121,9 +121,9 @@ export default function DefinitionRunStartPage() {
         <button
           type="button"
           className={NAVIGATION_BUTTON_CLASS}
-          onClick={() => router.push("/workflows")}
+          onClick={() => router.push("/executions")}
         >
-          {uiText.lists.workflows}
+          {uiText.lists.executions}
         </button>
       </nav>
     </main>

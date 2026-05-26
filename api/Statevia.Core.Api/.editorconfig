@@ -97,7 +97,7 @@ dotnet_diagnostic.S2325.severity = none
 # CA1822: アクセスしていないメンバーは static にせよ（Roslyn。IOperationFilter と同趣旨）。
 dotnet_diagnostic.CA1822.severity = none
 
-[Abstractions/Services/IWorkflowProjectionUpdateQueue.cs]
+[Abstractions/Services/IExecutionProjectionUpdateQueue.cs]
 
 # CA1711: 識別子は接尾辞に型名を使うな（Queue 等の汎用語を避けよ）。
 # 除外理由: 既存の DI 契約名。Queue サフィックスへのリネームは公開面の破壊変更となる。

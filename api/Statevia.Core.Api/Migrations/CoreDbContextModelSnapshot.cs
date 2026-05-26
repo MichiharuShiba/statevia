@@ -236,9 +236,9 @@ namespace Statevia.Core.Api.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("tenant_id");
 
-                    b.Property<Guid>("WorkflowId")
+                    b.Property<Guid>("ExecutionId")
                         .HasColumnType("uuid")
-                        .HasColumnName("workflow_id");
+                        .HasColumnName("execution_id");
 
                     b.Property<Guid>("ClientEventId")
                         .HasColumnType("uuid")
@@ -271,18 +271,18 @@ namespace Statevia.Core.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.HasKey("TenantId", "WorkflowId", "ClientEventId");
+                    b.HasKey("TenantId", "ExecutionId", "ClientEventId");
 
-                    b.HasIndex("TenantId", "WorkflowId", "BatchId");
+                    b.HasIndex("TenantId", "ExecutionId", "BatchId");
 
                     b.ToTable("event_delivery_dedup", (string)null);
                 });
 
             modelBuilder.Entity("Statevia.Core.Api.Persistence.EventStoreRow", b =>
                 {
-                    b.Property<Guid>("WorkflowId")
+                    b.Property<Guid>("ExecutionId")
                         .HasColumnType("uuid")
-                        .HasColumnName("workflow_id");
+                        .HasColumnName("execution_id");
 
                     b.Property<long>("Seq")
                         .HasColumnType("bigint")
@@ -333,7 +333,7 @@ namespace Statevia.Core.Api.Migrations
                         .HasColumnType("character varying(128)")
                         .HasColumnName("type");
 
-                    b.HasKey("WorkflowId", "Seq");
+                    b.HasKey("ExecutionId", "Seq");
 
                     b.HasIndex("EventId")
                         .IsUnique();
@@ -343,10 +343,10 @@ namespace Statevia.Core.Api.Migrations
 
             modelBuilder.Entity("Statevia.Core.Api.Persistence.ExecutionGraphSnapshotRow", b =>
                 {
-                    b.Property<Guid>("WorkflowId")
+                    b.Property<Guid>("ExecutionId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("workflow_id");
+                        .HasColumnName("execution_id");
 
                     b.Property<string>("GraphJson")
                         .IsRequired()
@@ -357,9 +357,59 @@ namespace Statevia.Core.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.HasKey("WorkflowId");
+                    b.HasKey("ExecutionId");
 
                     b.ToTable("execution_graph_snapshots", (string)null);
+                });
+
+            modelBuilder.Entity("Statevia.Core.Api.Persistence.ExecutionRow", b =>
+                {
+                    b.Property<Guid>("ExecutionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("execution_id");
+
+                    b.Property<bool>("CancelRequested")
+                        .HasColumnType("boolean")
+                        .HasColumnName("cancel_requested");
+
+                    b.Property<Guid>("DefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("definition_id");
+
+                    b.Property<Guid>("DefinitionVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("definition_version_id");
+
+                    b.Property<bool>("RestartLost")
+                        .HasColumnType("boolean")
+                        .HasColumnName("restart_lost");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("ExecutionId");
+
+                    b.HasIndex("DefinitionVersionId");
+
+                    b.ToTable("executions", (string)null);
                 });
 
             modelBuilder.Entity("Statevia.Core.Api.Persistence.GroupPermissionRow", b =>
@@ -808,6 +858,10 @@ namespace Statevia.Core.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<Guid>("ExecutionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("execution_id");
+
                     b.Property<string>("PayloadJson")
                         .HasColumnType("text")
                         .HasColumnName("payload_json");
@@ -822,63 +876,9 @@ namespace Statevia.Core.Api.Migrations
                         .HasColumnType("character varying(128)")
                         .HasColumnName("type");
 
-                    b.Property<Guid>("WorkflowId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("workflow_id");
-
                     b.HasKey("WorkflowEventId");
 
                     b.ToTable("workflow_events", (string)null);
-                });
-
-            modelBuilder.Entity("Statevia.Core.Api.Persistence.WorkflowRow", b =>
-                {
-                    b.Property<Guid>("WorkflowId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("workflow_id");
-
-                    b.Property<bool>("CancelRequested")
-                        .HasColumnType("boolean")
-                        .HasColumnName("cancel_requested");
-
-                    b.Property<Guid>("DefinitionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("definition_id");
-
-                    b.Property<Guid>("DefinitionVersionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("definition_version_id");
-
-                    b.Property<bool>("RestartLost")
-                        .HasColumnType("boolean")
-                        .HasColumnName("restart_lost");
-
-                    b.Property<DateTime>("StartedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("started_at");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("status");
-
-                    b.Property<string>("TenantId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("WorkflowId");
-
-                    b.HasIndex("DefinitionVersionId");
-
-                    b.ToTable("workflows", (string)null);
                 });
 
             modelBuilder.Entity("Statevia.Core.Api.Persistence.DefinitionRow", b =>
@@ -895,6 +895,15 @@ namespace Statevia.Core.Api.Migrations
                     b.HasOne("Statevia.Core.Api.Persistence.DefinitionRow", null)
                         .WithMany()
                         .HasForeignKey("DefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Statevia.Core.Api.Persistence.ExecutionRow", b =>
+                {
+                    b.HasOne("Statevia.Core.Api.Persistence.DefinitionVersionRow", null)
+                        .WithMany()
+                        .HasForeignKey("DefinitionVersionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -919,15 +928,6 @@ namespace Statevia.Core.Api.Migrations
                     b.HasOne("Statevia.Core.Api.Persistence.TenantRow", null)
                         .WithMany()
                         .HasForeignKey("OwnerTenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Statevia.Core.Api.Persistence.WorkflowRow", b =>
-                {
-                    b.HasOne("Statevia.Core.Api.Persistence.DefinitionVersionRow", null)
-                        .WithMany()
-                        .HasForeignKey("DefinitionVersionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

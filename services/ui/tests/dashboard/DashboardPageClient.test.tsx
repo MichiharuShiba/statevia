@@ -25,6 +25,6 @@ describe("DashboardPageClient", () => {
     await waitFor(() => {
       expect(screen.getByText(/0/)).toBeInTheDocument();
     });
-    expect(apiGet).toHaveBeenCalledWith("/workflows?limit=10&offset=0");
+    expect(apiGet).toHaveBeenCalledWith("/executions?limit=10&offset=0");
   });
 });

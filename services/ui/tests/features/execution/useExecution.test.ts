@@ -102,8 +102,8 @@ describe("useExecution", () => {
     });
 
     // Assert
-    expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1");
-    expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1/graph");
+    expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1");
+    expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1/graph");
     expect(result.current.execution).not.toBeNull();
     expect(result.current.execution?.displayId).toBe("ex-1");
     expect(result.current.selectedNodeId).toBe("n-1");
@@ -143,9 +143,9 @@ describe("useExecution", () => {
     });
 
     // Assert
-    expect(api.apiPost).toHaveBeenCalledWith("/workflows/ex-1/cancel", { reason: "ui" });
+    expect(api.apiPost).toHaveBeenCalledWith("/executions/ex-1/cancel", { reason: "ui" });
     expect(onCancelSuccess).toHaveBeenCalled();
-    expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1");
+    expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1");
   });
 
   it("cancelExecution で POST 成功後に再取得が失敗したとき onCancelSuccess を呼ばず onError とクリアする", async () => {
@@ -235,7 +235,7 @@ describe("useExecution", () => {
       await waitFor(() => {
         expect(streamInstances.length).toBe(1);
       });
-      expect(streamInstances[0]?.url).toBe("/api/core/workflows/ex-1/stream");
+      expect(streamInstances[0]?.url).toBe("/api/core/executions/ex-1/stream");
     });
 
     it("getApiConfig で tenantId があるとき EventSource の URL に tenantId クエリが付く", async () => {
@@ -253,7 +253,7 @@ describe("useExecution", () => {
         expect(streamInstances.length).toBe(1);
       });
       expect(streamInstances[0]?.url).toBe(
-        "/api/core/workflows/ex-1/stream?tenantId=tenant-a"
+        "/api/core/executions/ex-1/stream?tenantId=tenant-a"
       );
     });
 
@@ -282,8 +282,8 @@ describe("useExecution", () => {
         vi.advanceTimersByTime(2500);
       });
 
-      expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1");
-      expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1/graph");
+      expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1");
+      expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1/graph");
 
       vi.useRealTimers();
     });
@@ -318,8 +318,8 @@ describe("useExecution", () => {
 
       await waitFor(
         () => {
-          expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1");
-          expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1/graph");
+          expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1");
+          expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1/graph");
         },
         { timeout: 2000 }
       );
@@ -366,7 +366,7 @@ describe("useExecution", () => {
         vi.advanceTimersByTime(1000);
       });
       expect(streamInstances.length).toBe(2);
-      expect(streamInstances[1]?.url).toBe("/api/core/workflows/ex-1/stream");
+      expect(streamInstances[1]?.url).toBe("/api/core/executions/ex-1/stream");
 
       vi.useRealTimers();
     });
@@ -404,7 +404,7 @@ describe("useExecution", () => {
       });
 
       // Assert
-      expect(api.apiGet).toHaveBeenCalledWith("/workflows/ex-1");
+      expect(api.apiGet).toHaveBeenCalledWith("/executions/ex-1");
     });
 
     it("アンマウント時にタイマーとストリームがクリーンアップされる", async () => {
@@ -639,7 +639,7 @@ describe("useExecution", () => {
       await result.current.publishEvent("Resume.Wait");
     });
 
-    expect(api.apiPost).toHaveBeenCalledWith("/workflows/ex-1/events", { name: "Resume.Wait" });
+    expect(api.apiPost).toHaveBeenCalledWith("/executions/ex-1/events", { name: "Resume.Wait" });
     expect(onPublishSuccess).toHaveBeenCalled();
   });
 

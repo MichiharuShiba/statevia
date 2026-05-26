@@ -18,7 +18,7 @@ async function waitForWorkflowStatus(
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const res = await request.get(`${apiBase}/v1/workflows/${encodeURIComponent(displayId)}`, {
+    const res = await request.get(`${apiBase}/v1/executions/${encodeURIComponent(displayId)}`, {
       headers: { "X-Tenant-Id": "default" }
     });
     if (res.ok()) {
@@ -43,8 +43,8 @@ test.describe("Core API (direct)", () => {
     expect(json.status).toBe("ok");
   });
 
-  test("GET /v1/workflows?limit=1 は 200（テナント default）", async ({ request }) => {
-    const res = await request.get(`${apiBase}/v1/workflows?limit=1&offset=0`, {
+  test("GET /v1/executions?limit=1 は 200（テナント default）", async ({ request }) => {
+    const res = await request.get(`${apiBase}/v1/executions?limit=1&offset=0`, {
       headers: { "X-Tenant-Id": "default" }
     });
     expect(res.status()).toBe(200);
@@ -62,7 +62,7 @@ test.describe("Core API (direct)", () => {
     expect(createDef.status(), await createDef.text()).toBe(201);
     const defJson = (await createDef.json()) as { displayId: string };
 
-    const start = await request.post(`${apiBase}/v1/workflows`, {
+    const start = await request.post(`${apiBase}/v1/executions`, {
       headers: tenantHeaders,
       data: { definitionId: defJson.displayId, input: {} }
     });
@@ -70,7 +70,7 @@ test.describe("Core API (direct)", () => {
     const wf = (await start.json()) as { displayId: string; status: string };
     expect(wf.status).toBe("Running");
 
-    const cancel = await request.post(`${apiBase}/v1/workflows/${encodeURIComponent(wf.displayId)}/cancel`, {
+    const cancel = await request.post(`${apiBase}/v1/executions/${encodeURIComponent(wf.displayId)}/cancel`, {
       headers: tenantHeaders,
       data: { reason: "e2e" }
     });
@@ -94,14 +94,14 @@ test.describe("Core API (direct)", () => {
     const idemKey = `idem-${suffix}`;
     const body = { definitionId: defJson.displayId, input: { k: 1 } };
 
-    const start1 = await request.post(`${apiBase}/v1/workflows`, {
+    const start1 = await request.post(`${apiBase}/v1/executions`, {
       headers: { ...tenantHeaders, "X-Idempotency-Key": idemKey },
       data: body
     });
     expect(start1.status(), await start1.text()).toBe(201);
     const w1 = (await start1.json()) as { displayId: string; resourceId: string };
 
-    const start2 = await request.post(`${apiBase}/v1/workflows`, {
+    const start2 = await request.post(`${apiBase}/v1/executions`, {
       headers: { ...tenantHeaders, "X-Idempotency-Key": idemKey },
       data: body
     });
@@ -134,13 +134,13 @@ test.describe("Core API (direct)", () => {
 
     const idemKey = `idem-conflict-${suffix}`;
 
-    const start1 = await request.post(`${apiBase}/v1/workflows`, {
+    const start1 = await request.post(`${apiBase}/v1/executions`, {
       headers: { ...tenantHeaders, "X-Idempotency-Key": idemKey },
       data: { definitionId: defA.displayId, input: {} }
     });
     expect(start1.status()).toBe(201);
 
-    const start2 = await request.post(`${apiBase}/v1/workflows`, {
+    const start2 = await request.post(`${apiBase}/v1/executions`, {
       headers: { ...tenantHeaders, "X-Idempotency-Key": idemKey },
       data: { definitionId: defB.displayId, input: {} }
     });

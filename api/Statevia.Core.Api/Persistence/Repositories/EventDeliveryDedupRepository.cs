@@ -18,7 +18,7 @@ internal sealed class EventDeliveryDedupRepository : IEventDeliveryDedupReposito
         CancellationToken cancellationToken) =>
         uow.Db.EventDeliveryDedup.AsNoTracking()
             .FirstOrDefaultAsync(
-                x => x.TenantId == tenantId && x.WorkflowId == workflowId && x.ClientEventId == clientEventId,
+                x => x.TenantId == tenantId && x.ExecutionId == workflowId && x.ClientEventId == clientEventId,
                 cancellationToken);
 
     /// <inheritdoc />
@@ -39,7 +39,7 @@ internal sealed class EventDeliveryDedupRepository : IEventDeliveryDedupReposito
     {
         ArgumentNullException.ThrowIfNull(update);
         var affected = await uow.Db.EventDeliveryDedup
-            .Where(x => x.TenantId == tenantId && x.WorkflowId == workflowId && x.ClientEventId == clientEventId)
+            .Where(x => x.TenantId == tenantId && x.ExecutionId == workflowId && x.ClientEventId == clientEventId)
             .ExecuteUpdateAsync(
                 s => s
                     .SetProperty(x => x.Status, update.Status)

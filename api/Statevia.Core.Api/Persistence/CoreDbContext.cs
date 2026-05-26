@@ -10,7 +10,7 @@ internal class CoreDbContext : DbContext
         public const string CreatedAt = "created_at";
         public const string UpdatedAt = "updated_at";
         public const string TenantId = "tenant_id";
-        public const string WorkflowId = "workflow_id";
+        public const string ExecutionId = "execution_id";
         public const string DefinitionId = "definition_id";
         public const string DefinitionVersionId = "definition_version_id";
         public const string ProjectId = "project_id";
@@ -103,7 +103,7 @@ internal class CoreDbContext : DbContext
     public DbSet<WorkflowDefinitionRow> WorkflowDefinitions => Set<WorkflowDefinitionRow>();
     public DbSet<DefinitionRow> Definitions => Set<DefinitionRow>();
     public DbSet<DefinitionVersionRow> DefinitionVersions => Set<DefinitionVersionRow>();
-    public DbSet<WorkflowRow> Workflows => Set<WorkflowRow>();
+    public DbSet<ExecutionRow> Executions => Set<ExecutionRow>();
     public DbSet<EventStoreRow> EventStore => Set<EventStoreRow>();
     public DbSet<WorkflowEventRow> WorkflowEvents => Set<WorkflowEventRow>();
     public DbSet<ExecutionGraphSnapshotRow> ExecutionGraphSnapshots => Set<ExecutionGraphSnapshotRow>();
@@ -188,12 +188,12 @@ internal class CoreDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // workflows (projection)
-        modelBuilder.Entity<WorkflowRow>(e =>
+        // executions (projection)
+        modelBuilder.Entity<ExecutionRow>(e =>
         {
-            e.ToTable("workflows");
-            e.HasKey(x => x.WorkflowId);
-            e.Property(x => x.WorkflowId).HasColumnName(Columns.WorkflowId);
+            e.ToTable("executions");
+            e.HasKey(x => x.ExecutionId);
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
             e.Property(x => x.TenantId).HasMaxLength(64).HasColumnName(Columns.TenantId);
             e.Property(x => x.DefinitionId).HasColumnName(Columns.DefinitionId);
             e.Property(x => x.DefinitionVersionId).HasColumnName(Columns.DefinitionVersionId);
@@ -212,10 +212,10 @@ internal class CoreDbContext : DbContext
         modelBuilder.Entity<EventStoreRow>(e =>
         {
             e.ToTable("event_store");
-            e.HasKey(x => new { x.WorkflowId, x.Seq });
+            e.HasKey(x => new { x.ExecutionId, x.Seq });
             e.HasIndex(x => x.EventId).IsUnique();
             e.Property(x => x.EventId).HasColumnName(Columns.EventId);
-            e.Property(x => x.WorkflowId).HasColumnName(Columns.WorkflowId);
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
             e.Property(x => x.Seq).HasColumnName(Columns.Seq);
             e.Property(x => x.Type).HasMaxLength(128).HasColumnName(Columns.Type);
             e.Property(x => x.OccurredAt).HasColumnName(Columns.OccurredAt);
@@ -234,7 +234,7 @@ internal class CoreDbContext : DbContext
             e.ToTable("workflow_events");
             e.HasKey(x => x.WorkflowEventId);
             e.Property(x => x.WorkflowEventId).HasColumnName(Columns.WorkflowEventId);
-            e.Property(x => x.WorkflowId).HasColumnName(Columns.WorkflowId);
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
             e.Property(x => x.Seq).HasColumnName(Columns.Seq);
             e.Property(x => x.Type).HasMaxLength(128).HasColumnName(Columns.Type);
             e.Property(x => x.PayloadJson).HasColumnName(Columns.PayloadJson);
@@ -245,8 +245,8 @@ internal class CoreDbContext : DbContext
         modelBuilder.Entity<ExecutionGraphSnapshotRow>(e =>
         {
             e.ToTable("execution_graph_snapshots");
-            e.HasKey(x => x.WorkflowId);
-            e.Property(x => x.WorkflowId).HasColumnName(Columns.WorkflowId);
+            e.HasKey(x => x.ExecutionId);
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
             e.Property(x => x.GraphJson).HasColumnName(Columns.GraphJson);
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
         });
@@ -272,9 +272,9 @@ internal class CoreDbContext : DbContext
         modelBuilder.Entity<EventDeliveryDedupRow>(e =>
         {
             e.ToTable("event_delivery_dedup");
-            e.HasKey(x => new { x.TenantId, x.WorkflowId, x.ClientEventId });
+            e.HasKey(x => new { x.TenantId, x.ExecutionId, x.ClientEventId });
             e.Property(x => x.TenantId).HasMaxLength(64).HasColumnName(Columns.TenantId);
-            e.Property(x => x.WorkflowId).HasColumnName(Columns.WorkflowId);
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
             e.Property(x => x.ClientEventId).HasColumnName(Columns.ClientEventId);
             e.Property(x => x.BatchId).HasColumnName(Columns.BatchId);
             e.Property(x => x.Status).HasMaxLength(32).HasColumnName(Columns.Status);
@@ -283,7 +283,7 @@ internal class CoreDbContext : DbContext
             e.Property(x => x.ErrorCode).HasMaxLength(128).HasColumnName(Columns.ErrorCode);
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
 
-            e.HasIndex(x => new { x.TenantId, x.WorkflowId, x.BatchId });
+            e.HasIndex(x => new { x.TenantId, x.ExecutionId, x.BatchId });
         });
 
         ConfigureTenantScopedFilters(modelBuilder);
@@ -305,7 +305,7 @@ internal class CoreDbContext : DbContext
             !_queryFilterOptions.IsEnabled ||
             (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantKey));
 
-        modelBuilder.Entity<WorkflowRow>().HasQueryFilter(e =>
+        modelBuilder.Entity<ExecutionRow>().HasQueryFilter(e =>
             !_queryFilterOptions.IsEnabled ||
             (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantKey));
 

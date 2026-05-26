@@ -31,10 +31,10 @@ describe("DefinitionRunStartPage", () => {
   it("ワークフロー開始ボタンで API を呼ぶ", async () => {
     renderWithUiText(<DefinitionRunStartPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "ワークフロー開始" }));
+    fireEvent.click(screen.getByRole("button", { name: "実行開始" }));
 
     await waitFor(() => {
-      expect(apiPost).toHaveBeenCalledWith("/workflows", { definitionId: "def-1" });
+      expect(apiPost).toHaveBeenCalledWith("/executions", { definitionId: "def-1" });
     });
   });
 });

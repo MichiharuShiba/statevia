@@ -25,27 +25,27 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
 
     public async Task<ExecutionReadModel> GetByDisplayIdAsync(string id, string tenantId, CancellationToken ct = default)
     {
-        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Workflow, id, ct).ConfigureAwait(false);
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, id, ct).ConfigureAwait(false);
         if (uuid is null)
-            throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
+            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
         return await _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
-                var workflow = await uow.Db.Workflows.AsNoTracking()
-                    .FirstOrDefaultAsync(x => x.WorkflowId == uuid && x.TenantId == tenantId, innerCt)
+                var workflow = await uow.Db.Executions.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.ExecutionId == uuid && x.TenantId == tenantId, innerCt)
                     .ConfigureAwait(false);
                 if (workflow is null)
-                    throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
+                    throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
                 var snapshot = await uow.Db.ExecutionGraphSnapshots.AsNoTracking()
-                    .FirstOrDefaultAsync(x => x.WorkflowId == uuid, innerCt)
+                    .FirstOrDefaultAsync(x => x.ExecutionId == uuid, innerCt)
                     .ConfigureAwait(false);
                 if (snapshot is null)
-                    throw new NotFoundException(WorkflowValidationMessages.WorkflowNotFound);
+                    throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-                var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Workflow, id, innerCt)
-                    .ConfigureAwait(false) ?? workflow.WorkflowId.ToString();
+                var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Execution, id, innerCt)
+                    .ConfigureAwait(false) ?? workflow.ExecutionId.ToString();
                 var graphId = await _displayIds
                     .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, workflow.DefinitionId.ToString(), innerCt)
                     .ConfigureAwait(false) ?? workflow.DefinitionId.ToString();
@@ -56,7 +56,7 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
     }
 
     private static ExecutionReadModel MapToReadModel(
-        WorkflowRow workflow,
+        ExecutionRow workflow,
         ExecutionGraphSnapshotRow snapshot,
         string displayId,
         string graphId)

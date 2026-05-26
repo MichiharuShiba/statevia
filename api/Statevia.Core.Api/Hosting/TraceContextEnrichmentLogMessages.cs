@@ -10,7 +10,7 @@ internal static partial class TraceContextEnrichmentLogMessages
     [LoggerMessage(
         EventId = 4020,
         Level = LogLevel.Information,
-        Message = "HTTP trace enrich TraceId={traceId} WorkflowId={workflowId} DefinitionId={definitionId} GraphDefinitionId={graphDefinitionId}")]
+        Message = "HTTP trace enrich TraceId={traceId} ExecutionId={workflowId} DefinitionId={definitionId} GraphDefinitionId={graphDefinitionId}")]
     public static partial void HttpTraceEnrich(
         this ILogger logger,
         string traceId,

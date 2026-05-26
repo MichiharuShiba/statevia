@@ -119,7 +119,7 @@ dotnet_diagnostic.CA1515.severity = none
 # 除外理由: W3C traceparent や X-Trace-Id 等のカスタムヘッダは文字列キー指定が契約どおり。
 dotnet_diagnostic.ASP0015.severity = none
 
-[api/Statevia.Core.Api/Abstractions/Services/IWorkflowProjectionUpdateQueue.cs]
+[api/Statevia.Core.Api/Abstractions/Services/IExecutionProjectionUpdateQueue.cs]
 
 # CA1711: 識別子は接尾辞に型名を使うな（Queue 等の汎用語を避けよ）。
 # 除外理由: 既存の DI 契約名。Queue サフィックスへのリネームは公開面の破壊変更となる。

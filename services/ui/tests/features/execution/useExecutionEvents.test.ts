@@ -36,7 +36,7 @@ describe("useExecutionEvents", () => {
 
     expect(result.current.events).toHaveLength(1);
     expect(result.current.hasMore).toBe(true);
-    expect(api.apiGet).toHaveBeenCalledWith(expect.stringContaining("/workflows/ex-1/events"));
+    expect(api.apiGet).toHaveBeenCalledWith(expect.stringContaining("/executions/ex-1/events"));
   });
 
   it("loadMore で afterSeq 付きの追加取得を行う", async () => {

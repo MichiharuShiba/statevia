@@ -4,7 +4,7 @@ namespace Statevia.Core.Api.Persistence;
 internal class EventStoreRow
 {
     public Guid EventId { get; set; }
-    public Guid WorkflowId { get; set; }
+    public Guid ExecutionId { get; set; }
     public long Seq { get; set; }
     public required string Type { get; set; }
     public DateTime OccurredAt { get; set; }

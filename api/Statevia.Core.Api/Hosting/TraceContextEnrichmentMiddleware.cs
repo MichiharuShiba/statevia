@@ -76,7 +76,7 @@ internal sealed class TraceContextEnrichmentMiddleware
         var path = ctx.Request.Path.Value ?? "";
         if (TryGetRouteString(ctx, "id") is { } routeId)
         {
-            if (path.StartsWith("/v1/workflows/", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWith("/v1/executions/", StringComparison.OrdinalIgnoreCase))
                 return (routeId, null, null);
             if (path.StartsWith("/v1/definitions/", StringComparison.OrdinalIgnoreCase))
                 return (null, routeId, null);

@@ -15,7 +15,7 @@ internal sealed record DefinitionListPageQuery(
     SortQuery Sort,
     string? NameContains);
 
-internal sealed record WorkflowListPageQuery(
+internal sealed record ExecutionListPageQuery(
     PageQuery Page,
     SortQuery Sort,
     string? StatusFilter,
