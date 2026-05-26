@@ -56,7 +56,7 @@ export const uiTextEn: UiText = {
     displayId: "Display ID",
     resourceId: "Resource ID",
     graphId: "Graph ID",
-    workflowInput: "Workflow input",
+    input: "Input",
     definitionEditor: "Definition Editor",
   },
   errorPrefixes: {
@@ -323,7 +323,7 @@ export const uiTextEn: UiText = {
     ...uiTextJa.definitionRunPage,
     title: "Run definition",
     unspecifiedDefinitionId: "(not specified)",
-    workflowInputLabelWithHint: (workflowInputLabel: string) => `${workflowInputLabel} (optional, JSON)`,
+    inputLabelWithHint: (inputLabel: string) => `${inputLabel} (optional, JSON)`,
     inputJsonPlaceholder: 'Example: {"orderId":"123"}',
     nav: {
       backToDefinitionDetail: "Back to definition detail",
@@ -334,8 +334,8 @@ export const uiTextEn: UiText = {
     },
     toasts: {
       definitionIdRequired: (definitionIdLabel: string) => `${definitionIdLabel} is required.`,
-      invalidWorkflowInputJson: (workflowInputLabel: string) => `${workflowInputLabel} JSON is invalid.`,
-      workflowInputTooLarge: "Workflow input must be within 65536 bytes (64KiB).",
+      invalidInputJson: (inputLabel: string) => `${inputLabel} JSON is invalid.`,
+      inputTooLarge: "Input must be within 65536 bytes (64KiB).",
       workflowStarted: (workflowDisplayId: string) => `Workflow started: ${workflowDisplayId}`,
     },
     help: {

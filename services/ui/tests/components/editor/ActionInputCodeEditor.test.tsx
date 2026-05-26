@@ -10,7 +10,7 @@ describe("ActionInputCodeEditor", () => {
         value='{"x":1}'
         onChange={onChange}
         syntaxHighlight="jsonOnly"
-        ariaLabel="workflow input"
+        ariaLabel="Input"
       />
     );
 

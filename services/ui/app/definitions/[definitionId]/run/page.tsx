@@ -10,7 +10,7 @@ import { toToastError, type ToastState } from "../../../lib/errors";
 import type { WorkflowDTO } from "../../../lib/types";
 import { useUiText } from "../../../lib/uiTextContext";
 import { getUtf8ByteLength } from "../../../lib/validation/primitives";
-import { WORKFLOW_INPUT_MAX_BYTES } from "../../../lib/validation/formRules";
+import { START_INPUT_MAX_BYTES } from "../../../lib/validation/formRules";
 
 /**
  * Definition 起点で新規ワークフローを開始する。
@@ -41,17 +41,17 @@ export default function DefinitionRunStartPage() {
     const trimmedInputJson = inputJson.trim();
     if (trimmedInputJson) {
       const inputBytes = getUtf8ByteLength(trimmedInputJson);
-      if (inputBytes > WORKFLOW_INPUT_MAX_BYTES) {
+      if (inputBytes > START_INPUT_MAX_BYTES) {
         setToast({
           tone: "error",
-          message: uiText.definitionRunPage.toasts.workflowInputTooLarge
+          message: uiText.definitionRunPage.toasts.inputTooLarge
         });
         return;
       }
       try {
         body.input = JSON.parse(trimmedInputJson) as unknown;
       } catch {
-        setToast({ tone: "error", message: uiText.definitionRunPage.toasts.invalidWorkflowInputJson(uiText.labels.workflowInput) });
+        setToast({ tone: "error", message: uiText.definitionRunPage.toasts.invalidInputJson(uiText.labels.input) });
         return;
       }
     }
@@ -87,13 +87,13 @@ export default function DefinitionRunStartPage() {
 
       <section className="space-y-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm">
         <label className="block text-sm">
-          <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionRunPage.workflowInputLabelWithHint(uiText.labels.workflowInput)}</span>
+          <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionRunPage.inputLabelWithHint(uiText.labels.input)}</span>
           <ActionInputCodeEditor
             value={inputJson}
             onChange={setInputJson}
             placeholder={uiText.definitionRunPage.inputJsonPlaceholder}
             syntaxHighlight="jsonOnly"
-            ariaLabel={uiText.labels.workflowInput}
+            ariaLabel={uiText.labels.input}
             className="min-h-[7rem] w-full border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]"
           />
         </label>

@@ -19,9 +19,9 @@ export const EVENT_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9._-]*$/;
 export const EVENT_NAME_MAX_LENGTH = 64;
 
 /**
- * ワークフロー開始時 `workflowInput` JSON の最大 UTF-8 バイト数（64KB）。
+ * 実行開始時 `input` JSON の最大 UTF-8 バイト数（64KB）。
  */
-export const WORKFLOW_INPUT_MAX_BYTES = 65536;
+export const START_INPUT_MAX_BYTES = 65536;
 
 /**
  * Definition YAML の最大 UTF-8 バイト数（256KB）。

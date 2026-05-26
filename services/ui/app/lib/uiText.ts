@@ -46,7 +46,7 @@ export type UiText = {
     displayId: string;
     resourceId: string;
     graphId: string;
-    workflowInput: string;
+    input: string;
     definitionEditor: string;
   };
   status: {
@@ -202,12 +202,12 @@ export type UiText = {
     title: string;
     unspecifiedDefinitionId: string;
     definitionIdLine: (definitionIdLabel: string, definitionId: string) => string;
-    workflowInputLabelWithHint: (workflowInputLabel: string) => string;
+    inputLabelWithHint: (inputLabel: string) => string;
     inputJsonPlaceholder: string;
     toasts: {
       definitionIdRequired: (definitionIdLabel: string) => string;
-      invalidWorkflowInputJson: (workflowInputLabel: string) => string;
-      workflowInputTooLarge: string;
+      invalidInputJson: (inputLabel: string) => string;
+      inputTooLarge: string;
       workflowStarted: (workflowDisplayId: string) => string;
     };
     nav: {
@@ -530,7 +530,7 @@ export const uiText: UiText = {
     displayId: "表示ID",
     resourceId: "リソースID",
     graphId: "グラフID",
-    workflowInput: "入力データ",
+    input: "入力データ",
     definitionEditor: "定義エディタ",
   },
   status: {
@@ -689,12 +689,12 @@ export const uiText: UiText = {
     title: "定義を実行",
     unspecifiedDefinitionId: "（未指定）",
     definitionIdLine: (definitionIdLabel: string, definitionId: string) => `${definitionIdLabel}: ${definitionId}`,
-    workflowInputLabelWithHint: (workflowInputLabel: string) => `${workflowInputLabel}（任意・JSON）`,
+    inputLabelWithHint: (inputLabel: string) => `${inputLabel}（任意・JSON）`,
     inputJsonPlaceholder: '例: {"orderId":"123"}',
     toasts: {
       definitionIdRequired: (definitionIdLabel: string) => `${definitionIdLabel} が指定されていません。`,
-      invalidWorkflowInputJson: (workflowInputLabel: string) => `${workflowInputLabel} の JSON が不正です。`,
-      workflowInputTooLarge: "入力データは65536バイト（64KiB）以内で指定してください。",
+      invalidInputJson: (inputLabel: string) => `${inputLabel} の JSON が不正です。`,
+      inputTooLarge: "入力データは65536バイト（64KiB）以内で指定してください。",
       workflowStarted: (workflowDisplayId: string) => `実行を開始しました: ${workflowDisplayId}`,
     },
     nav: {
@@ -1005,7 +1005,7 @@ export const confirmedMappingTable: MappingEntry[] = [
   { source: "graphId", target: uiText.labels.graphId, note: "ユーザー向けラベル統一" },
   { source: "close toast", target: uiText.actions.closeToast, note: "アクセシビリティラベルを日本語化" },
   { source: "List / Graph", target: `${uiText.actions.viewList} / ${uiText.actions.viewGraph}`, note: "表示切替文言を日本語化" },
-  { source: "workflow input", target: uiText.labels.workflowInput, note: "入力欄ラベルを日本語化" },
+  { source: "input", target: uiText.labels.input, note: "Start API の input 欄ラベルを日本語化" },
   { source: "Definition Editor", target: uiText.labels.definitionEditor, note: "画面タイトルを日本語化" },
   { source: "health", target: uiText.navigation.health, note: "ナビゲーション文言を日本語化" },
   { source: "再読み込み", target: uiText.actions.reload, note: "再取得操作の表記を統一" },

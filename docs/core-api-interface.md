@@ -169,7 +169,7 @@ Request:
 - `definitionVersion`: 版番号（任意）。省略時は `definitions.latest_version` を使用
 - `definitionVersionId`: 版 UUID（任意）。**指定時は `definitionVersion` より優先**。他テナント・他定義の版は **404**
 - **再現性:** 本番運用では `definitionVersion` または `definitionVersionId` の **明示を推奨**（latest 省略は開発・探索用途）
-- `input`: 任意の JSON 値（省略可）。初期状態へ `workflowInput` として渡される
+- `input`: 任意の JSON 値（省略可）。初期状態へ渡される
 - Engine 投入は解決した **version 行の `compiled_json`**（同一版の `source_yaml` で executor を復元）
 - 永続化: `workflows.definition_version_id` に開始版を必ず保存（Start は ReadCommitted 1 tx: `workflows` + snapshot + `event_store` + dedup）
 - Response: 201 Created

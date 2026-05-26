@@ -359,7 +359,7 @@ Core-APIはエラーレスポンスに以下を入れる。
 ```
 
 Definition 登録（`POST /v1/definitions`）および更新（`PUT /v1/definitions/{id}`）の 422 では、`error.details` に `field` / `message` を含む構造化診断を返し、UI は `name` と `yaml` の表示位置を分離できる。  
-同様に、実行開始入力（workflow input JSON）・イベント名入力などの入力不正も 422 details で返せる前提とし、UI はフィールド優先で表示する。
+同様に、実行開始時の `input`（JSON）・イベント名入力などの入力不正も 422 details で返せる前提とし、UI はフィールド優先で表示する。
 
 ```json
 {
