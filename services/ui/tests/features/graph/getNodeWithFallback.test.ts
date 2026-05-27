@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getNodeWithFallback, type GraphData } from "../../../app/features/graph/useGraphData";
-import type { ExecutionNodeDTO, WorkflowView } from "../../../app/lib/types";
+import type { ExecutionNodeDTO, ExecutionView } from "../../../app/lib/types";
 
-function execution(nodes: ExecutionNodeDTO[]): WorkflowView {
+function execution(nodes: ExecutionNodeDTO[]): ExecutionView {
   return {
     displayId: "ex-1",
     resourceId: "res-1",

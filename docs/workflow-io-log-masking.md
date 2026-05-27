@@ -9,7 +9,7 @@
 
 - API / Engine は共通 `LogRedaction` を使用する。
 - 最低限のマスク対象キーは `password`, `token`, `secret`, `authorization`。
-- `input`, `output` キーは値をプレースホルダへ置換する。旧ログ互換のため `workflowInput` もマスク対象に含める。
+- `input`, `output` キーは値をプレースホルダへ置換する。
 
 ## 運用上の注意
 

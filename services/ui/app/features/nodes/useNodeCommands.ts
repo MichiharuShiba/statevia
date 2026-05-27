@@ -3,18 +3,18 @@
 import { useState } from "react";
 import { apiPost } from "../../lib/api";
 import { DEFAULT_LOCALE, type Locale } from "../../lib/i18n";
-import type { CommandAccepted, ExecutionNodeDTO, WorkflowView } from "../../lib/types";
+import type { CommandAccepted, ExecutionNodeDTO, ExecutionView } from "../../lib/types";
 import { getUiText } from "../../lib/uiTextLocale";
 
 const TERMINAL_STATUSES = new Set<string>(["Completed", "Cancelled", "Failed"]);
 
-function isTerminalExecution(status: WorkflowView["status"]): boolean {
+function isTerminalExecution(status: ExecutionView["status"]): boolean {
   return TERMINAL_STATUSES.has(status);
 }
 
 /** getResumeDisabledReason。 */
 export function getResumeDisabledReason(
-  execution: WorkflowView | null,
+  execution: ExecutionView | null,
   node: ExecutionNodeDTO | null,
   commandsEnabled = true,
   locale: Locale = DEFAULT_LOCALE
@@ -39,7 +39,7 @@ export type UseNodeCommandsOptions = {
 
 /** ノードへの Resume 等コマンドを発行するフック。 */
 export function useNodeCommands(
-  execution: WorkflowView | null,
+  execution: ExecutionView | null,
   options: UseNodeCommandsOptions = {}
 ) {
   const { onSuccess, onError, commandsEnabled = true } = options;

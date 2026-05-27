@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { apiGet, apiPost } from "../../lib/api";
-import { startWorkflowStreamLifecycle } from "./workflowStreamLifecycle";
+import { startExecutionStreamLifecycle } from "./executionStreamLifecycle";
 import { isWithinMaxLength, matchesPattern } from "../../lib/validation/primitives";
 import { EVENT_NAME_MAX_LENGTH, EVENT_NAME_PATTERN } from "../../lib/validation/formRules";
-import { buildWorkflowView } from "../../lib/workflowView";
-import type { CommandAccepted, WorkflowDTO, WorkflowGraphDTO, WorkflowView } from "../../lib/types";
+import { buildExecutionView } from "../../lib/executionView";
+import type { CommandAccepted, ExecutionDTO, ExecutionGraphDTO, ExecutionView } from "../../lib/types";
 
 const TERMINAL_STATUSES = new Set<string>(["Completed", "Cancelled", "Failed"]);
 /** SSE 受信後に GET で Read Model を確定するまでの待ち（ms）。 */
@@ -14,7 +14,7 @@ export const DEFAULT_STREAM_REFRESH_DEBOUNCE_MS = 500;
 /** SSE オフ時のポーリング間隔（ms）。 */
 const POLL_INTERVAL_MS = 2500;
 
-function isTerminalExecution(status: WorkflowView["status"]): boolean {
+function isTerminalExecution(status: ExecutionView["status"]): boolean {
   return TERMINAL_STATUSES.has(status);
 }
 
@@ -29,8 +29,21 @@ export type UseExecutionOptions = {
   streamRefreshDebounceMs?: number;
 };
 
+/** useExecution の戻り値。 */
+export type UseExecutionResult = {
+  execution: ExecutionView | null;
+  loading: boolean;
+  canCancel: boolean;
+  terminal: boolean;
+  loadExecution: () => Promise<void>;
+  cancelExecution: () => Promise<void>;
+  publishEvent: (eventName: string) => Promise<void>;
+  selectedNodeId: string | null;
+  setSelectedNodeId: Dispatch<SetStateAction<string | null>>;
+};
+
 /** 単一実行の読み込み・更新・SSE 再接続を管理するフック。 */
-export function useExecution(workflowDisplayId: string, options: UseExecutionOptions = {}) {
+export function useExecution(executionDisplayId: string, options: UseExecutionOptions = {}): UseExecutionResult {
   const {
     onError,
     onCancelSuccess,
@@ -38,7 +51,7 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
     streamEnabled = true,
     streamRefreshDebounceMs = DEFAULT_STREAM_REFRESH_DEBOUNCE_MS
   } = options;
-  const [execution, setExecution] = useState<WorkflowView | null>(null);
+  const [execution, setExecution] = useState<ExecutionView | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const onErrorRef = useRef(onError);
@@ -51,7 +64,7 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
   const terminal = execution ? isTerminalExecution(execution.status) : false;
   const canCancel = !!execution && !terminal;
 
-  const applyExecutionSnapshot = (view: WorkflowView) => {
+  const applyExecutionSnapshot = (view: ExecutionView) => {
     setExecution(view);
     setSelectedNodeId((current) => {
       if (!current) return view.nodes[0]?.executionNodeId ?? null;
@@ -63,14 +76,14 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
   };
 
   const refreshExecutionSnapshot = async (displayId: string) => {
-    const workflow = await apiGet<WorkflowDTO>(`/executions/${displayId}`);
-    let graph: WorkflowGraphDTO | null = null;
+    const executionDto = await apiGet<ExecutionDTO>(`/executions/${displayId}`);
+    let graph: ExecutionGraphDTO | null = null;
     try {
-      graph = await apiGet<WorkflowGraphDTO>(`/executions/${displayId}/graph`);
+      graph = await apiGet<ExecutionGraphDTO>(`/executions/${displayId}/graph`);
     } catch {
       // graph 未取得時は nodes 空で表示
     }
-    const view = buildWorkflowView(workflow, graph);
+    const view = buildExecutionView(executionDto, graph);
     applyExecutionSnapshot(view);
   };
 
@@ -82,7 +95,7 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
     if (!execution?.displayId) return;
     if (terminal) return;
 
-    return startWorkflowStreamLifecycle({
+    return startExecutionStreamLifecycle({
       displayId: execution.displayId,
       streamRefreshDebounceMs,
       refreshSnapshot: (displayId) => refreshSnapshotRef.current(displayId),
@@ -107,7 +120,7 @@ export function useExecution(workflowDisplayId: string, options: UseExecutionOpt
   async function loadExecution() {
     setLoading(true);
     try {
-      await refreshExecutionSnapshot(workflowDisplayId);
+      await refreshExecutionSnapshot(executionDisplayId);
     } catch (error) {
       setExecution(null);
       setSelectedNodeId(null);

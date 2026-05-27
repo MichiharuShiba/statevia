@@ -12,17 +12,17 @@ import { apiGet } from "../lib/api";
 import { formatDateTimeLocalized } from "../lib/dateTime";
 import { toToastError, type ToastState } from "../lib/errors";
 import { getDateTimeLocale } from "../lib/i18n";
-import type { PagedWorkflows, WorkflowDTO } from "../lib/types";
+import type { PagedExecutions, ExecutionDTO } from "../lib/types";
 import { useI18n } from "../lib/uiTextContext";
 
 /**
- * 直近ワークフロー 10 件のダッシュボード（一覧取得・空状態・詳細への導線）。
+ * 直近実行 10 件のダッシュボード（一覧取得・空状態・詳細への導線）。
  */
 export function DashboardPageClient() {
   const { uiText, locale } = useI18n();
   const router = useRouter();
   const dateTimeLocale = getDateTimeLocale(locale);
-  const [items, setItems] = useState<WorkflowDTO[] | null>(null);
+  const [items, setItems] = useState<ExecutionDTO[] | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -31,7 +31,7 @@ export function DashboardPageClient() {
     setLoading(true);
     setToast(null);
     try {
-      const page = await apiGet<PagedWorkflows>("/executions?limit=10&offset=0");
+      const page = await apiGet<PagedExecutions>("/executions?limit=10&offset=0");
       setItems(page.items);
       setTotalCount(page.totalCount);
     } catch (error) {
@@ -64,11 +64,11 @@ export function DashboardPageClient() {
       )}
 
       {empty && (
-        <PageState state="empty" message={uiText.dashboard.emptyStartFromDefinitionsOrWorkflows} />
+        <PageState state="empty" message={uiText.dashboard.emptyStartFromDefinitionsOrExecutions} />
       )}
 
       {!loading && items !== null && items.length > 0 && (
-        <section aria-label={uiText.dashboard.aria.recentWorkflowsList}>
+        <section aria-label={uiText.dashboard.aria.recentExecutionsList}>
           <div className="mb-2 flex items-center justify-between gap-3 text-sm">
             <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{totalCountLabel}</p>
             <button
@@ -80,15 +80,15 @@ export function DashboardPageClient() {
             </button>
           </div>
           <ul className="divide-y divide-[var(--md-sys-color-outline)] overflow-hidden rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-sm">
-            {items.map((workflow) => {
-              const updated = workflow.updatedAt ?? workflow.startedAt;
+            {items.map((execution) => {
+              const updated = execution.updatedAt ?? execution.startedAt;
               return (
-                <li key={workflow.displayId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <li key={execution.displayId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge status={workflow.status} />
-                      <span className="truncate font-mono text-sm text-[var(--md-sys-color-on-surface)]" title={workflow.displayId}>
-                        {workflow.displayId}
+                      <StatusBadge status={execution.status} />
+                      <span className="truncate font-mono text-sm text-[var(--md-sys-color-on-surface)]" title={execution.displayId}>
+                        {execution.displayId}
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">{uiText.dashboard.updatedAt(formatDateTimeLocalized(updated, dateTimeLocale))}</p>
@@ -96,7 +96,7 @@ export function DashboardPageClient() {
                   <button
                     type="button"
                     className={`shrink-0 ${NAVIGATION_BUTTON_CLASS}`}
-                    onClick={() => router.push(`/executions/${encodeURIComponent(workflow.displayId)}`)}
+                    onClick={() => router.push(`/executions/${encodeURIComponent(execution.displayId)}`)}
                   >
                     {uiText.dashboard.actions.openDetail}
                   </button>

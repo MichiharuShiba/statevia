@@ -9,7 +9,7 @@ import { PageState } from "../../components/layout/PageState";
 import { useUiText } from "../../lib/uiTextContext";
 
 /**
- * ワークフロー単体（URL 表示 ID 確定）の参照画面。
+ * 実行単体（URL 表示 ID 確定）の参照画面。
  */
 export default function ExecutionDetailPage() {
   const uiText = useUiText();

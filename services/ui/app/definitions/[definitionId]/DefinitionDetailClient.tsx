@@ -16,7 +16,7 @@ type DefinitionDetailClientProps = {
 };
 
 /**
- * Definition 詳細（API のメタ情報、Workflow 一覧・編集・実行開始への導線）を表示する。
+ * Definition 詳細（API のメタ情報、実行一覧・編集・実行開始への導線）を表示する。
  */
 export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDetailClientProps>) {
   const { uiText, locale } = useI18n();
@@ -83,9 +83,9 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
       )}
 
       <section className="rounded-lg border border-amber-100 bg-amber-50/80 p-4 text-sm text-amber-950">
-        <h2 className="font-medium text-amber-950">{uiText.definitionDetail.relatedWorkflows.title}</h2>
+        <h2 className="font-medium text-amber-950">{uiText.definitionDetail.relatedExecutions.title}</h2>
         <p className="mt-1 text-amber-900/90">
-          {uiText.definitionDetail.relatedWorkflows.description}
+          {uiText.definitionDetail.relatedExecutions.description}
         </p>
         <p className="mt-2">
           <button
@@ -93,7 +93,7 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
             className={NAVIGATION_BUTTON_CLASS}
             onClick={() => router.push(`/executions?definitionId=${encodeURIComponent(definitionId)}`)}
           >
-            {uiText.definitionDetail.relatedWorkflows.openList}
+            {uiText.definitionDetail.relatedExecutions.openList}
           </button>
         </p>
       </section>

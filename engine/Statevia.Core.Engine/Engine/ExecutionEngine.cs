@@ -13,16 +13,16 @@ using Statevia.Core.Engine.Scheduler;
 namespace Statevia.Core.Engine.Engine;
 
 /// <summary>
-/// IExecutionEngine の実装。定義駆動型ワークフローエンジンの中核クラスです。
-/// 事実駆動型 FSM、Fork/Join、Wait/Resume、協調的キャンセルをサポートします。
+/// <see cref="IExecutionEngine"/> の実装。定義駆動型実行エンジンの中核クラスです。
+/// コンパイル済みワークフロー定義に基づき、事実駆動型 FSM、Fork/Join、Wait/Resume、協調的キャンセルをサポートします。
 /// </summary>
 /// <remarks>
 /// <para>
 /// ホストが <see cref="IExecutionEngine"/> を Singleton として登録する場合、コンストラクタに渡した
-/// <see cref="IScheduler"/> はプロセス内のワークフロー実行で共有される（グローバル並列制御の単一窓口）。
+/// <see cref="IScheduler"/> はプロセス内の実行インスタンスで共有される（グローバル並列制御の単一窓口）。
 /// </para>
 /// <para>
-/// 例外を広く捕捉する <c>#pragma warning disable CA1031</c> 付きの try/catch は、複数ワークフローへのイベントブロードキャストで
+/// 例外を広く捕捉する <c>#pragma warning disable CA1031</c> 付きの try/catch は、複数実行インスタンスへのイベントブロードキャストで
 /// 失敗を集約するため、状態実行失敗をグラフへ記録するため、およびログ実装の失敗を遷移へ伝播させない（STV-404）ためである。
 /// </para>
 /// </remarks>
@@ -41,7 +41,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
     /// 依存を注入してエンジンを構築する。
     /// </summary>
     /// <param name="scheduler">状態実行のスケジューリング（並列度は実装側で解釈）。</param>
-    /// <param name="instanceFactory">ワークフローインスタンスの組み立て。</param>
+    /// <param name="instanceFactory">実行インスタンスの組み立て。</param>
     /// <param name="executionIdGenerator"><see cref="IExecutionEngine.Start"/> で ID 未指定のときに使う生成器。</param>
     /// <param name="loggerFactory">実行ログ用 <see cref="ExecutionEngineLogger"/> の生成に使うファクトリ。</param>
     public ExecutionEngine(
@@ -125,7 +125,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             {
                 eventProvider.Publish(eventName);
             }
-#pragma warning disable CA1031 // 複数ワークフローへブロードキャストするため、例外種別に依らず収集して AggregateException にまとめる
+#pragma warning disable CA1031 // 複数実行インスタンスへブロードキャストするため、例外種別に依らず収集して AggregateException にまとめる
             catch (Exception exception)
             {
                 publishFailures ??= [];
@@ -139,7 +139,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             throw publishFailures.Count == 1
                 ? publishFailures[0]
                 : new AggregateException(
-                    "One or more workflows failed during PublishEvent broadcast.",
+                    "One or more executions failed during PublishEvent broadcast.",
                     publishFailures);
         }
     }
@@ -163,7 +163,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
                     anyApplied = true;
                 }
             }
-#pragma warning disable CA1031 // 複数ワークフローへブロードキャストするため、例外種別に依らず収集して AggregateException にまとめる
+#pragma warning disable CA1031 // 複数実行インスタンスへブロードキャストするため、例外種別に依らず収集して AggregateException にまとめる
             catch (Exception exception)
             {
                 publishFailures ??= [];
@@ -177,7 +177,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             throw publishFailures.Count == 1
                 ? publishFailures[0]
                 : new AggregateException(
-                    "One or more workflows failed during PublishEvent broadcast with clientEventId.",
+                    "One or more executions failed during PublishEvent broadcast with clientEventId.",
                     publishFailures);
         }
 
@@ -237,7 +237,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         {
             await ScheduleStateAsync(instance, eventProvider, instance.Definition.InitialState, null, null, initialInput).ConfigureAwait(false);
         }
-#pragma warning disable CA1031 // 例外種別に依らず捕捉し、ワークフロー失敗は MarkFailed により観測する
+#pragma warning disable CA1031 // 例外種別に依らず捕捉し、実行失敗は MarkFailed により観測する
         catch (Exception ex)
         {
             instance.MarkFailed();

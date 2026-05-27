@@ -1,13 +1,13 @@
 import type {
+  ExecutionDTO,
+  ExecutionGraphDTO,
   ExecutionNodeDTO,
-  RuntimeGraphEdgeDTO,
-  WorkflowDTO,
-  WorkflowGraphDTO,
-  WorkflowView
+  ExecutionView,
+  RuntimeGraphEdgeDTO
 } from "./types";
 
-/** C# WorkflowGraphDTO のノードを ExecutionNodeDTO に変換（v2）。GET /graph のノード ID は JSON の `nodeId` のみ（Core-API 永続スナップショットと一致）。 */
-function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNodeDTO {
+/** C# ExecutionGraphResponse のノードを ExecutionNodeDTO に変換（v2）。GET /graph のノード ID は JSON の `nodeId` のみ（Core-API 永続スナップショットと一致）。 */
+function graphNodeToExecutionNode(n: ExecutionGraphDTO["nodes"][0]): ExecutionNodeDTO {
   const executionNodeId =
     typeof n.nodeId === "string" && n.nodeId.length > 0 ? n.nodeId : "";
   const stateName = typeof n.stateName === "string" ? n.stateName : "";
@@ -43,7 +43,7 @@ function graphNodeToExecutionNode(n: WorkflowGraphDTO["nodes"][0]): ExecutionNod
   };
 }
 
-function parseAttempt(node: WorkflowGraphDTO["nodes"][0]): number {
+function parseAttempt(node: ExecutionGraphDTO["nodes"][0]): number {
   return typeof node.attempt === "number" ? node.attempt : 1;
 }
 
@@ -66,7 +66,7 @@ function resolveNodeStatus(completedAt: string | null, factText: string): Execut
   return "SUCCEEDED";
 }
 
-function graphEdgeToRuntimeEdge(edge: WorkflowGraphDTO["edges"][0]): RuntimeGraphEdgeDTO | null {
+function graphEdgeToRuntimeEdge(edge: ExecutionGraphDTO["edges"][0]): RuntimeGraphEdgeDTO | null {
   const from = typeof edge.from === "string" ? edge.from : null;
   const to = typeof edge.to === "string" ? edge.to : null;
   if (!from || !to) return null;
@@ -77,18 +77,18 @@ function graphEdgeToRuntimeEdge(edge: WorkflowGraphDTO["edges"][0]): RuntimeGrap
   return { from, to, type };
 }
 
-/** WorkflowDTO と graph から WorkflowView を組み立てる（v2）。 */
-export function buildWorkflowView(
-  workflow: WorkflowDTO,
-  graph: WorkflowGraphDTO | null
-): WorkflowView {
+/** ExecutionDTO と graph から ExecutionView を組み立てる（v2）。 */
+export function buildExecutionView(
+  execution: ExecutionDTO,
+  graph: ExecutionGraphDTO | null
+): ExecutionView {
   const nodes: ExecutionNodeDTO[] = graph?.nodes?.map(graphNodeToExecutionNode) ?? [];
   const runtimeEdges: RuntimeGraphEdgeDTO[] = (graph?.edges ?? [])
     .map(graphEdgeToRuntimeEdge)
     .filter((edge): edge is RuntimeGraphEdgeDTO => edge != null);
   return {
-    ...workflow,
-    graphId: workflow.graphId,
+    ...execution,
+    graphId: execution.graphId,
     nodes,
     runtimeEdges
   };

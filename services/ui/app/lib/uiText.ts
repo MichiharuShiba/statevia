@@ -11,7 +11,6 @@ export type UiText = {
     health: string;
   };
   entities: {
-    workflow: string;
     definition: string;
     execution: string;
     node: string;
@@ -185,11 +184,11 @@ export type UiText = {
     title: string;
     descriptionRecent: string;
     loadingRecent: string;
-    emptyStartFromDefinitionsOrWorkflows: string;
+    emptyStartFromDefinitionsOrExecutions: string;
     totalCount: (count: number | null) => string;
     updatedAt: (formattedDateTime: string) => string;
     aria: {
-      recentWorkflowsList: string;
+      recentExecutionsList: string;
     };
     actions: {
       openDetail: string;
@@ -208,14 +207,14 @@ export type UiText = {
       definitionIdRequired: (definitionIdLabel: string) => string;
       invalidInputJson: (inputLabel: string) => string;
       inputTooLarge: string;
-      workflowStarted: (workflowDisplayId: string) => string;
+      executionStarted: (executionDisplayId: string) => string;
     };
     nav: {
       backToDefinitionDetail: string;
     };
     actions: {
       starting: string;
-      startWorkflow: string;
+      startExecution: string;
     };
     help: {
       redirectAfterStart: (runPath: string) => string;
@@ -329,7 +328,7 @@ export type UiText = {
       name: string;
       createdAt: string;
     };
-    relatedWorkflows: {
+    relatedExecutions: {
       title: string;
       description: string;
       openList: string;
@@ -495,7 +494,6 @@ export const uiText: UiText = {
     health: "ヘルスチェック",
   },
   entities: {
-    workflow: "ワークフロー",
     definition: "定義",
     execution: "実行",
     node: "ノード",
@@ -672,11 +670,11 @@ export const uiText: UiText = {
     title: "ダッシュボード",
     descriptionRecent: "直近の実行（最大 10 件）です。",
     loadingRecent: "直近の実行を取得しています。",
-    emptyStartFromDefinitionsOrWorkflows: "定義一覧または実行一覧から操作を開始できます。",
+    emptyStartFromDefinitionsOrExecutions: "定義一覧または実行一覧から操作を開始できます。",
     totalCount: (count: number | null) => (count == null ? "合計件数: --" : `合計件数: ${count}`),
     updatedAt: (formattedDateTime: string) => `更新: ${formattedDateTime}`,
     aria: {
-      recentWorkflowsList: "直近実行一覧",
+      recentExecutionsList: "直近実行一覧",
     },
     actions: {
       openDetail: "詳細を開く",
@@ -695,14 +693,14 @@ export const uiText: UiText = {
       definitionIdRequired: (definitionIdLabel: string) => `${definitionIdLabel} が指定されていません。`,
       invalidInputJson: (inputLabel: string) => `${inputLabel} の JSON が不正です。`,
       inputTooLarge: "入力データは65536バイト（64KiB）以内で指定してください。",
-      workflowStarted: (workflowDisplayId: string) => `実行を開始しました: ${workflowDisplayId}`,
+      executionStarted: (executionDisplayId: string) => `実行を開始しました: ${executionDisplayId}`,
     },
     nav: {
       backToDefinitionDetail: "定義の詳細へ戻る",
     },
     actions: {
       starting: "開始中...",
-      startWorkflow: "実行開始",
+      startExecution: "実行開始",
     },
     help: {
       redirectAfterStart: (runPath: string) => `開始後は実行画面（${runPath}）へ自動遷移します。`,
@@ -819,7 +817,7 @@ export const uiText: UiText = {
       name: "名前",
       createdAt: "登録日時",
     },
-    relatedWorkflows: {
+    relatedExecutions: {
       title: "関連実行",
       description: "この定義に紐づく実行の一覧へ進みます。",
       openList: "実行一覧を開く",
@@ -986,7 +984,7 @@ export type MappingEntry = {
  * T2 実装時に、各 source がどのキーへマッピングされるかの確認に利用する。
  */
 export const confirmedMappingTable: MappingEntry[] = [
-  { source: "Workflow", target: uiText.entities.workflow, note: "画面表示は日本語へ統一（内部識別子は変更しない）" },
+  { source: "Workflow", target: uiText.entities.execution, note: "実行インスタンスの画面表示は execution 語彙で統一（定義 DSL の workflow: とは別）" },
   { source: "Definition", target: uiText.entities.definition, note: "一覧/詳細/説明文で統一" },
   { source: "Execution", target: uiText.entities.execution, note: "見出し・ラベルで統一" },
   { source: "Execution 一覧", target: uiText.lists.executions, note: "一覧名の英日混在を解消" },

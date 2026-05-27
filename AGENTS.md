@@ -47,7 +47,7 @@ Core-API は C# のみ。PostgreSQL 16 は EF Core 経由で使用。UI は Next
 
 Further HTTP contract: `docs/core-api-interface.md`.
 
-**Input/Output exposure policy (IO-14):** Start 時の `input` / state `output` are not returned by default in list/get APIs; when they appear in graph/snapshot payloads for debugging, clients must treat them as potentially sensitive and apply masking/size controls before external logging. `LogRedaction` also masks legacy `workflowInput` keys in old logs.
+**Input/Output exposure policy (IO-14):** Start 時の `input` / state `output` are not returned by default in list/get APIs; when they appear in graph/snapshot payloads for debugging, clients must treat them as potentially sensitive and apply masking/size controls before external logging. `LogRedaction` masks `input` and `output` keys in log snapshots.
 
 ### Docker Compose（運用）
 

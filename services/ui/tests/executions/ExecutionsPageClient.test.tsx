@@ -26,7 +26,7 @@ describe("ExecutionsPageClient", () => {
     vi.mocked(apiGet).mockResolvedValue({ items: [], totalCount: 0 });
   });
 
-  it("ワークフロー一覧を読み込む", async () => {
+  it("実行一覧を読み込む", async () => {
     renderWithUiText(<ExecutionsPageClient />);
 
     await waitFor(() => {

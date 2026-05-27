@@ -175,10 +175,10 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
-    /// custom.echo実行時の出力グラフに入力値が反映される。
+    /// custom.echo 実行時の出力グラフに Start 時の <c>input</c> が反映される。
     /// </summary>
     [Fact]
-    public async Task Start_CustomEchoAction_OutputReflectsWorkflowInput()
+    public async Task Start_CustomEchoAction_OutputReflectsInput()
     {
         // Arrange
         var registry = new InMemoryActionRegistry();
@@ -201,11 +201,11 @@ public sealed class DefinitionCompilerServiceTests
 
         // Act
         var engine = CreateTestEngine();
-        var wfId = engine.Start(def, input: new Dictionary<string, int> { ["x"] = 42 });
+        var executionId = engine.Start(def, input: new Dictionary<string, int> { ["x"] = 42 });
 
         await Task.Delay(200);
 
-        var json = engine.ExportExecutionGraph(wfId);
+        var json = engine.ExportExecutionGraph(executionId);
         // Assert
         Assert.Contains("42", json, StringComparison.Ordinal);
     }
@@ -661,10 +661,10 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
-    /// nodes の noop で workflowInput が伝播するとき、<c>$.eligible eq true</c> がマッチすること（公式サンプル相当）。
+    /// nodes の noop で Start 時の <c>input</c> が伝播するとき、<c>$.eligible eq true</c> がマッチすること（公式サンプル相当）。
     /// </summary>
     [Fact]
-    public async Task ValidateAndCompile_NodesEligibleEqTrueWithJsonWorkflowInput_ResolvesMatchedCase()
+    public async Task ValidateAndCompile_NodesEligibleEqTrueWithJsonInput_ResolvesMatchedCase()
     {
         // Arrange
         var svc = CreateSut();

@@ -549,11 +549,11 @@ public class ExecutionEngineTests
         object? observedRouteInput = null;
         string? selectedState = null;
         var input = new Dictionary<string, object?> { ["score"] = 42 };
-        var def = CreateDefinitionWithConditionalRouteFromWorkflowInput(
+        var def = CreateDefinitionWithConditionalRouteFromStartInput(
             routeOutputFromInput: input =>
             {
                 observedRouteInput = input;
-                return new Dictionary<string, object?> { ["score"] = ReadScoreFromWorkflowPayload(input) };
+                return new Dictionary<string, object?> { ["score"] = ReadScoreFromStartInput(input) };
             },
             cases:
             [
@@ -591,11 +591,11 @@ public class ExecutionEngineTests
         object? observedRouteInput = null;
         string? selectedState = null;
         var input = new Dictionary<string, object?> { ["score"] = 5 };
-        var def = CreateDefinitionWithConditionalRouteFromWorkflowInput(
+        var def = CreateDefinitionWithConditionalRouteFromStartInput(
             routeOutputFromInput: input =>
             {
                 observedRouteInput = input;
-                return new Dictionary<string, object?> { ["score"] = ReadScoreFromWorkflowPayload(input) };
+                return new Dictionary<string, object?> { ["score"] = ReadScoreFromStartInput(input) };
             },
             cases:
             [
@@ -861,7 +861,7 @@ public class ExecutionEngineTests
     /// <see cref="CreateDefinitionWithConditionalRoute"/> と同様だが、Route の出力を固定値ではなく
     /// <paramref name="routeOutputFromInput"/> で Start <c>input</c>（初期状態への入力）から生成する。
     /// </summary>
-    private static CompiledWorkflowDefinition CreateDefinitionWithConditionalRouteFromWorkflowInput(
+    private static CompiledWorkflowDefinition CreateDefinitionWithConditionalRouteFromStartInput(
         Func<object?, object?> routeOutputFromInput,
         IReadOnlyList<CompiledTransitionCase> cases,
         TransitionTarget defaultTarget,
@@ -875,7 +875,7 @@ public class ExecutionEngineTests
 
         return new CompiledWorkflowDefinition
         {
-            Name = "ConditionalRouteFromWorkflowInput",
+            Name = "ConditionalRouteFromStartInput",
             Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
             {
                 ["Manual"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } },
@@ -919,8 +919,8 @@ public class ExecutionEngineTests
         };
     }
 
-    /// <summary>テスト用: workflow payload から score を読み取る（JSON 要素・整数の差異を吸収）。</summary>
-    private static int ReadScoreFromWorkflowPayload(object? input)
+    /// <summary>テスト用: Start 時の <c>input</c> から score を読み取る（JSON 要素・整数の差異を吸収）。</summary>
+    private static int ReadScoreFromStartInput(object? input)
     {
         if (input is not IReadOnlyDictionary<string, object?> dictionary)
             return 0;
@@ -956,8 +956,8 @@ public class ExecutionEngineTests
     {
         public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
         {
-            var executionId = ctx.ExecutionId;
-            var stateName = ctx.StateName;
+            var _ = ctx.ExecutionId;
+            var _ = ctx.StateName;
             return Task.FromResult(Unit.Value);
         }
     }

@@ -3,9 +3,9 @@ import {
   parseExecutionStreamEvent,
   applyExecutionStreamEvent
 } from "../../app/lib/executionStream";
-import type { WorkflowView } from "../../app/lib/types";
+import type { ExecutionView } from "../../app/lib/types";
 
-const baseExecution: WorkflowView = {
+const baseExecution: ExecutionView = {
   displayId: "ex-1",
   resourceId: "r-1",
   status: "Running",
@@ -189,7 +189,7 @@ describe("applyExecutionStreamEvent", () => {
   });
 
   it("GraphUpdated で stateName・workerId が無いとき既存の stateName・workerId を維持する", () => {
-    const execution: WorkflowView = {
+    const execution: ExecutionView = {
       ...baseExecution,
       nodes: [
         {
@@ -217,7 +217,7 @@ describe("applyExecutionStreamEvent", () => {
   });
 
   it("GraphUpdated で stateName・workerId をパッチすると上書きする", () => {
-    const execution: WorkflowView = {
+    const execution: ExecutionView = {
       ...baseExecution,
       nodes: [
         {

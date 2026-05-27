@@ -1,6 +1,6 @@
 "use client";
 
-import type { WorkflowView } from "../../lib/types";
+import type { ExecutionView } from "../../lib/types";
 import { useUiText } from "../../lib/uiTextContext";
 import { StatusBadge } from "../common/StatusBadge";
 import type { ViewMode } from "../ViewToggle";
@@ -13,7 +13,7 @@ type ExecutionHeaderProps = {
   onCancel: () => void;
   loading: boolean;
   canCancel: boolean;
-  execution: WorkflowView | null;
+  execution: ExecutionView | null;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   /** 比較モード（2実行差分表示） */

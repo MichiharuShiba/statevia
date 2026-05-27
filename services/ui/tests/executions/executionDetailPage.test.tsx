@@ -71,7 +71,7 @@ describe("ExecutionDetailPage", () => {
     });
   });
 
-  it("ワークフロー ID 付きで実行ダッシュボードを描画する", async () => {
+  it("実行 ID 付きで実行ダッシュボードを描画する", async () => {
     renderWithUiText(<ExecutionDetailPage />);
 
     await waitFor(() => {

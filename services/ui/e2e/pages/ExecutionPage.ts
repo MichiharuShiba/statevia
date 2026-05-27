@@ -48,7 +48,7 @@ export class ExecutionPage {
   }
 
   /**
-   * Execution ヘッダー付近に表示されるワークフロー status バッジ（例: Running / Cancelled）。
+   * Execution ヘッダー付近に表示される実行 status バッジ（例: Running / Cancelled）。
    */
   async waitForExecutionStatus(status: string, options?: { timeout?: number }): Promise<void> {
     const timeout = options?.timeout ?? 15_000;

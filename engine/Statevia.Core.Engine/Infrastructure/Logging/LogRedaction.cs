@@ -17,7 +17,6 @@ public static class LogRedaction
     [
         ..CredentialSubstringsInNames,
         "accessToken", "refreshToken", "authorization",
-        "workflowInput", // legacy log key (pre-7d)
         "input", "output"
     ];
 

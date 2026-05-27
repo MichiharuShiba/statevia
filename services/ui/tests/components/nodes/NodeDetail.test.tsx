@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { NodeDetail } from "../../../app/components/nodes/NodeDetail";
 import { uiText } from "../../../app/lib/uiText";
-import type { ExecutionNodeDTO, WorkflowView } from "../../../app/lib/types";
+import type { ExecutionNodeDTO, ExecutionView } from "../../../app/lib/types";
 
-const baseExecution: WorkflowView = {
+const baseExecution: ExecutionView = {
   displayId: "ex-1",
   resourceId: "res-1",
   status: "Running",

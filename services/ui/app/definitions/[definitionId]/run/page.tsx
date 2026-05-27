@@ -7,13 +7,13 @@ import { NAVIGATION_BUTTON_CLASS } from "../../../components/layout/navigationBu
 import { Toast } from "../../../components/Toast";
 import { apiPost } from "../../../lib/api";
 import { toToastError, type ToastState } from "../../../lib/errors";
-import type { WorkflowDTO } from "../../../lib/types";
+import type { ExecutionDTO } from "../../../lib/types";
 import { useUiText } from "../../../lib/uiTextContext";
 import { getUtf8ByteLength } from "../../../lib/validation/primitives";
 import { START_INPUT_MAX_BYTES } from "../../../lib/validation/formRules";
 
 /**
- * Definition 起点で新規ワークフローを開始する。
+ * Definition 起点で新規実行を開始する。
  * 開始成功時は `/executions/[executionId]/run` へ遷移する。
  */
 export default function DefinitionRunStartPage() {
@@ -59,8 +59,8 @@ export default function DefinitionRunStartPage() {
     setStarting(true);
     setToast(null);
     try {
-      const created = await apiPost<WorkflowDTO>("/executions", body);
-      setToast({ tone: "success", message: uiText.definitionRunPage.toasts.workflowStarted(created.displayId) });
+      const created = await apiPost<ExecutionDTO>("/executions", body);
+      setToast({ tone: "success", message: uiText.definitionRunPage.toasts.executionStarted(created.displayId) });
       router.push(`/executions/${encodeURIComponent(created.displayId)}/run`);
     } catch (error) {
       setToast(toToastError(error));
@@ -103,7 +103,7 @@ export default function DefinitionRunStartPage() {
           onClick={() => void handleStart()}
           disabled={starting || !definitionId.trim()}
         >
-          {starting ? uiText.definitionRunPage.actions.starting : uiText.definitionRunPage.actions.startWorkflow}
+          {starting ? uiText.definitionRunPage.actions.starting : uiText.definitionRunPage.actions.startExecution}
         </button>
         <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
           {uiText.definitionRunPage.help.redirectAfterStart("/executions/[executionId]/run")}

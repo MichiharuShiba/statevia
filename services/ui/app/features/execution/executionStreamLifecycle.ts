@@ -1,7 +1,7 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { getApiConfig } from "../../lib/api";
 import { applyExecutionStreamEvent, parseExecutionStreamEvent } from "../../lib/executionStream";
-import type { WorkflowView } from "../../lib/types";
+import type { ExecutionView } from "../../lib/types";
 
 const STREAM_RECONNECT_BASE_MS = 1000;
 const STREAM_RECONNECT_MAX_MS = 30000;
@@ -12,15 +12,15 @@ export function getReconnectDelayMs(attempt: number, baseMs: number, maxMs: numb
 }
 
 /** SSE 接続のライフサイクル制御に渡す依存。 */
-export type WorkflowStreamLifecycleOptions = {
+export type ExecutionStreamLifecycleOptions = {
   displayId: string;
   streamRefreshDebounceMs: number;
   refreshSnapshot: (displayId: string) => Promise<void>;
-  setExecution: Dispatch<SetStateAction<WorkflowView | null>>;
+  setExecution: Dispatch<SetStateAction<ExecutionView | null>>;
   activeStreamRef: MutableRefObject<EventSource | null>;
 };
 
-function buildWorkflowStreamUrl(displayId: string): string {
+function buildExecutionStreamUrl(displayId: string): string {
   const { tenantId } = getApiConfig();
   const streamPath = `/api/core/executions/${encodeURIComponent(displayId)}/stream`;
   return tenantId ? `${streamPath}?${new URLSearchParams({ tenantId }).toString()}` : streamPath;
@@ -42,10 +42,10 @@ function bindStreamEventHandlers(
 }
 
 /**
- * ワークフロー実行の SSE 接続を開始し、クリーンアップ関数を返す。
+ * 実行の SSE 接続を開始し、クリーンアップ関数を返す。
  * useExecution の useEffect から呼び出し、ネスト深度を抑える。
  */
-export function startWorkflowStreamLifecycle(options: WorkflowStreamLifecycleOptions): () => void {
+export function startExecutionStreamLifecycle(options: ExecutionStreamLifecycleOptions): () => void {
   const { displayId, streamRefreshDebounceMs, refreshSnapshot, setExecution, activeStreamRef } = options;
 
   let disposed = false;
@@ -117,7 +117,7 @@ export function startWorkflowStreamLifecycle(options: WorkflowStreamLifecycleOpt
     activeStreamRef.current?.close();
     activeStreamRef.current = null;
 
-    const next = new EventSource(buildWorkflowStreamUrl(displayId));
+    const next = new EventSource(buildExecutionStreamUrl(displayId));
     activeStreamRef.current = next;
     bindStreamEventHandlers(next, applyRawEvent, onStreamOpen, onStreamError);
   }

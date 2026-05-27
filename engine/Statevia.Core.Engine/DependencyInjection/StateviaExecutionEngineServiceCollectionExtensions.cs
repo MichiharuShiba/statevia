@@ -25,7 +25,7 @@ public static class StateviaExecutionEngineServiceCollectionExtensions
     /// 未登録の場合、<see cref="IExecutionEngine"/> の解決時に失敗する。
     /// </para>
     /// <para>
-    /// <see cref="IExecutionEngine"/> を Singleton として登録する場合、同一プロセス内のワークフローは
+    /// <see cref="IExecutionEngine"/> を Singleton として登録する場合、同一プロセス内の実行インスタンスは
     /// 同じ <see cref="IScheduler"/> インスタンスを共有する（グローバル並列制御の単一窓口）。
     /// </para>
     /// </remarks>

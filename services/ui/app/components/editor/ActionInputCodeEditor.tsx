@@ -23,7 +23,7 @@ export type ActionInputCodeEditorProps = {
   placeholder?: string;
   /**
    * `auto`: `{` / `[` で始まるときだけ JSON ハイライト（action のパス文字列と併用）。
-   * `jsonOnly`: 常に JSON ハイライト（ワークフロー開始時の input など）。
+   * `jsonOnly`: 常に JSON ハイライト（実行開始時の input など）。
    */
   syntaxHighlight?: ActionInputSyntaxHighlight;
   /** アクセシビリティ用ラベル */

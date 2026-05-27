@@ -9,7 +9,7 @@
     <PackageId>Statevia.Core.Engine</PackageId>
     <Version>0.1.0</Version>
     <Authors>MichiharuShiba</Authors>
-    <Description>A definition-driven workflow engine based on fact-driven FSM</Description>
+    <Description>Definition-driven workflow execution engine based on state-driven FSM</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 

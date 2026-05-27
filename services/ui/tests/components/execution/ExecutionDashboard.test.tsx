@@ -2,9 +2,9 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { ExecutionDashboard } from "../../../app/components/execution/ExecutionDashboard";
 import { renderWithUiText } from "../../testUtils";
-import type { WorkflowView } from "../../../app/lib/types";
+import type { ExecutionView } from "../../../app/lib/types";
 
-const workflowView = (): WorkflowView => ({
+const executionViewFixture = (): ExecutionView => ({
   displayId: "ex-1",
   resourceId: "wf-1",
   graphId: "g-1",
@@ -98,7 +98,7 @@ describe("ExecutionDashboard", () => {
       definitionBased: false
     });
     vi.mocked(useExecution).mockReturnValue({
-      execution: workflowView(),
+      execution: executionViewFixture(),
       loading: false,
       canCancel: true,
       terminal: false,
@@ -121,7 +121,7 @@ describe("ExecutionDashboard", () => {
   it("Cancel ボタンで cancelExecution を呼ぶ", async () => {
     const cancelExecution = vi.fn();
     vi.mocked(useExecution).mockReturnValue({
-      execution: workflowView(),
+      execution: executionViewFixture(),
       loading: false,
       canCancel: true,
       terminal: false,

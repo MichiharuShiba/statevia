@@ -6,7 +6,7 @@ type StatusBadgeProps = {
 };
 
 /**
- * Workflow / Node の状態ラベルを共通表示するバッジ。
+ * Execution / Node の状態ラベルを共通表示するバッジ。
  */
 export function StatusBadge({ status, className }: Readonly<StatusBadgeProps>) {
   const { badgeClass } = getStatusStyle(status);

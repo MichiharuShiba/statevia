@@ -9,11 +9,11 @@ export const SEARCH_NAME_PATTERN = /^[A-Za-z0-9._-]{0,100}$/;
 export const SEARCH_NAME_MAX_LENGTH = 100;
 
 /**
- * ワークフロー一覧の `definitionId` フィルタで許可する文字種。
+ * 実行一覧の `definitionId` フィルタで許可する文字種。
  */
 export const DEFINITION_ID_PATTERN = /^[A-Za-z0-9_-]{0,80}$/;
 
 /**
- * ワークフロー一覧の `definitionId` フィルタの最大文字数。
+ * 実行一覧の `definitionId` フィルタの最大文字数。
  */
 export const DEFINITION_ID_MAX_LENGTH = 80;

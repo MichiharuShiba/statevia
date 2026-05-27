@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 import { ExecutionHeader } from "../../../app/components/execution/ExecutionHeader";
 import { renderWithUiText } from "../../testUtils";
-import type { WorkflowView } from "../../../app/lib/types";
+import type { ExecutionView } from "../../../app/lib/types";
 
-function workflowView(overrides: Partial<WorkflowView> = {}): WorkflowView {
+function executionViewFixture(overrides: Partial<ExecutionView> = {}): ExecutionView {
   return {
     displayId: "ex-1",
     resourceId: "wf-1",
@@ -32,7 +32,7 @@ describe("ExecutionHeader", () => {
         onCancel={onCancel}
         loading={false}
         canCancel
-        execution={workflowView()}
+        execution={executionViewFixture()}
         viewMode="graph"
         onViewModeChange={vi.fn()}
       />

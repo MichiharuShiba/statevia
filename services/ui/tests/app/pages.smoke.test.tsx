@@ -32,7 +32,7 @@ describe("page smoke", () => {
     await waitFor(() => expect(container.firstChild).toBeTruthy());
   });
 
-  it("workflows page ラッパーを export する", () => {
+  it("executions page ラッパーを export する", () => {
     expect(ExecutionsPage).toBeTypeOf("function");
   });
 });

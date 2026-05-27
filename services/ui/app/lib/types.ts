@@ -1,15 +1,15 @@
-/** v2: C# API のワークフロー状態。 */
-export type WorkflowStatus = "Running" | "Completed" | "Cancelled" | "Failed";
+/** v2: C# API の実行状態（ExecutionStatus）。 */
+export type ExecutionStatus = "Running" | "Completed" | "Cancelled" | "Failed";
 
 /** 実行ノードの状態（Engine / Core-API 準拠）。 */
 export type NodeStatus = "IDLE" | "READY" | "RUNNING" | "WAITING" | "SUCCEEDED" | "FAILED" | "CANCELED";
 
-/** v2: GET /v1/executions/:id のレスポンス（C# WorkflowResponse）。 */
-export type WorkflowDTO = {
+/** v2: GET /v1/executions/:id のレスポンス（C# ExecutionResponse）。 */
+export type ExecutionDTO = {
   displayId: string;
   resourceId: string;
   graphId: string;
-  status: WorkflowStatus;
+  status: ExecutionStatus;
   startedAt: string;
   updatedAt?: string | null;
   cancelRequested: boolean;
@@ -20,7 +20,7 @@ export type WorkflowDTO = {
  * v2: GET /v1/executions/:id/graph のノード（C# ExecutionNode）。JSON は camelCase（Core-API）。
  * ノード ID のキーは API／Engine／永続グラフとも `nodeId` のまま。UI 組み立て後の `ExecutionNodeDTO` だけ `executionNodeId` に正規化する。
  */
-export type WorkflowGraphNodeDTO = {
+export type ExecutionGraphNodeDTO = {
   nodeId?: string;
   stateName?: string;
   nodeType?: string;
@@ -37,7 +37,7 @@ export type WorkflowGraphNodeDTO = {
 };
 
 /** v2: GET /v1/executions/:id/graph の辺（C# ExecutionEdge）。 */
-export type WorkflowGraphEdgeDTO = {
+export type ExecutionGraphEdgeDTO = {
   from?: string;
   to?: string;
   type?: number;
@@ -50,13 +50,13 @@ export type RuntimeGraphEdgeDTO = {
   type?: number;
 };
 
-/** v2: GET /v1/executions/:id/graph のレスポンス。 */
-export type WorkflowGraphDTO = {
-  nodes: WorkflowGraphNodeDTO[];
-  edges: WorkflowGraphEdgeDTO[];
+/** v2: GET /v1/executions/:id/graph のレスポンス（C# ExecutionGraphResponse）。 */
+export type ExecutionGraphDTO = {
+  nodes: ExecutionGraphNodeDTO[];
+  edges: ExecutionGraphEdgeDTO[];
 };
 
-/** グラフ可視化用のノード（状態実行）。v2 では WorkflowGraphDTO から変換。 */
+/** グラフ可視化用のノード（状態実行）。v2 では ExecutionGraphDTO から変換。 */
 export type ExecutionNodeDTO = {
   /** UI 向けの実行ノード ID。永続グラフ JSON のキーは `nodeId` のまま（API／Engine は変更しない）。グラフから組み立てるときはその値と同じ。 */
   executionNodeId: string;
@@ -77,8 +77,8 @@ export type ExecutionNodeDTO = {
   cancelReason?: string | null;
 };
 
-/** v2: ワークフロー + グラフから組み立てたビュー。一覧・詳細・グラフで利用。 */
-export type WorkflowView = WorkflowDTO & {
+/** v2: 実行 + グラフから組み立てたビュー。一覧・詳細・グラフで利用。 */
+export type ExecutionView = ExecutionDTO & {
   graphId: string;
   nodes: ExecutionNodeDTO[];
   runtimeEdges?: RuntimeGraphEdgeDTO[];
@@ -127,7 +127,7 @@ export type GraphUpdatedEvent = {
   at?: string;
 };
 
-/** SSE: ワークフロー状態が変化したイベント。 */
+/** SSE: 実行状態が変化したイベント。 */
 export type ExecutionStatusChangedEvent = {
   type: "ExecutionStatusChanged";
   executionId: string;
@@ -189,8 +189,8 @@ export type PagedResult<T> = {
   hasMore: boolean;
 };
 
-/** ページング付きワークフロー一覧。 */
-export type PagedWorkflows = PagedResult<WorkflowDTO>;
+/** ページング付き実行一覧。 */
+export type PagedExecutions = PagedResult<ExecutionDTO>;
 
 /** GET /v1/definitions の要素（Core-API `DefinitionResponse`）。 */
 export type DefinitionDTO = {

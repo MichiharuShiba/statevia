@@ -10,7 +10,7 @@ const apiBase = process.env.CORE_API_E2E_URL?.replace(/\/$/, "") ?? "";
 
 const tenantHeaders = { "X-Tenant-Id": "default", "Content-Type": "application/json" };
 
-async function waitForWorkflowStatus(
+async function waitForExecutionStatus(
   request: import("@playwright/test").APIRequestContext,
   displayId: string,
   status: string,
@@ -29,7 +29,7 @@ async function waitForWorkflowStatus(
     }
     await new Promise((r) => setTimeout(r, 200));
   }
-  throw new Error(`timeout waiting for workflow status ${status}`);
+  throw new Error(`timeout waiting for execution status ${status}`);
 }
 
 test.describe("Core API (direct)", () => {
@@ -50,7 +50,7 @@ test.describe("Core API (direct)", () => {
     expect(res.status()).toBe(200);
   });
 
-  test("STV-401: ワークフロー開始 → Cancel → Cancelled", async ({ request }) => {
+  test("STV-401: 実行開始 → Cancel → Cancelled", async ({ request }) => {
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const defName = `e2e-wait-${suffix}`;
     const yaml = e2eWaitWorkflowYaml(defName);
@@ -67,19 +67,19 @@ test.describe("Core API (direct)", () => {
       data: { definitionId: defJson.displayId, input: {} }
     });
     expect(start.status(), await start.text()).toBe(201);
-    const wf = (await start.json()) as { displayId: string; status: string };
-    expect(wf.status).toBe("Running");
+    const execution = (await start.json()) as { displayId: string; status: string };
+    expect(execution.status).toBe("Running");
 
-    const cancel = await request.post(`${apiBase}/v1/executions/${encodeURIComponent(wf.displayId)}/cancel`, {
+    const cancel = await request.post(`${apiBase}/v1/executions/${encodeURIComponent(execution.displayId)}/cancel`, {
       headers: tenantHeaders,
       data: { reason: "e2e" }
     });
     expect(cancel.status()).toBe(204);
 
-    await waitForWorkflowStatus(request, wf.displayId, "Cancelled", 15_000);
+    await waitForExecutionStatus(request, execution.displayId, "Cancelled", 15_000);
   });
 
-  test("STV-402: 同一 X-Idempotency-Key + 同一ボディの再送は同一ワークフローを返す", async ({ request }) => {
+  test("STV-402: 同一 X-Idempotency-Key + 同一ボディの再送は同一実行を返す", async ({ request }) => {
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const defName = `e2e-idem-${suffix}`;
     const yaml = e2eWaitWorkflowYaml(defName);
@@ -99,17 +99,17 @@ test.describe("Core API (direct)", () => {
       data: body
     });
     expect(start1.status(), await start1.text()).toBe(201);
-    const w1 = (await start1.json()) as { displayId: string; resourceId: string };
+    const execution1 = (await start1.json()) as { displayId: string; resourceId: string };
 
     const start2 = await request.post(`${apiBase}/v1/executions`, {
       headers: { ...tenantHeaders, "X-Idempotency-Key": idemKey },
       data: body
     });
     expect(start2.status(), await start2.text()).toBe(201);
-    const w2 = (await start2.json()) as { displayId: string; resourceId: string };
+    const execution2 = (await start2.json()) as { displayId: string; resourceId: string };
 
-    expect(w2.displayId).toBe(w1.displayId);
-    expect(w2.resourceId).toBe(w1.resourceId);
+    expect(execution2.displayId).toBe(execution1.displayId);
+    expect(execution2.resourceId).toBe(execution1.resourceId);
   });
 
   test("STV-402: 同一 X-Idempotency-Key でボディが異なると 409", async ({ request }) => {

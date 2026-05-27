@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { getResumeDisabledReason } from "../../../app/features/nodes/useNodeCommands";
-import type { ExecutionNodeDTO, WorkflowView } from "../../../app/lib/types";
+import type { ExecutionNodeDTO, ExecutionView } from "../../../app/lib/types";
 import { uiText } from "../../../app/lib/uiText";
 
-function execution(overrides: Partial<WorkflowView> = {}): WorkflowView {
+function execution(overrides: Partial<ExecutionView> = {}): ExecutionView {
   return {
     displayId: "ex-1",
     resourceId: "r-1",
