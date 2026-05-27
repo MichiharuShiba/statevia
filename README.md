@@ -64,7 +64,7 @@ Definition (JSON/YAML)
 
 ---
 
-## Hello Workflow
+## Quick start (Engine)
 
 最小構成サンプル:
 
@@ -78,18 +78,18 @@ using Statevia.Core.Engine.Infrastructure;
 using Statevia.Core.Engine.Scheduler;
 
 // compiled は DefinitionCompiler 等で用意した CompiledWorkflowDefinition（ここでは省略）
-using var engine = new WorkflowEngine(
+using var engine = new ExecutionEngine(
     new DefaultScheduler(maxParallelism: 4),
-    new DefaultWorkflowInstanceFactory(),
-    new UuidV7WorkflowInstanceIdGenerator(),
-    NullLogger<WorkflowEngine>.Instance);
+    new DefaultExecutionInstanceFactory(),
+    new UuidV7ExecutionIdGenerator(),
+    NullLoggerFactory.Instance);
 
-var workflowId = engine.Start(compiled);
-engine.PublishEvent(workflowId, "resume-event");
-var graphJson = engine.ExportExecutionGraph(workflowId);
+var executionId = engine.Start(compiled, input: null);
+engine.PublishEvent(executionId, "resume-event");
+var graphJson = engine.ExportExecutionGraph(executionId);
 ```
 
-ASP.NET Core から使う場合は、`Program.cs` のとおり `AddStateviaWorkflowEngine` で `IWorkflowEngine` を登録し、コンストラクタ組み立てはホスト側に任せます。
+ASP.NET Core から使う場合は、`Program.cs` のとおり `AddStateviaExecutionEngine` で `IExecutionEngine` を登録し、コンストラクタ組み立てはホスト側に任せます。HTTP で実行を開始する場合は Core-API の **`POST /v1/executions`**（リクエスト本文の `input`）を参照（`docs/core-api-interface.md`）。
 
 ---
 
@@ -182,7 +182,7 @@ t5: Event: resumeB
 t6: WaitB Resumed → Completed
 
 t7: Join1 条件成立 → E 実行
-t8: E Completed → Workflow Completed
+t8: E Completed → Execution completed
 ```
 
 ---
@@ -249,6 +249,7 @@ statevia/
 ## 開発者向け
 
 - コーディング方針・レイヤー責務・テスト・コミットルール: [docs/development-guidelines.md](docs/development-guidelines.md)
+- HTTP / 永続化契約: [docs/core-api-interface.md](docs/core-api-interface.md)（`/v1/executions` 等）
 - エージェント向けの起動・DI・契約の要約: リポジトリ直下 [AGENTS.md](AGENTS.md)
 
 ---

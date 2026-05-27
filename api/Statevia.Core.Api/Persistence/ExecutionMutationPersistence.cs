@@ -47,7 +47,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
     /// <inheritdoc />
     public async Task ExecuteSerializableWithRetryAsync(
         string tenantId,
-        Guid workflowId,
+        Guid executionId,
         Guid clientEventId,
         Func<ICoreUnitOfWork, CancellationToken, Task> applyAsync,
         CancellationToken cancellationToken = default)
@@ -67,7 +67,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
                 totalBackoffMs = await ApplySerializablePersistenceFailureAsync(
                     failure,
                     tenantId,
-                    workflowId,
+                    executionId,
                     clientEventId,
                     new SerializablePersistenceRetryProgress(attempt, maxAttempts, totalBackoffMs),
                     retryOptions,
@@ -84,7 +84,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
             catch (Exception ex) when (EventDeliveryRetryPolicy.IsNonRetryableTimeoutOrCancellation(ex))
             {
                 await TryRollbackSerializableTransactionAsync(uow, cancellationToken).ConfigureAwait(false);
-                await TryMarkEventDeliveryFailedAsync(tenantId, workflowId, clientEventId, cancellationToken)
+                await TryMarkEventDeliveryFailedAsync(tenantId, executionId, clientEventId, cancellationToken)
                     .ConfigureAwait(false);
                 throw;
             }
@@ -126,7 +126,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
     private async Task<int> ApplySerializablePersistenceFailureAsync(
         Exception ex,
         string tenantId,
-        Guid workflowId,
+        Guid executionId,
         Guid clientEventId,
         SerializablePersistenceRetryProgress retryProgress,
         EventDeliveryRetryOptions retryOptions,
@@ -144,13 +144,13 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
                 {
                     LogSerializablePersistRetry(
                         tenantId,
-                        workflowId,
+                        executionId,
                         clientEventId,
                         retryProgress.Attempt,
                         retryProgress.MaxAttempts,
                         delayMs: 0,
                         ex.Message);
-                    await TryMarkEventDeliveryFailedAsync(tenantId, workflowId, clientEventId, cancellationToken)
+                    await TryMarkEventDeliveryFailedAsync(tenantId, executionId, clientEventId, cancellationToken)
                         .ConfigureAwait(false);
                     throw new InvalidOperationException(
                         "Serializable persistence retry stopped: total backoff budget exhausted.",
@@ -163,7 +163,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
             var newTotalBackoffMs = retryProgress.TotalBackoffMs + delayMs;
             LogSerializablePersistRetry(
                 tenantId,
-                workflowId,
+                executionId,
                 clientEventId,
                 retryProgress.Attempt,
                 retryProgress.MaxAttempts,
@@ -181,7 +181,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
         {
             LogSerializablePersistRetry(
                 tenantId,
-                workflowId,
+                executionId,
                 clientEventId,
                 retryProgress.Attempt,
                 retryProgress.MaxAttempts,
@@ -189,7 +189,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
                 ex.Message);
         }
 
-        await TryMarkEventDeliveryFailedAsync(tenantId, workflowId, clientEventId, cancellationToken)
+        await TryMarkEventDeliveryFailedAsync(tenantId, executionId, clientEventId, cancellationToken)
             .ConfigureAwait(false);
         ExceptionDispatchInfo.Capture(ex).Throw();
         return 0;
@@ -197,7 +197,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
 
     private void LogSerializablePersistRetry(
         string tenantId,
-        Guid workflowId,
+        Guid executionId,
         Guid clientEventId,
         int attempt,
         int maxAttempts,
@@ -207,7 +207,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
         _logger.SerializablePersistRetry(new SerializablePersistRetryDetails
         {
             TraceId = GetTraceIdOrEmpty(),
-            ExecutionId = workflowId,
+            ExecutionId = executionId,
             TenantId = tenantId,
             ClientEventId = clientEventId,
             Attempt = attempt,
@@ -232,7 +232,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
 
     private async Task TryMarkEventDeliveryFailedAsync(
         string tenantId,
-        Guid workflowId,
+        Guid executionId,
         Guid clientEventId,
         CancellationToken cancellationToken)
     {
@@ -243,7 +243,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
             await _eventDeliveryDedup.TryUpdateStatusAsync(
                 uow,
                 tenantId,
-                workflowId,
+                executionId,
                 clientEventId,
                 new EventDeliveryDedupStatusUpdate(
                     EventDeliveryDedupStatuses.Failed,

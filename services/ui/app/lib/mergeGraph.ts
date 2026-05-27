@@ -1,5 +1,5 @@
 import type { GraphDefinition, GraphEdgeDef, GraphGroupDef, GraphDefinitionMeta } from "../graphs/types";
-import type { ExecutionNodeDTO, NodeStatus, WorkflowView } from "./types";
+import type { ExecutionNodeDTO, NodeStatus, ExecutionView } from "./types";
 
 /** 実行＋定義をマージしたグラフノード。 */
 export type MergedGraphNode = {
@@ -71,7 +71,7 @@ function toEdge(edge: GraphEdgeDef, index: number): MergedGraphEdge {
 }
 
 /** 実行グラフと定義グラフをマージする。 */
-export function mergeGraph(execution: WorkflowView, definition: GraphDefinition | null): MergedGraph {
+export function mergeGraph(execution: ExecutionView, definition: GraphDefinition | null): MergedGraph {
   const byRuntimeId = new Map<string, ExecutionNodeDTO>();
   const byStateNameKey = new Map<string, ExecutionNodeDTO>();
   const stateNameByRuntimeId = new Map<string, string>();

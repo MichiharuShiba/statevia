@@ -23,7 +23,7 @@
 - **依頼された範囲に集中する。** 無関係なリファクタ・ファイルの掃除・ドキュメントの拡大は行わない。
 - **周辺コードのスタイルに合わせる。** 命名、型の置き方、コメント量、import／using の並びを既存に揃える。
 - **契約を壊さない。** API のステータスコード・エラー JSON 形・ヘッダ（`X-Tenant-Id`, `X-Idempotency-Key`）は `docs/` の契約に従う。
-- **機微データの露出に注意する。** 一覧／GET で `workflowInput` や state `output` を広げる変更は、IO-14（`AGENTS.md`）と整合させる。
+- **機微データの露出に注意する。** 一覧／GET で Start 時の `input` や state `output` を広げる変更は、IO-14（`AGENTS.md`）と整合させる。
 
 ---
 
@@ -32,7 +32,7 @@
 ### 3.1 Core-API（`api/`）
 
 - **Controller**: ルーティング・バインディング・ヘッダ・HTTP ステータスのみ。ビジネスロジックは Service へ。
-- **Service**: ユースケース境界。`ICoreTransactionExecutor` / `IWorkflowMutationPersistence` 経由でコミット境界を決め、Repository・DisplayId・command dedup・`IWorkflowEngine` を組み合わせる。Service から `IDbContextFactory` を直接使わない。
+- **Service**: ユースケース境界。`ICoreTransactionExecutor` / `IExecutionMutationPersistence` 経由でコミット境界を決め、Repository・DisplayId・command dedup・`IExecutionEngine` を組み合わせる。Service から `IDbContextFactory` を直接使わない。
 - **Repository**: 永続化のみ。書き込み API の第一引数は常に `ICoreUnitOfWork`。`SaveChanges` / `BeginTransaction` / `IDbContextFactory` を Repository 内に持たない。
 - **UoW**: `IDbContextFactory<CoreDbContext>` は `CoreUnitOfWork` 実装内に閉じる。
 - **例外**: `ApiExceptionFilter` と契約に沿ったエラー JSON（404 / 422 / 500）。

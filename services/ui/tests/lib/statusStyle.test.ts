@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getStatusStyle, getNodeSortWeight } from "../../app/lib/statusStyle";
 
 describe("getStatusStyle", () => {
-  it("Workflow status Running のスタイルを返す", () => {
+  it("Execution status Running のスタイルを返す", () => {
     // Arrange (v2)
     const status = "Running";
 
@@ -14,7 +14,7 @@ describe("getStatusStyle", () => {
     expect(result.emphasisRank).toBe(20);
   });
 
-  it("Workflow status Completed のスタイルを返す", () => {
+  it("Execution status Completed のスタイルを返す", () => {
     // Arrange (v2)
     const status = "Completed";
 
@@ -119,7 +119,7 @@ describe("getNodeSortWeight", () => {
 });
 
 describe("getStatusStyle / getNodeSortWeight (境界値)", () => {
-  it("getStatusStyle は全 WorkflowStatus でスタイルを返す", () => {
+  it("getStatusStyle は全 ExecutionStatus でスタイルを返す", () => {
     // Arrange (v2: C# API の status 値)
     const statuses = ["Running", "Completed", "Failed", "Cancelled"] as const;
 

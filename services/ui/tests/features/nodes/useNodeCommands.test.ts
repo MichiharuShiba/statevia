@@ -1,10 +1,10 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useNodeCommands } from "../../../app/features/nodes/useNodeCommands";
-import type { ExecutionNodeDTO, WorkflowView } from "../../../app/lib/types";
+import type { ExecutionNodeDTO, ExecutionView } from "../../../app/lib/types";
 import * as api from "../../../app/lib/api";
 
-const execWithNodes = (nodes: ExecutionNodeDTO[]): WorkflowView => ({
+const execWithNodes = (nodes: ExecutionNodeDTO[]): ExecutionView => ({
   displayId: "ex-1",
   resourceId: "r-1",
   status: "Running",

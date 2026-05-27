@@ -57,12 +57,12 @@ internal sealed class ExecutionService : IExecutionService
         internal const string UniqueViolation = "unique_violation";
     }
 
-    private readonly IWorkflowEngine _engine;
+    private readonly IExecutionEngine _engine;
     private readonly IDisplayIdService _displayIds;
     private readonly IDefinitionCompilerService _compiler;
     private readonly IIdGenerator _idGenerator;
     private readonly ICommandDedupService _dedupService;
-    private readonly IExecutionRepository _workflows;
+    private readonly IExecutionRepository _executions;
     private readonly IDefinitionRepository _definitions;
     private readonly IProjectAuthorizationService _projectAuth;
     private readonly ITenantContextAccessor _tenantContext;
@@ -82,12 +82,12 @@ internal sealed class ExecutionService : IExecutionService
         "S107:Methods should not have too many parameters",
         Justification = "ASP.NET Core DI による明示的コンストラクタ注入。")]
     public ExecutionService(
-        IWorkflowEngine engine,
+        IExecutionEngine engine,
         IDisplayIdService displayIds,
         IDefinitionCompilerService compiler,
         IIdGenerator idGenerator,
         ICommandDedupService dedupService,
-        IExecutionRepository workflows,
+        IExecutionRepository executions,
         IDefinitionRepository definitions,
         IProjectAuthorizationService projectAuth,
         ITenantContextAccessor tenantContext,
@@ -107,7 +107,7 @@ internal sealed class ExecutionService : IExecutionService
         _compiler = compiler;
         _idGenerator = idGenerator;
         _dedupService = dedupService;
-        _workflows = workflows;
+        _executions = executions;
         _definitions = definitions;
         _projectAuth = projectAuth;
         _tenantContext = tenantContext;
@@ -120,7 +120,7 @@ internal sealed class ExecutionService : IExecutionService
         _logger = logger;
         _eventDeliveryRetryOptions = eventDeliveryRetryOptions;
         _httpContextAccessor = httpContextAccessor;
-        _projectionUpdateQueue = projectionUpdateQueue ?? NoopWorkflowProjectionUpdateQueue.Instance;
+        _projectionUpdateQueue = projectionUpdateQueue ?? NoopExecutionProjectionUpdateQueue.Instance;
     }
 
     public async Task<ExecutionResponse> StartAsync(
@@ -153,8 +153,8 @@ internal sealed class ExecutionService : IExecutionService
 
         var compiled = RestoreCompiledDefinitionFromVersion(versionRow);
 
-        var workflowId = _idGenerator.NewGuid();
-        var engineId = workflowId.ToString();
+        var executionId = _idGenerator.NewGuid();
+        var engineId = executionId.ToString();
         _engine.Start(compiled, engineId, request.Input);
 
         var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, defUuid.Value.ToString("D"), ct).ConfigureAwait(false)
@@ -177,12 +177,12 @@ internal sealed class ExecutionService : IExecutionService
             {
                 var createdAt = DateTime.UtcNow;
                 var displayId = await _displayIdWrites
-                    .AllocateAsync(uow, DisplayIdResourceTypes.Execution, workflowId, innerCt)
+                    .AllocateAsync(uow, DisplayIdResourceTypes.Execution, executionId, innerCt)
                     .ConfigureAwait(false);
 
-                var workflowRow = new ExecutionRow
+                var executionRow = new ExecutionRow
                 {
-                    ExecutionId = workflowId,
+                    ExecutionId = executionId,
                     TenantId = tenantId,
                     DefinitionId = defUuid.Value,
                     DefinitionVersionId = versionRow.DefinitionVersionId,
@@ -194,7 +194,7 @@ internal sealed class ExecutionService : IExecutionService
                 };
                 var snapshotRow = new ExecutionGraphSnapshotRow
                 {
-                    ExecutionId = workflowId,
+                    ExecutionId = executionId,
                     GraphJson = graphJson,
                     UpdatedAt = createdAt
                 };
@@ -202,15 +202,15 @@ internal sealed class ExecutionService : IExecutionService
                 var response = new ExecutionResponse
                 {
                     DisplayId = displayId,
-                    ResourceId = workflowId,
+                    ResourceId = executionId,
                     GraphId = graphId,
                     Status = status,
                     StartedAt = createdAt
                 };
 
-                await _workflows.AddExecutionAndSnapshotAsync(uow, workflowRow, snapshotRow, innerCt).ConfigureAwait(false);
+                await _executions.AddExecutionAndSnapshotAsync(uow, executionRow, snapshotRow, innerCt).ConfigureAwait(false);
                 await _eventStore
-                    .AppendAsync(uow, workflowId, EventStoreEventType.WorkflowStarted, startedPayload, innerCt)
+                    .AppendAsync(uow, executionId, EventStoreEventType.WorkflowStarted, startedPayload, innerCt)
                     .ConfigureAwait(false);
 
                 if (dedupKey is { } saveKey)
@@ -277,18 +277,18 @@ internal sealed class ExecutionService : IExecutionService
             DefinitionIdFilter: definitionIdFilter,
             NameContains: nameFilter);
         var (total, pairs) = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _workflows.ListWithDisplayIdsPageAsync(uow, tenantId, pageQuery, innerCt),
+            (uow, innerCt) => _executions.ListWithDisplayIdsPageAsync(uow, tenantId, pageQuery, innerCt),
             ct).ConfigureAwait(false);
         var items = pairs.Select(p => new ExecutionResponse
         {
-            DisplayId = p.DisplayId ?? p.Workflow.ExecutionId.ToString(),
-            ResourceId = p.Workflow.ExecutionId,
-            GraphId = p.Workflow.DefinitionId.ToString("D"),
-            Status = p.Workflow.Status,
-            StartedAt = p.Workflow.StartedAt,
-            UpdatedAt = p.Workflow.UpdatedAt,
-            CancelRequested = p.Workflow.CancelRequested,
-            RestartLost = p.Workflow.RestartLost
+            DisplayId = p.DisplayId ?? p.Execution.ExecutionId.ToString(),
+            ResourceId = p.Execution.ExecutionId,
+            GraphId = p.Execution.DefinitionId.ToString("D"),
+            Status = p.Execution.Status,
+            StartedAt = p.Execution.StartedAt,
+            UpdatedAt = p.Execution.UpdatedAt,
+            CancelRequested = p.Execution.CancelRequested,
+            RestartLost = p.Execution.RestartLost
         }).ToList();
 
         return new PagedResult<ExecutionResponse>
@@ -310,26 +310,26 @@ internal sealed class ExecutionService : IExecutionService
         return await _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
-                var workflow = await _workflows.GetByIdAsync(uow, tenantId, uuid.Value, innerCt).ConfigureAwait(false);
-                if (workflow is null)
+                var execution = await _executions.GetByIdAsync(uow, tenantId, uuid.Value, innerCt).ConfigureAwait(false);
+                if (execution is null)
                     throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
                 var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Execution, idOrUuid, innerCt)
-                    .ConfigureAwait(false) ?? workflow.ExecutionId.ToString("D");
+                    .ConfigureAwait(false) ?? execution.ExecutionId.ToString("D");
                 var graphId = await _displayIds
-                    .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, workflow.DefinitionId.ToString("D"), innerCt)
-                    .ConfigureAwait(false) ?? workflow.DefinitionId.ToString("D");
+                    .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, execution.DefinitionId.ToString("D"), innerCt)
+                    .ConfigureAwait(false) ?? execution.DefinitionId.ToString("D");
 
                 return new ExecutionResponse
                 {
                     DisplayId = displayId,
-                    ResourceId = workflow.ExecutionId,
+                    ResourceId = execution.ExecutionId,
                     GraphId = graphId,
-                    Status = workflow.Status,
-                    StartedAt = workflow.StartedAt,
-                    UpdatedAt = workflow.UpdatedAt,
-                    CancelRequested = workflow.CancelRequested,
-                    RestartLost = workflow.RestartLost
+                    Status = execution.Status,
+                    StartedAt = execution.StartedAt,
+                    UpdatedAt = execution.UpdatedAt,
+                    CancelRequested = execution.CancelRequested,
+                    RestartLost = execution.RestartLost
                 };
             },
             ct).ConfigureAwait(false);
@@ -340,28 +340,28 @@ internal sealed class ExecutionService : IExecutionService
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-        await EnsureWorkflowExistsAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
+        await EnsureExecutionExistsAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
         var row = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _workflows.GetSnapshotByExecutionIdAsync(uow, uuid.Value, innerCt),
+            (uow, innerCt) => _executions.GetSnapshotByExecutionIdAsync(uow, uuid.Value, innerCt),
             ct).ConfigureAwait(false);
         return row is null ? throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound) : row.GraphJson;
     }
 
-    public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) =>
+    public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) =>
         _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
-                var workflow = await _workflows.GetByIdAsync(uow, tenantId, workflowId, innerCt).ConfigureAwait(false);
-                if (workflow is null)
+                var execution = await _executions.GetByIdAsync(uow, tenantId, executionId, innerCt).ConfigureAwait(false);
+                if (execution is null)
                     throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
             },
             ct);
 
-    public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct) =>
+    public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
         _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
-                var row = await _workflows.GetSnapshotByExecutionIdAsync(uow, workflowId, innerCt).ConfigureAwait(false);
+                var row = await _executions.GetSnapshotByExecutionIdAsync(uow, executionId, innerCt).ConfigureAwait(false);
                 return row?.GraphJson;
             },
             ct);
@@ -390,10 +390,10 @@ internal sealed class ExecutionService : IExecutionService
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-        var workflow = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _workflows.GetByIdAsync(uow, tenantId, uuid.Value, innerCt),
+        var execution = await _executor.ExecuteReadOnlyAsync(
+            (uow, innerCt) => _executions.GetByIdAsync(uow, tenantId, uuid.Value, innerCt),
             ct).ConfigureAwait(false);
-        if (workflow is null)
+        if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
@@ -403,7 +403,7 @@ internal sealed class ExecutionService : IExecutionService
         if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(tenantId, uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
-        EnsureEngineRuntimePresentForMutation(uuid.Value, workflow);
+        EnsureEngineRuntimePresentForMutation(uuid.Value, execution);
 
         var cancelApply = await _engine.CancelAsync(uuid.Value.ToString(), clientEventId).ConfigureAwait(false);
         var skipCancelEventAppend = cancelApply.IsAlreadyApplied;
@@ -419,7 +419,7 @@ internal sealed class ExecutionService : IExecutionService
             clientEventId,
             async (uow, ctInner) =>
             {
-                await _workflows
+                await _executions
                     .UpdateExecutionAndSnapshotAsync(uow, uuid.Value, projStatus, projCancel, projGraphJson, ctInner)
                     .ConfigureAwait(false);
                 if (!skipCancelEventAppend)
@@ -499,10 +499,10 @@ internal sealed class ExecutionService : IExecutionService
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-        var workflow = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _workflows.GetByIdAsync(uow, tenantId, uuid.Value, innerCt),
+        var execution = await _executor.ExecuteReadOnlyAsync(
+            (uow, innerCt) => _executions.GetByIdAsync(uow, tenantId, uuid.Value, innerCt),
             ct).ConfigureAwait(false);
-        if (workflow is null)
+        if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
@@ -512,7 +512,7 @@ internal sealed class ExecutionService : IExecutionService
         if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(tenantId, uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
-        EnsureEngineRuntimePresentForMutation(uuid.Value, workflow);
+        EnsureEngineRuntimePresentForMutation(uuid.Value, execution);
 
         var publishApply = _engine.PublishEvent(uuid.Value.ToString(), eventName, clientEventId);
         var skipEventAppend = publishApply.IsAlreadyApplied;
@@ -528,7 +528,7 @@ internal sealed class ExecutionService : IExecutionService
             clientEventId,
             async (uow, ctInner) =>
             {
-                await _workflows
+                await _executions
                     .UpdateExecutionAndSnapshotAsync(uow, uuid.Value, pubStatus, pubCancel, pubGraphJson, ctInner)
                     .ConfigureAwait(false);
                 if (!skipEventAppend)
@@ -583,13 +583,13 @@ internal sealed class ExecutionService : IExecutionService
             ct).ConfigureAwait(false);
     }
 
-    public async Task<ExecutionViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct)
+    public async Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-        return await BuildWorkflowViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
+        return await BuildExecutionViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
     }
 
     public async Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct)
@@ -605,12 +605,12 @@ internal sealed class ExecutionService : IExecutionService
             (uow, innerCt) => _eventStore.GetMaxSeqAsync(uow, uuid.Value, innerCt),
             ct).ConfigureAwait(false);
         if (maxSeq == 0)
-            return await BuildWorkflowViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
+            return await BuildExecutionViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
 
         if (atSeq > maxSeq)
             throw new NotFoundException("atSeq out of range");
 
-        return await BuildWorkflowViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
+        return await BuildExecutionViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
     }
 
     public async Task<ExecutionEventsResponseDto> ListEventsAsync(
@@ -629,13 +629,13 @@ internal sealed class ExecutionService : IExecutionService
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-        var workflow = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _workflows.GetByIdAsync(uow, tenantId, uuid.Value, innerCt),
+        var execution = await _executor.ExecuteReadOnlyAsync(
+            (uow, innerCt) => _executions.GetByIdAsync(uow, tenantId, uuid.Value, innerCt),
             ct).ConfigureAwait(false);
-        if (workflow is null)
+        if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false) ?? workflow.ExecutionId.ToString("D");
+        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false) ?? execution.ExecutionId.ToString("D");
         var graphJson = await GetGraphJsonAsync(tenantId, idOrUuid, ct).ConfigureAwait(false);
         var patchNodes = ExecutionViewMapper.MapGraphPatchNodes(graphJson);
 
@@ -702,26 +702,26 @@ internal sealed class ExecutionService : IExecutionService
         return PublishEventAsync(tenantId, idOrUuid, resumeKey!, idempotencyKey, requestContext, ct);
     }
 
-    private async Task<ExecutionViewDto> BuildWorkflowViewInternalAsync(string tenantId, Guid uuid, string idOrUuidForDisplay, CancellationToken ct)
+    private async Task<ExecutionViewDto> BuildExecutionViewInternalAsync(string tenantId, Guid uuid, string idOrUuidForDisplay, CancellationToken ct)
     {
         return await _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
-                var workflow = await _workflows.GetByIdAsync(uow, tenantId, uuid, innerCt).ConfigureAwait(false);
-                if (workflow is null)
+                var execution = await _executions.GetByIdAsync(uow, tenantId, uuid, innerCt).ConfigureAwait(false);
+                if (execution is null)
                     throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-                var snapshot = await _workflows.GetSnapshotByExecutionIdAsync(uow, uuid, innerCt).ConfigureAwait(false);
+                var snapshot = await _executions.GetSnapshotByExecutionIdAsync(uow, uuid, innerCt).ConfigureAwait(false);
                 if (snapshot is null)
                     throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
                 var displayId = await _displayIds
                     .GetDisplayIdAsync(DisplayIdResourceTypes.Execution, idOrUuidForDisplay, innerCt)
-                    .ConfigureAwait(false) ?? workflow.ExecutionId.ToString("D");
+                    .ConfigureAwait(false) ?? execution.ExecutionId.ToString("D");
                 var graphId = await _displayIds
-                    .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, workflow.DefinitionId.ToString("D"), innerCt)
-                    .ConfigureAwait(false) ?? workflow.DefinitionId.ToString("D");
-                return ExecutionViewMapper.BuildWorkflowView(workflow, snapshot.GraphJson, displayId, graphId);
+                    .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, execution.DefinitionId.ToString("D"), innerCt)
+                    .ConfigureAwait(false) ?? execution.DefinitionId.ToString("D");
+                return ExecutionViewMapper.BuildExecutionView(execution, snapshot.GraphJson, displayId, graphId);
             },
             ct).ConfigureAwait(false);
     }
@@ -851,7 +851,7 @@ internal sealed class ExecutionService : IExecutionService
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
     }
 
-    private static string MapStatus(WorkflowSnapshot? snapshot)
+    private static string MapStatus(ExecutionSnapshot? snapshot)
     {
         if (snapshot is null) return "Unknown";
         if (snapshot.IsCompleted) return "Completed";
@@ -861,62 +861,62 @@ internal sealed class ExecutionService : IExecutionService
     }
 
     /// <summary>
-    /// 投影が終了状態かどうかを、<c>workflows.status</c> の文字列値から判定する。
+    /// 投影が終了状態かどうかを、<c>executions.status</c> の文字列値から判定する。
     /// </summary>
-    private static bool IsTerminalWorkflowProjectionStatus(string status) =>
+    private static bool IsTerminalExecutionProjectionStatus(string status) =>
         status is "Completed" or "Cancelled" or "Failed";
 
     /// <summary>
     /// キャンセル／イベント発行の適用直前に、当該ワークフローがこのプロセスのエンジンへ読み込まれていることを検証する。
     /// API 再起動などでインメモリ実行が失われた場合、DB 投影を壊さないよう <see cref="ArgumentException"/> を投げる（HTTP 422）。
     /// </summary>
-    private void EnsureEngineRuntimePresentForMutation(Guid workflowId, ExecutionRow workflow)
+    private void EnsureEngineRuntimePresentForMutation(Guid executionId, ExecutionRow execution)
     {
-        if (_engine.GetSnapshot(workflowId.ToString()) is not null)
+        if (_engine.GetSnapshot(executionId.ToString()) is not null)
             return;
 
-        if (IsTerminalWorkflowProjectionStatus(workflow.Status))
+        if (IsTerminalExecutionProjectionStatus(execution.Status))
         {
             throw new ArgumentException(
-                "The workflow is already in a terminal state in the database projection, but there is no in-memory instance in this API process. Cancel or event delivery cannot be applied.");
+                "The execution is already in a terminal state in the database projection, but there is no in-memory instance in this API process. Cancel or event delivery cannot be applied.");
         }
 
         throw new ArgumentException(
-            "The workflow execution state is not loaded in this API process (for example after a restart). Commands cannot be applied while the in-memory runtime is missing.");
+            "The execution state is not loaded in this API process (for example after a restart). Commands cannot be applied while the in-memory runtime is missing.");
     }
 
-    public async Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct)
+    public async Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct)
     {
-        var (status, cancelRequested, graphJson) = BuildProjectionFromEngineForQueue(workflowId);
+        var (status, cancelRequested, graphJson) = BuildProjectionFromEngineForQueue(executionId);
         if (status is null || graphJson is null)
             return;
 
         await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
             {
-                await _workflows
-                    .UpdateExecutionAndSnapshotAsync(uow, workflowId, status, cancelRequested, graphJson, innerCt)
+                await _executions
+                    .UpdateExecutionAndSnapshotAsync(uow, executionId, status, cancelRequested, graphJson, innerCt)
                     .ConfigureAwait(false);
             },
             ct).ConfigureAwait(false);
     }
 
-    private (string Status, bool? CancelRequested, string GraphJson) BuildProjectionFromEngine(Guid workflowId)
+    private (string Status, bool? CancelRequested, string GraphJson) BuildProjectionFromEngine(Guid executionId)
     {
-        var engineId = workflowId.ToString();
+        var engineId = executionId.ToString();
         var snapshot = _engine.GetSnapshot(engineId);
         var graphJson = _engine.ExportExecutionGraph(engineId);
         var status = MapStatus(snapshot);
         return (status, snapshot?.IsCancelled, graphJson);
     }
 
-    private (string? status, bool? cancelRequested, string? graphJson) BuildProjectionFromEngineForQueue(Guid workflowId)
+    private (string? status, bool? cancelRequested, string? graphJson) BuildProjectionFromEngineForQueue(Guid executionId)
     {
-        var engineId = workflowId.ToString();
+        var engineId = executionId.ToString();
         var snapshot = _engine.GetSnapshot(engineId);
         if (snapshot is null)
         {
-            _logger.SkipProjectionQueueUpdateDebug(workflowId);
+            _logger.SkipProjectionQueueUpdateDebug(executionId);
             return (null, null, null);
         }
 
@@ -925,13 +925,13 @@ internal sealed class ExecutionService : IExecutionService
         return (status, snapshot.IsCancelled, graphJson);
     }
 
-    private sealed class NoopWorkflowProjectionUpdateQueue : IExecutionProjectionUpdateQueue
+    private sealed class NoopExecutionProjectionUpdateQueue : IExecutionProjectionUpdateQueue
     {
-        internal static readonly NoopWorkflowProjectionUpdateQueue Instance = new();
+        internal static readonly NoopExecutionProjectionUpdateQueue Instance = new();
 
-        public Task EnqueueAsync(Guid workflowId, CancellationToken ct) => Task.CompletedTask;
+        public Task EnqueueAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
 
-        public Task DrainAsync(Guid workflowId, CancellationToken ct) => Task.CompletedTask;
+        public Task DrainAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
     }
 
     /// <summary>
@@ -993,7 +993,7 @@ internal sealed class ExecutionService : IExecutionService
         Justification = "イベント配送 dedup の再試行・ログ分岐を一箇所に集約している。")]
     private async Task<bool> TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(
         string tenantId,
-        Guid workflowId,
+        Guid executionId,
         Guid clientEventId,
         CancellationToken cancellationToken)
     {
@@ -1003,7 +1003,7 @@ internal sealed class ExecutionService : IExecutionService
         var row = new EventDeliveryDedupRow
         {
             TenantId = tenantId,
-            ExecutionId = workflowId,
+            ExecutionId = executionId,
             ClientEventId = clientEventId,
             BatchId = null,
             Status = EventDeliveryDedupStatuses.Received,
@@ -1031,7 +1031,7 @@ internal sealed class ExecutionService : IExecutionService
                 {
                     TraceId = traceId,
                     TenantId = tenantId,
-                    ExecutionId = workflowId,
+                    ExecutionId = executionId,
                     ClientEventId = clientEventId,
                     Decision = EventDeliveryLogDecisions.Inserted,
                     Attempt = attempt,
@@ -1048,7 +1048,7 @@ internal sealed class ExecutionService : IExecutionService
                 {
                     TraceId = traceId,
                     TenantId = tenantId,
-                    ExecutionId = workflowId,
+                    ExecutionId = executionId,
                     ClientEventId = clientEventId,
                     Decision = EventDeliveryLogDecisions.DuplicateKey,
                     Attempt = attempt,
@@ -1057,7 +1057,7 @@ internal sealed class ExecutionService : IExecutionService
                 });
 
                 var existing = await _executor.ExecuteReadOnlyAsync(
-                    (uow, innerCt) => _eventDeliveryDedup.FindAsync(uow, tenantId, workflowId, clientEventId, innerCt),
+                    (uow, innerCt) => _eventDeliveryDedup.FindAsync(uow, tenantId, executionId, clientEventId, innerCt),
                     cancellationToken).ConfigureAwait(false);
                 if (existing is { Status: EventDeliveryDedupStatuses.Applied })
                     return true;
@@ -1076,7 +1076,7 @@ internal sealed class ExecutionService : IExecutionService
                     {
                         TraceId = traceId,
                         TenantId = tenantId,
-                        ExecutionId = workflowId,
+                        ExecutionId = executionId,
                         ClientEventId = clientEventId,
                         Decision = EventDeliveryLogDecisions.AbortedTimeout,
                         Attempt = attempt,
@@ -1096,7 +1096,7 @@ internal sealed class ExecutionService : IExecutionService
                     {
                         TraceId = traceId,
                         TenantId = tenantId,
-                        ExecutionId = workflowId,
+                        ExecutionId = executionId,
                         ClientEventId = clientEventId,
                         Decision = EventDeliveryLogDecisions.Retry,
                         Attempt = attempt,
@@ -1122,7 +1122,7 @@ internal sealed class ExecutionService : IExecutionService
                             {
                                 TraceId = traceId,
                                 TenantId = tenantId,
-                                ExecutionId = workflowId,
+                                ExecutionId = executionId,
                                 ClientEventId = clientEventId,
                                 Decision = EventDeliveryLogDecisions.BackoffBudgetExhausted,
                                 Attempt = attempt,
@@ -1150,7 +1150,7 @@ internal sealed class ExecutionService : IExecutionService
                     {
                         TraceId = traceId,
                         TenantId = tenantId,
-                        ExecutionId = workflowId,
+                        ExecutionId = executionId,
                         ClientEventId = clientEventId,
                         Decision = EventDeliveryLogDecisions.Failed,
                         Attempt = attempt,

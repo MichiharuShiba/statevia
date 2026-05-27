@@ -8,10 +8,10 @@ public interface IExecutionProjectionUpdateQueue
     /// <summary>
     /// 指定ワークフローの投影更新をキューへ投入する。
     /// </summary>
-    Task EnqueueAsync(Guid workflowId, CancellationToken ct);
+    Task EnqueueAsync(Guid executionId, CancellationToken ct);
 
     /// <summary>
     /// 指定ワークフローに対する未処理更新が無くなるまで待機する。
     /// </summary>
-    Task DrainAsync(Guid workflowId, CancellationToken ct);
+    Task DrainAsync(Guid executionId, CancellationToken ct);
 }

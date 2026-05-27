@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Statevia.Core.Api.Contracts;
 
-/// <summary>UI <c>WorkflowView</c> に近い形（camelCase JSON）。GET …/state 等で返す。</summary>
+/// <summary>UI <c>ExecutionView</c> に近い形（camelCase JSON）。GET …/state 等で返す。</summary>
 public sealed class ExecutionViewDto
 {
     /// <summary>表示用ワークフロー ID。</summary>
@@ -33,7 +33,7 @@ public sealed class ExecutionViewDto
     public IReadOnlyList<ExecutionViewNodeDto> Nodes { get; init; } = Array.Empty<ExecutionViewNodeDto>();
 }
 
-/// <summary>ワークフロービュー上の 1 ノード。</summary>
+/// <summary>実行ビュー上の 1 ノード。</summary>
 public sealed class ExecutionViewNodeDto
 {
     /// <summary>ExecutionGraph が付与するノード識別子（試行単位）。定義キャンバスのノードキーとは別。</summary>

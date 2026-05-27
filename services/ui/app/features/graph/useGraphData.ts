@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { resolveGroupBounds } from "../../lib/grouping";
 import { layoutGraph } from "../../lib/graphLayout";
 import { mergeGraph, type MergedGraphEdge, type MergedGraphNode } from "../../lib/mergeGraph";
-import type { ExecutionNodeDTO, WorkflowView } from "../../lib/types";
+import type { ExecutionNodeDTO, ExecutionView } from "../../lib/types";
 import type { GroupBounds } from "../../lib/grouping";
 import type { LayoutEdgeInput, PositionedNode } from "../../lib/graphLayout";
 import type { GraphDefinition } from "../../graphs/types";
@@ -21,7 +21,7 @@ export type GraphData = {
 
 /** 実行ビューと定義グラフを合成したグラフデータを組み立てる。 */
 export function useGraphData(
-  execution: WorkflowView | null,
+  execution: ExecutionView | null,
   graphDefinition: GraphDefinition | null
 ): GraphData | null {
   return useMemo(() => {
@@ -58,7 +58,7 @@ export function useGraphData(
  * `stateName` およびマージ結果の `stateName` でランタイム行へ寄せる。
  */
 export function getNodeWithFallback(
-  execution: WorkflowView | null,
+  execution: ExecutionView | null,
   graphData: GraphData | null,
   nodeId: string | null
 ): ExecutionNodeDTO | null {

@@ -10,7 +10,7 @@ internal interface IExecutionMutationPersistence
     /// </summary>
     Task ExecuteSerializableWithRetryAsync(
         string tenantId,
-        Guid workflowId,
+        Guid executionId,
         Guid clientEventId,
         Func<ICoreUnitOfWork, CancellationToken, Task> applyAsync,
         CancellationToken cancellationToken = default);

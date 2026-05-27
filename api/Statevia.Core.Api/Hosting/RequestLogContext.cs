@@ -9,7 +9,7 @@ internal static class RequestLogContext
     public const string TraceIdItemKey = "Statevia.TraceId";
 
     /// <summary>ルート <c>{id}</c> から取得したワークフロー表示 ID。</summary>
-    public const string WorkflowDisplayIdItemKey = "Statevia.WorkflowDisplayId";
+    public const string ExecutionDisplayIdItemKey = "Statevia.ExecutionDisplayId";
 
     /// <summary>ルート <c>{id}</c> から取得した定義表示 ID。</summary>
     public const string DefinitionDisplayIdItemKey = "Statevia.DefinitionDisplayId";

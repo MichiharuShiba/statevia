@@ -1,7 +1,7 @@
 /**
  * イベントタイムライン・リプレイ機能の e2e 用テストデータ
  */
-import type { ExecutionEventWithSeq, WorkflowView } from "../../app/lib/types";
+import type { ExecutionEventWithSeq, ExecutionView } from "../../app/lib/types";
 import { mockExecution } from "./mockExecution";
 
 const EXECUTION_ID = "ex-1";
@@ -69,7 +69,7 @@ export const timelineEventsPage2: ExecutionEventWithSeq[] = [
 ];
 
 /** リプレイ用: seq 1 時点の状態（ノード少なめ・IDLE） */
-export const stateAtSeq1: WorkflowView = {
+export const stateAtSeq1: ExecutionView = {
   ...mockExecution,
   displayId: EXECUTION_ID,
   nodes: [
@@ -79,7 +79,7 @@ export const stateAtSeq1: WorkflowView = {
 };
 
 /** リプレイ用: seq 2 時点の状態 */
-export const stateAtSeq2: WorkflowView = {
+export const stateAtSeq2: ExecutionView = {
   ...stateAtSeq1,
   nodes: [
     { executionNodeId: "start", nodeType: "Start", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
@@ -88,7 +88,7 @@ export const stateAtSeq2: WorkflowView = {
 };
 
 /** リプレイ用: seq 3 時点の状態（start が READY） */
-export const stateAtSeq3: WorkflowView = {
+export const stateAtSeq3: ExecutionView = {
   ...stateAtSeq1,
   nodes: [
     { executionNodeId: "start", nodeType: "Start", status: "READY", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
@@ -97,7 +97,7 @@ export const stateAtSeq3: WorkflowView = {
 };
 
 /** リプレイ用: seq 4 時点の状態（start SUCCEEDED, task-a RUNNING） */
-export const stateAtSeq4: WorkflowView = {
+export const stateAtSeq4: ExecutionView = {
   ...stateAtSeq1,
   nodes: [
     { executionNodeId: "start", nodeType: "Start", status: "SUCCEEDED", attempt: 1, workerId: null, waitKey: null, canceledByExecution: false },
@@ -106,7 +106,7 @@ export const stateAtSeq4: WorkflowView = {
 };
 
 /** seq に応じて返すリプレイ用状態 */
-export function getStateAtSeq(seq: number): WorkflowView {
+export function getStateAtSeq(seq: number): ExecutionView {
   switch (seq) {
     case 1:
       return stateAtSeq1;

@@ -6,7 +6,7 @@ describe("PageShell", () => {
   it("title と description を表示する", () => {
     // Arrange
     const props = {
-      title: "Workflow 一覧",
+      title: "実行一覧",
       description: "一覧画面です。",
       children: <div>body</div>
     };
@@ -15,7 +15,7 @@ describe("PageShell", () => {
     render(<PageShell {...props} />);
 
     // Assert
-    expect(screen.getByRole("heading", { name: "Workflow 一覧" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "実行一覧" })).toBeInTheDocument();
     expect(screen.getByText("一覧画面です。")).toBeInTheDocument();
     expect(screen.getByText("body")).toBeInTheDocument();
   });

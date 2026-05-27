@@ -47,14 +47,14 @@ var compiler = new DefinitionCompiler(factory);
 var compiled = compiler.Compile(def);
 
 // README 3.3 に準拠
-using var engine = new WorkflowEngine(
+using var engine = new ExecutionEngine(
     new DefaultScheduler(2),
-    new DefaultWorkflowInstanceFactory(),
-    new UuidV7WorkflowInstanceIdGenerator(),
+    new DefaultExecutionInstanceFactory(),
+    new UuidV7ExecutionIdGenerator(),
     NullLoggerFactory.Instance);
 var id = engine.Start(compiled);
 
-Console.WriteLine($"Workflow started: {id}");
+Console.WriteLine($"Execution started: {id}");
 
 // 待機状態の再開（README 参照: engine.PublishEvent("UserApproved")）
 await Task.Delay(100).ConfigureAwait(false);

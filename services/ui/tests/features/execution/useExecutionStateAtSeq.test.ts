@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { useExecutionStateAtSeq } from "../../../app/features/execution/useExecutionStateAtSeq";
 import * as api from "../../../app/lib/api";
-import type { WorkflowView } from "../../../app/lib/types";
+import type { ExecutionView } from "../../../app/lib/types";
 
 describe("useExecutionStateAtSeq", () => {
   beforeEach(() => {
@@ -21,7 +21,7 @@ describe("useExecutionStateAtSeq", () => {
   });
 
   it("atSeq 指定時は state エンドポイントを取得する", async () => {
-    const view = { displayId: "ex-1", status: "Running" } as WorkflowView;
+    const view = { displayId: "ex-1", status: "Running" } as ExecutionView;
     vi.mocked(api.apiGet).mockResolvedValue(view);
 
     const { result } = renderHook(() => useExecutionStateAtSeq("ex-1", 3));

@@ -6,10 +6,10 @@ namespace Statevia.Core.Engine.Infrastructure;
 /// <summary>
 /// UUID v7（時刻プレフィックス + ランダム）。Core-API の <c>UuidV7Generator</c> と同じバイト構成。
 /// </summary>
-public sealed class UuidV7WorkflowInstanceIdGenerator : IWorkflowInstanceIdGenerator
+public sealed class UuidV7ExecutionIdGenerator : IExecutionIdGenerator
 {
     /// <inheritdoc />
-    public string NewWorkflowInstanceId() => CreateVersion7().ToString();
+    public string NewExecutionId() => CreateVersion7().ToString();
 
     private static Guid CreateVersion7()
     {

@@ -18,24 +18,24 @@ namespace Statevia.Core.Api.Controllers;
 [System.Diagnostics.CodeAnalysis.SuppressMessage(
     "Major Code Smell",
     "S6960:Controllers should not have mixed responsibilities",
-    Justification = "ワークフロー CRUD と SSE は同一リソース境界のため当面は単一コントローラで維持する。")]
+    Justification = "実行 CRUD と SSE は同一リソース境界のため当面は単一コントローラで維持する。")]
 public class ExecutionsController : ControllerBase
 {
     private const string IdempotencyKeyHeaderName = "X-Idempotency-Key";
 
-    private readonly IExecutionService _workflows;
+    private readonly IExecutionService _executions;
     private readonly ExecutionStreamService _stream;
 
     /// <summary>
     /// <see cref="ExecutionsController"/> を生成する。
     /// </summary>
-    /// <param name="workflows">ワークフローサービス。</param>
+    /// <param name="executions">実行サービス。</param>
     /// <param name="stream">SSE 用ストリームサービス。</param>
     public ExecutionsController(
-        IExecutionService workflows,
+        IExecutionService executions,
         ExecutionStreamService stream)
     {
-        _workflows = workflows;
+        _executions = executions;
         _stream = stream;
     }
 
@@ -50,7 +50,7 @@ public class ExecutionsController : ControllerBase
     {
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         var resolvedIdempotencyKey = idempotencyKey;
-        var created = await _workflows.StartAsync(
+        var created = await _executions.StartAsync(
             tenantId,
             request,
             resolvedIdempotencyKey,
@@ -63,7 +63,7 @@ public class ExecutionsController : ControllerBase
     /// <summary>
     /// GET /v1/executions — ページング一覧（U4）。<c>limit</c> は必須。
     /// <c>?limit=&amp;offset=&amp;status=&amp;definitionId=&amp;name=&amp;sortBy=&amp;sortOrder=</c> で <see cref="PagedResult{T}"/>（O1/O2）。
-    /// <c>definitionId</c> は定義の display / UUID。 <c>name</c> は workflow の <c>displayId</c> 部分一致、または workflow の UUID 完全一致で絞り込み。
+    /// <c>definitionId</c> は定義の display / UUID。 <c>name</c> は execution の <c>displayId</c> 部分一致、または execution の UUID 完全一致で絞り込み。
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<ExecutionResponse>), StatusCodes.Status200OK)]
@@ -83,11 +83,11 @@ public class ExecutionsController : ControllerBase
         if (query.Limit.Value > 500)
             throw new ArgumentException("limit must be at most 500");
 
-        var paged = await _workflows.ListPagedAsync(tenantId, query, ct).ConfigureAwait(false);
+        var paged = await _executions.ListPagedAsync(tenantId, query, ct).ConfigureAwait(false);
         return Ok(paged);
     }
 
-    /// <summary>GET /v1/executions/{id} — 一覧と同一の <see cref="ExecutionResponse"/>（UI WorkflowDTO 向け）。X-Tenant-Id でスコープ。</summary>
+    /// <summary>GET /v1/executions/{id} — 一覧と同一の <see cref="ExecutionResponse"/>（UI ExecutionDTO 向け）。X-Tenant-Id でスコープ。</summary>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ExecutionResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<ExecutionResponse>> Get(
@@ -96,7 +96,7 @@ public class ExecutionsController : ControllerBase
         CancellationToken ct = default)
     {
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        var model = await _workflows.GetExecutionResponseAsync(tenantId, id, ct).ConfigureAwait(false);
+        var model = await _executions.GetExecutionResponseAsync(tenantId, id, ct).ConfigureAwait(false);
         return Ok(model);
     }
 
@@ -110,11 +110,11 @@ public class ExecutionsController : ControllerBase
         CancellationToken ct = default)
     {
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        var graphJson = await _workflows.GetGraphJsonAsync(tenantId, id, ct).ConfigureAwait(false);
+        var graphJson = await _executions.GetGraphJsonAsync(tenantId, id, ct).ConfigureAwait(false);
         return Content(graphJson, "application/json");
     }
 
-    /// <summary>GET /v1/executions/{id}/state?atSeq= — UI 用 WorkflowView（リプレイは現状スナップショット近似）。</summary>
+    /// <summary>GET /v1/executions/{id}/state?atSeq= — UI 用 ExecutionView（リプレイは現状スナップショット近似）。</summary>
     [HttpGet("{id}/state")]
     [ProducesResponseType(typeof(ExecutionViewDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ExecutionViewDto>> GetState(
@@ -124,7 +124,7 @@ public class ExecutionsController : ControllerBase
         CancellationToken ct = default)
     {
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        var view = await _workflows.GetExecutionViewAtSeqAsync(tenantId, id, atSeq, ct).ConfigureAwait(false);
+        var view = await _executions.GetExecutionViewAtSeqAsync(tenantId, id, atSeq, ct).ConfigureAwait(false);
         return Ok(view);
     }
 
@@ -139,7 +139,7 @@ public class ExecutionsController : ControllerBase
         CancellationToken ct = default)
     {
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        var res = await _workflows.ListEventsAsync(tenantId, id, afterSeq, limit, ct).ConfigureAwait(false);
+        var res = await _executions.ListEventsAsync(tenantId, id, afterSeq, limit, ct).ConfigureAwait(false);
         return Ok(res);
     }
 
@@ -167,7 +167,7 @@ public class ExecutionsController : ControllerBase
     {
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         var resolvedIdempotencyKey = idempotencyKey;
-        await _workflows.CancelAsync(
+        await _executions.CancelAsync(
             tenantId,
             id,
             resolvedIdempotencyKey,
@@ -191,7 +191,7 @@ public class ExecutionsController : ControllerBase
     {
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         var resolvedIdempotencyKey = idempotencyKey;
-        await _workflows.ResumeNodeAsync(
+        await _executions.ResumeNodeAsync(
             tenantId,
             id,
             nodeId,
@@ -202,7 +202,7 @@ public class ExecutionsController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>POST /v1/executions/{id}/events — body: { "name": "Approve" }。Engine.PublishEvent(workflowId, eventName)。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。</summary>
+    /// <summary>POST /v1/executions/{id}/events — body: { "name": "Approve" }。Engine.PublishEvent(executionId, eventName)。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。</summary>
     [HttpPost("{id}/events")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult> PublishEvent(
@@ -216,7 +216,7 @@ public class ExecutionsController : ControllerBase
 
         var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         var resolvedIdempotencyKey = idempotencyKey;
-        await _workflows.PublishEventAsync(
+        await _executions.PublishEventAsync(
             tenantId,
             id,
             body.Name,
@@ -242,7 +242,7 @@ public class StartExecutionRequest
     [JsonPropertyName("definitionVersionId")]
     public Guid? DefinitionVersionId { get; set; }
 
-    /// <summary>ワークフロー入力（任意）。</summary>
+    /// <summary>実行開始時の入力（任意）。</summary>
     public JsonElement? Input { get; set; }
 }
 

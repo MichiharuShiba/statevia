@@ -18,7 +18,6 @@ export const uiTextEn: UiText = {
     health: "Health",
   },
   entities: {
-    workflow: "Workflow",
     definition: "Definition",
     execution: "Execution",
     node: "Node",
@@ -56,7 +55,7 @@ export const uiTextEn: UiText = {
     displayId: "Display ID",
     resourceId: "Resource ID",
     graphId: "Graph ID",
-    workflowInput: "Workflow input",
+    input: "Input",
     definitionEditor: "Definition Editor",
   },
   errorPrefixes: {
@@ -206,13 +205,13 @@ export const uiTextEn: UiText = {
   dashboard: {
     ...uiTextJa.dashboard,
     title: "Dashboard",
-    descriptionRecent: "Recent workflows (up to 10).",
-    loadingRecent: "Loading recent workflows.",
-    emptyStartFromDefinitionsOrWorkflows: "Start from Definitions or Workflows.",
+    descriptionRecent: "Recent executions (up to 10).",
+    loadingRecent: "Loading recent executions.",
+    emptyStartFromDefinitionsOrExecutions: "Start from Definitions or Executions.",
     totalCount: (count: number | null) => (count == null ? "Total: --" : `Total: ${count}`),
     updatedAt: (formattedDateTime: string) => `Updated: ${formattedDateTime}`,
     aria: {
-      recentWorkflowsList: "Recent workflows",
+      recentExecutionsList: "Recent executions",
     },
     actions: {
       openDetail: "Open details",
@@ -223,14 +222,14 @@ export const uiTextEn: UiText = {
   },
   executionsPage: {
     ...uiTextJa.executionsPage,
-    loading: "Loading workflows.",
+    loading: "Loading executions.",
     listSummary: (totalCount: number, page: number) => `Total ${totalCount} (page ${page})`,
     updatedAt: (formattedDateTime: string) => `Updated: ${formattedDateTime}`,
-    empty: "No workflows found.",
-    error: "Failed to load workflows. Please try again later.",
+    empty: "No executions found.",
+    error: "Failed to load executions. Please try again later.",
     pagination: {
       ...uiTextJa.executionsPage.pagination,
-      ariaLabel: "Workflows pagination",
+      ariaLabel: "Executions pagination",
       currentPage: (page: number) => `Page ${page}`,
       prev: "Prev",
       next: "Next",
@@ -248,7 +247,7 @@ export const uiTextEn: UiText = {
       definitionInputHint: "Definition display ID / UUID",
       definitionLabelWithHint: (definitionLabel: string) => `${definitionLabel} (display ID / UUID)`,
       definitionPlaceholder: "e.g. def-...",
-      nameInputHint: "name (workflow display ID partial match, or workflow UUID exact match)",
+      nameInputHint: "name (execution display ID partial match, or execution UUID exact match)",
       search: "Search",
       clear: "Clear",
       sortByLabel: "Sort by",
@@ -300,21 +299,21 @@ export const uiTextEn: UiText = {
   },
   executionDetailPage: {
     ...uiTextJa.executionDetailPage,
-    title: "Workflow detail",
+    title: "Execution detail",
     missingExecutionId: "Execution ID is missing.",
     navRun: "Run",
     navGraph: "Graph",
   },
   executionGraphPage: {
     ...uiTextJa.executionGraphPage,
-    title: "Workflow graph",
+    title: "Execution graph",
     missingExecutionId: "Execution ID is missing.",
     navDetail: "Detail",
     navRun: "Run",
   },
   executionRunPage: {
     ...uiTextJa.executionRunPage,
-    title: "Workflow run",
+    title: "Execution run",
     missingExecutionId: "Execution ID is missing.",
     navDetail: "Detail",
     navGraph: "Graph",
@@ -323,20 +322,20 @@ export const uiTextEn: UiText = {
     ...uiTextJa.definitionRunPage,
     title: "Run definition",
     unspecifiedDefinitionId: "(not specified)",
-    workflowInputLabelWithHint: (workflowInputLabel: string) => `${workflowInputLabel} (optional, JSON)`,
+    inputLabelWithHint: (inputLabel: string) => `${inputLabel} (optional, JSON)`,
     inputJsonPlaceholder: 'Example: {"orderId":"123"}',
     nav: {
       backToDefinitionDetail: "Back to definition detail",
     },
     actions: {
       starting: "Starting...",
-      startWorkflow: "Start workflow",
+      startExecution: "Start execution",
     },
     toasts: {
       definitionIdRequired: (definitionIdLabel: string) => `${definitionIdLabel} is required.`,
-      invalidWorkflowInputJson: (workflowInputLabel: string) => `${workflowInputLabel} JSON is invalid.`,
-      workflowInputTooLarge: "Workflow input must be within 65536 bytes (64KiB).",
-      workflowStarted: (workflowDisplayId: string) => `Workflow started: ${workflowDisplayId}`,
+      invalidInputJson: (inputLabel: string) => `${inputLabel} JSON is invalid.`,
+      inputTooLarge: "Input must be within 65536 bytes (64KiB).",
+      executionStarted: (executionDisplayId: string) => `Execution started: ${executionDisplayId}`,
     },
     help: {
       redirectAfterStart: (runPath: string) => `After starting, you will be redirected to ${runPath}.`,
@@ -352,10 +351,10 @@ export const uiTextEn: UiText = {
       name: "Name",
       createdAt: "Created at",
     },
-    relatedWorkflows: {
-      title: "Related workflows",
-      description: "Go to the list of workflows related to this definition.",
-      openList: "Open workflows list",
+    relatedExecutions: {
+      title: "Related executions",
+      description: "Go to the list of executions related to this definition.",
+      openList: "Open executions list",
     },
     actions: {
       title: "Edit / Run",

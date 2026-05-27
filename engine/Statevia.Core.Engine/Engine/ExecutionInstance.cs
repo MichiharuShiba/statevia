@@ -10,10 +10,10 @@ namespace Statevia.Core.Engine.Engine;
 /// 1 つのワークフローインスタンスの実行状態を保持します。
 /// FSM、JoinTracker、ExecutionGraph、状態出力、アクティブ状態などを管理します。
 /// </summary>
-public sealed class WorkflowInstance
+public sealed class ExecutionInstance
 {
     /// <summary>ワークフローインスタンス ID。</summary>
-    public required string WorkflowId { get; init; }
+    public required string ExecutionId { get; init; }
     /// <summary>コンパイル済み定義。</summary>
     public required CompiledWorkflowDefinition Definition { get; init; }
     /// <summary>事実駆動 FSM。</summary>

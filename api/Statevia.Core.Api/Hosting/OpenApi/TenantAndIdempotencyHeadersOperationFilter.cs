@@ -31,7 +31,7 @@ internal sealed class TenantAndIdempotencyHeadersOperationFilter : IOperationFil
             return false;
 
         var relativePath = context.ApiDescription.RelativePath ?? string.Empty;
-        return relativePath.StartsWith("v1/workflows", StringComparison.OrdinalIgnoreCase);
+        return relativePath.StartsWith("v1/executions", StringComparison.OrdinalIgnoreCase);
     }
 
     private static OpenApiParameter CreateTenantHeaderParameter() =>

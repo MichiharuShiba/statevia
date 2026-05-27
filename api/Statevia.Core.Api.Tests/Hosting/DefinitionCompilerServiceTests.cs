@@ -16,11 +16,11 @@ namespace Statevia.Core.Api.Tests.Hosting;
 
 public sealed class DefinitionCompilerServiceTests
 {
-    private static WorkflowEngine CreateTestEngine(int maxParallelism = 4) =>
+    private static ExecutionEngine CreateTestEngine(int maxParallelism = 4) =>
         new(
             new DefaultScheduler(maxParallelism),
-            new DefaultWorkflowInstanceFactory(),
-            new UuidV7WorkflowInstanceIdGenerator(),
+            new DefaultExecutionInstanceFactory(),
+            new UuidV7ExecutionIdGenerator(),
             NullLoggerFactory.Instance);
 
     private static IDefinitionLoadStrategy CreateDefaultStrategy() =>
@@ -175,10 +175,10 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
-    /// custom.echo実行時の出力グラフに入力値が反映される。
+    /// custom.echo 実行時の出力グラフに Start 時の <c>input</c> が反映される。
     /// </summary>
     [Fact]
-    public async Task Start_CustomEchoAction_OutputReflectsWorkflowInput()
+    public async Task Start_CustomEchoAction_OutputReflectsInput()
     {
         // Arrange
         var registry = new InMemoryActionRegistry();
@@ -201,11 +201,11 @@ public sealed class DefinitionCompilerServiceTests
 
         // Act
         var engine = CreateTestEngine();
-        var wfId = engine.Start(def, workflowInput: new Dictionary<string, int> { ["x"] = 42 });
+        var executionId = engine.Start(def, input: new Dictionary<string, int> { ["x"] = 42 });
 
         await Task.Delay(200);
 
-        var json = engine.ExportExecutionGraph(wfId);
+        var json = engine.ExportExecutionGraph(executionId);
         // Assert
         Assert.Contains("42", json, StringComparison.Ordinal);
     }
@@ -661,10 +661,10 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
-    /// nodes の noop で workflowInput が伝播するとき、<c>$.eligible eq true</c> がマッチすること（公式サンプル相当）。
+    /// nodes の noop で Start 時の <c>input</c> が伝播するとき、<c>$.eligible eq true</c> がマッチすること（公式サンプル相当）。
     /// </summary>
     [Fact]
-    public async Task ValidateAndCompile_NodesEligibleEqTrueWithJsonWorkflowInput_ResolvesMatchedCase()
+    public async Task ValidateAndCompile_NodesEligibleEqTrueWithJsonInput_ResolvesMatchedCase()
     {
         // Arrange
         var svc = CreateSut();
@@ -705,9 +705,9 @@ public sealed class DefinitionCompilerServiceTests
         using var inputDoc = JsonDocument.Parse("""{"eligible":true,"shared":{"orderId":"ORD-1001"}}""");
 
         // Act
-        var workflowId = engine.Start(compiled, null, inputDoc.RootElement);
+        var executionId = engine.Start(compiled, null, inputDoc.RootElement);
         await Task.Delay(400);
-        var graphJson = engine.ExportExecutionGraph(workflowId);
+        var graphJson = engine.ExportExecutionGraph(executionId);
 
         // Assert
         using var graphDoc = JsonDocument.Parse(graphJson);

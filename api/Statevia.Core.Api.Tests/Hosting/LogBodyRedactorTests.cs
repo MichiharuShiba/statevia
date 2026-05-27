@@ -33,13 +33,13 @@ public sealed class LogBodyRedactorTests
     }
 
     [Fact]
-    public void Redact_NestedWorkflowInputMasked()
+    public void Redact_NestedInputMasked()
     {
-        var json = """{"workflowInput":{"secret":"abc","nested":{"token":"t"}},"name":"ok"}""";
+        var json = """{"input":{"secret":"abc","nested":{"token":"t"}},"name":"ok"}""";
         var r = LogBodyRedactor.Redact(json, 500);
         Assert.DoesNotContain("abc", r);
         Assert.DoesNotContain("\"t\"", r);
-        Assert.Contains("\"workflowInput\":\"[redacted]\"", r);
+        Assert.Contains("\"input\":\"[redacted]\"", r);
         Assert.Contains("ok", r);
     }
 }

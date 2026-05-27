@@ -98,7 +98,7 @@ public sealed class ExecutionRepositoryTests
         Assert.Equal(2, items.Count);
         Assert.Equal("WF-DISP-2", items[0].DisplayId);
         Assert.Null(items[1].DisplayId);
-        Assert.Equal(wfId2, items[0].Workflow.ExecutionId);
+        Assert.Equal(wfId2, items[0].Execution.ExecutionId);
     }
 
     /// <summary>
@@ -159,7 +159,7 @@ public sealed class ExecutionRepositoryTests
             default);
         Assert.Equal(1, total);
         Assert.Single(items);
-        Assert.Equal("Completed", items[0].Workflow.Status);
+        Assert.Equal("Completed", items[0].Execution.Status);
     }
 
     /// <summary>definitionId で 1 件に絞り込む。</summary>
@@ -221,7 +221,7 @@ public sealed class ExecutionRepositoryTests
         // Assert
         Assert.Equal(1, total);
         Assert.Single(items);
-        Assert.Equal(wf1, items[0].Workflow.ExecutionId);
+        Assert.Equal(wf1, items[0].Execution.ExecutionId);
     }
 
     /// <summary>name に displayId の部分一致のワークフローのみ含める。</summary>
@@ -290,7 +290,7 @@ public sealed class ExecutionRepositoryTests
         // Assert
         Assert.Equal(1, total);
         Assert.Single(items);
-        Assert.Equal(wfId, items[0].Workflow.ExecutionId);
+        Assert.Equal(wfId, items[0].Execution.ExecutionId);
     }
 
     /// <summary>
@@ -309,7 +309,7 @@ public sealed class ExecutionRepositoryTests
         var defId = Guid.NewGuid();
         var wfId = Guid.NewGuid();
 
-        var workflow = new ExecutionRow
+        var execution = new ExecutionRow
         {
             ExecutionId = wfId,
             TenantId = tenantId,
@@ -328,7 +328,7 @@ public sealed class ExecutionRepositoryTests
         };
 
         await using var uow = await uowFactory.CreateAsync();
-        await repo.AddExecutionAndSnapshotAsync(uow, workflow, snapshot, default);
+        await repo.AddExecutionAndSnapshotAsync(uow, execution, snapshot, default);
         await uow.SaveChangesAsync(CancellationToken.None);
 
         await using var ctx = await db.Factory.CreateDbContextAsync();
@@ -411,7 +411,7 @@ public sealed class ExecutionRepositoryTests
     /// ワークフローが存在しない の場合は スナップショット更新は継続する。
     /// </summary>
     [Fact]
-    public async Task UpdateExecutionAndSnapshotAsync_WhenWorkflowMissing_StillUpdatesSnapshot()
+    public async Task UpdateExecutionAndSnapshotAsync_WhenExecutionMissing_StillUpdatesSnapshot()
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
@@ -443,10 +443,10 @@ public sealed class ExecutionRepositoryTests
     }
 
     /// <summary>
-    /// スナップショットが存在しない の場合は ワークフローのみ更新する。
+    /// スナップショットが存在しない の場合は 実行行のみ更新する。
     /// </summary>
     [Fact]
-    public async Task UpdateExecutionAndSnapshotAsync_WhenSnapshotMissing_StillUpdatesWorkflowOnly()
+    public async Task UpdateExecutionAndSnapshotAsync_WhenSnapshotMissing_StillUpdatesExecutionOnly()
     {
         // Arrange
         using var db = new InMemoryTestDatabase();

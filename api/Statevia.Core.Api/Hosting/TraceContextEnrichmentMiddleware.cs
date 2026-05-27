@@ -30,7 +30,7 @@ internal sealed class TraceContextEnrichmentMiddleware
         if (context.Items.TryGetValue(RequestLogContext.TraceIdItemKey, out var tidObj) && tidObj is string traceId)
         {
             if (!string.IsNullOrEmpty(wf))
-                context.Items[RequestLogContext.WorkflowDisplayIdItemKey] = wf;
+                context.Items[RequestLogContext.ExecutionDisplayIdItemKey] = wf;
             if (!string.IsNullOrEmpty(def))
                 context.Items[RequestLogContext.DefinitionDisplayIdItemKey] = def;
             if (!string.IsNullOrEmpty(graph))

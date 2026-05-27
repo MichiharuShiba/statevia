@@ -9,12 +9,12 @@ using Statevia.Core.Engine.Abstractions;
 namespace Statevia.Core.Api.Services;
 
 /// <summary>
-/// ノード完了通知を受け、ワークフロー投影更新を逐次処理するキューサービス。
+/// ノード完了通知を受け、実行投影更新を逐次処理するキューサービス。
 /// </summary>
 internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService, IExecutionProjectionUpdateQueue
 {
     /// <summary>
-    /// 再試行上限に達して退避したワークフロー情報。
+    /// 再試行上限に達して退避した実行インスタンス情報。
     /// </summary>
     private sealed class DeadLetterEntry
     {
@@ -26,15 +26,15 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
     }
 
     /// <summary>
-    /// workflow 単位の局所状態。
+    /// execution 単位の局所状態。
     /// </summary>
-    private sealed class WorkflowQueueState
+    private sealed class ExecutionQueueState
     {
-        // 同一 workflow の状態遷移はこの lock で直列化する。
+        // 同一 execution の状態遷移はこの lock で直列化する。
         internal object Gate { get; } = new();
         // キュー投入済み（または再投入予約あり）を示すフラグ。
         internal bool IsQueued { get; set; }
-        // 現在ワーカーが当該 workflow を処理中かどうか。
+        // 現在ワーカーが当該 execution を処理中かどうか。
         internal bool IsProcessing { get; set; }
         // デバウンス判定用の最終 enqueue 時刻。
         internal DateTime LastEnqueuedAtUtc { get; set; } = DateTime.UtcNow;
@@ -59,10 +59,10 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
     }
 
     private readonly Channel<Guid> _globalQueue;
-    private readonly ConcurrentDictionary<Guid, WorkflowQueueState> _states = new();
+    private readonly ConcurrentDictionary<Guid, ExecutionQueueState> _states = new();
     private readonly ConcurrentDictionary<Guid, DeadLetterEntry> _deadLetters = new();
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IWorkflowEngine _workflowEngine;
+    private readonly IExecutionEngine _executionEngine;
     private readonly ILogger<ExecutionProjectionUpdateQueueService> _logger;
     private readonly int _debounceMs;
     private readonly int _maxRetryAttempts;
@@ -71,7 +71,7 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
 
     public ExecutionProjectionUpdateQueueService(
         IServiceScopeFactory scopeFactory,
-        IWorkflowEngine workflowEngine,
+        IExecutionEngine executionEngine,
         IOptions<ExecutionProjectionQueueOptions> options,
         ILogger<ExecutionProjectionUpdateQueueService> logger)
     {
@@ -90,7 +90,7 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
             throw new ArgumentException("ExecutionProjectionQueue:RetryMaxDelayMs must be >= RetryBaseDelayMs");
 
         _scopeFactory = scopeFactory;
-        _workflowEngine = workflowEngine;
+        _executionEngine = executionEngine;
         _logger = logger;
         _debounceMs = queueOptions.ProjectionFlushDebounceMs;
         _maxRetryAttempts = queueOptions.MaxRetryAttempts;
@@ -107,17 +107,17 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
     }
 
     /// <inheritdoc />
-    public async Task EnqueueAsync(Guid workflowId, CancellationToken ct)
+    public async Task EnqueueAsync(Guid executionId, CancellationToken ct)
     {
-        var state = _states.GetOrAdd(workflowId, _ => new WorkflowQueueState());
+        var state = _states.GetOrAdd(executionId, _ => new ExecutionQueueState());
         var shouldWrite = false;
 
         lock (state.Gate)
         {
             if (state.IsDeadLettered)
             {
-                // dead-letter 済みの workflow は自動再開しない（手動オペレーション対象）。
-                _logger.SkipEnqueueDeadLettered(workflowId);
+                // dead-letter 済みの execution は自動再開しない（手動オペレーション対象）。
+                _logger.SkipEnqueueDeadLettered(executionId);
                 return;
             }
 
@@ -126,25 +126,25 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
             {
                 // idle -> active 遷移。drain 待ちが同期できるよう pending signal を作り直す。
                 if (state.IdleSignal.Task.IsCompleted)
-                    state.IdleSignal = WorkflowQueueState.CreatePendingSignal();
+                    state.IdleSignal = ExecutionQueueState.CreatePendingSignal();
                 state.IsQueued = true;
                 shouldWrite = true;
             }
             else
             {
-                // 既に queue/processing 中なら、workflow 単位 1 スロットに併合する。
+                // 既に queue/processing 中なら、execution 単位 1 スロットに併合する。
                 state.IsQueued = true;
             }
         }
 
         if (shouldWrite)
-            await _globalQueue.Writer.WriteAsync(workflowId, ct).ConfigureAwait(false);
+            await _globalQueue.Writer.WriteAsync(executionId, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task DrainAsync(Guid workflowId, CancellationToken ct)
+    public async Task DrainAsync(Guid executionId, CancellationToken ct)
     {
-        if (!_states.TryGetValue(workflowId, out var state))
+        if (!_states.TryGetValue(executionId, out var state))
             return;
 
         // 「queued でも processing でもない」状態になるまで待機する。
@@ -165,15 +165,15 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
     /// <inheritdoc />
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Engine からの通知は workflowId(string) で届くので Guid へ変換して queue へ流す。
-        _workflowEngine.SetNodeCompletedHandler(workflowId =>
+        // Engine からの通知は executionId(string) で届くので Guid へ変換して queue へ流す。
+        _executionEngine.SetNodeCompletedHandler(executionId =>
         {
-            if (!Guid.TryParse(workflowId, out var parsedWorkflowId))
+            if (!Guid.TryParse(executionId, out var parsedExecutionId))
             {
                 return Task.CompletedTask;
             }
 
-            return EnqueueAsync(parsedWorkflowId, stoppingToken);
+            return EnqueueAsync(parsedExecutionId, stoppingToken);
         });
 
         return RunWorkerLoopAsync(stoppingToken);
@@ -182,37 +182,37 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
     /// <inheritdoc />
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        _workflowEngine.SetNodeCompletedHandler(null);
-        await DrainPendingWorkflowsOnShutdownAsync(cancellationToken).ConfigureAwait(false);
+        _executionEngine.SetNodeCompletedHandler(null);
+        await DrainPendingExecutionsOnShutdownAsync(cancellationToken).ConfigureAwait(false);
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 正常停止時に既知 workflow の pending / processing を可能な限りドレインする。
+    /// 正常停止時に既知 execution の pending / processing を可能な限りドレインする。
     /// </summary>
-    private async Task DrainPendingWorkflowsOnShutdownAsync(CancellationToken cancellationToken)
+    private async Task DrainPendingExecutionsOnShutdownAsync(CancellationToken cancellationToken)
     {
-        var workflowIds = _states.Keys.ToArray();
-        if (workflowIds.Length == 0)
+        var executionIds = _states.Keys.ToArray();
+        if (executionIds.Length == 0)
             return;
 
-        var drainTasks = workflowIds.Select(workflowId => DrainAsync(workflowId, cancellationToken));
+        var drainTasks = executionIds.Select(executionId => DrainAsync(executionId, cancellationToken));
         try
         {
             await Task.WhenAll(drainTasks).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            var remainingCount = CountActiveWorkflows();
+            var remainingCount = CountActiveExecutions();
             _logger.DrainShutdownTimeout(remainingCount);
             throw;
         }
     }
 
     /// <summary>
-    /// 未ドレイン（queued / processing）状態の workflow 件数を数える。
+    /// 未ドレイン（queued / processing）状態の execution 件数を数える。
     /// </summary>
-    private int CountActiveWorkflows()
+    private int CountActiveExecutions()
     {
         var count = 0;
         foreach (var state in _states.Values)
@@ -228,28 +228,28 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
     }
 
     /// <summary>
-    /// グローバル待ち行列を読み続け、workflow 単位処理へ振り分けるワーカーループ。
+    /// グローバル待ち行列を読み続け、execution 単位処理へ振り分けるワーカーループ。
     /// </summary>
     private async Task RunWorkerLoopAsync(CancellationToken stoppingToken)
     {
-        // 単一 reader で global queue を取り出し、workflow 単位処理へ委譲する。
+        // 単一 reader で global queue を取り出し、execution 単位処理へ委譲する。
         while (await _globalQueue.Reader.WaitToReadAsync(stoppingToken).ConfigureAwait(false))
         {
-            while (_globalQueue.Reader.TryRead(out var workflowId))
+            while (_globalQueue.Reader.TryRead(out var executionId))
             {
-                if (!_states.TryGetValue(workflowId, out var state))
+                if (!_states.TryGetValue(executionId, out var state))
                     continue;
 
-                await ProcessWorkflowAsync(workflowId, state, stoppingToken).ConfigureAwait(false);
+                await ProcessExecutionAsync(executionId, state, stoppingToken).ConfigureAwait(false);
             }
         }
     }
 
     /// <summary>
-    /// 単一 workflow の pending 要求を処理する。
+    /// 単一 execution の pending 要求を処理する。
     /// processing 中に再通知が来た場合は 1 ループ追加して取りこぼしを防ぐ。
     /// </summary>
-    private async Task ProcessWorkflowAsync(Guid workflowId, WorkflowQueueState state, CancellationToken stoppingToken)
+    private async Task ProcessExecutionAsync(Guid executionId, ExecutionQueueState state, CancellationToken stoppingToken)
     {
         lock (state.Gate)
         {
@@ -264,9 +264,9 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
         {
             while (true)
             {
-                // 同一 workflow の短時間バーストをまとめる。
+                // 同一 execution の短時間バーストをまとめる。
                 await DelayForDebounceAsync(state, stoppingToken).ConfigureAwait(false);
-                await UpdateProjectionAsync(workflowId, stoppingToken).ConfigureAwait(false);
+                await UpdateProjectionAsync(executionId, stoppingToken).ConfigureAwait(false);
 
                 lock (state.Gate)
                 {
@@ -319,7 +319,7 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
                     shouldRetry = true;
                     retryDelayMs = GetRetryDelayMs(state.ConsecutiveFailureCount, _retryBaseDelayMs, _retryMaxDelayMs);
                     if (state.IdleSignal.Task.IsCompleted)
-                        state.IdleSignal = WorkflowQueueState.CreatePendingSignal();
+                        state.IdleSignal = ExecutionQueueState.CreatePendingSignal();
                 }
             }
 
@@ -327,27 +327,27 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
             {
                 var deadLetterEntry = new DeadLetterEntry
                 {
-                    ExecutionId = workflowId,
+                    ExecutionId = executionId,
                     DeadLetteredAtUtc = DateTime.UtcNow,
                     RetryCount = retryCount,
                     ErrorType = exception.GetType().Name,
                     ErrorMessage = exception.Message
                 };
                 // NOTE: 現状はプロセス内メモリへ退避するのみ。永続 DLQ（DB/外部キュー）は未対応。
-                _deadLetters[workflowId] = deadLetterEntry;
+                _deadLetters[executionId] = deadLetterEntry;
 
-                _logger.MovedToDeadLetter(exception, workflowId, retryCount);
+                _logger.MovedToDeadLetter(exception, executionId, retryCount);
                 return;
             }
 
             _logger.ProcessingFailedRetryScheduled(
                 exception,
-                workflowId,
+                executionId,
                 retryCount,
                 _maxRetryAttempts,
                 retryDelayMs);
 
-            await ScheduleRetryAsync(workflowId, retryDelayMs, stoppingToken).ConfigureAwait(false);
+            await ScheduleRetryAsync(executionId, retryDelayMs, stoppingToken).ConfigureAwait(false);
         }
 #pragma warning restore CA1031
     }
@@ -355,7 +355,7 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
     /// <summary>
     /// 最終 enqueue 時刻に基づくデバウンス待機を行う。
     /// </summary>
-    private async Task DelayForDebounceAsync(WorkflowQueueState state, CancellationToken ct)
+    private async Task DelayForDebounceAsync(ExecutionQueueState state, CancellationToken ct)
     {
         if (_debounceMs <= 0)
             return;
@@ -372,25 +372,25 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
     }
 
     /// <summary>
-    /// workflow の現在エンジン状態を読み、投影更新を実行する。
+    /// execution の現在エンジン状態を読み、投影更新を実行する。
     /// </summary>
-    private async Task UpdateProjectionAsync(Guid workflowId, CancellationToken ct)
+    private async Task UpdateProjectionAsync(Guid executionId, CancellationToken ct)
     {
         // BackgroundService は singleton なので、毎回 scope を切って scoped service を解決する。
         using var scope = _scopeFactory.CreateScope();
-        var workflowService = scope.ServiceProvider.GetRequiredService<IExecutionService>();
-        await workflowService.UpdateProjectionFromEngineAsync(workflowId, ct).ConfigureAwait(false);
+        var executionService = scope.ServiceProvider.GetRequiredService<IExecutionService>();
+        await executionService.UpdateProjectionFromEngineAsync(executionId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// バックオフ待機後に同一 workflow をキューへ再投入する。
+    /// バックオフ待機後に同一 execution をキューへ再投入する。
     /// </summary>
-    private async Task ScheduleRetryAsync(Guid workflowId, int delayMs, CancellationToken ct)
+    private async Task ScheduleRetryAsync(Guid executionId, int delayMs, CancellationToken ct)
     {
         if (delayMs > 0)
             await Task.Delay(delayMs, ct).ConfigureAwait(false);
 
-        if (!_states.TryGetValue(workflowId, out var state))
+        if (!_states.TryGetValue(executionId, out var state))
             return;
 
         lock (state.Gate)
@@ -399,7 +399,7 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
                 return;
         }
 
-        await _globalQueue.Writer.WriteAsync(workflowId, ct).ConfigureAwait(false);
+        await _globalQueue.Writer.WriteAsync(executionId, ct).ConfigureAwait(false);
     }
 
     /// <summary>

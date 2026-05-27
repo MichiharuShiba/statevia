@@ -1,8 +1,8 @@
-import type { WorkflowView } from "../../app/lib/types";
+import type { ExecutionView } from "../../app/lib/types";
 
-export const mockExecution: WorkflowView = {
+export const mockExecution: ExecutionView = {
   displayId: "ex-1",
-  /** buildWorkflowView が graphId にコピーするため、表示検証用に resourceId = graphId と揃える */
+  /** buildExecutionView が graphId にコピーするため、表示検証用に resourceId = graphId と揃える */
   resourceId: "hello",
   status: "Running",
   startedAt: "2026-01-01T00:00:00Z",

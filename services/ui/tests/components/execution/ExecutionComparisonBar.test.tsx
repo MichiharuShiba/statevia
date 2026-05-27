@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ExecutionComparisonBar } from "../../../app/components/execution/ExecutionComparisonBar";
-import type { WorkflowView } from "../../../app/lib/types";
+import type { ExecutionView } from "../../../app/lib/types";
 import { computeExecutionDiff } from "../../../app/lib/executionDiff";
 import { uiText } from "../../../app/lib/uiText";
 
 function exec(
   displayId: string,
-  nodes: WorkflowView["nodes"],
-  status: WorkflowView["status"] = "Running"
-): WorkflowView {
+  nodes: ExecutionView["nodes"],
+  status: ExecutionView["status"] = "Running"
+): ExecutionView {
   return {
     displayId,
     resourceId: displayId,
@@ -24,8 +24,8 @@ function exec(
 
 const node = (
   executionNodeId: string,
-  status: WorkflowView["nodes"][0]["status"]
-): WorkflowView["nodes"][0] => ({
+  status: ExecutionView["nodes"][0]["status"]
+): ExecutionView["nodes"][0] => ({
   executionNodeId,
   nodeType: "Task",
   status,

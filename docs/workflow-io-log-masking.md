@@ -2,14 +2,14 @@
 
 ## 目的
 
-`workflowInput` および状態 `output` は機微情報を含み得るため、ログ出力時はマスキングを前提とする。
+`input`（実行開始入力）および状態 `output` は機微情報を含み得るため、ログ出力時はマスキングを前提とする。
 本方針は `AGENTS.md` の IO-14 に整合する。
 
 ## 実装方針
 
 - API / Engine は共通 `LogRedaction` を使用する。
 - 最低限のマスク対象キーは `password`, `token`, `secret`, `authorization`。
-- `workflowInput`, `input`, `output` キーは値をプレースホルダへ置換する。
+- `input`, `output` キーは値をプレースホルダへ置換する。
 
 ## 運用上の注意
 

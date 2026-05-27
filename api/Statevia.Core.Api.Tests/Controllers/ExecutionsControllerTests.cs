@@ -101,7 +101,7 @@ public sealed class ExecutionsControllerTests
             LastTenantId = tenantId;
             return GetResult;
         }
-        public async Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct)
+        public async Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
@@ -115,14 +115,14 @@ public sealed class ExecutionsControllerTests
             LastTenantId = tenantId;
             return GraphJsonResult;
         }
-        public async Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct)
+        public async Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
             return GraphJsonResult;
         }
 
-        public async Task<ExecutionViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct)
+        public async Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
@@ -177,13 +177,13 @@ public sealed class ExecutionsControllerTests
             if (ExceptionToThrow is { } ex) throw ex;
         }
 
-        public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct) =>
+        public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) =>
             throw new NotSupportedException();
     }
 
-    private static ExecutionsController CreateController(DefaultHttpContext http, FakeExecutionService workflows, ExecutionStreamService stream)
+    private static ExecutionsController CreateController(DefaultHttpContext http, FakeExecutionService executions, ExecutionStreamService stream)
     {
-        return new ExecutionsController(workflows, stream)
+        return new ExecutionsController(executions, stream)
         {
             ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = http }
         };
@@ -203,13 +203,13 @@ public sealed class ExecutionsControllerTests
         http.Request.Headers["X-Idempotency-Key"] = "idem";
 
         // Act
-        var workflows = new FakeExecutionService
+        var executions = new FakeExecutionService
         {
             StartResult = new ExecutionResponse { DisplayId = "WF-DISP-1", ResourceId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow, UpdatedAt = null, CancelRequested = false, RestartLost = false }
         };
 
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         var request = new StartExecutionRequest { DefinitionId = "def-1", Input = null };
 
@@ -234,9 +234,9 @@ public sealed class ExecutionsControllerTests
         var http = new DefaultHttpContext();
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => controller.List(new ExecutionListQuery(), ct: CancellationToken.None));
@@ -253,7 +253,7 @@ public sealed class ExecutionsControllerTests
         // X-Tenant-Id intentionally missing
 
         // Act
-        var workflows = new FakeExecutionService
+        var executions = new FakeExecutionService
         {
             ListPagedResult = new PagedResult<ExecutionResponse>
             {
@@ -268,15 +268,15 @@ public sealed class ExecutionsControllerTests
             }
         };
 
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         // Assert
         var result = await controller.List(new ExecutionListQuery { Limit = 1, Offset = 0 }, ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(result);
         var paged = Assert.IsType<PagedResult<ExecutionResponse>>(ok.Value);
         Assert.Single(paged.Items);
-        Assert.Equal("default", workflows.LastTenantId);
+        Assert.Equal("default", executions.LastTenantId);
     }
 
     /// <summary>
@@ -290,7 +290,7 @@ public sealed class ExecutionsControllerTests
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
         // Act
-        var workflows = new FakeExecutionService
+        var executions = new FakeExecutionService
         {
             ListPagedResult = new PagedResult<ExecutionResponse>
             {
@@ -305,8 +305,8 @@ public sealed class ExecutionsControllerTests
             }
         };
 
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         // Assert
         var result = await controller.List(new ExecutionListQuery { Limit = 1, Offset = 0 }, ct: CancellationToken.None);
@@ -326,9 +326,9 @@ public sealed class ExecutionsControllerTests
         var http = new DefaultHttpContext();
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         await Assert.ThrowsAsync<ArgumentException>(() => controller.List(new ExecutionListQuery { Limit = 501, Offset = 0 }, ct: CancellationToken.None));
     }
@@ -343,9 +343,9 @@ public sealed class ExecutionsControllerTests
         var http = new DefaultHttpContext();
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => controller.List(new ExecutionListQuery { Limit = 1, Offset = -1 }, ct: CancellationToken.None));
     }
@@ -360,9 +360,9 @@ public sealed class ExecutionsControllerTests
         var http = new DefaultHttpContext();
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => controller.List(new ExecutionListQuery { Limit = 0, Offset = 0 }, ct: CancellationToken.None));
     }
@@ -378,13 +378,13 @@ public sealed class ExecutionsControllerTests
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
         // Act
-        var workflows = new FakeExecutionService
+        var executions = new FakeExecutionService
         {
             GetResult = new ExecutionResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow }
         };
 
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         // Assert
         var result = await controller.Get("D1", ct: CancellationToken.None);
@@ -404,9 +404,9 @@ public sealed class ExecutionsControllerTests
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
         // Act
-        var workflows = new FakeExecutionService { GraphJsonResult = "{\"nodes\":[]}" };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService { GraphJsonResult = "{\"nodes\":[]}" };
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         // Assert
         var result = await controller.GetGraph("X", ct: CancellationToken.None);
@@ -419,14 +419,14 @@ public sealed class ExecutionsControllerTests
     /// 状態取得で成功応答を返す。
     /// </summary>
     [Fact]
-    public async Task GetState_ReturnsOkWorkflowView()
+    public async Task GetState_ReturnsOkExecutionView()
     {
         // Arrange
         var http = new DefaultHttpContext();
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
         // Act
-        var workflows = new FakeExecutionService
+        var executions = new FakeExecutionService
         {
             ViewResult = new ExecutionViewDto
             {
@@ -462,8 +462,8 @@ public sealed class ExecutionsControllerTests
             }
         };
 
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         // Assert
         var result = await controller.GetState("X", atSeq: 1, ct: CancellationToken.None);
@@ -488,7 +488,7 @@ public sealed class ExecutionsControllerTests
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
         // Act
-        var workflows = new FakeExecutionService
+        var executions = new FakeExecutionService
         {
             EventsResult = new ExecutionEventsResponseDto
             {
@@ -500,8 +500,8 @@ public sealed class ExecutionsControllerTests
             }
         };
 
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         // Assert
         var result = await controller.GetEvents("X", afterSeq: 0, limit: 10, ct: CancellationToken.None);
@@ -522,10 +522,10 @@ public sealed class ExecutionsControllerTests
         http.Response.Body = new MemoryStream();
 
         // Act
-        var workflows = new FakeExecutionService();
+        var executions = new FakeExecutionService();
         var display = new FakeDisplayIdService { ResolveResult = null };
-        var stream = new ExecutionStreamService(workflows, display);
-        var controller = CreateController(http, workflows, stream);
+        var stream = new ExecutionStreamService(executions, display);
+        var controller = CreateController(http, executions, stream);
 
         await controller.GetStream("X", ct: CancellationToken.None);
 
@@ -547,16 +547,16 @@ public sealed class ExecutionsControllerTests
         http.Request.Path = "/v1/executions/X/cancel";
 
         // Act
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         var result = await controller.Cancel("X", tenantIdHeader: "t1", idempotencyKey: "idem", ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
-        Assert.True(workflows.CancelCalled);
-        Assert.Equal("idem", workflows.CancelIdempotencyKey);
+        Assert.True(executions.CancelCalled);
+        Assert.Equal("idem", executions.CancelIdempotencyKey);
     }
 
     /// <summary>
@@ -572,16 +572,16 @@ public sealed class ExecutionsControllerTests
         http.Request.Path = "/v1/executions/X/cancel";
 
         // Act
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         var result = await controller.Cancel("X", ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
-        Assert.True(workflows.CancelCalled);
-        Assert.Null(workflows.CancelIdempotencyKey);
+        Assert.True(executions.CancelCalled);
+        Assert.Null(executions.CancelIdempotencyKey);
     }
 
     /// <summary>
@@ -598,17 +598,17 @@ public sealed class ExecutionsControllerTests
         http.Request.Path = "/v1/executions/X/nodes/node-1/resume";
 
         // Act
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         var result = await controller.ResumeNode("X", "node-1", new ResumeNodeRequest { ResumeKey = "Approve" }, tenantIdHeader: "t1", idempotencyKey: "idem", ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
-        Assert.True(workflows.ResumeCalled);
-        Assert.Equal("Approve", workflows.ResumeResumeKey);
-        Assert.Equal("idem", workflows.ResumeIdempotencyKey);
+        Assert.True(executions.ResumeCalled);
+        Assert.Equal("Approve", executions.ResumeResumeKey);
+        Assert.Equal("idem", executions.ResumeIdempotencyKey);
     }
 
     /// <summary>
@@ -625,17 +625,17 @@ public sealed class ExecutionsControllerTests
         http.Request.Path = "/v1/executions/X/nodes/node-1/resume";
 
         // Act
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         var result = await controller.ResumeNode("X", "node-1", new ResumeNodeRequest { ResumeKey = "Approve" }, tenantIdHeader: "t1", ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
-        Assert.True(workflows.ResumeCalled);
-        Assert.Equal("Approve", workflows.ResumeResumeKey);
-        Assert.Null(workflows.ResumeIdempotencyKey);
+        Assert.True(executions.ResumeCalled);
+        Assert.Equal("Approve", executions.ResumeResumeKey);
+        Assert.Null(executions.ResumeIdempotencyKey);
     }
 
     /// <summary>
@@ -652,16 +652,16 @@ public sealed class ExecutionsControllerTests
         http.Request.Path = "/v1/executions/X/nodes/node-1/resume";
 
         // Act
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         var result = await controller.ResumeNode("X", "node-1", new ResumeNodeRequest { ResumeKey = "Approve" }, idempotencyKey: "idem", ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
-        Assert.True(workflows.ResumeCalled);
-        Assert.Equal("default", workflows.LastTenantId);
+        Assert.True(executions.ResumeCalled);
+        Assert.Equal("default", executions.LastTenantId);
     }
 
     /// <summary>
@@ -678,17 +678,17 @@ public sealed class ExecutionsControllerTests
         http.Request.Path = "/v1/executions/X/nodes/node-1/resume";
 
         // Act
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         var result = await controller.ResumeNode("X", "node-1", body: null, tenantIdHeader: "t1", idempotencyKey: "idem", ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
-        Assert.True(workflows.ResumeCalled);
-        Assert.Null(workflows.ResumeResumeKey);
-        Assert.Equal("idem", workflows.ResumeIdempotencyKey);
+        Assert.True(executions.ResumeCalled);
+        Assert.Null(executions.ResumeResumeKey);
+        Assert.Equal("idem", executions.ResumeIdempotencyKey);
     }
 
     /// <summary>
@@ -705,17 +705,17 @@ public sealed class ExecutionsControllerTests
         http.Request.Path = "/v1/executions/X/nodes/node-1/resume";
 
         // Act
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         var result = await controller.ResumeNode("X", "node-1", new ResumeNodeRequest { ResumeKey = null }, tenantIdHeader: "t1", idempotencyKey: "idem", ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
-        Assert.True(workflows.ResumeCalled);
-        Assert.Null(workflows.ResumeResumeKey);
-        Assert.Equal("idem", workflows.ResumeIdempotencyKey);
+        Assert.True(executions.ResumeCalled);
+        Assert.Null(executions.ResumeResumeKey);
+        Assert.Equal("idem", executions.ResumeIdempotencyKey);
     }
 
     /// <summary>
@@ -731,9 +731,9 @@ public sealed class ExecutionsControllerTests
         http.Request.Method = "POST";
         http.Request.Path = "/v1/executions/X/nodes/node-1/resume";
 
-        var workflows = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no node") };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no node") };
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         await Assert.ThrowsAsync<NotFoundException>(() =>
             controller.ResumeNode("X", "node-1", new ResumeNodeRequest { ResumeKey = "Approve" }, ct: CancellationToken.None));
@@ -754,9 +754,9 @@ public sealed class ExecutionsControllerTests
         http.Request.Path = default;
 
         // Act
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         var result = await controller.ResumeNode(
             "X",
@@ -768,9 +768,9 @@ public sealed class ExecutionsControllerTests
 
         // Assert
         Assert.IsType<NoContentResult>(result);
-        Assert.True(workflows.ResumeCalled);
-        Assert.Equal("Approve", workflows.ResumeResumeKey);
-        Assert.Equal("idem", workflows.ResumeIdempotencyKey);
+        Assert.True(executions.ResumeCalled);
+        Assert.Equal("Approve", executions.ResumeResumeKey);
+        Assert.Equal("idem", executions.ResumeIdempotencyKey);
     }
 
     /// <summary>
@@ -787,16 +787,16 @@ public sealed class ExecutionsControllerTests
         http.Request.Path = "/v1/executions/X/events";
 
         // Act
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         var result = await controller.PublishEvent("X", new PublishEventRequest { Name = "Approve" }, tenantIdHeader: "t1", idempotencyKey: "idem", ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
-        Assert.True(workflows.PublishCalled);
-        Assert.Equal("idem", workflows.PublishIdempotencyKey);
+        Assert.True(executions.PublishCalled);
+        Assert.Equal("idem", executions.PublishIdempotencyKey);
     }
 
     /// <summary>
@@ -812,12 +812,12 @@ public sealed class ExecutionsControllerTests
         http.Request.Headers["X-Tenant-Id"] = "t1";
         http.Request.Headers["X-Idempotency-Key"] = "idem";
 
-        var workflows = new FakeExecutionService
+        var executions = new FakeExecutionService
         {
             ExceptionToThrow = new NotFoundException("no def")
         };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         var request = new StartExecutionRequest { DefinitionId = "def-1", Input = null };
 
@@ -837,9 +837,9 @@ public sealed class ExecutionsControllerTests
         http.Request.Path = "/v1/executions/X/cancel";
         http.Request.Headers["X-Idempotency-Key"] = "idem";
 
-        var workflows = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no wf") };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no wf") };
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         await Assert.ThrowsAsync<NotFoundException>(() => controller.Cancel("X", ct: CancellationToken.None));
     }
@@ -854,9 +854,9 @@ public sealed class ExecutionsControllerTests
         var http = new DefaultHttpContext();
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
-        var workflows = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no wf") };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no wf") };
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         await Assert.ThrowsAsync<NotFoundException>(() => controller.Get("X", ct: CancellationToken.None));
     }
@@ -871,9 +871,9 @@ public sealed class ExecutionsControllerTests
         var http = new DefaultHttpContext();
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
-        var workflows = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no wf") };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no wf") };
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         await Assert.ThrowsAsync<NotFoundException>(() => controller.GetGraph("X", ct: CancellationToken.None));
     }
@@ -888,9 +888,9 @@ public sealed class ExecutionsControllerTests
         var http = new DefaultHttpContext();
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
-        var workflows = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no wf") };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no wf") };
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         await Assert.ThrowsAsync<NotFoundException>(() => controller.GetState("X", atSeq: 1, ct: CancellationToken.None));
     }
@@ -905,9 +905,9 @@ public sealed class ExecutionsControllerTests
         var http = new DefaultHttpContext();
         http.Request.Headers["X-Tenant-Id"] = "t1";
 
-        var workflows = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no wf") };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no wf") };
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         await Assert.ThrowsAsync<NotFoundException>(() => controller.GetEvents("X", afterSeq: 0, limit: 10, ct: CancellationToken.None));
     }
@@ -923,10 +923,10 @@ public sealed class ExecutionsControllerTests
         http.Request.Headers["X-Tenant-Id"] = "t1";
         http.Response.Body = new System.IO.MemoryStream();
 
-        var workflows = new FakeExecutionService();
+        var executions = new FakeExecutionService();
         var display = new ThrowingDisplayIdService(new NotFoundException("no wf"));
-        var stream = new ExecutionStreamService(workflows, display);
-        var controller = CreateController(http, workflows, stream);
+        var stream = new ExecutionStreamService(executions, display);
+        var controller = CreateController(http, executions, stream);
 
         await Assert.ThrowsAsync<NotFoundException>(() => controller.GetStream("X", ct: CancellationToken.None));
     }
@@ -944,9 +944,9 @@ public sealed class ExecutionsControllerTests
         http.Request.Method = "POST";
         http.Request.Path = "/v1/executions/X/events";
 
-        var workflows = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no wf") };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no wf") };
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         await Assert.ThrowsAsync<NotFoundException>(() => controller.PublishEvent("X", new PublishEventRequest { Name = "Approve" }, ct: CancellationToken.None));
     }
@@ -965,12 +965,12 @@ public sealed class ExecutionsControllerTests
         // X-Idempotency-Key intentionally missing
 
         // Act
-        var workflows = new FakeExecutionService
+        var executions = new FakeExecutionService
         {
             StartResult = new ExecutionResponse { DisplayId = "WF-DISP-1", ResourceId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow }
         };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         var request = new StartExecutionRequest { DefinitionId = "def-1", Input = null };
 
@@ -979,8 +979,8 @@ public sealed class ExecutionsControllerTests
         var created = Assert.IsType<CreatedAtActionResult>(result.Result);
         Assert.Equal("WF-DISP-1", ((ExecutionResponse)created.Value!).DisplayId);
 
-        Assert.Equal("default", workflows.LastTenantId);
-        Assert.Null(workflows.LastIdempotencyKey);
+        Assert.Equal("default", executions.LastTenantId);
+        Assert.Null(executions.LastIdempotencyKey);
     }
 
     /// <summary>
@@ -997,16 +997,16 @@ public sealed class ExecutionsControllerTests
         http.Request.Headers["X-Idempotency-Key"] = "idem";
 
         // Act
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         // Assert
         var result = await controller.Cancel("X", idempotencyKey: "idem", ct: CancellationToken.None);
         Assert.IsType<NoContentResult>(result);
 
-        Assert.Equal("default", workflows.LastTenantId);
-        Assert.Equal("idem", workflows.LastIdempotencyKey);
+        Assert.Equal("default", executions.LastTenantId);
+        Assert.Equal("idem", executions.LastIdempotencyKey);
     }
 
     /// <summary>
@@ -1020,9 +1020,9 @@ public sealed class ExecutionsControllerTests
         // X-Tenant-Id intentionally missing
 
         // Act
-        var workflows = new FakeExecutionService { GetResult = new ExecutionResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow } };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService { GetResult = new ExecutionResponse { DisplayId = "D1", ResourceId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow } };
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         // Assert
         var result = await controller.Get("X", ct: CancellationToken.None);
@@ -1030,7 +1030,7 @@ public sealed class ExecutionsControllerTests
         var model = Assert.IsType<ExecutionResponse>(ok.Value);
         Assert.Equal("D1", model.DisplayId);
 
-        Assert.Equal("default", workflows.LastTenantId);
+        Assert.Equal("default", executions.LastTenantId);
     }
 
     /// <summary>
@@ -1044,16 +1044,16 @@ public sealed class ExecutionsControllerTests
         // X-Tenant-Id intentionally missing
 
         // Act
-        var workflows = new FakeExecutionService { GraphJsonResult = "{\"nodes\":[]}" };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService { GraphJsonResult = "{\"nodes\":[]}" };
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         // Assert
         var result = await controller.GetGraph("X", ct: CancellationToken.None);
         var content = Assert.IsType<ContentResult>(result.Result);
         Assert.Equal("{\"nodes\":[]}", content.Content);
 
-        Assert.Equal("default", workflows.LastTenantId);
+        Assert.Equal("default", executions.LastTenantId);
     }
 
     /// <summary>
@@ -1067,19 +1067,19 @@ public sealed class ExecutionsControllerTests
         // X-Tenant-Id intentionally missing
 
         // Act
-        var workflows = new FakeExecutionService
+        var executions = new FakeExecutionService
         {
             ViewResult = new ExecutionViewDto { DisplayId = "E1", ResourceId = Guid.NewGuid().ToString("D"), GraphId = "G1", Status = "ACTIVE", StartedAt = DateTime.UtcNow, UpdatedAt = null, CancelRequested = false, RestartLost = false, Nodes = [] }
         };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         // Assert
         var result = await controller.GetState("X", atSeq: 1, ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.IsType<ExecutionViewDto>(ok.Value);
 
-        Assert.Equal("default", workflows.LastTenantId);
+        Assert.Equal("default", executions.LastTenantId);
     }
 
     /// <summary>
@@ -1093,19 +1093,19 @@ public sealed class ExecutionsControllerTests
         // X-Tenant-Id intentionally missing
 
         // Act
-        var workflows = new FakeExecutionService
+        var executions = new FakeExecutionService
         {
             EventsResult = new ExecutionEventsResponseDto { Events = [], HasMore = false }
         };
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         // Assert
         var result = await controller.GetEvents("X", afterSeq: 0, limit: 10, ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.IsType<ExecutionEventsResponseDto>(ok.Value);
 
-        Assert.Equal("default", workflows.LastTenantId);
+        Assert.Equal("default", executions.LastTenantId);
     }
 
     /// <summary>
@@ -1120,10 +1120,10 @@ public sealed class ExecutionsControllerTests
         http.Response.Body = new MemoryStream();
 
         // Act
-        var workflows = new FakeExecutionService();
+        var executions = new FakeExecutionService();
         var display = new FakeDisplayIdService { ResolveResult = null };
-        var stream = new ExecutionStreamService(workflows, display);
-        var controller = CreateController(http, workflows, stream);
+        var stream = new ExecutionStreamService(executions, display);
+        var controller = CreateController(http, executions, stream);
 
         await controller.GetStream("X", ct: CancellationToken.None);
         // Assert
@@ -1144,16 +1144,16 @@ public sealed class ExecutionsControllerTests
         http.Request.Path = "/v1/executions/X/events";
 
         // Act
-        var workflows = new FakeExecutionService();
-        var stream = new ExecutionStreamService(workflows, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, workflows, stream);
+        var executions = new FakeExecutionService();
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
 
         // Assert
         var result = await controller.PublishEvent("X", new PublishEventRequest { Name = "Approve" }, ct: CancellationToken.None);
         Assert.IsType<NoContentResult>(result);
 
-        Assert.Equal("default", workflows.LastTenantId);
-        Assert.Null(workflows.LastIdempotencyKey);
+        Assert.Equal("default", executions.LastTenantId);
+        Assert.Null(executions.LastIdempotencyKey);
     }
 }
 

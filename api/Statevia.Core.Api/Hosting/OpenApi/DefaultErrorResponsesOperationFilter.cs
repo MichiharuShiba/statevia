@@ -37,7 +37,7 @@ internal sealed class DefaultErrorResponsesOperationFilter : IOperationFilter
             return false;
 
         var relativePath = context.ApiDescription.RelativePath ?? string.Empty;
-        return relativePath.StartsWith("v1/workflows", StringComparison.OrdinalIgnoreCase);
+        return relativePath.StartsWith("v1/executions", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AddErrorResponse(

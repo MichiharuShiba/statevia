@@ -6,6 +6,167 @@
     "version": "v1"
   },
   "paths": {
+    "/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "POST /v1/auth/login — パスワードログイン。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "GET /v1/auth/me — 認証済み Principal 情報。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMeResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMeResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMeResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/definitions": {
       "post": {
         "tags": [
@@ -483,128 +644,10 @@
         }
       }
     },
-    "/v1/graphs/{graphId}": {
-      "get": {
-        "tags": [
-          "Graphs"
-        ],
-        "summary": "GET /v1/graphs/{graphId} — 契約 4.1 Graph Definition（nodes / edges）を返す。graphId は definition の display_id。X-Tenant-Id でスコープ。",
-        "parameters": [
-          {
-            "name": "graphId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
-            "description": "テナント ID。未指定時は \"default\"。",
-            "schema": {
-              "type": "string",
-              "default": "default"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "description": "実行グラフ JSON（engine 契約）。詳細は docs/core-engine-execution-graph-spec.md を参照。"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/health": {
-      "get": {
-        "tags": [
-          "Health"
-        ],
-        "summary": "GET /v1/health — サービス死活。",
-        "parameters": [
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
-            "description": "テナント ID。未指定時は \"default\"。",
-            "schema": {
-              "type": "string",
-              "default": "default"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v1/executions": {
       "post": {
         "tags": [
-          "Workflows"
+          "Executions"
         ],
         "summary": "POST /v1/executions — definitionId で定義を取得し、Engine.Start を呼ぶ。display_id と resource_id を返す（U4）。",
         "parameters": [
@@ -724,9 +767,9 @@
       },
       "get": {
         "tags": [
-          "Workflows"
+          "Executions"
         ],
-        "summary": "GET /v1/executions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&status=&definitionId=&name=&sortBy=&sortOrder=` で Statevia.Core.Api.Contracts.PagedResult`1（O1/O2）。\r\n`definitionId` は定義の display / UUID。 `name` は workflow の `displayId` 部分一致、または workflow の UUID 完全一致で絞り込み。",
+        "summary": "GET /v1/executions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&status=&definitionId=&name=&sortBy=&sortOrder=` で Statevia.Core.Api.Contracts.PagedResult`1（O1/O2）。\r\n`definitionId` は定義の display / UUID。 `name` は execution の `displayId` 部分一致、または execution の UUID 完全一致で絞り込み。",
         "parameters": [
           {
             "name": "limit",
@@ -767,7 +810,7 @@
           {
             "name": "name",
             "in": "query",
-            "description": "表示 ID 部分一致または workflow UUID 完全一致。",
+            "description": "表示 ID 部分一致または execution UUID 完全一致。",
             "schema": {
               "type": "string"
             }
@@ -862,9 +905,9 @@
     "/v1/executions/{id}": {
       "get": {
         "tags": [
-          "Workflows"
+          "Executions"
         ],
-        "summary": "GET /v1/executions/{id} — 一覧と同一の Statevia.Core.Api.Controllers.ExecutionResponse（UI WorkflowDTO 向け）。X-Tenant-Id でスコープ。",
+        "summary": "GET /v1/executions/{id} — 一覧と同一の Statevia.Core.Api.Controllers.ExecutionResponse（UI ExecutionDTO 向け）。X-Tenant-Id でスコープ。",
         "parameters": [
           {
             "name": "id",
@@ -948,7 +991,7 @@
     "/v1/executions/{id}/graph": {
       "get": {
         "tags": [
-          "Workflows"
+          "Executions"
         ],
         "summary": "GET /v1/executions/{id}/graph — execution_graph_snapshots から取得。X-Tenant-Id でスコープ。",
         "parameters": [
@@ -1025,9 +1068,9 @@
     "/v1/executions/{id}/state": {
       "get": {
         "tags": [
-          "Workflows"
+          "Executions"
         ],
-        "summary": "GET /v1/executions/{id}/state?atSeq= — UI 用 WorkflowView（リプレイは現状スナップショット近似）。",
+        "summary": "GET /v1/executions/{id}/state?atSeq= — UI 用 ExecutionView（リプレイは現状スナップショット近似）。",
         "parameters": [
           {
             "name": "id",
@@ -1119,7 +1162,7 @@
     "/v1/executions/{id}/events": {
       "get": {
         "tags": [
-          "Workflows"
+          "Executions"
         ],
         "summary": "GET /v1/executions/{id}/events — event_store 由来のタイムライン（limit / afterSeq）。",
         "parameters": [
@@ -1221,9 +1264,9 @@
       },
       "post": {
         "tags": [
-          "Workflows"
+          "Executions"
         ],
-        "summary": "POST /v1/executions/{id}/events — body: { \"name\": \"Approve\" }。Engine.PublishEvent(workflowId, eventName)。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。",
+        "summary": "POST /v1/executions/{id}/events — body: { \"name\": \"Approve\" }。Engine.PublishEvent(executionId, eventName)。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。",
         "parameters": [
           {
             "name": "id",
@@ -1334,7 +1377,7 @@
     "/v1/executions/{id}/stream": {
       "get": {
         "tags": [
-          "Workflows"
+          "Executions"
         ],
         "summary": "GET /v1/executions/{id}/stream — SSE（グラフ JSON の変化を GraphUpdated として送出）。",
         "parameters": [
@@ -1403,7 +1446,7 @@
     "/v1/executions/{id}/cancel": {
       "post": {
         "tags": [
-          "Workflows"
+          "Executions"
         ],
         "summary": "POST /v1/executions/{id}/cancel — Engine.CancelAsync を呼び、projection を更新。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。",
         "parameters": [
@@ -1497,7 +1540,7 @@
     "/v1/executions/{id}/nodes/{nodeId}/resume": {
       "post": {
         "tags": [
-          "Workflows"
+          "Executions"
         ],
         "summary": "POST /v1/executions/{id}/nodes/{nodeId}/resume — body: { \"resumeKey\": \"...\" }。PublishEvent と同様。X-Idempotency-Key で冪等。",
         "parameters": [
@@ -1614,6 +1657,124 @@
           }
         }
       }
+    },
+    "/v1/graphs/{graphId}": {
+      "get": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "GET /v1/graphs/{graphId} — 契約 4.1 Graph Definition（nodes / edges）を返す。graphId は definition の display_id。X-Tenant-Id でスコープ。",
+        "parameters": [
+          {
+            "name": "graphId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "実行グラフ JSON（engine 契約）。詳細は docs/core-engine-execution-graph-spec.md を参照。"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "GET /v1/health — サービス死活。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1638,6 +1799,37 @@
         },
         "additionalProperties": false,
         "description": "契約の error オブジェクト。"
+      },
+      "AuthMeResponse": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "description": "テナント内部 ID。",
+            "format": "uuid"
+          },
+          "tenantKey": {
+            "type": "string",
+            "description": "外部キー。",
+            "nullable": true
+          },
+          "principalId": {
+            "type": "string",
+            "description": "Principal ID。",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "description": "メールアドレス。",
+            "nullable": true
+          },
+          "isTenantAdmin": {
+            "type": "boolean",
+            "description": "テナント管理者か。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "認証済み Principal 情報。"
       },
       "CreateDefinitionRequest": {
         "required": [
@@ -1708,6 +1900,11 @@
             "type": "string",
             "description": "更新日時（UTC）。",
             "format": "date-time"
+          },
+          "latestVersion": {
+            "type": "integer",
+            "description": "最新版番号（投影。truth は definition_versions）。",
+            "format": "int32"
           },
           "yaml": {
             "type": "string",
@@ -1780,6 +1977,201 @@
         },
         "additionalProperties": false,
         "description": "GET …/events のレスポンス（UI `ExecutionEventsResponse`）。"
+      },
+      "ExecutionResponse": {
+        "type": "object",
+        "properties": {
+          "displayId": {
+            "type": "string",
+            "description": "表示用ワークフロー ID。",
+            "nullable": true
+          },
+          "resourceId": {
+            "type": "string",
+            "description": "ワークフローのリソース UUID。",
+            "format": "uuid"
+          },
+          "graphId": {
+            "type": "string",
+            "description": "定義グラフ ID。",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "状態文字列。",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "description": "開始日時（UTC）。",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "最終更新日時（UTC）。",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancelRequested": {
+            "type": "boolean",
+            "description": "キャンセル要求フラグ。"
+          },
+          "restartLost": {
+            "type": "boolean",
+            "description": "再起動喪失フラグ。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "ワークフロー一覧・単票の JSON 応答形（U4）。"
+      },
+      "ExecutionResponsePagedResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutionResponse"
+            },
+            "description": "ページ内の要素。",
+            "nullable": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "description": "条件に一致する総件数。",
+            "format": "int32"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "先頭からのオフセット。",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "ページサイズ。",
+            "format": "int32"
+          },
+          "hasMore": {
+            "type": "boolean",
+            "description": "次ページが存在するか。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "一覧 API のページング（O1）。"
+      },
+      "ExecutionViewDto": {
+        "type": "object",
+        "properties": {
+          "displayId": {
+            "type": "string",
+            "description": "表示用ワークフロー ID。",
+            "nullable": true
+          },
+          "resourceId": {
+            "type": "string",
+            "description": "ワークフローのリソース UUID。",
+            "nullable": true
+          },
+          "graphId": {
+            "type": "string",
+            "description": "定義グラフ ID（定義の resource_id の文字列化）。",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "ワークフロー状態文字列（Running 等）。",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "description": "開始日時（UTC）。",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "最終更新日時（UTC）。未更新なら null。",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancelRequested": {
+            "type": "boolean",
+            "description": "キャンセル要求が出ているか。"
+          },
+          "restartLost": {
+            "type": "boolean",
+            "description": "再起動でランタイム状態が失われた疑いがあるか。"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutionViewNodeDto"
+            },
+            "description": "実行ノードの一覧。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "UI `ExecutionView` に近い形（camelCase JSON）。GET …/state 等で返す。"
+      },
+      "ExecutionViewNodeDto": {
+        "type": "object",
+        "properties": {
+          "executionNodeId": {
+            "type": "string",
+            "description": "ExecutionGraph が付与するノード識別子（試行単位）。定義キャンバスのノードキーとは別。",
+            "nullable": true
+          },
+          "stateName": {
+            "type": "string",
+            "description": "ワークフロー定義上の状態名（Statevia.Core.Api.Contracts.ExecutionViewNodeDto.ExecutionNodeId とは別）。",
+            "nullable": true
+          },
+          "nodeType": {
+            "type": "string",
+            "description": "ノード種別（例: Action, Wait）。",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "ノードの実行状態。",
+            "nullable": true
+          },
+          "attempt": {
+            "type": "integer",
+            "description": "試行番号（1 始まり）。",
+            "format": "int32"
+          },
+          "workerId": {
+            "type": "string",
+            "description": "ワーカー識別子（任意）。",
+            "nullable": true
+          },
+          "waitKey": {
+            "type": "string",
+            "description": "Wait 解除キー（任意）。",
+            "nullable": true
+          },
+          "canceledByExecution": {
+            "type": "boolean",
+            "description": "実行キャンセルにより打ち切られたか。"
+          },
+          "input": {
+            "type": "object",
+            "description": "ノード入力（デバッグ用途。機密の可能性あり）。",
+            "nullable": true
+          },
+          "output": {
+            "type": "object",
+            "description": "ノード出力（デバッグ用途。機密の可能性あり）。",
+            "nullable": true
+          },
+          "conditionRouting": {
+            "type": "object",
+            "description": "条件遷移の評価情報（ExecutionGraph の conditionRouting をそのまま透過）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "実行ビュー上の 1 ノード。"
       },
       "GraphDefinitionResponse": {
         "type": "object",
@@ -1918,6 +2310,60 @@
         "additionalProperties": false,
         "description": "GET /v1/health の応答本文。"
       },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "tenantKey": {
+            "type": "string",
+            "description": "外部向けテナントキー。",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "description": "メールアドレス。",
+            "nullable": true
+          },
+          "password": {
+            "type": "string",
+            "description": "平文パスワード。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "ログイン要求。"
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "JWT アクセストークン。",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "有効期限（UTC）。",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string",
+            "description": "テナント内部 ID。",
+            "format": "uuid"
+          },
+          "tenantKey": {
+            "type": "string",
+            "description": "外部キー。",
+            "nullable": true
+          },
+          "principalId": {
+            "type": "string",
+            "description": "Principal ID。",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false,
+        "description": "ログイン成功応答。"
+      },
       "PublishEventRequest": {
         "required": [
           "name"
@@ -1956,9 +2402,21 @@
             "type": "string",
             "description": "開始に用いる定義 ID（display または UUID）。"
           },
+          "definitionVersion": {
+            "type": "integer",
+            "description": "開始に用いる版番号（省略時は latestVersion）。",
+            "format": "int32",
+            "nullable": true
+          },
+          "definitionVersionId": {
+            "type": "string",
+            "description": "開始に用いる版 UUID（definitionVersion より優先）。",
+            "format": "uuid",
+            "nullable": true
+          },
           "input": {
             "type": "object",
-            "description": "ワークフロー入力（任意）。",
+            "description": "実行開始時の入力（任意）。",
             "nullable": true
           }
         },
@@ -2025,205 +2483,14 @@
         },
         "additionalProperties": false,
         "description": "PUT /v1/definitions/{id} のリクエスト本文。"
-      },
-      "ExecutionResponse": {
-        "type": "object",
-        "properties": {
-          "displayId": {
-            "type": "string",
-            "description": "表示用ワークフロー ID。",
-            "nullable": true
-          },
-          "resourceId": {
-            "type": "string",
-            "description": "ワークフローのリソース UUID。",
-            "format": "uuid"
-          },
-          "graphId": {
-            "type": "string",
-            "description": "定義グラフ ID。",
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "description": "状態文字列。",
-            "nullable": true
-          },
-          "startedAt": {
-            "type": "string",
-            "description": "開始日時（UTC）。",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "description": "最終更新日時（UTC）。",
-            "format": "date-time",
-            "nullable": true
-          },
-          "cancelRequested": {
-            "type": "boolean",
-            "description": "キャンセル要求フラグ。"
-          },
-          "restartLost": {
-            "type": "boolean",
-            "description": "再起動喪失フラグ。"
-          }
-        },
-        "additionalProperties": false,
-        "description": "ワークフロー一覧・単票の JSON 応答形（U4）。"
-      },
-      "ExecutionResponsePagedResult": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ExecutionResponse"
-            },
-            "description": "ページ内の要素。",
-            "nullable": true
-          },
-          "totalCount": {
-            "type": "integer",
-            "description": "条件に一致する総件数。",
-            "format": "int32"
-          },
-          "offset": {
-            "type": "integer",
-            "description": "先頭からのオフセット。",
-            "format": "int32"
-          },
-          "limit": {
-            "type": "integer",
-            "description": "ページサイズ。",
-            "format": "int32"
-          },
-          "hasMore": {
-            "type": "boolean",
-            "description": "次ページが存在するか。"
-          }
-        },
-        "additionalProperties": false,
-        "description": "一覧 API のページング（O1）。"
-      },
-      "ExecutionViewDto": {
-        "type": "object",
-        "properties": {
-          "displayId": {
-            "type": "string",
-            "description": "表示用ワークフロー ID。",
-            "nullable": true
-          },
-          "resourceId": {
-            "type": "string",
-            "description": "ワークフローのリソース UUID。",
-            "nullable": true
-          },
-          "graphId": {
-            "type": "string",
-            "description": "定義グラフ ID（定義の resource_id の文字列化）。",
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "description": "ワークフロー状態文字列（Running 等）。",
-            "nullable": true
-          },
-          "startedAt": {
-            "type": "string",
-            "description": "開始日時（UTC）。",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "description": "最終更新日時（UTC）。未更新なら null。",
-            "format": "date-time",
-            "nullable": true
-          },
-          "cancelRequested": {
-            "type": "boolean",
-            "description": "キャンセル要求が出ているか。"
-          },
-          "restartLost": {
-            "type": "boolean",
-            "description": "再起動でランタイム状態が失われた疑いがあるか。"
-          },
-          "nodes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ExecutionViewNodeDto"
-            },
-            "description": "実行ノードの一覧。",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "UI `WorkflowView` に近い形（camelCase JSON）。GET …/state 等で返す。"
-      },
-      "ExecutionViewNodeDto": {
-        "type": "object",
-        "properties": {
-          "executionNodeId": {
-            "type": "string",
-            "description": "ExecutionGraph が付与するノード識別子（試行単位）。定義キャンバスのノードキーとは別。",
-            "nullable": true
-          },
-          "stateName": {
-            "type": "string",
-            "description": "ワークフロー定義上の状態名（Statevia.Core.Api.Contracts.ExecutionViewNodeDto.ExecutionNodeId とは別）。",
-            "nullable": true
-          },
-          "nodeType": {
-            "type": "string",
-            "description": "ノード種別（例: Action, Wait）。",
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "description": "ノードの実行状態。",
-            "nullable": true
-          },
-          "attempt": {
-            "type": "integer",
-            "description": "試行番号（1 始まり）。",
-            "format": "int32"
-          },
-          "workerId": {
-            "type": "string",
-            "description": "ワーカー識別子（任意）。",
-            "nullable": true
-          },
-          "waitKey": {
-            "type": "string",
-            "description": "Wait 解除キー（任意）。",
-            "nullable": true
-          },
-          "canceledByExecution": {
-            "type": "boolean",
-            "description": "実行キャンセルにより打ち切られたか。"
-          },
-          "input": {
-            "type": "object",
-            "description": "ノード入力（デバッグ用途。機密の可能性あり）。",
-            "nullable": true
-          },
-          "output": {
-            "type": "object",
-            "description": "ノード出力（デバッグ用途。機密の可能性あり）。",
-            "nullable": true
-          },
-          "conditionRouting": {
-            "type": "object",
-            "description": "条件遷移の評価情報（ExecutionGraph の conditionRouting をそのまま透過）。",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "ワークフロービュー上の 1 ノード。"
       }
     }
   },
   "tags": [
+    {
+      "name": "Auth",
+      "description": "認証 API。"
+    },
     {
       "name": "DefinitionSchemas",
       "description": "nodes 入力スキーマ REST API（`/v1/definitions/schema`）。"
@@ -2233,16 +2500,16 @@
       "description": "ワークフロー定義 REST API（`/v1/definitions`）。"
     },
     {
+      "name": "Executions",
+      "description": "実行 REST API（`/v1/executions`）。"
+    },
+    {
       "name": "Graphs",
       "description": "グラフ定義 REST API（`/v1/graphs`）。"
     },
     {
       "name": "Health",
       "description": "死活監視（`/v1/health`）。"
-    },
-    {
-      "name": "Workflows",
-      "description": "ワークフロー REST API（`/v1/executions`）。"
     }
   ]
 }

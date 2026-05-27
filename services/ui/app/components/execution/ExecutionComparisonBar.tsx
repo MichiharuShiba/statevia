@@ -1,13 +1,13 @@
 "use client";
 
-import type { WorkflowView } from "../../lib/types";
+import type { ExecutionView } from "../../lib/types";
 import type { ExecutionDiffResult, NodeDiffItem } from "../../lib/executionDiff";
 import { getStatusStyle } from "../../lib/statusStyle";
 import { useUiText } from "../../lib/uiTextContext";
 
 type ExecutionComparisonBarProps = {
-  executionLeft: WorkflowView | null;
-  executionRight: WorkflowView | null;
+  executionLeft: ExecutionView | null;
+  executionRight: ExecutionView | null;
   executionIdRight: string;
   onExecutionIdRightChange: (id: string) => void;
   onLoadRight: () => void;

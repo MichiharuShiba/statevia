@@ -5,7 +5,7 @@ namespace Statevia.Core.Engine.Infrastructure;
 /// <summary>
 /// ホスト側の ID 生成（例: DI で登録済みの <c>IIdGenerator</c>）と橋渡しするための実装。
 /// </summary>
-public sealed class DelegateWorkflowInstanceIdGenerator : IWorkflowInstanceIdGenerator
+public sealed class DelegateExecutionIdGenerator : IExecutionIdGenerator
 {
     private readonly Func<string> _createId;
 
@@ -13,9 +13,9 @@ public sealed class DelegateWorkflowInstanceIdGenerator : IWorkflowInstanceIdGen
     /// 指定デリゲートで ID を生成する生成器を構築する。
     /// </summary>
     /// <param name="createId">新しいワークフローインスタンス ID を返す関数。</param>
-    public DelegateWorkflowInstanceIdGenerator(Func<string> createId) =>
+    public DelegateExecutionIdGenerator(Func<string> createId) =>
         _createId = createId ?? throw new ArgumentNullException(nameof(createId));
 
     /// <inheritdoc />
-    public string NewWorkflowInstanceId() => _createId();
+    public string NewExecutionId() => _createId();
 }

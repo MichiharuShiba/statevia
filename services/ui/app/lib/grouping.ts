@@ -1,6 +1,6 @@
 import type { GraphDefinitionMeta, GraphGroupDef } from "../graphs/types";
 import type { LayoutEdgeInput, PositionedNode } from "./graphLayout";
-import type { WorkflowView } from "./types";
+import type { ExecutionView } from "./types";
 
 /** グループ矩形の境界。 */
 export type GroupBounds = {
@@ -14,7 +14,7 @@ export type GroupBounds = {
 };
 
 /** ノード一覧からグループ境界を構築する。 */
-export function buildGroups(nodes: WorkflowView["nodes"]): {
+export function buildGroups(nodes: ExecutionView["nodes"]): {
   groups: Array<{ groupId: string; label: string; nodeIds: string[] }>;
   nodeToGroup: Record<string, string>;
 } {

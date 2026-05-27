@@ -74,7 +74,7 @@ public class DefaultStateExecutorTests
     {
         Events = new NullEventProvider(),
         Store = new NullStateStore(),
-        WorkflowId = "test",
+        ExecutionId = "test",
         StateName = "Test"
     };
 

@@ -4,17 +4,17 @@ using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Infrastructure;
 
-public class DelegateWorkflowInstanceIdGeneratorTests
+public class DelegateExecutionIdGeneratorTests
 {
     /// <summary>登録したデリゲートの戻り値がそのまま ID として返ることを検証する。</summary>
     [Fact]
-    public void NewWorkflowInstanceId_ReturnsDelegateResult()
+    public void NewExecutionId_ReturnsDelegateResult()
     {
         // Arrange
-        var generator = new DelegateWorkflowInstanceIdGenerator(() => "fixed-id");
+        var generator = new DelegateExecutionIdGenerator(() => "fixed-id");
 
         // Act
-        var id = generator.NewWorkflowInstanceId();
+        var id = generator.NewExecutionId();
 
         // Assert
         Assert.Equal("fixed-id", id);
@@ -25,6 +25,6 @@ public class DelegateWorkflowInstanceIdGeneratorTests
     public void Constructor_NullDelegate_ThrowsArgumentNullException()
     {
         // Act / Assert
-        Assert.Throws<ArgumentNullException>(() => new DelegateWorkflowInstanceIdGenerator(null!));
+        Assert.Throws<ArgumentNullException>(() => new DelegateExecutionIdGenerator(null!));
     }
 }

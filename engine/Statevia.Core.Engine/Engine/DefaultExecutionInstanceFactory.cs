@@ -6,19 +6,19 @@ using Statevia.Core.Engine.Join;
 namespace Statevia.Core.Engine.Engine;
 
 /// <summary>
-/// <see cref="IWorkflowInstanceFactory"/> の既定実装。FSM・Join・実行グラフを従来と同順で組み立てる。
+/// <see cref="IExecutionInstanceFactory"/> の既定実装。FSM・Join・実行グラフを従来と同順で組み立てる。
 /// </summary>
-public sealed class DefaultWorkflowInstanceFactory : IWorkflowInstanceFactory
+public sealed class DefaultExecutionInstanceFactory : IExecutionInstanceFactory
 {
     /// <inheritdoc />
-    public WorkflowInstance Create(CompiledWorkflowDefinition definition, string workflowId)
+    public ExecutionInstance Create(CompiledWorkflowDefinition definition, string executionId)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        ArgumentException.ThrowIfNullOrWhiteSpace(workflowId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(executionId);
 
-        return new WorkflowInstance
+        return new ExecutionInstance
         {
-            WorkflowId = workflowId,
+            ExecutionId = executionId,
             Definition = definition,
             Fsm = new TransitionTable(definition.Transitions),
             JoinTracker = new JoinTracker(definition),

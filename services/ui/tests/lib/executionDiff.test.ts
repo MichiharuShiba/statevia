@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeExecutionDiff } from "../../app/lib/executionDiff";
-import type { ExecutionNodeDTO, WorkflowStatus, WorkflowView } from "../../app/lib/types";
+import type { ExecutionNodeDTO, ExecutionStatus, ExecutionView } from "../../app/lib/types";
 
 function node(
   executionNodeId: string,
@@ -21,8 +21,8 @@ function node(
 function exec(
   displayId: string,
   nodes: ExecutionNodeDTO[],
-  status: WorkflowStatus = "Running"
-): WorkflowView {
+  status: ExecutionStatus = "Running"
+): ExecutionView {
   return {
     displayId,
     resourceId: "res-1",

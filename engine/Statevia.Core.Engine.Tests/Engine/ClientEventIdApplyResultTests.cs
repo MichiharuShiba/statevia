@@ -16,15 +16,15 @@ public class ClientEventIdApplyResultTests
     public async Task PublishEvent_SecondCallWithSameClientEventId_ReturnsAlreadyApplied()
     {
         // Arrange
-        var engine = WorkflowEngineTestHarness.Create(maxParallelism: 1);
-        var workflowId = engine.Start(CreateMinimalDefinition());
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+        var executionId = engine.Start(CreateMinimalDefinition());
         await Task.Delay(200).ConfigureAwait(true);
         var clientEventId = Guid.Parse("c3d4e5f6-a7b8-4901-c234-567890abcdef");
 
         // Act
-        var first = engine.PublishEvent(workflowId, "AnyEvent", clientEventId);
-        var second = engine.PublishEvent(workflowId, "AnyEvent", clientEventId);
-        var otherId = engine.PublishEvent(workflowId, "AnyEvent", Guid.NewGuid());
+        var first = engine.PublishEvent(executionId, "AnyEvent", clientEventId);
+        var second = engine.PublishEvent(executionId, "AnyEvent", clientEventId);
+        var otherId = engine.PublishEvent(executionId, "AnyEvent", Guid.NewGuid());
 
         // Assert
         Assert.True(first.IsApplied);

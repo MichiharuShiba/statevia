@@ -1,4 +1,4 @@
-import type { NodeStatus, WorkflowStatus } from "./types";
+import type { NodeStatus, ExecutionStatus } from "./types";
 
 /**
  * ライトはトークンどおり、ダークでは *-container のベタ塗りが濃く見えるため混色で弱める。
@@ -24,7 +24,7 @@ function softDarkContainerBackground(semantic: DarkSoftContainerSemantic): strin
 }
 
 /** ステータスバッジ用の状態型。 */
-export type StatusLike = WorkflowStatus | NodeStatus;
+export type StatusLike = ExecutionStatus | NodeStatus;
 
 /** ステータス表示の色・ラベル。 */
 export type StatusStyle = {

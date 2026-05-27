@@ -17,7 +17,7 @@ public static class LogRedaction
     [
         ..CredentialSubstringsInNames,
         "accessToken", "refreshToken", "authorization",
-        "workflowInput", "input", "output"
+        "input", "output"
     ];
 
     /// <summary>JSON 風キー置換用正規表現のマッチ上限（ReDoS 対策・S6444）。</summary>

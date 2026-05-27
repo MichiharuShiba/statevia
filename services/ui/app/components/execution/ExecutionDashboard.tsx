@@ -25,8 +25,8 @@ import { toToastError, type ToastState } from "../../lib/errors";
 import { useI18n, useUiText } from "../../lib/uiTextContext";
 import { isWithinMaxLength, matchesPattern } from "../../lib/validation/primitives";
 import { EVENT_NAME_MAX_LENGTH, EVENT_NAME_PATTERN } from "../../lib/validation/formRules";
-import { buildWorkflowView } from "../../lib/workflowView";
-import type { WorkflowDTO, WorkflowGraphDTO, WorkflowView } from "../../lib/types";
+import { buildExecutionView } from "../../lib/executionView";
+import type { ExecutionDTO, ExecutionGraphDTO, ExecutionView } from "../../lib/types";
 
 /** executionId ごとの Graph ビューポート（ズーム・パン位置） */
 type GraphViewportByExecutionId = Record<string, GraphViewport>;
@@ -39,7 +39,7 @@ export type ExecutionDashboardProps = {
   initialExecutionId: string;
   /** true のときマウント直後に Load を実行する */
   autoLoadOnMount?: boolean;
-  /** ヘッダ右側のナビ（未指定時は dashboard/workflows/health） */
+  /** ヘッダ右側のナビ（未指定時は dashboard/executions/health） */
   headerNav?: ReactNode;
   /** メイン見出し */
   headerTitle?: string;
@@ -69,7 +69,7 @@ type ExecutionDashboardViewProps = {
   loading: boolean;
   canCancel: boolean;
   onPublishEvent: (eventName: string) => void;
-  execution: WorkflowView | null;
+  execution: ExecutionView | null;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   showViewToggle: boolean;
@@ -80,7 +80,7 @@ type ExecutionDashboardViewProps = {
   streamEnabled: boolean;
   onStreamEnabledChange: (enabled: boolean) => void;
   showExecutionPanels: boolean;
-  executionB: WorkflowView | null;
+  executionB: ExecutionView | null;
   executionIdB: string;
   onExecutionIdBChange: (executionId: string) => void;
   onLoadExecutionB: () => void;
@@ -98,7 +98,7 @@ type ExecutionDashboardViewProps = {
   timelineHasMore: boolean;
   timelineLoadingMore: boolean;
   onTimelineLoadMore: () => void;
-  displayExecution: WorkflowView | null;
+  displayExecution: ExecutionView | null;
   selectedNodeId: string | null;
   graphData: ReturnType<typeof useGraphData>;
   onToggleGraphFullscreen: () => void;
@@ -136,7 +136,7 @@ export function ExecutionDashboard({
   const [replayAtSeq, setReplayAtSeq] = useState<number | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [executionIdB, setExecutionIdB] = useState("");
-  const [executionB, setExecutionB] = useState<WorkflowView | null>(null);
+  const [executionB, setExecutionB] = useState<ExecutionView | null>(null);
   const [loadingB, setLoadingB] = useState(false);
   const [streamEnabled, setStreamEnabled] = useState(true);
 
@@ -221,7 +221,7 @@ export function ExecutionDashboard({
     replayAtSeq
   );
 
-  const displayExecution =
+  const displayExecution: ExecutionView | null =
     replayAtSeq != null && stateAtSeq != null ? stateAtSeq : execution;
   const isReplaying = replayAtSeq != null && stateAtSeq != null;
 
@@ -246,14 +246,14 @@ export function ExecutionDashboard({
     if (!executionIdB.trim()) return;
     setLoadingB(true);
     try {
-      const workflow = await apiGet<WorkflowDTO>(`/executions/${executionIdB.trim()}`);
-      let graph: WorkflowGraphDTO | null = null;
+      const executionDto = await apiGet<ExecutionDTO>(`/executions/${executionIdB.trim()}`);
+      let graph: ExecutionGraphDTO | null = null;
       try {
-        graph = await apiGet<WorkflowGraphDTO>(`/executions/${executionIdB.trim()}/graph`);
+        graph = await apiGet<ExecutionGraphDTO>(`/executions/${executionIdB.trim()}/graph`);
       } catch {
         // ignore
       }
-      setExecutionB(buildWorkflowView(workflow, graph));
+      setExecutionB(buildExecutionView(executionDto, graph));
     } catch {
       setExecutionB(null);
     } finally {

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useGraphData } from "../../../app/features/graph/useGraphData";
-import type { ExecutionNodeDTO, WorkflowView } from "../../../app/lib/types";
+import type { ExecutionNodeDTO, ExecutionView } from "../../../app/lib/types";
 import { getGraphDefinition } from "../../../app/graphs/registry";
 
-function execution(nodes: ExecutionNodeDTO[], graphId = "hello"): WorkflowView {
+function execution(nodes: ExecutionNodeDTO[], graphId = "hello"): ExecutionView {
   return {
     displayId: "ex-1",
     resourceId: "res-1",

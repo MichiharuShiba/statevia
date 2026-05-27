@@ -12,7 +12,7 @@ import { apiGet, buildExecutionsListPath, type SortOrder, type ExecutionsListQue
 import { formatDateTimeLocalized } from "../lib/dateTime";
 import { toToastError, type ToastState } from "../lib/errors";
 import { getDateTimeLocale } from "../lib/i18n";
-import type { PagedWorkflows, WorkflowDTO } from "../lib/types";
+import type { PagedExecutions, ExecutionDTO } from "../lib/types";
 import { useI18n, useUiText } from "../lib/uiTextContext";
 import { matchesPattern } from "../lib/validation/primitives";
 import { DEFINITION_ID_PATTERN, SEARCH_NAME_PATTERN } from "../lib/validation/searchRules";
@@ -57,7 +57,7 @@ function ExecutionsPageClientInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [items, setItems] = useState<WorkflowDTO[] | null>(null);
+  const [items, setItems] = useState<ExecutionDTO[] | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -93,7 +93,7 @@ function ExecutionsPageClientInner() {
         name: listQuery.name,
         definitionId: listQuery.definitionId
       });
-      const page = await apiGet<PagedWorkflows>(path);
+      const page = await apiGet<PagedExecutions>(path);
       setItems(page.items);
       setTotalCount(page.totalCount);
     } catch (e) {
@@ -323,15 +323,15 @@ function ExecutionsPageClientInner() {
             className="divide-y divide-[var(--md-sys-color-outline)] overflow-hidden rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-sm"
             aria-label={uiText.lists.executions}
           >
-            {items.map((workflow) => {
-              const updated = workflow.updatedAt ?? workflow.startedAt;
+            {items.map((execution) => {
+              const updated = execution.updatedAt ?? execution.startedAt;
               return (
-                <li key={workflow.displayId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <li key={execution.displayId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge status={workflow.status} />
-                      <span className="truncate font-mono text-sm text-[var(--md-sys-color-on-surface)]" title={workflow.displayId}>
-                        {workflow.displayId}
+                      <StatusBadge status={execution.status} />
+                      <span className="truncate font-mono text-sm text-[var(--md-sys-color-on-surface)]" title={execution.displayId}>
+                        {execution.displayId}
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">{uiText.executionsPage.updatedAt(formatDateTimeLocalized(updated, dateTimeLocale))}</p>
@@ -339,7 +339,7 @@ function ExecutionsPageClientInner() {
                   <button
                     type="button"
                     className={`shrink-0 ${NAVIGATION_BUTTON_CLASS}`}
-                    onClick={() => router.push(`/executions/${encodeURIComponent(workflow.displayId)}`)}
+                    onClick={() => router.push(`/executions/${encodeURIComponent(execution.displayId)}`)}
                   >
                     {uiText.executionsPage.actions.openDetail}
                   </button>
@@ -370,7 +370,7 @@ function ExecutionsPageClientInner() {
 }
 
 /**
- * ページング付き workflow 一覧（検索パラメータ用に `useSearchParams` 利用箇所を `Suspense` で包む）。
+ * ページング付き実行一覧（検索パラメータ用に `useSearchParams` 利用箇所を `Suspense` で包む）。
  */
 export function ExecutionsPageClient() {
   const uiText = useUiText();

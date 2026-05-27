@@ -28,7 +28,7 @@ describe("DefinitionRunStartPage", () => {
     });
   });
 
-  it("ワークフロー開始ボタンで API を呼ぶ", async () => {
+  it("実行開始ボタンで API を呼ぶ", async () => {
     renderWithUiText(<DefinitionRunStartPage />);
 
     fireEvent.click(screen.getByRole("button", { name: "実行開始" }));

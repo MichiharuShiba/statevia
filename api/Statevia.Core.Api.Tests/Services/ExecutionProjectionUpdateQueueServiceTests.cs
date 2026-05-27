@@ -13,17 +13,17 @@ namespace Statevia.Core.Api.Tests.Services;
 
 public sealed class ExecutionProjectionUpdateQueueServiceTests
 {
-    private sealed class FakeWorkflowEngine : IWorkflowEngine
+    private sealed class FakeExecutionEngine : IExecutionEngine
     {
         private Func<string, Task>? _nodeCompletedHandler;
 
-        public string Start(CompiledWorkflowDefinition definition, string? workflowId = null, object? workflowInput = null) =>
+        public string Start(CompiledWorkflowDefinition definition, string? executionId = null, object? input = null) =>
             throw new NotSupportedException();
 
-        public void PublishEvent(string workflowId, string eventName) =>
+        public void PublishEvent(string executionId, string eventName) =>
             throw new NotSupportedException();
 
-        public ApplyResult PublishEvent(string workflowId, string eventName, Guid clientEventId) =>
+        public ApplyResult PublishEvent(string executionId, string eventName, Guid clientEventId) =>
             throw new NotSupportedException();
 
         public void PublishEvent(string eventName) =>
@@ -32,16 +32,16 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         public ApplyResult PublishEvent(string eventName, Guid clientEventId) =>
             throw new NotSupportedException();
 
-        public Task CancelAsync(string workflowId) =>
+        public Task CancelAsync(string executionId) =>
             throw new NotSupportedException();
 
-        public Task<ApplyResult> CancelAsync(string workflowId, Guid clientEventId) =>
+        public Task<ApplyResult> CancelAsync(string executionId, Guid clientEventId) =>
             throw new NotSupportedException();
 
-        public WorkflowSnapshot? GetSnapshot(string workflowId) =>
+        public ExecutionSnapshot? GetSnapshot(string executionId) =>
             throw new NotSupportedException();
 
-        public string ExportExecutionGraph(string workflowId) =>
+        public string ExportExecutionGraph(string executionId) =>
             throw new NotSupportedException();
 
         public void SetNodeCompletedHandler(Func<string, Task>? handler)
@@ -49,8 +49,8 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
             _nodeCompletedHandler = handler;
         }
 
-        internal Task EmitNodeCompletedAsync(Guid workflowId) =>
-            _nodeCompletedHandler?.Invoke(workflowId.ToString("D")) ?? Task.CompletedTask;
+        internal Task EmitNodeCompletedAsync(Guid executionId) =>
+            _nodeCompletedHandler?.Invoke(executionId.ToString("D")) ?? Task.CompletedTask;
     }
 
     private sealed class FakeExecutionService : IExecutionService
@@ -69,7 +69,7 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
             _failuresBeforeSuccess = failuresBeforeSuccess;
         }
 
-        public Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct)
+        public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct)
         {
             UpdateProjectionCallCount += 1;
             if (_failuresBeforeSuccess > 0)
@@ -89,15 +89,15 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
 
         public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) =>
+        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct) =>
+        public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<ExecutionViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) =>
@@ -126,7 +126,7 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
 
         internal void ReleaseFirstUpdate() => _firstUpdateMayProceed.TrySetResult(true);
 
-        public async Task UpdateProjectionFromEngineAsync(Guid workflowId, CancellationToken ct)
+        public async Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct)
         {
             var callNumber = Interlocked.Increment(ref _updateProjectionCallCount);
             if (callNumber == 1)
@@ -141,15 +141,15 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
 
         public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task EnsureWorkflowExistsAsync(string tenantId, Guid workflowId, CancellationToken ct) =>
+        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task<string?> TryGetSnapshotGraphJsonByWorkflowIdAsync(Guid workflowId, CancellationToken ct) =>
+        public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<ExecutionViewDto> GetWorkflowViewAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) =>
@@ -169,17 +169,17 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
     }
 
     /// <summary>
-    /// 連続失敗が上限に達したとき、当該 workflow が再投入されず処理が停止することを確認する。
+    /// 連続失敗が上限に達したとき、当該 execution が再投入されず処理が停止することを確認する。
     /// </summary>
     [Fact]
     public async Task EmitNodeCompletedAsync_WhenProjectionUpdateAlwaysFails_StopsRetryAtMaxAttempts()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
-        var workflowEngine = new FakeWorkflowEngine();
-        var workflowService = new FakeExecutionService(failuresBeforeSuccess: int.MaxValue);
-        await using var serviceProvider = BuildServiceProvider(workflowService);
-        var queue = BuildQueueService(workflowEngine, serviceProvider, new ExecutionProjectionQueueOptions
+        var executionId = Guid.NewGuid();
+        var executionEngine = new FakeExecutionEngine();
+        var executionService = new FakeExecutionService(failuresBeforeSuccess: int.MaxValue);
+        await using var serviceProvider = BuildServiceProvider(executionService);
+        var queue = BuildQueueService(executionEngine, serviceProvider, new ExecutionProjectionQueueOptions
         {
             MaxGlobalQueueSize = 10,
             ProjectionFlushDebounceMs = 0,
@@ -192,17 +192,17 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         try
         {
             // Act
-            await workflowEngine.EmitNodeCompletedAsync(workflowId);
+            await executionEngine.EmitNodeCompletedAsync(executionId);
             using var drainTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-            await queue.DrainAsync(workflowId, drainTimeout.Token);
+            await queue.DrainAsync(executionId, drainTimeout.Token);
 
-            var callCountAfterDeadLetter = workflowService.UpdateProjectionCallCount;
-            await workflowEngine.EmitNodeCompletedAsync(workflowId);
+            var callCountAfterDeadLetter = executionService.UpdateProjectionCallCount;
+            await executionEngine.EmitNodeCompletedAsync(executionId);
             await Task.Delay(100);
 
             // Assert
             Assert.Equal(3, callCountAfterDeadLetter);
-            Assert.Equal(callCountAfterDeadLetter, workflowService.UpdateProjectionCallCount);
+            Assert.Equal(callCountAfterDeadLetter, executionService.UpdateProjectionCallCount);
         }
         finally
         {
@@ -217,11 +217,11 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
     public async Task EmitNodeCompletedAsync_WhenProjectionUpdateFailsOnce_AppliesRetryBackoff()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
-        var workflowEngine = new FakeWorkflowEngine();
-        var workflowService = new FakeExecutionService(failuresBeforeSuccess: 1);
-        await using var serviceProvider = BuildServiceProvider(workflowService);
-        var queue = BuildQueueService(workflowEngine, serviceProvider, new ExecutionProjectionQueueOptions
+        var executionId = Guid.NewGuid();
+        var executionEngine = new FakeExecutionEngine();
+        var executionService = new FakeExecutionService(failuresBeforeSuccess: 1);
+        await using var serviceProvider = BuildServiceProvider(executionService);
+        var queue = BuildQueueService(executionEngine, serviceProvider, new ExecutionProjectionQueueOptions
         {
             MaxGlobalQueueSize = 10,
             ProjectionFlushDebounceMs = 0,
@@ -235,13 +235,13 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         {
             // Act
             var startedAt = DateTime.UtcNow;
-            await workflowEngine.EmitNodeCompletedAsync(workflowId);
+            await executionEngine.EmitNodeCompletedAsync(executionId);
             using var drainTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            await queue.DrainAsync(workflowId, drainTimeout.Token);
+            await queue.DrainAsync(executionId, drainTimeout.Token);
             var elapsed = DateTime.UtcNow - startedAt;
 
             // Assert
-            Assert.Equal(2, workflowService.UpdateProjectionCallCount);
+            Assert.Equal(2, executionService.UpdateProjectionCallCount);
             Assert.True(elapsed >= TimeSpan.FromMilliseconds(100));
         }
         finally
@@ -257,11 +257,11 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
     public async Task EmitNodeCompletedAsync_WhenUpdateEventuallySucceeds_ResetsFailureCountForNextAttempt()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
-        var workflowEngine = new FakeWorkflowEngine();
-        var workflowService = new FakeExecutionService(failuresBeforeSuccess: 1);
-        await using var serviceProvider = BuildServiceProvider(workflowService);
-        var queue = BuildQueueService(workflowEngine, serviceProvider, new ExecutionProjectionQueueOptions
+        var executionId = Guid.NewGuid();
+        var executionEngine = new FakeExecutionEngine();
+        var executionService = new FakeExecutionService(failuresBeforeSuccess: 1);
+        await using var serviceProvider = BuildServiceProvider(executionService);
+        var queue = BuildQueueService(executionEngine, serviceProvider, new ExecutionProjectionQueueOptions
         {
             MaxGlobalQueueSize = 10,
             ProjectionFlushDebounceMs = 0,
@@ -274,17 +274,17 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         try
         {
             // Act
-            await workflowEngine.EmitNodeCompletedAsync(workflowId);
+            await executionEngine.EmitNodeCompletedAsync(executionId);
             using var firstDrainTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-            await queue.DrainAsync(workflowId, firstDrainTimeout.Token);
+            await queue.DrainAsync(executionId, firstDrainTimeout.Token);
 
-            workflowService.SetFailuresBeforeSuccess(1);
-            await workflowEngine.EmitNodeCompletedAsync(workflowId);
+            executionService.SetFailuresBeforeSuccess(1);
+            await executionEngine.EmitNodeCompletedAsync(executionId);
             using var secondDrainTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-            await queue.DrainAsync(workflowId, secondDrainTimeout.Token);
+            await queue.DrainAsync(executionId, secondDrainTimeout.Token);
 
             // Assert
-            Assert.Equal(4, workflowService.UpdateProjectionCallCount);
+            Assert.Equal(4, executionService.UpdateProjectionCallCount);
         }
         finally
         {
@@ -299,11 +299,11 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
     public async Task StopAsync_WhenPendingUpdateExists_DrainsBeforeStopping()
     {
         // Arrange
-        var workflowId = Guid.NewGuid();
-        var workflowEngine = new FakeWorkflowEngine();
-        var workflowService = new FakeExecutionService(failuresBeforeSuccess: 0);
-        await using var serviceProvider = BuildServiceProvider(workflowService);
-        var queue = BuildQueueService(workflowEngine, serviceProvider, new ExecutionProjectionQueueOptions
+        var executionId = Guid.NewGuid();
+        var executionEngine = new FakeExecutionEngine();
+        var executionService = new FakeExecutionService(failuresBeforeSuccess: 0);
+        await using var serviceProvider = BuildServiceProvider(executionService);
+        var queue = BuildQueueService(executionEngine, serviceProvider, new ExecutionProjectionQueueOptions
         {
             MaxGlobalQueueSize = 10,
             ProjectionFlushDebounceMs = 200,
@@ -316,11 +316,11 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         try
         {
             // Act
-            await workflowEngine.EmitNodeCompletedAsync(workflowId);
+            await executionEngine.EmitNodeCompletedAsync(executionId);
             await queue.StopAsync(CancellationToken.None);
 
             // Assert
-            Assert.Equal(1, workflowService.UpdateProjectionCallCount);
+            Assert.Equal(1, executionService.UpdateProjectionCallCount);
         }
         finally
         {
@@ -330,19 +330,19 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
     }
 
     /// <summary>
-    /// グローバルキューが満杯のとき、別 workflow の投入がブロックし、スロット解放後に完了することを確認する。
+    /// グローバルキューが満杯のとき、別 execution の投入がブロックし、スロット解放後に完了することを確認する。
     /// </summary>
     [Fact]
     public async Task EnqueueAsync_WhenGlobalQueueIsFull_BlocksUntilSlotAvailable()
     {
         // Arrange
-        var workflowIdFirst = Guid.NewGuid();
-        var workflowIdSecond = Guid.NewGuid();
-        var workflowIdThird = Guid.NewGuid();
-        var workflowEngine = new FakeWorkflowEngine();
-        var workflowService = new BlockFirstProjectionUpdateExecutionService();
-        await using var serviceProvider = BuildServiceProvider(workflowService);
-        var queue = BuildQueueService(workflowEngine, serviceProvider, new ExecutionProjectionQueueOptions
+        var executionIdFirst = Guid.NewGuid();
+        var executionIdSecond = Guid.NewGuid();
+        var executionIdThird = Guid.NewGuid();
+        var executionEngine = new FakeExecutionEngine();
+        var executionService = new BlockFirstProjectionUpdateExecutionService();
+        await using var serviceProvider = BuildServiceProvider(executionService);
+        var queue = BuildQueueService(executionEngine, serviceProvider, new ExecutionProjectionQueueOptions
         {
             MaxGlobalQueueSize = 1,
             ProjectionFlushDebounceMs = 0,
@@ -355,50 +355,50 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         try
         {
             // Act
-            await workflowEngine.EmitNodeCompletedAsync(workflowIdFirst);
+            await executionEngine.EmitNodeCompletedAsync(executionIdFirst);
             await Task.Delay(150);
-            Assert.Equal(1, workflowService.UpdateProjectionCallCount);
+            Assert.Equal(1, executionService.UpdateProjectionCallCount);
 
-            await workflowEngine.EmitNodeCompletedAsync(workflowIdSecond);
+            await executionEngine.EmitNodeCompletedAsync(executionIdSecond);
             await Task.Delay(50);
 
-            var thirdEnqueue = Task.Run(() => workflowEngine.EmitNodeCompletedAsync(workflowIdThird));
+            var thirdEnqueue = Task.Run(() => executionEngine.EmitNodeCompletedAsync(executionIdThird));
             var thirdCompletedWithinTimeout = await Task.WhenAny(thirdEnqueue, Task.Delay(200)) == thirdEnqueue;
             Assert.False(thirdCompletedWithinTimeout);
 
-            workflowService.ReleaseFirstUpdate();
+            executionService.ReleaseFirstUpdate();
             await thirdEnqueue;
 
             using var drainTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            await queue.DrainAsync(workflowIdFirst, drainTimeout.Token);
-            await queue.DrainAsync(workflowIdSecond, drainTimeout.Token);
-            await queue.DrainAsync(workflowIdThird, drainTimeout.Token);
+            await queue.DrainAsync(executionIdFirst, drainTimeout.Token);
+            await queue.DrainAsync(executionIdSecond, drainTimeout.Token);
+            await queue.DrainAsync(executionIdThird, drainTimeout.Token);
 
             // Assert
-            Assert.True(workflowService.UpdateProjectionCallCount >= 3);
+            Assert.True(executionService.UpdateProjectionCallCount >= 3);
         }
         finally
         {
-            workflowService.ReleaseFirstUpdate();
+            executionService.ReleaseFirstUpdate();
             await queue.StopAsync(CancellationToken.None);
         }
     }
 
-    private static ServiceProvider BuildServiceProvider(IExecutionService workflowService)
+    private static ServiceProvider BuildServiceProvider(IExecutionService executionService)
     {
         var services = new ServiceCollection();
-        services.AddScoped<IExecutionService>(_ => workflowService);
+        services.AddScoped<IExecutionService>(_ => executionService);
         return services.BuildServiceProvider();
     }
 
     private static ExecutionProjectionUpdateQueueService BuildQueueService(
-        IWorkflowEngine workflowEngine,
+        IExecutionEngine executionEngine,
         ServiceProvider serviceProvider,
         ExecutionProjectionQueueOptions options)
     {
         return new ExecutionProjectionUpdateQueueService(
             serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            workflowEngine,
+            executionEngine,
             Options.Create(options),
             NullLogger<ExecutionProjectionUpdateQueueService>.Instance);
     }

@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { StatusBadge } from "../../../app/components/common/StatusBadge";
 
 describe("StatusBadge", () => {
-  it("Workflow ステータスを表示する", () => {
+  it("Execution ステータスを表示する", () => {
     // Arrange
     const props = { status: "Running" as const };
 

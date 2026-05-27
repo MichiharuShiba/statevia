@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiGet } from "../../lib/api";
-import type { WorkflowView } from "../../lib/types";
+import type { ExecutionView } from "../../lib/types";
 
 /**
  * 指定 seq 時点の実行状態を取得（リプレイ表示用）。
@@ -12,8 +12,8 @@ import type { WorkflowView } from "../../lib/types";
 export function useExecutionStateAtSeq(
   executionId: string | null,
   atSeq: number | null
-): { state: WorkflowView | null; loading: boolean; error: unknown } {
-  const [state, setState] = useState<WorkflowView | null>(null);
+): { state: ExecutionView | null; loading: boolean; error: unknown } {
+  const [state, setState] = useState<ExecutionView | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -28,7 +28,7 @@ export function useExecutionStateAtSeq(
     setLoading(true);
     setError(null);
 
-    apiGet<WorkflowView>(
+    apiGet<ExecutionView>(
       `/executions/${encodeURIComponent(executionId)}/state?atSeq=${atSeq}`
     )
       .then((res) => {

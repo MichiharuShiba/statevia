@@ -16,20 +16,20 @@ internal sealed class EventStoreRepository : IEventStoreRepository
 
     public async Task AppendAsync(
         ICoreUnitOfWork uow,
-        Guid workflowId,
+        Guid executionId,
         EventStoreEventType eventType,
         string? payloadJson,
         CancellationToken ct = default)
     {
         var persistedMax = await uow.Db.EventStore
             .AsNoTracking()
-            .Where(e => e.ExecutionId == workflowId)
+            .Where(e => e.ExecutionId == executionId)
             .Select(e => (long?)e.Seq)
             .MaxAsync(ct)
             .ConfigureAwait(false) ?? 0L;
 
         var localMax = uow.Db.ChangeTracker.Entries<EventStoreRow>()
-            .Where(e => e.Entity.ExecutionId == workflowId && e.State != EntityState.Deleted)
+            .Where(e => e.Entity.ExecutionId == executionId && e.State != EntityState.Deleted)
             .Select(e => e.Entity.Seq)
             .DefaultIfEmpty(0L)
             .Max();
@@ -40,7 +40,7 @@ internal sealed class EventStoreRepository : IEventStoreRepository
         uow.Db.EventStore.Add(new EventStoreRow
         {
             EventId = _ids.NewGuid(),
-            ExecutionId = workflowId,
+            ExecutionId = executionId,
             Seq = nextSeq,
             Type = eventType.ToPersistedString(),
             OccurredAt = now,
@@ -52,14 +52,14 @@ internal sealed class EventStoreRepository : IEventStoreRepository
 
     public async Task<bool> TryAppendIfAbsentByClientEventAsync(
         ICoreUnitOfWork uow,
-        Guid workflowId,
+        Guid executionId,
         Guid clientEventId,
         EventStoreEventType eventType,
         string? payloadJson,
         CancellationToken cancellationToken)
     {
         var typeString = eventType.ToPersistedString();
-        var fingerprintEventId = ComputeFingerprintEventId(workflowId, clientEventId, typeString);
+        var fingerprintEventId = ComputeFingerprintEventId(executionId, clientEventId, typeString);
 
         if (uow.Db.EventStore.Local.Any(e => e.EventId == fingerprintEventId))
             return false;
@@ -71,13 +71,13 @@ internal sealed class EventStoreRepository : IEventStoreRepository
 
         var persistedMax = await uow.Db.EventStore
             .AsNoTracking()
-            .Where(e => e.ExecutionId == workflowId)
+            .Where(e => e.ExecutionId == executionId)
             .Select(e => (long?)e.Seq)
             .MaxAsync(cancellationToken)
             .ConfigureAwait(false) ?? 0L;
 
         var localMax = uow.Db.ChangeTracker.Entries<EventStoreRow>()
-            .Where(e => e.Entity.ExecutionId == workflowId && e.State != EntityState.Deleted)
+            .Where(e => e.Entity.ExecutionId == executionId && e.State != EntityState.Deleted)
             .Select(e => e.Entity.Seq)
             .DefaultIfEmpty(0L)
             .Max();
@@ -88,7 +88,7 @@ internal sealed class EventStoreRepository : IEventStoreRepository
         uow.Db.EventStore.Add(new EventStoreRow
         {
             EventId = fingerprintEventId,
-            ExecutionId = workflowId,
+            ExecutionId = executionId,
             Seq = nextSeq,
             Type = typeString,
             OccurredAt = now,
@@ -102,7 +102,7 @@ internal sealed class EventStoreRepository : IEventStoreRepository
 
     public async Task<(IReadOnlyList<EventStoreRow> Items, bool HasMore)> ListAfterSeqAsync(
         ICoreUnitOfWork uow,
-        Guid workflowId,
+        Guid executionId,
         long afterSeq,
         int limit,
         CancellationToken ct = default)
@@ -112,7 +112,7 @@ internal sealed class EventStoreRepository : IEventStoreRepository
 
         var take = limit + 1;
         var list = await uow.Db.EventStore.AsNoTracking()
-            .Where(e => e.ExecutionId == workflowId && e.Seq > afterSeq)
+            .Where(e => e.ExecutionId == executionId && e.Seq > afterSeq)
             .OrderBy(e => e.Seq)
             .Take(take)
             .ToListAsync(ct)
@@ -125,10 +125,10 @@ internal sealed class EventStoreRepository : IEventStoreRepository
         return (list, hasMore);
     }
 
-    public async Task<long> GetMaxSeqAsync(ICoreUnitOfWork uow, Guid workflowId, CancellationToken ct = default)
+    public async Task<long> GetMaxSeqAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct = default)
     {
         var max = await uow.Db.EventStore.AsNoTracking()
-            .Where(e => e.ExecutionId == workflowId)
+            .Where(e => e.ExecutionId == executionId)
             .Select(e => (long?)e.Seq)
             .MaxAsync(ct)
             .ConfigureAwait(false);
@@ -136,9 +136,9 @@ internal sealed class EventStoreRepository : IEventStoreRepository
         return max ?? 0L;
     }
 
-    private static Guid ComputeFingerprintEventId(Guid workflowId, Guid clientEventId, string typeString)
+    private static Guid ComputeFingerprintEventId(Guid executionId, Guid clientEventId, string typeString)
     {
-        var input = $"{workflowId:N}|{clientEventId:N}|{typeString}";
+        var input = $"{executionId:N}|{clientEventId:N}|{typeString}";
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         Span<byte> bytes = stackalloc byte[16];
         hash.AsSpan(0, 16).CopyTo(bytes);

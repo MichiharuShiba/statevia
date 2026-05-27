@@ -2,11 +2,11 @@ import type {
   ExecutionNodeDTO,
   ExecutionStreamEvent,
   NodeStatus,
-  WorkflowStatus,
-  WorkflowView
+  ExecutionStatus,
+  ExecutionView
 } from "./types";
 
-function normalizeToWorkflowStatus(value: string): WorkflowStatus {
+function normalizeToExecutionStatus(value: string): ExecutionStatus {
   const normalized = value.trim().toUpperCase();
   if (normalized === "CANCELLED" || normalized === "CANCELED") return "Cancelled";
   if (normalized === "COMPLETED") return "Completed";
@@ -51,7 +51,7 @@ function upsertNode(nodes: ExecutionNodeDTO[], incoming: Partial<ExecutionNodeDT
   return [...nodes.slice(0, index), nextNode, ...nodes.slice(index + 1)];
 }
 
-function applyGraphUpdated(execution: WorkflowView, event: Extract<ExecutionStreamEvent, { type: "GraphUpdated" }>): WorkflowView {
+function applyGraphUpdated(execution: ExecutionView, event: Extract<ExecutionStreamEvent, { type: "GraphUpdated" }>): ExecutionView {
   const patchNodes = event.patch.nodes ?? [];
   const nextNodes = patchNodes.reduce((acc, patchNode) => {
     const normalizedStatus = patchNode.status ? normalizeNodeStatus(patchNode.status) : null;
@@ -72,14 +72,14 @@ function applyGraphUpdated(execution: WorkflowView, event: Extract<ExecutionStre
 }
 
 function applyStatusChanged(
-  execution: WorkflowView,
+  execution: ExecutionView,
   event: Extract<ExecutionStreamEvent, { type: "ExecutionStatusChanged" }>
-): WorkflowView {
-  const nextStatus = normalizeToWorkflowStatus(event.to);
+): ExecutionView {
+  const nextStatus = normalizeToExecutionStatus(event.to);
   return { ...execution, status: nextStatus };
 }
 
-function applyNodeCancelled(execution: WorkflowView, event: Extract<ExecutionStreamEvent, { type: "NodeCancelled" }>): WorkflowView {
+function applyNodeCancelled(execution: ExecutionView, event: Extract<ExecutionStreamEvent, { type: "NodeCancelled" }>): ExecutionView {
   const reason = event.cancel?.reason ?? undefined;
   return {
     ...execution,
@@ -92,7 +92,7 @@ function applyNodeCancelled(execution: WorkflowView, event: Extract<ExecutionStr
   };
 }
 
-function applyNodeFailed(execution: WorkflowView, event: Extract<ExecutionStreamEvent, { type: "NodeFailed" }>): WorkflowView {
+function applyNodeFailed(execution: ExecutionView, event: Extract<ExecutionStreamEvent, { type: "NodeFailed" }>): ExecutionView {
   const error =
     event.error == null ? undefined : { message: event.error.message ?? undefined };
   return {
@@ -129,7 +129,7 @@ export function parseExecutionStreamEvent(payload: string): ExecutionStreamEvent
 }
 
 /** v2: event.executionId は displayId として扱う。 */
-export function applyExecutionStreamEvent(current: WorkflowView, event: ExecutionStreamEvent): WorkflowView {
+export function applyExecutionStreamEvent(current: ExecutionView, event: ExecutionStreamEvent): ExecutionView {
   if (event.executionId !== current.displayId) return current;
 
   if (event.type === "GraphUpdated") return applyGraphUpdated(current, event);

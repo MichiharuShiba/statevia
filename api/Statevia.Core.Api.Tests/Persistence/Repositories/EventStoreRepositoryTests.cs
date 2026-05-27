@@ -203,7 +203,7 @@ public sealed class EventStoreRepositoryTests
         using var db = CreateDb();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var repo = new EventStoreRepository(new UuidV7Generator());
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var clientEventId = Guid.Parse("6ba7b810-9dad-11d1-80b4-00c04fd430c8");
 
         await using var uow = await uowFactory.CreateAsync();
@@ -211,14 +211,14 @@ public sealed class EventStoreRepositoryTests
         // Act
         var first = await repo.TryAppendIfAbsentByClientEventAsync(
             uow,
-            workflowId,
+            executionId,
             clientEventId,
             EventStoreEventType.EventPublished,
             payloadJson: "{\"x\":1}",
             default);
         var second = await repo.TryAppendIfAbsentByClientEventAsync(
             uow,
-            workflowId,
+            executionId,
             clientEventId,
             EventStoreEventType.EventPublished,
             payloadJson: "{\"x\":1}",
@@ -228,7 +228,7 @@ public sealed class EventStoreRepositoryTests
         // Assert
         Assert.True(first);
         Assert.False(second);
-        Assert.Equal(1, await uow.Db.EventStore.AsNoTracking().CountAsync(e => e.ExecutionId == workflowId));
+        Assert.Equal(1, await uow.Db.EventStore.AsNoTracking().CountAsync(e => e.ExecutionId == executionId));
     }
 
     /// <summary>
@@ -241,14 +241,14 @@ public sealed class EventStoreRepositoryTests
         using var db = CreateDb();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var repo = new EventStoreRepository(new UuidV7Generator());
-        var workflowId = Guid.NewGuid();
+        var executionId = Guid.NewGuid();
         var clientEventId = Guid.Parse("7ba7b810-9dad-11d1-80b4-00c04fd430c8");
 
         await using (var uow1 = await uowFactory.CreateAsync())
         {
             Assert.True(await repo.TryAppendIfAbsentByClientEventAsync(
                 uow1,
-                workflowId,
+                executionId,
                 clientEventId,
                 EventStoreEventType.WorkflowCancelled,
                 "{}",
@@ -260,7 +260,7 @@ public sealed class EventStoreRepositoryTests
         await using var uow2 = await uowFactory.CreateAsync();
         var again = await repo.TryAppendIfAbsentByClientEventAsync(
             uow2,
-            workflowId,
+            executionId,
             clientEventId,
             EventStoreEventType.WorkflowCancelled,
             "{}",
@@ -268,6 +268,6 @@ public sealed class EventStoreRepositoryTests
 
         // Assert
         Assert.False(again);
-        Assert.Equal(1, await uow2.Db.EventStore.AsNoTracking().CountAsync(e => e.ExecutionId == workflowId));
+        Assert.Equal(1, await uow2.Db.EventStore.AsNoTracking().CountAsync(e => e.ExecutionId == executionId));
     }
 }

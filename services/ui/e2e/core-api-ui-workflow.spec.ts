@@ -36,12 +36,12 @@ test.describe("Core API + UI (real)", () => {
       data: { definitionId: defJson.displayId, input: {} }
     });
     expect(start.ok(), await start.text()).toBeTruthy();
-    const wf = (await start.json()) as { displayId: string };
+    const startedExecution = (await start.json()) as { displayId: string };
 
     const executionPage = new ExecutionPage(page);
     await executionPage.goto();
     await executionPage.expectHeaderVisible();
-    await executionPage.executionIdInput.fill(wf.displayId);
+    await executionPage.executionIdInput.fill(startedExecution.displayId);
     await executionPage.loadExecution();
     await executionPage.waitForExecutionStatus("Running");
 
@@ -72,7 +72,7 @@ test.describe("Core API + UI (real)", () => {
       data: { definitionId: defJson.displayId, input: {} }
     });
     expect(start.ok()).toBeTruthy();
-    const wf = (await start.json()) as { displayId: string };
+    const startedExecution = (await start.json()) as { displayId: string };
 
     await page.route("**/api/core/executions/*/cancel", async (route) => {
       await route.fulfill({
@@ -87,7 +87,7 @@ test.describe("Core API + UI (real)", () => {
     const executionPage = new ExecutionPage(page);
     await executionPage.goto();
     await executionPage.expectHeaderVisible();
-    await executionPage.executionIdInput.fill(wf.displayId);
+    await executionPage.executionIdInput.fill(startedExecution.displayId);
     await executionPage.loadExecution();
     await executionPage.waitForExecutionStatus("Running");
 

@@ -10,29 +10,29 @@ internal static partial class ExecutionProjectionUpdateQueueLogMessages
     [LoggerMessage(
         EventId = 3101,
         Level = LogLevel.Warning,
-        Message = "Skip enqueue because workflow is dead-lettered ExecutionId={workflowId}")]
-    public static partial void SkipEnqueueDeadLettered(this ILogger logger, Guid workflowId);
+        Message = "Skip enqueue because execution is dead-lettered ExecutionId={executionId}")]
+    public static partial void SkipEnqueueDeadLettered(this ILogger logger, Guid executionId);
 
     [LoggerMessage(
         EventId = 3102,
         Level = LogLevel.Warning,
-        Message = "Projection queue drain on shutdown timed out RemainingWorkflows={remainingWorkflows}")]
-    public static partial void DrainShutdownTimeout(this ILogger logger, int remainingWorkflows);
+        Message = "Projection queue drain on shutdown timed out RemainingExecutions={remainingExecutions}")]
+    public static partial void DrainShutdownTimeout(this ILogger logger, int remainingExecutions);
 
     [LoggerMessage(
         EventId = 3103,
         Level = LogLevel.Error,
-        Message = "Projection queue moved workflow to dead-letter ExecutionId={workflowId} RetryCount={retryCount}")]
-    public static partial void MovedToDeadLetter(this ILogger logger, Exception ex, Guid workflowId, int retryCount);
+        Message = "Projection queue moved execution to dead-letter ExecutionId={executionId} RetryCount={retryCount}")]
+    public static partial void MovedToDeadLetter(this ILogger logger, Exception ex, Guid executionId, int retryCount);
 
     [LoggerMessage(
         EventId = 3104,
         Level = LogLevel.Warning,
-        Message = "Projection queue processing failed. Retry scheduled ExecutionId={workflowId} Attempt={attempt}/{maxAttempts} DelayMs={delayMs}")]
+        Message = "Projection queue processing failed. Retry scheduled ExecutionId={executionId} Attempt={attempt}/{maxAttempts} DelayMs={delayMs}")]
     public static partial void ProcessingFailedRetryScheduled(
         this ILogger logger,
         Exception ex,
-        Guid workflowId,
+        Guid executionId,
         int attempt,
         int maxAttempts,
         int delayMs);

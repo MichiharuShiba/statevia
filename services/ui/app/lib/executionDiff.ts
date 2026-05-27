@@ -1,4 +1,4 @@
-import type { NodeStatus, WorkflowView } from "./types";
+import type { NodeStatus, ExecutionView } from "./types";
 
 const FAILURE_OR_CANCEL: Set<NodeStatus> = new Set(["FAILED", "CANCELED"]);
 
@@ -42,8 +42,8 @@ function nodeDiffSortKey(item: NodeDiffItem): number {
  * Failed/Canceled の差分を優先して並べる。
  */
 export function computeExecutionDiff(
-  left: WorkflowView | null,
-  right: WorkflowView | null
+  left: ExecutionView | null,
+  right: ExecutionView | null
 ): ExecutionDiffResult | null {
   if (!left || !right) return null;
 

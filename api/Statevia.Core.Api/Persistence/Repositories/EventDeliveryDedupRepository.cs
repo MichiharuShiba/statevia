@@ -13,12 +13,12 @@ internal sealed class EventDeliveryDedupRepository : IEventDeliveryDedupReposito
     public Task<EventDeliveryDedupRow?> FindAsync(
         ICoreUnitOfWork uow,
         string tenantId,
-        Guid workflowId,
+        Guid executionId,
         Guid clientEventId,
         CancellationToken cancellationToken) =>
         uow.Db.EventDeliveryDedup.AsNoTracking()
             .FirstOrDefaultAsync(
-                x => x.TenantId == tenantId && x.ExecutionId == workflowId && x.ClientEventId == clientEventId,
+                x => x.TenantId == tenantId && x.ExecutionId == executionId && x.ClientEventId == clientEventId,
                 cancellationToken);
 
     /// <inheritdoc />
@@ -32,14 +32,14 @@ internal sealed class EventDeliveryDedupRepository : IEventDeliveryDedupReposito
     public async Task<bool> TryUpdateStatusAsync(
         ICoreUnitOfWork uow,
         string tenantId,
-        Guid workflowId,
+        Guid executionId,
         Guid clientEventId,
         EventDeliveryDedupStatusUpdate update,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(update);
         var affected = await uow.Db.EventDeliveryDedup
-            .Where(x => x.TenantId == tenantId && x.ExecutionId == workflowId && x.ClientEventId == clientEventId)
+            .Where(x => x.TenantId == tenantId && x.ExecutionId == executionId && x.ClientEventId == clientEventId)
             .ExecuteUpdateAsync(
                 s => s
                     .SetProperty(x => x.Status, update.Status)

@@ -1,7 +1,9 @@
 # アーキテクチャ
 
-Version: 1.1
+Version: 1.2
 Project: 実行型ステートマシン
+
+**Version 1.2（2026-05-26）**: ExecutionSpace 命名統一（`/v1/executions`、`IExecutionEngine`、`executions` テーブル）。
 
 **Version 1.1（2026-05-05）**: v1/definitions に定義更新（PUT）と `updatedAt` を反映。
 
@@ -15,8 +17,8 @@ statevia のアーキテクチャ：システム構成（Core-Engine / Core-API 
 
 ### 1.1 構成の要点
 
-- **Core-Engine（C#）**: `engine/` のライブラリ。API プロセス内で `IWorkflowEngine` として同一プロセス利用。独立 HTTP サービスはない。
-- **Core-API（C#）**: `api/`。ASP.NET Core。v1/definitions・v1/workflows を提供。DB 所有者（EF Core + PostgreSQL）。Engine を参照してワークフロー開始・キャンセル・イベント発行を行う。
+- **Core-Engine（C#）**: `engine/` のライブラリ。API プロセス内で `IExecutionEngine` として同一プロセス利用。独立 HTTP サービスはない。
+- **Core-API（C#）**: `api/`。ASP.NET Core。v1/definitions・v1/executions を提供。DB 所有者（EF Core + PostgreSQL）。Engine を参照して実行開始・キャンセル・イベント発行を行う。
 - **UI（TypeScript）**: `services/ui/`。Next.js。Route Handler のプロキシ（`/api/core/*`）で Core-API の `/v1/*` に転送。CORS 回避。
 
 ### 1.2 全体図
@@ -29,8 +31,8 @@ flowchart LR
   end
 
   subgraph API["Core-API (C#)"]
-    Controllers["v1/definitions<br>v1/workflows<br>v1/health"]
-    EngineRef["IWorkflowEngine<br>(engine/)"]
+    Controllers["v1/definitions<br>v1/executions<br>v1/health"]
+    EngineRef["IExecutionEngine<br>(engine/)"]
     Db["EF Core<br>PostgreSQL"]
   end
 
@@ -70,10 +72,10 @@ flowchart LR
 
 ### 2.2 Core-API（C# / DB 所有者）
 
-- **v1/definitions**: 定義の登録・更新・一覧・取得（YAML 検証・コンパイル済み JSON 保存、`workflow_definitions.updated_at` を更新）
-- **v1/workflows**: ワークフロー開始（definitionId 指定）・一覧・取得・グラフ取得・キャンセル・イベント発行
+- **v1/definitions**: 定義の登録・publish（版 append）・一覧・取得（YAML 検証・`definition_versions` へ immutable 保存）
+- **v1/executions**: 実行開始（definitionId 指定）・一覧・取得・グラフ取得・キャンセル・イベント発行
 - **v1/health**: 死活
-- 永続化: EF Core（workflow_definitions, workflows, execution_graph_snapshots, display_ids 等）
+- 永続化: EF Core（`definitions` / `definition_versions` / `executions` / `execution_events` / `execution_graph_snapshots` / `event_store` / `display_ids` 等。レガシー `workflow_definitions` は参照専用）
 - Engine は同一プロセスで呼び出しのみ（RPC/HTTP はなし）
 
 ### 2.3 UI（Next.js）

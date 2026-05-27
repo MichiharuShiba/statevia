@@ -104,7 +104,7 @@ export type DefinitionsListQuery = {
   name?: string;
 };
 
-/** ワークフロー一覧 API のクエリパラメータ。 */
+/** 実行一覧 API のクエリパラメータ。 */
 export type ExecutionsListQuery = {
   pagination: PaginationQuery;
   sort: SortQuery;
@@ -114,7 +114,7 @@ export type ExecutionsListQuery = {
 };
 
 /**
- * ワークフロー一覧用の相対 API パス `...?...` を組み立てる。空のフィルタは含めない。
+ * 実行一覧用の相対 API パス `...?...` を組み立てる。空のフィルタは含めない。
  */
 export function buildExecutionsListPath(params: ExecutionsListQuery): string {
   const query = new URLSearchParams();

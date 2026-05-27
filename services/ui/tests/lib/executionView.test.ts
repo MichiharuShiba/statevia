@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildWorkflowView } from "../../app/lib/workflowView";
-import type { WorkflowDTO, WorkflowGraphDTO } from "../../app/lib/types";
+import { buildExecutionView } from "../../app/lib/executionView";
+import type { ExecutionDTO, ExecutionGraphDTO } from "../../app/lib/types";
 
-describe("buildWorkflowView", () => {
+describe("buildExecutionView", () => {
   it("graph の conditionRouting を再評価せずそのまま保持する", () => {
     // Arrange
-    const workflow: WorkflowDTO = {
+    const execution: ExecutionDTO = {
       displayId: "ex-1",
       resourceId: "r-1",
       graphId: "def-1",
@@ -21,7 +21,7 @@ describe("buildWorkflowView", () => {
       caseEvaluations: [{ caseIndex: 0, matched: true }],
       evaluationErrors: []
     };
-    const graph: WorkflowGraphDTO = {
+    const graph: ExecutionGraphDTO = {
       nodes: [
         {
           nodeId: "n-1",
@@ -37,7 +37,7 @@ describe("buildWorkflowView", () => {
     };
 
     // Act
-    const view = buildWorkflowView(workflow, graph);
+    const view = buildExecutionView(execution, graph);
 
     // Assert
     expect(view.nodes).toHaveLength(1);
@@ -50,7 +50,7 @@ describe("buildWorkflowView", () => {
   });
 
   it("graph の output を ExecutionNodeDTO に引き継ぐ", () => {
-    const workflow: WorkflowDTO = {
+    const execution: ExecutionDTO = {
       displayId: "ex-1",
       resourceId: "r-1",
       graphId: "def-1",
@@ -59,7 +59,7 @@ describe("buildWorkflowView", () => {
       cancelRequested: false,
       restartLost: false
     };
-    const graph: WorkflowGraphDTO = {
+    const graph: ExecutionGraphDTO = {
       nodes: [
         {
           nodeId: "n-1",
@@ -77,7 +77,7 @@ describe("buildWorkflowView", () => {
       edges: []
     };
 
-    const view = buildWorkflowView(workflow, graph);
+    const view = buildExecutionView(execution, graph);
 
     expect(view.nodes[0]?.executionNodeId).toBe("n-1");
     expect(view.nodes[0]?.input).toEqual({ payload: 1 });

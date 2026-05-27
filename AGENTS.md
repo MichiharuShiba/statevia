@@ -21,21 +21,23 @@ Core-API は C# のみ。PostgreSQL 16 は EF Core 経由で使用。UI は Next
 | Layer | Role | Location / types |
 | ----- | ---- | ---------------- |
 | **Controllers** | HTTP I/O: route, headers (`X-Tenant-Id`, `X-Idempotency-Key`), binding, status codes. Prefer `[Required]` / model validation; avoid business logic. | `api/Statevia.Core.Api/Controllers/` |
-| **Services** | Use cases: orchestrate **repositories**, **display IDs**, **command dedup**, and the in-process **`IWorkflowEngine`**. | `api/Statevia.Core.Api/Services/`, interfaces in `Abstractions/Services/` |
+| **Services** | Use cases: orchestrate **repositories**, **display IDs**, **command dedup**, and the in-process **`IExecutionEngine`**. | `api/Statevia.Core.Api/Services/`, interfaces in `Abstractions/Services/` |
 | **Repositories** | Persistence only: operate on `ICoreUnitOfWork.Db` passed by the caller. No `SaveChanges`, `BeginTransaction`, or `IDbContextFactory` in repository implementations. | `api/Statevia.Core.Api/Persistence/Repositories/`, interfaces in `Abstractions/Persistence/` |
-| **UoW / Executor** | `ICoreUnitOfWork` + `ICoreUnitOfWorkFactory` own DbContext lifetime and transactions. `ICoreTransactionExecutor` runs ReadCommitted / ReadOnly use cases. `IWorkflowMutationPersistence` owns Serializable retry for Cancel / Publish. | `api/Statevia.Core.Api/Persistence/` |
-| **Engine** | Workflow execution (in-memory); Core-API calls it as a singleton. | `engine/` → `IWorkflowEngine` / `WorkflowEngine` |
+| **UoW / Executor** | `ICoreUnitOfWork` + `ICoreUnitOfWorkFactory` own DbContext lifetime and transactions. `ICoreTransactionExecutor` runs ReadCommitted / ReadOnly use cases. `IExecutionMutationPersistence` owns Serializable retry for Cancel / Publish. | `api/Statevia.Core.Api/Persistence/` |
+| **Engine** | Workflow execution (in-memory); Core-API calls it as a singleton. | `engine/` → `IExecutionEngine` / `ExecutionEngine` |
 
-**Persistence note:** Application services decide commit boundaries via **`ICoreTransactionExecutor`** or **`IWorkflowMutationPersistence`**. Repositories only mutate `uow.Db`. **`IDbContextFactory<CoreDbContext>`** is closed inside **`CoreUnitOfWork`** (not in services or repositories). Read-model assembly (`ExecutionReadModelService`, `GraphDefinitionService`) uses **`ExecuteReadOnlyAsync`** on the executor.
+**Persistence note:** Application services decide commit boundaries via **`ICoreTransactionExecutor`** or **`IExecutionMutationPersistence`**. Repositories only mutate `uow.Db`. **`IDbContextFactory<CoreDbContext>`** is closed inside **`CoreUnitOfWork`** (not in services or repositories). Read-model assembly (`ExecutionReadModelService`, `GraphDefinitionService`) uses **`ExecuteReadOnlyAsync`** on the executor.
 
-**event_store:** Appends go through **`IEventStoreRepository.AppendAsync(ICoreUnitOfWork uow, …)`** inside the caller’s transaction. **Start** uses one ReadCommitted commit (`workflows` + `execution_graph_snapshots` + `event_store` + optional `command_dedup`). **Cancel / Publish** use **tx1** (RECEIVED on `event_delivery_dedup`, ReadCommitted) then **tx2** (projection + `event_store` + `command_dedup` + APPLIED, Serializable with retry via `IWorkflowMutationPersistence`). Event kinds: **`EventStoreEventType`**. Projection authority remains `workflows` + `execution_graph_snapshots`.
+**event_store:** Appends go through **`IEventStoreRepository.AppendAsync(ICoreUnitOfWork uow, …)`** inside the caller’s transaction. **Start** uses one ReadCommitted commit (`executions` + `execution_graph_snapshots` + `event_store` + optional `command_dedup`). **Cancel / Publish** use **tx1** (RECEIVED on `event_delivery_dedup`, ReadCommitted) then **tx2** (projection + `event_store` + `command_dedup` + APPLIED, Serializable with retry via `IExecutionMutationPersistence`). Event kinds: **`EventStoreEventType`**（`WorkflowStarted` / `WorkflowCancelled` 等の種別文字列は DSL 由来で維持）。Projection authority remains `executions` + `execution_graph_snapshots`. 監査テーブル **`execution_events`** はスキーマ先行（INSERT 経路は未実装）。
 
-**Read-model authority (STV-416):** HTTP の `GET /v1/workflows/{id}` / `GET /v1/workflows/{id}/graph` は **DB projection（`workflows` / `execution_graph_snapshots`）を正**とする。`GetSnapshot` / `ExportExecutionGraph` は in-process のランタイムビューであり、将来コールバック経路導入後は最終永続状態と一致しない可能性がある。
+**Read-model authority (STV-416):** HTTP の `GET /v1/executions/{id}` / `GET /v1/executions/{id}/graph` は **DB projection（`executions` / `execution_graph_snapshots`）を正**とする。`GetSnapshot` / `ExportExecutionGraph` は in-process のランタイムビューであり、将来コールバック経路導入後は最終永続状態と一致しない可能性がある。
+
+**Wait / cursor（task 8 予定）:** `execution_cursors` / `execution_waits` は **未実装**。durable wait の永続化方針は `.spec-workflow/specs/execution-platform-data-model/tasks.md` task 8 を参照。
 
 **Dependency injection (`Program.cs`):**
 
-- **Singleton:** `IWorkflowEngine`, `IDefinitionCompilerService`, `IIdGenerator` (as registered).
-- **Scoped:** Services (`IDefinitionService`, `IWorkflowService`, …), repositories, `IDbContextFactory`-backed helpers.
+- **Singleton:** `IExecutionEngine`, `IDefinitionCompilerService`, `IIdGenerator` (as registered).
+- **Scoped:** Services (`IDefinitionService`, `IExecutionService`, …), repositories, `IDbContextFactory`-backed helpers.
 - **DbContext:** `AddDbContextFactory<CoreDbContext>` (Npgsql; `DATABASE_URL` normalized from `postgres://` when needed).
 
 **Errors and validation (contract `docs/statevia-data-integration-contract.md` §7):**
@@ -45,7 +47,7 @@ Core-API は C# のみ。PostgreSQL 16 は EF Core 経由で使用。UI は Next
 
 Further HTTP contract: `docs/core-api-interface.md`.
 
-**Input/Output exposure policy (IO-14):** `workflowInput` / state `output` are not returned by default in list/get APIs; when they appear in graph/snapshot payloads for debugging, clients must treat them as potentially sensitive and apply masking/size controls before external logging.
+**Input/Output exposure policy (IO-14):** Start 時の `input` / state `output` are not returned by default in list/get APIs; when they appear in graph/snapshot payloads for debugging, clients must treat them as potentially sensitive and apply masking/size controls before external logging. `LogRedaction` masks `input` and `output` keys in log snapshots.
 
 ### Docker Compose（運用）
 
@@ -80,7 +82,7 @@ Further HTTP contract: `docs/core-api-interface.md`.
    cd services/ui && CORE_API_INTERNAL_BASE="http://localhost:8080" npm run dev
    ```
 
-   UI は `/api/core/workflows/*` 等のプロキシ経由で Core-API（C#）の `/v1/definitions` と `/v1/workflows` を利用する。
+   UI は `/api/core/executions/*` 等のプロキシ経由で Core-API（C#）の `/v1/definitions` と `/v1/executions` を利用する。
 
 ### Docker gotcha (Cloud VM)
 
@@ -117,8 +119,8 @@ Comment rules, Markdownlint (e.g. `.spec-workflow/`), build or analyzer warnings
 
 ### Engine: 実行ログ（STV-404）
 
-- **`WorkflowEngine`** は `Microsoft.Extensions.Logging` の **同期 `ILogger<WorkflowEngine>`** をコンストラクタで受け取る（Core-API は `AddStateviaWorkflowEngine` で登録）。テスト等では `NullLogger` を渡してよい。プロバイダ例外は **ログ呼び出しを try/catch** して遷移に伝播させない。
-- **主な項目（概要）**: `Workflow started`（`WorkflowId`, `DefinitionName`, `InitialState`）、`State scheduled` / `State completed`（`StateName`, `NodeId`, `Fact`、通常状態は **`ElapsedMs`**＝`ExecuteAsync` 前後の壁時計。Wait の待機込み）、`State execute failed` / `Workflow terminal failure`（Error）、`Workflow completed`。Join 合成ノードの完了ログには **`ElapsedMs` を付けない**。
+- **`ExecutionEngine`** は `Microsoft.Extensions.Logging` の **同期 `ILogger<ExecutionEngineLogger>`** をコンストラクタで受け取る（Core-API は `AddStateviaExecutionEngine` で登録）。テスト等では `NullLogger` を渡してよい。プロバイダ例外は **ログ呼び出しを try/catch** して遷移に伝播させない。
+- **主な項目（概要）**: `Execution started`（`ExecutionId`, `DefinitionName`, `InitialState`）、`State scheduled` / `State completed`（`StateName`, `NodeId`, `Fact`、通常状態は **`ElapsedMs`**＝`ExecuteAsync` 前後の壁時計。Wait の待機込み）、`State execute failed` / `Execution terminal failure`（Error）、`Execution completed`。Join 合成ノードの完了ログには **`ElapsedMs` を付けない**。
 
 ### .NET SDK
 

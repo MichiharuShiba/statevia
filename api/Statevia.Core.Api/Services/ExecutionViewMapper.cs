@@ -8,12 +8,12 @@ using Statevia.Core.Api.Persistence;
 namespace Statevia.Core.Api.Services;
 
 /// <summary>
-/// 実行グラフ JSON と DB 行から UI 向け WorkflowView / Graph パッチを組み立てる。
+/// 実行グラフ JSON と DB 行から UI 向け ExecutionView / Graph パッチを組み立てる。
 /// </summary>
 internal static class ExecutionViewMapper
 {
-    public static ExecutionViewDto BuildWorkflowView(
-        ExecutionRow workflow,
+    public static ExecutionViewDto BuildExecutionView(
+        ExecutionRow execution,
         string graphJson,
         string displayId,
         string graphIdDisplay)
@@ -21,13 +21,13 @@ internal static class ExecutionViewMapper
         return new ExecutionViewDto
         {
             DisplayId = displayId,
-            ResourceId = workflow.ExecutionId.ToString("D"),
+            ResourceId = execution.ExecutionId.ToString("D"),
             GraphId = graphIdDisplay,
-            Status = workflow.Status,
-            StartedAt = workflow.StartedAt,
-            UpdatedAt = workflow.UpdatedAt,
-            CancelRequested = workflow.CancelRequested,
-            RestartLost = workflow.RestartLost,
+            Status = execution.Status,
+            StartedAt = execution.StartedAt,
+            UpdatedAt = execution.UpdatedAt,
+            CancelRequested = execution.CancelRequested,
+            RestartLost = execution.RestartLost,
             Nodes = MapNodes(graphJson)
         };
     }

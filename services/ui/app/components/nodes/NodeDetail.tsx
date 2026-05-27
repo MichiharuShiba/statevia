@@ -1,13 +1,13 @@
 "use client";
 
-import type { ExecutionNodeDTO, WorkflowView } from "../../lib/types";
+import type { ExecutionNodeDTO, ExecutionView } from "../../lib/types";
 import { formatTracePayload } from "../../lib/formatExecutionTrace";
 import { getStatusStyle } from "../../lib/statusStyle";
 import { useUiText } from "../../lib/uiTextContext";
 import { NodeDetailStatusPanels, NodeDetailTraceSection } from "./nodeDetailSections";
 
 type NodeDetailProps = {
-  execution: WorkflowView | null;
+  execution: ExecutionView | null;
   node: ExecutionNodeDTO | null;
   loading: boolean;
   onResume: () => void;

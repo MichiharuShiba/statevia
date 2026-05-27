@@ -23,7 +23,7 @@ public sealed class ExecutionListQuery
     [FromQuery(Name = "definitionId")]
     public string? DefinitionId { get; init; }
 
-    /// <summary>表示 ID 部分一致または workflow UUID 完全一致。</summary>
+    /// <summary>表示 ID 部分一致または execution UUID 完全一致。</summary>
     [FromQuery(Name = "name")]
     public string? Name { get; init; }
 
