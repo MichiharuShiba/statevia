@@ -17,6 +17,10 @@ internal sealed class ExecutionRepository : IExecutionRepository
         uow.Db.Executions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ExecutionId == executionId && x.TenantId == tenantId, ct);
 
+    public Task<ExecutionRow?> GetByExecutionIdAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct) =>
+        uow.Db.Executions.IgnoreQueryFilters().AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ExecutionId == executionId, ct);
+
     public async Task<(int TotalCount, List<(ExecutionRow Execution, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
         ICoreUnitOfWork uow,
         string tenantId,
