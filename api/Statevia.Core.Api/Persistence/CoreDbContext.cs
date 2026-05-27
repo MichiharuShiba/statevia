@@ -84,6 +84,13 @@ internal class CoreDbContext : DbContext
         public const string Visibility = "visibility";
         public const string Description = "description";
         public const string Role = "role";
+        public const string CurrentNodeId = "current_node_id";
+        public const string CurrentRuntimeId = "current_runtime_id";
+        public const string CurrentWorkerId = "current_worker_id";
+        public const string State = "state";
+        public const string NodeId = "node_id";
+        public const string WaitKind = "wait_kind";
+        public const string ResumeToken = "resume_token";
     }
 
     private readonly ITenantContextAccessor _tenantAccessor;
@@ -107,6 +114,8 @@ internal class CoreDbContext : DbContext
     public DbSet<EventStoreRow> EventStore => Set<EventStoreRow>();
     public DbSet<ExecutionEventRow> ExecutionEvents => Set<ExecutionEventRow>();
     public DbSet<ExecutionGraphSnapshotRow> ExecutionGraphSnapshots => Set<ExecutionGraphSnapshotRow>();
+    public DbSet<ExecutionCursorRow> ExecutionCursors => Set<ExecutionCursorRow>();
+    public DbSet<ExecutionWaitRow> ExecutionWaits => Set<ExecutionWaitRow>();
     public DbSet<CommandDedupRow> CommandDedup => Set<CommandDedupRow>();
     public DbSet<EventDeliveryDedupRow> EventDeliveryDedup => Set<EventDeliveryDedupRow>();
     public DbSet<TenantRow> Tenants => Set<TenantRow>();
@@ -251,6 +260,45 @@ internal class CoreDbContext : DbContext
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
         });
 
+        // execution_cursors（operational projection）
+        modelBuilder.Entity<ExecutionCursorRow>(e =>
+        {
+            e.ToTable("execution_cursors");
+            e.HasKey(x => x.ExecutionId);
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
+            e.Property(x => x.TenantId).HasMaxLength(64).HasColumnName(Columns.TenantId);
+            e.Property(x => x.CurrentNodeId).HasMaxLength(64).HasColumnName(Columns.CurrentNodeId);
+            e.Property(x => x.CurrentRuntimeId).HasMaxLength(128).HasColumnName(Columns.CurrentRuntimeId);
+            e.Property(x => x.CurrentWorkerId).HasMaxLength(128).HasColumnName(Columns.CurrentWorkerId);
+            e.Property(x => x.State).HasMaxLength(32).HasColumnName(Columns.State);
+            e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
+
+            e.HasOne<ExecutionRow>()
+                .WithMany()
+                .HasForeignKey(x => x.ExecutionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // execution_waits（durable wait のみ）
+        modelBuilder.Entity<ExecutionWaitRow>(e =>
+        {
+            e.ToTable("execution_waits");
+            e.HasKey(x => new { x.ExecutionId, x.NodeId });
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
+            e.Property(x => x.NodeId).HasMaxLength(64).HasColumnName(Columns.NodeId);
+            e.Property(x => x.WaitKind).HasConversion<string>().HasMaxLength(32).HasColumnName(Columns.WaitKind);
+            e.Property(x => x.ResumeToken).HasMaxLength(256).HasColumnName(Columns.ResumeToken);
+            e.Property(x => x.ExpiresAt).HasColumnName(Columns.ExpiresAt);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+
+            e.HasIndex(x => new { x.ExecutionId, x.ResumeToken });
+
+            e.HasOne<ExecutionRow>()
+                .WithMany()
+                .HasForeignKey(x => x.ExecutionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // command_dedup（コマンド冪等制御）
         modelBuilder.Entity<CommandDedupRow>(e =>
         {
@@ -306,6 +354,10 @@ internal class CoreDbContext : DbContext
             (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantKey));
 
         modelBuilder.Entity<ExecutionRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantKey));
+
+        modelBuilder.Entity<ExecutionCursorRow>().HasQueryFilter(e =>
             !_queryFilterOptions.IsEnabled ||
             (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantKey));
 
