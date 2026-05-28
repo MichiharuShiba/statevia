@@ -382,6 +382,9 @@ public sealed class ExecutionServiceTests
             return ByIdResult;
         }
 
+        public Task<ExecutionRow?> GetByExecutionIdAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct) =>
+            GetByIdAsync(uow, string.Empty, executionId, ct);
+
         public async Task<(int TotalCount, List<(ExecutionRow Execution, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
             ICoreUnitOfWork uow,
             string tenantId,
@@ -423,6 +426,37 @@ public sealed class ExecutionServiceTests
             Updates.Add((executionId, status, cancelRequested, graphJson));
             await Task.Yield(); // async boundary for coverage
         }
+    }
+
+    private sealed class FakeExecutionCursorRepository : IExecutionCursorRepository
+    {
+        public Task UpsertAsync(ICoreUnitOfWork uow, ExecutionCursorRow row, CancellationToken ct) => Task.CompletedTask;
+
+        public Task DeleteAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct) => Task.CompletedTask;
+
+        public Task<ExecutionCursorRow?> GetByExecutionIdAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct) =>
+            Task.FromResult<ExecutionCursorRow?>(null);
+    }
+
+    private sealed class FakeExecutionWaitRepository : IExecutionWaitRepository
+    {
+        public Task ReplaceWaitsAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            IReadOnlyList<ExecutionWaitRow> waits,
+            CancellationToken ct) => Task.CompletedTask;
+
+        public Task DeleteByResumeTokenAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            string resumeToken,
+            CancellationToken ct) => Task.CompletedTask;
+
+        public Task<IReadOnlyList<ExecutionWaitRow>> ListByExecutionIdAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<ExecutionWaitRow>>(Array.Empty<ExecutionWaitRow>());
     }
 
     private sealed class FakeEventStoreRepository : IEventStoreRepository
@@ -1598,7 +1632,20 @@ public sealed class ExecutionServiceTests
         };
 
         var display = new FakeDisplayIdService();
-        var executionRepo = new FakeExecutionRepository();
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = "t1",
+                DefinitionId = Guid.NewGuid(),
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
         var eventStore = new FakeEventStoreRepository();
 
         var sut = BuildExecutionService(
@@ -3612,6 +3659,8 @@ public sealed class ExecutionServiceTests
             idGenerator,
             dedupService,
             executions,
+            new FakeExecutionCursorRepository(),
+            new FakeExecutionWaitRepository(),
             definitions,
             projectAuthorization ?? new AllowAllProjectAuthorizationService(),
             sqlite.TenantAccessor,
