@@ -26,6 +26,42 @@ public sealed class ExecutionRepositoryTests
         Assert.Null(res);
     }
 
+    /// <summary>GetByExecutionIdAsync はテナントフィルタなしで execution 行を返す。</summary>
+    [Fact]
+    public async Task GetByExecutionIdAsync_ReturnsRow_WithoutTenantFilter()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new ExecutionRepository();
+        var executionId = Guid.NewGuid();
+
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            ctx.Executions.Add(new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = "other-tenant",
+                DefinitionId = Guid.NewGuid(),
+                DefinitionVersionId = Guid.NewGuid(),
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var row = await repo.GetByExecutionIdAsync(uow, executionId, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(row);
+        Assert.Equal("other-tenant", row!.TenantId);
+    }
+
     /// <summary>
     /// 開始時刻の降順で並べて表示用識別子を結合する。
     /// </summary>

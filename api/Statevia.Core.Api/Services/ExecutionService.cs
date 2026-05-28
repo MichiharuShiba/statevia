@@ -63,6 +63,8 @@ internal sealed class ExecutionService : IExecutionService
     private readonly IIdGenerator _idGenerator;
     private readonly ICommandDedupService _dedupService;
     private readonly IExecutionRepository _executions;
+    private readonly IExecutionCursorRepository _executionCursors;
+    private readonly IExecutionWaitRepository _executionWaits;
     private readonly IDefinitionRepository _definitions;
     private readonly IProjectAuthorizationService _projectAuth;
     private readonly ITenantContextAccessor _tenantContext;
@@ -88,6 +90,8 @@ internal sealed class ExecutionService : IExecutionService
         IIdGenerator idGenerator,
         ICommandDedupService dedupService,
         IExecutionRepository executions,
+        IExecutionCursorRepository executionCursors,
+        IExecutionWaitRepository executionWaits,
         IDefinitionRepository definitions,
         IProjectAuthorizationService projectAuth,
         ITenantContextAccessor tenantContext,
@@ -108,6 +112,8 @@ internal sealed class ExecutionService : IExecutionService
         _idGenerator = idGenerator;
         _dedupService = dedupService;
         _executions = executions;
+        _executionCursors = executionCursors;
+        _executionWaits = executionWaits;
         _definitions = definitions;
         _projectAuth = projectAuth;
         _tenantContext = tenantContext;
@@ -209,6 +215,15 @@ internal sealed class ExecutionService : IExecutionService
                 };
 
                 await _executions.AddExecutionAndSnapshotAsync(uow, executionRow, snapshotRow, innerCt).ConfigureAwait(false);
+                await SyncOperationalProjectionAsync(
+                        uow,
+                        executionId,
+                        tenantId,
+                        status,
+                        graphJson,
+                        resumeTokenToClear: null,
+                        innerCt)
+                    .ConfigureAwait(false);
                 await _eventStore
                     .AppendAsync(uow, executionId, EventStoreEventType.WorkflowStarted, startedPayload, innerCt)
                     .ConfigureAwait(false);
@@ -422,6 +437,15 @@ internal sealed class ExecutionService : IExecutionService
                 await _executions
                     .UpdateExecutionAndSnapshotAsync(uow, uuid.Value, projStatus, projCancel, projGraphJson, ctInner)
                     .ConfigureAwait(false);
+                await SyncOperationalProjectionAsync(
+                        uow,
+                        uuid.Value,
+                        tenantId,
+                        projStatus,
+                        projGraphJson,
+                        resumeTokenToClear: null,
+                        ctInner)
+                    .ConfigureAwait(false);
                 if (!skipCancelEventAppend)
                 {
                     await _eventStore
@@ -530,6 +554,15 @@ internal sealed class ExecutionService : IExecutionService
             {
                 await _executions
                     .UpdateExecutionAndSnapshotAsync(uow, uuid.Value, pubStatus, pubCancel, pubGraphJson, ctInner)
+                    .ConfigureAwait(false);
+                await SyncOperationalProjectionAsync(
+                        uow,
+                        uuid.Value,
+                        tenantId,
+                        pubStatus,
+                        pubGraphJson,
+                        resumeTokenToClear: eventName,
+                        ctInner)
                     .ConfigureAwait(false);
                 if (!skipEventAppend)
                 {
@@ -894,10 +927,51 @@ internal sealed class ExecutionService : IExecutionService
         await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
             {
+                var execution = await _executions.GetByExecutionIdAsync(uow, executionId, innerCt).ConfigureAwait(false);
+                if (execution is null)
+                    return;
+
                 await _executions
                     .UpdateExecutionAndSnapshotAsync(uow, executionId, status, cancelRequested, graphJson, innerCt)
                     .ConfigureAwait(false);
+                await SyncOperationalProjectionAsync(
+                        uow,
+                        executionId,
+                        execution.TenantId,
+                        status,
+                        graphJson,
+                        resumeTokenToClear: null,
+                        innerCt)
+                    .ConfigureAwait(false);
             },
+            ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// executions / snapshot 更新と同一 tx 内で operational projection（cursor / durable wait）を同期する。
+    /// </summary>
+    private async Task SyncOperationalProjectionAsync(
+        ICoreUnitOfWork uow,
+        Guid executionId,
+        string tenantId,
+        string status,
+        string graphJson,
+        string? resumeTokenToClear,
+        CancellationToken ct)
+    {
+        var snapshot = _engine.GetSnapshot(executionId.ToString());
+        var request = new ExecutionOperationalProjectionSyncRequest(
+            executionId,
+            tenantId,
+            status,
+            snapshot,
+            graphJson,
+            resumeTokenToClear);
+        await ExecutionOperationalProjectionSync.SyncAsync(
+            uow,
+            _executionCursors,
+            _executionWaits,
+            request,
             ct).ConfigureAwait(false);
     }
 

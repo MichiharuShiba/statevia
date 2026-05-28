@@ -68,6 +68,8 @@ internal static class ServiceCollectionExtensions
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IProjectAuthorizationService, ProjectAuthorizationService>();
         services.AddScoped<IExecutionRepository, ExecutionRepository>();
+        services.AddScoped<IExecutionCursorRepository, ExecutionCursorRepository>();
+        services.AddScoped<IExecutionWaitRepository, ExecutionWaitRepository>();
         services.AddScoped<ICommandDedupRepository, CommandDedupRepository>();
         services.AddScoped<IEventDeliveryDedupRepository, EventDeliveryDedupRepository>();
         services.AddScoped<IEventStoreRepository, EventStoreRepository>();
