@@ -174,7 +174,7 @@ UIが依存してよいレスポンス形を固定する。
 - **「ステート完了」の定義（粒度 A）**: 実行グラフ上で **`CompleteNode` が適用された直後**を、投影更新の契機とする。対象には **通常ステートに加え、Join の合成ノード**を含める（合成ノードも常に投影スナップショットに含める）。
 - **event_store**: ノード完了のたびに **`event_store` へ新種別を追記しない**（当面）。`event_store` に載せるのは **外部送信・コマンドに紐づくイベントのみ**（§STV-414 の表）。ノード履歴の監査や reducer 連携が必要になった場合は **別途** 種別・ペイロード・トランザクション境界を定義する。
 - **Read Model の正本**: 引き続き `executions` + `execution_graph_snapshots`。ノード完了経路の投影更新は **`event_store` を伴わない**コミットであり得る。UI・SSE の正本は Read API / 投影済み JSON とする方針（§5.1、`AGENTS.md`）は変えない。
-- **`execution_cursors` / `execution_waits`（task 8 予定）**: **未実装**。durable wait のみ DB 永続化する条件と cursor の operational 位置づけは `.spec-workflow/specs/execution-platform-data-model/tasks.md` task 8 を参照。
+- **`execution_cursors` / `execution_waits`（task 8）**: **実装済み**。cursor は **operational projection**（GET read-model の正本ではない）。durable wait は初版 **EventWait** のみ（Engine グラフ上 `nodeType=Wait`・未完了・`waitKey` あり）。`wait_kind` 列挙は **EventWait / CallbackWait / DelayWait**（将来拡張は CallbackWait / DelayWait）。`Start` / `Cancel` / `Publish` / 投影キュー（`UpdateProjectionFromEngineAsync`）と **同一 tx** で `executions` + `execution_graph_snapshots` と同期する。
 
 #### 高負荷時: API 内キュー（ドラフト）
 
