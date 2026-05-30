@@ -1,9 +1,11 @@
 # Core API 契約（HTTP）
 
-Version: 1.7
+Version: 1.8
 Project: 実行型ステートマシン
 
 Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
+
+**Version 1.8（2026-05-28）**: Runtime API（`/v1/definitions` / `/v1/executions`）を **Principal 必須**に変更。JWT または API キー（`X-Api-Key`）で `ITenantContext.PrincipalId` を解決し、`X-Tenant-Id` 単独は 401。
 
 **Version 1.7（2026-05-26）**: ExecutionSpace 命名統一（7a〜7d）。HTTP **`/v1/executions`**、永続 **`executions`** / **`execution_events`**、Engine **`IExecutionEngine.Start(..., input)`**、DTO **`ExecutionResponse`** / **`ExecutionViewDto`** に同期。旧 `/v1/executions` エイリアスなし。
 
@@ -305,8 +307,9 @@ Request（JSON、省略可）:
 ### 4.1 ヘッダ
 
 - **Content-Type**: application/json（Body がある場合）
-- **Authorization**: `Bearer <JWT>`（ログイン後）。初版では **Definitions / Executions 等は JWT なし + `X-Tenant-Id` でも可**（移行期）。
-- **X-Tenant-Id**: 移行専用。JWT あり時は **`tenant_key` と一致必須**。不一致は **403**（`TENANT_HEADER_MISMATCH`）。JWT なし時は省略で `"default"`。
+- **Authorization**: `Bearer <JWT>`（ログイン後）。Runtime API（`/v1/definitions` / `/v1/executions`）では Principal 必須。
+- **X-Api-Key**: API キー認証。`api_keys`（prefix + hash）照合で Principal を解決する。
+- **X-Tenant-Id**: 移行専用。JWT あり時は **`tenant_key` と一致必須**。不一致は **403**（`TENANT_HEADER_MISMATCH`）。Runtime API では単独指定を許可せず **401**。
 - **X-Idempotency-Key**: 任意。`POST /v1/executions` では `definitionId + input` を含むリクエストハッシュで冪等キーを分離する（同一キーでも input が異なれば別リクエスト扱い）。
 
 ### 4.1.1 認証 API（初版）
@@ -332,6 +335,13 @@ Request:
 - Response: 200 OK、`{ "tenantId", "tenantKey", "principalId", "email", "isTenantAdmin" }`
 
 JWT クレーム: `tenant_id`（内部 UUID）、`tenant_key`、`principal_id` / `sub`。詳細は `docs/runtime-security-boundary.md`。
+
+### 4.1.2 Runtime API の認証要件
+
+- **保護対象**: `/v1/definitions`、`/v1/executions` 配下。
+- **必須**: `ITenantContext.PrincipalId` が解決済みであること（JWT または `X-Api-Key`）。
+- **拒否**: `X-Tenant-Id` のみ（Bearer / API キーなし）は **401**（`UNAUTHORIZED`）。
+- **除外パス**: `/v1/auth/login`、`/v1/health`、`/swagger/*`、`/scalar/*`。
 
 ### 4.2 JSON 命名ポリシー（実装準拠）
 
