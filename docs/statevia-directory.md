@@ -32,7 +32,15 @@ statevia/
 │  ├─ core-engine-state-machine-spec.md
 │  └─ （ui-*, statevia-* その他仕様）
 │
-├─ engine/                       # Core-Engine（C# ライブラリ + CLI）
+├─ cli/                          # 統合 CLI（statevia コマンド）
+│  ├─ statevia-cli.sln
+│  ├─ Statevia.Cli/
+│  └─ Statevia.Cli.Tests/
+│
+├─ shared/                       # 横断共有（API / CLI）
+│  └─ Statevia.Modules/          # modules パス解決等
+│
+├─ engine/                       # Core-Engine（C# ライブラリ；CLI は cli/ へ段階移行）
 │  ├─ statevia-engine.sln
 │  ├─ Directory.Build.props
 │  ├─ Statevia.Core.Engine/      # エンジンコア
@@ -44,7 +52,7 @@ statevia/
 │  │  ├─ Definition/             # 定義ロード・コンパイル・検証
 │  │  ├─ ExecutionGraph/        # 実行グラフ
 │  │  └─ Abstractions/
-│  ├─ Statevia.Cli/
+│  ├─ Statevia.Cli/              # 既存（YAML 検証）→ cli/Statevia.Cli へ段階移行
 │  ├─ Statevia.Core.Engine.Tests/
 │  ├─ Statevia.Cli.Tests/
 │  └─ samples/
