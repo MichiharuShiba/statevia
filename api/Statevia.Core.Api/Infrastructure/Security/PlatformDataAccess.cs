@@ -45,6 +45,17 @@ internal interface IPlatformDataAccess
 
     /// <summary>既定テナントが無ければ作成する。</summary>
     Task EnsureDefaultTenantAsync(CancellationToken cancellationToken);
+
+    /// <summary>権限カタログが無ければシードする。</summary>
+    Task EnsurePermissionCatalogAsync(CancellationToken cancellationToken);
+
+    /// <summary>Principal がテナント管理者（<c>is_tenant_admin</c>）か。</summary>
+    Task<bool> IsTenantAdminAsync(Guid principalId, CancellationToken cancellationToken);
+
+    /// <summary>グループ展開と管理者フラグから Principal の許可 semantic key 集合を返す。</summary>
+    Task<IReadOnlyList<string>> ExpandPrincipalPermissionKeysAsync(
+        Guid principalId,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -237,5 +248,100 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
             UpdatedAt = now
         });
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task EnsurePermissionCatalogAsync(CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var existingKeys = await db.PermissionDefinitions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Select(p => p.PermissionKey)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var existing = existingKeys.ToHashSet(StringComparer.Ordinal);
+        var now = DateTime.UtcNow;
+
+        foreach (var entry in PermissionCatalog.Entries)
+        {
+            if (existing.Contains(entry.PermissionKey))
+                continue;
+
+            db.PermissionDefinitions.Add(new PermissionDefinitionRow
+            {
+                PermissionDefinitionId = Guid.NewGuid(),
+                PermissionKey = entry.PermissionKey,
+                DisplayLabel = entry.DisplayLabel,
+                DisplayKey = entry.DisplayKey,
+                IsSystem = true,
+                CreatedAt = now
+            });
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> IsTenantAdminAsync(Guid principalId, CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
+        var isAdmin = await db.UserPrincipals
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(up => up.PrincipalId == principalId)
+            .Join(
+                db.Users.IgnoreQueryFilters().AsNoTracking(),
+                up => up.UserId,
+                u => u.UserId,
+                (_, u) => u.IsTenantAdmin)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return isAdmin;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> ExpandPrincipalPermissionKeysAsync(
+        Guid principalId,
+        CancellationToken cancellationToken)
+    {
+        if (await IsTenantAdminAsync(principalId, cancellationToken).ConfigureAwait(false))
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+            return await db.PermissionDefinitions
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Select(p => p.PermissionKey)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        await using var context = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
+        var userId = await context.UserPrincipals
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(up => up.PrincipalId == principalId)
+            .Select(up => (Guid?)up.UserId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (userId is null)
+            return Array.Empty<string>();
+
+        return await context.UserGroupMembers
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(m => m.UserId == userId)
+            .Join(
+                context.GroupPermissions.IgnoreQueryFilters().AsNoTracking(),
+                m => m.GroupId,
+                gp => gp.GroupId,
+                (_, gp) => gp.PermissionKey)
+            .Distinct()
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
     }
 }
