@@ -10,6 +10,11 @@ namespace Statevia.Core.Api.Infrastructure.Security;
 /// <param name="User">ユーザー行。</param>
 /// <param name="Principal">Principal 行。</param>
 internal sealed record LoginCredentialLookup(TenantRow Tenant, UserRow User, PrincipalRow Principal);
+/// <summary>API キー lookup 結果。</summary>
+/// <param name="Tenant">テナント行。</param>
+/// <param name="ApiKey">API キー行。</param>
+/// <param name="Principal">Principal 行。</param>
+internal sealed record ApiKeyCredentialLookup(TenantRow Tenant, ApiKeyRow ApiKey, PrincipalRow Principal);
 
 /// <summary>Platform 専用データアクセス。</summary>
 internal interface IPlatformDataAccess
@@ -28,6 +33,15 @@ internal interface IPlatformDataAccess
         Guid tenantInternalId,
         Guid principalId,
         CancellationToken cancellationToken);
+
+    /// <summary>API キー（prefix + hash）から資格情報を検索する。</summary>
+    Task<ApiKeyCredentialLookup?> FindApiKeyCredentialAsync(
+        string keyPrefix,
+        string keyHash,
+        CancellationToken cancellationToken);
+
+    /// <summary>API キーの最終利用時刻を更新する。</summary>
+    Task TouchApiKeyLastUsedAsync(Guid apiKeyId, CancellationToken cancellationToken);
 
     /// <summary>既定テナントが無ければ作成する。</summary>
     Task EnsureDefaultTenantAsync(CancellationToken cancellationToken);
@@ -142,6 +156,62 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
             return null;
 
         return new LoginCredentialLookup(tenant, userPrincipal.u, principal);
+    }
+
+    /// <inheritdoc />
+    public async Task<ApiKeyCredentialLookup?> FindApiKeyCredentialAsync(
+        string keyPrefix,
+        string keyHash,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
+        var apiKey = await db.ApiKeys
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                row => row.KeyPrefix == keyPrefix && row.KeyHash == keyHash,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (apiKey is null)
+            return null;
+
+        var tenant = await db.Tenants
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.TenantId == apiKey.TenantId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (tenant is null)
+            return null;
+
+        var principal = await db.Principals
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.PrincipalId == apiKey.PrincipalId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (principal is null)
+            return null;
+
+        return new ApiKeyCredentialLookup(tenant, apiKey, principal);
+    }
+
+    /// <inheritdoc />
+    public async Task TouchApiKeyLastUsedAsync(Guid apiKeyId, CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var apiKey = await db.ApiKeys
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(row => row.ApiKeyId == apiKeyId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (apiKey is null)
+            return;
+
+        apiKey.LastUsedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
