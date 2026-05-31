@@ -132,6 +132,27 @@ public sealed class ApiKeyAuthenticationServiceTests
         Assert.Empty(result.EffectiveScopes);
     }
 
+    /// <summary>展開許可と allowed_scopes の交差のみが effective になる。</summary>
+    [Fact]
+    public async Task ValidateAsync_AllowedScopesIntersectExpanded_ReturnsIntersectionOnly()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var (_, _, plainKey) = await SecurityTestSeed.SeedApiKeyAsync(
+            database,
+            allowedScopesJson: "[\"executions.read\",\"definitions.write\"]");
+        var service = CreateService(database);
+
+        // Act
+        var result = await service.ValidateAsync(plainKey, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result.EffectiveScopes);
+        Assert.Contains("executions.read", result.EffectiveScopes);
+        Assert.DoesNotContain("definitions.write", result.EffectiveScopes);
+    }
+
     /// <summary>null 配列の allowed_scopes は空集合として扱う。</summary>
     [Fact]
     public async Task ValidateAsync_NullScopesArray_ReturnsEmptyEffectiveScopes()
