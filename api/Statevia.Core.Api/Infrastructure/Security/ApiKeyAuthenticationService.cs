@@ -50,7 +50,10 @@ internal sealed class ApiKeyAuthenticationService : IApiKeyAuthenticationService
             return null;
 
         var allowedScopes = ParseAllowedScopes(lookup.ApiKey.AllowedScopesJson);
-        var effectiveScopes = ApiKeyScopeEvaluator.IntersectEffectiveScopes(allowedScopes, allowedScopes);
+        var expandedPermissions = await _platformDataAccess
+            .ExpandPrincipalPermissionKeysAsync(lookup.Principal.PrincipalId, cancellationToken)
+            .ConfigureAwait(false);
+        var effectiveScopes = ApiKeyScopeEvaluator.IntersectEffectiveScopes(expandedPermissions, allowedScopes);
 
         await _platformDataAccess
             .TouchApiKeyLastUsedAsync(lookup.ApiKey.ApiKeyId, cancellationToken)
