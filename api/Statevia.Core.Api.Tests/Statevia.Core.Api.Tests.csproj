@@ -35,6 +35,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Statevia.Core.Api\Statevia.Core.Api.csproj" />
+    <ProjectReference Include="..\Statevia.Core.Api.Bootstrap\Statevia.Core.Api.Bootstrap.csproj" />
   </ItemGroup>
 
 </Project>
