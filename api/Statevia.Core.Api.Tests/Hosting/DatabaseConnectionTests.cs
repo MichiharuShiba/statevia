@@ -115,6 +115,46 @@ public sealed class DatabaseConnectionTests
         Assert.Contains("Username=", normalized, StringComparison.Ordinal);
     }
 
+    /// <summary>CLI オーバーライドは環境変数より優先する。</summary>
+    [Fact]
+    public void Resolve_ConnectionStringOverride_TakesPrecedenceOverEnv()
+    {
+        // Arrange
+        Environment.SetEnvironmentVariable("DATABASE_URL", "postgres://env:env@ignored/db");
+        try
+        {
+            var config = new ConfigurationBuilder().Build();
+            const string overrideValue = "Host=cli;Database=statevia;Username=u;Password=p";
+
+            // Act
+            var connectionString = DatabaseConnection.Resolve(config, overrideValue);
+
+            // Assert
+            Assert.Contains("Host=cli", connectionString, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DATABASE_URL", null);
+        }
+    }
+
+    /// <summary>オーバーライドの postgres:// は正規化する。</summary>
+    [Fact]
+    public void Resolve_ConnectionStringOverride_NormalizesPostgresUrl()
+    {
+        // Arrange
+        var config = new ConfigurationBuilder().Build();
+
+        // Act
+        var connectionString = DatabaseConnection.Resolve(
+            config,
+            "postgres://user:secret@db.example:5433/statevia");
+
+        // Assert
+        Assert.Contains("Host=db.example", connectionString, StringComparison.Ordinal);
+        Assert.Contains("Password=secret", connectionString, StringComparison.Ordinal);
+    }
+
     /// <summary>null 入力は ArgumentNullException。</summary>
     [Fact]
     public void Resolve_Throws_WhenConfigurationNull()
