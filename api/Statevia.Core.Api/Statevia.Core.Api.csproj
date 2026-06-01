@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Statevia.Core.Api.Tests" />
+    <InternalsVisibleTo Include="Statevia.Core.Api.Bootstrap" />
   </ItemGroup>
 
   <ItemGroup>
