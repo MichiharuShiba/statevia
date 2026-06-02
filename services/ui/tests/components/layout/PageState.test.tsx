@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { PageState } from "../../../app/components/layout/PageState";
 import { uiText } from "../../../app/lib/uiText";
 
 describe("PageState", () => {
   it("loading 状態では output 要素として表示する", () => {
     // Arrange
-    const props = { state: "loading" as const, message: "読込中" };
+    const props = { state: "loading" as const, message: "読込中", loadingDelayMs: 0 };
 
     // Act
     render(<PageState {...props} />);
@@ -15,6 +15,18 @@ describe("PageState", () => {
     expect(screen.getByText(uiText.pageState.loading)).toBeInTheDocument();
     expect(screen.getByText("読込中").tagName).toBe("P");
     expect(screen.getByText(uiText.pageState.loading).closest("output")).not.toBeNull();
+  });
+
+  it("loading は既定遅延後に表示する", () => {
+    vi.useFakeTimers();
+    render(<PageState state="loading" message="読込中" />);
+    expect(screen.queryByText(uiText.pageState.loading)).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(screen.getByText(uiText.pageState.loading)).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it("empty 状態では再試行ボタンを表示しない", () => {
