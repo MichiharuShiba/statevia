@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { NAVIGATION_BUTTON_CLASS } from "../../components/layout/navigationButtonClass";
 import { Toast } from "../../components/Toast";
 import { apiGet } from "../../lib/api";
+import { useDelayedVisibility } from "../../lib/useDelayedVisibility";
 import { formatDateTimeLocalized } from "../../lib/dateTime";
 import { toToastError, type ToastState } from "../../lib/errors";
 import { getDateTimeLocale } from "../../lib/i18n";
@@ -24,6 +25,7 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
   const dateTimeLocale = getDateTimeLocale(locale);
   const [row, setRow] = useState<DefinitionDTO | null>(null);
   const [loading, setLoading] = useState(true);
+  const showLoading = useDelayedVisibility(loading);
   const [toast, setToast] = useState<ToastState | null>(null);
 
   const load = useCallback(async () => {
@@ -56,7 +58,7 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
 
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      {loading && (
+      {showLoading && (
         <output className="block text-sm text-[var(--md-sys-color-on-surface-variant)]" aria-live="polite">
           {uiText.actions.loading}
         </output>
