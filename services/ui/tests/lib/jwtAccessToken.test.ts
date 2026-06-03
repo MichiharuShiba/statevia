@@ -1,15 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { JwtAccessToken, JwtSegment } from "../../app/lib/jwtAccessToken";
+import { testJwt } from "../helpers/testJwt";
 
 function encodeJsonSegment(value: unknown): string {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
-}
-
-function testJwt(exp: number): string {
-  const header = encodeJsonSegment({ alg: "HS256", typ: "JWT" });
-  const payload = encodeJsonSegment({ exp });
-  const signature = Buffer.from("sig-bytes").toString("base64url");
-  return `${header}.${payload}.${signature}`;
 }
 
 describe("JwtAccessToken", () => {

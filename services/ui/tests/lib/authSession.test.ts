@@ -4,12 +4,7 @@ import {
   isAccessTokenSessionValid,
   readJwtExpiryUnixSeconds
 } from "../../app/lib/authSession";
-
-function testJwt(exp: number): string {
-  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({ exp })).toString("base64url");
-  return `${header}.${payload}.signature`;
-}
+import { testJwt } from "../helpers/testJwt";
 
 describe("cookieMaxAgeSeconds", () => {
   it("有効期限までの秒数を返す（最低 60 秒）", () => {

@@ -3,13 +3,7 @@ import {
   isAccessTokenSessionValid,
   readJwtExpiryUnixSeconds
 } from "../../app/lib/authTokenValidation";
-
-function testJwt(exp: number): string {
-  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({ exp })).toString("base64url");
-  const signature = Buffer.from("sig-bytes").toString("base64url");
-  return `${header}.${payload}.${signature}`;
-}
+import { testJwt } from "../helpers/testJwt";
 
 describe("authTokenValidation", () => {
   it("exp が未来の JWT は有効", () => {

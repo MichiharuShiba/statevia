@@ -2,12 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
 import { AUTH_COOKIE_ACCESS } from "../app/lib/authSession";
 import { middleware } from "../middleware";
-
-function testJwt(exp: number): string {
-  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({ exp })).toString("base64url");
-  return `${header}.${payload}.signature`;
-}
+import { testJwt } from "./helpers/testJwt";
 
 function requestWithCookie(path: string, accessToken?: string): NextRequest {
   const headers: Record<string, string> = {};

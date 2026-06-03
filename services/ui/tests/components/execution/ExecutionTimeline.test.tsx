@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
+import { DEFAULT_LOADING_INDICATOR_DELAY_MS } from "../../../app/lib/useDelayedVisibility";
 import { ExecutionTimeline } from "../../../app/components/execution/ExecutionTimeline";
 import { renderWithUiText } from "../../testUtils";
 import type { ExecutionEventWithSeq } from "../../../app/lib/types";
@@ -52,6 +53,7 @@ describe("ExecutionTimeline", () => {
   });
 
   it("error と loading / empty を表示する", () => {
+    vi.useFakeTimers();
     const { rerender } = renderWithUiText(
       <ExecutionTimeline
         events={[]}
@@ -64,7 +66,11 @@ describe("ExecutionTimeline", () => {
       />
     );
 
+    act(() => {
+      vi.advanceTimersByTime(DEFAULT_LOADING_INDICATOR_DELAY_MS);
+    });
     expect(screen.getByText(/ローディング/)).toBeInTheDocument();
+    vi.useRealTimers();
 
     rerender(
       <ExecutionTimeline
