@@ -1,3 +1,5 @@
+import { normalizeInternalRedirectPath } from "./safeInternalRedirect";
+
 type BrowserGlobal = typeof globalThis & {
   location: Location;
 };
@@ -19,14 +21,9 @@ export function buildLoginRedirectUrl(fromPath: string, origin?: string): string
     base = resolveBrowserOrigin() ?? "http://localhost";
   }
   const url = new URL("/login", base);
-  const normalized = fromPath.trim();
-  if (
-    normalized &&
-    normalized.startsWith("/") &&
-    !normalized.startsWith("//") &&
-    normalized !== "/login"
-  ) {
-    url.searchParams.set("from", normalized);
+  const safeFrom = normalizeInternalRedirectPath(fromPath);
+  if (safeFrom) {
+    url.searchParams.set("from", safeFrom);
   }
   return url.toString();
 }

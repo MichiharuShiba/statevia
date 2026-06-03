@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toToastError } from "../lib/errors";
 import type { LoginRequestBody } from "../lib/authSession";
 import type { ApiError } from "../lib/types";
+import { resolveSafeInternalRedirectPath } from "../lib/safeInternalRedirect";
 import { useUiText } from "../lib/uiTextContext";
 
 type LoginOk = { ok: true };
@@ -68,13 +69,7 @@ export function LoginPageClient() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const redirectTarget = (() => {
-    const from = searchParams.get("from")?.trim();
-    if (from && from.startsWith("/") && !from.startsWith("//") && from !== "/login") {
-      return from;
-    }
-    return "/dashboard";
-  })();
+  const redirectTarget = resolveSafeInternalRedirectPath(searchParams.get("from"));
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
