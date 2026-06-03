@@ -6,9 +6,15 @@ import {
 } from "../../app/lib/safeInternalRedirect";
 
 describe("normalizeInternalRedirectPath", () => {
-  it("内部パスとクエリを正規化して返す", () => {
+  it("内部パスとクエリ・ハッシュを正規化して返す", () => {
     expect(normalizeInternalRedirectPath("/definitions")).toBe("/definitions");
     expect(normalizeInternalRedirectPath("/definitions?tab=1")).toBe("/definitions?tab=1");
+    expect(normalizeInternalRedirectPath("/definitions#panel")).toBe("/definitions#panel");
+  });
+
+  it("空文字・空白のみは null", () => {
+    expect(normalizeInternalRedirectPath("")).toBeNull();
+    expect(normalizeInternalRedirectPath("   ")).toBeNull();
   });
 
   it("外部 URL・プロトコル相対・ログイン系は拒否する", () => {

@@ -52,4 +52,27 @@ describe("middleware", () => {
     const res = middleware(requestWithCookie("/login"));
     expect(res.status).toBe(200);
   });
+
+  it("静的アセット・brand・_next は認証なしで通過する", () => {
+    delete process.env.CORE_API_AUTH_TOKEN;
+    expect(middleware(requestWithCookie("/_next/static/chunk.js")).status).toBe(200);
+    expect(middleware(requestWithCookie("/brand/logo.svg")).status).toBe(200);
+    expect(middleware(requestWithCookie("/favicon.ico")).status).toBe(200);
+    expect(middleware(requestWithCookie("/theme-init.js")).status).toBe(200);
+    expect(middleware(requestWithCookie("/assets/app.css")).status).toBe(200);
+  });
+
+  it("ログイン済みで /login を開くと dashboard へリダイレクトする", () => {
+    delete process.env.CORE_API_AUTH_TOKEN;
+    const valid = testJwt(Math.floor(Date.now() / 1000) + 3600);
+    const res = middleware(requestWithCookie("/login", valid));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/dashboard");
+  });
+
+  it("CORE_API_AUTH_TOKEN 設定時は未ログインでも保護パスを通過する", () => {
+    process.env.CORE_API_AUTH_TOKEN = "dev-token";
+    const res = middleware(requestWithCookie("/dashboard"));
+    expect(res.status).toBe(200);
+  });
 });

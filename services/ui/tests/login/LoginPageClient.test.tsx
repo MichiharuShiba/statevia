@@ -22,7 +22,7 @@ describe("LoginPageClient", () => {
           ok: true,
           status: 200,
           json: () => Promise.resolve({ ok: true })
-        } as Response)
+        })
       )
     );
   });
@@ -45,6 +45,57 @@ describe("LoginPageClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "パスワードを非表示" }));
     expect(passwordInput).toHaveAttribute("type", "password");
+  });
+
+  it("ログイン API エラー時にメッセージを表示する", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 401,
+          statusText: "Unauthorized",
+          json: () => Promise.resolve({ error: { code: "UNAUTHORIZED", message: "認証に失敗" } })
+        })
+      )
+    );
+
+    renderWithUiText(<LoginPageClient />);
+    fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: "user@example.com" } });
+    fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: "wrong" } });
+    fireEvent.click(screen.getByRole("button", { name: "ログイン" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("認証に失敗");
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("想定外レスポンスとネットワーク失敗を表示する", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ unexpected: true })
+      })
+      .mockRejectedValueOnce(new Error("network down"));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithUiText(<LoginPageClient />);
+    fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: "user@example.com" } });
+    fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: "secret" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "ログイン" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "ログイン" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
+
+  it("テナントキー入力を反映する", () => {
+    renderWithUiText(<LoginPageClient />);
+    fireEvent.change(screen.getByLabelText("テナントキー"), { target: { value: "acme" } });
+    expect(screen.getByLabelText("テナントキー")).toHaveValue("acme");
   });
 
   it("成功時に from クエリ先へ遷移する", async () => {

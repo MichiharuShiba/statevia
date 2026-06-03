@@ -21,4 +21,14 @@ describe("authTokenValidation", () => {
     expect(isAccessTokenSessionValid("invalid")).toBe(false);
     expect(readJwtExpiryUnixSeconds(null)).toBeNull();
   });
+
+  it("exp が数値でない JWT は無効", () => {
+    const header = Buffer.from(JSON.stringify({ alg: "HS256" })).toString("base64url");
+    const payload = Buffer.from(JSON.stringify({ exp: "not-a-number" })).toString("base64url");
+    const signature = Buffer.from("sig-bytes").toString("base64url");
+    const token = `${header}.${payload}.${signature}`;
+
+    expect(readJwtExpiryUnixSeconds(token)).toBeNull();
+    expect(isAccessTokenSessionValid(token)).toBe(false);
+  });
 });

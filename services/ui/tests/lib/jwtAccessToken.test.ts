@@ -41,6 +41,19 @@ describe("JwtAccessToken", () => {
     expect(JwtSegment.fromJsonKind("payload", "###")).toBeNull();
   });
 
+  it("exp が無い・非数のペイロードは readExpiryUnixSeconds が null", () => {
+    const header = encodeJsonSegment({ alg: "HS256" });
+    const payload = encodeJsonSegment({ sub: "user" });
+    const signature = Buffer.from("sig").toString("base64url");
+    const token = JwtAccessToken.parse(`${header}.${payload}.${signature}`);
+
+    expect(token?.readExpiryUnixSeconds()).toBeNull();
+  });
+
+  it("JwtSegment.fromSignature は不正 Base64URL で null", () => {
+    expect(JwtSegment.fromSignature("@@")).toBeNull();
+  });
+
   it("署名セグメントの decodeToJson は例外", () => {
     const signature = JwtSegment.fromSignature("c2ln");
     expect(signature?.kind).toBe("signature");

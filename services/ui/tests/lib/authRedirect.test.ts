@@ -7,6 +7,15 @@ describe("buildLoginRedirectUrl", () => {
     expect(url).toBe("http://localhost:3000/login?from=%2Fdashboard");
   });
 
+  it("origin 省略時はブラウザ origin または localhost をベースにする", () => {
+    const url = buildLoginRedirectUrl("/executions");
+    const expectedOrigin =
+      "location" in globalThis && globalThis.location !== undefined
+        ? globalThis.location.origin
+        : "http://localhost";
+    expect(url).toBe(`${expectedOrigin}/login?from=%2Fexecutions`);
+  });
+
   it("/login と外部 URL 風パスには from を付けない", () => {
     expect(buildLoginRedirectUrl("/login", "http://localhost:3000")).toBe("http://localhost:3000/login");
     expect(buildLoginRedirectUrl("//evil", "http://localhost:3000")).toBe("http://localhost:3000/login");
@@ -42,6 +51,19 @@ describe("clearSessionAndRedirectToLogin", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     assign.mockReset();
+  });
+
+  it("location が無い環境では何もしない", async () => {
+    const originalLocation = globalThis.location;
+    // @ts-expect-error テスト用に location を除去
+    delete globalThis.location;
+
+    await clearSessionAndRedirectToLogin();
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(assign).not.toHaveBeenCalled();
+
+    globalThis.location = originalLocation;
   });
 
   it("ログアウト API を呼んでログイン URL へ遷移する", async () => {
