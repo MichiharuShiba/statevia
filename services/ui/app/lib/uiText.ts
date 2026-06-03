@@ -66,6 +66,24 @@ export type UiText = {
     unprocessable422: string;
     server500: string;
   };
+  auth: {
+    login: {
+      title: string;
+      description: string;
+      tenantKeyLabel: string;
+      emailLabel: string;
+      passwordLabel: string;
+      showPassword: string;
+      hidePassword: string;
+      submit: string;
+      submitting: string;
+      sessionHint: string;
+    };
+    errors: {
+      network: string;
+      unexpectedResponse: string;
+    };
+  };
   executionDashboard: {
     header: {
       titleDefault: string;
@@ -549,6 +567,24 @@ export const uiText: UiText = {
     conflict409: "409 状態競合",
     unprocessable422: "422 入力不正",
     server500: "500 サーバーエラー",
+  },
+  auth: {
+    login: {
+      title: "ログイン",
+      description: "テナントキーとアカウントでサインインしてください。",
+      tenantKeyLabel: "テナントキー",
+      emailLabel: "メールアドレス",
+      passwordLabel: "パスワード",
+      showPassword: "パスワードを表示",
+      hidePassword: "パスワードを非表示",
+      submit: "ログイン",
+      submitting: "ログイン中…",
+      sessionHint: "または /login からサインインしてください。",
+    },
+    errors: {
+      network: "ネットワークエラーが発生しました。接続を確認して再試行してください。",
+      unexpectedResponse: "ログイン応答が不正です。管理者に連絡してください。",
+    },
   },
   executionDashboard: {
     header: {

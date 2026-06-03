@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "../../../lib/authSession";
 
 function base() {
   const b = process.env.CORE_API_INTERNAL_BASE;
@@ -21,18 +22,24 @@ function pathForBackend(pathParts: string[]): string[] {
 
 function authAndTenantHeaders(req: NextRequest, pathParts: string[]): Record<string, string> {
   const out: Record<string, string> = {};
+  const tokenFromCookie = req.cookies.get(AUTH_COOKIE_ACCESS)?.value?.trim();
+  const tenantFromCookie = req.cookies.get(AUTH_COOKIE_TENANT_KEY)?.value?.trim();
   const authFromReq = req.headers.get("authorization");
   const tenantFromReq = req.headers.get("x-tenant-id");
   const tenantFromEnv = process.env.CORE_API_TENANT_ID;
   const authFromEnv = process.env.CORE_API_AUTH_TOKEN;
 
-  if (authFromReq) {
+  if (tokenFromCookie) {
+    out["Authorization"] = `Bearer ${tokenFromCookie}`;
+  } else if (authFromReq) {
     out["Authorization"] = authFromReq;
   } else if (authFromEnv) {
     out["Authorization"] = authFromEnv.startsWith("Bearer ") ? authFromEnv : `Bearer ${authFromEnv}`;
   }
 
-  if (tenantFromReq) {
+  if (tenantFromCookie) {
+    out["X-Tenant-Id"] = tenantFromCookie;
+  } else if (tenantFromReq) {
     out["X-Tenant-Id"] = tenantFromReq;
   } else if (tenantFromEnv) {
     out["X-Tenant-Id"] = tenantFromEnv;
@@ -95,6 +102,16 @@ async function forward(req: NextRequest, method: string, pathParts: string[]) {
   }
 
   const outText = await r.text();
+
+  if (r.status === 401) {
+    const unauthorized = new NextResponse(outText, {
+      status: 401,
+      headers: { "Content-Type": contentType }
+    });
+    unauthorized.cookies.delete(AUTH_COOKIE_ACCESS);
+    unauthorized.cookies.delete(AUTH_COOKIE_TENANT_KEY);
+    return unauthorized;
+  }
 
   // 204 / 205 / 304 は本文を持てない。本文付き NextResponse は TypeError になる（Undici/Fetch 準拠）。
   if (r.status === 204 || r.status === 205 || r.status === 304) {

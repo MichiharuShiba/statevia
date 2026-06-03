@@ -47,6 +47,24 @@ export const uiTextEn: UiText = {
     prev: "Prev",
     next: "Next",
   },
+  auth: {
+    login: {
+      title: "Sign in",
+      description: "Sign in with your tenant key and account credentials.",
+      tenantKeyLabel: "Tenant key",
+      emailLabel: "Email",
+      passwordLabel: "Password",
+      showPassword: "Show password",
+      hidePassword: "Hide password",
+      submit: "Sign in",
+      submitting: "Signing in…",
+      sessionHint: "Or sign in at /login.",
+    },
+    errors: {
+      network: "A network error occurred. Check your connection and try again.",
+      unexpectedResponse: "The sign-in response was invalid. Contact your administrator.",
+    },
+  },
   labels: {
     ...uiTextJa.labels,
     status: "Status",
