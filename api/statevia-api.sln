@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Core.Api", "Statev
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Core.Api.Tests", "Statevia.Core.Api.Tests\Statevia.Core.Api.Tests.csproj", "{6E903B72-55BE-4F22-A27E-61FE5F4E9E00}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Core.Api.Bootstrap", "Statevia.Core.Api.Bootstrap\Statevia.Core.Api.Bootstrap.csproj", "{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,18 @@ Global
 		{6E903B72-55BE-4F22-A27E-61FE5F4E9E00}.Release|x64.Build.0 = Release|Any CPU
 		{6E903B72-55BE-4F22-A27E-61FE5F4E9E00}.Release|x86.ActiveCfg = Release|Any CPU
 		{6E903B72-55BE-4F22-A27E-61FE5F4E9E00}.Release|x86.Build.0 = Release|Any CPU
+		{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}.Debug|x64.Build.0 = Debug|Any CPU
+		{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}.Debug|x86.Build.0 = Debug|Any CPU
+		{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}.Release|x64.ActiveCfg = Release|Any CPU
+		{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}.Release|x64.Build.0 = Release|Any CPU
+		{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}.Release|x86.ActiveCfg = Release|Any CPU
+		{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

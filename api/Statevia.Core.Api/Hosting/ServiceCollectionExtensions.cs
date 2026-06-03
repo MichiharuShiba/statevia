@@ -45,6 +45,8 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<JwtTokenService>();
         services.AddSingleton<PasswordCredentialService>();
         services.AddScoped<IPlatformDataAccess, PlatformDataAccess>();
+        services.AddScoped<IApiKeyAuthenticationService, ApiKeyAuthenticationService>();
+        services.AddScoped<ITenantAdminAuthorization, TenantAdminAuthorization>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddHostedService<TenantBootstrapHostedService>();
         services.AddOptions<JwtAuthOptions>()

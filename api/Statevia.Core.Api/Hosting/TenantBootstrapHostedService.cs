@@ -18,6 +18,7 @@ internal sealed class TenantBootstrapHostedService : IHostedService
         await using var scope = _scopeFactory.CreateAsyncScope();
         var platformDataAccess = scope.ServiceProvider.GetRequiredService<IPlatformDataAccess>();
         await platformDataAccess.EnsureDefaultTenantAsync(cancellationToken).ConfigureAwait(false);
+        await platformDataAccess.EnsurePermissionCatalogAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

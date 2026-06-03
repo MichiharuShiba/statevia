@@ -9,16 +9,29 @@ internal static class DatabaseConnection
     /// 環境変数・設定から Npgsql 用接続文字列を解決する。
     /// </summary>
     /// <param name="configuration">アプリケーション設定。</param>
+    /// <param name="connectionStringOverride">CLI 等で明示した接続文字列。指定時は環境変数より優先する。</param>
     /// <returns>Npgsql 接続文字列。</returns>
-    public static string Resolve(IConfiguration configuration)
+    public static string Resolve(IConfiguration configuration, string? connectionStringOverride = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
+        if (!string.IsNullOrWhiteSpace(connectionStringOverride))
+            return NormalizeConnectionString(connectionStringOverride.Trim());
+
         var rawDatabaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-        return (string.IsNullOrWhiteSpace(rawDatabaseUrl) ? null : NormalizePostgresUrl(rawDatabaseUrl))
+        return (string.IsNullOrWhiteSpace(rawDatabaseUrl) ? null : NormalizeConnectionString(rawDatabaseUrl))
             ?? configuration.GetConnectionString("DefaultConnection")
             ?? "Host=localhost;Database=statevia;Username=statevia;Password=statevia";
     }
+
+    /// <summary>
+    /// <c>postgres://</c> 形式なら正規化し、それ以外はそのまま返す。
+    /// </summary>
+    internal static string NormalizeConnectionString(string value) =>
+        value.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)
+        || value.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase)
+            ? NormalizePostgresUrl(value)
+            : value;
 
     /// <summary>
     /// <c>postgres://</c> / <c>postgresql://</c> を Npgsql のキー=値形式へ変換する。

@@ -1,7 +1,7 @@
 # テナント・初回管理者ブートストラップ
 
-- Version: 1.0.0
-- 更新日: 2026-05-21
+- Version: 1.1.0
+- 更新日: 2026-05-31
 - 関連: `docs/runtime-security-boundary.md`, `docs/operations-docker.md`
 
 ---
@@ -21,11 +21,59 @@ dotnet ef database update --project Statevia.Core.Api
 
 ## 2. テナント作成（追加テナント）
 
+`tenant_key` は **作成後変更しない**（`docs/runtime-security-boundary.md` 参照）。キーは **小文字・数字・ハイフン・ドット**（先頭末尾のハイフン/ドット不可、最大 64 文字。例: `acme-corp`, `statevia.dev`）。
+
+### 推奨: ブートストラップ CLI
+
+**PowerShell（リポジトリルート）:**
+
+```powershell
+# 環境変数
+$env:DATABASE_URL = "postgres://statevia:statevia@localhost:5432/statevia"
+.\scripts\bootstrap-tenant.ps1 -TenantKey "acme-corp" -DisplayName "Acme Corporation"
+
+# または引数で DB を指定
+.\scripts\bootstrap-tenant.ps1 -TenantKey "acme-corp" `
+  -DatabaseUrl "postgres://statevia:statevia@localhost:5432/statevia"
+
+# Core API の appsettings を使う場合
+.\scripts\bootstrap-tenant.ps1 -TenantKey "acme-corp" `
+  -Config "api/Statevia.Core.Api/appsettings.json"
+```
+
+**dotnet のみ:**
+
+```bash
+cd api
+dotnet run --project Statevia.Core.Api.Bootstrap -- \
+  --database-url "postgres://statevia:statevia@localhost:5432/statevia" \
+  create-tenant \
+  --tenant-key acme-corp \
+  --display-name "Acme Corporation"
+```
+
+| オプション（グローバル・コマンドの前） | 説明 |
+| --- | --- |
+| `--database-url` / `--connection-string` | PostgreSQL URL または Npgsql 形式（`DATABASE_URL` より優先） |
+| `--config <path>` | 追加の JSON 設定（例: `api/Statevia.Core.Api/appsettings.json`） |
+
+読み込み順（低→高）: カレントの `appsettings.json` → `--config` → 環境変数 → `--database-url`。
+
+| オプション（create-tenant） | 説明 |
+| --- | --- |
+| `--tenant-key` | 外部キー（必須・immutable） |
+| `--display-name` | 表示名（省略時は tenant-key） |
+| `--skip-if-exists` | 同一 `tenant_key` があれば何もしない |
+
+作成後は権限カタログ（`permission_definitions`）を自動投入する。続けて [§3](#3-初回テナント管理者principal-整合) で管理者を作成する。
+
+### 参考: 手動 SQL
+
 ```sql
-INSERT INTO tenants (id, tenant_key, display_name, lifecycle, created_at, updated_at)
+INSERT INTO tenants (tenant_id, tenant_key, display_name, lifecycle, created_at, updated_at)
 VALUES (
   gen_random_uuid(),
-  'acme-corp',           -- immutable。SDK/CLI に埋め込むキー
+  'acme-corp',
   'Acme Corporation',
   'Active',
   NOW(),
@@ -33,23 +81,58 @@ VALUES (
 );
 ```
 
-`tenant_key` は **作成後変更しない**（`docs/runtime-security-boundary.md` 参照）。
-
 ## 3. 初回テナント管理者（Principal 整合）
 
 1. **Principal** を Tenant スコープで作成する。
 2. **User** 行を同一テナントに作成し `is_tenant_admin = true` とする。
 3. **user_principals** で 1:1 紐付けする。
 
-パスワードハッシュは Core-API 内の `PasswordHasher` と同じアルゴリムを使う。開発環境では `POST /v1/auth/login` 成功後に JWT を取得して以降の API を呼ぶ。
+パスワードハッシュは Core-API 内の `PasswordCredentialService`（ASP.NET Core `PasswordHasher`）と同じアルゴリズムを使う。
 
-### 推奨: ログイン API 経由で検証
+### 推奨: ブートストラップ CLI（手動 SQL の代替）
+
+`tenant_key = default` のテナントは API 起動時にシードされる。追加テナントは [§2](#2-テナント作成追加テナント) のあと、同じ CLI で `--tenant-key` を指定する。
+
+**PowerShell（リポジトリルート）:**
+
+```powershell
+$env:DATABASE_URL = "postgres://statevia:statevia@localhost:5432/statevia"
+$env:STATEVIA_BOOTSTRAP_PASSWORD = "<plain-for-dev-only>"
+.\scripts\bootstrap-tenant-admin.ps1 -Email "admin@example.com"
+```
+
+**dotnet のみ:**
+
+```bash
+cd api
+export DATABASE_URL="postgres://statevia:statevia@localhost:5432/statevia"
+export STATEVIA_BOOTSTRAP_PASSWORD="<plain-for-dev-only>"
+dotnet run --project Statevia.Core.Api.Bootstrap -- \
+  create-admin \
+  --tenant-key default \
+  --email admin@example.com \
+  --password "$STATEVIA_BOOTSTRAP_PASSWORD"
+```
+
+| オプション | 説明 |
+| --- | --- |
+| `--tenant-key` | 外部キー（既定 `default`） |
+| `--email` | 管理者メール（必須） |
+| `--password` | 平文（省略時は `STATEVIA_BOOTSTRAP_PASSWORD`） |
+| `--display-name` | Principal 表示名（省略時は email） |
+| `--skip-if-exists` | ログイン可能な同一メールが既にいれば何もしない |
+
+成功時は `tenantId` / `userId` / `principalId` を標準出力する。パスワードはログに出さないこと。
+
+### 推奨: ログイン API / UI 経由で検証
 
 ```bash
 curl -s -X POST http://localhost:8080/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"tenantKey":"default","email":"admin@example.com","password":"<plain-for-dev-only>"}'
 ```
+
+UI では `/login` から同じ資格情報でサインインできる（`services/ui`）。
 
 ## 4. API キー（CI / サーバー間）
 

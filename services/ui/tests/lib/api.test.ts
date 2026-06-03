@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as authRedirect from "../../app/lib/authRedirect";
 import {
   apiGet,
   apiPost,
@@ -63,6 +64,17 @@ describe("apiGet", () => {
             status: 502,
             statusText: "Bad Gateway",
             text: () => Promise.resolve("{ invalid")
+          } as Response);
+        }
+        if (url.includes("/api/core/unauthorized")) {
+          return Promise.resolve({
+            ok: false,
+            status: 401,
+            statusText: "Unauthorized",
+            text: () =>
+              Promise.resolve(
+                JSON.stringify({ error: { code: "UNAUTHORIZED", message: "Authentication required" } })
+              )
           } as Response);
         }
         return Promise.reject(new Error("Unexpected URL"));
@@ -133,6 +145,13 @@ describe("apiGet", () => {
       status: 502,
       error: { code: "HTTP_502", message: "{ invalid" }
     });
+  });
+
+  it("401 のときセッション破棄後にログインへ誘導する", async () => {
+    const redirectSpy = vi.spyOn(authRedirect, "clearSessionAndRedirectToLogin").mockResolvedValue();
+    await expect(apiGet("/unauthorized")).rejects.toMatchObject({ status: 401 });
+    expect(redirectSpy).toHaveBeenCalledOnce();
+    redirectSpy.mockRestore();
   });
 });
 

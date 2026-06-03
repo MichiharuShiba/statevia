@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatDateTimeLocalized } from "../../lib/dateTime";
+import { useDelayedVisibility } from "../../lib/useDelayedVisibility";
 import { getDateTimeLocale } from "../../lib/i18n";
 import type { ExecutionEventWithSeq } from "../../lib/types";
 import { useI18n } from "../../lib/uiTextContext";
@@ -61,6 +62,7 @@ export function ExecutionTimeline({
   const { uiText, locale } = useI18n();
   const dateTimeLocale = getDateTimeLocale(locale);
   const [expanded, setExpanded] = useState(false);
+  const showLoading = useDelayedVisibility(loading);
 
   return (
     <section className="rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm">
@@ -106,7 +108,7 @@ export function ExecutionTimeline({
         </p>
       ) : null}
 
-      {loading && (
+      {showLoading && (
         <p className="mt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">{uiText.actions.loading}</p>
       )}
 

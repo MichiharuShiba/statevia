@@ -128,4 +128,23 @@ describe("api/core route GET", () => {
     delete process.env.CORE_API_AUTH_TOKEN;
     delete process.env.CORE_API_TENANT_ID;
   });
+
+  it("セッション Cookie から Bearer と X-Tenant-Id を付与する", async () => {
+    const req = new NextRequest("http://localhost/api/core/executions", {
+      headers: {
+        Cookie: "statevia-access-token=jwt-token; statevia-tenant-key=default"
+      }
+    });
+    await GET(req, { params: Promise.resolve({ path: ["executions"] }) });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer jwt-token",
+          "X-Tenant-Id": "default"
+        })
+      })
+    );
+  });
 });

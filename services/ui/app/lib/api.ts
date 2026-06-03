@@ -1,3 +1,4 @@
+import { clearSessionAndRedirectToLogin } from "./authRedirect";
 import type { ApiError } from "./types";
 
 /** クライアント側の API 用設定（認証・テナント）。NEXT_PUBLIC_* または runtime で注入。 */
@@ -76,6 +77,10 @@ async function fetchAndParse<T>(path: string, init?: RequestInit): Promise<T> {
     headers: mergedHeaders
   });
   const json = await parseJsonSafe(res);
+  if (res.status === 401 && globalThis.window !== undefined) {
+    void clearSessionAndRedirectToLogin();
+    throw buildApiError(res, json);
+  }
   if (!res.ok) {
     throw buildApiError(res, json);
   }

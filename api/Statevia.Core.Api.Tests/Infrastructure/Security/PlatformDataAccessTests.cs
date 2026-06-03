@@ -119,4 +119,78 @@ public sealed class PlatformDataAccessTests
         Assert.NotNull(tenant);
         Assert.Equal(TenantLifecycle.Active, tenant.Lifecycle);
     }
+
+    /// <summary>API キー prefix + hash で資格情報を解決できる。</summary>
+    [Fact]
+    public async Task FindApiKeyCredentialAsync_ValidKey_ReturnsLookup()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var (principalId, _, plainKey) = await SecurityTestSeed.SeedApiKeyAsync(database);
+        var platform = new PlatformDataAccess(database.Factory);
+        var prefix = PasswordCredentialService.ApiKeyPrefix(plainKey);
+        var hash = PasswordCredentialService.HashApiKey(plainKey);
+
+        // Act
+        var lookup = await platform.FindApiKeyCredentialAsync(prefix, hash, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(lookup);
+        Assert.Equal(principalId, lookup.Principal.PrincipalId);
+        Assert.Equal(TestTenantIds.DefaultInternalId, lookup.Tenant.TenantId);
+    }
+
+    /// <summary>ハッシュ不一致は null。</summary>
+    [Fact]
+    public async Task FindApiKeyCredentialAsync_WrongHash_ReturnsNull()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var (_, _, plainKey) = await SecurityTestSeed.SeedApiKeyAsync(database);
+        var platform = new PlatformDataAccess(database.Factory);
+        var prefix = PasswordCredentialService.ApiKeyPrefix(plainKey);
+
+        // Act
+        var lookup = await platform.FindApiKeyCredentialAsync(prefix, "wrong-hash", CancellationToken.None);
+
+        // Assert
+        Assert.Null(lookup);
+    }
+
+    /// <summary>存在する API キーの last_used_at を更新する。</summary>
+    [Fact]
+    public async Task TouchApiKeyLastUsedAsync_ExistingKey_SetsLastUsedAt()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var (_, apiKeyId, _) = await SecurityTestSeed.SeedApiKeyAsync(database);
+        var platform = new PlatformDataAccess(database.Factory);
+
+        // Act
+        await platform.TouchApiKeyLastUsedAsync(apiKeyId, CancellationToken.None);
+
+        // Assert
+        await using var db = database.Factory.CreateDbContext();
+        var row = await db.ApiKeys.IgnoreQueryFilters().SingleAsync(k => k.ApiKeyId == apiKeyId);
+        Assert.NotNull(row.LastUsedAt);
+    }
+
+    /// <summary>存在しない API キー ID は no-op。</summary>
+    [Fact]
+    public async Task TouchApiKeyLastUsedAsync_MissingKey_DoesNotThrow()
+    {
+        // Arrange
+        var missingApiKeyId = Guid.NewGuid();
+        using var database = new SqliteTestDatabase();
+        var platform = new PlatformDataAccess(database.Factory);
+
+        // Act
+        var exception = await Record.ExceptionAsync(() =>
+            platform.TouchApiKeyLastUsedAsync(missingApiKeyId, CancellationToken.None));
+
+        // Assert
+        Assert.Null(exception);
+        await using var db = database.Factory.CreateDbContext();
+        Assert.False(await db.ApiKeys.IgnoreQueryFilters().AnyAsync(k => k.ApiKeyId == missingApiKeyId));
+    }
 }

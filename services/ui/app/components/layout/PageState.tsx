@@ -1,5 +1,6 @@
 "use client";
 
+import { useDelayedVisibility } from "../../lib/useDelayedVisibility";
 import { useUiText } from "../../lib/uiTextContext";
 
 type PageStateKind = "loading" | "empty" | "error";
@@ -13,6 +14,8 @@ type PageStateProps = {
   onRetry?: () => void;
   /** 再試行ボタンの文言。 */
   retryLabel?: string;
+  /** loading 表示を出すまでの遅延（ミリ秒）。0 で即時。 */
+  loadingDelayMs?: number;
 };
 
 const STATE_STYLE_MAP: Record<PageStateKind, string> = {
@@ -32,9 +35,15 @@ export function PageState({
   state,
   message,
   onRetry,
-  retryLabel
+  retryLabel,
+  loadingDelayMs
 }: Readonly<PageStateProps>) {
   const uiText = useUiText();
+  const showLoading = useDelayedVisibility(state === "loading", loadingDelayMs);
+
+  if (state === "loading" && !showLoading) {
+    return null;
+  }
   const stateTitleMap: Record<PageStateKind, string> = {
     loading: uiText.pageState.loading,
     error: uiText.pageState.error,
