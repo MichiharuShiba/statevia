@@ -60,6 +60,12 @@ dotnet_diagnostic.CA1515.severity = none
 # 除外理由: 認証 API の JSON 契約 DTO は HTTP 公開面として public を維持する。
 dotnet_diagnostic.CA1515.severity = none
 
+[Contracts/Admin/*.cs]
+
+# CA1515: アセンブリ API を internal にせよ。
+# 除外理由: 管理者 API の JSON 契約 DTO は HTTP 公開面として public を維持する。
+dotnet_diagnostic.CA1515.severity = none
+
 [Application/Security/*.cs]
 
 # CA1515: アセンブリ API を internal にせよ。
