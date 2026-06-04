@@ -48,6 +48,7 @@ internal static class ServiceCollectionExtensions
         services.AddScoped<IApiKeyAuthenticationService, ApiKeyAuthenticationService>();
         services.AddScoped<ITenantAdminAuthorization, TenantAdminAuthorization>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ITenantAdministrationService, TenantAdministrationService>();
         services.AddHostedService<TenantBootstrapHostedService>();
         services.AddOptions<JwtAuthOptions>()
             .Bind(configuration.GetSection(JwtAuthOptions.SectionName));
