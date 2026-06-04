@@ -334,6 +334,22 @@ Request:
 - **Authorization** 必須。
 - Response: 200 OK、`{ "tenantId", "tenantKey", "principalId", "email", "isTenantAdmin" }`
 
+### 4.1.3 テナント管理者 API（初版）
+
+いずれも **JWT 必須**かつ **`is_tenant_admin` の Principal のみ**（403 `FORBIDDEN`）。パスプレフィックス: `/v1/admin`。
+
+| メソッド | パス | 概要 |
+| --- | --- | --- |
+| GET | `/permissions` | 権限カタログ（`permission_definitions`） |
+| GET | `/users` | ユーザー一覧 |
+| POST | `/users` | ユーザー作成（`email`, `password`, `displayName?`, `isTenantAdmin`, `groupIds?`） |
+| PATCH | `/users/{userId}` | 有効化/無効化・管理者フラグ（`isActive?`, `isTenantAdmin?`） |
+| GET | `/groups` | グループ一覧 |
+| POST | `/groups` | グループ作成（`name`） |
+| GET | `/groups/{groupId}` | グループ詳細（メンバー・権限キー） |
+| PUT | `/groups/{groupId}/members` | メンバー置換（`userIds`） |
+| PUT | `/groups/{groupId}/permissions` | 権限置換（`permissionKeys`。`tenant.admin` は不可） |
+
 JWT クレーム: `tenant_id`（内部 UUID）、`tenant_key`、`principal_id` / `sub`。詳細は `docs/runtime-security-boundary.md`。
 
 ### 4.1.2 Runtime API の認証要件
