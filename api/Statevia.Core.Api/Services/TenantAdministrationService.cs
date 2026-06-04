@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Api.Abstractions.Security;
+using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Application.Security;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Contracts.Admin;
@@ -76,18 +77,21 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
     private readonly ITenantContextAccessor _tenantContext;
     private readonly ITenantAdminAuthorization _tenantAdminAuthorization;
     private readonly PasswordCredentialService _passwordCredentialService;
+    private readonly IIdGenerator _idGenerator;
 
     /// <summary>新しいインスタンスを初期化する。</summary>
     public TenantAdministrationService(
         IDbContextFactory<CoreDbContext> dbFactory,
         ITenantContextAccessor tenantContext,
         ITenantAdminAuthorization tenantAdminAuthorization,
-        PasswordCredentialService passwordCredentialService)
+        PasswordCredentialService passwordCredentialService,
+        IIdGenerator idGenerator)
     {
         _dbFactory = dbFactory;
         _tenantContext = tenantContext;
         _tenantAdminAuthorization = tenantAdminAuthorization;
         _passwordCredentialService = passwordCredentialService;
+        _idGenerator = idGenerator;
     }
 
     /// <inheritdoc />
@@ -192,8 +196,8 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
         if (groupIds.Count > 0)
             await EnsureGroupIdsExistAsync(db, groupIds, cancellationToken).ConfigureAwait(false);
 
-        var userId = Guid.NewGuid();
-        var principalId = Guid.NewGuid();
+        var userId = _idGenerator.NewGuid();
+        var principalId = _idGenerator.NewGuid();
         var now = DateTime.UtcNow;
         var displayName = string.IsNullOrWhiteSpace(request.DisplayName) ? email : request.DisplayName.Trim();
 
@@ -342,7 +346,7 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
             throw new ArgumentException($"Group '{name}' already exists.", nameof(request));
 
         var now = DateTime.UtcNow;
-        var groupId = Guid.NewGuid();
+        var groupId = _idGenerator.NewGuid();
         db.Groups.Add(new GroupRow
         {
             GroupId = groupId,
