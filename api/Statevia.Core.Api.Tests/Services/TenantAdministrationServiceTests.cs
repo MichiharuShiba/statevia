@@ -129,4 +129,64 @@ public sealed class TenantAdministrationServiceTests
         Assert.DoesNotContain(WellKnownPermissionKeys.TenantAdmin, updated.PermissionKeys);
         Assert.Contains(WellKnownPermissionKeys.DefinitionsRead, updated.PermissionKeys);
     }
+
+    /// <summary>管理者は API キーを発行し一覧できる。</summary>
+    [Fact]
+    public async Task CreateApiKeyAsync_Admin_ReturnsPlainKeyOnce()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var platform = new PlatformDataAccess(database.Factory);
+        await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
+        var adminId = await SecurityTestSeed.SeedUserAsync(database, "admin-apikeys@example.com", "password", isTenantAdmin: true);
+        var tenantContext = new SettableTenantContextAccessor();
+        var service = CreateService(database, tenantContext, adminId);
+
+        // Act
+        var created = await service.CreateApiKeyAsync(
+            adminId,
+            new CreateAdminApiKeyRequest
+            {
+                Name = "CI Runner",
+                AllowedScopes = [WellKnownPermissionKeys.ExecutionsRead]
+            },
+            CancellationToken.None);
+        var list = await service.ListApiKeysAsync(adminId, CancellationToken.None);
+
+        // Assert
+        Assert.StartsWith("stv_", created.PlainKey, StringComparison.Ordinal);
+        Assert.Equal("CI Runner", created.Name);
+        Assert.Single(created.AllowedScopes);
+        Assert.Contains(created.ApiKeyId, list.Select(item => item.ApiKeyId));
+        Assert.DoesNotContain(list, item => item.AllowedScopes.Contains(WellKnownPermissionKeys.TenantAdmin));
+    }
+
+    /// <summary>管理者は API キーを失効できる。</summary>
+    [Fact]
+    public async Task RevokeApiKeyAsync_Admin_DeactivatesPrincipal()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var platform = new PlatformDataAccess(database.Factory);
+        await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
+        var adminId = await SecurityTestSeed.SeedUserAsync(database, "admin-revoke@example.com", "password", isTenantAdmin: true);
+        var tenantContext = new SettableTenantContextAccessor();
+        var service = CreateService(database, tenantContext, adminId);
+        var created = await service.CreateApiKeyAsync(
+            adminId,
+            new CreateAdminApiKeyRequest
+            {
+                Name = "Revoke Me",
+                AllowedScopes = [WellKnownPermissionKeys.DefinitionsRead]
+            },
+            CancellationToken.None);
+
+        // Act
+        await service.RevokeApiKeyAsync(adminId, created.ApiKeyId, CancellationToken.None);
+        var list = await service.ListApiKeysAsync(adminId, CancellationToken.None);
+
+        // Assert
+        var revoked = Assert.Single(list, item => item.ApiKeyId == created.ApiKeyId);
+        Assert.False(revoked.IsActive);
+    }
 }

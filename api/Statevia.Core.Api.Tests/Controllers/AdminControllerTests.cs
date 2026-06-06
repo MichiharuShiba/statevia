@@ -97,5 +97,22 @@ public sealed class AdminControllerTests
             SetAdminGroupPermissionsRequest request,
             CancellationToken cancellationToken) =>
             throw new NotImplementedException();
+
+        public Task<IReadOnlyList<AdminApiKeyListItemDto>> ListApiKeysAsync(
+            Guid callerPrincipalId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<AdminApiKeyListItemDto>>(Array.Empty<AdminApiKeyListItemDto>());
+
+        public Task<CreatedAdminApiKeyDto> CreateApiKeyAsync(
+            Guid callerPrincipalId,
+            CreateAdminApiKeyRequest request,
+            CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
+        public Task RevokeApiKeyAsync(
+            Guid callerPrincipalId,
+            Guid apiKeyId,
+            CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
     }
 }
