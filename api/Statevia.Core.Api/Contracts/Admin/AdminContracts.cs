@@ -163,3 +163,89 @@ public sealed class SetAdminGroupPermissionsRequest
     /// <summary>付与する semantic key（<c>tenant.admin</c> は不可）。</summary>
     public IReadOnlyList<string> PermissionKeys { get; set; } = Array.Empty<string>();
 }
+
+/// <summary>API キー一覧項目（平文は含まない）。</summary>
+public sealed class AdminApiKeyListItemDto
+{
+    /// <summary>API キー ID。</summary>
+    public Guid ApiKeyId { get; set; }
+
+    /// <summary>表示名（Principal 表示名）。</summary>
+    public string Name { get; set; } = "";
+
+    /// <summary>lookup 用 prefix。</summary>
+    public string KeyPrefix { get; set; } = "";
+
+    /// <summary>許可スコープ（semantic key）。</summary>
+    public IReadOnlyList<string> AllowedScopes { get; set; } = Array.Empty<string>();
+
+    /// <summary>有効期限（UTC、未設定時 null）。</summary>
+    public DateTime? ExpiresAt { get; set; }
+
+    /// <summary>最終利用日時（UTC）。</summary>
+    public DateTime? LastUsedAt { get; set; }
+
+    /// <summary>作成日時（UTC）。</summary>
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>Principal が有効か。</summary>
+    public bool IsActive { get; set; }
+}
+
+/// <summary>API キー作成要求。</summary>
+public sealed class CreateAdminApiKeyRequest : IValidatableObject
+{
+    private const int MaxNameLength = 128;
+
+    /// <summary>表示名。</summary>
+    [Required]
+    public string Name { get; set; } = "";
+
+    /// <summary>許可スコープ（<c>tenant.admin</c> は不可）。</summary>
+    [Required]
+    public IReadOnlyList<string> AllowedScopes { get; set; } = Array.Empty<string>();
+
+    /// <summary>有効期限（UTC、任意）。</summary>
+    public DateTime? ExpiresAt { get; set; }
+
+    /// <inheritdoc />
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        var trimmedName = Name.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedName))
+            yield return new ValidationResult("name is required.", [nameof(Name)]);
+        else if (trimmedName.Length > MaxNameLength)
+            yield return new ValidationResult("name must be at most 128 characters.", [nameof(Name)]);
+
+        if (AllowedScopes is null || AllowedScopes.Count == 0)
+            yield return new ValidationResult("allowedScopes must contain at least one scope.", [nameof(AllowedScopes)]);
+
+        if (ExpiresAt is { } expiresAt && expiresAt <= DateTime.UtcNow)
+            yield return new ValidationResult("expiresAt must be in the future.", [nameof(ExpiresAt)]);
+    }
+}
+
+/// <summary>API キー作成応答（平文はこの応答でのみ返す）。</summary>
+public sealed class CreatedAdminApiKeyDto
+{
+    /// <summary>API キー ID。</summary>
+    public Guid ApiKeyId { get; set; }
+
+    /// <summary>表示名。</summary>
+    public string Name { get; set; } = "";
+
+    /// <summary>lookup 用 prefix。</summary>
+    public string KeyPrefix { get; set; } = "";
+
+    /// <summary>平文キー（再表示不可）。</summary>
+    public string PlainKey { get; set; } = "";
+
+    /// <summary>許可スコープ。</summary>
+    public IReadOnlyList<string> AllowedScopes { get; set; } = Array.Empty<string>();
+
+    /// <summary>有効期限（UTC）。</summary>
+    public DateTime? ExpiresAt { get; set; }
+
+    /// <summary>作成日時（UTC）。</summary>
+    public DateTime CreatedAt { get; set; }
+}

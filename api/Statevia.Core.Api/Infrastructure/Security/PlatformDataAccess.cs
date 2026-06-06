@@ -328,13 +328,37 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        if (userId is null)
-            return Array.Empty<string>();
+        if (userId is not null)
+        {
+            return await context.UserGroupMembers
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(m => m.UserId == userId)
+                .Join(
+                    context.GroupPermissions.IgnoreQueryFilters().AsNoTracking(),
+                    m => m.GroupId,
+                    gp => gp.GroupId,
+                    (_, gp) => gp.PermissionKey)
+                .Distinct()
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
 
-        return await context.UserGroupMembers
+        var serviceAccountId = await context.ServiceAccounts
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(m => m.UserId == userId)
+            .Where(sa => sa.PrincipalId == principalId)
+            .Select(sa => (Guid?)sa.ServiceAccountId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (serviceAccountId is null)
+            return Array.Empty<string>();
+
+        return await context.ServiceAccountGroupMembers
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(m => m.ServiceAccountId == serviceAccountId)
             .Join(
                 context.GroupPermissions.IgnoreQueryFilters().AsNoTracking(),
                 m => m.GroupId,

@@ -94,6 +94,32 @@ public sealed class AdminController : ControllerBase
         CancellationToken ct) =>
         Ok(await _administration.SetGroupPermissionsAsync(RequirePrincipalId(), groupId, request, ct).ConfigureAwait(false));
 
+    /// <summary>GET /v1/admin/api-keys — API キー一覧（平文なし）。</summary>
+    [HttpGet("api-keys")]
+    [ProducesResponseType(typeof(IReadOnlyList<AdminApiKeyListItemDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<AdminApiKeyListItemDto>>> ListApiKeys(CancellationToken ct) =>
+        Ok(await _administration.ListApiKeysAsync(RequirePrincipalId(), ct).ConfigureAwait(false));
+
+    /// <summary>POST /v1/admin/api-keys — API キー発行（平文は応答のみ）。</summary>
+    [HttpPost("api-keys")]
+    [ProducesResponseType(typeof(CreatedAdminApiKeyDto), StatusCodes.Status201Created)]
+    public async Task<ActionResult<CreatedAdminApiKeyDto>> CreateApiKey(
+        [FromBody] CreateAdminApiKeyRequest request,
+        CancellationToken ct)
+    {
+        var created = await _administration.CreateApiKeyAsync(RequirePrincipalId(), request, ct).ConfigureAwait(false);
+        return CreatedAtAction(nameof(ListApiKeys), created);
+    }
+
+    /// <summary>DELETE /v1/admin/api-keys/{apiKeyId} — API キー失効。</summary>
+    [HttpDelete("api-keys/{apiKeyId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RevokeApiKey(Guid apiKeyId, CancellationToken ct)
+    {
+        await _administration.RevokeApiKeyAsync(RequirePrincipalId(), apiKeyId, ct).ConfigureAwait(false);
+        return NoContent();
+    }
+
     private Guid RequirePrincipalId()
     {
         if (!_tenantContext.IsResolved || _tenantContext.PrincipalId is not { } principalId)
