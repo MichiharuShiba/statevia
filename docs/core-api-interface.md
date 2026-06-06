@@ -349,6 +349,9 @@ Request:
 | GET | `/groups/{groupId}` | グループ詳細（メンバー・権限キー） |
 | PUT | `/groups/{groupId}/members` | メンバー置換（`userIds`） |
 | PUT | `/groups/{groupId}/permissions` | 権限置換（`permissionKeys`。`tenant.admin` は不可） |
+| GET | `/api-keys` | API キー一覧（平文なし。`keyPrefix` / `allowedScopes` / `expiresAt` / `lastUsedAt`） |
+| POST | `/api-keys` | API キー発行（`name`, `allowedScopes`, `expiresAt?`）。応答の `plainKey` は **一度だけ** |
+| DELETE | `/api-keys/{apiKeyId}` | API キー失効（紐づく Principal を無効化） |
 
 JWT クレーム: `tenant_id`（内部 UUID）、`tenant_key`、`principal_id` / `sub`。詳細は `docs/runtime-security-boundary.md`。
 

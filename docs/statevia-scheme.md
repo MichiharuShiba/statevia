@@ -402,6 +402,15 @@ User と Principal の 1:1 対応。
 | user_id | uuid | PK, NOT NULL | ユーザー ID（論理 FK → `users.user_id`） |
 | group_id | uuid | PK, NOT NULL | グループ ID（論理 FK → `groups.group_id`） |
 
+### 2.20a service_account_group_members
+
+サービスアカウントとグループの多対多所属（API キー等の非人間主体の権限展開用）。
+
+| カラム | 型 | 制約 | 説明 |
+| --- | --- | --- | --- |
+| service_account_id | uuid | PK, NOT NULL | サービスアカウント ID（論理 FK → `service_accounts.service_account_id`） |
+| group_id | uuid | PK, NOT NULL | グループ ID（論理 FK → `groups.group_id`） |
+
 ### 2.21 service_accounts
 
 サービスアカウント。Principal 行と 1:1 で対応する subtype 行。
