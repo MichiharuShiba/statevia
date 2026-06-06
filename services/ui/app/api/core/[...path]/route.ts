@@ -17,6 +17,8 @@ function pathForBackend(pathParts: string[]): string[] {
   if (pathParts[0] === "executions") return ["v1", "executions", ...pathParts.slice(1)];
   if (pathParts[0] === "definitions") return ["v1", "definitions", ...pathParts.slice(1)];
   if (pathParts[0] === "graphs") return ["v1", "graphs", ...pathParts.slice(1)];
+  if (pathParts[0] === "admin") return ["v1", "admin", ...pathParts.slice(1)];
+  if (pathParts[0] === "auth") return ["v1", "auth", ...pathParts.slice(1)];
   return pathParts;
 }
 
@@ -150,6 +152,14 @@ export async function PUT(
 ) {
   const { path } = await params;
   return forward(req, "PUT", path);
+}
+/** Core-API への PATCH プロキシ（Route Handler）。 */
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
+  const { path } = await params;
+  return forward(req, "PATCH", path);
 }
 /** Core-API への DELETE プロキシ（Route Handler）。 */
 export async function DELETE(

@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
+import { AdminNavLinks } from "./components/layout/AdminNavLinks";
 import { LanguageToggle } from "./components/layout/LanguageToggle";
 import { ThemeToggle } from "./components/layout/ThemeToggle";
 import { resolveLocale } from "./lib/i18n";
@@ -64,6 +65,7 @@ export default async function RootLayout({
                   <Link href="/executions" className="hover:text-[var(--brand-header-fg)] hover:underline">
                     {uiText.navigation.executions}
                   </Link>
+                  <AdminNavLinks />
                 </nav>
                 <ThemeToggle theme={theme} />
                 <LanguageToggle locale={locale} />
