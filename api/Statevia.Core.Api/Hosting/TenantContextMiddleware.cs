@@ -136,7 +136,9 @@ internal sealed class TenantContextMiddleware
     /// <returns>Principal が必要な場合は true。</returns>
     private static bool RequiresPrincipal(PathString path) =>
         path.StartsWithSegments("/v1/definitions", StringComparison.OrdinalIgnoreCase)
-        || path.StartsWithSegments("/v1/executions", StringComparison.OrdinalIgnoreCase);
+        || path.StartsWithSegments("/v1/executions", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWithSegments("/v1/admin", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWithSegments("/v1/auth/me", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// JWT を検証する。

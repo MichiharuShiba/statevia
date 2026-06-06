@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { DEFAULT_LOCALE, type Locale } from "./i18n";
 import { getUiText } from "./uiTextLocale";
-import type { UiText } from "./uiText";
+import type { AdminGroupsUiText, UiText } from "./uiText";
 
 type UiTextContextValue = {
   locale: Locale;
@@ -31,6 +31,13 @@ export function UiTextProvider({ locale, children }: UiTextProviderProps) {
 export function useUiText(): UiText {
   const contextValue = useContext(UiTextContext);
   return contextValue?.uiText ?? getUiText(DEFAULT_LOCALE);
+}
+
+/**
+ * グループ管理画面用 i18n 切片を返す。
+ */
+export function useAdminGroupsUiText(): AdminGroupsUiText {
+  return useUiText().admin.groupManagement;
 }
 
 /**

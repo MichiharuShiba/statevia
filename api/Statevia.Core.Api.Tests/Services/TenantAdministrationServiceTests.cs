@@ -1,0 +1,132 @@
+using Statevia.Core.Api.Abstractions.Security;
+using Statevia.Core.Api.Application.Security;
+using Statevia.Core.Api.Contracts;
+using Statevia.Core.Api.Contracts.Admin;
+using Statevia.Core.Api.Infrastructure;
+using Statevia.Core.Api.Infrastructure.Security;
+using Statevia.Core.Api.Services;
+using Statevia.Core.Api.Tests.Infrastructure;
+using Statevia.Core.Api.Tests.Infrastructure.Security;
+
+namespace Statevia.Core.Api.Tests.Services;
+
+/// <summary><see cref="TenantAdministrationService"/> の管理者 CRUD。</summary>
+public sealed class TenantAdministrationServiceTests
+{
+    private static TenantAdministrationService CreateService(
+        SqliteTestDatabase database,
+        SettableTenantContextAccessor tenantContext,
+        Guid callerPrincipalId)
+    {
+        tenantContext.Set(TestTenantIds.DefaultContext with { PrincipalId = callerPrincipalId });
+        return new TenantAdministrationService(
+            database.Factory,
+            tenantContext,
+            new TenantAdminAuthorization(new PlatformDataAccess(database.Factory)),
+            new PasswordCredentialService(),
+            new UuidV7Generator());
+    }
+
+    /// <summary>非管理者はユーザー一覧を拒否される。</summary>
+    [Fact]
+    public async Task ListUsersAsync_NonAdmin_ThrowsForbidden()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var memberId = await SecurityTestSeed.SeedUserAsync(database, "member@example.com", "password", isTenantAdmin: false);
+        var tenantContext = new SettableTenantContextAccessor();
+        var service = CreateService(database, tenantContext, memberId);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
+            service.ListUsersAsync(memberId, CancellationToken.None));
+    }
+
+    /// <summary>管理者はユーザーを作成できる。</summary>
+    [Fact]
+    public async Task CreateUserAsync_Admin_CreatesUser()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var adminId = await SecurityTestSeed.SeedUserAsync(database, "admin@example.com", "password", isTenantAdmin: true);
+        var tenantContext = new SettableTenantContextAccessor();
+        var service = CreateService(database, tenantContext, adminId);
+
+        // Act
+        var created = await service.CreateUserAsync(
+            adminId,
+            new CreateAdminUserRequest
+            {
+                Email = "new-user@example.com",
+                Password = "initial-password",
+                DisplayName = "New User"
+            },
+            CancellationToken.None);
+
+        // Assert
+        Assert.Equal("new-user@example.com", created.Email);
+        Assert.Equal("New User", created.DisplayName);
+        Assert.True(created.IsActive);
+        Assert.False(created.IsTenantAdmin);
+    }
+
+    /// <summary>管理者はユーザーを無効化できる。</summary>
+    [Fact]
+    public async Task UpdateUserAsync_Admin_DisablesUser()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var adminId = await SecurityTestSeed.SeedUserAsync(database, "admin@example.com", "password", isTenantAdmin: true);
+        var tenantContext = new SettableTenantContextAccessor();
+        var service = CreateService(database, tenantContext, adminId);
+        var created = await service.CreateUserAsync(
+            adminId,
+            new CreateAdminUserRequest
+            {
+                Email = "disable-me@example.com",
+                Password = "initial-password"
+            },
+            CancellationToken.None);
+
+        // Act
+        var updated = await service.UpdateUserAsync(
+            adminId,
+            created.UserId,
+            new UpdateAdminUserRequest { IsActive = false },
+            CancellationToken.None);
+
+        // Assert
+        Assert.False(updated.IsActive);
+    }
+
+    /// <summary>グループ権限から tenant.admin は除外される。</summary>
+    [Fact]
+    public async Task SetGroupPermissionsAsync_FiltersTenantAdminKey()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var platform = new PlatformDataAccess(database.Factory);
+        await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
+        var adminId = await SecurityTestSeed.SeedUserAsync(database, "admin-groups@example.com", "password", isTenantAdmin: true);
+        var tenantContext = new SettableTenantContextAccessor();
+        var service = CreateService(database, tenantContext, adminId);
+        var group = await service.CreateGroupAsync(
+            adminId,
+            new CreateAdminGroupRequest { Name = $"ops-{Guid.NewGuid():N}" },
+            CancellationToken.None);
+
+        // Act
+        var updated = await service.SetGroupPermissionsAsync(
+            adminId,
+            group.GroupId,
+            new SetAdminGroupPermissionsRequest
+            {
+                PermissionKeys = [WellKnownPermissionKeys.TenantAdmin, WellKnownPermissionKeys.DefinitionsRead]
+            },
+            CancellationToken.None);
+
+        // Assert
+        Assert.DoesNotContain(WellKnownPermissionKeys.TenantAdmin, updated.PermissionKeys);
+        Assert.Contains(WellKnownPermissionKeys.DefinitionsRead, updated.PermissionKeys);
+    }
+}

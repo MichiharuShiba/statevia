@@ -9,6 +9,8 @@ export type UiText = {
     definitions: string;
     executions: string;
     health: string;
+    adminUsers: string;
+    adminGroups: string;
   };
   entities: {
     definition: string;
@@ -82,6 +84,48 @@ export type UiText = {
     errors: {
       network: string;
       unexpectedResponse: string;
+    };
+  };
+  admin: {
+    users: {
+      title: string;
+      description: string;
+      createTitle: string;
+      emailLabel: string;
+      passwordLabel: string;
+      displayNameLabel: string;
+      isTenantAdminLabel: string;
+      createSubmit: string;
+      creating: string;
+      active: string;
+      inactive: string;
+      disable: string;
+      enable: string;
+      adminBadge: string;
+      groupCount: (count: number) => string;
+      forbidden: string;
+    };
+    groupManagement: {
+      title: string;
+      description: string;
+      createTitle: string;
+      nameLabel: string;
+      createSubmit: string;
+      creating: string;
+      membersTitle: string;
+      permissionsTitle: string;
+      saveMembers: string;
+      savePermissions: string;
+      saving: string;
+      systemBadge: string;
+      memberCount: (count: number) => string;
+      permissionCount: (count: number) => string;
+      openDetail: string;
+      backToList: string;
+      forbidden: string;
+    };
+    permissions: {
+      label: (displayKey: string | null | undefined, displayLabel: string) => string;
     };
   };
   executionDashboard: {
@@ -510,6 +554,8 @@ export const uiText: UiText = {
     definitions: "定義",
     executions: "実行",
     health: "ヘルスチェック",
+    adminUsers: "ユーザー管理",
+    adminGroups: "グループ管理",
   },
   entities: {
     definition: "定義",
@@ -584,6 +630,48 @@ export const uiText: UiText = {
     errors: {
       network: "ネットワークエラーが発生しました。接続を確認して再試行してください。",
       unexpectedResponse: "ログイン応答が不正です。管理者に連絡してください。",
+    },
+  },
+  admin: {
+    users: {
+      title: "ユーザー管理",
+      description: "テナント内のユーザーを一覧・作成・有効化/無効化します。",
+      createTitle: "ユーザーを作成",
+      emailLabel: "メールアドレス",
+      passwordLabel: "初期パスワード",
+      displayNameLabel: "表示名（任意）",
+      isTenantAdminLabel: "テナント管理者",
+      createSubmit: "作成",
+      creating: "作成中…",
+      active: "有効",
+      inactive: "無効",
+      disable: "無効化",
+      enable: "有効化",
+      adminBadge: "管理者",
+      groupCount: (count: number) => `グループ ${count} 件`,
+      forbidden: "テナント管理者のみ利用できます。",
+    },
+    groupManagement: {
+      title: "グループ管理",
+      description: "グループの作成と、メンバー・権限の割当を行います。",
+      createTitle: "グループを作成",
+      nameLabel: "グループ名",
+      createSubmit: "作成",
+      creating: "作成中…",
+      membersTitle: "メンバー",
+      permissionsTitle: "権限",
+      saveMembers: "メンバーを保存",
+      savePermissions: "権限を保存",
+      saving: "保存中…",
+      systemBadge: "システム",
+      memberCount: (count: number) => `メンバー ${count}`,
+      permissionCount: (count: number) => `権限 ${count}`,
+      openDetail: "編集",
+      backToList: "グループ一覧へ",
+      forbidden: "テナント管理者のみ利用できます。",
+    },
+    permissions: {
+      label: (displayKey: string | null | undefined, displayLabel: string) => displayKey ?? displayLabel,
     },
   },
   executionDashboard: {
@@ -1008,6 +1096,16 @@ export const uiText: UiText = {
 };
 
 export const uiTextJa: UiText = uiText;
+
+/** グループ管理画面用 i18n 切片。 */
+export type AdminGroupsUiText = UiText["admin"]["groupManagement"];
+
+/**
+ * グループ管理画面用 i18n 切片を取り出す。
+ */
+export function getAdminGroupManagementUiText(text: UiText): AdminGroupsUiText {
+  return text.admin.groupManagement;
+}
 
 export type MappingEntry = {
   source: string;

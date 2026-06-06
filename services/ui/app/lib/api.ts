@@ -174,3 +174,15 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body ?? {})
   });
 }
+
+/** Core-API へ PATCH（冪等キー付き）し JSON を返す。 */
+export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  return fetchAndParse<T>(path, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Idempotency-Key": idem()
+    },
+    body: JSON.stringify(body ?? {})
+  });
+}
