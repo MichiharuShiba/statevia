@@ -27,6 +27,20 @@ describe("fetchAuthMe", () => {
     expect(me?.isTenantAdmin).toBe(true);
   });
 
+  it("isTenantAdmin を含まない JSON のとき null を返す", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ email: "admin@example.com" })
+        })
+      )
+    );
+
+    await expect(fetchAuthMe()).resolves.toBeNull();
+  });
+
   it("401 のとき null を返す", async () => {
     vi.stubGlobal(
       "fetch",

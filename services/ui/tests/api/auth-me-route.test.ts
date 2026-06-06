@@ -33,6 +33,21 @@ describe("GET /api/auth/me", () => {
     expect(res.status).toBe(401);
   });
 
+  it("上流が不正 JSON のとき INVALID_RESPONSE を返す", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("not-json", { status: 200 }))
+    );
+    const req = new NextRequest("http://localhost/api/auth/me");
+    req.cookies.set(AUTH_COOKIE_ACCESS, "jwt-token");
+
+    const res = await GET(req);
+    const body: { error?: { code?: string } } = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.error?.code).toBe("INVALID_RESPONSE");
+  });
+
   it("Bearer とテナントヘッダー付きで Core-API にプロキシする", async () => {
     const req = new NextRequest("http://localhost/api/auth/me");
     req.cookies.set(AUTH_COOKIE_ACCESS, "jwt-token");
