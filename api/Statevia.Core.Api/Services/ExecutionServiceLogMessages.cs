@@ -11,7 +11,7 @@ internal static partial class ExecutionServiceLogMessages
     [LoggerMessage(
         EventId = 3001,
         Level = LogLevel.Debug,
-        Message = "Skip projection queue update because runtime is missing for execution {executionId}")]
+        Message = "Skip projection queue update because runtime is missing for ExecutionId={executionId}")]
     public static partial void SkipProjectionQueueUpdateDebug(this ILogger logger, Guid executionId);
 
     /// <summary>
@@ -32,7 +32,7 @@ internal static partial class ExecutionServiceLogMessages
     [LoggerMessage(
         EventId = 3002,
         Level = LogLevel.Information,
-        Message = "serializable_persist_retry traceId={traceId} executionId={executionId} tenantId={tenantId} clientEventId={clientEventId} attempt={attempt} maxAttempts={maxAttempts} delayMs={delayMs} failureMessage={failureMessage}")]
+        Message = "serializable_persist_retry TraceId={traceId} ExecutionId={executionId} TenantId={tenantId} ClientEventId={clientEventId} Attempt={attempt} MaxAttempts={maxAttempts} DelayMs={delayMs} FailureMessage={failureMessage}")]
     [SuppressMessage(
         "Major Code Smell",
         "S107:Methods should not have too many parameters",
@@ -68,7 +68,7 @@ internal static partial class ExecutionServiceLogMessages
     [LoggerMessage(
         EventId = 3003,
         Level = LogLevel.Information,
-        Message = "event_delivery_decision traceId={traceId} executionId={executionId} tenantId={tenantId} clientEventId={clientEventId} decision={decision} attempt={attempt} elapsedMs={elapsedMs} errorCode={errorCode}")]
+        Message = "event_delivery_decision TraceId={traceId} ExecutionId={executionId} TenantId={tenantId} ClientEventId={clientEventId} Decision={decision} Attempt={attempt} ElapsedMs={elapsedMs} ErrorCode={errorCode}")]
     [SuppressMessage(
         "Major Code Smell",
         "S107:Methods should not have too many parameters",
@@ -106,7 +106,7 @@ internal static partial class ExecutionServiceLogMessages
     [LoggerMessage(
         EventId = 3004,
         Level = LogLevel.Warning,
-        Message = "event_delivery_decision traceId={traceId} executionId={executionId} tenantId={tenantId} clientEventId={clientEventId} decision={decision} attempt={attempt} elapsedMs={elapsedMs} errorCode={errorCode}")]
+        Message = "event_delivery_decision TraceId={traceId} ExecutionId={executionId} TenantId={tenantId} ClientEventId={clientEventId} Decision={decision} Attempt={attempt} ElapsedMs={elapsedMs} ErrorCode={errorCode}")]
     [SuppressMessage(
         "Major Code Smell",
         "S107:Methods should not have too many parameters",
@@ -145,7 +145,7 @@ internal static partial class ExecutionServiceLogMessages
     [LoggerMessage(
         EventId = 3005,
         Level = LogLevel.Error,
-        Message = "event_delivery_decision traceId={traceId} executionId={executionId} tenantId={tenantId} clientEventId={clientEventId} decision={decision} attempt={attempt} elapsedMs={elapsedMs} errorCode={errorCode}")]
+        Message = "event_delivery_decision TraceId={traceId} ExecutionId={executionId} TenantId={tenantId} ClientEventId={clientEventId} Decision={decision} Attempt={attempt} ElapsedMs={elapsedMs} ErrorCode={errorCode}")]
     [SuppressMessage(
         "Major Code Smell",
         "S107:Methods should not have too many parameters",

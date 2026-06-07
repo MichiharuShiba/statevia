@@ -25,7 +25,7 @@ internal static partial class RequestLoggingLogMessages
     [LoggerMessage(
         EventId = 4010,
         Level = LogLevel.Information,
-        Message = "HTTP request start TraceId={traceId} Method={method} Path={path} Query={queryForLog} tenantId={tenantId} UserAgent={userAgent} RequestBody={requestBody}")]
+        Message = "HTTP request start TraceId={traceId} Method={method} Path={path} Query={queryForLog} TenantId={tenantId} UserAgent={userAgent} RequestBody={requestBody}")]
     [SuppressMessage(
         "Major Code Smell",
         "S107:Methods should not have too many parameters",
@@ -54,11 +54,11 @@ internal static partial class RequestLoggingLogMessages
     [LoggerMessage(
         EventId = 4012,
         Level = LogLevel.Information,
-        Message = "HTTP request complete TraceId={traceId} StatusCode={status} ElapsedMs={elapsedMs} ResponseSize={responseSize} ResponseBody={responseBody}")]
+        Message = "HTTP request complete TraceId={traceId} StatusCode={statusCode} ElapsedMs={elapsedMs} ResponseSize={responseSize} ResponseBody={responseBody}")]
     public static partial void HttpRequestComplete(
         this ILogger logger,
         string traceId,
-        int status,
+        int statusCode,
         long elapsedMs,
         long? responseSize,
         string? responseBody);
