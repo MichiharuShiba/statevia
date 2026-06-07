@@ -1,8 +1,10 @@
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Abstractions.Services;
+using Statevia.Core.Api.Application.Security;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Hosting;
+using Statevia.Core.Api.Infrastructure.Security;
 using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Contracts;
 
@@ -16,15 +18,21 @@ internal sealed class DefinitionService : IDefinitionService
     private readonly IDefinitionRepository _definitions;
     private readonly IProjectRepository _projects;
     private readonly ITenantContextAccessor _tenantContext;
+    private readonly IRuntimePermissionAuthorization _runtimeAuth;
     private readonly IIdGenerator _idGenerator;
     private readonly ICoreTransactionExecutor _executor;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Major Code Smell",
+        "S107:Methods should not have too many parameters",
+        Justification = "ASP.NET Core DI による明示的コンストラクタ注入。")]
     public DefinitionService(
         IDisplayIdService displayIds,
         IDefinitionCompilerService compiler,
         IDefinitionRepository definitions,
         IProjectRepository projects,
         ITenantContextAccessor tenantContext,
+        IRuntimePermissionAuthorization runtimeAuth,
         IIdGenerator idGenerator,
         ICoreTransactionExecutor executor)
     {
@@ -35,12 +43,14 @@ internal sealed class DefinitionService : IDefinitionService
         _definitions = definitions;
         _projects = projects;
         _tenantContext = tenantContext;
+        _runtimeAuth = runtimeAuth;
         _idGenerator = idGenerator;
         _executor = executor;
     }
 
     public async Task<DefinitionResponse> CreateAsync(string tenantId, CreateDefinitionRequest request, CancellationToken ct)
     {
+        await EnsureDefinitionsWriteAsync(ct).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(request.Name))
         {
             throw new ApiValidationException(DefinitionValidationMessages.NameRequired, new[]
@@ -125,6 +135,8 @@ internal sealed class DefinitionService : IDefinitionService
         DefinitionListQuery query,
         CancellationToken ct)
     {
+        await EnsureDefinitionsReadAsync(ct).ConfigureAwait(false);
+
         ArgumentNullException.ThrowIfNull(query);
         var tenantInternalId = _tenantContext.GetRequiredTenantInternalId();
         var limit = query.Limit ?? throw new ArgumentException("limit is required for paged list");
@@ -156,6 +168,8 @@ internal sealed class DefinitionService : IDefinitionService
 
     public async Task<DefinitionResponse> GetAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
+        await EnsureDefinitionsReadAsync(ct).ConfigureAwait(false);
+
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
             throw new NotFoundException(DefinitionValidationMessages.NotFound);
@@ -181,6 +195,8 @@ internal sealed class DefinitionService : IDefinitionService
         UpdateDefinitionRequest request,
         CancellationToken ct)
     {
+        await EnsureDefinitionsWriteAsync(ct).ConfigureAwait(false);
+
         if (string.IsNullOrWhiteSpace(request.Name))
         {
             throw new ApiValidationException(DefinitionValidationMessages.NameRequired, new[]
@@ -240,6 +256,12 @@ internal sealed class DefinitionService : IDefinitionService
             },
             ct).ConfigureAwait(false);
     }
+
+    private Task EnsureDefinitionsReadAsync(CancellationToken ct) =>
+        _runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.DefinitionsRead, ct);
+
+    private Task EnsureDefinitionsWriteAsync(CancellationToken ct) =>
+        _runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.DefinitionsWrite, ct);
 
     private static DefinitionResponse ToResponse(DefinitionDetail detail, string? displayId, bool includeYaml = false) =>
         new()

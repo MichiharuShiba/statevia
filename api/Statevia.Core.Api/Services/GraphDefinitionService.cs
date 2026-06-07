@@ -2,6 +2,7 @@ using System.Text.Json;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Abstractions.Services;
+using Statevia.Core.Api.Application.Security;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Persistence;
 
@@ -19,21 +20,26 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     private readonly IDisplayIdService _displayIds;
     private readonly IDefinitionRepository _definitions;
     private readonly ITenantContextAccessor _tenantContext;
+    private readonly IRuntimePermissionAuthorization _runtimeAuth;
 
     public GraphDefinitionService(
         ICoreTransactionExecutor executor,
         IDisplayIdService displayIds,
         IDefinitionRepository definitions,
-        ITenantContextAccessor tenantContext)
+        ITenantContextAccessor tenantContext,
+        IRuntimePermissionAuthorization runtimeAuth)
     {
         _executor = executor;
         _displayIds = displayIds;
         _definitions = definitions;
         _tenantContext = tenantContext;
+        _runtimeAuth = runtimeAuth;
     }
 
     public async Task<GraphDefinitionResponse> GetByGraphIdAsync(string graphId, string tenantId, CancellationToken ct = default)
     {
+        await EnsureDefinitionsReadAsync(ct).ConfigureAwait(false);
+
         _ = tenantId;
         var tenantInternalId = _tenantContext.GetRequiredTenantInternalId();
 
@@ -54,6 +60,9 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
             },
             ct).ConfigureAwait(false);
     }
+
+    private Task EnsureDefinitionsReadAsync(CancellationToken ct) =>
+        _runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.DefinitionsRead, ct);
 
     internal static GraphDefinitionResponse BuildFromCompiledJson(string graphId, string definitionName, string compiledJson)
     {

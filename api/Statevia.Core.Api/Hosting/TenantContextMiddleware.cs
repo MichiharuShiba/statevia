@@ -56,7 +56,12 @@ internal sealed class TenantContextMiddleware
         if (RequiresPrincipal(context.Request.Path) && resolvedIdentity.PrincipalId is null)
             throw new UnauthorizedException("Authentication required.", "UNAUTHORIZED");
 
-        var state = new TenantContextState(tenant.TenantId, tenant.TenantKey, resolvedIdentity.PrincipalId, tenant.Lifecycle);
+        var state = new TenantContextState(
+            tenant.TenantId,
+            tenant.TenantKey,
+            resolvedIdentity.PrincipalId,
+            tenant.Lifecycle,
+            resolvedIdentity.EffectivePermissionKeys);
         using (tenantContextAccessor.SetContext(state))
         {
             context.Items["Statevia.TenantKey"] = tenant.TenantKey;
@@ -90,7 +95,8 @@ internal sealed class TenantContextMiddleware
         return new ResolvedIdentity(
             apiKeyResult.Tenant.TenantKey,
             apiKeyResult.Tenant.TenantId,
-            apiKeyResult.Principal.PrincipalId);
+            apiKeyResult.Principal.PrincipalId,
+            apiKeyResult.EffectiveScopes);
     }
 
     /// <summary>
@@ -137,6 +143,7 @@ internal sealed class TenantContextMiddleware
     private static bool RequiresPrincipal(PathString path) =>
         path.StartsWithSegments("/v1/definitions", StringComparison.OrdinalIgnoreCase)
         || path.StartsWithSegments("/v1/executions", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWithSegments("/v1/graphs", StringComparison.OrdinalIgnoreCase)
         || path.StartsWithSegments("/v1/admin", StringComparison.OrdinalIgnoreCase)
         || path.StartsWithSegments("/v1/auth/me", StringComparison.OrdinalIgnoreCase);
 
@@ -173,7 +180,12 @@ internal sealed class TenantContextMiddleware
     /// <param name="TenantKey">テナントキー。</param>
     /// <param name="TenantInternalId">テナント内部 ID。</param>
     /// <param name="PrincipalId">Principal ID。</param>
-    private sealed record ResolvedIdentity(string TenantKey, Guid? TenantInternalId, Guid? PrincipalId);
+    /// <param name="EffectivePermissionKeys">API キー認証時の交差済み permission。</param>
+    private sealed record ResolvedIdentity(
+        string TenantKey,
+        Guid? TenantInternalId,
+        Guid? PrincipalId,
+        IReadOnlySet<string>? EffectivePermissionKeys = null);
 
     /// <summary>
     /// GUID クレームを解析する。
