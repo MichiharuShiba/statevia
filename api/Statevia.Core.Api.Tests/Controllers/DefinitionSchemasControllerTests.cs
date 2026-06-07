@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Controllers;
+using Statevia.Core.Api.Tests.Infrastructure;
 
 namespace Statevia.Core.Api.Tests.Controllers;
 
@@ -17,13 +18,15 @@ public sealed class DefinitionSchemasControllerTests
     /// nodes スキーマ取得 API が schemaVersion と nodesVersion を返す。
     /// </summary>
     [Fact]
-    public void GetNodesSchema_ReturnsSchemaPayload()
+    public async Task GetNodesSchema_ReturnsSchemaPayload()
     {
         // Arrange
-        var controller = new DefinitionSchemasController(new FakeDefinitionSchemaService());
+        var controller = new DefinitionSchemasController(
+            new FakeDefinitionSchemaService(),
+            new AllowAllRuntimePermissionAuthorization());
 
         // Act
-        var res = controller.GetNodesSchema();
+        var res = await controller.GetNodesSchema(CancellationToken.None);
 
         // Assert
         var ok = Assert.IsType<OkObjectResult>(res.Result);

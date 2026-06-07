@@ -20,6 +20,9 @@ internal sealed class SettableTenantContextAccessor : ITenantContextAccessor
     /// <inheritdoc />
     public Guid? PrincipalId => _state?.PrincipalId;
 
+    /// <inheritdoc />
+    public IReadOnlySet<string>? EffectivePermissionKeys => _state?.EffectivePermissionKeys;
+
     /// <summary>文脈を直接設定する。</summary>
     /// <param name="state">適用する文脈。</param>
     public void Set(TenantContextState? state) => _state = state;

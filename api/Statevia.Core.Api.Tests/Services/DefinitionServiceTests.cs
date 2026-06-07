@@ -24,7 +24,15 @@ public sealed class DefinitionServiceTests
         var executor = new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(inDb.Factory));
         var projectRepo = new ProjectRepository();
         var tenantAccessor = new FixedTenantContextAccessor(TestTenantIds.DefaultContext);
-        return new DefinitionService(display, compiler, definitionsRepo, projectRepo, tenantAccessor, idGen, executor);
+        return new DefinitionService(
+            display,
+            compiler,
+            definitionsRepo,
+            projectRepo,
+            tenantAccessor,
+            new AllowAllRuntimePermissionAuthorization(),
+            idGen,
+            executor);
     }
 
     private static async Task<Guid> SeedDefaultTenantAndProjectAsync(DbContextOptions<CoreDbContext> options)
