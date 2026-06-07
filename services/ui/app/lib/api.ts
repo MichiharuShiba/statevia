@@ -186,3 +186,8 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body ?? {})
   });
 }
+
+/** Core-API へ DELETE する（204 のときは undefined）。 */
+export async function apiDelete(path: string): Promise<void> {
+  await fetchAndParse<void>(path, { method: "DELETE" });
+}
