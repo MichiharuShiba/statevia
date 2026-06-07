@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Statevia.Core.Api.Abstractions.Security;
+using Statevia.Core.Api.Application.Security;
 using Statevia.Core.Api.Configuration;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Hosting;
@@ -211,6 +212,34 @@ public sealed class TenantContextMiddlewareTests
         Assert.Equal("UNAUTHORIZED", ex.Code);
     }
 
+    /// <summary>/v1/graphs も Principal 必須。</summary>
+    [Fact]
+    public async Task InvokeAsync_HeaderOnlyOnGraphsPath_ThrowsUnauthorized()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
+        var platform = new PlatformDataAccess(database.Factory);
+        var accessor = new SettableTenantContextAccessor();
+        var nextInvoked = false;
+
+        var middleware = new TenantContextMiddleware(_ =>
+        {
+            nextInvoked = true;
+            return Task.CompletedTask;
+        }, jwt);
+
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/v1/graphs/graph-1";
+        context.Request.Headers[TenantHeader.HeaderName] = "default";
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<UnauthorizedException>(() =>
+            middleware.InvokeAsync(context, accessor, platform));
+        Assert.False(nextInvoked);
+        Assert.Equal("UNAUTHORIZED", ex.Code);
+    }
+
     /// <summary>API キーで Principal を解決し Runtime API を通過する。</summary>
     [Fact]
     public async Task InvokeAsync_ValidApiKey_SetsTenantContextAndInvokesNext()
@@ -223,10 +252,12 @@ public sealed class TenantContextMiddlewareTests
         var accessor = new SettableTenantContextAccessor();
         var nextInvoked = false;
         Guid? resolvedPrincipalId = null;
+        IReadOnlySet<string>? resolvedEffectiveKeys = null;
         var middleware = new TenantContextMiddleware(_ =>
         {
             nextInvoked = true;
             resolvedPrincipalId = accessor.PrincipalId;
+            resolvedEffectiveKeys = accessor.EffectivePermissionKeys;
             return Task.CompletedTask;
         }, jwt);
         var context = new DefaultHttpContext();
@@ -242,6 +273,8 @@ public sealed class TenantContextMiddlewareTests
         Assert.Equal(TestTenantIds.DefaultInternalId, context.Items["Statevia.TenantInternalId"]);
         Assert.Equal("default", context.Items["Statevia.TenantKey"]);
         Assert.Equal(principalId, resolvedPrincipalId);
+        Assert.NotNull(resolvedEffectiveKeys);
+        Assert.Contains(WellKnownPermissionKeys.ExecutionsRead, resolvedEffectiveKeys);
     }
 
     /// <summary>無効 API キーは 401。</summary>

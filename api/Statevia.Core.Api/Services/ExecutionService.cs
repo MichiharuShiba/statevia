@@ -9,10 +9,12 @@ using Microsoft.Extensions.Options;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Abstractions.Services;
+using Statevia.Core.Api.Application.Security;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Hosting;
 using Statevia.Core.Api.Infrastructure;
+using Statevia.Core.Api.Infrastructure.Security;
 using Statevia.Core.Api.Configuration;
 using Statevia.Core.Api.Persistence;
 using Statevia.Core.Engine.Abstractions;
@@ -67,6 +69,7 @@ internal sealed class ExecutionService : IExecutionService
     private readonly IExecutionWaitRepository _executionWaits;
     private readonly IDefinitionRepository _definitions;
     private readonly IProjectAuthorizationService _projectAuth;
+    private readonly IRuntimePermissionAuthorization _runtimeAuth;
     private readonly ITenantContextAccessor _tenantContext;
     private readonly ICommandDedupRepository _dedup;
     private readonly IEventStoreRepository _eventStore;
@@ -94,6 +97,7 @@ internal sealed class ExecutionService : IExecutionService
         IExecutionWaitRepository executionWaits,
         IDefinitionRepository definitions,
         IProjectAuthorizationService projectAuth,
+        IRuntimePermissionAuthorization runtimeAuth,
         ITenantContextAccessor tenantContext,
         ICommandDedupRepository dedup,
         IEventStoreRepository eventStore,
@@ -116,6 +120,7 @@ internal sealed class ExecutionService : IExecutionService
         _executionWaits = executionWaits;
         _definitions = definitions;
         _projectAuth = projectAuth;
+        _runtimeAuth = runtimeAuth;
         _tenantContext = tenantContext;
         _dedup = dedup;
         _eventStore = eventStore;
@@ -137,6 +142,8 @@ internal sealed class ExecutionService : IExecutionService
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(requestContext);
+        await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
+
         var requestHash = ComputeStartRequestHash(request);
         var dedupKey = _dedupService.Create(tenantId, idempotencyKey, requestContext.Method, requestContext.Path, requestHash);
 
@@ -257,6 +264,8 @@ internal sealed class ExecutionService : IExecutionService
         ExecutionListQuery query,
         CancellationToken ct)
     {
+        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+
         ArgumentNullException.ThrowIfNull(query);
         var offset = query.Offset ?? 0;
         var limit = query.Limit ?? throw new ArgumentException("limit is required for paged list");
@@ -318,6 +327,8 @@ internal sealed class ExecutionService : IExecutionService
 
     public async Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
+        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
@@ -352,6 +363,8 @@ internal sealed class ExecutionService : IExecutionService
 
     public async Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
+        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
@@ -389,6 +402,8 @@ internal sealed class ExecutionService : IExecutionService
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(requestContext);
+        await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
+
         var dedupKey = _dedupService.Create(tenantId, idempotencyKey, requestContext.Method, requestContext.Path);
 
         if (dedupKey is { } key)
@@ -507,6 +522,8 @@ internal sealed class ExecutionService : IExecutionService
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(requestContext);
+        await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
+
         var dedupKey = _dedupService.Create(tenantId, idempotencyKey, requestContext.Method, requestContext.Path);
 
         if (dedupKey is { } key)
@@ -618,6 +635,8 @@ internal sealed class ExecutionService : IExecutionService
 
     public async Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct)
     {
+        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
@@ -627,6 +646,8 @@ internal sealed class ExecutionService : IExecutionService
 
     public async Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct)
     {
+        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+
         if (atSeq < 1)
             throw new ArgumentException("atSeq must be >= 1");
 
@@ -653,6 +674,8 @@ internal sealed class ExecutionService : IExecutionService
         int limit,
         CancellationToken ct)
     {
+        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+
         if (afterSeq < 0)
             throw new ArgumentException("afterSeq must be >= 0");
         if (limit is < 1 or > 5000)
@@ -898,6 +921,12 @@ internal sealed class ExecutionService : IExecutionService
     /// </summary>
     private static bool IsTerminalExecutionProjectionStatus(string status) =>
         status is "Completed" or "Cancelled" or "Failed";
+
+    private Task EnsureExecutionsReadAsync(CancellationToken ct) =>
+        _runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.ExecutionsRead, ct);
+
+    private Task EnsureExecutionsWriteAsync(CancellationToken ct) =>
+        _runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.ExecutionsWrite, ct);
 
     /// <summary>
     /// キャンセル／イベント発行の適用直前に、当該ワークフローがこのプロセスのエンジンへ読み込まれていることを検証する。

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using Statevia.Core.Api.Application.Security;
 
 namespace Statevia.Core.Api.Tests.Hosting;
 
@@ -32,7 +33,10 @@ public sealed class RuntimeApiAuthenticationIntegrationTests : IClassFixture<Sec
     public async Task GetDefinitions_WithJwt_ReturnsSuccessStatus()
     {
         // Arrange
-        var principalId = await _factory.SeedUserPrincipalAsync("runtime@example.com", "password");
+        var principalId = await _factory.SeedUserWithPermissionsAsync(
+            "runtime@example.com",
+            "password",
+            WellKnownPermissionKeys.DefinitionsRead);
         using var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
@@ -42,12 +46,12 @@ public sealed class RuntimeApiAuthenticationIntegrationTests : IClassFixture<Sec
         var response = await client.GetAsync(new Uri("/v1/definitions?limit=10", UriKind.Relative));
 
         // Assert
-        Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    /// <summary>API キー付きでは 401 にならない。</summary>
+    /// <summary>API キー付きでは 401 にならない（definitions 権限なしは 403）。</summary>
     [Fact]
-    public async Task GetDefinitions_WithApiKey_ReturnsSuccessStatus()
+    public async Task GetDefinitions_WithApiKey_ReturnsForbiddenWithoutDefinitionsRead()
     {
         // Arrange
         var plainKey = await _factory.SeedApiKeyPlainTextAsync();
@@ -56,6 +60,22 @@ public sealed class RuntimeApiAuthenticationIntegrationTests : IClassFixture<Sec
 
         // Act
         var response = await client.GetAsync(new Uri("/v1/definitions?limit=10", UriKind.Relative));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    /// <summary>executions.read の API キーは executions 一覧で 401 にならない。</summary>
+    [Fact]
+    public async Task GetExecutions_WithApiKey_ReturnsSuccessStatus()
+    {
+        // Arrange
+        var plainKey = await _factory.SeedApiKeyPlainTextAsync();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", plainKey);
+
+        // Act
+        var response = await client.GetAsync(new Uri("/v1/executions?limit=10", UriKind.Relative));
 
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);

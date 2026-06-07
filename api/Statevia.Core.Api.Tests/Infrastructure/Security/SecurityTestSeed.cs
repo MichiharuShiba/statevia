@@ -57,6 +57,62 @@ internal static class SecurityTestSeed
         return principalId;
     }
 
+    /// <summary>グループ権限付きテストユーザーを投入し Principal ID を返す。</summary>
+    /// <param name="database">テスト DB。</param>
+    /// <param name="email">メールアドレス。</param>
+    /// <param name="password">平文パスワード。</param>
+    /// <param name="permissionKeys">付与する semantic permission key。</param>
+    /// <returns>作成した Principal ID。</returns>
+    public static async Task<Guid> SeedUserWithGroupPermissionsAsync(
+        SqliteTestDatabase database,
+        string email,
+        string password,
+        IReadOnlyList<string> permissionKeys)
+    {
+        var principalId = await SeedUserAsync(
+            database,
+            email,
+            password,
+            isActive: true,
+            isTenantAdmin: false).ConfigureAwait(false);
+
+        await using var db = database.Factory.CreateDbContext();
+        await EnsurePermissionCatalogAsync(database).ConfigureAwait(false);
+
+        var userId = await db.UserPrincipals
+            .Where(up => up.PrincipalId == principalId)
+            .Select(up => up.UserId)
+            .FirstAsync()
+            .ConfigureAwait(false);
+
+        var groupId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        db.Groups.Add(new GroupRow
+        {
+            GroupId = groupId,
+            TenantId = TestTenantIds.DefaultInternalId,
+            Name = $"test-{email}",
+            IsSystem = false,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+
+        foreach (var permissionKey in permissionKeys.Distinct(StringComparer.Ordinal))
+        {
+            db.GroupPermissions.Add(new GroupPermissionRow
+            {
+                GroupId = groupId,
+                PermissionKey = permissionKey
+            });
+        }
+
+        db.UserGroupMembers.Add(new UserGroupMemberRow { UserId = userId, GroupId = groupId });
+        await db.SaveChangesAsync().ConfigureAwait(false);
+
+        return principalId;
+    }
+
     /// <summary>テスト用 API キーを投入する。</summary>
     /// <param name="database">テスト DB。</param>
     /// <param name="plainKey">平文 API キー。</param>
@@ -80,21 +136,7 @@ internal static class SecurityTestSeed
         var now = DateTime.UtcNow;
 
         await using var db = database.Factory.CreateDbContext();
-        foreach (var entry in PermissionCatalog.Entries)
-        {
-            if (await db.PermissionDefinitions.IgnoreQueryFilters().AnyAsync(p => p.PermissionKey == entry.PermissionKey))
-                continue;
-
-            db.PermissionDefinitions.Add(new PermissionDefinitionRow
-            {
-                PermissionDefinitionId = Guid.NewGuid(),
-                PermissionKey = entry.PermissionKey,
-                DisplayLabel = entry.DisplayLabel,
-                DisplayKey = entry.DisplayKey,
-                IsSystem = true,
-                CreatedAt = now
-            });
-        }
+        await EnsurePermissionCatalogAsync(database).ConfigureAwait(false);
 
         db.Principals.Add(new PrincipalRow
         {
@@ -150,4 +192,9 @@ internal static class SecurityTestSeed
 
         return (principalId, apiKeyId, plainKey);
     }
+
+    private static Task EnsurePermissionCatalogAsync(
+        SqliteTestDatabase database,
+        CancellationToken cancellationToken = default) =>
+        new PlatformDataAccess(database.Factory).EnsurePermissionCatalogAsync(cancellationToken);
 }

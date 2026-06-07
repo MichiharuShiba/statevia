@@ -23,6 +23,9 @@ internal sealed class NullTenantContextAccessor : ITenantContextAccessor
     public Guid? PrincipalId => null;
 
     /// <inheritdoc />
+    public IReadOnlySet<string>? EffectivePermissionKeys => null;
+
+    /// <inheritdoc />
     public IDisposable SetContext(TenantContextState? state) => NullScope.Empty;
 
     private sealed class NullScope : IDisposable

@@ -14,6 +14,11 @@ public interface ITenantContext
 
     /// <summary>Principal UUID。認証済みの場合のみ。</summary>
     Guid? PrincipalId { get; }
+
+    /// <summary>
+    /// API キー認証時の交差済み permission key。JWT 等では <see langword="null"/>（都度展開）。
+    /// </summary>
+    IReadOnlySet<string>? EffectivePermissionKeys { get; }
 }
 
 /// <summary>
@@ -32,8 +37,10 @@ public interface ITenantContextAccessor : ITenantContext
 /// <param name="TenantKey">外部キー。</param>
 /// <param name="PrincipalId">Principal（任意）。</param>
 /// <param name="Lifecycle">テナントライフサイクル。</param>
+/// <param name="EffectivePermissionKeys">API キー認証時の交差済み permission（任意）。</param>
 public sealed record TenantContextState(
     Guid TenantInternalId,
     string TenantKey,
     Guid? PrincipalId,
-    Application.Security.TenantLifecycle Lifecycle);
+    Application.Security.TenantLifecycle Lifecycle,
+    IReadOnlySet<string>? EffectivePermissionKeys = null);

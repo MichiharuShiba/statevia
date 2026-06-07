@@ -3663,6 +3663,7 @@ public sealed class ExecutionServiceTests
             new FakeExecutionWaitRepository(),
             definitions,
             projectAuthorization ?? new AllowAllProjectAuthorizationService(),
+            new AllowAllRuntimePermissionAuthorization(),
             sqlite.TenantAccessor,
             dedup,
             eventStore,

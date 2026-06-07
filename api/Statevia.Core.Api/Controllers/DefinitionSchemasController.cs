@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
 using Statevia.Core.Api.Abstractions.Services;
+using Statevia.Core.Api.Application.Security;
+using Statevia.Core.Api.Abstractions.Security;
 
 namespace Statevia.Core.Api.Controllers;
 
@@ -12,14 +14,19 @@ namespace Statevia.Core.Api.Controllers;
 public class DefinitionSchemasController : ControllerBase
 {
     private readonly IDefinitionSchemaService _definitionSchemas;
+    private readonly IRuntimePermissionAuthorization _runtimeAuth;
 
     /// <summary>
     /// <see cref="DefinitionSchemasController"/> を生成する。
     /// </summary>
     /// <param name="definitionSchemas">スキーマサービス。</param>
-    public DefinitionSchemasController(IDefinitionSchemaService definitionSchemas)
+    /// <param name="runtimeAuth">Runtime permission 認可。</param>
+    public DefinitionSchemasController(
+        IDefinitionSchemaService definitionSchemas,
+        IRuntimePermissionAuthorization runtimeAuth)
     {
         _definitionSchemas = definitionSchemas;
+        _runtimeAuth = runtimeAuth;
     }
 
     /// <summary>
@@ -28,8 +35,12 @@ public class DefinitionSchemasController : ControllerBase
     /// </summary>
     [HttpGet("nodes")]
     [ProducesResponseType(typeof(DefinitionNodesSchemaResponse), StatusCodes.Status200OK)]
-    public ActionResult<DefinitionNodesSchemaResponse> GetNodesSchema()
+    public async Task<ActionResult<DefinitionNodesSchemaResponse>> GetNodesSchema(CancellationToken cancellationToken)
     {
+        await _runtimeAuth
+            .EnsurePermissionAsync(RuntimePermissionRequirements.DefinitionsRead, cancellationToken)
+            .ConfigureAwait(false);
+
         return Ok(new DefinitionNodesSchemaResponse
         {
             SchemaVersion = _definitionSchemas.GetNodesSchemaVersion(),

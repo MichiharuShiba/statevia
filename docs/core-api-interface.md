@@ -357,10 +357,25 @@ JWT クレーム: `tenant_id`（内部 UUID）、`tenant_key`、`principal_id` /
 
 ### 4.1.2 Runtime API の認証要件
 
-- **保護対象**: `/v1/definitions`、`/v1/executions` 配下。
+- **保護対象**: `/v1/definitions`、`/v1/executions`、`/v1/graphs` 配下。
 - **必須**: `ITenantContext.PrincipalId` が解決済みであること（JWT または `X-Api-Key`）。
 - **拒否**: `X-Tenant-Id` のみ（Bearer / API キーなし）は **401**（`UNAUTHORIZED`）。
 - **除外パス**: `/v1/auth/login`、`/v1/health`、`/swagger/*`、`/scalar/*`。
+
+### 4.1.2.1 Runtime API の global permission 認可
+
+Principal 解決後、サービス層で **semantic permission key** を評価する（project 認可 `project_accesses` と併用）。
+
+| 操作 | permission key |
+| --- | --- |
+| GET `/v1/definitions*`、`/v1/graphs/*`、`/v1/definitions/schema/nodes` | `definitions.read` |
+| POST/PUT `/v1/definitions` | `definitions.write` |
+| GET `/v1/executions*`（一覧・詳細・graph・state・events・stream） | `executions.read` |
+| POST start / cancel / publish / resume | `executions.write` |
+
+- **JWT**: グループ権限を Live 展開（`ExpandPrincipalPermissionKeysAsync`）。`is_tenant_admin` は全 catalog key を持つ。
+- **API キー**: `effective = 展開許可 ∩ allowed_scopes` の交差結果のみ（`ITenantContext.EffectivePermissionKeys`）。
+- **不足時**: **403**（`PERMISSION_DENIED`）。
 
 ### 4.2 JSON 命名ポリシー（実装準拠）
 

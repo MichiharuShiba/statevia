@@ -16,6 +16,7 @@ namespace Statevia.Core.Api.Tests.Hosting;
 public sealed class SecurityIntegrationWebApplicationFactory : WebApplicationFactory<Statevia.Core.Api.Program>
 {
     private readonly SqliteTestDatabase _database = new();
+    private string? _cachedApiKeyPlainText;
 
     /// <inheritdoc />
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -47,13 +48,33 @@ public sealed class SecurityIntegrationWebApplicationFactory : WebApplicationFac
             isTenantAdmin: isTenantAdmin);
     }
 
-    /// <summary>統合テスト DB に API キーをシードする。</summary>
-    public async Task<string> SeedApiKeyPlainTextAsync()
+    /// <summary>統合テスト DB にグループ権限付きユーザーをシードする。</summary>
+    public async Task<Guid> SeedUserWithPermissionsAsync(
+        string email,
+        string password,
+        params string[] permissionKeys)
     {
         await using var scope = Services.CreateAsyncScope();
         var platform = scope.ServiceProvider.GetRequiredService<IPlatformDataAccess>();
         await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
+        return await SecurityTestSeed.SeedUserWithGroupPermissionsAsync(
+            _database,
+            email,
+            password,
+            permissionKeys);
+    }
+
+    /// <summary>統合テスト DB に API キーをシードする。</summary>
+    public async Task<string> SeedApiKeyPlainTextAsync()
+    {
+        if (_cachedApiKeyPlainText is not null)
+            return _cachedApiKeyPlainText;
+
+        await using var scope = Services.CreateAsyncScope();
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDataAccess>();
+        await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
         var (_, _, plainKey) = await SecurityTestSeed.SeedApiKeyAsync(_database);
+        _cachedApiKeyPlainText = plainKey;
         return plainKey;
     }
 

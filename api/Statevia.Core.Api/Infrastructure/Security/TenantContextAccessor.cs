@@ -20,6 +20,9 @@ internal sealed class TenantContextAccessor : ITenantContextAccessor
     public Guid? PrincipalId => _current.Value?.PrincipalId;
 
     /// <inheritdoc />
+    public IReadOnlySet<string>? EffectivePermissionKeys => _current.Value?.EffectivePermissionKeys;
+
+    /// <inheritdoc />
     public IDisposable SetContext(TenantContextState? state) => new Scope(this, _current.Value, state);
 
     private sealed class Scope : IDisposable

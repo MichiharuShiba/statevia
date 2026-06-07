@@ -24,6 +24,9 @@ internal sealed class FixedTenantContextAccessor : ITenantContextAccessor
     public Guid? PrincipalId => _state?.PrincipalId;
 
     /// <inheritdoc />
+    public IReadOnlySet<string>? EffectivePermissionKeys => _state?.EffectivePermissionKeys;
+
+    /// <inheritdoc />
     public IDisposable SetContext(TenantContextState? state) => new NoopScope();
 
     private sealed class NoopScope : IDisposable

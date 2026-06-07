@@ -47,6 +47,7 @@ internal static class ServiceCollectionExtensions
         services.AddScoped<IPlatformDataAccess, PlatformDataAccess>();
         services.AddScoped<IApiKeyAuthenticationService, ApiKeyAuthenticationService>();
         services.AddScoped<ITenantAdminAuthorization, TenantAdminAuthorization>();
+        services.AddScoped<IRuntimePermissionAuthorization, RuntimePermissionAuthorization>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITenantAdministrationService, TenantAdministrationService>();
         services.AddHostedService<TenantBootstrapHostedService>();
