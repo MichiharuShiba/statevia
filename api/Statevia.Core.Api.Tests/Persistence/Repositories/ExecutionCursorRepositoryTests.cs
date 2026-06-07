@@ -24,7 +24,7 @@ public sealed class ExecutionCursorRepositoryTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 DefinitionVersionId = Guid.NewGuid(),
                 Status = "Running",
@@ -39,7 +39,7 @@ public sealed class ExecutionCursorRepositoryTests
         var row = new ExecutionCursorRow
         {
             ExecutionId = executionId,
-            TenantId = "t1",
+            TenantId = TestTenantIds.T1TenantId,
             CurrentNodeId = "node-a",
             CurrentWorkerId = "worker-a",
             State = "Running",
@@ -73,7 +73,7 @@ public sealed class ExecutionCursorRepositoryTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 DefinitionVersionId = Guid.NewGuid(),
                 Status = "Running",
@@ -85,7 +85,7 @@ public sealed class ExecutionCursorRepositoryTests
             ctx.ExecutionCursors.Add(new ExecutionCursorRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 CurrentNodeId = "old",
                 State = "Running",
                 UpdatedAt = DateTime.UtcNow
@@ -100,7 +100,7 @@ public sealed class ExecutionCursorRepositoryTests
             new ExecutionCursorRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 CurrentNodeId = "new",
                 State = "Running",
                 UpdatedAt = DateTime.UtcNow
@@ -129,7 +129,7 @@ public sealed class ExecutionCursorRepositoryTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 DefinitionVersionId = Guid.NewGuid(),
                 Status = "Running",
@@ -141,7 +141,7 @@ public sealed class ExecutionCursorRepositoryTests
             ctx.ExecutionCursors.Add(new ExecutionCursorRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 State = "Running",
                 UpdatedAt = DateTime.UtcNow
             });
@@ -173,7 +173,7 @@ public sealed class ExecutionCursorRepositoryTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 DefinitionVersionId = Guid.NewGuid(),
                 Status = "Running",
@@ -185,7 +185,7 @@ public sealed class ExecutionCursorRepositoryTests
             ctx.ExecutionCursors.Add(new ExecutionCursorRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 CurrentNodeId = "node-a",
                 State = "Running",
                 UpdatedAt = DateTime.UtcNow

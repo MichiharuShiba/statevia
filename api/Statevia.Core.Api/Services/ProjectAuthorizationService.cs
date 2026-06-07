@@ -16,12 +16,12 @@ internal sealed class ProjectAuthorizationService : IProjectAuthorizationService
     /// <inheritdoc />
     public async Task EnsureCanReadAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid projectId,
         CancellationToken ct) =>
         await EnsureMinimumRoleAsync(
             uow,
-            tenantInternalId,
+            tenantId,
             projectId,
             ProjectAccessRole.Reader,
             forbiddenWhenBelowMinimum: false,
@@ -30,12 +30,12 @@ internal sealed class ProjectAuthorizationService : IProjectAuthorizationService
     /// <inheritdoc />
     public Task EnsureCanExecuteAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid projectId,
         CancellationToken ct) =>
         EnsureMinimumRoleAsync(
             uow,
-            tenantInternalId,
+            tenantId,
             projectId,
             ProjectAccessRole.Executor,
             forbiddenWhenBelowMinimum: true,
@@ -44,12 +44,12 @@ internal sealed class ProjectAuthorizationService : IProjectAuthorizationService
     /// <inheritdoc />
     public Task EnsureCanPublishAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid projectId,
         CancellationToken ct) =>
         EnsureMinimumRoleAsync(
             uow,
-            tenantInternalId,
+            tenantId,
             projectId,
             ProjectAccessRole.Publisher,
             forbiddenWhenBelowMinimum: true,
@@ -57,14 +57,14 @@ internal sealed class ProjectAuthorizationService : IProjectAuthorizationService
 
     private async Task EnsureMinimumRoleAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid projectId,
         ProjectAccessRole minimumRole,
         bool forbiddenWhenBelowMinimum,
         CancellationToken ct)
     {
         var effectiveRole = await _projects
-            .ResolveEffectiveRoleAsync(uow, tenantInternalId, projectId, ct)
+            .ResolveEffectiveRoleAsync(uow, tenantId, projectId, ct)
             .ConfigureAwait(false);
 
         if (effectiveRole is null)

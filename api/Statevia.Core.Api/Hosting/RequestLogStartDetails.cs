@@ -13,7 +13,7 @@ internal sealed class RequestLogStartDetails
 
     public required string QueryForLog { get; init; }
 
-    public required string TenantId { get; init; }
+    public Guid? TenantId { get; init; }
 
     public string? UserAgent { get; init; }
 

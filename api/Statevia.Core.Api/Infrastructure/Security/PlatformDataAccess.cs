@@ -30,7 +30,7 @@ internal interface IPlatformDataAccess
 
     /// <summary>Principal ID とテナント内部 ID でユーザー情報を取得する。</summary>
     Task<LoginCredentialLookup?> FindUserPrincipalAsync(
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid principalId,
         CancellationToken cancellationToken);
 
@@ -127,7 +127,7 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
 
     /// <inheritdoc />
     public async Task<LoginCredentialLookup?> FindUserPrincipalAsync(
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid principalId,
         CancellationToken cancellationToken)
     {
@@ -136,7 +136,7 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
         var tenant = await db.Tenants
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.TenantId == tenantInternalId, cancellationToken)
+            .FirstOrDefaultAsync(t => t.TenantId == tenantId, cancellationToken)
             .ConfigureAwait(false);
 
         if (tenant is null)
@@ -151,7 +151,7 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
                 up => up.UserId,
                 u => u.UserId,
                 (up, u) => new { up, u })
-            .FirstOrDefaultAsync(x => x.u.TenantId == tenantInternalId, cancellationToken)
+            .FirstOrDefaultAsync(x => x.u.TenantId == tenantId, cancellationToken)
             .ConfigureAwait(false);
 
         if (userPrincipal is null || !userPrincipal.u.IsActive)

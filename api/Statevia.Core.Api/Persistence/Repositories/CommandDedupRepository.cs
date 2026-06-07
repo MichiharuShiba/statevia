@@ -16,14 +16,14 @@ internal sealed class CommandDedupRepository : ICommandDedupRepository
 
     public Task<CommandDedupRow?> FindValidConflictingRequestHashAsync(
         ICoreUnitOfWork uow,
-        string tenantId,
+        string tenantKey,
         string endpoint,
         string idempotencyKey,
         string requestHash,
         DateTime utcNow,
         CancellationToken ct)
     {
-        var tenantPrefix = $"{tenantId}|";
+        var tenantPrefix = $"{tenantKey}|";
         return uow.Db.CommandDedup.AsNoTracking()
             .Where(x =>
                 x.ExpiresAt > utcNow

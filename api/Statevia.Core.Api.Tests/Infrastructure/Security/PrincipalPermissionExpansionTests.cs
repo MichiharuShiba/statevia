@@ -111,7 +111,7 @@ public sealed class PrincipalPermissionExpansionTests
             db.Principals.Add(new PrincipalRow
             {
                 PrincipalId = principalId,
-                TenantId = TestTenantIds.DefaultInternalId,
+                TenantId = TestTenantIds.DefaultTenantId,
                 PrincipalScope = PrincipalScope.Tenant,
                 PrincipalType = PrincipalType.ServiceAccount,
                 DisplayName = "orphan",
@@ -122,7 +122,7 @@ public sealed class PrincipalPermissionExpansionTests
             db.ServiceAccounts.Add(new ServiceAccountRow
             {
                 ServiceAccountId = Guid.NewGuid(),
-                TenantId = TestTenantIds.DefaultInternalId,
+                TenantId = TestTenantIds.DefaultTenantId,
                 PrincipalId = principalId,
                 Name = "orphan",
                 CreatedAt = now

@@ -28,7 +28,7 @@ public sealed class GraphDefinitionServiceTests
             var now = DateTime.UtcNow;
             ctx.Tenants.Add(new TenantRow
             {
-                TenantId = TestTenantIds.DefaultInternalId,
+                TenantId = TestTenantIds.DefaultTenantId,
                 TenantKey = "default",
                 DisplayName = "Default",
                 Lifecycle = TenantLifecycle.Active,
@@ -37,7 +37,7 @@ public sealed class GraphDefinitionServiceTests
             });
         }
 
-        var project = ProjectTestData.AddDefaultProject(ctx, TestTenantIds.DefaultInternalId, "default");
+        var project = ProjectTestData.AddDefaultProject(ctx, TestTenantIds.DefaultTenantId, "default");
         await ctx.SaveChangesAsync().ConfigureAwait(false);
         return project.ProjectId;
     }
@@ -69,7 +69,7 @@ public sealed class GraphDefinitionServiceTests
         using var db = new InMemoryTestDatabase();
         var sut = CreateSut(db, new StubDisplayIdService(resolveResult: null));
 
-        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByGraphIdAsync("G", "default", CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByGraphIdAsync("G", CancellationToken.None));
     }
 
     /// <summary>
@@ -83,7 +83,7 @@ public sealed class GraphDefinitionServiceTests
         var uuid = Guid.NewGuid();
         var sut = CreateSut(db, new StubDisplayIdService(uuid));
 
-        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByGraphIdAsync("G", "default", CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByGraphIdAsync("G", CancellationToken.None));
     }
 
     /// <summary>
@@ -142,12 +142,12 @@ public sealed class GraphDefinitionServiceTests
         await using (var ctx = new CoreDbContext(db.Options))
         {
             var now = DateTime.UtcNow;
-            DefinitionTestData.AddDefinitionWithVersion(ctx, "default", uuid, "def", projectId, compiledJson: compiledJson, createdAt: now);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, TestTenantIds.DefaultTenantId, uuid, "def", projectId, compiledJson: compiledJson, createdAt: now);
             await ctx.SaveChangesAsync();
         }
 
         var sut = CreateSut(db, new StubDisplayIdService(uuid));
-        var res = await sut.GetByGraphIdAsync(graphId, "default", CancellationToken.None);
+        var res = await sut.GetByGraphIdAsync(graphId, CancellationToken.None);
 
         // Assert
         Assert.Equal(graphId, res.GraphId);
@@ -208,12 +208,12 @@ public sealed class GraphDefinitionServiceTests
         await using (var ctx = new CoreDbContext(db.Options))
         {
             var now = DateTime.UtcNow;
-            DefinitionTestData.AddDefinitionWithVersion(ctx, "default", uuid, "def", projectId, compiledJson: compiledJson, createdAt: now);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, TestTenantIds.DefaultTenantId, uuid, "def", projectId, compiledJson: compiledJson, createdAt: now);
             await ctx.SaveChangesAsync();
         }
 
         var sut = CreateSut(db, new StubDisplayIdService(uuid));
-        var res = await sut.GetByGraphIdAsync(graphId, "default", CancellationToken.None);
+        var res = await sut.GetByGraphIdAsync(graphId, CancellationToken.None);
 
         var nodeById = new Dictionary<string, GraphNodeDefinition>(StringComparer.OrdinalIgnoreCase);
         foreach (var n in res.Nodes)
@@ -277,14 +277,14 @@ public sealed class GraphDefinitionServiceTests
         await using (var ctx = new CoreDbContext(db.Options))
         {
             var now = DateTime.UtcNow;
-            DefinitionTestData.AddDefinitionWithVersion(ctx, "default", uuid, "def", projectId, compiledJson: compiledJson, createdAt: now);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, TestTenantIds.DefaultTenantId, uuid, "def", projectId, compiledJson: compiledJson, createdAt: now);
             await ctx.SaveChangesAsync();
         }
 
         var sut = CreateSut(db, new StubDisplayIdService(uuid));
 
         // Act
-        var res = await sut.GetByGraphIdAsync(graphId, "default", CancellationToken.None);
+        var res = await sut.GetByGraphIdAsync(graphId, CancellationToken.None);
 
         // Assert
         Assert.Contains(res.Edges, e => e.From == "start" && e.To == "slowStep");
@@ -309,12 +309,12 @@ public sealed class GraphDefinitionServiceTests
         await using (var ctx = new CoreDbContext(db.Options))
         {
             var now = DateTime.UtcNow;
-            DefinitionTestData.AddDefinitionWithVersion(ctx, "default", uuid, "def", projectId, compiledJson: "null", createdAt: now);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, TestTenantIds.DefaultTenantId, uuid, "def", projectId, compiledJson: "null", createdAt: now);
             await ctx.SaveChangesAsync();
         }
 
         var sut = CreateSut(db, new StubDisplayIdService(uuid));
-        var res = await sut.GetByGraphIdAsync(graphId, "default", CancellationToken.None);
+        var res = await sut.GetByGraphIdAsync(graphId, CancellationToken.None);
 
         // Assert
         Assert.Empty(res.Nodes);

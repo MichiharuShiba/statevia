@@ -1,3 +1,4 @@
+using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
@@ -43,6 +44,14 @@ public sealed class ExecutionReadModelServiceTests
             throw new NotSupportedException();
     }
 
+    private static ExecutionReadModelService CreateSut(
+        StubDisplayIdService display,
+        TestCoreUnitOfWorkFactory factory) =>
+        new(
+            new TestCoreTransactionExecutor(factory),
+            display,
+            new FixedTenantContextAccessor(TestTenantIds.T1Context));
+
     /// <summary>
     /// 識別子解決に失敗したとき未検出例外を投げる。
     /// </summary>
@@ -52,9 +61,9 @@ public sealed class ExecutionReadModelServiceTests
         // Act & Assert
         using var db = new InMemoryTestDatabase();
         var display = new StubDisplayIdService { ExecutionResolveResult = null };
-        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
+        var sut = CreateSut(display, new TestCoreUnitOfWorkFactory(db.Factory));
 
-        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByDisplayIdAsync("DISP", tenantId: "t1", CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByDisplayIdAsync("DISP", CancellationToken.None));
     }
 
     /// <summary>
@@ -67,9 +76,9 @@ public sealed class ExecutionReadModelServiceTests
         using var db = new InMemoryTestDatabase();
         var uuid = Guid.NewGuid();
         var display = new StubDisplayIdService { ExecutionResolveResult = uuid };
-        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
+        var sut = CreateSut(display, new TestCoreUnitOfWorkFactory(db.Factory));
 
-        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByDisplayIdAsync("DISP", tenantId: "t1", CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByDisplayIdAsync("DISP", CancellationToken.None));
     }
 
     /// <summary>
@@ -88,7 +97,7 @@ public sealed class ExecutionReadModelServiceTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = uuid,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = definitionId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -100,9 +109,9 @@ public sealed class ExecutionReadModelServiceTests
         }
 
         var display = new StubDisplayIdService { ExecutionResolveResult = uuid };
-        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
+        var sut = CreateSut(display, new TestCoreUnitOfWorkFactory(db.Factory));
 
-        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByDisplayIdAsync("DISP", tenantId: "t1", CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByDisplayIdAsync("DISP", CancellationToken.None));
     }
 
     /// <summary>
@@ -131,7 +140,7 @@ public sealed class ExecutionReadModelServiceTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = uuid,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = definitionId,
                 Status = "Cancelled",
                 StartedAt = DateTime.UtcNow.AddHours(-1),
@@ -155,8 +164,8 @@ public sealed class ExecutionReadModelServiceTests
             DefinitionDisplayId = null // fallback to execution.DefinitionId string
         };
 
-        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
-        var res = await sut.GetByDisplayIdAsync("DISP", "t1", CancellationToken.None);
+        var sut = CreateSut(display, new TestCoreUnitOfWorkFactory(db.Factory));
+        var res = await sut.GetByDisplayIdAsync("DISP", CancellationToken.None);
 
         // Assert
         Assert.Equal("EXEC-1", res.ExecutionId);
@@ -214,7 +223,7 @@ public sealed class ExecutionReadModelServiceTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = uuid,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = definitionId,
                 Status = internalStatus,
                 StartedAt = startedAt,
@@ -238,8 +247,8 @@ public sealed class ExecutionReadModelServiceTests
             DefinitionDisplayId = null // fallback to execution.DefinitionId string
         };
 
-        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
-        var res = await sut.GetByDisplayIdAsync("DISP", "t1", CancellationToken.None);
+        var sut = CreateSut(display, new TestCoreUnitOfWorkFactory(db.Factory));
+        var res = await sut.GetByDisplayIdAsync("DISP", CancellationToken.None);
 
         // Assert
         Assert.Equal(expectedContractStatus, res.Status);
@@ -278,7 +287,7 @@ public sealed class ExecutionReadModelServiceTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = uuid,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = definitionId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -296,10 +305,10 @@ public sealed class ExecutionReadModelServiceTests
         }
 
         var display = new StubDisplayIdService { ExecutionResolveResult = uuid, ExecutionDisplayId = "EXEC-1", DefinitionDisplayId = null };
-        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
+        var sut = CreateSut(display, new TestCoreUnitOfWorkFactory(db.Factory));
 
         // Assert
-        var res = await sut.GetByDisplayIdAsync("DISP", "t1", CancellationToken.None);
+        var res = await sut.GetByDisplayIdAsync("DISP", CancellationToken.None);
         Assert.Empty(res.Nodes);
     }
 
@@ -325,7 +334,7 @@ public sealed class ExecutionReadModelServiceTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = uuid,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = definitionId,
                 Status = "Completed",
                 StartedAt = DateTime.UtcNow.AddHours(-1),
@@ -343,10 +352,10 @@ public sealed class ExecutionReadModelServiceTests
         }
 
         var display = new StubDisplayIdService { ExecutionResolveResult = uuid, ExecutionDisplayId = "EXEC-1", DefinitionDisplayId = null };
-        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
+        var sut = CreateSut(display, new TestCoreUnitOfWorkFactory(db.Factory));
 
         // Assert
-        var res = await sut.GetByDisplayIdAsync("DISP", "t1", CancellationToken.None);
+        var res = await sut.GetByDisplayIdAsync("DISP", CancellationToken.None);
         Assert.Single(res.Nodes);
         Assert.Equal("SUCCEEDED", res.Nodes[0].Status);
     }
@@ -368,7 +377,7 @@ public sealed class ExecutionReadModelServiceTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = uuid,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = definitionId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -386,10 +395,10 @@ public sealed class ExecutionReadModelServiceTests
         }
 
         var display = new StubDisplayIdService { ExecutionResolveResult = uuid, ExecutionDisplayId = "EXEC-2", DefinitionDisplayId = "G-1" };
-        var sut = new ExecutionReadModelService(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)), display);
+        var sut = CreateSut(display, new TestCoreUnitOfWorkFactory(db.Factory));
 
         // Assert
-        var res = await sut.GetByDisplayIdAsync("DISP", "t1", CancellationToken.None);
+        var res = await sut.GetByDisplayIdAsync("DISP", CancellationToken.None);
         Assert.Empty(res.Nodes);
     }
 }

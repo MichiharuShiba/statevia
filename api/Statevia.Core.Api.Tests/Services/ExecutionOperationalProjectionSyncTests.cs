@@ -31,7 +31,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
 
         var request = new ExecutionOperationalProjectionSyncRequest(
             executionId,
-            "t1",
+            TestTenantIds.T1TenantId,
             "Running",
             new ExecutionSnapshot
             {
@@ -79,7 +79,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 DefinitionVersionId = Guid.NewGuid(),
                 Status = "Completed",
@@ -91,7 +91,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
             ctx.ExecutionCursors.Add(new ExecutionCursorRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 State = "Running",
                 UpdatedAt = now
             });
@@ -108,7 +108,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
 
         var request = new ExecutionOperationalProjectionSyncRequest(
             executionId,
-            "t1",
+            TestTenantIds.T1TenantId,
             "Completed",
             Snapshot: null,
             GraphJson: "{}",
@@ -162,7 +162,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
 
         var request = new ExecutionOperationalProjectionSyncRequest(
             executionId,
-            "t1",
+            TestTenantIds.T1TenantId,
             "Running",
             Snapshot: null,
             GraphJson:
@@ -206,7 +206,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
             """;
         var request = new ExecutionOperationalProjectionSyncRequest(
             executionId,
-            "t1",
+            TestTenantIds.T1TenantId,
             "Running",
             new ExecutionSnapshot
             {
@@ -257,7 +257,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
             """;
         var request = new ExecutionOperationalProjectionSyncRequest(
             executionId,
-            "t1",
+            TestTenantIds.T1TenantId,
             "Running",
             new ExecutionSnapshot
             {
@@ -294,7 +294,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         ctx.Executions.Add(new ExecutionRow
         {
             ExecutionId = executionId,
-            TenantId = "t1",
+            TenantId = TestTenantIds.T1TenantId,
             DefinitionId = Guid.NewGuid(),
             DefinitionVersionId = Guid.NewGuid(),
             Status = "Running",

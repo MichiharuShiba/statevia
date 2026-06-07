@@ -5,8 +5,8 @@ internal class DefinitionRow
 {
     public Guid DefinitionId { get; set; }
 
-    /// <summary>移行期（project 未導入）のテナント境界。1b で project 経由に移行予定。</summary>
-    public string TenantId { get; set; } = "default";
+    /// <summary>所属テナント（<c>tenants.tenant_id</c> FK）。</summary>
+    public Guid TenantId { get; set; }
 
     /// <summary>所属 project（NOT NULL。認可は project_accesses が truth）。</summary>
     public Guid ProjectId { get; set; }

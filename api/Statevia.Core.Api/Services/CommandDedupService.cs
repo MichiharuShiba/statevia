@@ -4,7 +4,7 @@ namespace Statevia.Core.Api.Services;
 
 internal sealed class CommandDedupService : ICommandDedupService
 {
-    public CommandDedupKey? Create(string tenantId, string? idempotencyKey, string method, string path, string? requestHash = null)
+    public CommandDedupKey? Create(string tenantKey, string? idempotencyKey, string method, string path, string? requestHash = null)
     {
         if (string.IsNullOrWhiteSpace(idempotencyKey))
             return null;
@@ -13,8 +13,8 @@ internal sealed class CommandDedupService : ICommandDedupService
         var endpoint = $"{method} {trimmed}";
         var idempotencyKeyTrimmed = idempotencyKey.Trim();
         var dedupKey = string.IsNullOrWhiteSpace(requestHash)
-            ? $"{tenantId}|{endpoint}:{idempotencyKeyTrimmed}"
-            : $"{tenantId}|{endpoint}:{idempotencyKeyTrimmed}:{requestHash}";
+            ? $"{tenantKey}|{endpoint}:{idempotencyKeyTrimmed}"
+            : $"{tenantKey}|{endpoint}:{idempotencyKeyTrimmed}:{requestHash}";
 
         return new CommandDedupKey
         {

@@ -9,7 +9,7 @@ internal sealed class SerializablePersistRetryDetails
 
     public Guid ExecutionId { get; init; }
 
-    public required string TenantId { get; init; }
+    public Guid TenantId { get; init; }
 
     public Guid ClientEventId { get; init; }
 
@@ -31,7 +31,7 @@ internal sealed class EventDeliveryDecisionDetails
 
     public Guid ExecutionId { get; init; }
 
-    public required string TenantId { get; init; }
+    public Guid TenantId { get; init; }
 
     public Guid ClientEventId { get; init; }
 

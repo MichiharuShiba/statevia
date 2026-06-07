@@ -12,7 +12,7 @@ internal sealed class EventDeliveryDedupRepository : IEventDeliveryDedupReposito
     /// <inheritdoc />
     public Task<EventDeliveryDedupRow?> FindAsync(
         ICoreUnitOfWork uow,
-        string tenantId,
+        Guid tenantId,
         Guid executionId,
         Guid clientEventId,
         CancellationToken cancellationToken) =>
@@ -31,7 +31,7 @@ internal sealed class EventDeliveryDedupRepository : IEventDeliveryDedupReposito
     /// <inheritdoc />
     public async Task<bool> TryUpdateStatusAsync(
         ICoreUnitOfWork uow,
-        string tenantId,
+        Guid tenantId,
         Guid executionId,
         Guid clientEventId,
         EventDeliveryDedupStatusUpdate update,

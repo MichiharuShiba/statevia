@@ -9,7 +9,7 @@ internal class ExecutionCursorRow
     public Guid ExecutionId { get; set; }
 
     /// <summary>移行期（project 未導入）のテナント境界。1b で project 経由に移行予定。</summary>
-    public string TenantId { get; set; } = "default";
+    public Guid TenantId { get; set; }
 
     /// <summary>現在アクティブな実行グラフノード ID（無ければ null）。</summary>
     public string? CurrentNodeId { get; set; }

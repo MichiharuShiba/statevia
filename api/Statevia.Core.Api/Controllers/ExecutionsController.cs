@@ -5,7 +5,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
-using Statevia.Core.Api.Hosting;
 using Statevia.Core.Api.Services;
 
 namespace Statevia.Core.Api.Controllers;
@@ -44,16 +43,12 @@ public class ExecutionsController : ControllerBase
     [ProducesResponseType(typeof(ExecutionResponse), StatusCodes.Status201Created)]
     public async Task<ActionResult<ExecutionResponse>> Create(
         [FromBody] StartExecutionRequest request,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         [FromHeader(Name = IdempotencyKeyHeaderName)] string? idempotencyKey = null,
         CancellationToken ct = default)
     {
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        var resolvedIdempotencyKey = idempotencyKey;
         var created = await _executions.StartAsync(
-            tenantId,
             request,
-            resolvedIdempotencyKey,
+            idempotencyKey,
             new CommandRequestContext(Request.Method, Request.Path.Value ?? string.Empty),
             ct).ConfigureAwait(false);
 
@@ -69,11 +64,9 @@ public class ExecutionsController : ControllerBase
     [ProducesResponseType(typeof(PagedResult<ExecutionResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> List(
         [FromQuery] ExecutionListQuery query,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         if (query.Limit is null)
             throw new ArgumentException("limit is required");
 
@@ -83,7 +76,7 @@ public class ExecutionsController : ControllerBase
         if (query.Limit.Value > 500)
             throw new ArgumentException("limit must be at most 500");
 
-        var paged = await _executions.ListPagedAsync(tenantId, query, ct).ConfigureAwait(false);
+        var paged = await _executions.ListPagedAsync(query, ct).ConfigureAwait(false);
         return Ok(paged);
     }
 
@@ -92,11 +85,9 @@ public class ExecutionsController : ControllerBase
     [ProducesResponseType(typeof(ExecutionResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<ExecutionResponse>> Get(
         string id,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        var model = await _executions.GetExecutionResponseAsync(tenantId, id, ct).ConfigureAwait(false);
+        var model = await _executions.GetExecutionResponseAsync(id, ct).ConfigureAwait(false);
         return Ok(model);
     }
 
@@ -106,11 +97,9 @@ public class ExecutionsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<string>> GetGraph(
         string id,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        var graphJson = await _executions.GetGraphJsonAsync(tenantId, id, ct).ConfigureAwait(false);
+        var graphJson = await _executions.GetGraphJsonAsync(id, ct).ConfigureAwait(false);
         return Content(graphJson, "application/json");
     }
 
@@ -120,11 +109,9 @@ public class ExecutionsController : ControllerBase
     public async Task<ActionResult<ExecutionViewDto>> GetState(
         string id,
         [FromQuery] long atSeq,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        var view = await _executions.GetExecutionViewAtSeqAsync(tenantId, id, atSeq, ct).ConfigureAwait(false);
+        var view = await _executions.GetExecutionViewAtSeqAsync(id, atSeq, ct).ConfigureAwait(false);
         return Ok(view);
     }
 
@@ -135,11 +122,9 @@ public class ExecutionsController : ControllerBase
         string id,
         [FromQuery] long afterSeq = 0,
         [FromQuery] int limit = 500,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        var res = await _executions.ListEventsAsync(tenantId, id, afterSeq, limit, ct).ConfigureAwait(false);
+        var res = await _executions.ListEventsAsync(id, afterSeq, limit, ct).ConfigureAwait(false);
         return Ok(res);
     }
 
@@ -149,11 +134,9 @@ public class ExecutionsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task GetStream(
         string id,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        await _stream.WriteStreamAsync(Response, tenantId, id, ct).ConfigureAwait(false);
+        await _stream.WriteStreamAsync(Response, id, ct).ConfigureAwait(false);
     }
 
     /// <summary>POST /v1/executions/{id}/cancel — Engine.CancelAsync を呼び、projection を更新。X-Idempotency-Key で冪等。X-Tenant-Id でスコープ。</summary>
@@ -161,14 +144,11 @@ public class ExecutionsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult> Cancel(
         string id,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         [FromHeader(Name = IdempotencyKeyHeaderName)] string? idempotencyKey = null,
         CancellationToken ct = default)
     {
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         var resolvedIdempotencyKey = idempotencyKey;
         await _executions.CancelAsync(
-            tenantId,
             id,
             resolvedIdempotencyKey,
             new CommandRequestContext(Request.Method, Request.Path.Value ?? string.Empty),
@@ -185,14 +165,11 @@ public class ExecutionsController : ControllerBase
         string id,
         string nodeId,
         [FromBody] ResumeNodeRequest? body,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         [FromHeader(Name = IdempotencyKeyHeaderName)] string? idempotencyKey = null,
         CancellationToken ct = default)
     {
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         var resolvedIdempotencyKey = idempotencyKey;
         await _executions.ResumeNodeAsync(
-            tenantId,
             id,
             nodeId,
             body?.ResumeKey,
@@ -208,16 +185,13 @@ public class ExecutionsController : ControllerBase
     public async Task<ActionResult> PublishEvent(
         string id,
         [FromBody] PublishEventRequest body,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         [FromHeader(Name = IdempotencyKeyHeaderName)] string? idempotencyKey = null,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(body);
 
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         var resolvedIdempotencyKey = idempotencyKey;
         await _executions.PublishEventAsync(
-            tenantId,
             id,
             body.Name,
             resolvedIdempotencyKey,

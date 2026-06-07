@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
-using Statevia.Core.Api.Hosting;
 
 namespace Statevia.Core.Api.Controllers;
 
@@ -23,19 +22,17 @@ public class GraphsController : ControllerBase
         _graphService = graphService;
     }
 
-    /// <summary>GET /v1/graphs/{graphId} — 契約 4.1 Graph Definition（nodes / edges）を返す。graphId は definition の display_id。X-Tenant-Id でスコープ。</summary>
+    /// <summary>GET /v1/graphs/{graphId} — 契約 4.1 Graph Definition（nodes / edges）を返す。graphId は definition の display_id。</summary>
     [HttpGet("{graphId}")]
     [ProducesResponseType(typeof(GraphDefinitionResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<GraphDefinitionResponse>> GetByGraphId(
         string graphId,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(graphId))
             return ApiErrorResult.ValidationError("graphId is required");
 
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        var graph = await _graphService.GetByGraphIdAsync(graphId, tenantId, ct).ConfigureAwait(false);
+        var graph = await _graphService.GetByGraphIdAsync(graphId, ct).ConfigureAwait(false);
         return Ok(graph);
     }
 }

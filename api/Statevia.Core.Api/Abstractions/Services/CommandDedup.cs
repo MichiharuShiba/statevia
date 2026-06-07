@@ -42,11 +42,11 @@ public interface ICommandDedupService
     /// <summary>
     /// 冪等キーが有効なとき、dedup 行のキーとエンドポイント情報を生成する。不要なら <see langword="null"/>。
     /// </summary>
-    /// <param name="tenantId">テナント ID。</param>
+    /// <param name="tenantKey">テナントキー（<c>tenants.tenant_key</c> / dedup キー接頭辞）。</param>
     /// <param name="idempotencyKey">リクエストの冪等キー（任意）。</param>
     /// <param name="method">HTTP メソッド。</param>
     /// <param name="path">リクエストパス（クエリなし）。</param>
     /// <param name="requestHash">リクエスト本文のハッシュ（任意）。</param>
     /// <returns>保存用の dedup 情報。冪等不要の場合は <see langword="null"/>。</returns>
-    CommandDedupKey? Create(string tenantId, string? idempotencyKey, string method, string path, string? requestHash = null);
+    CommandDedupKey? Create(string tenantKey, string? idempotencyKey, string method, string path, string? requestHash = null);
 }

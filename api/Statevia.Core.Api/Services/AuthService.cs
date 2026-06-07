@@ -12,7 +12,7 @@ public interface IAuthService
     Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken);
 
     /// <summary>認証済み Principal の情報を返す。</summary>
-    Task<AuthMeResponse> GetMeAsync(Guid tenantInternalId, Guid principalId, CancellationToken cancellationToken);
+    Task<AuthMeResponse> GetMeAsync(Guid tenantId, Guid principalId, CancellationToken cancellationToken);
 }
 
 /// <inheritdoc />
@@ -73,10 +73,10 @@ internal sealed class AuthService : IAuthService
     }
 
     /// <inheritdoc />
-    public async Task<AuthMeResponse> GetMeAsync(Guid tenantInternalId, Guid principalId, CancellationToken cancellationToken)
+    public async Task<AuthMeResponse> GetMeAsync(Guid tenantId, Guid principalId, CancellationToken cancellationToken)
     {
         var lookup = await _platformDataAccess
-            .FindUserPrincipalAsync(tenantInternalId, principalId, cancellationToken)
+            .FindUserPrincipalAsync(tenantId, principalId, cancellationToken)
             .ConfigureAwait(false);
 
         if (lookup is null)

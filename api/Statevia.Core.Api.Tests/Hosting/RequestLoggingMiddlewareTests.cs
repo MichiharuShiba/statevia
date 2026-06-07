@@ -2,7 +2,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Hosting;
+using Statevia.Core.Api.Persistence;
+using Statevia.Core.Api.Tests.Infrastructure;
 
 namespace Statevia.Core.Api.Tests.Hosting;
 
@@ -33,7 +36,7 @@ public sealed class RequestLoggingMiddlewareTests
         };
 
         var mw = new RequestLoggingMiddleware(next);
-        await mw.InvokeAsync(ctx, logger, opts);
+        await InvokeAsync(mw, ctx, logger, opts);
 
         Assert.Contains(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
         Assert.Contains(collector.Entries, e => e.Contains("HTTP request complete", StringComparison.Ordinal));
@@ -64,7 +67,7 @@ public sealed class RequestLoggingMiddlewareTests
         RequestDelegate next = c => c.Response.WriteAsync("ok");
 
         var mw = new RequestLoggingMiddleware(next);
-        await mw.InvokeAsync(ctx, logger, opts);
+        await InvokeAsync(mw, ctx, logger, opts);
 
         Assert.False(ctx.Response.Headers.ContainsKey("X-Trace-Id"));
     }
@@ -93,7 +96,7 @@ public sealed class RequestLoggingMiddlewareTests
         var mw = new RequestLoggingMiddleware(next);
 
         // Act
-        await mw.InvokeAsync(ctx, logger, opts);
+        await InvokeAsync(mw, ctx, logger, opts);
 
         // Assert
         var completeLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request complete", StringComparison.Ordinal));
@@ -120,7 +123,7 @@ public sealed class RequestLoggingMiddlewareTests
         var mw = new RequestLoggingMiddleware(next);
 
         // Act
-        await mw.InvokeAsync(ctx, logger, opts);
+        await InvokeAsync(mw, ctx, logger, opts);
 
         // Assert
         var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
@@ -147,7 +150,7 @@ public sealed class RequestLoggingMiddlewareTests
         var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
 
         // Act
-        await middleware.InvokeAsync(ctx, logger, opts);
+        await InvokeAsync(middleware, ctx, logger, opts);
 
         // Assert
         var completeLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request complete", StringComparison.Ordinal));
@@ -181,7 +184,7 @@ public sealed class RequestLoggingMiddlewareTests
         var middleware = new RequestLoggingMiddleware(next);
 
         // Act
-        await middleware.InvokeAsync(ctx, logger, opts);
+        await InvokeAsync(middleware, ctx, logger, opts);
 
         // Assert
         var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
@@ -209,7 +212,7 @@ public sealed class RequestLoggingMiddlewareTests
         var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
 
         // Act
-        await middleware.InvokeAsync(ctx, logger, opts);
+        await InvokeAsync(middleware, ctx, logger, opts);
 
         // Assert
         var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
@@ -230,7 +233,8 @@ public sealed class RequestLoggingMiddlewareTests
         var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
 
         // Act
-        await middleware.InvokeAsync(
+        await InvokeAsync(
+            middleware,
             ctx,
             NullLogger<RequestLoggingMiddleware>.Instance,
             Options.Create(new RequestLogOptions()));
@@ -258,7 +262,8 @@ public sealed class RequestLoggingMiddlewareTests
         var middleware = new RequestLoggingMiddleware(next);
 
         // Act
-        await Assert.ThrowsAsync<InvalidOperationException>(() => middleware.InvokeAsync(ctx, logger, opts));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            InvokeAsync(middleware, ctx, logger, opts));
 
         // Assert
         Assert.Contains(collector.Entries, e => e.Contains("unhandled exception", StringComparison.OrdinalIgnoreCase));
@@ -284,7 +289,7 @@ public sealed class RequestLoggingMiddlewareTests
         var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
 
         // Act
-        await middleware.InvokeAsync(ctx, logger, opts);
+        await InvokeAsync(middleware, ctx, logger, opts);
 
         // Assert
         var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
@@ -316,7 +321,7 @@ public sealed class RequestLoggingMiddlewareTests
         var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
 
         // Act
-        await middleware.InvokeAsync(ctx, logger, opts);
+        await InvokeAsync(middleware, ctx, logger, opts);
 
         // Assert
         var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
@@ -341,7 +346,7 @@ public sealed class RequestLoggingMiddlewareTests
         var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
 
         // Act
-        await middleware.InvokeAsync(ctx, logger, opts);
+        await InvokeAsync(middleware, ctx, logger, opts);
 
         // Assert
         var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
@@ -372,12 +377,50 @@ public sealed class RequestLoggingMiddlewareTests
         var middleware = new RequestLoggingMiddleware(next);
 
         // Act
-        await middleware.InvokeAsync(ctx, logger, opts);
+        await InvokeAsync(middleware, ctx, logger, opts);
 
         // Assert
         var completeLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request complete", StringComparison.Ordinal));
         Assert.Contains("non-text response omitted", completeLog, StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>解決済みテナント UUID を開始ログに載せる。</summary>
+    [Fact]
+    public async Task InvokeAsync_LogsTenantId_WhenTenantContextIsResolved()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/executions";
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions { LogRequestBody = false, LogResponseBody = false });
+        var tenantAccessor = new SettableTenantContextAccessor();
+        tenantAccessor.Set(TestTenantIds.T1Context);
+        var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
+
+        // Act
+        await InvokeAsync(middleware, ctx, logger, opts, tenantAccessor);
+
+        // Assert
+        var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
+        Assert.Contains(TestTenantIds.T1TenantId.ToString("D"), startLog, StringComparison.Ordinal);
+    }
+
+    private static Task InvokeAsync(
+        RequestLoggingMiddleware middleware,
+        HttpContext context,
+        ILogger<RequestLoggingMiddleware> logger,
+        IOptions<RequestLogOptions> options,
+        ITenantContextAccessor? tenantContextAccessor = null) =>
+        middleware.InvokeAsync(
+            context,
+            logger,
+            options,
+            tenantContextAccessor ?? NullTenantContextAccessor.Instance);
 
     private sealed class LogCollector : ILoggerProvider, IDisposable
     {

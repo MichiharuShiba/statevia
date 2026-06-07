@@ -25,7 +25,7 @@ internal static partial class RequestLoggingLogMessages
     [LoggerMessage(
         EventId = 4010,
         Level = LogLevel.Information,
-        Message = "HTTP request start TraceId={traceId} Method={method} Path={path} Query={queryForLog} TenantId={tenantId} UserAgent={userAgent} RequestBody={requestBody}")]
+        Message = "HTTP request start TraceId={traceId} Method={method} Path={path} Query={queryForLog} tenantId={tenantId} UserAgent={userAgent} RequestBody={requestBody}")]
     [SuppressMessage(
         "Major Code Smell",
         "S107:Methods should not have too many parameters",
@@ -36,7 +36,7 @@ internal static partial class RequestLoggingLogMessages
         string method,
         string path,
         string queryForLog,
-        string tenantId,
+        Guid? tenantId,
         string? userAgent,
         string? requestBody);
 

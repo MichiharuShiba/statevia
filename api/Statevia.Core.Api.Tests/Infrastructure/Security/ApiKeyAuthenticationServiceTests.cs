@@ -53,7 +53,7 @@ public sealed class ApiKeyAuthenticationServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(TestTenantIds.DefaultInternalId, result.Tenant.TenantId);
+        Assert.Equal(TestTenantIds.DefaultTenantId, result.Tenant.TenantId);
         Assert.Contains("executions.read", result.EffectiveScopes);
 
         await using var db = database.Factory.CreateDbContext();

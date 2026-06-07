@@ -135,7 +135,6 @@ internal sealed class ExecutionService : IExecutionService
     }
 
     public async Task<ExecutionResponse> StartAsync(
-        string tenantId,
         StartExecutionRequest request,
         string? idempotencyKey,
         CommandRequestContext requestContext,
@@ -144,10 +143,11 @@ internal sealed class ExecutionService : IExecutionService
         ArgumentNullException.ThrowIfNull(requestContext);
         await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
 
+        var tenantKey = _tenantContext.GetRequiredTenantKey();
         var requestHash = ComputeStartRequestHash(request);
-        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, requestContext.Method, requestContext.Path, requestHash);
+        var dedupKey = _dedupService.Create(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path, requestHash);
 
-        var cachedStart = await TryGetIdempotentStartResponseAsync(tenantId, dedupKey, requestHash, ct).ConfigureAwait(false);
+        var cachedStart = await TryGetIdempotentStartResponseAsync(dedupKey, requestHash, ct).ConfigureAwait(false);
         if (cachedStart is not null)
         {
             return cachedStart;
@@ -157,12 +157,12 @@ internal sealed class ExecutionService : IExecutionService
         if (defUuid is null)
             throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
 
-        var tenantInternalId = _tenantContext.GetRequiredTenantInternalId();
-        var versionRow = await ResolveStartDefinitionVersionAsync(tenantInternalId, defUuid.Value, request, ct).ConfigureAwait(false);
+        var tenantId = _tenantContext.GetRequiredTenantId();
+        var versionRow = await ResolveStartDefinitionVersionAsync(tenantId, defUuid.Value, request, ct).ConfigureAwait(false);
         if (versionRow is null)
             throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
 
-        await EnsureCanExecuteOnDefinitionAsync(tenantInternalId, defUuid.Value, ct).ConfigureAwait(false);
+        await EnsureCanExecuteOnDefinitionAsync(tenantId, defUuid.Value, ct).ConfigureAwait(false);
 
         var compiled = RestoreCompiledDefinitionFromVersion(versionRow);
 
@@ -260,12 +260,12 @@ internal sealed class ExecutionService : IExecutionService
     }
 
     public async Task<PagedResult<ExecutionResponse>> ListPagedAsync(
-        string tenantId,
         ExecutionListQuery query,
         CancellationToken ct)
     {
         await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
 
+        var tenantId = _tenantContext.GetRequiredTenantId();
         ArgumentNullException.ThrowIfNull(query);
         var offset = query.Offset ?? 0;
         var limit = query.Limit ?? throw new ArgumentException("limit is required for paged list");
@@ -325,10 +325,11 @@ internal sealed class ExecutionService : IExecutionService
         };
     }
 
-    public async Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct)
+    public async Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct)
     {
         await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
 
+        var tenantId = _tenantContext.GetRequiredTenantId();
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
@@ -361,24 +362,25 @@ internal sealed class ExecutionService : IExecutionService
             ct).ConfigureAwait(false);
     }
 
-    public async Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
+    public async Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct)
     {
         await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
 
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-        await EnsureExecutionExistsAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
+        await EnsureExecutionExistsAsync(uuid.Value, ct).ConfigureAwait(false);
         var row = await _executor.ExecuteReadOnlyAsync(
             (uow, innerCt) => _executions.GetSnapshotByExecutionIdAsync(uow, uuid.Value, innerCt),
             ct).ConfigureAwait(false);
         return row is null ? throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound) : row.GraphJson;
     }
 
-    public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) =>
+    public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) =>
         _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
+                var tenantId = _tenantContext.GetRequiredTenantId();
                 var execution = await _executions.GetByIdAsync(uow, tenantId, executionId, innerCt).ConfigureAwait(false);
                 if (execution is null)
                     throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
@@ -395,7 +397,6 @@ internal sealed class ExecutionService : IExecutionService
             ct);
 
     public async Task CancelAsync(
-        string tenantId,
         string idOrUuid,
         string? idempotencyKey,
         CommandRequestContext requestContext,
@@ -404,7 +405,9 @@ internal sealed class ExecutionService : IExecutionService
         ArgumentNullException.ThrowIfNull(requestContext);
         await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
 
-        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, requestContext.Method, requestContext.Path);
+        var tenantKey = _tenantContext.GetRequiredTenantKey();
+        var tenantId = _tenantContext.GetRequiredTenantId();
+        var dedupKey = _dedupService.Create(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path);
 
         if (dedupKey is { } key)
         {
@@ -430,7 +433,7 @@ internal sealed class ExecutionService : IExecutionService
 
         var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
 
-        if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(tenantId, uuid.Value, clientEventId, ct).ConfigureAwait(false))
+        if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
         EnsureEngineRuntimePresentForMutation(uuid.Value, execution);
@@ -514,7 +517,6 @@ internal sealed class ExecutionService : IExecutionService
     }
 
     public async Task PublishEventAsync(
-        string tenantId,
         string idOrUuid,
         string eventName,
         string? idempotencyKey,
@@ -524,7 +526,9 @@ internal sealed class ExecutionService : IExecutionService
         ArgumentNullException.ThrowIfNull(requestContext);
         await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
 
-        var dedupKey = _dedupService.Create(tenantId, idempotencyKey, requestContext.Method, requestContext.Path);
+        var tenantKey = _tenantContext.GetRequiredTenantKey();
+        var tenantId = _tenantContext.GetRequiredTenantId();
+        var dedupKey = _dedupService.Create(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path);
 
         if (dedupKey is { } key)
         {
@@ -550,7 +554,7 @@ internal sealed class ExecutionService : IExecutionService
 
         var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
 
-        if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(tenantId, uuid.Value, clientEventId, ct).ConfigureAwait(false))
+        if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
         EnsureEngineRuntimePresentForMutation(uuid.Value, execution);
@@ -633,7 +637,7 @@ internal sealed class ExecutionService : IExecutionService
             ct).ConfigureAwait(false);
     }
 
-    public async Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct)
+    public async Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct)
     {
         await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
 
@@ -641,10 +645,10 @@ internal sealed class ExecutionService : IExecutionService
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-        return await BuildExecutionViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
+        return await BuildExecutionViewInternalAsync(uuid.Value, idOrUuid, ct).ConfigureAwait(false);
     }
 
-    public async Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct)
+    public async Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct)
     {
         await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
 
@@ -659,16 +663,15 @@ internal sealed class ExecutionService : IExecutionService
             (uow, innerCt) => _eventStore.GetMaxSeqAsync(uow, uuid.Value, innerCt),
             ct).ConfigureAwait(false);
         if (maxSeq == 0)
-            return await BuildExecutionViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
+            return await BuildExecutionViewInternalAsync(uuid.Value, idOrUuid, ct).ConfigureAwait(false);
 
         if (atSeq > maxSeq)
             throw new NotFoundException("atSeq out of range");
 
-        return await BuildExecutionViewInternalAsync(tenantId, uuid.Value, idOrUuid, ct).ConfigureAwait(false);
+        return await BuildExecutionViewInternalAsync(uuid.Value, idOrUuid, ct).ConfigureAwait(false);
     }
 
     public async Task<ExecutionEventsResponseDto> ListEventsAsync(
-        string tenantId,
         string idOrUuid,
         long afterSeq,
         int limit,
@@ -681,6 +684,7 @@ internal sealed class ExecutionService : IExecutionService
         if (limit is < 1 or > 5000)
             throw new ArgumentException("limit must be between 1 and 5000");
 
+        var tenantId = _tenantContext.GetRequiredTenantId();
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
@@ -692,7 +696,7 @@ internal sealed class ExecutionService : IExecutionService
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
         var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false) ?? execution.ExecutionId.ToString("D");
-        var graphJson = await GetGraphJsonAsync(tenantId, idOrUuid, ct).ConfigureAwait(false);
+        var graphJson = await GetGraphJsonAsync(idOrUuid, ct).ConfigureAwait(false);
         var patchNodes = ExecutionViewMapper.MapGraphPatchNodes(graphJson);
 
         var (items, hasMore) = await _executor.ExecuteReadOnlyAsync(
@@ -743,7 +747,6 @@ internal sealed class ExecutionService : IExecutionService
     }
 
     public Task ResumeNodeAsync(
-        string tenantId,
         string idOrUuid,
         string nodeId,
         string? resumeKey,
@@ -755,11 +758,12 @@ internal sealed class ExecutionService : IExecutionService
         if (string.IsNullOrWhiteSpace(resumeKey))
             throw new ArgumentException("resumeKey is required");
 
-        return PublishEventAsync(tenantId, idOrUuid, resumeKey!, idempotencyKey, requestContext, ct);
+        return PublishEventAsync(idOrUuid, resumeKey!, idempotencyKey, requestContext, ct);
     }
 
-    private async Task<ExecutionViewDto> BuildExecutionViewInternalAsync(string tenantId, Guid uuid, string idOrUuidForDisplay, CancellationToken ct)
+    private async Task<ExecutionViewDto> BuildExecutionViewInternalAsync(Guid uuid, string idOrUuidForDisplay, CancellationToken ct)
     {
+        var tenantId = _tenantContext.GetRequiredTenantId();
         return await _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
@@ -792,7 +796,6 @@ internal sealed class ExecutionService : IExecutionService
     }
 
     private async Task<ExecutionResponse?> TryGetIdempotentStartResponseAsync(
-        string tenantId,
         CommandDedupKey? dedupKey,
         string requestHash,
         CancellationToken ct)
@@ -802,6 +805,7 @@ internal sealed class ExecutionService : IExecutionService
             return null;
         }
 
+        var tenantKey = _tenantContext.GetRequiredTenantKey();
         var dedupCheckTime = DateTime.UtcNow;
         var existing = await _executor.ExecuteReadOnlyAsync(
             (uow, innerCt) => _dedup.FindValidAsync(uow, key.DedupKey, dedupCheckTime, innerCt),
@@ -818,7 +822,7 @@ internal sealed class ExecutionService : IExecutionService
         var conflicting = await _executor.ExecuteReadOnlyAsync(
             (uow, innerCt) => _dedup.FindValidConflictingRequestHashAsync(
                 uow,
-                tenantId,
+                tenantKey,
                 key.Endpoint,
                 key.IdempotencyKey,
                 requestHash,
@@ -835,7 +839,7 @@ internal sealed class ExecutionService : IExecutionService
     }
 
     private Task<DefinitionVersionRow?> ResolveStartDefinitionVersionAsync(
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid definitionId,
         StartExecutionRequest request,
         CancellationToken ct) =>
@@ -844,7 +848,7 @@ internal sealed class ExecutionService : IExecutionService
             {
                 if (request.DefinitionVersionId is { } versionId)
                 {
-                    var byId = await _definitions.GetVersionByIdAsync(uow, tenantInternalId, versionId, innerCt)
+                    var byId = await _definitions.GetVersionByIdAsync(uow, tenantId, versionId, innerCt)
                         .ConfigureAwait(false);
                     return byId is not null && byId.DefinitionId == definitionId ? byId : null;
                 }
@@ -852,31 +856,31 @@ internal sealed class ExecutionService : IExecutionService
                 if (request.DefinitionVersion is { } versionNumber)
                 {
                     return await _definitions
-                        .GetVersionAsync(uow, tenantInternalId, definitionId, versionNumber, innerCt)
+                        .GetVersionAsync(uow, tenantId, definitionId, versionNumber, innerCt)
                         .ConfigureAwait(false);
                 }
 
-                var latest = await _definitions.GetLatestByIdAsync(uow, tenantInternalId, definitionId, innerCt)
+                var latest = await _definitions.GetLatestByIdAsync(uow, tenantId, definitionId, innerCt)
                     .ConfigureAwait(false);
                 return latest?.Version;
             },
             ct);
 
     private Task EnsureCanExecuteOnDefinitionAsync(
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid definitionId,
         CancellationToken ct) =>
         _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
                 var projectId = await _definitions
-                    .ResolveProjectIdAsync(uow, tenantInternalId, definitionId, innerCt)
+                    .ResolveProjectIdAsync(uow, tenantId, definitionId, innerCt)
                     .ConfigureAwait(false);
                 if (projectId is null)
                     throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
 
                 await _projectAuth
-                    .EnsureCanExecuteAsync(uow, tenantInternalId, projectId.Value, innerCt)
+                    .EnsureCanExecuteAsync(uow, tenantId, projectId.Value, innerCt)
                     .ConfigureAwait(false);
             },
             ct);
@@ -982,7 +986,7 @@ internal sealed class ExecutionService : IExecutionService
     private async Task SyncOperationalProjectionAsync(
         ICoreUnitOfWork uow,
         Guid executionId,
-        string tenantId,
+        Guid tenantId,
         string status,
         string graphJson,
         string? resumeTokenToClear,
@@ -1095,13 +1099,13 @@ internal sealed class ExecutionService : IExecutionService
         "S3776:Cognitive Complexity of methods should not be too high",
         Justification = "イベント配送 dedup の再試行・ログ分岐を一箇所に集約している。")]
     private async Task<bool> TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(
-        string tenantId,
         Guid executionId,
         Guid clientEventId,
         CancellationToken cancellationToken)
     {
         var retryOptions = _eventDeliveryRetryOptions.Value;
         var traceId = GetTraceIdOrEmpty();
+        var tenantId = _tenantContext.GetRequiredTenantId();
         var acceptedAt = DateTime.UtcNow;
         var row = new EventDeliveryDedupRow
         {

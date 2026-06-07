@@ -4,7 +4,6 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
-using Statevia.Core.Api.Hosting;
 
 namespace Statevia.Core.Api.Controllers;
 
@@ -32,11 +31,9 @@ public class DefinitionsController : ControllerBase
     [ProducesResponseType(typeof(DefinitionResponse), StatusCodes.Status201Created)]
     public async Task<ActionResult<DefinitionResponse>> Create(
         [FromBody] CreateDefinitionRequest request,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        var created = await _definitions.CreateAsync(tenantId, request, ct).ConfigureAwait(false);
+        var created = await _definitions.CreateAsync(request, ct).ConfigureAwait(false);
         return CreatedAtAction(nameof(Get), new { id = created.DisplayId }, created);
     }
 
@@ -46,11 +43,9 @@ public class DefinitionsController : ControllerBase
     public async Task<ActionResult<DefinitionResponse>> Update(
         string id,
         [FromBody] UpdateDefinitionRequest request,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        var updated = await _definitions.UpdateAsync(tenantId, id, request, ct).ConfigureAwait(false);
+        var updated = await _definitions.UpdateAsync(id, request, ct).ConfigureAwait(false);
         return Ok(updated);
     }
 
@@ -62,11 +57,9 @@ public class DefinitionsController : ControllerBase
     [ProducesResponseType(typeof(PagedResult<DefinitionResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> List(
         [FromQuery] DefinitionListQuery query,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
         if (query.Limit is null)
             throw new ArgumentException("limit is required");
 
@@ -76,7 +69,7 @@ public class DefinitionsController : ControllerBase
         if (query.Limit.Value > 500)
             throw new ArgumentException("limit must be at most 500");
 
-        var paged = await _definitions.ListPagedAsync(tenantId, query, ct).ConfigureAwait(false);
+        var paged = await _definitions.ListPagedAsync(query, ct).ConfigureAwait(false);
         return Ok(paged);
     }
 
@@ -85,11 +78,9 @@ public class DefinitionsController : ControllerBase
     [ProducesResponseType(typeof(DefinitionResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<DefinitionResponse>> Get(
         string id,
-        [FromHeader(Name = TenantHeader.HeaderName)] string? tenantIdHeader = null,
         CancellationToken ct = default)
     {
-        var tenantId = tenantIdHeader ?? TenantHeader.DefaultTenantId;
-        var row = await _definitions.GetAsync(tenantId, id, ct).ConfigureAwait(false);
+        var row = await _definitions.GetAsync(id, ct).ConfigureAwait(false);
         return Ok(row);
     }
 

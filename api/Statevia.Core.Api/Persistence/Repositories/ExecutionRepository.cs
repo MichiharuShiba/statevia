@@ -13,7 +13,7 @@ internal sealed class ExecutionRepository : IExecutionRepository
         public string? DisplayId { get; init; }
     }
 
-    public Task<ExecutionRow?> GetByIdAsync(ICoreUnitOfWork uow, string tenantId, Guid executionId, CancellationToken ct) =>
+    public Task<ExecutionRow?> GetByIdAsync(ICoreUnitOfWork uow, Guid tenantId, Guid executionId, CancellationToken ct) =>
         uow.Db.Executions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ExecutionId == executionId && x.TenantId == tenantId, ct);
 
@@ -23,7 +23,7 @@ internal sealed class ExecutionRepository : IExecutionRepository
 
     public async Task<(int TotalCount, List<(ExecutionRow Execution, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
         ICoreUnitOfWork uow,
-        string tenantId,
+        Guid tenantId,
         ExecutionListPageQuery query,
         CancellationToken ct)
     {
@@ -104,7 +104,7 @@ internal sealed class ExecutionRepository : IExecutionRepository
         }
     }
 
-    private static IQueryable<ExecutionWithDisplay> QueryExecutionsWithDisplayIds(CoreDbContext db, string tenantId)
+    private static IQueryable<ExecutionWithDisplay> QueryExecutionsWithDisplayIds(CoreDbContext db, Guid tenantId)
     {
         var displayIdsForExecution = db.DisplayIds.Where(x => x.Kind == "execution");
         return from w in db.Executions.AsNoTracking().Where(x => x.TenantId == tenantId)

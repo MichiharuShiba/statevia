@@ -203,7 +203,7 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
         ArgumentNullException.ThrowIfNull(request);
         await EnsureTenantAdminAsync(callerPrincipalId, cancellationToken).ConfigureAwait(false);
 
-        var tenantId = RequireTenantInternalId();
+        var tenantId = RequireTenantId();
         var email = request.Email.Trim();
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
@@ -356,7 +356,7 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
         ArgumentNullException.ThrowIfNull(request);
         await EnsureTenantAdminAsync(callerPrincipalId, cancellationToken).ConfigureAwait(false);
 
-        var tenantId = RequireTenantInternalId();
+        var tenantId = RequireTenantId();
         var name = request.Name.Trim();
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
@@ -530,7 +530,7 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
         ArgumentNullException.ThrowIfNull(request);
         await EnsureTenantAdminAsync(callerPrincipalId, cancellationToken).ConfigureAwait(false);
 
-        var tenantId = RequireTenantInternalId();
+        var tenantId = RequireTenantId();
         var name = request.Name.Trim();
         var allowedScopes = await NormalizeApiKeyAllowedScopesAsync(request.AllowedScopes, cancellationToken)
             .ConfigureAwait(false);
@@ -736,9 +736,9 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
             throw new ArgumentException("One or more group IDs are invalid.");
     }
 
-    private Guid RequireTenantInternalId()
+    private Guid RequireTenantId()
     {
-        if (!_tenantContext.IsResolved || _tenantContext.TenantInternalId is not { } tenantId)
+        if (!_tenantContext.IsResolved || _tenantContext.TenantId is not { } tenantId)
             throw new UnauthorizedException("Authentication required.", UnauthorizedCode);
         return tenantId;
     }

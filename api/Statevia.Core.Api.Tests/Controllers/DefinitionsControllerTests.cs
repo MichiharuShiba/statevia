@@ -11,42 +11,37 @@ public sealed class DefinitionsControllerTests
     private sealed class FakeDefinitionService : IDefinitionService
     {
         public Exception? ExceptionToThrow { get; set; }
-        public string? LastTenantId { get; private set; }
 
         public DefinitionResponse CreateResult { get; set; } = new DefinitionResponse();
         public PagedResult<DefinitionResponse> ListPagedResult { get; set; } = new() { Items = [], TotalCount = 0, Offset = 0, Limit = 0, HasMore = false };
         public DefinitionResponse GetResult { get; set; } = new DefinitionResponse();
         public DefinitionResponse UpdateResult { get; set; } = new DefinitionResponse();
 
-        public async Task<DefinitionResponse> CreateAsync(string tenantId, CreateDefinitionRequest request, CancellationToken ct)
+        public async Task<DefinitionResponse> CreateAsync(CreateDefinitionRequest request, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
             return CreateResult;
         }
 
-        public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(string tenantId, DefinitionListQuery query, CancellationToken ct)
+        public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(DefinitionListQuery query, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
             return ListPagedResult;
         }
 
-        public async Task<DefinitionResponse> GetAsync(string tenantId, string idOrUuid, CancellationToken ct)
+        public async Task<DefinitionResponse> GetAsync(string idOrUuid, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
             return GetResult;
         }
 
-        public async Task<DefinitionResponse> UpdateAsync(string tenantId, string idOrUuid, UpdateDefinitionRequest request, CancellationToken ct)
+        public async Task<DefinitionResponse> UpdateAsync(string idOrUuid, UpdateDefinitionRequest request, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
             return UpdateResult;
         }
     }
@@ -136,7 +131,6 @@ public sealed class DefinitionsControllerTests
         var ok = Assert.IsType<OkObjectResult>(res);
         var paged = Assert.IsType<PagedResult<DefinitionResponse>>(ok.Value);
         Assert.Single(paged.Items);
-        Assert.Equal("default", fake.LastTenantId);
     }
 
     /// <summary>
@@ -313,7 +307,6 @@ public sealed class DefinitionsControllerTests
         // Assert
         var created = Assert.IsType<CreatedAtActionResult>(res.Result);
         Assert.Equal("DEF-1", created.RouteValues!["id"]);
-        Assert.Equal("default", fake.LastTenantId);
     }
 
     /// <summary>
@@ -341,7 +334,6 @@ public sealed class DefinitionsControllerTests
         var ok = Assert.IsType<OkObjectResult>(res.Result);
         var body = Assert.IsType<DefinitionResponse>(ok.Value);
         Assert.Equal("D1", body.DisplayId);
-        Assert.Equal("default", fake.LastTenantId);
     }
 
 }

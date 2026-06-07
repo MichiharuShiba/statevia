@@ -9,14 +9,14 @@ internal interface IProjectRepository
     /// <summary>テナントの既定 project（slug=<c>default</c>）を取得する。無ければ作成する。</summary>
     Task<ProjectRow> EnsureDefaultProjectAsync(
         ICoreUnitOfWork uow,
-        Guid ownerTenantInternalId,
+        Guid ownerTenantId,
         string ownerTenantKey,
         CancellationToken ct);
 
     /// <summary>project に対する実効ロールを解決する（オーナーは Admin）。</summary>
     Task<ProjectAccessRole?> ResolveEffectiveRoleAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid projectId,
         CancellationToken ct);
 
@@ -24,7 +24,7 @@ internal interface IProjectRepository
     Task GrantAccessAsync(
         ICoreUnitOfWork uow,
         Guid projectId,
-        Guid granteeTenantInternalId,
+        Guid granteeTenantId,
         ProjectAccessRole role,
         CancellationToken ct);
 }

@@ -47,7 +47,7 @@ public sealed class DisplayIdServiceImplTests
         await using (var ctx = new CoreDbContext(db.Options))
         {
             var now = DateTime.UtcNow;
-            DefinitionTestData.AddDefinitionWithVersion(ctx, "t1", uuid, "def", Guid.NewGuid(), createdAt: now);
+            DefinitionTestData.AddDefinitionWithVersion(ctx, TestTenantIds.T1TenantId, uuid, "def", Guid.NewGuid(), createdAt: now);
             await ctx.SaveChangesAsync();
         }
 
@@ -73,7 +73,7 @@ public sealed class DisplayIdServiceImplTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = uuid,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,

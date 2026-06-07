@@ -18,7 +18,7 @@ public sealed class CommandDedupServiceTests
 
         // Act
         var keyOpt = svc.Create(
-            tenantId: "tenant-1",
+            tenantKey: "tenant-1",
             idempotencyKey: idempotencyKey,
             method: "POST",
             path: "/v1/executions");
@@ -40,7 +40,7 @@ public sealed class CommandDedupServiceTests
 
         // Act
         var keyOpt = svc.Create(
-            tenantId: "tenant-1",
+            tenantKey: "tenant-1",
             idempotencyKey: "abc123",
             method: "POST",
             path: "/v1/executions",
@@ -63,7 +63,7 @@ public sealed class CommandDedupServiceTests
 
         // Act
         var keyOpt = svc.Create(
-            tenantId: "tenant-1",
+            tenantKey: "tenant-1",
             idempotencyKey: "abc123",
             method: "POST",
             path: null!,

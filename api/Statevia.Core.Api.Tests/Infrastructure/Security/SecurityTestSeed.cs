@@ -32,7 +32,7 @@ internal static class SecurityTestSeed
         db.Principals.Add(new PrincipalRow
         {
             PrincipalId = principalId,
-            TenantId = TestTenantIds.DefaultInternalId,
+            TenantId = TestTenantIds.DefaultTenantId,
             PrincipalScope = PrincipalScope.Tenant,
             PrincipalType = PrincipalType.User,
             DisplayName = email,
@@ -43,7 +43,7 @@ internal static class SecurityTestSeed
         db.Users.Add(new UserRow
         {
             UserId = userId,
-            TenantId = TestTenantIds.DefaultInternalId,
+            TenantId = TestTenantIds.DefaultTenantId,
             Email = email,
             PasswordHash = passwordHasher.HashPassword(password),
             IsTenantAdmin = isTenantAdmin,
@@ -91,7 +91,7 @@ internal static class SecurityTestSeed
         db.Groups.Add(new GroupRow
         {
             GroupId = groupId,
-            TenantId = TestTenantIds.DefaultInternalId,
+            TenantId = TestTenantIds.DefaultTenantId,
             Name = $"test-{email}",
             IsSystem = false,
             CreatedAt = now,
@@ -141,7 +141,7 @@ internal static class SecurityTestSeed
         db.Principals.Add(new PrincipalRow
         {
             PrincipalId = principalId,
-            TenantId = TestTenantIds.DefaultInternalId,
+            TenantId = TestTenantIds.DefaultTenantId,
             PrincipalScope = PrincipalScope.Tenant,
             PrincipalType = PrincipalType.ServiceAccount,
             DisplayName = "ci-runner",
@@ -153,7 +153,7 @@ internal static class SecurityTestSeed
         db.ServiceAccounts.Add(new ServiceAccountRow
         {
             ServiceAccountId = serviceAccountId,
-            TenantId = TestTenantIds.DefaultInternalId,
+            TenantId = TestTenantIds.DefaultTenantId,
             PrincipalId = principalId,
             Name = "ci-runner",
             CreatedAt = now
@@ -161,7 +161,7 @@ internal static class SecurityTestSeed
         db.Groups.Add(new GroupRow
         {
             GroupId = groupId,
-            TenantId = TestTenantIds.DefaultInternalId,
+            TenantId = TestTenantIds.DefaultTenantId,
             Name = "ci-runners",
             IsSystem = true,
             CreatedAt = now,
@@ -180,7 +180,7 @@ internal static class SecurityTestSeed
         db.ApiKeys.Add(new ApiKeyRow
         {
             ApiKeyId = apiKeyId,
-            TenantId = TestTenantIds.DefaultInternalId,
+            TenantId = TestTenantIds.DefaultTenantId,
             PrincipalId = principalId,
             KeyPrefix = PasswordCredentialService.ApiKeyPrefix(plainKey),
             KeyHash = PasswordCredentialService.HashApiKey(plainKey),

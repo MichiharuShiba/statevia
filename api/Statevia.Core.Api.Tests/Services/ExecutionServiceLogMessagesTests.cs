@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Statevia.Core.Api.Services;
+using Statevia.Core.Api.Tests.Infrastructure;
 
 namespace Statevia.Core.Api.Tests.Services;
 
@@ -18,7 +19,7 @@ public sealed class ExecutionServiceLogMessagesTests
         {
             TraceId = "trace-1",
             ExecutionId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-            TenantId = "t1",
+            TenantId = TestTenantIds.DefaultTenantId,
             ClientEventId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
             Attempt = 1,
             MaxAttempts = 3,
@@ -48,7 +49,7 @@ public sealed class ExecutionServiceLogMessagesTests
         {
             TraceId = "trace-2",
             ExecutionId = Guid.NewGuid(),
-            TenantId = "t1",
+            TenantId = TestTenantIds.T1TenantId,
             ClientEventId = Guid.NewGuid(),
             Decision = level,
             Attempt = 2,

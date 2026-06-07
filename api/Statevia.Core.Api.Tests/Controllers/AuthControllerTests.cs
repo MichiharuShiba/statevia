@@ -20,7 +20,7 @@ public sealed class AuthControllerTests
         {
             AccessToken = "token",
             TenantKey = "default",
-            TenantId = TestTenantIds.DefaultInternalId,
+            TenantId = TestTenantIds.DefaultTenantId,
             PrincipalId = Guid.NewGuid(),
             ExpiresAt = DateTime.UtcNow.AddHours(1)
         };
@@ -63,7 +63,7 @@ public sealed class AuthControllerTests
         accessor.Set(TestTenantIds.DefaultContext with { PrincipalId = principalId });
         var expected = new AuthMeResponse
         {
-            TenantId = TestTenantIds.DefaultInternalId,
+            TenantId = TestTenantIds.DefaultTenantId,
             TenantKey = "default",
             PrincipalId = principalId,
             Email = "user@example.com",
@@ -90,7 +90,7 @@ public sealed class AuthControllerTests
         public Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken) =>
             Task.FromResult(LoginResult ?? throw new InvalidOperationException("LoginResult not set"));
 
-        public Task<AuthMeResponse> GetMeAsync(Guid tenantInternalId, Guid principalId, CancellationToken cancellationToken) =>
+        public Task<AuthMeResponse> GetMeAsync(Guid tenantId, Guid principalId, CancellationToken cancellationToken) =>
             Task.FromResult(MeResult ?? throw new InvalidOperationException("MeResult not set"));
     }
 }

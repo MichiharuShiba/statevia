@@ -5,9 +5,9 @@ builder.Services.AddStateviaCoreApi(builder.Configuration);
 
 var app = builder.Build();
 
-app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseMiddleware<ContractExceptionMiddleware>();
 app.UseMiddleware<TenantContextMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseCors(policy => policy
     .AllowAnyOrigin()
     .AllowAnyMethod()

@@ -24,7 +24,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
     /// <inheritdoc />
     public async Task<DefinitionDetail?> GetLatestByIdAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid definitionId,
         CancellationToken ct)
     {
@@ -35,7 +35,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             return null;
 
         await _projectAuth
-            .EnsureCanReadAsync(uow, tenantInternalId, definition.ProjectId, ct)
+            .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
             .ConfigureAwait(false);
 
         var version = await uow.Db.DefinitionVersions.AsNoTracking()
@@ -52,7 +52,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
     /// <inheritdoc />
     public async Task<DefinitionVersionRow?> GetVersionByIdAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid definitionVersionId,
         CancellationToken ct)
     {
@@ -71,7 +71,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             return null;
 
         await _projectAuth
-            .EnsureCanReadAsync(uow, tenantInternalId, definition.ProjectId, ct)
+            .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
             .ConfigureAwait(false);
 
         return version;
@@ -80,7 +80,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
     /// <inheritdoc />
     public async Task<DefinitionVersionRow?> GetVersionAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid definitionId,
         int version,
         CancellationToken ct)
@@ -93,7 +93,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             return null;
 
         await _projectAuth
-            .EnsureCanReadAsync(uow, tenantInternalId, definition.ProjectId, ct)
+            .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
             .ConfigureAwait(false);
 
         return await uow.Db.DefinitionVersions.AsNoTracking()
@@ -106,7 +106,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
     /// <inheritdoc />
     public async Task<Guid?> ResolveProjectIdAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid definitionId,
         CancellationToken ct)
     {
@@ -118,7 +118,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             return null;
 
         await _projectAuth
-            .EnsureCanReadAsync(uow, tenantInternalId, definition.ProjectId, ct)
+            .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
             .ConfigureAwait(false);
 
         return definition.ProjectId;
@@ -149,7 +149,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             return null;
 
         await _projectAuth
-            .EnsureCanPublishAsync(uow, command.TenantInternalId, definition.ProjectId, ct)
+            .EnsureCanPublishAsync(uow, command.TenantId, definition.ProjectId, ct)
             .ConfigureAwait(false);
 
         var nextVersion = definition.LatestVersion + 1;
@@ -175,11 +175,11 @@ internal sealed class DefinitionRepository : IDefinitionRepository
     /// <inheritdoc />
     public async Task<(int TotalCount, List<(DefinitionDetail Detail, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         DefinitionListPageQuery query,
         CancellationToken ct)
     {
-        var joinQuery = QueryDefinitionsWithDisplayIds(uow.Db, tenantInternalId, ProjectAccessRole.Reader);
+        var joinQuery = QueryDefinitionsWithDisplayIds(uow.Db, tenantId, ProjectAccessRole.Reader);
 
         if (!string.IsNullOrWhiteSpace(query.NameContains))
             joinQuery = joinQuery.Where(x => x.Definition.Name.Contains(query.NameContains));
@@ -201,10 +201,10 @@ internal sealed class DefinitionRepository : IDefinitionRepository
 
     private static IQueryable<DefinitionWithDisplay> QueryDefinitionsWithDisplayIds(
         CoreDbContext db,
-        Guid tenantInternalId,
+        Guid tenantId,
         ProjectAccessRole minimumRole)
     {
-        var accessibleProjectIds = ProjectAccessQueries.AccessibleProjectIds(db, tenantInternalId, minimumRole);
+        var accessibleProjectIds = ProjectAccessQueries.AccessibleProjectIds(db, tenantId, minimumRole);
         var displayIdsForDefinition = db.DisplayIds.Where(x => x.Kind == "definition");
 
         return from definition in db.Definitions.AsNoTracking()
@@ -248,17 +248,17 @@ internal static class ProjectAccessQueries
     /// <summary>指定最小ロール以上でアクセス可能な project_id 集合。</summary>
     public static IQueryable<Guid> AccessibleProjectIds(
         CoreDbContext db,
-        Guid tenantInternalId,
+        Guid tenantId,
         ProjectAccessRole minimumRole)
     {
         var allowedRoles = ProjectAccessRolePolicy.RolesAtOrAbove(minimumRole);
 
         var owned = db.Projects
-            .Where(p => p.OwnerTenantId == tenantInternalId)
+            .Where(p => p.OwnerTenantId == tenantId)
             .Select(p => p.ProjectId);
 
         var granted = db.ProjectAccesses
-            .Where(pa => pa.TenantId == tenantInternalId && allowedRoles.Contains(pa.Role))
+            .Where(pa => pa.TenantId == tenantId && allowedRoles.Contains(pa.Role))
             .Select(pa => pa.ProjectId);
 
         return owned.Union(granted);

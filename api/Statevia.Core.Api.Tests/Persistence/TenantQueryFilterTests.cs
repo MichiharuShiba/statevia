@@ -26,10 +26,8 @@ public sealed class TenantQueryFilterTests
         var projectId = Guid.NewGuid();
         await using (var seed = new CoreDbContext(enabledOptions, accessor, DisabledTenantQueryFilterOptions.Instance))
         {
-            ProjectTestData.AddDefaultProject(seed, TestTenantIds.DefaultInternalId, "default", projectId);
-            DefinitionTestData.AddDefinitionWithVersion(
-                seed,
-                "default",
+            ProjectTestData.AddDefaultProject(seed, TestTenantIds.DefaultTenantId, "default", projectId);
+            DefinitionTestData.AddDefinitionWithVersion(seed, TestTenantIds.DefaultTenantId,
                 definitionId,
                 "wf-filter",
                 projectId,
@@ -37,7 +35,7 @@ public sealed class TenantQueryFilterTests
             seed.Executions.Add(new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "default",
+                TenantId = TestTenantIds.DefaultTenantId,
                 DefinitionId = definitionId,
                 DefinitionVersionId = versionId,
                 Status = "Running",
@@ -57,9 +55,9 @@ public sealed class TenantQueryFilterTests
         Assert.Empty(rows);
     }
 
-    /// <summary>テナント解決後は当該 tenant_key の行のみ返る。</summary>
+    /// <summary>テナント解決後は当該 tenant 内部 ID の行のみ返る。</summary>
     [Fact]
-    public async Task ResolvedTenantContext_ReturnsOnlyMatchingTenantKey()
+    public async Task ResolvedTenantContext_ReturnsOnlyMatchingTenantId()
     {
         // Arrange
         using var database = new SqliteTestDatabase();
@@ -90,16 +88,15 @@ public sealed class TenantQueryFilterTests
             var otherDefinitionId = Guid.NewGuid();
             var defaultVersionId = Guid.NewGuid();
             var otherVersionId = Guid.NewGuid();
-            ProjectTestData.AddDefaultProject(seed, TestTenantIds.DefaultInternalId, "default", defaultProjectId);
+            ProjectTestData.AddDefaultProject(seed, TestTenantIds.DefaultTenantId, "default", defaultProjectId);
             ProjectTestData.AddDefaultProject(seed, otherTenantId, "other", otherProjectId);
+            DefinitionTestData.AddDefinitionWithVersion(seed, TestTenantIds.DefaultTenantId, defaultDefinitionId, "default-def", defaultProjectId, versionId: defaultVersionId);
             DefinitionTestData.AddDefinitionWithVersion(
-                seed, "default", defaultDefinitionId, "default-def", defaultProjectId, versionId: defaultVersionId);
-            DefinitionTestData.AddDefinitionWithVersion(
-                seed, "other", otherDefinitionId, "other-def", otherProjectId, versionId: otherVersionId);
+                seed, otherTenantId, otherDefinitionId, "other-def", otherProjectId, versionId: otherVersionId);
             seed.Executions.Add(new ExecutionRow
             {
                 ExecutionId = Guid.NewGuid(),
-                TenantId = "default",
+                TenantId = TestTenantIds.DefaultTenantId,
                 DefinitionId = defaultDefinitionId,
                 DefinitionVersionId = defaultVersionId,
                 Status = "Running",
@@ -111,7 +108,7 @@ public sealed class TenantQueryFilterTests
             seed.Executions.Add(new ExecutionRow
             {
                 ExecutionId = Guid.NewGuid(),
-                TenantId = "other",
+                TenantId = otherTenantId,
                 DefinitionId = otherDefinitionId,
                 DefinitionVersionId = otherVersionId,
                 Status = "Running",
@@ -131,6 +128,6 @@ public sealed class TenantQueryFilterTests
 
         // Assert
         Assert.Single(rows);
-        Assert.Equal("default", rows[0].TenantId);
+        Assert.Equal(TestTenantIds.DefaultTenantId, rows[0].TenantId);
     }
 }

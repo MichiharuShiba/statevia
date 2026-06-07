@@ -13,13 +13,13 @@ internal sealed class ProjectRepository : IProjectRepository
     /// <inheritdoc />
     public async Task<ProjectRow> EnsureDefaultProjectAsync(
         ICoreUnitOfWork uow,
-        Guid ownerTenantInternalId,
+        Guid ownerTenantId,
         string ownerTenantKey,
         CancellationToken ct)
     {
         var existing = await uow.Db.Projects
             .FirstOrDefaultAsync(
-                p => p.OwnerTenantId == ownerTenantInternalId && p.Slug == DefaultProjectSlug,
+                p => p.OwnerTenantId == ownerTenantId && p.Slug == DefaultProjectSlug,
                 ct)
             .ConfigureAwait(false);
 
@@ -30,7 +30,7 @@ internal sealed class ProjectRepository : IProjectRepository
         var project = new ProjectRow
         {
             ProjectId = Guid.NewGuid(),
-            OwnerTenantId = ownerTenantInternalId,
+            OwnerTenantId = ownerTenantId,
             Slug = DefaultProjectSlug,
             DisplayName = $"{ownerTenantKey} default",
             Visibility = ProjectVisibility.Private,
@@ -44,7 +44,7 @@ internal sealed class ProjectRepository : IProjectRepository
     /// <inheritdoc />
     public async Task<ProjectAccessRole?> ResolveEffectiveRoleAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid projectId,
         CancellationToken ct)
     {
@@ -55,12 +55,12 @@ internal sealed class ProjectRepository : IProjectRepository
         if (project is null)
             return null;
 
-        if (project.OwnerTenantId == tenantInternalId)
+        if (project.OwnerTenantId == tenantId)
             return ProjectAccessRole.Admin;
 
         var access = await uow.Db.ProjectAccesses.AsNoTracking()
             .FirstOrDefaultAsync(
-                pa => pa.ProjectId == projectId && pa.TenantId == tenantInternalId,
+                pa => pa.ProjectId == projectId && pa.TenantId == tenantId,
                 ct)
             .ConfigureAwait(false);
 
@@ -71,14 +71,14 @@ internal sealed class ProjectRepository : IProjectRepository
     public Task GrantAccessAsync(
         ICoreUnitOfWork uow,
         Guid projectId,
-        Guid granteeTenantInternalId,
+        Guid granteeTenantId,
         ProjectAccessRole role,
         CancellationToken ct)
     {
         uow.Db.ProjectAccesses.Add(new ProjectAccessRow
         {
             ProjectId = projectId,
-            TenantId = granteeTenantInternalId,
+            TenantId = granteeTenantId,
             Role = role,
             CreatedAt = DateTime.UtcNow
         });
