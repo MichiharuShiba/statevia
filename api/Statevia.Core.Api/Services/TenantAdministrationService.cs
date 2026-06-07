@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Abstractions.Services;
@@ -65,6 +66,23 @@ public interface ITenantAdministrationService
         Guid groupId,
         SetAdminGroupPermissionsRequest request,
         CancellationToken cancellationToken);
+
+    /// <summary>API キーを一覧する（平文は含まない）。</summary>
+    Task<IReadOnlyList<AdminApiKeyListItemDto>> ListApiKeysAsync(
+        Guid callerPrincipalId,
+        CancellationToken cancellationToken);
+
+    /// <summary>API キーを発行する（平文は応答でのみ返す）。</summary>
+    Task<CreatedAdminApiKeyDto> CreateApiKeyAsync(
+        Guid callerPrincipalId,
+        CreateAdminApiKeyRequest request,
+        CancellationToken cancellationToken);
+
+    /// <summary>API キーを失効させる（Principal を無効化）。</summary>
+    Task RevokeApiKeyAsync(
+        Guid callerPrincipalId,
+        Guid apiKeyId,
+        CancellationToken cancellationToken);
 }
 
 /// <inheritdoc />
@@ -72,6 +90,7 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
 {
     private const string UnauthorizedCode = "UNAUTHORIZED";
     private const string ForbiddenCode = "FORBIDDEN";
+    private static readonly JsonSerializerOptions AllowedScopesJsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
     private readonly ITenantContextAccessor _tenantContext;
@@ -459,6 +478,203 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
         group.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return await LoadGroupDetailAsync(groupId, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<AdminApiKeyListItemDto>> ListApiKeysAsync(
+        Guid callerPrincipalId,
+        CancellationToken cancellationToken)
+    {
+        await EnsureTenantAdminAsync(callerPrincipalId, cancellationToken).ConfigureAwait(false);
+
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await (
+            from key in db.ApiKeys.AsNoTracking()
+            join principal in db.Principals.AsNoTracking() on key.PrincipalId equals principal.PrincipalId
+            orderby key.CreatedAt descending
+            select new
+            {
+                key.ApiKeyId,
+                key.KeyPrefix,
+                key.AllowedScopesJson,
+                key.ExpiresAt,
+                key.LastUsedAt,
+                key.CreatedAt,
+                principal.DisplayName,
+                principal.IsActive
+            })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return rows
+            .Select(row => new AdminApiKeyListItemDto
+            {
+                ApiKeyId = row.ApiKeyId,
+                Name = row.DisplayName,
+                KeyPrefix = row.KeyPrefix,
+                AllowedScopes = ParseAllowedScopesJson(row.AllowedScopesJson),
+                ExpiresAt = row.ExpiresAt,
+                LastUsedAt = row.LastUsedAt,
+                CreatedAt = row.CreatedAt,
+                IsActive = row.IsActive
+            })
+            .ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<CreatedAdminApiKeyDto> CreateApiKeyAsync(
+        Guid callerPrincipalId,
+        CreateAdminApiKeyRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await EnsureTenantAdminAsync(callerPrincipalId, cancellationToken).ConfigureAwait(false);
+
+        var tenantId = RequireTenantInternalId();
+        var name = request.Name.Trim();
+        var allowedScopes = await NormalizeApiKeyAllowedScopesAsync(request.AllowedScopes, cancellationToken)
+            .ConfigureAwait(false);
+        var plainKey = PasswordCredentialService.GeneratePlainApiKey();
+        var apiKeyId = _idGenerator.NewGuid();
+        var principalId = _idGenerator.NewGuid();
+        var serviceAccountId = _idGenerator.NewGuid();
+        var groupId = _idGenerator.NewGuid();
+        var now = DateTime.UtcNow;
+
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        db.Principals.Add(new PrincipalRow
+        {
+            PrincipalId = principalId,
+            TenantId = tenantId,
+            PrincipalScope = PrincipalScope.Tenant,
+            PrincipalType = PrincipalType.ServiceAccount,
+            DisplayName = name,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        db.ServiceAccounts.Add(new ServiceAccountRow
+        {
+            ServiceAccountId = serviceAccountId,
+            TenantId = tenantId,
+            PrincipalId = principalId,
+            Name = name,
+            CreatedAt = now
+        });
+        db.Groups.Add(new GroupRow
+        {
+            GroupId = groupId,
+            TenantId = tenantId,
+            Name = $"api-key-{apiKeyId:N}",
+            IsSystem = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        foreach (var scope in allowedScopes)
+            db.GroupPermissions.Add(new GroupPermissionRow { GroupId = groupId, PermissionKey = scope });
+        db.ServiceAccountGroupMembers.Add(new ServiceAccountGroupMemberRow
+        {
+            ServiceAccountId = serviceAccountId,
+            GroupId = groupId
+        });
+        db.ApiKeys.Add(new ApiKeyRow
+        {
+            ApiKeyId = apiKeyId,
+            TenantId = tenantId,
+            PrincipalId = principalId,
+            KeyPrefix = PasswordCredentialService.ApiKeyPrefix(plainKey),
+            KeyHash = PasswordCredentialService.HashApiKey(plainKey),
+            AllowedScopesJson = SerializeAllowedScopesJson(allowedScopes),
+            ExpiresAt = request.ExpiresAt,
+            CreatedAt = now
+        });
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return new CreatedAdminApiKeyDto
+        {
+            ApiKeyId = apiKeyId,
+            Name = name,
+            KeyPrefix = PasswordCredentialService.ApiKeyPrefix(plainKey),
+            PlainKey = plainKey,
+            AllowedScopes = allowedScopes,
+            ExpiresAt = request.ExpiresAt,
+            CreatedAt = now
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task RevokeApiKeyAsync(
+        Guid callerPrincipalId,
+        Guid apiKeyId,
+        CancellationToken cancellationToken)
+    {
+        await EnsureTenantAdminAsync(callerPrincipalId, cancellationToken).ConfigureAwait(false);
+
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var apiKey = await db.ApiKeys.FirstOrDefaultAsync(k => k.ApiKeyId == apiKeyId, cancellationToken).ConfigureAwait(false);
+        if (apiKey is null)
+            throw new NotFoundException("API key not found.");
+
+        var principal = await db.Principals
+            .FirstOrDefaultAsync(p => p.PrincipalId == apiKey.PrincipalId, cancellationToken)
+            .ConfigureAwait(false);
+        if (principal is null)
+            throw new NotFoundException("Principal not found.");
+
+        var now = DateTime.UtcNow;
+        principal.IsActive = false;
+        principal.DisabledAt = now;
+        principal.UpdatedAt = now;
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<IReadOnlyList<string>> NormalizeApiKeyAllowedScopesAsync(
+        IReadOnlyList<string>? scopes,
+        CancellationToken cancellationToken)
+    {
+        if (scopes is null || scopes.Count == 0)
+            throw new ArgumentException("allowedScopes must contain at least one scope.");
+
+        var normalized = scopes
+            .Select(scope => scope.Trim())
+            .Where(scope => !string.IsNullOrWhiteSpace(scope))
+            .Where(scope => !string.Equals(scope, WellKnownPermissionKeys.TenantAdmin, StringComparison.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (normalized.Count == 0)
+            throw new ArgumentException("allowedScopes must contain at least one assignable scope.");
+
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var catalog = await db.PermissionDefinitions
+            .AsNoTracking()
+            .Select(p => p.PermissionKey)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var catalogSet = catalog.ToHashSet(StringComparer.Ordinal);
+        var unknown = normalized.Where(scope => !catalogSet.Contains(scope)).ToList();
+        if (unknown.Count > 0)
+            throw new ArgumentException($"Unknown permission keys: {string.Join(", ", unknown)}.");
+
+        return normalized;
+    }
+
+    private static string SerializeAllowedScopesJson(IReadOnlyList<string> scopes) =>
+        JsonSerializer.Serialize(scopes, AllowedScopesJsonOptions);
+
+    private static string[] ParseAllowedScopesJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return [];
+
+        try
+        {
+            return JsonSerializer.Deserialize<string[]>(json, AllowedScopesJsonOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
     }
 
     private async Task<AdminGroupDetailDto> LoadGroupDetailAsync(Guid groupId, CancellationToken cancellationToken)

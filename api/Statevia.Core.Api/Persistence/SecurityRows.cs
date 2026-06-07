@@ -202,6 +202,20 @@ internal sealed class ServiceAccountRow
 
 
 
+/// <summary><c>service_account_group_members</c> 行。</summary>
+
+internal sealed class ServiceAccountGroupMemberRow
+
+{
+
+    public Guid ServiceAccountId { get; set; }
+
+    public Guid GroupId { get; set; }
+
+}
+
+
+
 /// <summary><c>api_keys</c> 行。</summary>
 
 internal sealed class ApiKeyRow

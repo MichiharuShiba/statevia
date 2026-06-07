@@ -98,9 +98,9 @@ public sealed class PrincipalPermissionExpansionTests
         Assert.Equal(PermissionCatalog.Entries.Count, count);
     }
 
-    /// <summary>User に紐づかない Principal はグループ展開できない。</summary>
+    /// <summary>ServiceAccount でグループ未所属の Principal は展開できない。</summary>
     [Fact]
-    public async Task ExpandPrincipalPermissionKeysAsync_PrincipalWithoutUser_ReturnsEmpty()
+    public async Task ExpandPrincipalPermissionKeysAsync_ServiceAccountWithoutGroup_ReturnsEmpty()
     {
         // Arrange
         using var database = new SqliteTestDatabase();
@@ -119,6 +119,14 @@ public sealed class PrincipalPermissionExpansionTests
                 CreatedAt = now,
                 UpdatedAt = now
             });
+            db.ServiceAccounts.Add(new ServiceAccountRow
+            {
+                ServiceAccountId = Guid.NewGuid(),
+                TenantId = TestTenantIds.DefaultInternalId,
+                PrincipalId = principalId,
+                Name = "orphan",
+                CreatedAt = now
+            });
             await db.SaveChangesAsync();
         }
 
@@ -129,6 +137,27 @@ public sealed class PrincipalPermissionExpansionTests
 
         // Assert
         Assert.Empty(keys);
+    }
+
+    /// <summary>ServiceAccount はグループ付与分を展開する。</summary>
+    [Fact]
+    public async Task ExpandPrincipalPermissionKeysAsync_ServiceAccountWithGroup_ReturnsGroupPermissions()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var (_, _, plainKey) = await SecurityTestSeed.SeedApiKeyAsync(database);
+        var platform = new PlatformDataAccess(database.Factory);
+        var lookup = await platform.FindApiKeyCredentialAsync(
+            PasswordCredentialService.ApiKeyPrefix(plainKey),
+            PasswordCredentialService.HashApiKey(plainKey),
+            CancellationToken.None);
+
+        // Act
+        var keys = await platform.ExpandPrincipalPermissionKeysAsync(lookup!.Principal.PrincipalId, CancellationToken.None);
+
+        // Assert
+        Assert.Single(keys);
+        Assert.Contains(WellKnownPermissionKeys.ExecutionsRead, keys);
     }
 
     /// <summary>非管理者は <c>is_tenant_admin</c> false。</summary>

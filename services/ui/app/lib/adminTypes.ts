@@ -38,6 +38,29 @@ export type AdminGroupDetail = {
   permissionKeys: string[];
 };
 
+/** API キー一覧項目（平文なし）。 */
+export type AdminApiKeyListItem = {
+  apiKeyId: string;
+  name: string;
+  keyPrefix: string;
+  allowedScopes: string[];
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+  isActive: boolean;
+};
+
+/** API キー作成応答（平文は一度だけ）。 */
+export type CreatedAdminApiKey = {
+  apiKeyId: string;
+  name: string;
+  keyPrefix: string;
+  plainKey: string;
+  allowedScopes: string[];
+  expiresAt: string | null;
+  createdAt: string;
+};
+
 /** 認証済み Principal（`/api/auth/me`）。 */
 export type AuthMeResponse = {
   tenantId: string;

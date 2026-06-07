@@ -127,6 +127,7 @@ internal class CoreDbContext : DbContext
     public DbSet<GroupPermissionRow> GroupPermissions => Set<GroupPermissionRow>();
     public DbSet<UserGroupMemberRow> UserGroupMembers => Set<UserGroupMemberRow>();
     public DbSet<ServiceAccountRow> ServiceAccounts => Set<ServiceAccountRow>();
+    public DbSet<ServiceAccountGroupMemberRow> ServiceAccountGroupMembers => Set<ServiceAccountGroupMemberRow>();
     public DbSet<ApiKeyRow> ApiKeys => Set<ApiKeyRow>();
     public DbSet<ProjectRow> Projects => Set<ProjectRow>();
     public DbSet<ProjectAccessRow> ProjectAccesses => Set<ProjectAccessRow>();
@@ -508,6 +509,14 @@ internal class CoreDbContext : DbContext
             e.Property(x => x.PrincipalId).HasColumnName(Columns.PrincipalId);
             e.Property(x => x.Name).HasMaxLength(128).HasColumnName(Columns.Name);
             e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+        });
+
+        modelBuilder.Entity<ServiceAccountGroupMemberRow>(e =>
+        {
+            e.ToTable("service_account_group_members");
+            e.HasKey(x => new { x.ServiceAccountId, x.GroupId });
+            e.Property(x => x.ServiceAccountId).HasColumnName(Columns.ServiceAccountId);
+            e.Property(x => x.GroupId).HasColumnName(Columns.GroupId);
         });
 
         modelBuilder.Entity<ApiKeyRow>(e =>

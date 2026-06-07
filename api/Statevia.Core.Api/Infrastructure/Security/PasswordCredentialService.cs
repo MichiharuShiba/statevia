@@ -37,6 +37,18 @@ internal sealed class PasswordCredentialService
     public static string ApiKeyPrefix(string plainKey) =>
         plainKey.Length <= 8 ? plainKey : plainKey[..8];
 
+    /// <summary>新規 API キーの平文を生成する（保存は prefix + hash のみ）。</summary>
+    /// <returns><c>stv_</c> プレフィックス付きの URL-safe 文字列。</returns>
+    public static string GeneratePlainApiKey()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        var encoded = Convert.ToBase64String(bytes)
+            .TrimEnd('=')
+            .Replace("+", "-", StringComparison.Ordinal)
+            .Replace("/", "_", StringComparison.Ordinal);
+        return $"stv_{encoded}";
+    }
+
     private sealed class CredentialUser
     {
         public static readonly CredentialUser Instance = new();

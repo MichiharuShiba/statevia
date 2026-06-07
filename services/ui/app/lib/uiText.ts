@@ -11,6 +11,7 @@ export type UiText = {
     health: string;
     adminUsers: string;
     adminGroups: string;
+    adminApiKeys: string;
   };
   entities: {
     definition: string;
@@ -126,6 +127,34 @@ export type UiText = {
     };
     permissions: {
       label: (displayKey: string | null | undefined, displayLabel: string) => string;
+    };
+    apiKeys: {
+      title: string;
+      description: string;
+      createTitle: string;
+      nameLabel: string;
+      scopesTitle: string;
+      expiresAtLabel: string;
+      expiresAtHint: string;
+      createSubmit: string;
+      creating: string;
+      active: string;
+      inactive: string;
+      revoke: string;
+      revoking: string;
+      prefixLabel: (prefix: string) => string;
+      lastUsedLabel: (value: string) => string;
+      neverUsed: string;
+      createdLabel: (value: string) => string;
+      expiresLabel: (value: string) => string;
+      noExpiry: string;
+      issuedTitle: string;
+      issuedWarning: string;
+      plainKeyLabel: string;
+      copyKey: string;
+      copiedKey: string;
+      dismissIssued: string;
+      forbidden: string;
     };
   };
   executionDashboard: {
@@ -556,6 +585,7 @@ export const uiText: UiText = {
     health: "ヘルスチェック",
     adminUsers: "ユーザー管理",
     adminGroups: "グループ管理",
+    adminApiKeys: "API キー",
   },
   entities: {
     definition: "定義",
@@ -672,6 +702,34 @@ export const uiText: UiText = {
     },
     permissions: {
       label: (displayKey: string | null | undefined, displayLabel: string) => displayKey ?? displayLabel,
+    },
+    apiKeys: {
+      title: "API キー管理",
+      description: "サーバー間・CI 向けの API キーを発行・失効します。平文キーは発行時のみ表示されます。",
+      createTitle: "API キーを発行",
+      nameLabel: "表示名",
+      scopesTitle: "許可スコープ",
+      expiresAtLabel: "有効期限（任意）",
+      expiresAtHint: "未指定の場合は無期限です。",
+      createSubmit: "発行",
+      creating: "発行中…",
+      active: "有効",
+      inactive: "失効済み",
+      revoke: "失効",
+      revoking: "失効中…",
+      prefixLabel: (prefix: string) => `プレフィックス: ${prefix}`,
+      lastUsedLabel: (value: string) => `最終利用: ${value}`,
+      neverUsed: "未使用",
+      createdLabel: (value: string) => `作成: ${value}`,
+      expiresLabel: (value: string) => `有効期限: ${value}`,
+      noExpiry: "無期限",
+      issuedTitle: "API キーを発行しました",
+      issuedWarning: "この平文キーは再表示できません。安全な場所に保存してください。",
+      plainKeyLabel: "平文キー",
+      copyKey: "コピー",
+      copiedKey: "コピーしました",
+      dismissIssued: "閉じる",
+      forbidden: "テナント管理者のみ利用できます。",
     },
   },
   executionDashboard: {

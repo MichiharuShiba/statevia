@@ -103,6 +103,39 @@ public sealed class AdminApiIntegrationTests : IClassFixture<SecurityIntegration
         Assert.Contains("definitions.read", updated.PermissionKeys);
     }
 
+    /// <summary>管理者は API キーを発行し失効できる。</summary>
+    [Fact]
+    public async Task CreateApiKey_Revoke_ReturnsPlainKeyThenNoContent()
+    {
+        // Arrange
+        var adminPrincipalId = await _factory.SeedUserPrincipalAsync("admin-apikeys@example.com", "password", isTenantAdmin: true);
+        using var client = CreateAuthenticatedClient(adminPrincipalId);
+
+        // Act — create
+        var createResponse = await client.PostAsJsonAsync(
+            new Uri("/v1/admin/api-keys", UriKind.Relative),
+            new CreateAdminApiKeyRequest
+            {
+                Name = "integration-key",
+                AllowedScopes = ["executions.read"]
+            });
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        var created = await createResponse.Content.ReadFromJsonAsync<CreatedAdminApiKeyDto>();
+        Assert.NotNull(created);
+        Assert.StartsWith("stv_", created!.PlainKey, StringComparison.Ordinal);
+
+        var listResponse = await client.GetAsync(new Uri("/v1/admin/api-keys", UriKind.Relative));
+        var list = await listResponse.Content.ReadFromJsonAsync<List<AdminApiKeyListItemDto>>();
+        Assert.NotNull(list);
+        Assert.Contains(list!, item => item.ApiKeyId == created.ApiKeyId);
+
+        var revokeResponse = await client.DeleteAsync(
+            new Uri($"/v1/admin/api-keys/{created.ApiKeyId}", UriKind.Relative));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, revokeResponse.StatusCode);
+    }
+
     private HttpClient CreateAuthenticatedClient(Guid principalId)
     {
         var client = _factory.CreateClient();

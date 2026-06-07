@@ -32,6 +32,9 @@ export function AdminNavLinks() {
       <Link href="/admin/groups" className="hover:text-[var(--brand-header-fg)] hover:underline">
         {uiText.navigation.adminGroups}
       </Link>
+      <Link href="/admin/api-keys" className="hover:text-[var(--brand-header-fg)] hover:underline">
+        {uiText.navigation.adminApiKeys}
+      </Link>
     </>
   );
 }

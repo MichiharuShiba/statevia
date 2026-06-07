@@ -73,7 +73,7 @@ internal static class SecurityTestSeed
         bool principalIsActive = true,
         DateTime? principalDeletedAt = null)
     {
-        var userId = Guid.NewGuid();
+        var serviceAccountId = Guid.NewGuid();
         var principalId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var apiKeyId = Guid.NewGuid();
@@ -101,25 +101,21 @@ internal static class SecurityTestSeed
             PrincipalId = principalId,
             TenantId = TestTenantIds.DefaultInternalId,
             PrincipalScope = PrincipalScope.Tenant,
-            PrincipalType = PrincipalType.User,
+            PrincipalType = PrincipalType.ServiceAccount,
             DisplayName = "ci-runner",
             IsActive = principalIsActive,
             DeletedAt = principalDeletedAt,
             CreatedAt = now,
             UpdatedAt = now
         });
-        db.Users.Add(new UserRow
+        db.ServiceAccounts.Add(new ServiceAccountRow
         {
-            UserId = userId,
+            ServiceAccountId = serviceAccountId,
             TenantId = TestTenantIds.DefaultInternalId,
-            Email = $"ci-{principalId:N}@example.com",
-            PasswordHash = "unused",
-            IsTenantAdmin = false,
-            IsActive = principalIsActive,
-            CreatedAt = now,
-            UpdatedAt = now
+            PrincipalId = principalId,
+            Name = "ci-runner",
+            CreatedAt = now
         });
-        db.UserPrincipals.Add(new UserPrincipalRow { UserId = userId, PrincipalId = principalId });
         db.Groups.Add(new GroupRow
         {
             GroupId = groupId,
@@ -134,7 +130,11 @@ internal static class SecurityTestSeed
             GroupId = groupId,
             PermissionKey = WellKnownPermissionKeys.ExecutionsRead
         });
-        db.UserGroupMembers.Add(new UserGroupMemberRow { UserId = userId, GroupId = groupId });
+        db.ServiceAccountGroupMembers.Add(new ServiceAccountGroupMemberRow
+        {
+            ServiceAccountId = serviceAccountId,
+            GroupId = groupId
+        });
         db.ApiKeys.Add(new ApiKeyRow
         {
             ApiKeyId = apiKeyId,

@@ -39,4 +39,18 @@ public sealed class PasswordCredentialServiceTests
         Assert.Equal("sk_live_", prefix);
         Assert.Equal("abc", shortPrefix);
     }
+
+    /// <summary>生成した API キーは stv_ プレフィックスを持つ。</summary>
+    [Fact]
+    public void GeneratePlainApiKey_ReturnsPrefixedUniqueValues()
+    {
+        // Act
+        var first = PasswordCredentialService.GeneratePlainApiKey();
+        var second = PasswordCredentialService.GeneratePlainApiKey();
+
+        // Assert
+        Assert.StartsWith("stv_", first, StringComparison.Ordinal);
+        Assert.StartsWith("stv_", second, StringComparison.Ordinal);
+        Assert.NotEqual(first, second);
+    }
 }
