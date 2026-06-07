@@ -4,7 +4,7 @@ namespace Statevia.Core.Api.Persistence;
 internal class ExecutionRow
 {
     public Guid ExecutionId { get; set; }
-    public string TenantId { get; set; } = "default";
+    public Guid TenantId { get; set; }
     public Guid DefinitionId { get; set; }
 
     /// <summary>開始時に固定した定義版（definition_versions FK）。</summary>

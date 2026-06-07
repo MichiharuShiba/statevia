@@ -21,7 +21,7 @@ public sealed class ExecutionRepositoryTests
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        var res = await repo.GetByIdAsync(uow, "t1", Guid.NewGuid(), default);
+        var res = await repo.GetByIdAsync(uow, TestTenantIds.T1TenantId, Guid.NewGuid(), default);
         // Assert
         Assert.Null(res);
     }
@@ -41,7 +41,7 @@ public sealed class ExecutionRepositoryTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "other-tenant",
+                TenantId = TestTenantIds.OtherTenantId,
                 DefinitionId = Guid.NewGuid(),
                 DefinitionVersionId = Guid.NewGuid(),
                 Status = "Running",
@@ -59,7 +59,7 @@ public sealed class ExecutionRepositoryTests
 
         // Assert
         Assert.NotNull(row);
-        Assert.Equal("other-tenant", row!.TenantId);
+        Assert.Equal(TestTenantIds.OtherTenantId, row!.TenantId);
     }
 
     /// <summary>
@@ -74,7 +74,7 @@ public sealed class ExecutionRepositoryTests
         var repo = new ExecutionRepository();
 
         // Act
-        var tenantId = "t1";
+        var tenantId = TestTenantIds.T1TenantId;
         var defId = Guid.NewGuid();
         var wfId1 = Guid.NewGuid();
         var wfId2 = Guid.NewGuid();
@@ -122,8 +122,7 @@ public sealed class ExecutionRepositoryTests
         // Assert
         await using var uow = await uowFactory.CreateAsync();
         var (_, items) = await repo.ListWithDisplayIdsPageAsync(
-            uow,
-            tenantId,
+            uow, tenantId,
             new ExecutionListPageQuery(
                 Page: new PageQuery(0, 10),
                 Sort: new SortQuery(null, null),
@@ -149,7 +148,7 @@ public sealed class ExecutionRepositoryTests
         var repo = new ExecutionRepository();
 
         // Act
-        var tenantId = "t1";
+        var tenantId = TestTenantIds.T1TenantId;
         var defId = Guid.NewGuid();
 
         await using (var ctx = new CoreDbContext(db.Options))
@@ -184,8 +183,7 @@ public sealed class ExecutionRepositoryTests
         // Assert
         await using var uow = await uowFactory.CreateAsync();
         var (total, items) = await repo.ListWithDisplayIdsPageAsync(
-            uow,
-            tenantId,
+            uow, tenantId,
             new ExecutionListPageQuery(
                 Page: new PageQuery(0, 10),
                 Sort: new SortQuery(null, null),
@@ -206,7 +204,7 @@ public sealed class ExecutionRepositoryTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var repo = new ExecutionRepository();
-        var tenantId = "t1";
+        var tenantId = TestTenantIds.T1TenantId;
         var def1 = Guid.NewGuid();
         var def2 = Guid.NewGuid();
         var wf1 = Guid.NewGuid();
@@ -244,8 +242,7 @@ public sealed class ExecutionRepositoryTests
         // Act
         await using var uow = await uowFactory.CreateAsync();
         var (total, items) = await repo.ListWithDisplayIdsPageAsync(
-            uow,
-            tenantId,
+            uow, tenantId,
             new ExecutionListPageQuery(
                 Page: new PageQuery(0, 10),
                 Sort: new SortQuery(null, null),
@@ -268,7 +265,7 @@ public sealed class ExecutionRepositoryTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var repo = new ExecutionRepository();
-        var tenantId = "t1";
+        var tenantId = TestTenantIds.T1TenantId;
         var defId = Guid.NewGuid();
         var wfId = Guid.NewGuid();
         var started = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -313,8 +310,7 @@ public sealed class ExecutionRepositoryTests
         // Act
         await using var uow = await uowFactory.CreateAsync();
         var (total, items) = await repo.ListWithDisplayIdsPageAsync(
-            uow,
-            tenantId,
+            uow, tenantId,
             new ExecutionListPageQuery(
                 Page: new PageQuery(0, 10),
                 Sort: new SortQuery(null, null),
@@ -341,7 +337,7 @@ public sealed class ExecutionRepositoryTests
         var repo = new ExecutionRepository();
 
         // Act
-        var tenantId = "t1";
+        var tenantId = TestTenantIds.T1TenantId;
         var defId = Guid.NewGuid();
         var wfId = Guid.NewGuid();
 
@@ -404,7 +400,7 @@ public sealed class ExecutionRepositoryTests
         var repo = new ExecutionRepository();
 
         // Act
-        var tenantId = "t1";
+        var tenantId = TestTenantIds.T1TenantId;
         var defId = Guid.NewGuid();
         var wfId = Guid.NewGuid();
 
@@ -490,7 +486,7 @@ public sealed class ExecutionRepositoryTests
         var repo = new ExecutionRepository();
 
         // Act
-        var tenantId = "t1";
+        var tenantId = TestTenantIds.T1TenantId;
         var defId = Guid.NewGuid();
         var wfId = Guid.NewGuid();
 

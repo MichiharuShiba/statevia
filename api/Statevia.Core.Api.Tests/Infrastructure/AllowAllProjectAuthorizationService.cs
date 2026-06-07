@@ -9,12 +9,12 @@ internal sealed class AllowAllProjectAuthorizationService : IProjectAuthorizatio
     /// <inheritdoc />
     public Task EnsureCanReadAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid projectId,
         CancellationToken ct)
     {
         _ = uow;
-        _ = tenantInternalId;
+        _ = tenantId;
         _ = projectId;
         _ = ct;
         return Task.CompletedTask;
@@ -23,12 +23,12 @@ internal sealed class AllowAllProjectAuthorizationService : IProjectAuthorizatio
     /// <inheritdoc />
     public Task EnsureCanExecuteAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid projectId,
         CancellationToken ct)
     {
         _ = uow;
-        _ = tenantInternalId;
+        _ = tenantId;
         _ = projectId;
         _ = ct;
         return Task.CompletedTask;
@@ -37,12 +37,12 @@ internal sealed class AllowAllProjectAuthorizationService : IProjectAuthorizatio
     /// <inheritdoc />
     public Task EnsureCanPublishAsync(
         ICoreUnitOfWork uow,
-        Guid tenantInternalId,
+        Guid tenantId,
         Guid projectId,
         CancellationToken ct)
     {
         _ = uow;
-        _ = tenantInternalId;
+        _ = tenantId;
         _ = projectId;
         _ = ct;
         return Task.CompletedTask;

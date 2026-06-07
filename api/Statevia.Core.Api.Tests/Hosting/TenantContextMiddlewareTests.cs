@@ -26,7 +26,7 @@ public sealed class TenantContextMiddlewareTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
-        var (token, _) = jwt.IssueAccessToken(TestTenantIds.DefaultInternalId, "default", Guid.NewGuid());
+        var (token, _) = jwt.IssueAccessToken(TestTenantIds.DefaultTenantId, "default", Guid.NewGuid());
 
         var platform = new PlatformDataAccess(database.Factory);
         var middleware = new TenantContextMiddleware(_ => Task.CompletedTask, jwt);
@@ -53,7 +53,7 @@ public sealed class TenantContextMiddlewareTests
         using var database = new SqliteTestDatabase();
         var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
         var principalId = Guid.NewGuid();
-        var (token, _) = jwt.IssueAccessToken(TestTenantIds.DefaultInternalId, "default", principalId);
+        var (token, _) = jwt.IssueAccessToken(TestTenantIds.DefaultTenantId, "default", principalId);
         var platform = new PlatformDataAccess(database.Factory);
         var accessor = new SettableTenantContextAccessor();
         var nextInvoked = false;
@@ -74,7 +74,7 @@ public sealed class TenantContextMiddlewareTests
         // Assert
         Assert.True(nextInvoked);
         Assert.Equal("default", context.Items["Statevia.TenantKey"]);
-        Assert.Equal(TestTenantIds.DefaultInternalId, context.Items["Statevia.TenantInternalId"]);
+        Assert.Equal(TestTenantIds.DefaultTenantId, context.Items["Statevia.TenantId"]);
     }
 
     /// <summary>Runtime API で JWT なし X-Tenant-Id のみは 401。</summary>
@@ -157,7 +157,7 @@ public sealed class TenantContextMiddlewareTests
 
     /// <summary>JWT の tenant_id が DB と不一致の場合 403。</summary>
     [Fact]
-    public async Task InvokeAsync_JwtTenantInternalIdMismatch_ThrowsForbidden()
+    public async Task InvokeAsync_JwtTenantIdMismatch_ThrowsForbidden()
     {
         // Arrange
         using var database = new SqliteTestDatabase();
@@ -270,7 +270,7 @@ public sealed class TenantContextMiddlewareTests
 
         // Assert
         Assert.True(nextInvoked);
-        Assert.Equal(TestTenantIds.DefaultInternalId, context.Items["Statevia.TenantInternalId"]);
+        Assert.Equal(TestTenantIds.DefaultTenantId, context.Items["Statevia.TenantId"]);
         Assert.Equal("default", context.Items["Statevia.TenantKey"]);
         Assert.Equal(principalId, resolvedPrincipalId);
         Assert.NotNull(resolvedEffectiveKeys);

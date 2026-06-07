@@ -81,38 +81,38 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<ExecutionResponse> StartAsync(string tenantId, StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(string tenantId, ExecutionListQuery query, CancellationToken ct) =>
+        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+        public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) =>
+        public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+        public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) =>
+        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) =>
+        public Task<ExecutionEventsResponseDto> ListEventsAsync(string idOrUuid, long afterSeq, int limit, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task ResumeNodeAsync( string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
     }
 
@@ -133,38 +133,38 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
                 await _firstUpdateMayProceed.Task.WaitAsync(ct);
         }
 
-        public Task<ExecutionResponse> StartAsync(string tenantId, StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(string tenantId, ExecutionListQuery query, CancellationToken ct) =>
+        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+        public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) =>
+        public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+        public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
         public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) =>
+        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) =>
+        public Task<ExecutionEventsResponseDto> ListEventsAsync(string idOrUuid, long afterSeq, int limit, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task ResumeNodeAsync( string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
     }
 

@@ -36,7 +36,7 @@ internal static partial class RequestLoggingLogMessages
         string method,
         string path,
         string queryForLog,
-        string tenantId,
+        Guid? tenantId,
         string? userAgent,
         string? requestBody);
 
@@ -54,11 +54,11 @@ internal static partial class RequestLoggingLogMessages
     [LoggerMessage(
         EventId = 4012,
         Level = LogLevel.Information,
-        Message = "HTTP request complete TraceId={traceId} StatusCode={status} ElapsedMs={elapsedMs} ResponseSize={responseSize} ResponseBody={responseBody}")]
+        Message = "HTTP request complete TraceId={traceId} StatusCode={statusCode} ElapsedMs={elapsedMs} ResponseSize={responseSize} ResponseBody={responseBody}")]
     public static partial void HttpRequestComplete(
         this ILogger logger,
         string traceId,
-        int status,
+        int statusCode,
         long elapsedMs,
         long? responseSize,
         string? responseBody);

@@ -10,7 +10,7 @@ internal interface IEventDeliveryDedupRepository
     /// <summary>主キーで行を取得する（読み取り専用）。</summary>
     Task<EventDeliveryDedupRow?> FindAsync(
         ICoreUnitOfWork uow,
-        string tenantId,
+        Guid tenantId,
         Guid executionId,
         Guid clientEventId,
         CancellationToken cancellationToken);
@@ -24,7 +24,7 @@ internal interface IEventDeliveryDedupRepository
     /// <returns>更新できたとき true（0 件なら false）。</returns>
     Task<bool> TryUpdateStatusAsync(
         ICoreUnitOfWork uow,
-        string tenantId,
+        Guid tenantId,
         Guid executionId,
         Guid clientEventId,
         EventDeliveryDedupStatusUpdate update,

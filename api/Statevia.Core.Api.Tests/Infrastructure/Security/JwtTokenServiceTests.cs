@@ -25,7 +25,7 @@ public sealed class JwtTokenServiceTests
 
         // Act
         var (token, expiresAt) = service.IssueAccessToken(
-            TestTenantIds.DefaultInternalId,
+            TestTenantIds.DefaultTenantId,
             "default",
             principalId);
         var principal = service.ValidateToken(token);
@@ -35,7 +35,7 @@ public sealed class JwtTokenServiceTests
         Assert.NotNull(principal);
         Assert.Equal(principalId.ToString(), principal.FindFirstValue(JwtTokenService.PrincipalIdClaim));
         Assert.Equal("default", principal.FindFirstValue(JwtTokenService.TenantKeyClaim));
-        Assert.Equal(TestTenantIds.DefaultInternalId.ToString(), principal.FindFirstValue(JwtTokenService.TenantIdClaim));
+        Assert.Equal(TestTenantIds.DefaultTenantId.ToString(), principal.FindFirstValue(JwtTokenService.TenantIdClaim));
     }
 
     /// <summary>改ざんトークンは検証に失敗する。</summary>
@@ -44,7 +44,7 @@ public sealed class JwtTokenServiceTests
     {
         // Arrange
         var service = CreateService();
-        var (token, _) = service.IssueAccessToken(TestTenantIds.DefaultInternalId, "default", Guid.NewGuid());
+        var (token, _) = service.IssueAccessToken(TestTenantIds.DefaultTenantId, "default", Guid.NewGuid());
         var tampered = token[..^4] + "xxxx";
 
         // Act

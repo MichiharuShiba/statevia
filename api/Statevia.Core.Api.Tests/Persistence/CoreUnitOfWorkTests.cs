@@ -15,7 +15,7 @@ public sealed class CoreUnitOfWorkTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var factory = new TestCoreUnitOfWorkFactory(database.Factory);
-        var tenantId = "tenant-uow-commit";
+        var tenantId = TestTenantIds.DefaultTenantId;
         var definitionId = Guid.NewGuid();
 
         // Act
@@ -62,7 +62,7 @@ public sealed class CoreUnitOfWorkTests
             uow.Db.WorkflowDefinitions.Add(new WorkflowDefinitionRow
             {
                 DefinitionId = definitionId,
-                TenantId = "tenant-rollback",
+                TenantId = TestTenantIds.DefaultTenantId,
                 Name = "rollback-test",
                 SourceYaml = "name: rollback",
                 CompiledJson = "{}",

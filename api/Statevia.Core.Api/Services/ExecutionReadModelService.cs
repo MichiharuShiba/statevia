@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Api.Abstractions.Persistence;
+using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Infrastructure;
@@ -14,17 +15,21 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
 {
     private readonly ICoreTransactionExecutor _executor;
     private readonly IDisplayIdService _displayIds;
+    private readonly ITenantContextAccessor _tenantContext;
 
     public ExecutionReadModelService(
         ICoreTransactionExecutor executor,
-        IDisplayIdService displayIds)
+        IDisplayIdService displayIds,
+        ITenantContextAccessor tenantContext)
     {
         _executor = executor;
         _displayIds = displayIds;
+        _tenantContext = tenantContext;
     }
 
-    public async Task<ExecutionReadModel> GetByDisplayIdAsync(string id, string tenantId, CancellationToken ct = default)
+    public async Task<ExecutionReadModel> GetByDisplayIdAsync(string id, CancellationToken ct = default)
     {
+        var tenantId = _tenantContext.GetRequiredTenantId();
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, id, ct).ConfigureAwait(false);
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);

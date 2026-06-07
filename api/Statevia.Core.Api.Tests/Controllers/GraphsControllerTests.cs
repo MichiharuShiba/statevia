@@ -19,7 +19,7 @@ public sealed class GraphsControllerTests
 
         // Act
         var controller = new GraphsController(fakeSvc);
-        var result = await controller.GetByGraphId("   ", tenantIdHeader: "t1", ct: CancellationToken.None);
+        var result = await controller.GetByGraphId("   ", ct: CancellationToken.None);
 
         // Assert
         var obj = Assert.IsType<ObjectResult>(result.Result);
@@ -49,7 +49,7 @@ public sealed class GraphsControllerTests
         };
 
         var controller = new GraphsController(fakeSvc);
-        var result = await controller.GetByGraphId("graph-id", tenantIdHeader: "t1", ct: CancellationToken.None);
+        var result = await controller.GetByGraphId("graph-id", ct: CancellationToken.None);
 
         // Assert
         var ok = Assert.IsType<OkObjectResult>(result.Result);
@@ -60,7 +60,7 @@ public sealed class GraphsControllerTests
     private sealed class FakeGraphDefinitionService : IGraphDefinitionService
     {
         public GraphDefinitionResponse? ResolveResult { get; set; }
-        public async Task<GraphDefinitionResponse> GetByGraphIdAsync(string graphId, string tenantId, CancellationToken ct = default)
+        public async Task<GraphDefinitionResponse> GetByGraphIdAsync(string graphId, CancellationToken ct = default)
         {
             await Task.Yield(); // async boundary for coverage
             return ResolveResult ?? new GraphDefinitionResponse();

@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Statevia.Core.Api.Abstractions.Security;
 
 namespace Statevia.Core.Api.Hosting;
 
@@ -18,8 +19,10 @@ internal sealed class RequestLoggingMiddleware
     public async Task InvokeAsync(
         HttpContext context,
         ILogger<RequestLoggingMiddleware> logger,
-        IOptions<RequestLogOptions> optionsAccessor)
+        IOptions<RequestLogOptions> optionsAccessor,
+        ITenantContextAccessor tenantContextAccessor)
     {
+        ArgumentNullException.ThrowIfNull(tenantContextAccessor);
         var opts = optionsAccessor.Value;
         var traceId = TraceIdResolver.ResolveTraceId(context.Request);
         // 後続ミドルウェア・フィルタと共有（enrich ログ等）
@@ -38,8 +41,7 @@ internal sealed class RequestLoggingMiddleware
                 (context, traceId));
         }
 
-        var tenantId = context.Request.Headers[TenantHeader.HeaderName].FirstOrDefault()
-                       ?? TenantHeader.DefaultTenantId;
+        var tenantId = tenantContextAccessor.TenantId;
         var path = (context.Request.PathBase + context.Request.Path).Value ?? "";
         var queryForLog = BuildQueryForLog(context.Request.QueryString, opts);
 

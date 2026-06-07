@@ -43,7 +43,7 @@ public sealed class ProjectAuthorizationIntegrationTests
                 UpdatedAt = now
             });
             ProjectTestData.AddDefaultProject(seed, ownerTenantId, "owner", projectId);
-            DefinitionTestData.AddDefinitionWithVersion(seed, "owner", defId, "shared-def", projectId);
+            DefinitionTestData.AddDefinitionWithVersion(seed, ownerTenantId, defId, "shared-def", projectId);
             await seed.SaveChangesAsync();
         }
 

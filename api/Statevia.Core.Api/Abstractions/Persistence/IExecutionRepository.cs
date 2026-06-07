@@ -5,7 +5,7 @@ namespace Statevia.Core.Api.Abstractions.Persistence;
 internal interface IExecutionRepository
 {
     /// <summary>テナント ID と execution_id で execution 行を取得する（読み取り専用）。</summary>
-    Task<ExecutionRow?> GetByIdAsync(ICoreUnitOfWork uow, string tenantId, Guid executionId, CancellationToken ct);
+    Task<ExecutionRow?> GetByIdAsync(ICoreUnitOfWork uow, Guid tenantId, Guid executionId, CancellationToken ct);
 
     /// <summary>テナントフィルタなしで execution 行を取得する（投影キュー等の内部用途）。</summary>
     Task<ExecutionRow?> GetByExecutionIdAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct);
@@ -15,7 +15,7 @@ internal interface IExecutionRepository
     /// </summary>
     Task<(int TotalCount, List<(ExecutionRow Execution, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
         ICoreUnitOfWork uow,
-        string tenantId,
+        Guid tenantId,
         ExecutionListPageQuery query,
         CancellationToken ct);
 

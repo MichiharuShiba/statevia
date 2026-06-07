@@ -42,7 +42,7 @@ public sealed class AuthServiceTests
         // Assert
         Assert.False(string.IsNullOrWhiteSpace(response.AccessToken));
         Assert.Equal("default", response.TenantKey);
-        Assert.Equal(TestTenantIds.DefaultInternalId, response.TenantId);
+        Assert.Equal(TestTenantIds.DefaultTenantId, response.TenantId);
     }
 
     /// <summary>空の資格情報は 401。</summary>
@@ -163,7 +163,7 @@ public sealed class AuthServiceTests
         var auth = CreateAuthService(database);
 
         // Act
-        var response = await auth.GetMeAsync(TestTenantIds.DefaultInternalId, principalId, CancellationToken.None);
+        var response = await auth.GetMeAsync(TestTenantIds.DefaultTenantId, principalId, CancellationToken.None);
 
         // Assert
         Assert.Equal("me@example.com", response.Email);
@@ -182,6 +182,6 @@ public sealed class AuthServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedException>(() =>
-            auth.GetMeAsync(TestTenantIds.DefaultInternalId, Guid.NewGuid(), CancellationToken.None));
+            auth.GetMeAsync(TestTenantIds.DefaultTenantId, Guid.NewGuid(), CancellationToken.None));
     }
 }

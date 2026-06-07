@@ -15,7 +15,7 @@ internal sealed class FixedTenantContextAccessor : ITenantContextAccessor
     public bool IsResolved => _state is not null;
 
     /// <inheritdoc />
-    public Guid? TenantInternalId => _state?.TenantInternalId;
+    public Guid? TenantId => _state?.TenantId;
 
     /// <inheritdoc />
     public string? TenantKey => _state?.TenantKey;

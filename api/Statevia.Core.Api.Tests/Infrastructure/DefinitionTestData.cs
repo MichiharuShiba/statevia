@@ -8,7 +8,7 @@ internal static class DefinitionTestData
     /// <summary>定義と初版を DB に追加する。</summary>
     public static (DefinitionRow Definition, DefinitionVersionRow Version) AddDefinitionWithVersion(
         CoreDbContext ctx,
-        string tenantId,
+        Guid tenantId,
         Guid definitionId,
         string name,
         Guid projectId,

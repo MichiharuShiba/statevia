@@ -195,7 +195,7 @@ public sealed class ExecutionServiceTests
 
     private sealed class FakeEventDeliveryDedupRepository : IEventDeliveryDedupRepository
     {
-        private readonly ConcurrentDictionary<(string TenantId, Guid ExecutionId, Guid ClientEventId), EventDeliveryDedupRow> _rows = new();
+        private readonly ConcurrentDictionary<(Guid TenantId, Guid ExecutionId, Guid ClientEventId), EventDeliveryDedupRow> _rows = new();
 
         /// <summary>テスト用: 既存行を投入する。</summary>
         public void SeedRow(EventDeliveryDedupRow row) =>
@@ -203,7 +203,7 @@ public sealed class ExecutionServiceTests
 
         public Task<EventDeliveryDedupRow?> FindAsync(
             ICoreUnitOfWork uow,
-            string tenantId,
+            Guid tenantId,
             Guid executionId,
             Guid clientEventId,
             CancellationToken cancellationToken)
@@ -231,7 +231,7 @@ public sealed class ExecutionServiceTests
 
         public Task<bool> TryUpdateStatusAsync(
             ICoreUnitOfWork uow,
-            string tenantId,
+            Guid tenantId,
             Guid executionId,
             Guid clientEventId,
             EventDeliveryDedupStatusUpdate update,
@@ -281,7 +281,7 @@ public sealed class ExecutionServiceTests
 
         public Task<EventDeliveryDedupRow?> FindAsync(
             ICoreUnitOfWork uow,
-            string tenantId,
+            Guid tenantId,
             Guid executionId,
             Guid clientEventId,
             CancellationToken cancellationToken) =>
@@ -298,7 +298,7 @@ public sealed class ExecutionServiceTests
 
         public Task<bool> TryUpdateStatusAsync(
             ICoreUnitOfWork uow,
-            string tenantId,
+            Guid tenantId,
             Guid executionId,
             Guid clientEventId,
             EventDeliveryDedupStatusUpdate update,
@@ -320,7 +320,7 @@ public sealed class ExecutionServiceTests
 
         public FakeCommandDedupService(CommandDedupKey? keyToReturn) => _keyToReturn = keyToReturn;
 
-        public CommandDedupKey? Create(string tenantId, string? idempotencyKey, string method, string path, string? requestHash = null)
+        public CommandDedupKey? Create(string tenantKey, string? idempotencyKey, string method, string path, string? requestHash = null)
         {
             LastRequestHash = requestHash;
             LastEndpoint = $"{method} {path}".Trim();
@@ -346,7 +346,7 @@ public sealed class ExecutionServiceTests
 
         public async Task<CommandDedupRow?> FindValidConflictingRequestHashAsync(
             ICoreUnitOfWork uow,
-            string tenantId,
+            string tenantKey,
             string endpoint,
             string idempotencyKey,
             string requestHash,
@@ -375,7 +375,7 @@ public sealed class ExecutionServiceTests
         public List<(Guid ExecutionId, string Status, bool? CancelRequested, string GraphJson)> Updates { get; } = [];
         public (int TotalCount, List<(ExecutionRow Execution, string? DisplayId)> Items) ListWithDisplayIdsPageResult { get; set; } = (0, []);
 
-        public async Task<ExecutionRow?> GetByIdAsync(ICoreUnitOfWork uow, string tenantId, Guid executionId, CancellationToken ct)
+        public async Task<ExecutionRow?> GetByIdAsync(ICoreUnitOfWork uow, Guid tenantId, Guid executionId, CancellationToken ct)
         {
             _ = uow;
             await Task.Yield(); // async boundary for coverage
@@ -383,11 +383,11 @@ public sealed class ExecutionServiceTests
         }
 
         public Task<ExecutionRow?> GetByExecutionIdAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct) =>
-            GetByIdAsync(uow, string.Empty, executionId, ct);
+            GetByIdAsync(uow, Guid.Empty, executionId, ct);
 
         public async Task<(int TotalCount, List<(ExecutionRow Execution, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
             ICoreUnitOfWork uow,
-            string tenantId,
+            Guid tenantId,
             ExecutionListPageQuery query,
             CancellationToken ct)
         {
@@ -600,7 +600,6 @@ public sealed class ExecutionServiceTests
 
         // Act
         var res = await sut.StartAsync(
-            tenantId: "t1",
             request: request,
             idempotencyKey: "idem",
             requestContext: new CommandRequestContext("POST", "/v1/executions"),
@@ -664,7 +663,6 @@ public sealed class ExecutionServiceTests
         var request = new StartExecutionRequest { DefinitionId = "def-1", Input = inputDoc.RootElement };
 
         await Assert.ThrowsAsync<IdempotencyConflictException>(() => sut.StartAsync(
-            tenantId: "t1",
             request: request,
             idempotencyKey: "idem",
             requestContext: new CommandRequestContext("POST", "/v1/executions"),
@@ -726,7 +724,7 @@ public sealed class ExecutionServiceTests
 
         var executionRepo = new FakeExecutionRepository();
 
-        var definitionsRepo = StubDefinitionRepositoryFactory.ForDefinition(defUuid, "t1", "def");
+        var definitionsRepo = StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def");
 
         var eventStore = new FakeEventStoreRepository();
 
@@ -749,7 +747,6 @@ public sealed class ExecutionServiceTests
 
         // Act
         var res = await sut.StartAsync(
-            tenantId: "t1",
             request: request,
             idempotencyKey: "idem",
             requestContext: new CommandRequestContext("POST", "/v1/executions"),
@@ -821,7 +818,7 @@ public sealed class ExecutionServiceTests
         };
 
         var executionRepo = new FakeExecutionRepository();
-        var definitionsRepo = StubDefinitionRepositoryFactory.ForDefinition(defUuid, "t1", "def");
+        var definitionsRepo = StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def");
         var eventStore = new FakeEventStoreRepository();
 
         using var sqlite = new SqliteTestDatabase();
@@ -843,7 +840,6 @@ public sealed class ExecutionServiceTests
 
         // Act
         var res = await sut.StartAsync(
-            tenantId: "t1",
             request: request,
             idempotencyKey: "idem",
             requestContext: new CommandRequestContext("POST", "/v1/executions"),
@@ -897,7 +893,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.StartAsync("t1", request, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
+            sut.StartAsync(request, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
     }
 
     /// <summary>連番指定が一未満のとき引数例外を投げる。</summary>
@@ -912,7 +908,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.GetExecutionViewAtSeqAsync("t1", idOrUuid: "x", atSeq: 0, CancellationToken.None));
+            sut.GetExecutionViewAtSeqAsync(idOrUuid: "x", atSeq: 0, CancellationToken.None));
     }
 
     private static ExecutionService MakeSut(SqliteTestDatabase sqlite, out FakeExecutionRepository executionRepo)
@@ -957,7 +953,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow.AddMinutes(-10),
@@ -999,7 +995,7 @@ public sealed class ExecutionServiceTests
             new FakeEventDeliveryDedupRepository());
 
         // Act
-        var view = await sut.GetExecutionViewAtSeqAsync("t1", idOrUuid: "display-or-uuid", atSeq: 1, CancellationToken.None);
+        var view = await sut.GetExecutionViewAtSeqAsync(idOrUuid: "display-or-uuid", atSeq: 1, CancellationToken.None);
 
         // Assert
         Assert.Equal("Running", view.Status);
@@ -1036,7 +1032,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.GetExecutionViewAtSeqAsync("t1", idOrUuid: "x", atSeq: 1, CancellationToken.None));
+            sut.GetExecutionViewAtSeqAsync(idOrUuid: "x", atSeq: 1, CancellationToken.None));
     }
 
     /// <summary>指定連番が最大連番を超えるとき未検出例外を投げる。</summary>
@@ -1054,7 +1050,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow.AddMinutes(-10),
@@ -1097,7 +1093,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.GetExecutionViewAtSeqAsync("t1", idOrUuid: "display-or-uuid", atSeq: 6, CancellationToken.None));
+            sut.GetExecutionViewAtSeqAsync(idOrUuid: "display-or-uuid", atSeq: 6, CancellationToken.None));
     }
 
     /// <summary>指定連番が範囲内で最大連番が正のとき表示を返す。</summary>
@@ -1115,7 +1111,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow.AddMinutes(-10),
@@ -1157,7 +1153,7 @@ public sealed class ExecutionServiceTests
             new FakeEventDeliveryDedupRepository());
 
         // Act
-        var view = await sut.GetExecutionViewAtSeqAsync("t1", idOrUuid: "display-or-uuid", atSeq: 2, CancellationToken.None);
+        var view = await sut.GetExecutionViewAtSeqAsync(idOrUuid: "display-or-uuid", atSeq: 2, CancellationToken.None);
 
         // Assert
         Assert.Equal("Running", view.Status);
@@ -1188,7 +1184,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -1240,7 +1236,7 @@ public sealed class ExecutionServiceTests
             new FakeEventDeliveryDedupRepository());
 
         // Act
-        var res = await sut.ListEventsAsync("t1", idOrUuid: "idOrUuid", afterSeq: 0, limit: 10, CancellationToken.None);
+        var res = await sut.ListEventsAsync(idOrUuid: "idOrUuid", afterSeq: 0, limit: 10, CancellationToken.None);
 
         // Assert
         Assert.False(res.HasMore);
@@ -1273,7 +1269,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.ResumeNodeAsync("t1", idOrUuid: "EXEC-1", nodeId: "  ", resumeKey: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
+            sut.ResumeNodeAsync(idOrUuid: "EXEC-1", nodeId: "  ", resumeKey: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
     }
 
     /// <summary>取消要求で冪等一致かつ有効行があるとき副作用なく即時終了する。</summary>
@@ -1312,7 +1308,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -1332,7 +1328,7 @@ public sealed class ExecutionServiceTests
             eventStore: eventStore);
 
         // Act
-        await sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None);
+        await sut.CancelAsync(idOrUuid: "X", idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None);
 
         // Assert
         Assert.False(engine.CancelCalled);
@@ -1366,7 +1362,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -1391,7 +1387,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None));
+            sut.CancelAsync(idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None));
         Assert.Equal(1, projectionQueue.DrainCalls);
         Assert.Equal(executionId, projectionQueue.LastDrainExecutionId);
         Assert.False(engine.CancelCalled);
@@ -1417,7 +1413,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None));
+            sut.CancelAsync(idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None));
 
         Assert.False(engine.CancelCalled);
     }
@@ -1444,7 +1440,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.CancelAsync("t1", idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None));
+            sut.CancelAsync(idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None));
 
         Assert.False(engine.CancelCalled);
     }
@@ -1454,7 +1450,6 @@ public sealed class ExecutionServiceTests
     public async Task CancelAsync_WhenProceeding_UpdatesExecutionAndSnapshot_AppendsCancelledEvent_AndSavesDedupRow()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -1491,7 +1486,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -1512,7 +1507,7 @@ public sealed class ExecutionServiceTests
             eventStore: eventStore);
 
         // Act
-        await sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None);
+        await sut.CancelAsync(idOrUuid: "X", idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None);
 
         // Assert
         Assert.True(engine.CancelCalled);
@@ -1531,7 +1526,7 @@ public sealed class ExecutionServiceTests
         var payload = eventStore.Appended[0].Payload;
         Assert.NotNull(payload);
         using var payloadDoc = JsonDocument.Parse(payload);
-        Assert.Equal(tenantId, payloadDoc.RootElement.GetProperty("tenantId").GetString());
+        Assert.Equal(TestTenantIds.T1TenantId.ToString("D"), payloadDoc.RootElement.GetProperty("tenantId").GetString());
 
         Assert.Single(dedupRepo.SavedRows);
         Assert.Null(dedupRepo.SavedRows[0].RequestHash);
@@ -1547,7 +1542,6 @@ public sealed class ExecutionServiceTests
     public async Task CancelAsync_WhenEventStoreAppendThrows_RollsBackAndRethrows()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -1574,7 +1568,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -1599,7 +1593,7 @@ public sealed class ExecutionServiceTests
 
         // Act
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None));
+            sut.CancelAsync(idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None));
 
         // Assert
         Assert.Equal("append failed", ex.Message);
@@ -1637,7 +1631,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -1707,7 +1701,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -1727,7 +1721,7 @@ public sealed class ExecutionServiceTests
             eventStore: eventStore);
 
         // Act
-        await sut.PublishEventAsync(tenantId: "t1", idOrUuid: "X", eventName: "Approve", idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None);
+        await sut.PublishEventAsync(idOrUuid: "X", eventName: "Approve", idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None);
 
         // Assert
         Assert.Null(engine.PublishEventLastName);
@@ -1761,7 +1755,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -1786,7 +1780,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.PublishEventAsync("t1", idOrUuid: "X", eventName: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None));
+            sut.PublishEventAsync(idOrUuid: "X", eventName: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None));
         Assert.Equal(1, projectionQueue.DrainCalls);
         Assert.Equal(executionId, projectionQueue.LastDrainExecutionId);
         Assert.Null(engine.PublishEventLastExecutionId);
@@ -1814,7 +1808,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.PublishEventAsync(tenantId: "t1", idOrUuid: "X", eventName: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None));
+            sut.PublishEventAsync(idOrUuid: "X", eventName: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None));
 
         Assert.Null(engine.PublishEventLastExecutionId);
         Assert.Null(engine.PublishEventLastName);
@@ -1825,7 +1819,6 @@ public sealed class ExecutionServiceTests
     public async Task PublishEventAsync_WhenProceeding_UpdatesExecutionAndSnapshot_AppendsEventPublished_AndSavesDedupRow()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -1862,7 +1855,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -1885,7 +1878,7 @@ public sealed class ExecutionServiceTests
         const string eventName = "Approve";
 
         // Act
-        await sut.PublishEventAsync(tenantId: tenantId, idOrUuid: "X", eventName: eventName, idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None);
+        await sut.PublishEventAsync(idOrUuid: "X", eventName: eventName, idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None);
 
         // Assert
         Assert.Equal(executionId.ToString(), engine.PublishEventLastExecutionId);
@@ -1906,7 +1899,7 @@ public sealed class ExecutionServiceTests
         var payload = eventStore.Appended[0].Payload;
         Assert.NotNull(payload);
         using var payloadDoc = JsonDocument.Parse(payload);
-        Assert.Equal(tenantId, payloadDoc.RootElement.GetProperty("tenantId").GetString());
+        Assert.Equal(TestTenantIds.T1TenantId.ToString("D"), payloadDoc.RootElement.GetProperty("tenantId").GetString());
         Assert.Equal(eventName, payloadDoc.RootElement.GetProperty("name").GetString());
 
         Assert.Single(dedupRepo.SavedRows);
@@ -1923,7 +1916,6 @@ public sealed class ExecutionServiceTests
     public async Task PublishEventAsync_WhenEngineAlreadyApplied_UpdatesProjection_AndSingleDedupAppend()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
         var dedupKey = new CommandDedupKey
@@ -1956,7 +1948,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -1978,7 +1970,7 @@ public sealed class ExecutionServiceTests
         const string eventName = "Approve";
 
         // Act
-        await sut.PublishEventAsync(tenantId, idOrUuid: "X", eventName: eventName, idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None);
+        await sut.PublishEventAsync(idOrUuid: "X", eventName: eventName, idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None);
 
         // Assert
         Assert.Equal(expectedClientEventId, engine.PublishEventLastClientEventId);
@@ -1993,7 +1985,6 @@ public sealed class ExecutionServiceTests
     public async Task CancelAsync_WhenEngineAlreadyApplied_UpdatesProjection_AndSingleDedupAppend()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
         var dedupKey = new CommandDedupKey
@@ -2026,7 +2017,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -2046,7 +2037,7 @@ public sealed class ExecutionServiceTests
             eventStore: eventStore);
 
         // Act
-        await sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None);
+        await sut.CancelAsync(idOrUuid: "X", idempotencyKey: "idem", new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None);
 
         // Assert
         Assert.Equal(expectedClientEventId, engine.CancelAsyncLastClientEventId);
@@ -2062,7 +2053,6 @@ public sealed class ExecutionServiceTests
     public async Task PublishEventAsync_WhenEventStoreAppendThrows_RollsBackAndRethrows()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -2089,7 +2079,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -2116,7 +2106,7 @@ public sealed class ExecutionServiceTests
 
         // Act
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.PublishEventAsync(tenantId: tenantId, idOrUuid: "X", eventName: eventName, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None));
+            sut.PublishEventAsync(idOrUuid: "X", eventName: eventName, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/events"), CancellationToken.None));
 
         // Assert
         Assert.Equal("append failed", ex.Message);
@@ -2132,7 +2122,6 @@ public sealed class ExecutionServiceTests
     public async Task PublishEventAsync_WhenEventDeliveryAlreadyApplied_SkipsEngine()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
         var clientEventId = Guid.Parse("550e8400-e29b-41d4-a716-446655440000");
@@ -2141,7 +2130,7 @@ public sealed class ExecutionServiceTests
         var now = DateTime.UtcNow;
         eventDedup.SeedRow(new EventDeliveryDedupRow
         {
-            TenantId = tenantId,
+            TenantId = TestTenantIds.T1TenantId,
             ExecutionId = executionId,
             ClientEventId = clientEventId,
             BatchId = null,
@@ -2159,7 +2148,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = now,
@@ -2185,9 +2174,7 @@ public sealed class ExecutionServiceTests
             eventDedup);
 
         // Act
-        await sut.PublishEventAsync(
-            tenantId,
-            idOrUuid: "X",
+        await sut.PublishEventAsync(idOrUuid: "X",
             eventName: "Approve",
             idempotencyKey: clientEventId.ToString(),
             requestContext: new CommandRequestContext("POST", "/v1/executions/events"),
@@ -2219,7 +2206,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.GetExecutionResponseAsync("t1", idOrUuid: "X", CancellationToken.None));
+            sut.GetExecutionResponseAsync(idOrUuid: "X", CancellationToken.None));
     }
 
     /// <summary>応答取得で実行行がないとき未検出例外を投げる。</summary>
@@ -2243,7 +2230,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.GetExecutionResponseAsync("t1", idOrUuid: "X", CancellationToken.None));
+            sut.GetExecutionResponseAsync(idOrUuid: "X", CancellationToken.None));
     }
 
     /// <summary>表示用識別子がないとき識別子文字列へフォールバックする。</summary>
@@ -2258,7 +2245,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = uuid,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -2284,7 +2271,7 @@ public sealed class ExecutionServiceTests
             eventStore: eventStore);
 
         // Act
-        var res = await sut.GetExecutionResponseAsync("t1", idOrUuid: "X", CancellationToken.None);
+        var res = await sut.GetExecutionResponseAsync(idOrUuid: "X", CancellationToken.None);
 
         // Assert
         Assert.Equal(uuid.ToString("D"), res.DisplayId);
@@ -2305,7 +2292,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = uuid,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -2326,7 +2313,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.GetGraphJsonAsync("t1", idOrUuid: "X", CancellationToken.None));
+            sut.GetGraphJsonAsync(idOrUuid: "X", CancellationToken.None));
     }
 
     /// <summary>グラフ取得時に識別子を解決できないとき未検出例外を投げる。</summary>
@@ -2349,7 +2336,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.GetGraphJsonAsync("t1", idOrUuid: "X", CancellationToken.None));
+            sut.GetGraphJsonAsync(idOrUuid: "X", CancellationToken.None));
     }
 
     /// <summary>グラフ取得時に実行行がないとき未検出例外を投げる。</summary>
@@ -2373,7 +2360,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.GetGraphJsonAsync("t1", idOrUuid: "X", CancellationToken.None));
+            sut.GetGraphJsonAsync(idOrUuid: "X", CancellationToken.None));
     }
 
     /// <summary>グラフ取得時、スナップショットの graphJson をそのまま返す。</summary>
@@ -2388,7 +2375,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = uuid,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -2412,7 +2399,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var graphJson = await sut.GetGraphJsonAsync("t1", idOrUuid: "X", CancellationToken.None);
+        var graphJson = await sut.GetGraphJsonAsync(idOrUuid: "X", CancellationToken.None);
 
         // Assert
         Assert.Equal("{\"nodes\":[],\"edges\":[{\"from\":\"a1\",\"to\":\"b1\",\"type\":0}]}", graphJson);
@@ -2428,7 +2415,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.ResumeNodeAsync("t1", idOrUuid: "EXEC-1", nodeId: "node-1", resumeKey: null, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
+            sut.ResumeNodeAsync(idOrUuid: "EXEC-1", nodeId: "node-1", resumeKey: null, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
     }
 
     /// <summary>有効なノード識別子と再開キーで公開と投影更新を実施する。</summary>
@@ -2436,7 +2423,6 @@ public sealed class ExecutionServiceTests
     public async Task ResumeNodeAsync_WhenValidNodeAndResumeKey_PublishesEventAndUpdatesExecution()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
         var nodeId = "node-1";
@@ -2465,7 +2451,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -2491,7 +2477,7 @@ public sealed class ExecutionServiceTests
             new FakeEventDeliveryDedupRepository());
 
         // Act
-        await sut.ResumeNodeAsync(tenantId, idOrUuid: "X", nodeId: nodeId, resumeKey: resumeKey, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None);
+        await sut.ResumeNodeAsync(idOrUuid: "X", nodeId: nodeId, resumeKey: resumeKey, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None);
 
         // Assert
         Assert.Equal(executionId.ToString(), engine.PublishEventLastExecutionId);
@@ -2504,7 +2490,7 @@ public sealed class ExecutionServiceTests
         var payload = eventStore.Appended[0].Payload;
         Assert.NotNull(payload);
         using var payloadDoc = JsonDocument.Parse(payload);
-        Assert.Equal(tenantId, payloadDoc.RootElement.GetProperty("tenantId").GetString());
+        Assert.Equal(TestTenantIds.T1TenantId.ToString("D"), payloadDoc.RootElement.GetProperty("tenantId").GetString());
         Assert.Equal(resumeKey, payloadDoc.RootElement.GetProperty("name").GetString());
 
         Assert.Single(executionRepo.Updates);
@@ -2518,11 +2504,10 @@ public sealed class ExecutionServiceTests
     public async Task ListPagedAsync_WhenDisplayIdMissing_FallsBackToExecutionIdString()
     {
         // Arrange
-        var tenantId = "t1";
         var w1 = new ExecutionRow
         {
             ExecutionId = Guid.NewGuid(),
-            TenantId = tenantId,
+            TenantId = TestTenantIds.T1TenantId,
             DefinitionId = Guid.NewGuid(),
             Status = "Running",
             StartedAt = DateTime.UtcNow,
@@ -2533,7 +2518,7 @@ public sealed class ExecutionServiceTests
         var w2 = new ExecutionRow
         {
             ExecutionId = Guid.NewGuid(),
-            TenantId = tenantId,
+            TenantId = TestTenantIds.T1TenantId,
             DefinitionId = Guid.NewGuid(),
             Status = "Completed",
             StartedAt = DateTime.UtcNow,
@@ -2560,7 +2545,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var page = await sut.ListPagedAsync(tenantId, new ExecutionListQuery { Offset = 0, Limit = 10 }, CancellationToken.None);
+        var page = await sut.ListPagedAsync(new ExecutionListQuery { Offset = 0, Limit = 10 }, CancellationToken.None);
 
         // Assert
         Assert.Equal(2, page.Items.Count);
@@ -2578,11 +2563,10 @@ public sealed class ExecutionServiceTests
     public async Task ListPagedAsync_HasMore_AndHasNotMore()
     {
         // Arrange
-        var tenantId = "t1";
         var w1 = new ExecutionRow
         {
             ExecutionId = Guid.NewGuid(),
-            TenantId = tenantId,
+            TenantId = TestTenantIds.T1TenantId,
             DefinitionId = Guid.NewGuid(),
             Status = "Running",
             StartedAt = DateTime.UtcNow,
@@ -2592,7 +2576,7 @@ public sealed class ExecutionServiceTests
         var w2 = new ExecutionRow
         {
             ExecutionId = Guid.NewGuid(),
-            TenantId = tenantId,
+            TenantId = TestTenantIds.T1TenantId,
             DefinitionId = Guid.NewGuid(),
             Status = "Running",
             StartedAt = DateTime.UtcNow,
@@ -2613,7 +2597,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var page = await sut.ListPagedAsync(tenantId, new ExecutionListQuery { Offset = 0, Limit = 2 }, CancellationToken.None);
+        var page = await sut.ListPagedAsync(new ExecutionListQuery { Offset = 0, Limit = 2 }, CancellationToken.None);
 
         // Assert
         Assert.Equal(3, page.TotalCount);
@@ -2623,7 +2607,7 @@ public sealed class ExecutionServiceTests
         executionRepo.ListWithDisplayIdsPageResult = (2, new List<(ExecutionRow Execution, string? DisplayId)> { (w1, null), (w2, null) });
 
         // Act
-        var page2 = await sut.ListPagedAsync(tenantId, new ExecutionListQuery { Offset = 0, Limit = 2 }, CancellationToken.None);
+        var page2 = await sut.ListPagedAsync(new ExecutionListQuery { Offset = 0, Limit = 2 }, CancellationToken.None);
 
         // Assert
         Assert.Equal(2, page2.TotalCount);
@@ -2649,7 +2633,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var page = await sut.ListPagedAsync("t1", new ExecutionListQuery { Offset = 0, Limit = 10, DefinitionId = "no-such-def" }, CancellationToken.None);
+        var page = await sut.ListPagedAsync(new ExecutionListQuery { Offset = 0, Limit = 10, DefinitionId = "no-such-def" }, CancellationToken.None);
 
         // Assert
         Assert.Equal(0, page.TotalCount);
@@ -2662,7 +2646,6 @@ public sealed class ExecutionServiceTests
     public async Task GetExecutionViewAsync_Success_BuildsNodesAndGraphIdFallbacks()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -2680,7 +2663,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -2711,7 +2694,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var view = await sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
+        var view = await sut.GetExecutionViewAsync(idOrUuid: "X", CancellationToken.None);
 
         // Assert
         Assert.Equal(executionId.ToString("D"), view.ResourceId);
@@ -2755,7 +2738,6 @@ public sealed class ExecutionServiceTests
     public async Task GetExecutionViewAsync_WhenGraphJsonIsWhitespace_ReturnsEmptyNodes(string graphJson)
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -2764,7 +2746,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -2791,7 +2773,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var view = await sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
+        var view = await sut.GetExecutionViewAsync(idOrUuid: "X", CancellationToken.None);
 
         // Assert
         Assert.Empty(view.Nodes);
@@ -2802,7 +2784,6 @@ public sealed class ExecutionServiceTests
     public async Task GetExecutionViewAsync_WhenGraphJsonInvalid_ReturnsEmptyNodes()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -2811,7 +2792,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -2838,7 +2819,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var view = await sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
+        var view = await sut.GetExecutionViewAsync(idOrUuid: "X", CancellationToken.None);
 
         // Assert
         Assert.Empty(view.Nodes);
@@ -2849,7 +2830,6 @@ public sealed class ExecutionServiceTests
     public async Task GetExecutionViewAsync_WhenNodesPropertyIsNull_ReturnsEmptyNodes()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -2858,7 +2838,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -2885,7 +2865,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var view = await sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
+        var view = await sut.GetExecutionViewAsync(idOrUuid: "X", CancellationToken.None);
 
         // Assert
         Assert.Empty(view.Nodes);
@@ -2896,7 +2876,6 @@ public sealed class ExecutionServiceTests
     public async Task GetExecutionViewAsync_WhenNodesArrayEmpty_ReturnsEmptyNodes()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -2905,7 +2884,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -2932,7 +2911,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var view = await sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None);
+        var view = await sut.GetExecutionViewAsync(idOrUuid: "X", CancellationToken.None);
 
         // Assert
         Assert.Empty(view.Nodes);
@@ -2943,7 +2922,6 @@ public sealed class ExecutionServiceTests
     public async Task GetExecutionViewAsync_WhenSnapshotMissing_ThrowsNotFoundException()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -2952,7 +2930,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -2974,7 +2952,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetExecutionViewAsync(idOrUuid: "X", CancellationToken.None));
     }
 
     /// <summary>実行識別子を解決できないとき表示取得で未検出例外を投げる。</summary>
@@ -2982,7 +2960,6 @@ public sealed class ExecutionServiceTests
     public async Task GetExecutionViewAsync_WhenResolveReturnsNull_ThrowsNotFoundException()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -2991,7 +2968,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -3012,7 +2989,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetExecutionViewAsync(idOrUuid: "X", CancellationToken.None));
     }
 
     /// <summary>解決後に実行行がないとき表示取得で未検出例外を投げる。</summary>
@@ -3020,7 +2997,6 @@ public sealed class ExecutionServiceTests
     public async Task GetExecutionViewAsync_WhenExecutionMissing_ThrowsNotFoundException()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -3042,7 +3018,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetExecutionViewAsync(tenantId, idOrUuid: "X", CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetExecutionViewAsync(idOrUuid: "X", CancellationToken.None));
     }
 
     /// <summary>RECEIVED 先行 INSERT が一時障害で失敗したあと再試行で成功する。</summary>
@@ -3050,7 +3026,6 @@ public sealed class ExecutionServiceTests
     public async Task PublishEventAsync_WhenInsertReceivedTransientlyFails_RetriesThenSucceeds()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -3084,7 +3059,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -3112,9 +3087,7 @@ public sealed class ExecutionServiceTests
             flakyEventDelivery);
 
         // Act
-        await sut.PublishEventAsync(
-            tenantId,
-            idOrUuid: "X",
+        await sut.PublishEventAsync(idOrUuid: "X",
             eventName: "Approve",
             idempotencyKey: dedupKey.IdempotencyKey,
             requestContext: new CommandRequestContext("POST", "/v1/executions/events"),
@@ -3131,7 +3104,6 @@ public sealed class ExecutionServiceTests
     public async Task PublishEventAsync_WhenInsertReceivedCanceled_DoesNotRetry()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -3150,7 +3122,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -3176,9 +3148,7 @@ public sealed class ExecutionServiceTests
             flakyEventDelivery);
 
         // Act & Assert
-        await Assert.ThrowsAsync<TaskCanceledException>(() => sut.PublishEventAsync(
-            tenantId,
-            idOrUuid: "X",
+        await Assert.ThrowsAsync<TaskCanceledException>(() => sut.PublishEventAsync(idOrUuid: "X",
             eventName: "Approve",
             idempotencyKey: dedupKey.IdempotencyKey,
             requestContext: new CommandRequestContext("POST", "/v1/executions/events"),
@@ -3192,7 +3162,6 @@ public sealed class ExecutionServiceTests
     public async Task PublishEventAsync_WhenInsertReceivedTransientExceedsMaxAttempts_Throws()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -3211,7 +3180,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -3249,7 +3218,6 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<IOException>(() => sut.PublishEventAsync(
-            tenantId,
             idOrUuid: "X",
             eventName: "Approve",
             idempotencyKey: dedupKey.IdempotencyKey,
@@ -3266,7 +3234,6 @@ public sealed class ExecutionServiceTests
     public async Task PublishEventAsync_WhenEngineRuntimeMissing_AndExecutionRunning_ThrowsArgumentException()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -3277,7 +3244,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -3298,7 +3265,6 @@ public sealed class ExecutionServiceTests
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
             sut.PublishEventAsync(
-                tenantId,
                 idOrUuid: "X",
                 eventName: "Approve",
                 idempotencyKey: null,
@@ -3316,7 +3282,6 @@ public sealed class ExecutionServiceTests
     public async Task CancelAsync_WhenEngineRuntimeMissing_AndExecutionRunning_ThrowsArgumentException()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -3327,7 +3292,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Running",
                 StartedAt = DateTime.UtcNow,
@@ -3347,7 +3312,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.CancelAsync(tenantId, idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None));
+            sut.CancelAsync(idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None));
 
         Assert.Contains("not loaded in this API process", ex.Message, StringComparison.Ordinal);
         Assert.False(engine.CancelCalled);
@@ -3360,7 +3325,6 @@ public sealed class ExecutionServiceTests
     public async Task PublishEventAsync_WhenEngineRuntimeMissing_AndExecutionCompleted_ThrowsArgumentException()
     {
         // Arrange
-        var tenantId = "t1";
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
 
@@ -3371,7 +3335,7 @@ public sealed class ExecutionServiceTests
             ByIdResult = new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = tenantId,
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = defId,
                 Status = "Completed",
                 StartedAt = DateTime.UtcNow,
@@ -3392,7 +3356,6 @@ public sealed class ExecutionServiceTests
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
             sut.PublishEventAsync(
-                tenantId,
                 idOrUuid: "X",
                 eventName: "Approve",
                 idempotencyKey: null,
@@ -3422,7 +3385,6 @@ public sealed class ExecutionServiceTests
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
             sut.StartAsync(
-                "t1",
                 new StartExecutionRequest { DefinitionId = "DEF-1" },
                 idempotencyKey: null,
                 new CommandRequestContext("POST", "/v1/executions"),
@@ -3446,7 +3408,7 @@ public sealed class ExecutionServiceTests
             new FixedIdGenerator(Guid.NewGuid()),
             new FakeCommandDedupService(null),
             new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(defUuid, "t1", "def"),
+            StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def"),
             new FakeCommandDedupRepository(),
             eventStore,
             new FakeEventDeliveryDedupRepository());
@@ -3454,7 +3416,6 @@ public sealed class ExecutionServiceTests
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sut.StartAsync(
-                "t1",
                 new StartExecutionRequest { DefinitionId = "DEF-1" },
                 idempotencyKey: null,
                 new CommandRequestContext("POST", "/v1/executions"),
@@ -3476,7 +3437,7 @@ public sealed class ExecutionServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            sut.EnsureExecutionExistsAsync("t1", Guid.NewGuid(), CancellationToken.None));
+            sut.EnsureExecutionExistsAsync(Guid.NewGuid(), CancellationToken.None));
     }
 
     /// <summary>スナップショット JSON を execution ID で取得できる。</summary>
@@ -3567,12 +3528,12 @@ public sealed class ExecutionServiceTests
             new FakeCommandDedupRepository(),
             new FakeExecutionEngine(),
             new FakeDisplayIdService { ResolveResultExecution = Guid.NewGuid() },
-            new FakeExecutionRepository { ByIdResult = new ExecutionRow { ExecutionId = Guid.NewGuid(), TenantId = "t1", DefinitionId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, CancelRequested = false, RestartLost = false } },
+            new FakeExecutionRepository { ByIdResult = new ExecutionRow { ExecutionId = Guid.NewGuid(), TenantId = TestTenantIds.T1TenantId, DefinitionId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, CancelRequested = false, RestartLost = false } },
             new FakeEventStoreRepository());
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.ListEventsAsync("t1", "WF-1", afterSeq: -1, limit: 10, CancellationToken.None));
+            sut.ListEventsAsync("WF-1", afterSeq: -1, limit: 10, CancellationToken.None));
         Assert.Contains("afterSeq", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -3588,12 +3549,12 @@ public sealed class ExecutionServiceTests
             new FakeCommandDedupRepository(),
             new FakeExecutionEngine(),
             new FakeDisplayIdService { ResolveResultExecution = Guid.NewGuid() },
-            new FakeExecutionRepository { ByIdResult = new ExecutionRow { ExecutionId = Guid.NewGuid(), TenantId = "t1", DefinitionId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, CancelRequested = false, RestartLost = false } },
+            new FakeExecutionRepository { ByIdResult = new ExecutionRow { ExecutionId = Guid.NewGuid(), TenantId = TestTenantIds.T1TenantId, DefinitionId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, CancelRequested = false, RestartLost = false } },
             new FakeEventStoreRepository());
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.ListEventsAsync("t1", "WF-1", afterSeq: 0, limit: limit, CancellationToken.None));
+            sut.ListEventsAsync("WF-1", afterSeq: 0, limit: limit, CancellationToken.None));
         Assert.Contains("limit", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -3652,6 +3613,11 @@ public sealed class ExecutionServiceTests
             UnitTestHttpContextAccessor(),
             NullLogger<ExecutionMutationPersistence>.Instance);
 
+        if (sqlite.TenantAccessor.TenantId == TestTenantIds.DefaultTenantId)
+        {
+            sqlite.TenantAccessor.Set(TestTenantIds.T1Context);
+        }
+
         return new ExecutionService(
             engine,
             displayIds,
@@ -3701,7 +3667,6 @@ public sealed class ExecutionServiceTests
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
             sut.StartAsync(
-                "reader",
                 new StartExecutionRequest { DefinitionId = defId.ToString("D") },
                 idempotencyKey: null,
                 new CommandRequestContext("POST", "/v1/executions"),
@@ -3733,7 +3698,6 @@ public sealed class ExecutionServiceTests
 
         // Act
         var response = await sut.StartAsync(
-            "executor",
             new StartExecutionRequest { DefinitionId = defId.ToString("D") },
             idempotencyKey: null,
             new CommandRequestContext("POST", "/v1/executions"),
@@ -3775,7 +3739,7 @@ public sealed class ExecutionServiceTests
                 UpdatedAt = now
             });
             ProjectTestData.AddDefaultProject(seed, ownerTenantId, "owner", projectId);
-            DefinitionTestData.AddDefinitionWithVersion(seed, "owner", defId, "shared-def", projectId, compiledJson: "{}");
+            DefinitionTestData.AddDefinitionWithVersion(seed, ownerTenantId, defId, "shared-def", projectId, compiledJson: "{}");
             ProjectTestData.GrantAccess(seed, projectId, granteeTenantId, grantRole);
             await seed.SaveChangesAsync();
         }

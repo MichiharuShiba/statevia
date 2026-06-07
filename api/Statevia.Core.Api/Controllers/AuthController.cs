@@ -35,7 +35,7 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(typeof(AuthMeResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<AuthMeResponse>> Me(CancellationToken ct)
     {
-        if (!_tenantContext.IsResolved || _tenantContext.TenantInternalId is not { } tenantId ||
+        if (!_tenantContext.IsResolved || _tenantContext.TenantId is not { } tenantId ||
             _tenantContext.PrincipalId is not { } principalId)
             throw new UnauthorizedException("Authentication required.", "UNAUTHORIZED");
 

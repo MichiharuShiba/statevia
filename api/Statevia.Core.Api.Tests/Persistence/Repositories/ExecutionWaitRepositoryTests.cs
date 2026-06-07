@@ -23,7 +23,7 @@ public sealed class ExecutionWaitRepositoryTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 DefinitionVersionId = Guid.NewGuid(),
                 Status = "Running",
@@ -84,7 +84,7 @@ public sealed class ExecutionWaitRepositoryTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 DefinitionVersionId = Guid.NewGuid(),
                 Status = "Running",
@@ -145,7 +145,7 @@ public sealed class ExecutionWaitRepositoryTests
             ctx.Executions.Add(new ExecutionRow
             {
                 ExecutionId = executionId,
-                TenantId = "t1",
+                TenantId = TestTenantIds.T1TenantId,
                 DefinitionId = Guid.NewGuid(),
                 DefinitionVersionId = Guid.NewGuid(),
                 Status = "Running",

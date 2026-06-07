@@ -23,7 +23,7 @@ public sealed class EventDeliveryDedupRepositoryTests
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        var row = await repo.FindAsync(uow, "tenant-a", executionId, clientEventId, default);
+        var row = await repo.FindAsync(uow, TestTenantIds.T1TenantId, executionId, clientEventId, default);
 
         // Assert
         Assert.Null(row);
@@ -42,7 +42,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         var acceptedAt = new DateTime(2026, 5, 16, 12, 0, 0, DateTimeKind.Utc);
         var row = new EventDeliveryDedupRow
         {
-            TenantId = "tenant-a",
+            TenantId = TestTenantIds.T1TenantId,
             ExecutionId = executionId,
             ClientEventId = clientEventId,
             BatchId = Guid.NewGuid(),
@@ -56,7 +56,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         await repo.AddReceivedAsync(uow, row, default);
         await uow.SaveChangesAsync(CancellationToken.None);
         await using var readUow = await uowFactory.CreateAsync();
-        var found = await repo.FindAsync(readUow, "tenant-a", executionId, clientEventId, default);
+        var found = await repo.FindAsync(readUow, TestTenantIds.T1TenantId, executionId, clientEventId, default);
 
         // Assert
         Assert.NotNull(found);
@@ -78,7 +78,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         var acceptedAt = DateTime.UtcNow;
         var row = new EventDeliveryDedupRow
         {
-            TenantId = "tenant-a",
+            TenantId = TestTenantIds.T1TenantId,
             ExecutionId = executionId,
             ClientEventId = clientEventId,
             Status = EventDeliveryDedupStatuses.Received,
@@ -119,7 +119,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         {
             seed.EventDeliveryDedup.Add(new EventDeliveryDedupRow
             {
-                TenantId = "tenant-a",
+                TenantId = TestTenantIds.T1TenantId,
                 ExecutionId = executionId,
                 ClientEventId = clientEventId,
                 Status = EventDeliveryDedupStatuses.Received,
@@ -134,7 +134,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         // Act
         var updated = await repo.TryUpdateStatusAsync(
             uow,
-            "tenant-a",
+            TestTenantIds.T1TenantId,
             executionId,
             clientEventId,
             new EventDeliveryDedupStatusUpdate(
@@ -148,7 +148,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         Assert.True(updated);
         await uow.SaveChangesAsync(CancellationToken.None);
         await using var readUow = await uowFactory.CreateAsync();
-        var found = await repo.FindAsync(readUow, "tenant-a", executionId, clientEventId, default);
+        var found = await repo.FindAsync(readUow, TestTenantIds.T1TenantId, executionId, clientEventId, default);
         Assert.NotNull(found);
         Assert.Equal(EventDeliveryDedupStatuses.Applied, found.Status);
         Assert.Equal(appliedAt, found.AppliedAt);
@@ -168,7 +168,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         // Act
         var updated = await repo.TryUpdateStatusAsync(
             uow,
-            "tenant-a",
+            TestTenantIds.T1TenantId,
             Guid.NewGuid(),
             Guid.NewGuid(),
             new EventDeliveryDedupStatusUpdate(
@@ -195,7 +195,7 @@ public sealed class EventDeliveryDedupRepositoryTests
         var acceptedAt = DateTime.UtcNow;
         var row = new EventDeliveryDedupRow
         {
-            TenantId = "tenant-a",
+            TenantId = TestTenantIds.T1TenantId,
             ExecutionId = executionId,
             ClientEventId = clientEventId,
             Status = EventDeliveryDedupStatuses.Received,
@@ -206,10 +206,10 @@ public sealed class EventDeliveryDedupRepositoryTests
         // Act
         await using var uow = await uowFactory.CreateAsync();
         await repo.AddReceivedAsync(uow, row, default);
-        var beforeSave = await repo.FindAsync(uow, "tenant-a", executionId, clientEventId, default);
+        var beforeSave = await repo.FindAsync(uow, TestTenantIds.T1TenantId, executionId, clientEventId, default);
         await uow.SaveChangesAsync(CancellationToken.None);
         await using var readUow = await uowFactory.CreateAsync();
-        var afterSave = await repo.FindAsync(readUow, "tenant-a", executionId, clientEventId, default);
+        var afterSave = await repo.FindAsync(readUow, TestTenantIds.T1TenantId, executionId, clientEventId, default);
 
         // Assert
         Assert.Null(beforeSave);

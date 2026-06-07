@@ -58,7 +58,6 @@ public sealed class ExecutionsControllerTests
     {
         public Exception? ExceptionToThrow { get; set; }
 
-        public string? LastTenantId { get; private set; }
         public string? LastIdempotencyKey { get; private set; }
 
         public ExecutionResponse StartResult { get; set; } = new ExecutionResponse();
@@ -77,42 +76,37 @@ public sealed class ExecutionsControllerTests
         public string? PublishIdempotencyKey { get; private set; }
         public string? ResumeResumeKey { get; private set; }
 
-        public async Task<ExecutionResponse> StartAsync(string tenantId, StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct)
+        public async Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
             LastIdempotencyKey = idempotencyKey;
             return StartResult;
         }
 
-        public async Task<PagedResult<ExecutionResponse>> ListPagedAsync(string tenantId, ExecutionListQuery query, CancellationToken ct)
+        public async Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
             return ListPagedResult;
         }
 
-        public async Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct)
+        public async Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
             return GetResult;
         }
-        public async Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct)
+        public async Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
         }
 
-        public async Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
+        public async Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
             return GraphJsonResult;
         }
         public async Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct)
@@ -122,56 +116,50 @@ public sealed class ExecutionsControllerTests
             return GraphJsonResult;
         }
 
-        public async Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct)
+        public async Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
             return ViewResult;
         }
 
-        public async Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct)
+        public async Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
             return ViewResult;
         }
 
-        public async Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct)
+        public async Task<ExecutionEventsResponseDto> ListEventsAsync(string idOrUuid, long afterSeq, int limit, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
-            LastTenantId = tenantId;
             return EventsResult;
         }
 
-        public async Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct)
+        public async Task ResumeNodeAsync(string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct)
         {
             ResumeCalled = true;
             ResumeResumeKey = resumeKey;
             ResumeIdempotencyKey = idempotencyKey;
-            LastTenantId = tenantId;
             LastIdempotencyKey = idempotencyKey;
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
         }
 
-        public async Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct)
+        public async Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct)
         {
             CancelCalled = true;
             CancelIdempotencyKey = idempotencyKey;
-            LastTenantId = tenantId;
             LastIdempotencyKey = idempotencyKey;
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
         }
 
-        public async Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct)
+        public async Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct)
         {
             PublishCalled = true;
             PublishIdempotencyKey = idempotencyKey;
-            LastTenantId = tenantId;
             LastIdempotencyKey = idempotencyKey;
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
@@ -276,7 +264,6 @@ public sealed class ExecutionsControllerTests
         var ok = Assert.IsType<OkObjectResult>(result);
         var paged = Assert.IsType<PagedResult<ExecutionResponse>>(ok.Value);
         Assert.Single(paged.Items);
-        Assert.Equal("default", executions.LastTenantId);
     }
 
     /// <summary>
@@ -551,7 +538,7 @@ public sealed class ExecutionsControllerTests
         var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, executions, stream);
 
-        var result = await controller.Cancel("X", tenantIdHeader: "t1", idempotencyKey: "idem", ct: CancellationToken.None);
+        var result = await controller.Cancel("X", idempotencyKey: "idem", ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
@@ -602,7 +589,7 @@ public sealed class ExecutionsControllerTests
         var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, executions, stream);
 
-        var result = await controller.ResumeNode("X", "node-1", new ResumeNodeRequest { ResumeKey = "Approve" }, tenantIdHeader: "t1", idempotencyKey: "idem", ct: CancellationToken.None);
+        var result = await controller.ResumeNode("X", "node-1", new ResumeNodeRequest { ResumeKey = "Approve" }, idempotencyKey: "idem", ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
@@ -629,7 +616,7 @@ public sealed class ExecutionsControllerTests
         var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, executions, stream);
 
-        var result = await controller.ResumeNode("X", "node-1", new ResumeNodeRequest { ResumeKey = "Approve" }, tenantIdHeader: "t1", ct: CancellationToken.None);
+        var result = await controller.ResumeNode("X", "node-1", new ResumeNodeRequest { ResumeKey = "Approve" }, ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
@@ -661,7 +648,6 @@ public sealed class ExecutionsControllerTests
         // Assert
         Assert.IsType<NoContentResult>(result);
         Assert.True(executions.ResumeCalled);
-        Assert.Equal("default", executions.LastTenantId);
     }
 
     /// <summary>
@@ -682,7 +668,7 @@ public sealed class ExecutionsControllerTests
         var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, executions, stream);
 
-        var result = await controller.ResumeNode("X", "node-1", body: null, tenantIdHeader: "t1", idempotencyKey: "idem", ct: CancellationToken.None);
+        var result = await controller.ResumeNode("X", "node-1", body: null, idempotencyKey: "idem", ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
@@ -709,7 +695,7 @@ public sealed class ExecutionsControllerTests
         var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, executions, stream);
 
-        var result = await controller.ResumeNode("X", "node-1", new ResumeNodeRequest { ResumeKey = null }, tenantIdHeader: "t1", idempotencyKey: "idem", ct: CancellationToken.None);
+        var result = await controller.ResumeNode("X", "node-1", new ResumeNodeRequest { ResumeKey = null }, idempotencyKey: "idem", ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
@@ -762,9 +748,8 @@ public sealed class ExecutionsControllerTests
             "X",
             "node-1",
             new ResumeNodeRequest { ResumeKey = "Approve" },
-            ct: CancellationToken.None,
-            tenantIdHeader: "t1",
-            idempotencyKey: "idem");
+            idempotencyKey: "idem",
+            ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
@@ -791,7 +776,7 @@ public sealed class ExecutionsControllerTests
         var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, executions, stream);
 
-        var result = await controller.PublishEvent("X", new PublishEventRequest { Name = "Approve" }, tenantIdHeader: "t1", idempotencyKey: "idem", ct: CancellationToken.None);
+        var result = await controller.PublishEvent("X", new PublishEventRequest { Name = "Approve" }, idempotencyKey: "idem", ct: CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
@@ -979,7 +964,6 @@ public sealed class ExecutionsControllerTests
         var created = Assert.IsType<CreatedAtActionResult>(result.Result);
         Assert.Equal("WF-DISP-1", ((ExecutionResponse)created.Value!).DisplayId);
 
-        Assert.Equal("default", executions.LastTenantId);
         Assert.Null(executions.LastIdempotencyKey);
     }
 
@@ -1005,7 +989,6 @@ public sealed class ExecutionsControllerTests
         var result = await controller.Cancel("X", idempotencyKey: "idem", ct: CancellationToken.None);
         Assert.IsType<NoContentResult>(result);
 
-        Assert.Equal("default", executions.LastTenantId);
         Assert.Equal("idem", executions.LastIdempotencyKey);
     }
 
@@ -1030,7 +1013,6 @@ public sealed class ExecutionsControllerTests
         var model = Assert.IsType<ExecutionResponse>(ok.Value);
         Assert.Equal("D1", model.DisplayId);
 
-        Assert.Equal("default", executions.LastTenantId);
     }
 
     /// <summary>
@@ -1053,7 +1035,6 @@ public sealed class ExecutionsControllerTests
         var content = Assert.IsType<ContentResult>(result.Result);
         Assert.Equal("{\"nodes\":[]}", content.Content);
 
-        Assert.Equal("default", executions.LastTenantId);
     }
 
     /// <summary>
@@ -1079,7 +1060,6 @@ public sealed class ExecutionsControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.IsType<ExecutionViewDto>(ok.Value);
 
-        Assert.Equal("default", executions.LastTenantId);
     }
 
     /// <summary>
@@ -1105,7 +1085,6 @@ public sealed class ExecutionsControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.IsType<ExecutionEventsResponseDto>(ok.Value);
 
-        Assert.Equal("default", executions.LastTenantId);
     }
 
     /// <summary>
@@ -1152,7 +1131,6 @@ public sealed class ExecutionsControllerTests
         var result = await controller.PublishEvent("X", new PublishEventRequest { Name = "Approve" }, ct: CancellationToken.None);
         Assert.IsType<NoContentResult>(result);
 
-        Assert.Equal("default", executions.LastTenantId);
         Assert.Null(executions.LastIdempotencyKey);
     }
 }

@@ -46,7 +46,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
 
     /// <inheritdoc />
     public async Task ExecuteSerializableWithRetryAsync(
-        string tenantId,
+        Guid tenantId,
         Guid executionId,
         Guid clientEventId,
         Func<ICoreUnitOfWork, CancellationToken, Task> applyAsync,
@@ -125,7 +125,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
 
     private async Task<int> ApplySerializablePersistenceFailureAsync(
         Exception ex,
-        string tenantId,
+        Guid tenantId,
         Guid executionId,
         Guid clientEventId,
         SerializablePersistenceRetryProgress retryProgress,
@@ -196,7 +196,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
     }
 
     private void LogSerializablePersistRetry(
-        string tenantId,
+        Guid tenantId,
         Guid executionId,
         Guid clientEventId,
         int attempt,
@@ -231,7 +231,7 @@ internal sealed class ExecutionMutationPersistence : IExecutionMutationPersisten
     }
 
     private async Task TryMarkEventDeliveryFailedAsync(
-        string tenantId,
+        Guid tenantId,
         Guid executionId,
         Guid clientEventId,
         CancellationToken cancellationToken)

@@ -85,7 +85,7 @@ public sealed class SecurityIntegrationWebApplicationFactory : WebApplicationFac
     {
         using var scope = Services.CreateScope();
         var jwt = scope.ServiceProvider.GetRequiredService<JwtTokenService>();
-        var (token, _) = jwt.IssueAccessToken(TestTenantIds.DefaultInternalId, "default", principalId);
+        var (token, _) = jwt.IssueAccessToken(TestTenantIds.DefaultTenantId, "default", principalId);
         return token;
     }
 

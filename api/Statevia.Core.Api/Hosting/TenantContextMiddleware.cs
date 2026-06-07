@@ -50,7 +50,7 @@ internal sealed class TenantContextMiddleware
 
         EnsureTenantActive(tenant.Lifecycle);
 
-        if (resolvedIdentity.TenantInternalId is not null && tenant.TenantId != resolvedIdentity.TenantInternalId)
+        if (resolvedIdentity.TenantId is not null && tenant.TenantId != resolvedIdentity.TenantId)
             throw new ForbiddenException("JWT tenant does not match resolved tenant.", "TENANT_HEADER_MISMATCH");
 
         if (RequiresPrincipal(context.Request.Path) && resolvedIdentity.PrincipalId is null)
@@ -65,7 +65,7 @@ internal sealed class TenantContextMiddleware
         using (tenantContextAccessor.SetContext(state))
         {
             context.Items["Statevia.TenantKey"] = tenant.TenantKey;
-            context.Items["Statevia.TenantInternalId"] = tenant.TenantId;
+            context.Items["Statevia.TenantId"] = tenant.TenantId;
             await _next(context).ConfigureAwait(false);
         }
     }
@@ -111,17 +111,17 @@ internal sealed class TenantContextMiddleware
         string headerTenantKey,
         ClaimsPrincipal jwtPrincipal)
     {
-        var tenantInternalId = ParseGuidClaim(jwtPrincipal, JwtTokenService.TenantIdClaim);
+        var tenantId = ParseGuidClaim(jwtPrincipal, JwtTokenService.TenantIdClaim);
         var jwtTenantKey = jwtPrincipal.FindFirstValue(JwtTokenService.TenantKeyClaim);
         var principalId = ParseGuidClaim(jwtPrincipal, JwtTokenService.PrincipalIdClaim);
-        if (tenantInternalId is null || string.IsNullOrWhiteSpace(jwtTenantKey) || principalId is null)
+        if (tenantId is null || string.IsNullOrWhiteSpace(jwtTenantKey) || principalId is null)
             throw new UnauthorizedException("Invalid token claims.", "UNAUTHORIZED");
 
         if (context.Request.Headers.ContainsKey(TenantHeader.HeaderName) &&
             !string.Equals(headerTenantKey, jwtTenantKey, StringComparison.Ordinal))
             throw new ForbiddenException("X-Tenant-Id does not match JWT tenant.", "TENANT_HEADER_MISMATCH");
 
-        return new ResolvedIdentity(jwtTenantKey, tenantInternalId, principalId);
+        return new ResolvedIdentity(jwtTenantKey, tenantId, principalId);
     }
 
     /// <summary>
@@ -178,12 +178,12 @@ internal sealed class TenantContextMiddleware
     /// 解決済み ID。
     /// </summary>
     /// <param name="TenantKey">テナントキー。</param>
-    /// <param name="TenantInternalId">テナント内部 ID。</param>
+    /// <param name="TenantId">テナント内部 UUID（<c>tenants.tenant_id</c>）。</param>
     /// <param name="PrincipalId">Principal ID。</param>
     /// <param name="EffectivePermissionKeys">API キー認証時の交差済み permission。</param>
     private sealed record ResolvedIdentity(
         string TenantKey,
-        Guid? TenantInternalId,
+        Guid? TenantId,
         Guid? PrincipalId,
         IReadOnlySet<string>? EffectivePermissionKeys = null);
 

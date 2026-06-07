@@ -2,7 +2,7 @@ namespace Statevia.Core.Api.Abstractions.Persistence;
 
 /// <summary>定義版 publish の入力。</summary>
 internal sealed record DefinitionVersionPublishCommand(
-    Guid TenantInternalId,
+    Guid TenantId,
     Guid DefinitionId,
     string Name,
     string SourceYaml,

@@ -6,8 +6,8 @@ public interface ITenantContext
     /// <summary>テナントが解決済みか。</summary>
     bool IsResolved { get; }
 
-    /// <summary>テナント内部 UUID。未解決時は <see langword="null"/>。</summary>
-    Guid? TenantInternalId { get; }
+    /// <summary><c>tenants.tenant_id</c>（内部 UUID）。未解決時は <see langword="null"/>。</summary>
+    Guid? TenantId { get; }
 
     /// <summary>外部向け <c>tenant_key</c>。未解決時は <see langword="null"/>。</summary>
     string? TenantKey { get; }
@@ -33,13 +33,13 @@ public interface ITenantContextAccessor : ITenantContext
 }
 
 /// <summary>テナント文脈のスナップショット。</summary>
-/// <param name="TenantInternalId">内部 UUID。</param>
-/// <param name="TenantKey">外部キー。</param>
+/// <param name="TenantId">内部 UUID（<c>tenants.tenant_id</c>）。</param>
+/// <param name="TenantKey">外部キー（<c>tenants.tenant_key</c> / HTTP <c>X-Tenant-Id</c> の値）。</param>
 /// <param name="PrincipalId">Principal（任意）。</param>
 /// <param name="Lifecycle">テナントライフサイクル。</param>
 /// <param name="EffectivePermissionKeys">API キー認証時の交差済み permission（任意）。</param>
 public sealed record TenantContextState(
-    Guid TenantInternalId,
+    Guid TenantId,
     string TenantKey,
     Guid? PrincipalId,
     Application.Security.TenantLifecycle Lifecycle,

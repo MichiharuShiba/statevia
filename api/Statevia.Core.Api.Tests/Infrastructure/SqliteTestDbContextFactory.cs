@@ -60,9 +60,18 @@ internal sealed class SqliteTestDatabase : IDisposable
         var now = DateTime.UtcNow;
         db.Tenants.Add(new TenantRow
         {
-            TenantId = TestTenantIds.DefaultInternalId,
+            TenantId = TestTenantIds.DefaultTenantId,
             TenantKey = "default",
             DisplayName = "Default",
+            Lifecycle = TenantLifecycle.Active,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        db.Tenants.Add(new TenantRow
+        {
+            TenantId = TestTenantIds.T1TenantId,
+            TenantKey = "t1",
+            DisplayName = "T1",
             Lifecycle = TenantLifecycle.Active,
             CreatedAt = now,
             UpdatedAt = now

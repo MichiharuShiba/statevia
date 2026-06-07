@@ -10,14 +10,14 @@ internal static class ProjectTestData
     /// <summary>オーナーテナントの既定 project を作成する。</summary>
     public static ProjectRow AddDefaultProject(
         CoreDbContext ctx,
-        Guid ownerTenantInternalId,
+        Guid ownerTenantId,
         string ownerTenantKey,
         Guid? projectId = null)
     {
         var project = new ProjectRow
         {
             ProjectId = projectId ?? Guid.NewGuid(),
-            OwnerTenantId = ownerTenantInternalId,
+            OwnerTenantId = ownerTenantId,
             Slug = ProjectRepository.DefaultProjectSlug,
             DisplayName = $"{ownerTenantKey} default",
             Visibility = ProjectVisibility.Private,
@@ -31,13 +31,13 @@ internal static class ProjectTestData
     public static ProjectAccessRow GrantAccess(
         CoreDbContext ctx,
         Guid projectId,
-        Guid granteeTenantInternalId,
+        Guid granteeTenantId,
         ProjectAccessRole role)
     {
         var access = new ProjectAccessRow
         {
             ProjectId = projectId,
-            TenantId = granteeTenantInternalId,
+            TenantId = granteeTenantId,
             Role = role,
             CreatedAt = DateTime.UtcNow
         };

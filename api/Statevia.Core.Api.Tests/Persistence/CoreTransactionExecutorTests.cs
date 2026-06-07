@@ -23,7 +23,7 @@ public sealed class CoreTransactionExecutorTests
                 uow.Db.WorkflowDefinitions.Add(new WorkflowDefinitionRow
                 {
                     DefinitionId = definitionId,
-                    TenantId = "tenant-executor-commit",
+                    TenantId = TestTenantIds.DefaultTenantId,
                     Name = "executor-commit",
                     SourceYaml = "name: executor-commit",
                     CompiledJson = "{}",
@@ -58,7 +58,7 @@ public sealed class CoreTransactionExecutorTests
                     uow.Db.WorkflowDefinitions.Add(new WorkflowDefinitionRow
                     {
                         DefinitionId = definitionId,
-                        TenantId = "tenant-executor-rollback",
+                        TenantId = TestTenantIds.DefaultTenantId,
                         Name = "executor-rollback",
                         SourceYaml = "name: executor-rollback",
                         CompiledJson = "{}",
@@ -110,7 +110,7 @@ public sealed class CoreTransactionExecutorTests
                 uow.Db.WorkflowDefinitions.Add(new WorkflowDefinitionRow
                 {
                     DefinitionId = definitionId,
-                    TenantId = "tenant-readonly",
+                    TenantId = TestTenantIds.DefaultTenantId,
                     Name = "readonly",
                     SourceYaml = "name: readonly",
                     CompiledJson = "{}",

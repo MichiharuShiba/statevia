@@ -22,7 +22,7 @@ public sealed class PlatformDataAccessTests
 
         // Assert
         Assert.NotNull(tenant);
-        Assert.Equal(TestTenantIds.DefaultInternalId, tenant.TenantId);
+        Assert.Equal(TestTenantIds.DefaultTenantId, tenant.TenantId);
     }
 
     /// <summary>存在しない tenant_key は null。</summary>
@@ -55,7 +55,7 @@ public sealed class PlatformDataAccessTests
         // Assert
         Assert.NotNull(lookup);
         Assert.Equal("user@example.com", lookup.User.Email);
-        Assert.Equal(TestTenantIds.DefaultInternalId, lookup.Tenant.TenantId);
+        Assert.Equal(TestTenantIds.DefaultTenantId, lookup.Tenant.TenantId);
         Assert.True(lookup.Principal.IsActive);
     }
 
@@ -86,7 +86,7 @@ public sealed class PlatformDataAccessTests
 
         // Act
         var lookup = await platform.FindUserPrincipalAsync(
-            TestTenantIds.DefaultInternalId,
+            TestTenantIds.DefaultTenantId,
             principalId,
             CancellationToken.None);
 
@@ -137,7 +137,7 @@ public sealed class PlatformDataAccessTests
         // Assert
         Assert.NotNull(lookup);
         Assert.Equal(principalId, lookup.Principal.PrincipalId);
-        Assert.Equal(TestTenantIds.DefaultInternalId, lookup.Tenant.TenantId);
+        Assert.Equal(TestTenantIds.DefaultTenantId, lookup.Tenant.TenantId);
     }
 
     /// <summary>ハッシュ不一致は null。</summary>

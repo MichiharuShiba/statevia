@@ -9,7 +9,7 @@ internal interface IExecutionMutationPersistence
     /// Serializable で永続化を試み、PostgreSQL の直列化失敗・デッドロック時は設定に従い再試行する。
     /// </summary>
     Task ExecuteSerializableWithRetryAsync(
-        string tenantId,
+        Guid tenantId,
         Guid executionId,
         Guid clientEventId,
         Func<ICoreUnitOfWork, CancellationToken, Task> applyAsync,

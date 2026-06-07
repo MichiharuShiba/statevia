@@ -183,14 +183,14 @@ public sealed class CommandDedupRepositoryTests
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var repo = new CommandDedupRepository();
         var now = DateTime.UtcNow;
-        const string tenantId = "default";
+        const string tenantKey = "default";
         const string idem = "idem-e2e-test";
 
         await using (var ctx = new CoreDbContext(db.Options))
         {
             ctx.CommandDedup.Add(new CommandDedupRow
             {
-                DedupKey = $"{tenantId}|POST /v1/executions:{idem}:AAA",
+                DedupKey = $"{tenantKey}|POST /v1/executions:{idem}:AAA",
                 Endpoint = "POST /v1/executions",
                 IdempotencyKey = idem,
                 RequestHash = "AAA",
@@ -206,7 +206,7 @@ public sealed class CommandDedupRepositoryTests
         await using var uow = await uowFactory.CreateAsync();
         var conflict = await repo.FindValidConflictingRequestHashAsync(
             uow,
-            tenantId,
+            tenantKey,
             "POST /v1/executions",
             idem,
             "BBB",
@@ -229,14 +229,14 @@ public sealed class CommandDedupRepositoryTests
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var repo = new CommandDedupRepository();
         var now = DateTime.UtcNow;
-        const string tenantId = "default";
+        const string tenantKey = "default";
         const string hash = "SAME";
 
         await using (var ctx = new CoreDbContext(db.Options))
         {
             ctx.CommandDedup.Add(new CommandDedupRow
             {
-                DedupKey = $"{tenantId}|POST /v1/executions:key1:{hash}",
+                DedupKey = $"{tenantKey}|POST /v1/executions:key1:{hash}",
                 Endpoint = "POST /v1/executions",
                 IdempotencyKey = "key1",
                 RequestHash = hash,
@@ -252,7 +252,7 @@ public sealed class CommandDedupRepositoryTests
         await using var uow = await uowFactory.CreateAsync();
         var conflict = await repo.FindValidConflictingRequestHashAsync(
             uow,
-            tenantId,
+            tenantKey,
             "POST /v1/executions",
             "key1",
             hash,

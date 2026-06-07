@@ -20,14 +20,14 @@ public sealed class ExecutionStreamServiceTests
             _status = status;
         }
 
-        public Task<ExecutionResponse> StartAsync(string tenantId, StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(string tenantId, ExecutionListQuery query, CancellationToken ct) =>
+        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+        public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = _status });
-        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) => Task.CompletedTask;
-        public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
+        public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
+        public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct)
         {
             GetGraphJsonCalls++;
             return Task.FromResult(_graphJson);
@@ -37,12 +37,12 @@ public sealed class ExecutionStreamServiceTests
             GetGraphJsonCalls++;
             return Task.FromResult<string?>(_graphJson);
         }
-        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
-        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
-        public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
-        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
-        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
-        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionEventsResponseDto> ListEventsAsync(string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
+        public Task ResumeNodeAsync( string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
     }
 
@@ -55,14 +55,14 @@ public sealed class ExecutionStreamServiceTests
 
         public int GetGraphJsonCalls => _getGraphCalls;
 
-        public Task<ExecutionResponse> StartAsync(string tenantId, StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(string tenantId, ExecutionListQuery query, CancellationToken ct) =>
+        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+        public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = "Running" });
-        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) => Task.CompletedTask;
-        public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
+        public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
+        public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct)
         {
             return Task.FromResult(_stableJson);
         }
@@ -74,12 +74,12 @@ public sealed class ExecutionStreamServiceTests
 
             return Task.FromResult<string?>(_stableJson);
         }
-        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
-        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
-        public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
-        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
-        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
-        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionEventsResponseDto> ListEventsAsync(string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
+        public Task ResumeNodeAsync( string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
     }
 
@@ -95,16 +95,16 @@ public sealed class ExecutionStreamServiceTests
         /// <summary>2 回目以降のグラフ取得呼び出しについて、直前呼び出し開始からの経過時間。</summary>
         public TimeSpan? TimeSincePreviousGetGraphStarted { get; private set; }
 
-        public Task<ExecutionResponse> StartAsync(string tenantId, StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(string tenantId, ExecutionListQuery query, CancellationToken ct) =>
+        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+        public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = "Running" });
-        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) => Task.CompletedTask;
-        public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct)
+        public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
+        public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct)
         {
             return Task.FromResult(_stableJson);
         }
@@ -122,21 +122,21 @@ public sealed class ExecutionStreamServiceTests
             return Task.FromResult<string?>(_stableJson);
         }
 
-        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
 
-        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) =>
+        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) =>
+        public Task<ExecutionEventsResponseDto> ListEventsAsync(string idOrUuid, long afterSeq, int limit, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task ResumeNodeAsync( string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
@@ -144,21 +144,21 @@ public sealed class ExecutionStreamServiceTests
 
     private sealed class ThrowingExecutionService : IExecutionService
     {
-        public Task<ExecutionResponse> StartAsync(string tenantId, StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(string tenantId, ExecutionListQuery query, CancellationToken ct) =>
+        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+        public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = "Running" });
-        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) => throw new NotSupportedException();
-        public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) => Task.FromResult("{\"nodes\":[]}");
+        public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
+        public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) => Task.FromResult("{\"nodes\":[]}");
         public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
-        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
-        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
-        public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
-        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
-        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
-        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionEventsResponseDto> ListEventsAsync(string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
+        public Task ResumeNodeAsync( string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
     }
 
@@ -167,25 +167,25 @@ public sealed class ExecutionStreamServiceTests
     {
         public int TryGetSnapshotCalls { get; private set; }
 
-        public Task<ExecutionResponse> StartAsync(string tenantId, StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(string tenantId, ExecutionListQuery query, CancellationToken ct) =>
+        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
-        public Task<ExecutionResponse> GetExecutionResponseAsync(string tenantId, string idOrUuid, CancellationToken ct) =>
+        public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = "Running" });
-        public Task EnsureExecutionExistsAsync(string tenantId, Guid executionId, CancellationToken ct) => Task.CompletedTask;
-        public Task<string> GetGraphJsonAsync(string tenantId, string idOrUuid, CancellationToken ct) => Task.FromResult("{\"nodes\":[]}");
+        public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
+        public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) => Task.FromResult("{\"nodes\":[]}");
         public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct)
         {
             TryGetSnapshotCalls++;
             return Task.FromResult<string?>(null);
         }
-        public Task<ExecutionViewDto> GetExecutionViewAsync(string tenantId, string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
-        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string tenantId, string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
-        public Task<ExecutionEventsResponseDto> ListEventsAsync(string tenantId, string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
-        public Task ResumeNodeAsync(string tenantId, string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
-        public Task CancelAsync(string tenantId, string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
-        public Task PublishEventAsync(string tenantId, string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionEventsResponseDto> ListEventsAsync(string idOrUuid, long afterSeq, int limit, CancellationToken ct) => throw new NotSupportedException();
+        public Task ResumeNodeAsync( string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
+        public Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
     }
 
@@ -220,7 +220,7 @@ public sealed class ExecutionStreamServiceTests
         http.Response.Body = new MemoryStream();
 
         // Act
-        await sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", CancellationToken.None);
+        await sut.WriteStreamAsync(http.Response, idOrUuid: "X", CancellationToken.None);
 
         // Assert
         Assert.Equal(StatusCodes.Status404NotFound, http.Response.StatusCode);
@@ -249,7 +249,7 @@ public sealed class ExecutionStreamServiceTests
         await cts.CancelAsync();
 
         // Act
-        await sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", cts.Token);
+        await sut.WriteStreamAsync(http.Response, idOrUuid: "X", cts.Token);
 
         // Assert
         Assert.Null(http.Response.ContentType);
@@ -281,7 +281,7 @@ public sealed class ExecutionStreamServiceTests
         cts.CancelAfter(ExecutionStreamService.GraphPollingIntervalMilliseconds - 500); // 1 周目の取得後、次の待機中にキャンセル
 
         // Act
-        await sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", cts.Token);
+        await sut.WriteStreamAsync(http.Response, idOrUuid: "X", cts.Token);
 
         // Assert
         var bodyText = System.Text.Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray());
@@ -311,7 +311,7 @@ public sealed class ExecutionStreamServiceTests
         cts.CancelAfter(ExecutionStreamService.GraphPollingIntervalMilliseconds * 2 + 200); // 2 周のポーリング後、次の待機中にキャンセル
 
         // Act
-        await sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", cts.Token);
+        await sut.WriteStreamAsync(http.Response, idOrUuid: "X", cts.Token);
 
         // Assert
         var bodyText = System.Text.Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray());
@@ -343,7 +343,7 @@ public sealed class ExecutionStreamServiceTests
         cts.CancelAfter(ExecutionStreamService.GraphPollingIntervalMilliseconds - 500);
 
         // Act
-        await sut.WriteStreamAsync(http.Response, "t1", idOrUuid: idOrUuid, cts.Token);
+        await sut.WriteStreamAsync(http.Response, idOrUuid: idOrUuid, cts.Token);
 
         // Assert
         var bodyText = System.Text.Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray());
@@ -373,7 +373,7 @@ public sealed class ExecutionStreamServiceTests
         cts.CancelAfter(ExecutionStreamService.GraphPollingIntervalMilliseconds * 2 + 500);
 
         // Act
-        await sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", cts.Token);
+        await sut.WriteStreamAsync(http.Response, idOrUuid: "X", cts.Token);
 
         // Assert
         Assert.True(fakeExecutions.GetGraphJsonCalls >= 2);
@@ -403,7 +403,7 @@ public sealed class ExecutionStreamServiceTests
         cts.CancelAfter(ExecutionStreamService.GraphPollingIntervalMilliseconds * 2 + 500);
 
         // Act
-        await sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", cts.Token);
+        await sut.WriteStreamAsync(http.Response, idOrUuid: "X", cts.Token);
 
         // Assert
         Assert.NotNull(fakeExecutions.TimeSincePreviousGetGraphStarted);
@@ -431,7 +431,7 @@ public sealed class ExecutionStreamServiceTests
         http.Response.Body = body;
 
         // Act
-        await sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", CancellationToken.None);
+        await sut.WriteStreamAsync(http.Response, idOrUuid: "X", CancellationToken.None);
 
         // Assert
         Assert.Equal("text/event-stream", http.Response.ContentType);
@@ -479,7 +479,7 @@ public sealed class ExecutionStreamServiceTests
         http.Response.Body = body;
 
         // Act
-        await sut.WriteStreamAsync(http.Response, "t1", idOrUuid: "X", CancellationToken.None);
+        await sut.WriteStreamAsync(http.Response, idOrUuid: "X", CancellationToken.None);
 
         // Assert
         var bodyText = System.Text.Encoding.UTF8.GetString(body.ToArray());

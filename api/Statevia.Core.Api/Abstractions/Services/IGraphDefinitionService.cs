@@ -8,10 +8,9 @@ namespace Statevia.Core.Api.Abstractions.Services;
 public interface IGraphDefinitionService
 {
     /// <summary>
-    /// グラフ ID（定義の display_id）とテナントでグラフ定義を取得する。
+    /// グラフ ID（定義の display_id）でグラフ定義を取得する。テナントは <see cref="Abstractions.Security.ITenantContext"/> から解決する。
     /// </summary>
     /// <param name="graphId">グラフ ID。</param>
-    /// <param name="tenantId">テナント ID。</param>
     /// <param name="ct">キャンセルトークン。</param>
-    Task<GraphDefinitionResponse> GetByGraphIdAsync(string graphId, string tenantId, CancellationToken ct = default);
+    Task<GraphDefinitionResponse> GetByGraphIdAsync(string graphId, CancellationToken ct = default);
 }

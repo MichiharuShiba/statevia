@@ -152,12 +152,16 @@ internal class CoreDbContext : DbContext
             e.ToTable("workflow_definitions");
             e.HasKey(x => x.DefinitionId);
             e.Property(x => x.DefinitionId).HasColumnName(Columns.DefinitionId);
-            e.Property(x => x.TenantId).HasMaxLength(64).HasColumnName(Columns.TenantId);
+            e.Property(x => x.TenantId).HasColumnName(Columns.TenantId);
             e.Property(x => x.Name).HasMaxLength(512).HasColumnName(Columns.Name);
             e.Property(x => x.SourceYaml).HasColumnName(Columns.SourceYaml);
             e.Property(x => x.CompiledJson).HasColumnName(Columns.CompiledJson);
             e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
+            e.HasOne<TenantRow>()
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // definitions（論理定義メタ）
@@ -166,7 +170,7 @@ internal class CoreDbContext : DbContext
             e.ToTable("definitions");
             e.HasKey(x => x.DefinitionId);
             e.Property(x => x.DefinitionId).HasColumnName(Columns.DefinitionId);
-            e.Property(x => x.TenantId).HasMaxLength(64).HasColumnName(Columns.TenantId);
+            e.Property(x => x.TenantId).HasColumnName(Columns.TenantId);
             e.Property(x => x.ProjectId).HasColumnName(Columns.ProjectId);
             e.Property(x => x.Slug).HasMaxLength(128).HasColumnName(Columns.Slug);
             e.Property(x => x.Name).HasMaxLength(512).HasColumnName(Columns.Name);
@@ -177,6 +181,10 @@ internal class CoreDbContext : DbContext
             e.HasOne<ProjectRow>()
                 .WithMany()
                 .HasForeignKey(x => x.ProjectId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<TenantRow>()
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -204,13 +212,17 @@ internal class CoreDbContext : DbContext
             e.ToTable("executions");
             e.HasKey(x => x.ExecutionId);
             e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
-            e.Property(x => x.TenantId).HasMaxLength(64).HasColumnName(Columns.TenantId);
+            e.Property(x => x.TenantId).HasColumnName(Columns.TenantId);
             e.Property(x => x.DefinitionId).HasColumnName(Columns.DefinitionId);
             e.Property(x => x.DefinitionVersionId).HasColumnName(Columns.DefinitionVersionId);
             e.Property(x => x.Status).HasMaxLength(64).HasColumnName(Columns.Status);
             e.HasOne<DefinitionVersionRow>()
                 .WithMany()
                 .HasForeignKey(x => x.DefinitionVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<TenantRow>()
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
             e.Property(x => x.StartedAt).HasColumnName(Columns.StartedAt);
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
@@ -267,7 +279,7 @@ internal class CoreDbContext : DbContext
             e.ToTable("execution_cursors");
             e.HasKey(x => x.ExecutionId);
             e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
-            e.Property(x => x.TenantId).HasMaxLength(64).HasColumnName(Columns.TenantId);
+            e.Property(x => x.TenantId).HasColumnName(Columns.TenantId);
             e.Property(x => x.CurrentNodeId).HasMaxLength(64).HasColumnName(Columns.CurrentNodeId);
             e.Property(x => x.CurrentRuntimeId).HasMaxLength(128).HasColumnName(Columns.CurrentRuntimeId);
             e.Property(x => x.CurrentWorkerId).HasMaxLength(128).HasColumnName(Columns.CurrentWorkerId);
@@ -278,6 +290,10 @@ internal class CoreDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.ExecutionId)
                 .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<TenantRow>()
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // execution_waits（durable wait のみ）
@@ -322,7 +338,7 @@ internal class CoreDbContext : DbContext
         {
             e.ToTable("event_delivery_dedup");
             e.HasKey(x => new { x.TenantId, x.ExecutionId, x.ClientEventId });
-            e.Property(x => x.TenantId).HasMaxLength(64).HasColumnName(Columns.TenantId);
+            e.Property(x => x.TenantId).HasColumnName(Columns.TenantId);
             e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
             e.Property(x => x.ClientEventId).HasColumnName(Columns.ClientEventId);
             e.Property(x => x.BatchId).HasColumnName(Columns.BatchId);
@@ -333,6 +349,10 @@ internal class CoreDbContext : DbContext
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
 
             e.HasIndex(x => new { x.TenantId, x.ExecutionId, x.BatchId });
+            e.HasOne<TenantRow>()
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         ConfigureTenantScopedFilters(modelBuilder);
@@ -340,62 +360,69 @@ internal class CoreDbContext : DbContext
     }
 
     /// <summary>
-    /// 既存 <c>tenant_id</c> varchar は移行期 <c>tenant_key</c> と同値。未解決時は fail-closed。
+    /// テナントスコープ行は <see cref="ITenantContext.TenantId"/> のみで fail-closed フィルタする。
     /// </summary>
-    private void ConfigureTenantScopedFilters(ModelBuilder modelBuilder)
+    private void ConfigureTenantScopedFilters(ModelBuilder modelBuilder) =>
+        ConfigureTenantIdEntityFilters(modelBuilder);
+
+    private void ConfigureTenantIdEntityFilters(ModelBuilder modelBuilder)
     {
-        ConfigureTenantKeyEntityFilters(modelBuilder);
-        ConfigureTenantInternalIdEntityFilters(modelBuilder);
+        ConfigureCoreTenantIdEntityFilters(modelBuilder);
+        ConfigureSecurityTenantIdEntityFilters(modelBuilder);
     }
 
-    private void ConfigureTenantKeyEntityFilters(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<WorkflowDefinitionRow>().HasQueryFilter(e =>
-            !_queryFilterOptions.IsEnabled ||
-            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantKey));
-
-        modelBuilder.Entity<ExecutionRow>().HasQueryFilter(e =>
-            !_queryFilterOptions.IsEnabled ||
-            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantKey));
-
-        modelBuilder.Entity<ExecutionCursorRow>().HasQueryFilter(e =>
-            !_queryFilterOptions.IsEnabled ||
-            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantKey));
-
-        modelBuilder.Entity<EventDeliveryDedupRow>().HasQueryFilter(e =>
-            !_queryFilterOptions.IsEnabled ||
-            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantKey));
-    }
-
-    private void ConfigureTenantInternalIdEntityFilters(ModelBuilder modelBuilder)
+    private void ConfigureCoreTenantIdEntityFilters(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TenantRow>().HasQueryFilter(e =>
             !_queryFilterOptions.IsEnabled ||
-            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantInternalId));
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantId));
 
+        modelBuilder.Entity<WorkflowDefinitionRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantId));
+
+        modelBuilder.Entity<DefinitionRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantId));
+
+        modelBuilder.Entity<ExecutionRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantId));
+
+        modelBuilder.Entity<ExecutionCursorRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantId));
+
+        modelBuilder.Entity<EventDeliveryDedupRow>().HasQueryFilter(e =>
+            !_queryFilterOptions.IsEnabled ||
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantId));
+    }
+
+    private void ConfigureSecurityTenantIdEntityFilters(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<PrincipalRow>().HasQueryFilter(e =>
             !_queryFilterOptions.IsEnabled ||
-            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantInternalId));
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantId));
 
         modelBuilder.Entity<UserRow>().HasQueryFilter(e =>
             !_queryFilterOptions.IsEnabled ||
-            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantInternalId));
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantId));
 
         modelBuilder.Entity<GroupRow>().HasQueryFilter(e =>
             !_queryFilterOptions.IsEnabled ||
-            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantInternalId));
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantId));
 
         modelBuilder.Entity<ServiceAccountRow>().HasQueryFilter(e =>
             !_queryFilterOptions.IsEnabled ||
-            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantInternalId));
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantId));
 
         modelBuilder.Entity<ApiKeyRow>().HasQueryFilter(e =>
             !_queryFilterOptions.IsEnabled ||
-            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantInternalId));
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantId));
 
         modelBuilder.Entity<ProjectAccessRow>().HasQueryFilter(e =>
             !_queryFilterOptions.IsEnabled ||
-            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantInternalId));
+            (_tenantAccessor.IsResolved && e.TenantId == _tenantAccessor.TenantId));
     }
 
     private static void ConfigureSecurityEntities(ModelBuilder modelBuilder)

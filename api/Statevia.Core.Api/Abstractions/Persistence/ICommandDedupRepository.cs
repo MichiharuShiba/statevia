@@ -12,7 +12,7 @@ internal interface ICommandDedupRepository
     /// </summary>
     Task<CommandDedupRow?> FindValidConflictingRequestHashAsync(
         ICoreUnitOfWork uow,
-        string tenantId,
+        string tenantKey,
         string endpoint,
         string idempotencyKey,
         string requestHash,

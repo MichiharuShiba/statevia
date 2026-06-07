@@ -26,16 +26,16 @@ internal sealed class JwtTokenService
     }
 
     /// <summary>アクセストークンを発行する。</summary>
-    /// <param name="tenantInternalId">テナント内部 ID。</param>
+    /// <param name="tenantId"><c>tenants.tenant_id</c>（JWT <c>tenant_id</c> クレーム）。</param>
     /// <param name="tenantKey">外部キー。</param>
     /// <param name="principalId">Principal ID。</param>
     /// <returns>JWT 文字列と有効期限。</returns>
-    public (string Token, DateTime ExpiresAt) IssueAccessToken(Guid tenantInternalId, string tenantKey, Guid principalId)
+    public (string Token, DateTime ExpiresAt) IssueAccessToken(Guid tenantId, string tenantKey, Guid principalId)
     {
         var expiresAt = DateTime.UtcNow.AddMinutes(_options.AccessTokenLifetimeMinutes);
         var claims = new[]
         {
-            new Claim(TenantIdClaim, tenantInternalId.ToString()),
+            new Claim(TenantIdClaim, tenantId.ToString()),
             new Claim(TenantKeyClaim, tenantKey),
             new Claim(PrincipalIdClaim, principalId.ToString()),
             new Claim(JwtRegisteredClaimNames.Sub, principalId.ToString())

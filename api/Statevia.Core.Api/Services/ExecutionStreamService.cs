@@ -43,10 +43,9 @@ public sealed class ExecutionStreamService
     /// Server-Sent Events としてグラフ JSON の変化を書き込む。
     /// </summary>
     /// <param name="response">HTTP レスポンス。</param>
-    /// <param name="tenantId">テナント ID。</param>
     /// <param name="idOrUuid">ワークフロー表示 ID または UUID。</param>
     /// <param name="ct">キャンセルトークン。</param>
-    public async Task WriteStreamAsync(HttpResponse response, string tenantId, string idOrUuid, CancellationToken ct)
+    public async Task WriteStreamAsync(HttpResponse response, string idOrUuid, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(response);
 
@@ -61,7 +60,7 @@ public sealed class ExecutionStreamService
         }
 
         // 接続開始時に tenant + execution の存在を一度だけ確認する。
-        await _executions.EnsureExecutionExistsAsync(tenantId, uuid.Value, ct).ConfigureAwait(false);
+        await _executions.EnsureExecutionExistsAsync(uuid.Value, ct).ConfigureAwait(false);
 
         var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false) ?? idOrUuid;
 

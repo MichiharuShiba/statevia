@@ -14,7 +14,7 @@ internal sealed class NullTenantContextAccessor : ITenantContextAccessor
     public bool IsResolved => false;
 
     /// <inheritdoc />
-    public Guid? TenantInternalId => null;
+    public Guid? TenantId => null;
 
     /// <inheritdoc />
     public string? TenantKey => null;

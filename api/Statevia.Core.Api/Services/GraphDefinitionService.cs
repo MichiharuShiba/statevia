@@ -36,12 +36,11 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
         _runtimeAuth = runtimeAuth;
     }
 
-    public async Task<GraphDefinitionResponse> GetByGraphIdAsync(string graphId, string tenantId, CancellationToken ct = default)
+    public async Task<GraphDefinitionResponse> GetByGraphIdAsync(string graphId, CancellationToken ct = default)
     {
         await EnsureDefinitionsReadAsync(ct).ConfigureAwait(false);
 
-        _ = tenantId;
-        var tenantInternalId = _tenantContext.GetRequiredTenantInternalId();
+        var tenantId = _tenantContext.GetRequiredTenantId();
 
         var uuid = await _displayIds.ResolveAsync("definition", graphId, ct).ConfigureAwait(false);
         if (uuid == null)
@@ -51,7 +50,7 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
             async (uow, innerCt) =>
             {
                 var detail = await _definitions
-                    .GetLatestByIdAsync(uow, tenantInternalId, uuid.Value, innerCt)
+                    .GetLatestByIdAsync(uow, tenantId, uuid.Value, innerCt)
                     .ConfigureAwait(false);
                 if (detail is null)
                     throw new NotFoundException("Graph not found");
