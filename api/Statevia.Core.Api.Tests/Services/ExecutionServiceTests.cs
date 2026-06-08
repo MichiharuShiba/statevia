@@ -3630,6 +3630,8 @@ public sealed class ExecutionServiceTests
             definitions,
             projectAuthorization ?? new AllowAllProjectAuthorizationService(),
             new AllowAllRuntimePermissionAuthorization(),
+            new AllowAllExecutionMutationAuthorization(),
+            new FakeExecutionSecuritySnapshotFactory(sqlite.TenantAccessor),
             sqlite.TenantAccessor,
             dedup,
             eventStore,
