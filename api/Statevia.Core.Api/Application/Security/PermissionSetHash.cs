@@ -13,7 +13,7 @@ public static class PermissionSetHash
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Globalization",
         "CA1308:Normalize strings to uppercase",
-        Justification = "execution-security-snapshot.md で小文字 hex を規定。")]
+        Justification = "docs/execution-security-snapshot.md で小文字 hex を規定。")]
     public static string Compute(IEnumerable<string> permissionKeys)
     {
         ArgumentNullException.ThrowIfNull(permissionKeys);
