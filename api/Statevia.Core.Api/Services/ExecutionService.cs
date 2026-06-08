@@ -70,6 +70,8 @@ internal sealed class ExecutionService : IExecutionService
     private readonly IDefinitionRepository _definitions;
     private readonly IProjectAuthorizationService _projectAuth;
     private readonly IRuntimePermissionAuthorization _runtimeAuth;
+    private readonly IExecutionMutationAuthorization _mutationAuth;
+    private readonly IExecutionSecuritySnapshotFactory _snapshotFactory;
     private readonly ITenantContextAccessor _tenantContext;
     private readonly ICommandDedupRepository _dedup;
     private readonly IEventStoreRepository _eventStore;
@@ -98,6 +100,8 @@ internal sealed class ExecutionService : IExecutionService
         IDefinitionRepository definitions,
         IProjectAuthorizationService projectAuth,
         IRuntimePermissionAuthorization runtimeAuth,
+        IExecutionMutationAuthorization mutationAuth,
+        IExecutionSecuritySnapshotFactory snapshotFactory,
         ITenantContextAccessor tenantContext,
         ICommandDedupRepository dedup,
         IEventStoreRepository eventStore,
@@ -121,6 +125,8 @@ internal sealed class ExecutionService : IExecutionService
         _definitions = definitions;
         _projectAuth = projectAuth;
         _runtimeAuth = runtimeAuth;
+        _mutationAuth = mutationAuth;
+        _snapshotFactory = snapshotFactory;
         _tenantContext = tenantContext;
         _dedup = dedup;
         _eventStore = eventStore;
@@ -175,20 +181,29 @@ internal sealed class ExecutionService : IExecutionService
         var status = MapStatus(_engine.GetSnapshot(engineId));
         var graphJson = _engine.ExportExecutionGraph(engineId);
 
-        var startedPayload = JsonSerializer.Serialize(
-            new
-            {
-                definitionId = defUuid.Value.ToString(),
-                definitionVersionId = versionRow.DefinitionVersionId.ToString(),
-                definitionVersion = versionRow.Version,
-                tenantId
-            },
-            CamelCaseJsonSerializerOptions);
-
         return await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
             {
                 var createdAt = DateTime.UtcNow;
+                var securitySnapshot = await _snapshotFactory
+                    .CaptureForStartAsync(tenantId, defUuid.Value, createdAt, innerCt)
+                    .ConfigureAwait(false);
+                var securitySnapshotJson = ExecutionSecuritySnapshotJson.Serialize(securitySnapshot);
+
+                var startedPayload = JsonSerializer.Serialize(
+                    new
+                    {
+                        definitionId = defUuid.Value.ToString(),
+                        definitionVersionId = versionRow.DefinitionVersionId.ToString(),
+                        definitionVersion = versionRow.Version,
+                        tenantId,
+                        startedByPrincipalId = securitySnapshot.StartedByPrincipalId,
+                        permissionSetHash = securitySnapshot.PermissionSetHash,
+                        securityModelVersion = securitySnapshot.SecurityModelVersion,
+                        evaluationMode = securitySnapshot.EvaluationMode.ToString()
+                    },
+                    CamelCaseJsonSerializerOptions);
+
                 var displayId = await _displayIdWrites
                     .AllocateAsync(uow, DisplayIdResourceTypes.Execution, executionId, innerCt)
                     .ConfigureAwait(false);
@@ -203,7 +218,8 @@ internal sealed class ExecutionService : IExecutionService
                     StartedAt = createdAt,
                     UpdatedAt = createdAt,
                     CancelRequested = false,
-                    RestartLost = false
+                    RestartLost = false,
+                    SecuritySnapshotJson = securitySnapshotJson
                 };
                 var snapshotRow = new ExecutionGraphSnapshotRow
                 {
@@ -403,7 +419,6 @@ internal sealed class ExecutionService : IExecutionService
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(requestContext);
-        await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
 
         var tenantKey = _tenantContext.GetRequiredTenantKey();
         var tenantId = _tenantContext.GetRequiredTenantId();
@@ -428,6 +443,8 @@ internal sealed class ExecutionService : IExecutionService
             ct).ConfigureAwait(false);
         if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+
+        await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
@@ -524,7 +541,6 @@ internal sealed class ExecutionService : IExecutionService
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(requestContext);
-        await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
 
         var tenantKey = _tenantContext.GetRequiredTenantKey();
         var tenantId = _tenantContext.GetRequiredTenantId();
@@ -549,6 +565,8 @@ internal sealed class ExecutionService : IExecutionService
             ct).ConfigureAwait(false);
         if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+
+        await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
@@ -931,6 +949,15 @@ internal sealed class ExecutionService : IExecutionService
 
     private Task EnsureExecutionsWriteAsync(CancellationToken ct) =>
         _runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.ExecutionsWrite, ct);
+
+    private Task EnsureExecutionMutationWriteAsync(ExecutionRow execution, CancellationToken ct)
+    {
+        var snapshot = ExecutionSecuritySnapshotJson.TryDeserialize(execution.SecuritySnapshotJson);
+        return _mutationAuth.EnsureMutationPermissionAsync(
+            snapshot,
+            RuntimePermissionRequirements.ExecutionsWrite,
+            ct);
+    }
 
     /// <summary>
     /// キャンセル／イベント発行の適用直前に、当該ワークフローがこのプロセスのエンジンへ読み込まれていることを検証する。
