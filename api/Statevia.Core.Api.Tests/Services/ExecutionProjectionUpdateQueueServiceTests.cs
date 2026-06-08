@@ -1,11 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Abstractions.Services;
+using Statevia.Core.Api.Application.Security;
 using Statevia.Core.Api.Configuration;
 using Statevia.Core.Api.Contracts;
 using Statevia.Core.Api.Controllers;
+using Statevia.Core.Api.Infrastructure.Security;
+using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Services;
+using Statevia.Core.Api.Tests.Infrastructure;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 
@@ -116,6 +121,60 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
             throw new NotSupportedException();
     }
 
+    /// <summary>投影更新時にテナント文脈が解決されているか観測する。</summary>
+    private sealed class TenantContextObservingExecutionService : IExecutionService
+    {
+        private readonly ITenantContextAccessor _tenantContextAccessor;
+
+        internal bool WasResolvedDuringUpdate { get; private set; }
+
+        internal Guid? TenantIdDuringUpdate { get; private set; }
+
+        internal TenantContextObservingExecutionService(ITenantContextAccessor tenantContextAccessor) =>
+            _tenantContextAccessor = tenantContextAccessor;
+
+        public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct)
+        {
+            WasResolvedDuringUpdate = _tenantContextAccessor.IsResolved;
+            TenantIdDuringUpdate = _tenantContextAccessor.TenantId;
+            return Task.CompletedTask;
+        }
+
+        public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
+            throw new NotSupportedException();
+        public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) =>
+            throw new NotSupportedException();
+        public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<ExecutionEventsResponseDto> ListEventsAsync(string idOrUuid, long afterSeq, int limit, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task ResumeNodeAsync( string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+            throw new NotSupportedException();
+    }
+
     /// <summary>最初の投影更新だけ完了シグナル待ちでブロックし、グローバルキュー滞留を再現する。</summary>
     private sealed class BlockFirstProjectionUpdateExecutionService : IExecutionService
     {
@@ -166,6 +225,79 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
 
         public Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// ノード完了通知の投影更新前に execution のテナント文脈が確立されることを確認する。
+    /// </summary>
+    [Fact]
+    public async Task EmitNodeCompletedAsync_EstablishesTenantContext_BeforeProjectionUpdate()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        using var database = new SqliteTestDatabase();
+        var definitionId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+
+        await using (var seed = database.Factory.CreateDbContext())
+        {
+            ProjectTestData.AddDefaultProject(seed, TestTenantIds.T1TenantId, "t1", projectId);
+            DefinitionTestData.AddDefinitionWithVersion(
+                seed,
+                TestTenantIds.T1TenantId,
+                definitionId,
+                "wf-projection-queue",
+                projectId,
+                versionId: versionId);
+            seed.Executions.Add(new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = definitionId,
+                DefinitionVersionId = versionId,
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        var executionEngine = new FakeExecutionEngine();
+        var tenantContextAccessor = new TenantContextAccessor();
+        var executionService = new TenantContextObservingExecutionService(tenantContextAccessor);
+        await using var serviceProvider = BuildServiceProvider(
+            executionService,
+            tenantContextAccessor,
+            new PlatformDataAccess(database.Factory));
+        var queue = BuildQueueService(executionEngine, serviceProvider, new ExecutionProjectionQueueOptions
+        {
+            MaxGlobalQueueSize = 10,
+            ProjectionFlushDebounceMs = 0,
+            MaxRetryAttempts = 3,
+            RetryBaseDelayMs = 0,
+            RetryMaxDelayMs = 0
+        });
+        await queue.StartAsync(CancellationToken.None);
+
+        try
+        {
+            // Act
+            await executionEngine.EmitNodeCompletedAsync(executionId);
+            using var drainTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await queue.DrainAsync(executionId, drainTimeout.Token);
+
+            // Assert
+            Assert.True(executionService.WasResolvedDuringUpdate);
+            Assert.Equal(TestTenantIds.T1TenantId, executionService.TenantIdDuringUpdate);
+            Assert.False(tenantContextAccessor.IsResolved);
+        }
+        finally
+        {
+            await queue.StopAsync(CancellationToken.None);
+        }
     }
 
     /// <summary>
@@ -384,9 +516,66 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         }
     }
 
+    /// <summary>投影キューが要求する Platform lookup のスタブ。</summary>
+    private sealed class StubPlatformDataAccess : IPlatformDataAccess
+    {
+        public Task<ExecutionTenantLookup?> FindExecutionTenantAsync(Guid executionId, CancellationToken cancellationToken) =>
+            Task.FromResult<ExecutionTenantLookup?>(new ExecutionTenantLookup(
+                TestTenantIds.T1TenantId,
+                "t1",
+                TenantLifecycle.Active));
+
+        public Task<TenantRow?> FindTenantByKeyAsync(string tenantKey, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<LoginCredentialLookup?> FindLoginCredentialAsync(string tenantKey, string email, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<LoginCredentialLookup?> FindUserPrincipalAsync(Guid tenantId, Guid principalId, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<ApiKeyCredentialLookup?> FindApiKeyCredentialAsync(string keyPrefix, string keyHash, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task TouchApiKeyLastUsedAsync(Guid apiKeyId, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task EnsureDefaultTenantAsync(CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task EnsurePermissionCatalogAsync(CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<bool> IsTenantAdminAsync(Guid principalId, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<string>> ExpandPrincipalPermissionKeysAsync(Guid principalId, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<PrincipalRow?> FindPrincipalAsync(Guid principalId, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<GroupSnapshot>> GetGroupSnapshotsForPrincipalAsync(Guid principalId, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+    }
+
     private static ServiceProvider BuildServiceProvider(IExecutionService executionService)
     {
         var services = new ServiceCollection();
+        services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
+        services.AddSingleton<IPlatformDataAccess, StubPlatformDataAccess>();
+        services.AddScoped<IExecutionService>(_ => executionService);
+        return services.BuildServiceProvider();
+    }
+
+    private static ServiceProvider BuildServiceProvider(
+        IExecutionService executionService,
+        ITenantContextAccessor tenantContextAccessor,
+        IPlatformDataAccess platformDataAccess)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(tenantContextAccessor);
+        services.AddSingleton(platformDataAccess);
         services.AddScoped<IExecutionService>(_ => executionService);
         return services.BuildServiceProvider();
     }

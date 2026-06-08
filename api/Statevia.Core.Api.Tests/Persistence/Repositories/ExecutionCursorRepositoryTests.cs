@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Api.Abstractions.Persistence;
+using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Persistence;
 using Statevia.Core.Api.Persistence.Repositories;
 using Statevia.Core.Api.Tests.Infrastructure;
@@ -112,6 +113,149 @@ public sealed class ExecutionCursorRepositoryTests
         await using var verify = new CoreDbContext(db.Options);
         var stored = await verify.ExecutionCursors.SingleAsync(x => x.ExecutionId == executionId);
         Assert.Equal("new", stored.CurrentNodeId);
+    }
+
+    /// <summary>クエリフィルタ有効かつテナント解決済みなら既存 cursor を更新する（INSERT 重複を起こさない）。</summary>
+    [Fact]
+    public async Task UpsertAsync_UpdatesExisting_WhenQueryFilterEnabled_AndTenantResolved()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var accessor = database.TenantAccessor;
+        var options = database.Options;
+        var repo = new ExecutionCursorRepository();
+        var executionId = Guid.NewGuid();
+        var definitionId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        await using (var seed = new CoreDbContext(options, accessor, DisabledTenantQueryFilterOptions.Instance))
+        {
+            accessor.Set(null);
+            ProjectTestData.AddDefaultProject(seed, TestTenantIds.T1TenantId, "t1", projectId);
+            DefinitionTestData.AddDefinitionWithVersion(
+                seed,
+                TestTenantIds.T1TenantId,
+                definitionId,
+                "wf-cursor-filter",
+                projectId,
+                versionId: versionId);
+            seed.Executions.Add(new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = definitionId,
+                DefinitionVersionId = versionId,
+                Status = "Running",
+                StartedAt = now,
+                UpdatedAt = now,
+                CancelRequested = false,
+                RestartLost = false
+            });
+            seed.ExecutionCursors.Add(new ExecutionCursorRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                CurrentNodeId = "old",
+                State = "Running",
+                UpdatedAt = now
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        accessor.Set(TestTenantIds.T1Context);
+        await using var uowDb = new CoreDbContext(options, accessor, EnabledTenantQueryFilterOptions.Instance);
+        var uow = new CoreUnitOfWork(uowDb);
+
+        // Act
+        await repo.UpsertAsync(
+            uow,
+            new ExecutionCursorRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                CurrentNodeId = "new",
+                State = "Running",
+                UpdatedAt = now
+            },
+            CancellationToken.None);
+        await uow.SaveChangesAsync(CancellationToken.None);
+
+        // Assert
+        await using var verify = new CoreDbContext(options, accessor, DisabledTenantQueryFilterOptions.Instance);
+        var stored = await verify.ExecutionCursors.IgnoreQueryFilters().SingleAsync(x => x.ExecutionId == executionId);
+        Assert.Equal("new", stored.CurrentNodeId);
+    }
+
+    /// <summary>クエリフィルタ有効かつテナント未解決では既存 cursor が見えず PK 重複になる。</summary>
+    [Fact]
+    public async Task UpsertAsync_Throws_WhenQueryFilterEnabled_AndTenantUnresolved()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var accessor = database.TenantAccessor;
+        var options = database.Options;
+        var repo = new ExecutionCursorRepository();
+        var executionId = Guid.NewGuid();
+        var definitionId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        await using (var seed = new CoreDbContext(options, accessor, DisabledTenantQueryFilterOptions.Instance))
+        {
+            accessor.Set(null);
+            ProjectTestData.AddDefaultProject(seed, TestTenantIds.T1TenantId, "t1", projectId);
+            DefinitionTestData.AddDefinitionWithVersion(
+                seed,
+                TestTenantIds.T1TenantId,
+                definitionId,
+                "wf-cursor-filter-unresolved",
+                projectId,
+                versionId: versionId);
+            seed.Executions.Add(new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = definitionId,
+                DefinitionVersionId = versionId,
+                Status = "Running",
+                StartedAt = now,
+                UpdatedAt = now,
+                CancelRequested = false,
+                RestartLost = false
+            });
+            seed.ExecutionCursors.Add(new ExecutionCursorRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                CurrentNodeId = "old",
+                State = "Running",
+                UpdatedAt = now
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        accessor.Set(null);
+        await using var uowDb = new CoreDbContext(options, accessor, EnabledTenantQueryFilterOptions.Instance);
+        var uow = new CoreUnitOfWork(uowDb);
+
+        // Act
+        await repo.UpsertAsync(
+            uow,
+            new ExecutionCursorRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                CurrentNodeId = "new",
+                State = "Running",
+                UpdatedAt = now
+            },
+            CancellationToken.None);
+
+        // Assert
+        await Assert.ThrowsAsync<DbUpdateException>(() => uow.SaveChangesAsync(CancellationToken.None));
     }
 
     /// <summary>DeleteAsync は cursor 行を削除する。</summary>
