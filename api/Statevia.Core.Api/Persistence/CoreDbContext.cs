@@ -91,6 +91,7 @@ internal class CoreDbContext : DbContext
         public const string NodeId = "node_id";
         public const string WaitKind = "wait_kind";
         public const string ResumeToken = "resume_token";
+        public const string SecuritySnapshotJson = "security_snapshot_json";
     }
 
     private readonly ITenantContextAccessor _tenantAccessor;
@@ -228,6 +229,7 @@ internal class CoreDbContext : DbContext
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
             e.Property(x => x.CancelRequested).HasColumnName(Columns.CancelRequested);
             e.Property(x => x.RestartLost).HasColumnName(Columns.RestartLost);
+            e.Property(x => x.SecuritySnapshotJson).HasColumnName(Columns.SecuritySnapshotJson);
         });
 
         // event_store (U2): カラムはスネークケース

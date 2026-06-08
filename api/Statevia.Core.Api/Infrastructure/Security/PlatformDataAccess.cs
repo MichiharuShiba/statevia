@@ -56,6 +56,14 @@ internal interface IPlatformDataAccess
     Task<IReadOnlyList<string>> ExpandPrincipalPermissionKeysAsync(
         Guid principalId,
         CancellationToken cancellationToken);
+
+    /// <summary>Principal ID で Principal 行を検索する。</summary>
+    Task<PrincipalRow?> FindPrincipalAsync(Guid principalId, CancellationToken cancellationToken);
+
+    /// <summary>Principal の所属グループ（ID と名称）を返す。</summary>
+    Task<IReadOnlyList<GroupSnapshot>> GetGroupSnapshotsForPrincipalAsync(
+        Guid principalId,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -367,5 +375,74 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
             .Distinct()
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<PrincipalRow?> FindPrincipalAsync(Guid principalId, CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        return await db.Principals
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.PrincipalId == principalId, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<GroupSnapshot>> GetGroupSnapshotsForPrincipalAsync(
+        Guid principalId,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
+        var userId = await db.UserPrincipals
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(up => up.PrincipalId == principalId)
+            .Select(up => (Guid?)up.UserId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (userId is not null)
+        {
+            var rows = await db.UserGroupMembers
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(m => m.UserId == userId)
+                .Join(
+                    db.Groups.IgnoreQueryFilters().AsNoTracking(),
+                    m => m.GroupId,
+                    g => g.GroupId,
+                    (_, g) => new { g.GroupId, g.Name })
+                .OrderBy(row => row.Name)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            return rows.ConvertAll(row => new GroupSnapshot(row.GroupId, row.Name));
+        }
+
+        var serviceAccountId = await db.ServiceAccounts
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(sa => sa.PrincipalId == principalId)
+            .Select(sa => (Guid?)sa.ServiceAccountId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (serviceAccountId is null)
+            return Array.Empty<GroupSnapshot>();
+
+        var serviceAccountRows = await db.ServiceAccountGroupMembers
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(m => m.ServiceAccountId == serviceAccountId)
+            .Join(
+                db.Groups.IgnoreQueryFilters().AsNoTracking(),
+                m => m.GroupId,
+                g => g.GroupId,
+                (_, g) => new { g.GroupId, g.Name })
+            .OrderBy(row => row.Name)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return serviceAccountRows.ConvertAll(row => new GroupSnapshot(row.GroupId, row.Name));
     }
 }

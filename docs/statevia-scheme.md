@@ -197,6 +197,7 @@ project の **認可 truth**。付与先はテナント単位（Principal 単位
 | updated_at | timestamptz | NOT NULL | 最終更新日時 |
 | cancel_requested | boolean | NOT NULL | キャンセル要求有無 |
 | restart_lost | boolean | NOT NULL | 再起動で失効したか（U8） |
+| security_snapshot_json | text | NULL | Start 時点の `ExecutionSecuritySnapshot` JSON（E4 · 認可用 BLOB。新規 Start は NOT NULL）。検索・集計は別投影テーブル想定（`jsonb` 非採用） |
 
 ### 2.8 event_store（イベントソース）
 
@@ -504,6 +505,7 @@ erDiagram
     timestamptz updated_at
     boolean cancel_requested
     boolean restart_lost
+    text security_snapshot_json
   }
 
   event_store {
@@ -742,6 +744,8 @@ erDiagram
 | `20260524232340_RemoveProjectIsPublic` | `projects.is_public` 削除（discoverability は `visibility` のみ） |
 | `20260526114350_RenameWorkflowsToExecutions` | `workflows` → `executions`、関連 FK 列 `workflow_id` → `execution_id`、`display_ids.kind` を `execution` に更新 |
 | `20260526145448_RenameWorkflowEventsToExecutionEvents` | `workflow_events` → `execution_events`、PK 列 `workflow_event_id` → `execution_event_id` |
+| `20260607143608_ExecutionTenantIdUuidFk` | 実行系 `tenant_id` を uuid FK（`tenants.tenant_id`）へ統一 |
+| `20260608093652_AddExecutionSecuritySnapshot` | `executions.security_snapshot_json` 追加（E4） |
 
 適用: `cd api && dotnet ef database update --project Statevia.Core.Api`
 

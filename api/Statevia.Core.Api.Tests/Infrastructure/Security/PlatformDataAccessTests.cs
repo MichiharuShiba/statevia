@@ -175,6 +175,59 @@ public sealed class PlatformDataAccessTests
         Assert.NotNull(row.LastUsedAt);
     }
 
+    /// <summary>Principal ID で Principal 行を取得できる。</summary>
+    [Fact]
+    public async Task FindPrincipalAsync_Existing_ReturnsPrincipal()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var principalId = await SecurityTestSeed.SeedUserAsync(database, "principal@example.com", "password");
+        var platform = new PlatformDataAccess(database.Factory);
+
+        // Act
+        var principal = await platform.FindPrincipalAsync(principalId, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(principal);
+        Assert.Equal(principalId, principal.PrincipalId);
+    }
+
+    /// <summary>存在しない Principal ID は null。</summary>
+    [Fact]
+    public async Task FindPrincipalAsync_Missing_ReturnsNull()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var platform = new PlatformDataAccess(database.Factory);
+
+        // Act
+        var principal = await platform.FindPrincipalAsync(Guid.NewGuid(), CancellationToken.None);
+
+        // Assert
+        Assert.Null(principal);
+    }
+
+    /// <summary>ユーザーの所属グループを ID と名称で返す。</summary>
+    [Fact]
+    public async Task GetGroupSnapshotsForPrincipalAsync_UserWithGroup_ReturnsSnapshots()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var principalId = await SecurityTestSeed.SeedUserWithGroupPermissionsAsync(
+            database,
+            "group-user@example.com",
+            "password",
+            [WellKnownPermissionKeys.ExecutionsRead]);
+        var platform = new PlatformDataAccess(database.Factory);
+
+        // Act
+        var snapshots = await platform.GetGroupSnapshotsForPrincipalAsync(principalId, CancellationToken.None);
+
+        // Assert
+        Assert.NotEmpty(snapshots);
+        Assert.All(snapshots, snapshot => Assert.False(string.IsNullOrWhiteSpace(snapshot.Name)));
+    }
+
     /// <summary>存在しない API キー ID は no-op。</summary>
     [Fact]
     public async Task TouchApiKeyLastUsedAsync_MissingKey_DoesNotThrow()

@@ -1,12 +1,16 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Logging.Abstractions;
 using Statevia.Core.Api.Contracts;
 
 namespace Statevia.Core.Api.Tests.Controllers;
 
 public sealed class ApiExceptionFilterTests
 {
+    private static ApiExceptionFilter CreateFilter() =>
+        new(NullLogger<ApiExceptionFilter>.Instance);
+
     private static ExceptionContext CreateContext(DefaultHttpContext http, Exception ex)
     {
         var actionContext = new Microsoft.AspNetCore.Mvc.ActionContext(http, new Microsoft.AspNetCore.Routing.RouteData(), new Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor());
@@ -23,7 +27,7 @@ public sealed class ApiExceptionFilterTests
     {
         // Arrange
         var http = new DefaultHttpContext();
-        var filter = new ApiExceptionFilter();
+        var filter = CreateFilter();
         var ctx = CreateContext(http, new NotFoundException("missing"));
 
         // Act
@@ -45,7 +49,7 @@ public sealed class ApiExceptionFilterTests
     {
         // Arrange
         var http = new DefaultHttpContext();
-        var filter = new ApiExceptionFilter();
+        var filter = CreateFilter();
         var ctx = CreateContext(http, new ArgumentException("bad arg"));
 
         // Act
@@ -67,7 +71,7 @@ public sealed class ApiExceptionFilterTests
     {
         // Arrange
         var http = new DefaultHttpContext();
-        var filter = new ApiExceptionFilter();
+        var filter = CreateFilter();
         var details = new[] { new { message = "yaml invalid", field = "yaml" } };
         var ctx = CreateContext(http, new ApiValidationException("validation failed", details));
 
@@ -89,7 +93,7 @@ public sealed class ApiExceptionFilterTests
     {
         // Arrange
         var http = new DefaultHttpContext();
-        var filter = new ApiExceptionFilter();
+        var filter = CreateFilter();
         var ctx = CreateContext(http, new IdempotencyConflictException());
 
         // Act
@@ -109,7 +113,7 @@ public sealed class ApiExceptionFilterTests
     {
         // Arrange
         var http = new DefaultHttpContext();
-        var filter = new ApiExceptionFilter();
+        var filter = CreateFilter();
         var ctx = CreateContext(http, new NotFoundException());
 
         // Act
@@ -129,7 +133,7 @@ public sealed class ApiExceptionFilterTests
     {
         // Arrange
         var http = new DefaultHttpContext();
-        var filter = new ApiExceptionFilter();
+        var filter = CreateFilter();
         var wrapped = new Exception("outer", new InvalidOperationException("inner"));
         var ctx = CreateContext(http, wrapped);
 

@@ -9,6 +9,12 @@ namespace Statevia.Core.Api.Contracts;
 /// </summary>
 public sealed class ApiExceptionFilter : IExceptionFilter
 {
+    private readonly ILogger<ApiExceptionFilter> _logger;
+
+    /// <summary>新しいインスタンスを初期化する。</summary>
+    /// <param name="logger">ロガー。</param>
+    public ApiExceptionFilter(ILogger<ApiExceptionFilter> logger) => _logger = logger;
+
     /// <summary>
     /// 未処理例外を <see cref="ExceptionContext.Result"/> に変換する。
     /// </summary>
@@ -30,20 +36,26 @@ public sealed class ApiExceptionFilter : IExceptionFilter
             ForbiddenException forbidden => ApiErrorResult.Forbidden(forbidden.Code, forbidden.Message),
             IdempotencyConflictException idem => ApiErrorResult.Conflict("IDEMPOTENCY_KEY_CONFLICT", idem.Message),
             ArgumentException arg => ApiErrorResult.ValidationError(arg.Message),
-            _ => new ObjectResult(new ErrorResponse
-            {
-                Error = new ApiError
-                {
-                    Code = "INTERNAL_ERROR",
-                    Message = "Internal server error"
-                }
-            })
-            {
-                StatusCode = StatusCodes.Status500InternalServerError
-            }
+            _ => LogInternalError(ex)
         };
 
         context.Result = result;
         context.ExceptionHandled = true;
+    }
+
+    private ObjectResult LogInternalError(Exception exception)
+    {
+        _logger.UnhandledApiException(exception);
+        return new ObjectResult(new ErrorResponse
+        {
+            Error = new ApiError
+            {
+                Code = "INTERNAL_ERROR",
+                Message = "Internal server error"
+            }
+        })
+        {
+            StatusCode = StatusCodes.Status500InternalServerError
+        };
     }
 }
