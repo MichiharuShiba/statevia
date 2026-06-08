@@ -228,6 +228,68 @@ public sealed class PlatformDataAccessTests
         Assert.All(snapshots, snapshot => Assert.False(string.IsNullOrWhiteSpace(snapshot.Name)));
     }
 
+    /// <summary>execution_id からテナント境界を解決する。</summary>
+    [Fact]
+    public async Task FindExecutionTenantAsync_ReturnsTenant_ForExistingExecution()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var executionId = Guid.NewGuid();
+        var definitionId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+
+        await using (var seed = database.Factory.CreateDbContext())
+        {
+            ProjectTestData.AddDefaultProject(seed, TestTenantIds.T1TenantId, "t1", projectId);
+            DefinitionTestData.AddDefinitionWithVersion(
+                seed,
+                TestTenantIds.T1TenantId,
+                definitionId,
+                "wf-tenant-lookup",
+                projectId,
+                versionId: versionId);
+            seed.Executions.Add(new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = definitionId,
+                DefinitionVersionId = versionId,
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        var platform = new PlatformDataAccess(database.Factory);
+
+        // Act
+        var lookup = await platform.FindExecutionTenantAsync(executionId, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(lookup);
+        Assert.Equal(TestTenantIds.T1TenantId, lookup!.TenantId);
+        Assert.Equal("t1", lookup.TenantKey);
+    }
+
+    /// <summary>存在しない execution は null。</summary>
+    [Fact]
+    public async Task FindExecutionTenantAsync_ReturnsNull_WhenExecutionMissing()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var platform = new PlatformDataAccess(database.Factory);
+
+        // Act
+        var lookup = await platform.FindExecutionTenantAsync(Guid.NewGuid(), CancellationToken.None);
+
+        // Assert
+        Assert.Null(lookup);
+    }
+
     /// <summary>存在しない API キー ID は no-op。</summary>
     [Fact]
     public async Task TouchApiKeyLastUsedAsync_MissingKey_DoesNotThrow()

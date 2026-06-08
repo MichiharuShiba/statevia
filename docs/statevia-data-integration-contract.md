@@ -175,6 +175,7 @@ UIが依存してよいレスポンス形を固定する。
 - **event_store**: ノード完了のたびに **`event_store` へ新種別を追記しない**（当面）。`event_store` に載せるのは **外部送信・コマンドに紐づくイベントのみ**（§STV-414 の表）。ノード履歴の監査や reducer 連携が必要になった場合は **別途** 種別・ペイロード・トランザクション境界を定義する。
 - **Read Model の正本**: 引き続き `executions` + `execution_graph_snapshots`。ノード完了経路の投影更新は **`event_store` を伴わない**コミットであり得る。UI・SSE の正本は Read API / 投影済み JSON とする方針（§5.1、`AGENTS.md`）は変えない。
 - **`execution_cursors` / `execution_waits`（task 8）**: **実装済み**。cursor は **operational projection**（GET read-model の正本ではない）。durable wait は初版 **EventWait** のみ（Engine グラフ上 `nodeType=Wait`・未完了・`waitKey` あり）。`wait_kind` 列挙は **EventWait / CallbackWait / DelayWait**（将来拡張は CallbackWait / DelayWait）。`Start` / `Cancel` / `Publish` / 投影キュー（`UpdateProjectionFromEngineAsync`）と **同一 tx** で `executions` + `execution_graph_snapshots` と同期する。
+- **投影キューのテナント文脈**: `ExecutionProjectionUpdateQueueService` は HTTP 外のバックグラウンド処理のため、投影更新前に `executions.tenant_id` を Platform lookup（`IgnoreQueryFilters`）で解決し、`ITenantContextAccessor` にテナント境界のみを設定してから repository を呼ぶ。Principal は不要（テナント fail-closed クエリフィルタのため）。execution 行が無い場合は投影をスキップする。
 
 #### 高負荷時: API 内キュー（ドラフト）
 

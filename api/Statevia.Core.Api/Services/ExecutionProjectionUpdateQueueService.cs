@@ -1,9 +1,12 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Configuration;
+using Statevia.Core.Api.Infrastructure.Security;
 using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Core.Api.Services;
@@ -378,8 +381,32 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
     {
         // BackgroundService は singleton なので、毎回 scope を切って scoped service を解決する。
         using var scope = _scopeFactory.CreateScope();
-        var executionService = scope.ServiceProvider.GetRequiredService<IExecutionService>();
-        await executionService.UpdateProjectionFromEngineAsync(executionId, ct).ConfigureAwait(false);
+        var services = scope.ServiceProvider;
+        var platformDataAccess = services.GetRequiredService<IPlatformDataAccess>();
+        var tenantContextAccessor = services.GetRequiredService<ITenantContextAccessor>();
+        var executionService = services.GetRequiredService<IExecutionService>();
+
+        var tenantLookup = await platformDataAccess
+            .FindExecutionTenantAsync(executionId, ct)
+            .ConfigureAwait(false);
+        if (tenantLookup is null)
+        {
+            _logger.ExecutionTenantNotFound(executionId);
+            return;
+        }
+
+        var tenantState = new TenantContextState(
+            tenantLookup.TenantId,
+            tenantLookup.TenantKey,
+            PrincipalId: null,
+            tenantLookup.Lifecycle);
+
+        await TenantExecutionScope
+            .RunAsync(
+                tenantContextAccessor,
+                tenantState,
+                () => executionService.UpdateProjectionFromEngineAsync(executionId, ct))
+            .ConfigureAwait(false);
     }
 
     /// <summary>
