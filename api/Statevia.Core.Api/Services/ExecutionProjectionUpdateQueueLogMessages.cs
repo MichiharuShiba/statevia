@@ -36,4 +36,10 @@ internal static partial class ExecutionProjectionUpdateQueueLogMessages
         int attempt,
         int maxAttempts,
         int delayMs);
+
+    [LoggerMessage(
+        EventId = 3105,
+        Level = LogLevel.Warning,
+        Message = "Skip projection update because execution tenant was not found ExecutionId={executionId}")]
+    public static partial void ExecutionTenantNotFound(this ILogger logger, Guid executionId);
 }

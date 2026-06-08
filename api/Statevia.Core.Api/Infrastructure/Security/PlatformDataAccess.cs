@@ -16,6 +16,12 @@ internal sealed record LoginCredentialLookup(TenantRow Tenant, UserRow User, Pri
 /// <param name="Principal">Principal 行。</param>
 internal sealed record ApiKeyCredentialLookup(TenantRow Tenant, ApiKeyRow ApiKey, PrincipalRow Principal);
 
+/// <summary>execution_id から解決したテナント境界（投影キュー等のバックグラウンド用）。</summary>
+/// <param name="TenantId"><c>tenants.tenant_id</c>。</param>
+/// <param name="TenantKey"><c>tenants.tenant_key</c>。</param>
+/// <param name="Lifecycle">テナントライフサイクル。</param>
+internal sealed record ExecutionTenantLookup(Guid TenantId, string TenantKey, TenantLifecycle Lifecycle);
+
 /// <summary>Platform 専用データアクセス。</summary>
 internal interface IPlatformDataAccess
 {
@@ -64,6 +70,9 @@ internal interface IPlatformDataAccess
     Task<IReadOnlyList<GroupSnapshot>> GetGroupSnapshotsForPrincipalAsync(
         Guid principalId,
         CancellationToken cancellationToken);
+
+    /// <summary><paramref name="executionId"/> のテナント境界を検索する（フィルタ無視）。</summary>
+    Task<ExecutionTenantLookup?> FindExecutionTenantAsync(Guid executionId, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -444,5 +453,34 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return serviceAccountRows.ConvertAll(row => new GroupSnapshot(row.GroupId, row.Name));
+    }
+
+    /// <inheritdoc />
+    public async Task<ExecutionTenantLookup?> FindExecutionTenantAsync(
+        Guid executionId,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
+        var tenantId = await db.Executions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(execution => execution.ExecutionId == executionId)
+            .Select(execution => (Guid?)execution.TenantId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (tenantId is null)
+            return null;
+
+        var tenant = await db.Tenants
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(row => row.TenantId == tenantId.Value, cancellationToken)
+            .ConfigureAwait(false);
+
+        return tenant is null
+            ? null
+            : new ExecutionTenantLookup(tenant.TenantId, tenant.TenantKey, tenant.Lifecycle);
     }
 }
