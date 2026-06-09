@@ -954,10 +954,11 @@ public class ExecutionEngineTests
 
     private sealed class ContextReaderState : IState<Unit, Unit>
     {
-        public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
+        public Task<Unit> ExecuteAsync(StateContext ctx, Unit input, CancellationToken ct)
         {
-            var _ = ctx.ExecutionId;
-            var _ = ctx.StateName;
+            _ = ctx.ExecutionId;
+            _ = ctx.StateName;
+            _ = input;
             return Task.FromResult(Unit.Value);
         }
     }

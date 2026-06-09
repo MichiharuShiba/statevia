@@ -13,7 +13,7 @@ public class Level2ValidationTests
         // Arrange: Orphan は A→B のグラフから到達不能
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "B" } } },
@@ -37,7 +37,7 @@ public class Level2ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "B" } } },
@@ -59,7 +59,7 @@ public class Level2ValidationTests
         // Arrange: A join allOf [B], B join allOf [A]
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },
@@ -83,7 +83,7 @@ public class Level2ValidationTests
         // Arrange: A join allOf [A]
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },
@@ -106,7 +106,7 @@ public class Level2ValidationTests
         // Arrange: A join allOf [Missing]（Missing は States に存在しない）
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },
@@ -128,7 +128,7 @@ public class Level2ValidationTests
         // Arrange: Start → fork [A, B] → Join → End
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Fork = new[] { "A", "B" } } } },
@@ -153,7 +153,7 @@ public class Level2ValidationTests
         // Arrange: Start → A → Join (allOf [A]) → End
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },

@@ -37,7 +37,7 @@ public class StateWorkflowDefinitionLoaderTests
         var def = loader.Load(yaml);
 
         // Assert
-        Assert.Equal("HelloWorkflow", def.Workflow.Name);
+        Assert.Equal("HelloWorkflow", def.Name);
         Assert.Equal(3, def.States.Count);
         Assert.True(def.States.ContainsKey("Start"));
         Assert.True(def.States.ContainsKey("Prepare"));
@@ -277,7 +277,7 @@ public class StateWorkflowDefinitionLoaderTests
         // Assert
         Assert.NotNull(def.States);
         Assert.Empty(def.States);
-        Assert.Equal("NoStates", def.Workflow.Name);
+        Assert.Equal("NoStates", def.Name);
     }
 
     /// <summary>end が文字列 "true" のとき GetBool が true を返すことを検証する。</summary>
@@ -387,7 +387,7 @@ public class StateWorkflowDefinitionLoaderTests
         var def = loader.Load(yaml);
 
         // Assert
-        Assert.Equal("W", def.Workflow.Name);
+        Assert.Equal("W", def.Name);
         Assert.Equal(2, def.States.Count);
     }
 
@@ -551,6 +551,174 @@ public class StateWorkflowDefinitionLoaderTests
         Assert.NotNull(transition.Default);
         Assert.True(transition.Default!.End);
         Assert.Null(transition.Default.Next);
+    }
+
+    /// <summary>workflow.imports を WorkflowDefinition.Imports に保持する。</summary>
+    [Fact]
+    public void Load_ParsesWorkflowImports()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+              imports:
+                - my.company.action
+            states:
+              A:
+                action: trade
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        Assert.NotNull(def.Imports);
+        Assert.Single(def.Imports!);
+        Assert.Equal("my.company.action", def.Imports![0]);
+        Assert.Equal("trade", def.States["A"].Action);
+    }
+
+    /// <summary>状態直下の retry を RetryDefinition として保持する。</summary>
+    [Fact]
+    public void Load_ParsesStateRetryBlock()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: noop
+                retry:
+                  limit: 3
+                  backoff: exponential
+                  errors: [timeout, 5xx]
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+        var retry = def.States["A"].Retry;
+
+        // Assert
+        Assert.NotNull(retry);
+        Assert.Equal(3, retry!.Limit);
+        Assert.Equal("exponential", retry.Backoff);
+        Assert.NotNull(retry.Errors);
+        Assert.Equal(2, retry.Errors!.Count);
+        Assert.Contains("timeout", retry.Errors);
+        Assert.Contains("5xx", retry.Errors);
+    }
+
+    /// <summary>input 内の retry は構文エラーになる。</summary>
+    [Fact]
+    public void Load_RetryInsideInput_Throws()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: noop
+                input:
+                  retry:
+                    limit: 3
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => loader.Load(yaml));
+
+        Assert.Contains("retry", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("input", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>空の workflow.imports は Imports=null として扱う。</summary>
+    [Fact]
+    public void Load_EmptyWorkflowImports_ReturnsNullImports()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+              imports: []
+            states:
+              A:
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        Assert.Null(def.Imports);
+    }
+
+    /// <summary>空の retry ブロックは Retry=null として扱う。</summary>
+    [Fact]
+    public void Load_EmptyRetryBlock_ReturnsNullRetry()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: noop
+                retry: {}
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        Assert.Null(def.States["A"].Retry);
+    }
+
+    /// <summary>imports の空文字要素は除去される。</summary>
+    [Fact]
+    public void Load_WorkflowImportsWithBlankEntries_FiltersEmptyStrings()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+              imports:
+                - my.company.action
+                - "   "
+            states:
+              A:
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        Assert.NotNull(def.Imports);
+        Assert.Single(def.Imports!);
+        Assert.Equal("my.company.action", def.Imports![0]);
     }
 }
 
