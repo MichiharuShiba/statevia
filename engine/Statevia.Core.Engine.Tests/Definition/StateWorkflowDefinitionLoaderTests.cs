@@ -553,19 +553,19 @@ public class StateWorkflowDefinitionLoaderTests
         Assert.Null(transition.Default.Next);
     }
 
-    /// <summary>workflow.imports を WorkflowDefinition.Imports に保持する。</summary>
+    /// <summary>workflow.modules を WorkflowDefinition.Modules に保持する。</summary>
     [Fact]
-    public void Load_ParsesWorkflowImports()
+    public void Load_ParsesWorkflowModules()
     {
         // Arrange
         var yaml = """
             workflow:
               name: W
-              imports:
-                - my.company.action
+              modules:
+                mail: com.company.mail
             states:
               A:
-                action: trade
+                action: mail.send
                 on:
                   Completed:
                     end: true
@@ -576,10 +576,10 @@ public class StateWorkflowDefinitionLoaderTests
         var def = loader.Load(yaml);
 
         // Assert
-        Assert.NotNull(def.Imports);
-        Assert.Single(def.Imports!);
-        Assert.Equal("my.company.action", def.Imports![0]);
-        Assert.Equal("trade", def.States["A"].Action);
+        Assert.NotNull(def.Modules);
+        Assert.Single(def.Modules!);
+        Assert.Equal("com.company.mail", def.Modules!["mail"]);
+        Assert.Equal("mail.send", def.States["A"].Action);
     }
 
     /// <summary>状態直下の retry を RetryDefinition として保持する。</summary>
@@ -644,15 +644,15 @@ public class StateWorkflowDefinitionLoaderTests
         Assert.Contains("input", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>空の workflow.imports は Imports=null として扱う。</summary>
+    /// <summary>空の workflow.modules は Modules=null として扱う。</summary>
     [Fact]
-    public void Load_EmptyWorkflowImports_ReturnsNullImports()
+    public void Load_EmptyWorkflowModules_ReturnsNullModules()
     {
         // Arrange
         var yaml = """
             workflow:
               name: W
-              imports: []
+              modules: {}
             states:
               A:
                 on:
@@ -665,7 +665,7 @@ public class StateWorkflowDefinitionLoaderTests
         var def = loader.Load(yaml);
 
         // Assert
-        Assert.Null(def.Imports);
+        Assert.Null(def.Modules);
     }
 
     /// <summary>空の retry ブロックは Retry=null として扱う。</summary>
@@ -693,17 +693,16 @@ public class StateWorkflowDefinitionLoaderTests
         Assert.Null(def.States["A"].Retry);
     }
 
-    /// <summary>imports の空文字要素は除去される。</summary>
+    /// <summary>modules の空 ModuleId は構文エラーになる。</summary>
     [Fact]
-    public void Load_WorkflowImportsWithBlankEntries_FiltersEmptyStrings()
+    public void Load_WorkflowModulesWithBlankModuleId_Throws()
     {
         // Arrange
         var yaml = """
             workflow:
               name: W
-              imports:
-                - my.company.action
-                - "   "
+              modules:
+                mail: "   "
             states:
               A:
                 on:
@@ -712,13 +711,10 @@ public class StateWorkflowDefinitionLoaderTests
             """;
         var loader = new StateWorkflowDefinitionLoader();
 
-        // Act
-        var def = loader.Load(yaml);
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => loader.Load(yaml));
 
-        // Assert
-        Assert.NotNull(def.Imports);
-        Assert.Single(def.Imports!);
-        Assert.Equal("my.company.action", def.Imports![0]);
+        Assert.Contains("workflow.modules['mail']", ex.Message, StringComparison.Ordinal);
     }
 }
 

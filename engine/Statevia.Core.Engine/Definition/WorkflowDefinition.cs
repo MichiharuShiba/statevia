@@ -1,15 +1,15 @@
 namespace Statevia.Core.Engine.Definition;
 
 /// <summary>
-/// ロードされたワークフロー定義（ルート <c>workflow</c> の name / imports と <c>states</c> を含む）。
+/// ロードされたワークフロー定義（ルート <c>workflow</c> の name / modules と <c>states</c> を含む）。
 /// </summary>
 public sealed class WorkflowDefinition
 {
     /// <summary>ワークフロー名（<c>workflow.name</c>）。</summary>
     public required string Name { get; init; }
 
-    /// <summary><c>workflow.imports</c> から読み込んだ action import プレフィックス（syntax parse のみ）。</summary>
-    public IReadOnlyList<string>? Imports { get; init; }
+    /// <summary><c>workflow.modules</c> から読み込んだ module alias → ModuleId マップ（syntax parse のみ）。</summary>
+    public IReadOnlyDictionary<string, string>? Modules { get; init; }
 
     /// <summary>状態名 → 状態定義のマップ。</summary>
     public required IReadOnlyDictionary<string, StateDefinition> States { get; init; }

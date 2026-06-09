@@ -151,22 +151,42 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         return new StateInputDefinition { Values = values };
     }
 
-    /// <summary><c>workflow.imports</c> を syntax parse する（semantic resolution は行わない）。</summary>
+    /// <summary><c>workflow.modules</c> を syntax parse する（semantic resolution は行わない）。</summary>
     /// <param name="workflowDict"><c>workflow</c> ブロックの辞書。</param>
-    /// <returns>import プレフィックス一覧。未指定時は null。</returns>
-    protected static IReadOnlyList<string>? ParseWorkflowImports(Dictionary<string, object?> workflowDict)
+    /// <returns>module alias → ModuleId マップ。未指定時は null。</returns>
+    protected static IReadOnlyDictionary<string, string>? ParseWorkflowModules(Dictionary<string, object?> workflowDict)
     {
         ArgumentNullException.ThrowIfNull(workflowDict);
-        var imports = GetStrList(workflowDict, "imports");
-        if (imports is null || imports.Count == 0)
+        if (!workflowDict.TryGetValue("modules", out var modulesVal) || modulesVal is null)
         {
             return null;
         }
 
-        return imports
-            .Select(entry => entry.Trim())
-            .Where(entry => entry.Length > 0)
-            .ToList();
+        var modulesDict = ToStringDict(modulesVal, StringComparer.OrdinalIgnoreCase);
+        if (modulesDict.Count == 0)
+        {
+            return null;
+        }
+
+        var modules = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (aliasRaw, moduleIdRaw) in modulesDict)
+        {
+            var alias = aliasRaw.Trim();
+            if (alias.Length == 0)
+            {
+                throw new ArgumentException("workflow.modules contains an empty alias key.");
+            }
+
+            var moduleId = moduleIdRaw?.ToString()?.Trim();
+            if (string.IsNullOrWhiteSpace(moduleId))
+            {
+                throw new ArgumentException($"workflow.modules['{alias}'] requires a non-empty ModuleId.");
+            }
+
+            modules[alias] = moduleId;
+        }
+
+        return modules;
     }
 
     /// <summary>状態／ノード直下の <c>retry</c> ブロックを syntax parse する。</summary>

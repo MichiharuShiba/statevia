@@ -24,7 +24,7 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         return new WorkflowDefinition
         {
             Name = GetStr(workflowDict, "name") ?? "Unnamed",
-            Imports = ParseWorkflowImports(workflowDict),
+            Modules = ParseWorkflowModules(workflowDict),
             States = ParseStates(GetChildDict(root, "states")),
         };
     }
