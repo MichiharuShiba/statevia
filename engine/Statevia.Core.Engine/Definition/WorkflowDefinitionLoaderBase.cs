@@ -137,6 +137,11 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         Dictionary<string, object?> map,
         string? ownerLabel)
     {
+        if (map.Keys.Any(key => string.Equals(key, "retry", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new ArgumentException(Format(ownerLabel, "'retry' must not appear inside 'input'; declare it as a sibling of 'action'."));
+        }
+
         var values = new Dictionary<string, StateInputValueDefinition>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, raw) in map)
         {
@@ -144,6 +149,49 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         }
 
         return new StateInputDefinition { Values = values };
+    }
+
+    /// <summary><c>workflow.imports</c> を syntax parse する（semantic resolution は行わない）。</summary>
+    /// <param name="workflowDict"><c>workflow</c> ブロックの辞書。</param>
+    /// <returns>import プレフィックス一覧。未指定時は null。</returns>
+    protected static IReadOnlyList<string>? ParseWorkflowImports(Dictionary<string, object?> workflowDict)
+    {
+        ArgumentNullException.ThrowIfNull(workflowDict);
+        var imports = GetStrList(workflowDict, "imports");
+        if (imports is null || imports.Count == 0)
+        {
+            return null;
+        }
+
+        return imports
+            .Select(entry => entry.Trim())
+            .Where(entry => entry.Length > 0)
+            .ToList();
+    }
+
+    /// <summary>状態／ノード直下の <c>retry</c> ブロックを syntax parse する。</summary>
+    /// <param name="dict">状態またはノード辞書。</param>
+    /// <returns>retry 定義。未指定時は null。</returns>
+    protected static RetryDefinition? ParseRetryDefinition(Dictionary<string, object?> dict)
+    {
+        ArgumentNullException.ThrowIfNull(dict);
+        if (!dict.TryGetValue("retry", out var retryVal) || retryVal is null)
+        {
+            return null;
+        }
+
+        var retryDict = ToStringDict(retryVal);
+        if (retryDict.Count == 0)
+        {
+            return null;
+        }
+
+        return new RetryDefinition
+        {
+            Limit = GetNullableInt(retryDict, "limit"),
+            Backoff = GetStr(retryDict, "backoff"),
+            Errors = GetStrList(retryDict, "errors"),
+        };
     }
 
     /// <summary>input マップの 1 エントリを path または literal として解釈する。</summary>

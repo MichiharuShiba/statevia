@@ -22,7 +22,7 @@ public sealed class DefinitionCompiler
         ArgumentNullException.ThrowIfNull(definition);
         return new CompiledWorkflowDefinition
         {
-            Name = definition.Workflow.Name,
+            Name = definition.Name,
             Transitions = BuildTransitionTable(definition),
             ConditionalTransitions = BuildConditionalTransitionTable(definition),
             ForkTable = BuildForkTable(definition),
