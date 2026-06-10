@@ -519,7 +519,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             "Critical Code Smell",
             "S3776:Cognitive Complexity of methods should not be too high",
             Justification = "fork/join の MVP パターン照合を単一メソッドに集約している。")]
-        private IReadOnlyList<string> ResolveJoinAllOf(IReadOnlyDictionary<string, ParsedNode> byId)
+        private IReadOnlyList<string> ResolveJoinAll(IReadOnlyDictionary<string, ParsedNode> byId)
         {
             var joinId = Id;
             var candidates = new List<(string ForkId, IReadOnlyList<string> Branches)>();
@@ -636,7 +636,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                 case NodeKind.Join:
                     return new StateDefinition
                     {
-                        Join = new JoinDefinition { AllOf = ResolveJoinAllOf(byId).ToList() },
+                        Join = new JoinDefinition { All = ResolveJoinAll(byId).ToList() },
                         On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                         {
                             [Fact.Joined] = BuildLinearTransitionForFact(Id, Next, Edges)

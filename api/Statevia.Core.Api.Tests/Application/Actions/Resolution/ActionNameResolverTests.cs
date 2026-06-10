@@ -148,7 +148,7 @@ public sealed class ActionNameResolverTests
             {
                 ["Join1"] = new StateDefinition
                 {
-                    Join = new JoinDefinition { AllOf = ["A", "B"] },
+                    Join = new JoinDefinition { All = ["A", "B"] },
                     On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                     {
                         ["Joined"] = new TransitionDefinition { End = true },

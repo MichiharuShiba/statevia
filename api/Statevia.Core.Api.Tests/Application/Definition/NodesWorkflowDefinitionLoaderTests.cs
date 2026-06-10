@@ -36,9 +36,9 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.True(definition.States["endNode"].On![Fact.Completed].End);
     }
 
-    /// <summary>fork / join（mode: all）から Join.AllOf が構築される。</summary>
+    /// <summary>fork / join（mode: all）から Join.All が構築される。</summary>
     [Fact]
-    public void Load_ForkJoin_BuildsJoinAllOf()
+    public void Load_ForkJoin_BuildsJoinAll()
     {
         // Arrange
         var yaml = """
@@ -74,9 +74,9 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         // Assert
         var join = definition.States["join1"].Join;
         Assert.NotNull(join);
-        Assert.Equal(2, join.AllOf.Count);
-        Assert.Contains("b1", join.AllOf, StringComparer.OrdinalIgnoreCase);
-        Assert.Contains("b2", join.AllOf, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal(2, join.All.Count);
+        Assert.Contains("b1", join.All, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("b2", join.All, StringComparer.OrdinalIgnoreCase);
         Assert.True(definition.States["join1"].On!.ContainsKey(Fact.Joined));
     }
 

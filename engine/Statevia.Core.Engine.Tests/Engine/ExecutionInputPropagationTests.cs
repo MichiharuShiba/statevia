@@ -454,7 +454,7 @@ public class ExecutionInputPropagationTests
 
     /// <summary>
     /// A/B には <c>Completed</c> 遷移を置かない（Join へは <see cref="JoinTracker.RecordFact"/> のみ）。
-    /// これにより Join1 は allOf 完了後にのみ <see cref="ExecutionEngine"/> から起動される。
+    /// これにより Join1 は all 完了後にのみ <see cref="ExecutionEngine"/> から起動される。
     /// </summary>
     private static CompiledWorkflowDefinition CreateJoinThenNextDefinition(
         IStateExecutor a,

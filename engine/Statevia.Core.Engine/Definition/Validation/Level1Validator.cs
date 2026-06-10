@@ -464,7 +464,7 @@ public static class Level1Validator
         return true;
     }
 
-    /// <summary><c>join.allOf</c> の各依存状態が定義済みであることを検証する。</summary>
+    /// <summary><c>join.all</c> の各依存状態が定義済みであることを検証する。</summary>
     /// <param name="stateDef">状態定義。</param>
     /// <param name="stateNames">定義済み状態名の集合。</param>
     /// <param name="errors">検出したエラーメッセージの蓄積先。</param>
@@ -475,7 +475,7 @@ public static class Level1Validator
             return;
         }
 
-        foreach (var joinState in stateDef.Join.AllOf.Where(js => !stateNames.Contains(js)))
+        foreach (var joinState in stateDef.Join.All.Where(js => !stateNames.Contains(js)))
         {
             errors.Add($"Join references unknown state: {joinState}");
         }

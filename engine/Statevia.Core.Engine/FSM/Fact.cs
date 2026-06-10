@@ -12,6 +12,6 @@ public static class Fact
     public const string Failed = "Failed";
     /// <summary>協調的キャンセルで中止したことを示す事実。</summary>
     public const string Cancelled = "Cancelled";
-    /// <summary>Join の allOf が揃い、Join 状態が実行可能になったことを示す事実。</summary>
+    /// <summary>Join の all が揃い、Join 状態が実行可能になったことを示す事実。</summary>
     public const string Joined = "Joined";
 }
