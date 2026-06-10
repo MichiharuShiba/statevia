@@ -21,7 +21,7 @@ public sealed class ActionExecutorFactoryTests
         // Act
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "W" },
+            Name = "W",
             States = new Dictionary<string, StateDefinition>()
         };
 
@@ -43,7 +43,7 @@ public sealed class ActionExecutorFactoryTests
         // Act
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "W" },
+            Name = "W",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
@@ -69,12 +69,12 @@ public sealed class ActionExecutorFactoryTests
         // Arrange
         var noopExecutor = DefaultStateExecutor.Create(new NoOpState());
         var registry = new InMemoryActionRegistry();
-        registry.Register(WellKnownActionIds.NoOp, noopExecutor);
+        registry.Register(WellKnownActionIds.NoOpCanonical, noopExecutor);
 
         // Act
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "W" },
+            Name = "W",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
@@ -103,7 +103,7 @@ public sealed class ActionExecutorFactoryTests
         // Act
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "W" },
+            Name = "W",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
