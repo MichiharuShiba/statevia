@@ -137,6 +137,11 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         Dictionary<string, object?> map,
         string? ownerLabel)
     {
+        if (map.Keys.Any(key => string.Equals(key, "retry", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new ArgumentException(Format(ownerLabel, "'retry' must not appear inside 'input'; declare it as a sibling of 'action'."));
+        }
+
         var values = new Dictionary<string, StateInputValueDefinition>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, raw) in map)
         {
@@ -144,6 +149,81 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
         }
 
         return new StateInputDefinition { Values = values };
+    }
+
+    /// <summary><c>workflow.modules</c> を syntax parse する（semantic resolution は行わない）。</summary>
+    /// <param name="workflowDict"><c>workflow</c> ブロックの辞書。</param>
+    /// <returns>module alias → ModuleId マップ。未指定時は null。</returns>
+    protected static IReadOnlyDictionary<string, string>? ParseWorkflowModules(Dictionary<string, object?> workflowDict)
+    {
+        ArgumentNullException.ThrowIfNull(workflowDict);
+        if (!workflowDict.TryGetValue("modules", out var modulesVal) || modulesVal is null)
+        {
+            return null;
+        }
+
+        var modulesDict = ToStringDict(modulesVal);
+        if (modulesDict.Count == 0)
+        {
+            return null;
+        }
+
+        var entries = modulesDict
+            .Select(entry => new KeyValuePair<string, string>(
+                entry.Key,
+                entry.Value?.ToString() ?? string.Empty))
+            .ToList();
+
+        var seenAliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var modules = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (aliasRaw, moduleIdRaw) in entries)
+        {
+            var alias = aliasRaw.Trim();
+            if (alias.Length == 0)
+            {
+                throw new ArgumentException("workflow.modules contains an empty alias key.");
+            }
+
+            if (!seenAliases.Add(alias))
+            {
+                throw new ArgumentException($"workflow.modules contains duplicate alias '{alias}'.");
+            }
+
+            var moduleId = moduleIdRaw.Trim();
+            if (moduleId.Length == 0)
+            {
+                throw new ArgumentException($"workflow.modules['{alias}'] requires a non-empty ModuleId.");
+            }
+
+            modules[alias] = moduleId;
+        }
+
+        return modules;
+    }
+
+    /// <summary>状態／ノード直下の <c>retry</c> ブロックを syntax parse する。</summary>
+    /// <param name="dict">状態またはノード辞書。</param>
+    /// <returns>retry 定義。未指定時は null。</returns>
+    protected static RetryDefinition? ParseRetryDefinition(Dictionary<string, object?> dict)
+    {
+        ArgumentNullException.ThrowIfNull(dict);
+        if (!dict.TryGetValue("retry", out var retryVal) || retryVal is null)
+        {
+            return null;
+        }
+
+        var retryDict = ToStringDict(retryVal);
+        if (retryDict.Count == 0)
+        {
+            return null;
+        }
+
+        return new RetryDefinition
+        {
+            Limit = GetNullableInt(retryDict, "limit"),
+            Backoff = GetStr(retryDict, "backoff"),
+            Errors = GetStrList(retryDict, "errors"),
+        };
     }
 
     /// <summary>input マップの 1 エントリを path または literal として解釈する。</summary>

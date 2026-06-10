@@ -20,21 +20,12 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
     protected override WorkflowDefinition BuildDefinition(Dictionary<string, object?> root)
     {
         var workflowDict = GetChildDict(root, "workflow");
-        var workflow = ParseWorkflow(workflowDict);
-        var states = ParseStates(GetChildDict(root, "states"));
 
         return new WorkflowDefinition
         {
-            Workflow = workflow,
-            States = states
-        };
-    }
-
-    private static WorkflowMetadata ParseWorkflow(Dictionary<string, object?> dict)
-    {
-        return new WorkflowMetadata
-        {
-            Name = GetStr(dict, "name") ?? "Unnamed"
+            Name = GetStr(workflowDict, "name") ?? "Unnamed",
+            Modules = ParseWorkflowModules(workflowDict),
+            States = ParseStates(GetChildDict(root, "states")),
         };
     }
 
@@ -95,8 +86,17 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         }
 
         var action = GetStr(dict, "action");
+        var retry = ParseRetryDefinition(dict);
 
-        return new StateDefinition { Action = action, On = on, Wait = wait, Join = join, Input = stateInput };
+        return new StateDefinition
+        {
+            Action = action,
+            On = on,
+            Wait = wait,
+            Join = join,
+            Input = stateInput,
+            Retry = retry,
+        };
     }
 
     private static Dictionary<string, TransitionDefinition> ParseOn(Dictionary<string, object?> dict)

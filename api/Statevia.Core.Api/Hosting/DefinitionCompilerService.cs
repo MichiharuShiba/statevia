@@ -2,6 +2,7 @@ using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Application.Actions;
 using Statevia.Core.Api.Application.Actions.Abstractions;
 using Statevia.Core.Api.Application.Actions.Builtins;
+using Statevia.Core.Api.Application.Actions.Resolution;
 using Statevia.Core.Api.Application.Definition;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
@@ -32,7 +33,7 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
 
     public (CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(string name, string yaml)
     {
-        var def = _definitionLoadStrategy.Load(yaml);
+        var def = ResolveActionNames(_definitionLoadStrategy.Load(yaml));
         var l1 = Level1Validator.Validate(def);
         if (!l1.IsValid)
             throw new ArgumentException("Level 1 validation failed: " + string.Join("; ", l1.Errors));
@@ -62,11 +63,14 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
     /// <inheritdoc />
     public CompiledWorkflowDefinition RestoreFromStoredVersion(string sourceYaml, string compiledJson)
     {
-        var def = _definitionLoadStrategy.Load(sourceYaml);
+        var def = ResolveActionNames(_definitionLoadStrategy.Load(sourceYaml));
         ValidateRegisteredActions(def);
         var factory = new ActionExecutorFactory(def, _actionRegistry);
         return CompiledDefinitionJsonReader.Read(compiledJson, factory);
     }
+
+    private static WorkflowDefinition ResolveActionNames(WorkflowDefinition def) =>
+        ActionNameResolver.Resolve(def);
 
     private void ValidateRegisteredActions(WorkflowDefinition def)
     {
@@ -85,7 +89,9 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
     public static void RegisterBuiltinActions(IActionRegistry registry)
     {
         ArgumentNullException.ThrowIfNull(registry);
-        registry.Register(WellKnownActionIds.NoOp, DefaultStateExecutor.Create(new NoOpState()));
+        var noopExecutor = DefaultStateExecutor.Create(new NoOpState());
+        registry.Register(WellKnownActionIds.NoOp, noopExecutor);
+        registry.Register(WellKnownActionIds.NoOpCanonical, noopExecutor);
         registry.Register(
             WellKnownActionIds.Delay5s,
             DefaultStateExecutor.Create(new DelayCompleteState(TimeSpan.FromSeconds(5))));

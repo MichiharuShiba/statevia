@@ -30,7 +30,7 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         var definition = _loader.Load(yaml);
 
         // Assert
-        Assert.Equal("Minimal", definition.Workflow.Name);
+        Assert.Equal("Minimal", definition.Name);
         Assert.True(definition.States.ContainsKey("start"));
         Assert.True(definition.States.ContainsKey("endNode"));
         Assert.True(definition.States["endNode"].On![Fact.Completed].End);
@@ -279,7 +279,7 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         var definition = _loader.Load(yaml);
 
         // Assert
-        Assert.Equal("wf-from-id", definition.Workflow.Name);
+        Assert.Equal("wf-from-id", definition.Name);
     }
 
     /// <summary>ルート controls は MVP 非対応として拒否する。</summary>
@@ -1160,5 +1160,157 @@ public sealed class NodesWorkflowDefinitionLoaderTests
 
         // Assert
         Assert.Contains("exactly one edge is required", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>workflow.modules を WorkflowDefinition.Modules に保持する。</summary>
+    [Fact]
+    public void Load_ParsesWorkflowModules()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: W
+              modules:
+                mail: com.company.mail
+            nodes:
+              - id: start
+                type: start
+                next: act
+              - id: act
+                type: action
+                action: mail.send
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        Assert.NotNull(definition.Modules);
+        Assert.Single(definition.Modules!);
+        Assert.Equal("com.company.mail", definition.Modules!["mail"]);
+        Assert.Equal("mail.send", definition.States["act"].Action);
+    }
+
+    /// <summary>action ノード直下の retry を StateDefinition.Retry に引き継ぐ。</summary>
+    [Fact]
+    public void Load_ActionNodeRetry_PreservedOnState()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: W
+            nodes:
+              - id: start
+                type: start
+                next: act
+              - id: act
+                type: action
+                action: noop
+                retry:
+                  limit: 2
+                  backoff: exponential
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+        var retry = definition.States["act"].Retry;
+
+        // Assert
+        Assert.NotNull(retry);
+        Assert.Equal(2, retry!.Limit);
+        Assert.Equal("exponential", retry.Backoff);
+    }
+
+    /// <summary>空の retry ブロックは nodes→states 変換後 Retry=null になる。</summary>
+    [Fact]
+    public void Load_ActionNodeEmptyRetry_ReturnsNullRetry()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: W
+            nodes:
+              - id: start
+                type: start
+                next: act
+              - id: act
+                type: action
+                action: noop
+                retry: {}
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        Assert.Null(definition.States["act"].Retry);
+    }
+
+    /// <summary>空の workflow.modules は Modules=null として扱う。</summary>
+    [Fact]
+    public void Load_EmptyWorkflowModules_ReturnsNullModules()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: W
+              modules: {}
+            nodes:
+              - id: start
+                type: start
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        Assert.Null(definition.Modules);
+    }
+
+    /// <summary>input 内の retry は構文エラーになる。</summary>
+    [Fact]
+    public void Load_RetryInsideInput_Throws()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: W
+            nodes:
+              - id: start
+                type: start
+                next: act
+              - id: act
+                type: action
+                action: noop
+                input:
+                  retry:
+                    limit: 3
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        Assert.Contains("retry", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("input", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 }

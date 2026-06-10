@@ -13,7 +13,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>()
         };
 
@@ -32,7 +32,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } }
@@ -54,7 +54,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "NonExistent" } } }
@@ -86,7 +86,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
@@ -125,7 +125,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "B" } } },
@@ -147,7 +147,7 @@ public class Level1ValidationTests
         // Arrange
         var states = new Dictionary<string, StateDefinition> { ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } } };
         states[""] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } };
-        var def = new WorkflowDefinition { Workflow = new WorkflowMetadata { Name = "Test" }, States = states };
+        var def = new WorkflowDefinition { Name = "Test", States = states };
 
         // Act
         var result = Level1Validator.Validate(def);
@@ -164,7 +164,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Fork = new[] { "A", "MissingState" } } } },
@@ -187,7 +187,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join1" } } },
@@ -210,7 +210,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
@@ -236,7 +236,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
@@ -261,7 +261,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
@@ -294,7 +294,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
@@ -329,7 +329,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
@@ -370,7 +370,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
@@ -409,7 +409,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
@@ -449,7 +449,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
@@ -489,7 +489,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
@@ -529,7 +529,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition
@@ -569,7 +569,7 @@ public class Level1ValidationTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition

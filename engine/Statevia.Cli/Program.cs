@@ -20,7 +20,7 @@ var content = await File.ReadAllTextAsync(path).ConfigureAwait(false);
 try
 {
     var def = loader.Load(content);
-    Console.WriteLine($"Loaded workflow: {def.Workflow.Name}");
+    Console.WriteLine($"Loaded workflow: {def.Name}");
     Console.WriteLine($"States: {string.Join(", ", def.States.Keys)}");
 
     var result = DefinitionValidator.Validate(def);

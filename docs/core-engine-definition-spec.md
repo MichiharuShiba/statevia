@@ -19,6 +19,8 @@ Core-Engine が受け付けるワークフロー定義の YAML/JSON 仕様。**s
 ```yaml
 workflow:
   name: <string>
+  modules:                      # 任意。module alias → ModuleId
+    <alias>: <ModuleId>
 
 states:
   <StateName>:
@@ -35,8 +37,9 @@ states:
 ```
 
 - **workflow.name**: ワークフロー名（任意、デフォルト "Unnamed"）。
+- **workflow.modules**: 任意。module alias（キー）→ ModuleId（値）のマップ。`action: mail.send` のように alias 付き action 参照を解決する。alias は **大文字小文字を区別せず一意**（重複・空キー・空 ModuleId は Loader 構文エラー）。
 - **states**: 状態名 → 状態定義のマップ。各状態は `on`（遷移）、`wait`（待機）、`join`（合流）のいずれかまたは組み合わせを持つ。
-- **action**: 任意。定義登録時に Core-API が Registry へ照合し、未登録の ID はエラーになる。**省略時**は組み込みの `noop`（即時完了）と同等。**組み込み**として `delay5s`（約5秒待機後に完了、入出力なし）も利用できる。**`wait` を指定する状態では `action` と併記できない**。
+- **action**: 任意。定義登録時に Core-API が Registry へ照合し、未登録の ID はエラーになる。**省略時**は組み込みの `noop`（即時完了）と同等。**組み込み**として `delay5s`（約5秒待機後に完了、入出力なし）も利用できる。**`wait` または `join` を指定する状態では `action` と併記できない**。
 
 ### 1.2 遷移（on）
 
@@ -52,6 +55,7 @@ states:
 ### 1.4 Join（合流）
 
 - **join.allOf**: 完了を待つ状態名のリスト。すべてが完了すると `Joined` 事実が発生し、`on.Joined` で次へ遷移できる。
+- Join 状態は合成ノードとして実行され、**`action` は指定しない**（`wait` と同様に `action` 併記は Level 1 検証エラー）。
 
 ### 1.5 例（States 形式）
 

@@ -13,7 +13,7 @@ public class DefinitionValidatorTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>()
         };
         // Act
@@ -32,7 +32,7 @@ public class DefinitionValidatorTests
         // Arrange: 参照整合性は取れているが、Orphan が到達不能
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "B" } } },
@@ -55,7 +55,7 @@ public class DefinitionValidatorTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "B" } } },
@@ -88,7 +88,7 @@ public class DefinitionValidatorTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "ConditionalReachable" },
+            Name = "ConditionalReachable",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Route"] = new StateDefinition

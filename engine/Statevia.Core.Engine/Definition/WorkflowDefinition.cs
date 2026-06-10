@@ -1,19 +1,18 @@
 namespace Statevia.Core.Engine.Definition;
 
-/// <summary>ロードされたワークフロー定義。workflow メタデータと states を含みます。</summary>
+/// <summary>
+/// ロードされたワークフロー定義（ルート <c>workflow</c> の name / modules と <c>states</c> を含む）。
+/// </summary>
 public sealed class WorkflowDefinition
 {
-    /// <summary>ワークフローのメタデータ。</summary>
-    public required WorkflowMetadata Workflow { get; init; }
+    /// <summary>ワークフロー名（<c>workflow.name</c>）。</summary>
+    public required string Name { get; init; }
+
+    /// <summary><c>workflow.modules</c> から読み込んだ module alias → ModuleId マップ（syntax parse のみ）。</summary>
+    public IReadOnlyDictionary<string, string>? Modules { get; init; }
+
     /// <summary>状態名 → 状態定義のマップ。</summary>
     public required IReadOnlyDictionary<string, StateDefinition> States { get; init; }
-}
-
-/// <summary>ワークフロー全体のメタデータ。</summary>
-public sealed class WorkflowMetadata
-{
-    /// <summary>ワークフロー名。</summary>
-    public required string Name { get; init; }
 }
 
 /// <summary>単一状態の定義。on（事実→遷移）、wait、join を含みます。</summary>
@@ -33,6 +32,22 @@ public sealed class StateDefinition
     public JoinDefinition? Join { get; init; }
     /// <summary>遷移でこの状態に入る直前に候補 input へ適用する指定（YAML キーは <c>input</c>）。</summary>
     public StateInputDefinition? Input { get; init; }
+
+    /// <summary>action ノード直下の retry 宣言（syntax parse のみ。MVP では実行時リトライ未適用）。</summary>
+    public RetryDefinition? Retry { get; init; }
+}
+
+/// <summary>action レベルの retry ポリシー宣言（parse only）。</summary>
+public sealed class RetryDefinition
+{
+    /// <summary>最大試行回数（YAML キー <c>limit</c>）。</summary>
+    public int? Limit { get; init; }
+
+    /// <summary>バックオフ戦略（例: exponential）。</summary>
+    public string? Backoff { get; init; }
+
+    /// <summary>リトライ対象の失敗種別（例: timeout, 5xx。YAML キー <c>errors</c>）。</summary>
+    public IReadOnlyList<string>? Errors { get; init; }
 }
 
 /// <summary>遷移の定義。next / fork / end のいずれか。</summary>

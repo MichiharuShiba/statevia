@@ -14,7 +14,7 @@ public class DefinitionCompilerTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "B" } } },
@@ -41,7 +41,7 @@ public class DefinitionCompilerTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Fork = new[] { "A", "B" } } } },
@@ -67,7 +67,7 @@ public class DefinitionCompilerTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "End" } } },
@@ -91,7 +91,7 @@ public class DefinitionCompilerTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "WaitState" } } },
@@ -117,7 +117,7 @@ public class DefinitionCompilerTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { Join = new JoinDefinition { AllOf = [] }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
@@ -140,7 +140,7 @@ public class DefinitionCompilerTests
         // Arrange: A→B, B→A で全状態が参照される
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "B" } } },
@@ -165,7 +165,7 @@ public class DefinitionCompilerTests
         // Arrange: A の on.Completed.next が A 自身
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },
@@ -190,7 +190,7 @@ public class DefinitionCompilerTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>()
         };
         var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
@@ -207,7 +207,7 @@ public class DefinitionCompilerTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Fork = new[] { "A", "B" } } } },
@@ -235,7 +235,7 @@ public class DefinitionCompilerTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "B" } } },
@@ -264,7 +264,7 @@ public class DefinitionCompilerTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Test" },
+            Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Fork = new[] { "A", "B" } } } },
@@ -295,7 +295,7 @@ public class DefinitionCompilerTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "Conditional" },
+            Name = "Conditional",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Route"] = new StateDefinition
@@ -360,7 +360,7 @@ public class DefinitionCompilerTests
         // Arrange
         var def = new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = "MultiTerminal" },
+            Name = "MultiTerminal",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition

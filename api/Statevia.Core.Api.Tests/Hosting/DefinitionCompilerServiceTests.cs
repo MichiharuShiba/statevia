@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Application.Actions.Abstractions;
+using Statevia.Core.Api.Application.Actions.Builtins;
 using Statevia.Core.Api.Application.Actions.Registry;
 using Statevia.Core.Api.Application.Definition;
 using Statevia.Core.Api.Hosting;
@@ -46,7 +47,7 @@ public sealed class DefinitionCompilerServiceTests
               name: W
             states:
               A:
-                action: missing.action
+                action: my.vendor.missing
                 on:
                   Completed:
                     end: true
@@ -55,7 +56,7 @@ public sealed class DefinitionCompilerServiceTests
         // Act & Assert
         var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
 
-        Assert.Contains("Unknown action 'missing.action'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Unknown action 'my.vendor.missing'", ex.Message, StringComparison.Ordinal);
         Assert.Contains("state 'A'", ex.Message, StringComparison.Ordinal);
     }
 
@@ -78,6 +79,65 @@ public sealed class DefinitionCompilerServiceTests
                 on:
                   Completed:
                     end: true
+            """;
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
+
+        Assert.Contains("Level 1 validation failed", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// workflow.modules の alias 重複は Loader で失敗する。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_DuplicateModuleAlias_ThrowsOnLoad()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: W
+              modules:
+                mail: com.company.mail
+                Mail: com.company.other
+            states:
+              A:
+                action: noop
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
+
+        Assert.Contains("duplicate alias 'mail'", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// 同一状態にjoinとactionを併記した定義はレベル1検証で失敗する。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_JoinAndActionInSameState_ThrowsLevel1ValidationFailed()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: noop
+                join:
+                  allOf: [B]
+                on:
+                  Joined:
+                    end: true
+              B:
+                on:
+                  Completed:
+                    next: A
             """;
 
         // Act & Assert
@@ -116,6 +176,57 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
+    /// action 省略状態は implicit noop（canonical FQCN）としてコンパイルできる。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_ImplicitNoopAction_NormalizesToCanonical()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("W", yaml);
+
+        // Assert
+        Assert.NotNull(compiled.StateExecutorFactory.GetExecutor("A"));
+    }
+
+    /// <summary>
+    /// builtin 短名 noop は canonical FQCN に正規化されてコンパイルできる。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_BuiltinShortNameNoop_Succeeds()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: noop
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("W", yaml);
+
+        // Assert
+        Assert.NotNull(compiled.StateExecutorFactory.GetExecutor("A"));
+    }
+
+    /// <summary>
     /// 組み込み delay5s を参照する定義はコンパイルできる。
     /// </summary>
     [Fact]
@@ -143,6 +254,108 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
+    /// module alias と actionName は Compiler 経由で解決されコンパイルできる。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_ModuleAliasResolvesActionName()
+    {
+        // Arrange
+        var registry = new InMemoryActionRegistry();
+        DefinitionCompilerService.RegisterBuiltinActions(registry);
+        registry.Register(
+            "com.company.mail.send",
+            DefaultStateExecutor.Create(new NoOpState()));
+        var svc = new DefinitionCompilerService(registry, CreateDefaultStrategy());
+        var yaml = """
+            workflow:
+              name: W
+              modules:
+                mail: com.company.mail
+            states:
+              A:
+                action: mail.send
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("W", yaml);
+
+        // Assert
+        Assert.NotNull(compiled.StateExecutorFactory.GetExecutor("A"));
+    }
+
+    /// <summary>
+    /// 保存済み compiled JSON から定義を復元できる（action 解決込み）。
+    /// </summary>
+    [Fact]
+    public void RestoreFromStoredVersion_RestoresCompiledDefinition()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: noop
+                on:
+                  Completed:
+                    end: true
+            """;
+        var (_, compiledJson) = svc.ValidateAndCompile("W", yaml);
+
+        // Act
+        var restored = svc.RestoreFromStoredVersion(yaml, compiledJson);
+
+        // Assert
+        Assert.NotNull(restored.StateExecutorFactory.GetExecutor("A"));
+    }
+
+    /// <summary>
+    /// RegisterBuiltinActions に null registry を渡すと ArgumentNullException になる。
+    /// </summary>
+    [Fact]
+    public void RegisterBuiltinActions_NullRegistry_Throws()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => DefinitionCompilerService.RegisterBuiltinActions(null!));
+    }
+
+    /// <summary>
+    /// 到達不能状態を含む定義は Level2 検証で失敗する。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_UnreachableState_ThrowsLevel2ValidationFailed()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                on:
+                  Completed:
+                    next: B
+              B:
+                on:
+                  Completed:
+                    end: true
+              Orphan:
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
+
+        Assert.Contains("Level 2 validation failed", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// 登録済みカスタムアクションを参照する定義はコンパイルできる。
     /// </summary>
     [Fact]
@@ -152,7 +365,7 @@ public sealed class DefinitionCompilerServiceTests
         var registry = new InMemoryActionRegistry();
         DefinitionCompilerService.RegisterBuiltinActions(registry);
         registry.Register(
-            "custom.echo",
+            "my.custom.echo",
             new DefaultStateExecutor((_, input, _) => Task.FromResult<object?>(input)));
         var svc = new DefinitionCompilerService(registry, CreateDefaultStrategy());
         var yaml = """
@@ -160,7 +373,7 @@ public sealed class DefinitionCompilerServiceTests
               name: W
             states:
               A:
-                action: custom.echo
+                action: my.custom.echo
                 on:
                   Completed:
                     end: true
@@ -184,7 +397,7 @@ public sealed class DefinitionCompilerServiceTests
         var registry = new InMemoryActionRegistry();
         DefinitionCompilerService.RegisterBuiltinActions(registry);
         registry.Register(
-            "custom.echo",
+            "my.custom.echo",
             new DefaultStateExecutor((_, input, _) => Task.FromResult<object?>(input)));
         var compiler = new DefinitionCompilerService(registry, CreateDefaultStrategy());
         var yaml = """
@@ -192,7 +405,7 @@ public sealed class DefinitionCompilerServiceTests
               name: W
             states:
               A:
-                action: custom.echo
+                action: my.custom.echo
                 on:
                   Completed:
                     end: true

@@ -37,7 +37,7 @@ public class StateWorkflowDefinitionLoaderTests
         var def = loader.Load(yaml);
 
         // Assert
-        Assert.Equal("HelloWorkflow", def.Workflow.Name);
+        Assert.Equal("HelloWorkflow", def.Name);
         Assert.Equal(3, def.States.Count);
         Assert.True(def.States.ContainsKey("Start"));
         Assert.True(def.States.ContainsKey("Prepare"));
@@ -180,6 +180,39 @@ public class StateWorkflowDefinitionLoaderTests
         Assert.Equal("order.create", def.States["CreateOrder"].Action);
     }
 
+    /// <summary>join と action の併記は Level 1 検証で拒否されることを検証する。</summary>
+    [Fact]
+    public void Level1_RejectsJoinAndActionTogether()
+    {
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: order.create
+                join:
+                  allOf: [B, C]
+                on:
+                  Joined:
+                    end: true
+              B:
+                on:
+                  Completed:
+                    next: A
+              C:
+                on:
+                  Completed:
+                    next: A
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+        var def = loader.Load(yaml);
+
+        var r = Level1Validator.Validate(def);
+
+        Assert.False(r.IsValid);
+        Assert.Contains(r.Errors, e => e.Contains("both join and action", StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>wait と action の併記は Level 1 検証で拒否されることを検証する。</summary>
     [Fact]
     public void Level1_RejectsWaitAndActionTogether()
@@ -277,7 +310,7 @@ public class StateWorkflowDefinitionLoaderTests
         // Assert
         Assert.NotNull(def.States);
         Assert.Empty(def.States);
-        Assert.Equal("NoStates", def.Workflow.Name);
+        Assert.Equal("NoStates", def.Name);
     }
 
     /// <summary>end が文字列 "true" のとき GetBool が true を返すことを検証する。</summary>
@@ -387,7 +420,7 @@ public class StateWorkflowDefinitionLoaderTests
         var def = loader.Load(yaml);
 
         // Assert
-        Assert.Equal("W", def.Workflow.Name);
+        Assert.Equal("W", def.Name);
         Assert.Equal(2, def.States.Count);
     }
 
@@ -551,6 +584,196 @@ public class StateWorkflowDefinitionLoaderTests
         Assert.NotNull(transition.Default);
         Assert.True(transition.Default!.End);
         Assert.Null(transition.Default.Next);
+    }
+
+    /// <summary>workflow.modules を WorkflowDefinition.Modules に保持する。</summary>
+    [Fact]
+    public void Load_ParsesWorkflowModules()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+              modules:
+                mail: com.company.mail
+            states:
+              A:
+                action: mail.send
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        Assert.NotNull(def.Modules);
+        Assert.Single(def.Modules!);
+        Assert.Equal("com.company.mail", def.Modules!["mail"]);
+        Assert.Equal("mail.send", def.States["A"].Action);
+    }
+
+    /// <summary>状態直下の retry を RetryDefinition として保持する。</summary>
+    [Fact]
+    public void Load_ParsesStateRetryBlock()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: noop
+                retry:
+                  limit: 3
+                  backoff: exponential
+                  errors: [timeout, 5xx]
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+        var retry = def.States["A"].Retry;
+
+        // Assert
+        Assert.NotNull(retry);
+        Assert.Equal(3, retry!.Limit);
+        Assert.Equal("exponential", retry.Backoff);
+        Assert.NotNull(retry.Errors);
+        Assert.Equal(2, retry.Errors!.Count);
+        Assert.Contains("timeout", retry.Errors);
+        Assert.Contains("5xx", retry.Errors);
+    }
+
+    /// <summary>input 内の retry は構文エラーになる。</summary>
+    [Fact]
+    public void Load_RetryInsideInput_Throws()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: noop
+                input:
+                  retry:
+                    limit: 3
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => loader.Load(yaml));
+
+        Assert.Contains("retry", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("input", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>空の workflow.modules は Modules=null として扱う。</summary>
+    [Fact]
+    public void Load_EmptyWorkflowModules_ReturnsNullModules()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+              modules: {}
+            states:
+              A:
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        Assert.Null(def.Modules);
+    }
+
+    /// <summary>空の retry ブロックは Retry=null として扱う。</summary>
+    [Fact]
+    public void Load_EmptyRetryBlock_ReturnsNullRetry()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: noop
+                retry: {}
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        Assert.Null(def.States["A"].Retry);
+    }
+
+    /// <summary>modules の空 ModuleId は構文エラーになる。</summary>
+    [Fact]
+    public void Load_WorkflowModulesWithBlankModuleId_Throws()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+              modules:
+                mail: "   "
+            states:
+              A:
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => loader.Load(yaml));
+
+        Assert.Contains("workflow.modules['mail']", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>modules の alias 重複（大文字小文字無視）は Loader で拒否される。</summary>
+    [Fact]
+    public void Load_DuplicateModuleAlias_Throws()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+              modules:
+                mail: com.company.mail
+                Mail: com.company.other
+            states:
+              A:
+                action: noop
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => loader.Load(yaml));
+
+        Assert.Contains("duplicate alias 'mail'", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
 
