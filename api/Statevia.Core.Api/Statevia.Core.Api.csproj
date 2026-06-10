@@ -26,6 +26,7 @@
     <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="8.0.10" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
     <ProjectReference Include="../../engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj" />
+    <ProjectReference Include="../../shared/Statevia.Actions.Abstractions/Statevia.Actions.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>
