@@ -180,6 +180,39 @@ public class StateWorkflowDefinitionLoaderTests
         Assert.Equal("order.create", def.States["CreateOrder"].Action);
     }
 
+    /// <summary>join と action の併記は Level 1 検証で拒否されることを検証する。</summary>
+    [Fact]
+    public void Level1_RejectsJoinAndActionTogether()
+    {
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: order.create
+                join:
+                  allOf: [B, C]
+                on:
+                  Joined:
+                    end: true
+              B:
+                on:
+                  Completed:
+                    next: A
+              C:
+                on:
+                  Completed:
+                    next: A
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+        var def = loader.Load(yaml);
+
+        var r = Level1Validator.Validate(def);
+
+        Assert.False(r.IsValid);
+        Assert.Contains(r.Errors, e => e.Contains("both join and action", StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>wait と action の併記は Level 1 検証で拒否されることを検証する。</summary>
     [Fact]
     public void Level1_RejectsWaitAndActionTogether()

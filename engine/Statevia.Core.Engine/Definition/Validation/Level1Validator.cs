@@ -26,6 +26,7 @@ public static class Level1Validator
         {
             ValidateStateName(stateName, errors);
             ValidateActionAndWait(stateName, stateDef, errors);
+            ValidateActionAndJoin(stateName, stateDef, errors);
             ValidateTransitions(stateName, stateDef, stateNames, errors, ref terminalTransitionCount);
             ValidateJoin(stateDef, stateNames, errors);
             ValidateStateInput(stateName, stateDef, errors);
@@ -59,6 +60,18 @@ public static class Level1Validator
         if (stateDef.Wait != null && !string.IsNullOrWhiteSpace(stateDef.Action))
         {
             errors.Add($"State '{stateName}' cannot specify both wait and action.");
+        }
+    }
+
+    /// <summary>同一状態で <c>action</c> と <c>join</c> が同時指定されていないことを検証する。</summary>
+    /// <param name="stateName">検証対象の状態名。</param>
+    /// <param name="stateDef">状態定義。</param>
+    /// <param name="errors">検出したエラーメッセージの蓄積先。</param>
+    private static void ValidateActionAndJoin(string stateName, StateDefinition stateDef, List<string> errors)
+    {
+        if (stateDef.Join != null && !string.IsNullOrWhiteSpace(stateDef.Action))
+        {
+            errors.Add($"State '{stateName}' cannot specify both join and action.");
         }
     }
 
