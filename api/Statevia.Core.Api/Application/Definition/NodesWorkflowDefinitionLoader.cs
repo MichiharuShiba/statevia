@@ -58,11 +58,13 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         ValidateStructure(parsed);
         var states = BuildStates(parsed);
         var name = ResolveWorkflowName(workflowDict);
+        var modules = ParseWorkflowModules(workflowDict);
 
         return new WorkflowDefinition
         {
-            Workflow = new WorkflowMetadata { Name = name },
-            States = states
+            Name = name,
+            Modules = modules,
+            States = states,
         };
     }
 
@@ -610,6 +612,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                     {
                         Action = ActionId,
                         Input = ParseActionInput(Id, InputRaw),
+                        Retry = ParseRetryDefinition(Raw),
                         On = transitions
                     };
                 case NodeKind.Wait:

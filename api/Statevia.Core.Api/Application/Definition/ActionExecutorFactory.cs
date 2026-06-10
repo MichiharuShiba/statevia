@@ -27,7 +27,9 @@ internal sealed class ActionExecutorFactory : IStateExecutorFactory
         if (state.Wait != null)
             return DefaultStateExecutor.Create(new WaitOnlyState(state.Wait.Event));
 
-        var actionId = string.IsNullOrWhiteSpace(state.Action) ? WellKnownActionIds.NoOp : state.Action.Trim();
+        var actionId = string.IsNullOrWhiteSpace(state.Action)
+            ? WellKnownActionIds.NoOpCanonical
+            : state.Action.Trim();
         return _registry.TryResolve(actionId, out var executor) ? executor : null;
     }
 }
