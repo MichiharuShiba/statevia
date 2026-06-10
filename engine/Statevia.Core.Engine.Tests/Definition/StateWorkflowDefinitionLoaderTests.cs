@@ -749,5 +749,31 @@ public class StateWorkflowDefinitionLoaderTests
 
         Assert.Contains("workflow.modules['mail']", ex.Message, StringComparison.Ordinal);
     }
+
+    /// <summary>modules の alias 重複（大文字小文字無視）は Loader で拒否される。</summary>
+    [Fact]
+    public void Load_DuplicateModuleAlias_Throws()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+              modules:
+                mail: com.company.mail
+                Mail: com.company.other
+            states:
+              A:
+                action: noop
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => loader.Load(yaml));
+
+        Assert.Contains("duplicate alias 'mail'", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }
 

@@ -162,14 +162,21 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
             return null;
         }
 
-        var modulesDict = ToStringDict(modulesVal, StringComparer.OrdinalIgnoreCase);
+        var modulesDict = ToStringDict(modulesVal);
         if (modulesDict.Count == 0)
         {
             return null;
         }
 
+        var entries = modulesDict
+            .Select(entry => new KeyValuePair<string, string>(
+                entry.Key,
+                entry.Value?.ToString() ?? string.Empty))
+            .ToList();
+
+        var seenAliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var modules = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (aliasRaw, moduleIdRaw) in modulesDict)
+        foreach (var (aliasRaw, moduleIdRaw) in entries)
         {
             var alias = aliasRaw.Trim();
             if (alias.Length == 0)
@@ -177,8 +184,13 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
                 throw new ArgumentException("workflow.modules contains an empty alias key.");
             }
 
-            var moduleId = moduleIdRaw?.ToString()?.Trim();
-            if (string.IsNullOrWhiteSpace(moduleId))
+            if (!seenAliases.Add(alias))
+            {
+                throw new ArgumentException($"workflow.modules contains duplicate alias '{alias}'.");
+            }
+
+            var moduleId = moduleIdRaw.Trim();
+            if (moduleId.Length == 0)
             {
                 throw new ArgumentException($"workflow.modules['{alias}'] requires a non-empty ModuleId.");
             }
