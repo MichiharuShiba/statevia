@@ -26,7 +26,7 @@ public class StateWorkflowDefinitionLoaderTests
                     next: Join1
               Join1:
                 join:
-                  allOf: [Prepare, AskUser]
+                  all: [Prepare, AskUser]
                 on:
                   Joined:
                     next: Work
@@ -52,7 +52,7 @@ public class StateWorkflowDefinitionLoaderTests
 
         var join1 = def.States["Join1"];
         Assert.NotNull(join1.Join);
-        Assert.Equal(2, join1.Join!.AllOf.Count);
+        Assert.Equal(2, join1.Join!.All.Count);
     }
 
     /// <summary>wait のみの状態をパースすることを検証する。</summary>
@@ -90,7 +90,7 @@ public class StateWorkflowDefinitionLoaderTests
             states:
               JoinOnly:
                 join:
-                  allOf: [A, B]
+                  all: [A, B]
             """;
         var loader = new StateWorkflowDefinitionLoader();
 
@@ -100,9 +100,9 @@ public class StateWorkflowDefinitionLoaderTests
 
         // Assert
         Assert.NotNull(state.Join);
-        Assert.Equal(2, state.Join!.AllOf.Count);
-        Assert.Contains("A", state.Join.AllOf);
-        Assert.Contains("B", state.Join.AllOf);
+        Assert.Equal(2, state.Join!.All.Count);
+        Assert.Contains("A", state.Join.All);
+        Assert.Contains("B", state.Join.All);
     }
 
     /// <summary>end: true の遷移をパースすることを検証する。</summary>
@@ -191,7 +191,7 @@ public class StateWorkflowDefinitionLoaderTests
               A:
                 action: order.create
                 join:
-                  allOf: [B, C]
+                  all: [B, C]
                 on:
                   Joined:
                     end: true

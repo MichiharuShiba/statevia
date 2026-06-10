@@ -56,15 +56,15 @@ public class Level2ValidationTests
     [Fact]
     public void Validate_CircularJoin_Fails()
     {
-        // Arrange: A join allOf [B], B join allOf [A]
+        // Arrange: A join all [B], B join all [A]
         var def = new WorkflowDefinition
         {
             Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },
-                ["A"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "B" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } },
-                ["B"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+                ["A"] = new StateDefinition { Join = new JoinDefinition { All = new[] { "B" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } },
+                ["B"] = new StateDefinition { Join = new JoinDefinition { All = new[] { "A" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
             }
         };
 
@@ -76,18 +76,18 @@ public class Level2ValidationTests
         Assert.Contains(result.Errors, e => e.Contains("Circular join", StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>Join が自分自身を allOf に含む場合も循環として検出することを検証する。</summary>
+    /// <summary>Join が自分自身を all に含む場合も循環として検出することを検証する。</summary>
     [Fact]
     public void Validate_SelfJoinCircular_Fails()
     {
-        // Arrange: A join allOf [A]
+        // Arrange: A join all [A]
         var def = new WorkflowDefinition
         {
             Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },
-                ["A"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+                ["A"] = new StateDefinition { Join = new JoinDefinition { All = new[] { "A" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
             }
         };
 
@@ -99,18 +99,18 @@ public class Level2ValidationTests
         Assert.Contains(result.Errors, e => e.Contains("Circular join", StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>Join の allOf に存在しない状態名が含まれる場合でも HasCircularJoin は continue し、他に循環がなければ検証は通過することを検証する。</summary>
+    /// <summary>Join の all に存在しない状態名が含まれる場合でも HasCircularJoin は continue し、他に循環がなければ検証は通過することを検証する。</summary>
     [Fact]
-    public void Validate_JoinAllOfContainsNonExistentState_DoesNotReportCircularJoin()
+    public void Validate_JoinAllContainsNonExistentState_DoesNotReportCircularJoin()
     {
-        // Arrange: A join allOf [Missing]（Missing は States に存在しない）
+        // Arrange: A join all [Missing]（Missing は States に存在しない）
         var def = new WorkflowDefinition
         {
             Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },
-                ["A"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "Missing" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+                ["A"] = new StateDefinition { Join = new JoinDefinition { All = new[] { "Missing" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
             }
         };
 
@@ -134,7 +134,7 @@ public class Level2ValidationTests
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Fork = new[] { "A", "B" } } } },
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join" } } },
                 ["B"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join" } } },
-                ["Join"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A", "B" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { Next = "End" } } },
+                ["Join"] = new StateDefinition { Join = new JoinDefinition { All = new[] { "A", "B" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { Next = "End" } } },
                 ["End"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } }
             }
         };
@@ -150,7 +150,7 @@ public class Level2ValidationTests
     [Fact]
     public void Validate_JoinState_IsIncludedInReachability()
     {
-        // Arrange: Start → A → Join (allOf [A]) → End
+        // Arrange: Start → A → Join (all [A]) → End
         var def = new WorkflowDefinition
         {
             Name = "Test",
@@ -158,7 +158,7 @@ public class Level2ValidationTests
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "A" } } },
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join" } } },
-                ["Join"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { Next = "End" } } },
+                ["Join"] = new StateDefinition { Join = new JoinDefinition { All = new[] { "A" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { Next = "End" } } },
                 ["End"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } } }
             }
         };

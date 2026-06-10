@@ -130,7 +130,7 @@ public sealed class DefinitionCompilerServiceTests
               A:
                 action: noop
                 join:
-                  allOf: [B]
+                  all: [B]
                 on:
                   Joined:
                     end: true
@@ -449,7 +449,7 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
-    /// nodes の fork / join（allOf MVP）が Engine の join テーブルとして解決される。
+    /// nodes の fork / join（all MVP）が Engine の join テーブルとして解決される。
     /// </summary>
     [Fact]
     public void ValidateAndCompile_NodesForkJoin_Succeeds()
@@ -485,9 +485,9 @@ public sealed class DefinitionCompilerServiceTests
         var (compiled, _) = svc.ValidateAndCompile("ForkJoin", yaml);
 
         Assert.NotNull(compiled.JoinTable);
-        Assert.True(compiled.JoinTable.TryGetValue("join1", out var allOf));
-        Assert.Contains("b1", allOf, StringComparer.OrdinalIgnoreCase);
-        Assert.Contains("b2", allOf, StringComparer.OrdinalIgnoreCase);
+        Assert.True(compiled.JoinTable.TryGetValue("join1", out var joinAll));
+        Assert.Contains("b1", joinAll, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("b2", joinAll, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>

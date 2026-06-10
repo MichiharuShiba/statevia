@@ -33,7 +33,7 @@ states:
     wait:                         # 待機（オプション）
       event: <EventName>
     join:                         # 合流（オプション）
-      allOf: [<StateName>, ...]
+      all: [<StateName>, ...]
 ```
 
 - **workflow.name**: ワークフロー名（任意、デフォルト "Unnamed"）。
@@ -54,7 +54,7 @@ states:
 
 ### 1.4 Join（合流）
 
-- **join.allOf**: 完了を待つ状態名のリスト。すべてが完了すると `Joined` 事実が発生し、`on.Joined` で次へ遷移できる。
+- **join.all**: 完了を待つ状態名のリスト。すべてが完了すると `Joined` 事実が発生し、`on.Joined` で次へ遷移できる。
 - Join 状態は合成ノードとして実行され、**`action` は指定しない**（`wait` と同様に `action` 併記は Level 1 検証エラー）。
 
 ### 1.5 例（States 形式）
@@ -83,7 +83,7 @@ states:
 
   Join1:
     join:
-      allOf: [Prepare, AskUser]
+      all: [Prepare, AskUser]
     on:
       Joined:
         next: Work
@@ -189,7 +189,7 @@ states:
 
   Join1:
     join:
-      allOf: [A, B]
+      all: [A, B]
     on:
       Joined:
         next: AfterJoin
@@ -428,7 +428,7 @@ Nodes 形式は、実行前に **states 形式の CompiledWorkflowDefinition に
 
 - 状態名（states 形式）またはノード ID（nodes 形式）は一意とする。
 - 自己遷移（A → A）は禁止。
-- Join の allOf / branches は既存の状態・ノードを参照する。
+- Join の all / branches は既存の状態・ノードを参照する。
 - Fork と Join は制御構造であり、実行順序の保証範囲は実装に依存する。
 - Wait は指定イベントで再開する待機を表す。
 

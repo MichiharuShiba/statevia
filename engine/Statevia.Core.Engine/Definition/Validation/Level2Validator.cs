@@ -23,7 +23,7 @@ public static class Level2Validator
 
         foreach (var (stateName, stateDef) in definition.States)
         {
-            if (stateDef.Join != null && HasCircularJoin(definition, stateName, stateDef.Join.AllOf, new HashSet<string>(StringComparer.OrdinalIgnoreCase)))
+            if (stateDef.Join != null && HasCircularJoin(definition, stateName, stateDef.Join.All, new HashSet<string>(StringComparer.OrdinalIgnoreCase)))
             {
                 errors.Add($"Circular join detected involving: {stateName}");
             }
@@ -43,9 +43,9 @@ public static class Level2Validator
                     CollectReferencedStatesCore(trans, referenced);
                 }
             }
-            if (stateDef.Join?.AllOf != null)
+            if (stateDef.Join?.All != null)
             {
-                foreach (var s in stateDef.Join.AllOf)
+                foreach (var s in stateDef.Join.All)
                 {
                     referenced.Add(s);
                 }
@@ -187,7 +187,7 @@ public static class Level2Validator
             {
                 continue;
             }
-            if (depDef.Join != null && HasCircularJoin(definition, dep, depDef.Join.AllOf, visited))
+            if (depDef.Join != null && HasCircularJoin(definition, dep, depDef.Join.All, visited))
             {
                 return true;
             }

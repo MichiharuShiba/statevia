@@ -19,7 +19,7 @@ public sealed class CompiledWorkflowDefinition
     /// <summary>Fork テーブル。状態名 → 並列開始する状態の一覧。</summary>
     public required IReadOnlyDictionary<string, IReadOnlyList<string>> ForkTable { get; init; }
 
-    /// <summary>Join テーブル。Join 状態名 → allOf で待つ状態の一覧。</summary>
+    /// <summary>Join テーブル。Join 状態名 → all で待つ状態の一覧。</summary>
     public required IReadOnlyDictionary<string, IReadOnlyList<string>> JoinTable { get; init; }
 
     /// <summary>Wait テーブル。状態名 → 待機するイベント名。</summary>

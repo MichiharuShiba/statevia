@@ -73,11 +73,14 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         if (dict.TryGetValue("join", out var joinVal) && joinVal != null)
         {
             var joinDict = ToStringDict(joinVal);
-            var allOf = GetStrList(joinDict, "allOf");
-            if (allOf != null)
+
+            var all = GetStrList(joinDict, "all");
+            if (all == null)
             {
-                join = new JoinDefinition { AllOf = allOf };
+                throw new ArgumentException("join must specify a non-empty 'all' list of state names.");
             }
+
+            join = new JoinDefinition { All = all };
         }
 
         if (dict.TryGetValue("input", out var inputVal) && inputVal != null)

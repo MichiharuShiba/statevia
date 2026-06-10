@@ -180,7 +180,7 @@ public class Level1ValidationTests
         Assert.Contains(result.Errors, e => e.Contains("Fork references unknown", StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>Join の allOf が存在しない状態を参照している定義は Level1 検証で失敗することを検証する。</summary>
+    /// <summary>Join の all が存在しない状態を参照している定義は Level1 検証で失敗することを検証する。</summary>
     [Fact]
     public void Validate_JoinReferencesUnknownState_Fails()
     {
@@ -191,7 +191,7 @@ public class Level1ValidationTests
             States = new Dictionary<string, StateDefinition>
             {
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join1" } } },
-                ["Join1"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A", "NotExist" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+                ["Join1"] = new StateDefinition { Join = new JoinDefinition { All = new[] { "A", "NotExist" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
             }
         };
 

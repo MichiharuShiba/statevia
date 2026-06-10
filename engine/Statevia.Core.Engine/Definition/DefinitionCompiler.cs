@@ -169,9 +169,9 @@ public sealed class DefinitionCompiler
         var result = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
         foreach (var (stateName, stateDef) in definition.States)
         {
-            if (stateDef.Join != null && stateDef.Join.AllOf.Count > 0)
+            if (stateDef.Join != null && stateDef.Join.All.Count > 0)
             {
-                result[stateName] = stateDef.Join.AllOf;
+                result[stateName] = stateDef.Join.All;
             }
         }
         return result;
@@ -202,9 +202,9 @@ public sealed class DefinitionCompiler
                     CollectTransitionReferences(trans, allReferenced);
                 }
             }
-            if (stateDef.Join?.AllOf != null)
+            if (stateDef.Join?.All != null)
             {
-                foreach (var s in stateDef.Join.AllOf)
+                foreach (var s in stateDef.Join.All)
                 {
                     allReferenced.Add(s);
                 }

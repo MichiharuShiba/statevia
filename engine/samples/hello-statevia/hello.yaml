@@ -21,7 +21,7 @@ states:
 
   Join1:
     join:
-      allOf: [Prepare, AskUser]
+      all: [Prepare, AskUser]
     on:
       Joined:
         next: Work

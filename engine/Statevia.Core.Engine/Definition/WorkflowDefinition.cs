@@ -28,7 +28,7 @@ public sealed class StateDefinition
     public IReadOnlyDictionary<string, TransitionDefinition>? On { get; init; }
     /// <summary>Wait/Resume 用の待機イベント定義。</summary>
     public WaitDefinition? Wait { get; init; }
-    /// <summary>Join の allOf 依存定義。</summary>
+    /// <summary>Join の all 依存定義。</summary>
     public JoinDefinition? Join { get; init; }
     /// <summary>遷移でこの状態に入る直前に候補 input へ適用する指定（YAML キーは <c>input</c>）。</summary>
     public StateInputDefinition? Input { get; init; }
@@ -94,11 +94,11 @@ public sealed class WaitDefinition
     public required string Event { get; init; }
 }
 
-/// <summary>Join の allOf 依存定義。</summary>
+/// <summary>Join の all 依存定義。</summary>
 public sealed class JoinDefinition
 {
     /// <summary>完了を待つ状態名の一覧。</summary>
-    public required IReadOnlyList<string> AllOf { get; init; }
+    public required IReadOnlyList<string> All { get; init; }
 }
 
 /// <summary>

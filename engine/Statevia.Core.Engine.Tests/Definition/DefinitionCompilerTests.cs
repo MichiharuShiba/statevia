@@ -110,9 +110,9 @@ public class DefinitionCompilerTests
         Assert.Equal("resume", waitTable["WaitState"]);
     }
 
-    /// <summary>Join で AllOf が空の状態は Join テーブルに含めないことを検証する。</summary>
+    /// <summary>Join で All が空の状態は Join テーブルに含めないことを検証する。</summary>
     [Fact]
-    public void Compile_JoinWithEmptyAllOf_NotInJoinTable()
+    public void Compile_JoinWithEmptyAll_NotInJoinTable()
     {
         // Arrange
         var def = new WorkflowDefinition
@@ -120,7 +120,7 @@ public class DefinitionCompilerTests
             Name = "Test",
             States = new Dictionary<string, StateDefinition>
             {
-                ["Start"] = new StateDefinition { Join = new JoinDefinition { AllOf = [] }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+                ["Start"] = new StateDefinition { Join = new JoinDefinition { All = [] }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
             }
         };
         var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
@@ -213,7 +213,7 @@ public class DefinitionCompilerTests
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Fork = new[] { "A", "B" } } } },
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join" } } },
                 ["B"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join" } } },
-                ["Join"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A", "B" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+                ["Join"] = new StateDefinition { Join = new JoinDefinition { All = new[] { "A", "B" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
             }
         };
         var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
@@ -270,8 +270,8 @@ public class DefinitionCompilerTests
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Fork = new[] { "A", "B" } } } },
                 ["A"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join1" } } },
                 ["B"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "Join2" } } },
-                ["Join1"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "A" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } },
-                ["Join2"] = new StateDefinition { Join = new JoinDefinition { AllOf = new[] { "B" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
+                ["Join1"] = new StateDefinition { Join = new JoinDefinition { All = new[] { "A" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } },
+                ["Join2"] = new StateDefinition { Join = new JoinDefinition { All = new[] { "B" } }, On = new Dictionary<string, TransitionDefinition> { ["Joined"] = new TransitionDefinition { End = true } } }
             }
         };
         var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
