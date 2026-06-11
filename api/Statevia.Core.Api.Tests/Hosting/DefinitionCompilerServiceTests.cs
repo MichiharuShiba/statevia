@@ -1,9 +1,11 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using Statevia.Core.Api.Abstractions.Services;
-using Statevia.Core.Api.Application.Actions.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
+using Statevia.Actions.Abstractions.Catalog;
+using Statevia.Actions.Abstractions.Visibility;
 using Statevia.Core.Api.Application.Actions.Builtins;
-using Statevia.Core.Api.Application.Actions.Registry;
+using ActionExecutionTestSupport = Statevia.Core.Api.Tests.Application.Actions.Execution.ActionExecutionTestSupport;
 using Statevia.Core.Api.Application.Definition;
 using Statevia.Core.Api.Hosting;
 using Statevia.Core.Engine.Abstractions;
@@ -27,11 +29,46 @@ public sealed class DefinitionCompilerServiceTests
     private static IDefinitionLoadStrategy CreateDefaultStrategy() =>
         new DefinitionLoadStrategy(new StateWorkflowDefinitionLoader(), new NodesWorkflowDefinitionLoader());
 
-    private static DefinitionCompilerService CreateSut(IActionRegistry? registry = null)
+    private static readonly Guid TestTenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private static DefinitionCompilerService CreateSut(IActionCatalog? catalog = null)
     {
-        registry ??= new InMemoryActionRegistry();
-        DefinitionCompilerService.RegisterBuiltinActions(registry);
-        return new DefinitionCompilerService(registry, CreateDefaultStrategy());
+        catalog ??= ActionExecutionTestSupport.CreateCatalogWithBuiltins();
+        var provider = ActionExecutionTestSupport.CreateProvider(catalog);
+        return new DefinitionCompilerService(
+            catalog,
+            provider.GetRequiredService<IActionVisibilityResolver>(),
+            CreateDefaultStrategy(),
+            provider);
+    }
+
+    private static void RegisterCustomInProcessAction(
+        IActionCatalog catalog,
+        string actionId,
+        Func<StateContext, object?, CancellationToken, Task<object?>> execute)
+    {
+        catalog.Register(
+            new ActionDescriptor
+            {
+                ActionId = actionId,
+                ModuleId = "test.module",
+                Version = "1.0.0",
+                TrustLevel = ActionTrustLevel.Trusted,
+                Source = ActionSourceKind.Filesystem,
+                Visibility = ActionVisibility.Builtin,
+            },
+            new ActionCatalogEntry(InProcessFactory: _ => new DefaultStateExecutor(execute)));
+    }
+
+    private static DefinitionCompilerService CreateSutWithCatalog(out IActionCatalog catalog)
+    {
+        catalog = ActionExecutionTestSupport.CreateCatalogWithBuiltins();
+        var provider = ActionExecutionTestSupport.CreateProvider(catalog);
+        return new DefinitionCompilerService(
+            catalog,
+            provider.GetRequiredService<IActionVisibilityResolver>(),
+            CreateDefaultStrategy(),
+            provider);
     }
 
     /// <summary>
@@ -253,6 +290,40 @@ public sealed class DefinitionCompilerServiceTests
         Assert.NotNull(compiled.StateExecutorFactory.GetExecutor("Slow"));
     }
 
+    /// <summary>他テナント所有 Action 参照はコンパイル 422 相当の例外になる。</summary>
+    [Fact]
+    public void ValidateAndCompile_OtherTenantAction_ThrowsNotVisible()
+    {
+        // Arrange
+        var svc = CreateSutWithCatalog(out var catalog);
+        catalog.Register(
+            new ActionDescriptor
+            {
+                ActionId = "tenant.only.action",
+                ModuleId = "test.module",
+                Version = "1.0.0",
+                Visibility = ActionVisibility.Tenant,
+                OwnerTenantId = "22222222-2222-2222-2222-222222222222",
+            },
+            new ActionCatalogEntry(InProcessFactory: _ => DefaultStateExecutor.Create(new NoOpState())));
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: tenant.only.action
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("W", yaml, TestTenantId));
+
+        // Assert
+        Assert.Contains("not visible", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>
     /// module alias と actionName は Compiler 経由で解決されコンパイルできる。
     /// </summary>
@@ -260,12 +331,11 @@ public sealed class DefinitionCompilerServiceTests
     public void ValidateAndCompile_ModuleAliasResolvesActionName()
     {
         // Arrange
-        var registry = new InMemoryActionRegistry();
-        DefinitionCompilerService.RegisterBuiltinActions(registry);
-        registry.Register(
+        var svc = CreateSutWithCatalog(out var catalog);
+        RegisterCustomInProcessAction(
+            catalog,
             "com.company.mail.send",
-            DefaultStateExecutor.Create(new NoOpState()));
-        var svc = new DefinitionCompilerService(registry, CreateDefaultStrategy());
+            (_, _, _) => Task.FromResult<object?>(null));
         var yaml = """
             workflow:
               name: W
@@ -317,7 +387,7 @@ public sealed class DefinitionCompilerServiceTests
     /// RegisterBuiltinActions に null registry を渡すと ArgumentNullException になる。
     /// </summary>
     [Fact]
-    public void RegisterBuiltinActions_NullRegistry_Throws()
+    public void RegisterBuiltinActions_NullCatalog_Throws()
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => DefinitionCompilerService.RegisterBuiltinActions(null!));
@@ -362,12 +432,11 @@ public sealed class DefinitionCompilerServiceTests
     public void ValidateAndCompile_RegisteredCustomAction_Succeeds()
     {
         // Arrange
-        var registry = new InMemoryActionRegistry();
-        DefinitionCompilerService.RegisterBuiltinActions(registry);
-        registry.Register(
+        var svc = CreateSutWithCatalog(out var catalog);
+        RegisterCustomInProcessAction(
+            catalog,
             "my.custom.echo",
-            new DefaultStateExecutor((_, input, _) => Task.FromResult<object?>(input)));
-        var svc = new DefinitionCompilerService(registry, CreateDefaultStrategy());
+            (_, input, _) => Task.FromResult<object?>(input));
         var yaml = """
             workflow:
               name: W
@@ -394,12 +463,11 @@ public sealed class DefinitionCompilerServiceTests
     public async Task Start_CustomEchoAction_OutputReflectsInput()
     {
         // Arrange
-        var registry = new InMemoryActionRegistry();
-        DefinitionCompilerService.RegisterBuiltinActions(registry);
-        registry.Register(
+        var compiler = CreateSutWithCatalog(out var catalog);
+        RegisterCustomInProcessAction(
+            catalog,
             "my.custom.echo",
-            new DefaultStateExecutor((_, input, _) => Task.FromResult<object?>(input)));
-        var compiler = new DefinitionCompilerService(registry, CreateDefaultStrategy());
+            (_, input, _) => Task.FromResult<object?>(input));
         var yaml = """
             workflow:
               name: W
@@ -410,7 +478,7 @@ public sealed class DefinitionCompilerServiceTests
                   Completed:
                     end: true
             """;
-        var (def, _) = compiler.ValidateAndCompile("W", yaml);
+        var (def, _) = compiler.ValidateAndCompile("W", yaml, TestTenantId);
 
         // Act
         var engine = CreateTestEngine();

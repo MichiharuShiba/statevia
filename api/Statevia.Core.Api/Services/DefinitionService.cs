@@ -66,10 +66,11 @@ internal sealed class DefinitionService : IDefinitionService
             });
         }
 
+        var tenantId = _tenantContext.GetRequiredTenantId();
         string compiledJson;
         try
         {
-            (_, compiledJson) = _compiler.ValidateAndCompile(request.Name!, request.Yaml!);
+            (_, compiledJson) = _compiler.ValidateAndCompile(request.Name!, request.Yaml!, tenantId);
         }
         catch (ArgumentException ex)
         {
@@ -78,8 +79,6 @@ internal sealed class DefinitionService : IDefinitionService
                 new { message = ex.Message, field = "yaml" }
             }, ex);
         }
-
-        var tenantId = _tenantContext.GetRequiredTenantId();
         var id = _idGenerator.NewGuid();
         var versionId = _idGenerator.NewGuid();
 
@@ -214,10 +213,11 @@ internal sealed class DefinitionService : IDefinitionService
         if (uuid is null)
             throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
+        var tenantId = _tenantContext.GetRequiredTenantId();
         string compiledJson;
         try
         {
-            (_, compiledJson) = _compiler.ValidateAndCompile(request.Name, request.Yaml);
+            (_, compiledJson) = _compiler.ValidateAndCompile(request.Name, request.Yaml, tenantId);
         }
         catch (ArgumentException ex)
         {
@@ -226,8 +226,6 @@ internal sealed class DefinitionService : IDefinitionService
                 new { message = ex.Message, field = "yaml" }
             }, ex);
         }
-
-        var tenantId = _tenantContext.GetRequiredTenantId();
         var newVersionId = _idGenerator.NewGuid();
 
         return await _executor.ExecuteReadCommittedAsync(

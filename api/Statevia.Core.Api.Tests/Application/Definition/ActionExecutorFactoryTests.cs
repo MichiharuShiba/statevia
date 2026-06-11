@@ -1,46 +1,42 @@
-using Statevia.Core.Api.Application.Actions;
-using Statevia.Core.Api.Application.Actions.Builtins;
-using Statevia.Core.Api.Application.Actions.Registry;
+using Statevia.Actions.Abstractions.Catalog;
+using ActionExecutionTestSupport = Statevia.Core.Api.Tests.Application.Actions.Execution.ActionExecutionTestSupport;
 using Statevia.Core.Api.Application.Definition;
+using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
-using Statevia.Core.Engine.Execution;
 
 namespace Statevia.Core.Api.Tests.Application.Definition;
 
+/// <summary><see cref="ActionExecutorFactory"/> の単体テスト。</summary>
 public sealed class ActionExecutorFactoryTests
 {
-    /// <summary>
-    /// 未定義の状態名を指定した場合は実行器を返さない。
-    /// </summary>
+    private static (ActionExecutorFactory Factory, IActionCatalog Catalog) CreateSut(WorkflowDefinition definition)
+    {
+        var catalog = ActionExecutionTestSupport.CreateCatalogWithBuiltins();
+        var provider = ActionExecutionTestSupport.CreateProvider(catalog);
+        return (new ActionExecutorFactory(definition, catalog, provider), catalog);
+    }
+
+    /// <summary>未定義の状態名を指定した場合は実行器を返さない。</summary>
     [Fact]
     public void GetExecutor_WhenStateNotFound_ReturnsNull()
     {
         // Arrange
-        var registry = new InMemoryActionRegistry();
-
-        // Act
         var def = new WorkflowDefinition
         {
             Name = "W",
-            States = new Dictionary<string, StateDefinition>()
+            States = new Dictionary<string, StateDefinition>(),
         };
+        var (sut, _) = CreateSut(def);
 
-        var sut = new ActionExecutorFactory(def, registry);
-
-        // Assert
+        // Act / Assert
         Assert.Null(sut.GetExecutor("missing"));
     }
 
-    /// <summary>
-    /// wait定義のみの状態に対して実行器を生成できる。
-    /// </summary>
+    /// <summary>wait 定義のみの状態に対して実行器を生成できる。</summary>
     [Fact]
     public void GetExecutor_WhenStateHasWait_ReturnsExecutor()
     {
         // Arrange
-        var registry = new InMemoryActionRegistry();
-
-        // Act
         var def = new WorkflowDefinition
         {
             Name = "W",
@@ -48,30 +44,24 @@ public sealed class ActionExecutorFactoryTests
             {
                 ["A"] = new StateDefinition
                 {
-                    Wait = new WaitDefinition { Event = "E" }
-                }
-            }
+                    Wait = new WaitDefinition { Event = "E" },
+                },
+            },
         };
+        var (sut, _) = CreateSut(def);
 
-        var sut = new ActionExecutorFactory(def, registry);
-
+        // Act
         var executor = sut.GetExecutor("A");
+
         // Assert
         Assert.NotNull(executor);
     }
 
-    /// <summary>
-    /// 空白アクション名の状態ではNoOp実行器を選択する。
-    /// </summary>
+    /// <summary>空白アクション名の状態では NoOp を実行できる。</summary>
     [Fact]
-    public void GetExecutor_WhenStateActionWhitespace_UsesNoOpExecutor()
+    public async Task GetExecutor_WhenStateActionWhitespace_ExecutesNoOp()
     {
         // Arrange
-        var noopExecutor = DefaultStateExecutor.Create(new NoOpState());
-        var registry = new InMemoryActionRegistry();
-        registry.Register(WellKnownActionIds.NoOpCanonical, noopExecutor);
-
-        // Act
         var def = new WorkflowDefinition
         {
             Name = "W",
@@ -79,28 +69,32 @@ public sealed class ActionExecutorFactoryTests
             {
                 ["A"] = new StateDefinition
                 {
-                    Action = "  "
-                }
-            }
+                    Action = "  ",
+                },
+            },
+        };
+        var (sut, _) = CreateSut(def);
+        var executor = sut.GetExecutor("A");
+        var ctx = new StateContext
+        {
+            Events = null!,
+            Store = null!,
+            ExecutionId = "exec-1",
+            StateName = "A",
         };
 
-        var sut = new ActionExecutorFactory(def, registry);
+        // Act
+        var output = await executor!.ExecuteAsync(ctx, null, CancellationToken.None);
 
-        var executor = sut.GetExecutor("A");
         // Assert
-        Assert.Same(noopExecutor, executor);
+        Assert.Null(output);
     }
 
-    /// <summary>
-    /// 未登録アクションを指定した状態では実行器を返さない。
-    /// </summary>
+    /// <summary>未登録アクションを指定した状態では実行器を返さない。</summary>
     [Fact]
     public void GetExecutor_WhenActionUnknown_ReturnsNull()
     {
         // Arrange
-        var registry = new InMemoryActionRegistry();
-
-        // Act
         var def = new WorkflowDefinition
         {
             Name = "W",
@@ -108,15 +102,13 @@ public sealed class ActionExecutorFactoryTests
             {
                 ["A"] = new StateDefinition
                 {
-                    Action = "unknown.action"
-                }
-            }
+                    Action = "unknown.action",
+                },
+            },
         };
+        var (sut, _) = CreateSut(def);
 
-        var sut = new ActionExecutorFactory(def, registry);
-
-        // Assert
+        // Act / Assert
         Assert.Null(sut.GetExecutor("A"));
     }
 }
-

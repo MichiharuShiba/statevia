@@ -69,7 +69,10 @@ public sealed class DefinitionServiceTests
     {
         private readonly string _compiledJson;
         public StubCompiler(string compiledJson) => _compiledJson = compiledJson;
-        public (Statevia.Core.Engine.Abstractions.CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(string name, string yaml)
+        public (Statevia.Core.Engine.Abstractions.CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(
+            string name,
+            string yaml,
+            Guid? tenantId = null)
         {
             // DefinitionService は compiled オブジェクトを使わず、CompiledJson だけを保存する。
             var dummyFactory = new DummyExecutorFactory();
@@ -103,7 +106,10 @@ public sealed class DefinitionServiceTests
             _exception = exception;
         }
 
-        public (Statevia.Core.Engine.Abstractions.CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(string name, string yaml)
+        public (Statevia.Core.Engine.Abstractions.CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(
+            string name,
+            string yaml,
+            Guid? tenantId = null)
             => throw _exception;
 
         public CompiledWorkflowDefinition RestoreFromStoredVersion(string sourceYaml, string compiledJson) =>
