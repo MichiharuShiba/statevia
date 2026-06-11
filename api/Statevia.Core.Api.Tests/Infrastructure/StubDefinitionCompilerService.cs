@@ -11,7 +11,10 @@ internal sealed class StubDefinitionCompilerService : IDefinitionCompilerService
     public StubDefinitionCompilerService((CompiledWorkflowDefinition Compiled, string CompiledJson) result) =>
         _result = result;
 
-    public (CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(string name, string yaml) =>
+    public (CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(
+        string name,
+        string yaml,
+        Guid? tenantId = null) =>
         _result;
 
     public CompiledWorkflowDefinition RestoreFromStoredVersion(string sourceYaml, string compiledJson) =>
