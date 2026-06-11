@@ -91,6 +91,10 @@ public class DefaultStateExecutorTests
     private sealed class NullEventProvider : IEventProvider
     {
         public Task WaitAsync(string eventName, CancellationToken ct) => Task.CompletedTask;
+
+        public void Signal(string signalName) { }
+
+        public void PublishTopic(string topic, object? payloadSummary) { }
     }
 
     private sealed class NullStateStore : IReadOnlyStateStore
