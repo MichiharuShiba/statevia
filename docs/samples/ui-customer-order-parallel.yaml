@@ -78,9 +78,9 @@ nodes:
   - id: order.ship.east
     type: action
     label: 東倉から即出荷（遅延シミュレート）
-    action: delay5s
+    action: sleep
     input:
-      path: $.shared
+      duration: 5s
     next: order.merge
 
   - id: order.await.transfer
