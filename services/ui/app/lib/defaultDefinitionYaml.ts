@@ -1,4 +1,4 @@
-/** Definition Editor 初期テンプレート（delay5s → fork/join → end）。 */
+/** Definition Editor 初期テンプレート（sleep → fork/join → end）。 */
 export const defaultDefinitionYaml = `version: 1
 workflow:
   name: DefinitionMinimal
@@ -8,7 +8,9 @@ nodes:
     next: slowStep
   - id: slowStep
     type: action
-    action: delay5s
+    action: sleep
+    input:
+      duration: 5s
     next: fork1
   - id: fork1
     type: fork
@@ -19,7 +21,9 @@ nodes:
     next: join1
   - id: branchRight
     type: action
-    action: delay5s
+    action: sleep
+    input:
+      duration: 5s
     next: join1
   - id: join1
     type: join
