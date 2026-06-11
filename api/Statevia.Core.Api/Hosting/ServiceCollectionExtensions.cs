@@ -5,8 +5,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
-using Statevia.Core.Api.Application.Actions.Abstractions;
-using Statevia.Core.Api.Application.Actions.Registry;
+using Statevia.Actions.Abstractions.Catalog;
+using Statevia.Actions.Abstractions.Execution;
+using Statevia.Actions.Abstractions.Visibility;
+using Statevia.Core.Api.Application.Actions.Catalog;
+using Statevia.Core.Api.Application.Actions.Execution;
+using Statevia.Core.Api.Application.Actions.Visibility;
 using Statevia.Core.Api.Application.Definition;
 using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Configuration;
@@ -95,12 +99,16 @@ internal static class ServiceCollectionExtensions
         services.AddHostedService(sp => sp.GetRequiredService<ExecutionProjectionUpdateQueueService>());
         services.AddScoped<ExecutionStreamService>();
         services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
-        services.AddSingleton<IActionRegistry>(_ =>
+        services.AddSingleton<IActionCatalog>(_ =>
         {
-            var registry = new InMemoryActionRegistry();
-            DefinitionCompilerService.RegisterBuiltinActions(registry);
-            return registry;
+            var catalog = new InMemoryActionCatalog();
+            DefinitionCompilerService.RegisterBuiltinActions(catalog);
+            return catalog;
         });
+        services.AddSingleton<IActionVisibilityResolver, DefaultActionVisibilityResolver>();
+        services.AddSingleton<IActionExecutionPolicy, AlwaysInProcessPolicy>();
+        services.AddSingleton<InProcessBackend>();
+        services.AddSingleton<IActionExecutor, DispatchingActionExecutor>();
         services.AddSingleton<StateWorkflowDefinitionLoader>();
         services.AddSingleton<NodesWorkflowDefinitionLoader>();
         services.AddSingleton<IDefinitionLoadStrategy, DefinitionLoadStrategy>();

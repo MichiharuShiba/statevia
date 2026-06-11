@@ -10,8 +10,9 @@ public interface IDefinitionCompilerService
     /// </summary>
     /// <param name="name">定義名。</param>
     /// <param name="yaml">定義ソース YAML。</param>
+    /// <param name="tenantId">Visibility 検証用テナント UUID（未指定時はスキップ）。</param>
     /// <returns>コンパイル済み定義とその JSON 文字列。</returns>
-    (CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(string name, string yaml);
+    (CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(string name, string yaml, Guid? tenantId = null);
 
     /// <summary>
     /// 保存済み版（compiled_json + 同版 source_yaml）から Engine 投入用定義を復元する。
