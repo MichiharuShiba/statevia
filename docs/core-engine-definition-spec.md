@@ -1,7 +1,7 @@
 # 定義仕様
 
-Version: 1.1
-Updated: 2026-06-10
+Version: 1.2
+Updated: 2026-06-12
 Project: 実行型ステートマシン
 
 ---
@@ -40,7 +40,7 @@ states:
 - **workflow.name**: ワークフロー名（任意、デフォルト "Unnamed"）。
 - **workflow.modules**: 任意。module alias（キー）→ ModuleId（値）のマップ。`action: mail.send` のように alias 付き action 参照を解決する。alias は **大文字小文字を区別せず一意**（重複・空キー・空 ModuleId は Loader 構文エラー）。
 - **states**: 状態名 → 状態定義のマップ。各状態は `on`（遷移）、`wait`（待機）、`join`（合流）のいずれかまたは組み合わせを持つ。
-- **action**: 任意。定義登録時に Core-API が Registry へ照合し、未登録の ID はエラーになる。**省略時**は implicit noop（canonical: `statevia.action.builtin.noop`、即時完了）と同等。Builtin 短名・module alias・FQCN のいずれでも記述できる（§1.1.1）。**組み込み**として `delay5s`（約5秒待機後に完了、入出力なし・移行期 legacy）も利用できる。**`wait` または `join` を指定する状態では `action` と併記できない**。
+- **action**: 任意。定義登録時に Core-API が Catalog へ照合し、未登録の ID はエラーになる。**省略時**は implicit noop（canonical: `statevia.action.builtin.noop`、即時完了）と同等。Builtin 短名・module alias・FQCN のいずれでも記述できる（§1.1.1）。**`wait` または `join` を指定する状態では `action` と併記できない**。
 
 ### 1.1.1 Action ID（canonical 形式と解決）
 
@@ -54,11 +54,23 @@ YAML 上の `action` 参照は syntax parse のあと、Core-API Compiler（`Act
 | `{alias}.{actionName}` + `workflow.modules` | `{ModuleId}.{actionName}` | `mail.send` + `mail: com.company.mail` → `com.company.mail.send` |
 | 多段 FQCN（alias 未登録） | そのまま | `com.vendor.pkg.actionName` |
 
-移行期の例外:
+Builtin 短名（MVP）:
 
-- **`delay5s`** は legacy Registry キーとして短名のまま残る（Builtin Capability 拡張フェーズで `sleep` + `input.duration` へ移行予定）。
+| 短名 | canonical ID | 概要 |
+| --- | --- | --- |
+| `noop` | `statevia.action.builtin.noop` | 即時完了（入力をそのまま出力） |
+| `sleep` | `statevia.action.builtin.sleep` | `input.duration` で待機 |
+| `rest` | `statevia.action.builtin.rest` | HTTPS REST 呼び出し |
+| `notify` | `statevia.action.builtin.notify` | email 通知（MVP） |
+| `signal` | `statevia.action.builtin.signal` | 実行スコープ内シグナル発行 |
+| `publish` | `statevia.action.builtin.publish` | システムトピック発行（MVP stub） |
+| `workflow` | `statevia.action.builtin.workflow` | 子ワークフロー起動（`mode: sync` は experimental） |
 
-解決に失敗した参照（未知の Builtin 短名・未登録 module alias・Registry 未登録 ID）はコンパイルエラー（HTTP 422）となる。
+廃止:
+
+- **`delay5s`** は削除済み。`sleep` + `input.duration`（例: `5s`）へ移行する。
+
+解決に失敗した参照（未知の Builtin 短名・未登録 module alias・Catalog 未登録 ID）はコンパイルエラー（HTTP 422）となる。
 
 ### 1.1.2 Action パラメータと `input` キー
 
