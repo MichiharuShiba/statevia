@@ -1,8 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Actions.Abstractions.Catalog;
@@ -10,6 +8,7 @@ using Statevia.Actions.Abstractions.Execution;
 using Statevia.Actions.Abstractions.Visibility;
 using Statevia.Core.Api.Application.Actions.Catalog;
 using Statevia.Core.Api.Application.Actions.Execution;
+using Statevia.Core.Api.Application.Actions.Infrastructure;
 using Statevia.Core.Api.Application.Actions.Visibility;
 using Statevia.Core.Api.Application.Definition;
 using Statevia.Core.Api.Abstractions.Security;
@@ -99,6 +98,20 @@ internal static class ServiceCollectionExtensions
         services.AddHostedService(sp => sp.GetRequiredService<ExecutionProjectionUpdateQueueService>());
         services.AddScoped<ExecutionStreamService>();
         services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
+        services.AddHttpClient();
+        services.AddOptions<NotificationOptions>()
+            .Bind(configuration.GetSection(NotificationOptions.SectionName))
+            .PostConfigure(ApplyNotificationOptionsEnvironmentOverrides);
+        services.AddSingleton<EnvironmentSmtpConnectionSettingsProvider>();
+        services.AddSingleton<DatabaseSmtpConnectionSettingsProvider>();
+        services.AddSingleton<KmsSmtpConnectionSettingsProvider>();
+        services.AddSingleton<SmtpConnectionSettingsProviderFactory>();
+        services.AddSingleton<ISmtpConnectionSettingsProvider>(sp =>
+            sp.GetRequiredService<SmtpConnectionSettingsProviderFactory>());
+        services.AddSingleton<DevelopmentNotificationSender>();
+        services.AddSingleton<SmtpNotificationSender>();
+        services.AddSingleton<NotificationSenderResolver>();
+        services.AddScoped<IChildWorkflowRunner, ChildWorkflowRunner>();
         services.AddSingleton<IActionCatalog>(_ =>
         {
             var catalog = new InMemoryActionCatalog();
@@ -161,6 +174,26 @@ internal static class ServiceCollectionExtensions
         {
             options.LogRequestBody = true;
             options.LogResponseBody = true;
+        }
+    }
+
+    private static void ApplyNotificationOptionsEnvironmentOverrides(NotificationOptions options)
+    {
+        var source = Environment.GetEnvironmentVariable(NotificationOptions.SmtpSourceEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return;
+        }
+
+        if (string.Equals(source, "Kms", StringComparison.OrdinalIgnoreCase))
+        {
+            options.SmtpSettingsSource = NotificationSmtpSettingsSource.KeyManagementService;
+            return;
+        }
+
+        if (Enum.TryParse(source, ignoreCase: true, out NotificationSmtpSettingsSource parsed))
+        {
+            options.SmtpSettingsSource = parsed;
         }
     }
 

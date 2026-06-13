@@ -1,24 +1,38 @@
 namespace Statevia.Core.Api.Application.Actions;
 
-/// <summary>組み込みおよび既定で解決するアクション ID。</summary>
+/// <summary>builtin action の canonical ID 定数と短名解決。</summary>
 internal static class WellKnownActionIds
 {
     /// <summary>builtin canonical ID のプレフィックス。</summary>
     public const string BuiltinPrefix = "statevia.action.builtin.";
 
-    /// <summary>legacy Registry キー（後方互換）。</summary>
+    /// <summary>legacy Registry キー（noop エイリアス）。</summary>
     public const string NoOp = "noop";
 
     /// <summary>implicit noop の canonical ID。</summary>
     public const string NoOpCanonical = BuiltinPrefix + "noop";
 
-    /// <summary>定義検証・UI デモ用の legacy 遅延アクション（フェーズ B で削除予定）。</summary>
-    public const string Delay5s = "delay5s";
+    /// <summary>時間待機 builtin。</summary>
+    public const string Sleep = BuiltinPrefix + "sleep";
+
+    /// <summary>HTTP 呼び出し builtin。</summary>
+    public const string Rest = BuiltinPrefix + "rest";
+
+    /// <summary>通知送信 builtin。</summary>
+    public const string Notify = BuiltinPrefix + "notify";
+
+    /// <summary>実行スコープ内シグナル builtin。</summary>
+    public const string Signal = BuiltinPrefix + "signal";
+
+    /// <summary>システムイベント発行 builtin。</summary>
+    public const string Publish = BuiltinPrefix + "publish";
+
+    /// <summary>子ワークフロー起動 builtin。</summary>
+    public const string Workflow = BuiltinPrefix + "workflow";
 
     private static readonly HashSet<string> s_builtinShortNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "noop",
-        "delay5s",
         "sleep",
         "rest",
         "notify",
@@ -39,11 +53,6 @@ internal static class WellKnownActionIds
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(shortName);
         var trimmed = shortName.Trim();
-
-        if (string.Equals(trimmed, Delay5s, StringComparison.OrdinalIgnoreCase))
-        {
-            return Delay5s;
-        }
 
 #pragma warning disable CA1308 // builtin 短名は YAML 小文字キーワードとして canonical 化する
         return BuiltinPrefix + trimmed.ToLowerInvariant();

@@ -3,10 +3,13 @@ using Statevia.Actions.Abstractions.Catalog;
 
 namespace Statevia.Core.Api.Application.Actions.Catalog;
 
-/// <summary>プロセス内の actionId → Descriptor / 実行ファクトリ マップ。</summary>
+/// <summary>プロセス内の actionId → Descriptor / 実行ファクトリ / Capability メタデータ マップ。</summary>
 internal sealed class InMemoryActionCatalog : IActionCatalog
 {
-    private sealed record StoredRegistration(ActionDescriptor Descriptor, ActionCatalogEntry Entry);
+    private sealed record StoredRegistration(
+        ActionDescriptor Descriptor,
+        ActionCatalogEntry Entry,
+        ActionCapabilityMetadata? CapabilityMetadata);
 
     private readonly Dictionary<string, StoredRegistration> _byCanonicalId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _aliasToCanonicalId = new(StringComparer.Ordinal);
@@ -42,7 +45,17 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
     }
 
     /// <inheritdoc />
-    public void Register(ActionDescriptor descriptor, ActionCatalogEntry entry)
+    public void Register(ActionDescriptor descriptor, ActionCatalogEntry entry) =>
+        Register(descriptor, entry, capabilityMetadata: null);
+
+    /// <summary>Capability メタデータ付きで Action を登録する。</summary>
+    /// <param name="descriptor">Descriptor。</param>
+    /// <param name="entry">実行エントリ。</param>
+    /// <param name="capabilityMetadata">Capability メタデータ（任意）。</param>
+    public void Register(
+        ActionDescriptor descriptor,
+        ActionCatalogEntry entry,
+        ActionCapabilityMetadata? capabilityMetadata)
     {
         ArgumentNullException.ThrowIfNull(entry);
         ActionDescriptorInvariants.Validate(descriptor);
@@ -55,7 +68,7 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
         }
 
         var canonicalId = descriptor.ActionId.Trim();
-        _byCanonicalId[canonicalId] = new StoredRegistration(descriptor, entry);
+        _byCanonicalId[canonicalId] = new StoredRegistration(descriptor, entry, capabilityMetadata);
 
         if (entry.Aliases is { Count: > 0 })
         {
@@ -102,5 +115,22 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
         }
 
         return false;
+    }
+
+    /// <summary>Capability メタデータを取得する。</summary>
+    /// <param name="actionId">参照 actionId。</param>
+    /// <param name="metadata">取得したメタデータ。</param>
+    public bool TryGetCapabilityMetadata(
+        string actionId,
+        [NotNullWhen(true)] out ActionCapabilityMetadata? metadata)
+    {
+        metadata = null;
+        if (!TryResolveCanonicalId(actionId, out var canonicalId))
+        {
+            return false;
+        }
+
+        metadata = _byCanonicalId[canonicalId].CapabilityMetadata;
+        return metadata is not null;
     }
 }
