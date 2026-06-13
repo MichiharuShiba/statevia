@@ -1,6 +1,6 @@
 # 定義仕様
 
-Version: 1.2
+Version: 1.3
 Updated: 2026-06-12
 Project: 実行型ステートマシン
 
@@ -78,6 +78,115 @@ Action の実行パラメータ（例: rest の `url`）および状態への入
 
 - **状態 input マッピング**: 直前状態の output から値を抽出する（§1.6）。`input.path` 単一形式またはキー付きマップ。
 - **Action パラメータ**: Builtin / Module action の schema に従う `input` マップ（`action-schema-plugin-system` 仕様で Compiler 検証予定）。
+
+### 1.1.3 action レベル retry（parse only）
+
+action 状態（`action` を指定する状態 / nodes の `type: action`）では、`input` と **同一階層**に `retry` を宣言できる。Loader は syntax parse のみ行い、**MVP では実行時リトライは適用しない**（将来の Action-level retry 向け）。
+
+```yaml
+states:
+  CallApi:
+    action: rest
+    retry:
+      limit: 3
+      backoff: exponential
+      errors: [timeout, 5xx]
+    input:
+      url: https://example.com/hook
+      method: POST
+    on:
+      Completed:
+        next: Done
+```
+
+| キー | 型 | 説明 |
+| --- | --- | --- |
+| `limit` | int（任意） | 最大試行回数 |
+| `backoff` | string（任意） | バックオフ戦略（例: `exponential`） |
+| `errors` | string[]（任意） | リトライ対象の失敗種別（例: `timeout`, `5xx`） |
+
+制約:
+
+- `retry` を `input` マップ内に書くことは **不可**（Loader 構文エラー）。
+- `wait` / `join` 状態では `retry` と `action` を併記できない（Level 1 検証エラー）。
+
+### 1.1.4 Builtin action の input / output（MVP）
+
+各 Builtin の `input` は §1.1.2 の action パラメータとして状態 YAML の `input:` に記述する。`output` は状態完了時に Engine が次状態へ渡す候補 input の元になる（§1.6）。**IO-14**: rest レスポンス body、notify 本文、子 workflow の input 等はログ・一覧 GET に載せない方針とする。
+
+#### noop（`statevia.action.builtin.noop`）
+
+- **input**: 任意（状態 input マッピングの結果をそのまま受け取る）
+- **output**: 入力を **そのまま**返す（pass-through）
+
+#### sleep（`statevia.action.builtin.sleep`）
+
+- **input**: `{ duration }` — 必須。`5s` / `500ms` / 数値（ミリ秒）を受理
+- **output**: 意味のない完了（`Unit`）。**直前 payload は次状態へ引き継がれない**（pass-through しない）
+
+#### rest（`statevia.action.builtin.rest`）
+
+- **input**:
+
+  | フィールド | 必須 | 説明 |
+  | --- | --- | --- |
+  | `url` | はい | **HTTPS** の絶対 URL。SSRF 防止のため loopback / プライベート IP / `localhost` 等は拒否 |
+  | `method` | はい | HTTP メソッド（例: `GET`, `POST`） |
+  | `headers` | いいえ | 文字列値の map → リクエストヘッダ |
+  | `body` | いいえ | 文字列または JSON オブジェクト/配列。上限 **1 MiB** |
+  | `timeout` | いいえ | 秒（整数）。省略時 **30** |
+  | `idempotencyKey` | いいえ | 指定時 `Idempotency-Key` ヘッダに送出 |
+
+- **output**: `{ statusCode, headers, body }` — `body` は文字列（上限 1 MiB で切り詰め）
+
+#### notify（`statevia.action.builtin.notify`）
+
+- **input**:
+
+  | フィールド | 必須 | 説明 |
+  | --- | --- | --- |
+  | `channel` | はい | MVP は `email` のみ |
+  | `to` | はい | 宛先 |
+  | `subject` | はい | 件名 |
+  | `body` | はい | 本文 |
+  | `from` | いいえ | 差出人。省略時はプラットフォーム既定 |
+
+- **output**: `{ channel, messageId? }`
+- **接続設定（SMTP 等）**: workflow `input` には含めない。Platform 設定（環境変数 `STATEVIA_SMTP_*` / `Notification:SmtpSettingsSource` 等）で解決する。
+
+#### signal（`statevia.action.builtin.signal`）
+
+- **input**: `{ signal, target? }` — `signal` 必須。`target` は MVP で `current` のみ（省略時 `current`）
+- **output**: 意味のない完了（`Unit`）。同一実行内の wait（`wait.event`）再開用に `IEventProvider.Signal` を発行する
+
+#### publish（`statevia.action.builtin.publish`）
+
+- **input**: `{ topic, payload? }` — `topic` 必須。`payload` は任意（MVP では dispatch ログの要約のみ）
+- **output**: `{ topic, dispatched: true }` — 外部 bus には未接続（stub）
+
+#### workflow（`statevia.action.builtin.workflow`）
+
+- **input**:
+
+  | フィールド | 必須 | 説明 |
+  | --- | --- | --- |
+  | `definitionId` | はい | 子定義 ID（display ID または UUID） |
+  | `mode` | はい | `async` または `sync` |
+  | `input` | いいえ | 子ワークフロー開始 input（JSON 互換） |
+  | `timeout` | いいえ | **`mode: sync` のみ**。秒（整数）。省略時 **300**（5 分） |
+
+- **output**: `{ workflowId, displayId, status }`（async / sync 共通）
+- **制約**: 現在テナント内の定義・実行に限定。`mode: sync` は **experimental**（ポーリング 200ms）。本番推奨パスでは async を使用する
+
+#### Execution Semantics（signal / publish / wait）
+
+| 概念 | スコープ | Builtin / ノード |
+| --- | --- | --- |
+| signal | execution-scoped | `signal` action → wait の `event` 再開 |
+| publish | system-scoped | `publish` action（MVP stub） |
+| wait | execution-scoped | wait ノード `event`（従来どおり） |
+
+Phase 2（未実装）: wait ノード直下に `duration` / `signal` / `event` を排他指定する統合構文。
 
 ### 1.2 遷移（on）
 
@@ -512,3 +621,4 @@ JSON キー命名は **camelCase** とする。
 
 - 実行グラフ JSON（`ExportExecutionGraph`）および `conditionRouting` の詳細は `docs/core-engine-execution-graph-spec.md` を正とする。
 - API/UI 境界での `conditionRouting` の透過返却は `docs/core-api-interface.md` を参照する。
+- 将来の実行時データ参照（開始 input / 各 State output のパス解決）は `.spec-workflow/specs/execution-context/`（Draft）を参照する。
