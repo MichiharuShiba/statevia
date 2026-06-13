@@ -264,10 +264,10 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
-    /// 組み込み delay5s を参照する定義はコンパイルできる。
+    /// 廃止された delay5s を参照する定義はコンパイルできない。
     /// </summary>
     [Fact]
-    public void ValidateAndCompile_Delay5sBuiltin_Succeeds()
+    public void ValidateAndCompile_Delay5sBuiltin_ThrowsUnknownAction()
     {
         // Arrange
         var svc = CreateSut();
@@ -277,6 +277,32 @@ public sealed class DefinitionCompilerServiceTests
             states:
               Slow:
                 action: delay5s
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
+        Assert.Contains("delay5s", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// 組み込み sleep を参照する定義はコンパイルできる。
+    /// </summary>
+    [Fact]
+    public void ValidateAndCompile_SleepBuiltin_Succeeds()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              Slow:
+                action: sleep
+                input:
+                  duration: 5s
                 on:
                   Completed:
                     end: true

@@ -8,12 +8,18 @@ public sealed class BuiltinActionStatesTests
     private sealed class FakeEventProvider : IEventProvider
     {
         public string? LastEventName { get; private set; }
+        public string? LastSignalName { get; private set; }
+        public string? LastTopic { get; private set; }
 
         public Task WaitAsync(string eventName, CancellationToken ct)
         {
             LastEventName = eventName;
             return Task.CompletedTask;
         }
+
+        public void Signal(string signalName) => LastSignalName = signalName;
+
+        public void PublishTopic(string topic, object? payloadSummary) => LastTopic = topic;
     }
 
     private sealed class FakeStore : IReadOnlyStateStore
