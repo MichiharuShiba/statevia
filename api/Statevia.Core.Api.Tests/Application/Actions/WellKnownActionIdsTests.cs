@@ -24,18 +24,26 @@ public sealed class WellKnownActionIdsTests
         var canonical = WellKnownActionIds.ToCanonicalActionId("sleep");
 
         // Assert
-        Assert.Equal("statevia.action.builtin.sleep", canonical);
+        Assert.Equal(WellKnownActionIds.Sleep, canonical);
     }
 
-    /// <summary>delay5s は legacy ID のまま維持される。</summary>
+    /// <summary>notify 短名は notify canonical ID に変換される。</summary>
     [Fact]
-    public void ToCanonicalActionId_Delay5s_ReturnsLegacyId()
+    public void ToCanonicalActionId_Notify_ReturnsNotifyFqcn()
     {
         // Act
-        var canonical = WellKnownActionIds.ToCanonicalActionId("delay5s");
+        var canonical = WellKnownActionIds.ToCanonicalActionId("notify");
 
         // Assert
-        Assert.Equal(WellKnownActionIds.Delay5s, canonical);
+        Assert.Equal(WellKnownActionIds.Notify, canonical);
+    }
+
+    /// <summary>delay5s は builtin 短名ではなくなった。</summary>
+    [Fact]
+    public void IsBuiltinShortName_Delay5s_ReturnsFalse()
+    {
+        // Act & Assert
+        Assert.False(WellKnownActionIds.IsBuiltinShortName("delay5s"));
     }
 
     /// <summary>空白短名は ArgumentException になる。</summary>
