@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Statevia.Actions.Abstractions.Publication;
 using ActionPublication = Statevia.Actions.Abstractions.Publication.ActionPublication;
@@ -6,9 +7,13 @@ using PublicationDescriptor = Statevia.Actions.Abstractions.Publication.ActionDe
 namespace Statevia.Core.Api.Application.Actions.Publication;
 
 /// <summary>Builtin action の input/output JSON Schema と ActionPublication を提供する。</summary>
+[SuppressMessage(
+    "Minor Code Smell",
+    "S1192:String literals should not be duplicated",
+    Justification = "Builtin input の field 名と UI widget 名は schema JSON と UiMetadata で同一文字列が契約。")]
 internal static class BuiltinActionSchemas
 {
-    private const string SchemaBaseUri = "https://statevia.dev/schemas/actions";
+    private const string SchemaBaseUri = StateviaActionSchemaVocabulary.ActionSchemaIdBaseUri;
     private const string ValueKindKeyword = StateviaActionSchemaVocabulary.ValueKindKeyword;
     private const string ValueKindLiteralOrPath = StateviaActionSchemaVocabulary.ValueKindLiteralOrPath;
 
