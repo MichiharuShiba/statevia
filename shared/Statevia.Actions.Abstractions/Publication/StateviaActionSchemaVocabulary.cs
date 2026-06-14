@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Statevia.Actions.Abstractions.Publication;
 
 /// <summary>Statevia JSON Schema 拡張 vocabulary のキー名と valueKind 定数。</summary>
@@ -14,6 +16,13 @@ public static class StateviaActionSchemaVocabulary
 
     /// <summary>JSON Schema Draft 2020-12。</summary>
     public const string DefaultSchemaVersion = "2020-12";
+
+    /// <summary>action JSON Schema の <c>$id</c> ベース URI。</summary>
+    [SuppressMessage(
+        "Minor Code Smell",
+        "S1075:URIs should not be hardcoded",
+        Justification = "JSON Schema $id の公開識別子 URI。設定値ではなく契約上の安定 URI。")]
+    public const string ActionSchemaIdBaseUri = "https://statevia.dev/schemas/actions";
 
     /// <summary>リテラル値のみ許可。</summary>
     public const string ValueKindLiteral = "literal";

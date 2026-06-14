@@ -25,19 +25,17 @@ internal static class ActionUiMetadataValidator
                 nameof(publication));
         }
 
-        if (publication.UiMetadata?.Fields is not { Count: > 0 } fields)
+        if (publication.UiMetadata?.Fields is { Count: > 0 } fields)
         {
-            return;
+            foreach (var (fieldName, hints) in fields)
+            {
+                ValidateFieldKey(trimmedActionId, fieldName, hints.LabelKey, "labelKey");
+                ValidateFieldKey(trimmedActionId, fieldName, hints.DescriptionKey, "descriptionKey");
+                ValidateFieldKey(trimmedActionId, fieldName, hints.PlaceholderKey, "placeholderKey");
+            }
         }
 
-        foreach (var (fieldName, hints) in fields)
-        {
-            ValidateFieldKey(trimmedActionId, fieldName, hints.LabelKey, "labelKey");
-            ValidateFieldKey(trimmedActionId, fieldName, hints.DescriptionKey, "descriptionKey");
-            ValidateFieldKey(trimmedActionId, fieldName, hints.PlaceholderKey, "placeholderKey");
-        }
-
-        if (publication.UiMetadata.EnumLabelKeys is not { Count: > 0 } enumKeys)
+        if (publication.UiMetadata?.EnumLabelKeys is not { Count: > 0 } enumKeys)
         {
             return;
         }
