@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Statevia.Actions.Abstractions.Publication;
 
 namespace Statevia.Actions.Abstractions.Catalog;
 
@@ -23,4 +24,15 @@ public interface IActionCatalog
     /// <param name="descriptor">Descriptor（不変条件は実装側で検証）。</param>
     /// <param name="entry">実行エントリ。</param>
     void Register(ActionDescriptor descriptor, ActionCatalogEntry entry);
+
+    /// <summary>Schema Publication 付きで Action を Catalog へ登録する。</summary>
+    /// <param name="descriptor">Descriptor（不変条件は実装側で検証）。</param>
+    /// <param name="entry">実行エントリ。</param>
+    /// <param name="publication">input/output schema と UI メタデータ。</param>
+    void Register(ActionDescriptor descriptor, ActionCatalogEntry entry, ActionPublication publication);
+
+    /// <summary>登録済み action の ActionPublication を取得する。</summary>
+    /// <param name="actionId">参照 actionId（canonical またはエイリアス）。</param>
+    /// <param name="publication">取得した Publication。</param>
+    bool TryGetPublication(string actionId, [NotNullWhen(true)] out ActionPublication? publication);
 }
