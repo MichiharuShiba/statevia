@@ -1,4 +1,5 @@
 import type { UiText } from "./uiText";
+import { actionCatalogUiTextEnOverrides, actionCatalogUiTextJa } from "./actionCatalogUiText";
 import { uiTextJa } from "./uiText";
 
 /**
@@ -6,6 +7,10 @@ import { uiTextJa } from "./uiText";
  */
 export const uiTextEn: UiText = {
   ...uiTextJa,
+  actionCatalog: {
+    ...actionCatalogUiTextJa,
+    ...actionCatalogUiTextEnOverrides,
+  },
   actionLinks: {
     aria: {
       navigation: "Navigation links",
