@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Statevia.Actions.Abstractions.Catalog;
 using Statevia.Actions.Abstractions.Execution;
 using Statevia.Core.Api.Application.Actions.Builtins;
+using Statevia.Core.Api.Application.Actions.Publication;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Execution;
 
@@ -37,49 +38,75 @@ internal static class BuiltinActionRegistrar
 
     private static void RegisterNoOp(InMemoryActionCatalog catalog)
     {
+        var actionId = WellKnownActionIds.NoOpCanonical;
         catalog.Register(
-            CreateBuiltinDescriptor(WellKnownActionIds.NoOpCanonical),
+            CreateBuiltinDescriptor(actionId),
             new ActionCatalogEntry(
                 Aliases: [WellKnownActionIds.NoOp],
                 InProcessFactory: CreateFactory(new NoOpState())),
-            new ActionCapabilityMetadata(ActionCapabilityCategory.Transform, "No-op", IsExperimental: false));
+            new ActionCapabilityMetadata(ActionCapabilityCategory.Transform, "No-op", IsExperimental: false),
+            BuiltinActionSchemas.NoOp(actionId));
     }
 
-    private static void RegisterSleep(InMemoryActionCatalog catalog) =>
+    private static void RegisterSleep(InMemoryActionCatalog catalog)
+    {
+        var actionId = WellKnownActionIds.Sleep;
         catalog.Register(
-            CreateBuiltinDescriptor(WellKnownActionIds.Sleep),
+            CreateBuiltinDescriptor(actionId),
             new ActionCatalogEntry(InProcessFactory: CreateFactory(new SleepActionState())),
-            new ActionCapabilityMetadata(ActionCapabilityCategory.Timing, "Sleep", IsExperimental: false));
+            new ActionCapabilityMetadata(ActionCapabilityCategory.Timing, "Sleep", IsExperimental: false),
+            BuiltinActionSchemas.Sleep(actionId));
+    }
 
-    private static void RegisterSignal(InMemoryActionCatalog catalog) =>
+    private static void RegisterSignal(InMemoryActionCatalog catalog)
+    {
+        var actionId = WellKnownActionIds.Signal;
         catalog.Register(
-            CreateBuiltinDescriptor(WellKnownActionIds.Signal),
+            CreateBuiltinDescriptor(actionId),
             new ActionCatalogEntry(InProcessFactory: CreateFactory(new SignalActionState())),
-            new ActionCapabilityMetadata(ActionCapabilityCategory.Signal, "Signal", IsExperimental: false));
+            new ActionCapabilityMetadata(ActionCapabilityCategory.Signal, "Signal", IsExperimental: false),
+            BuiltinActionSchemas.Signal(actionId));
+    }
 
-    private static void RegisterPublish(InMemoryActionCatalog catalog) =>
+    private static void RegisterPublish(InMemoryActionCatalog catalog)
+    {
+        var actionId = WellKnownActionIds.Publish;
         catalog.Register(
-            CreateBuiltinDescriptor(WellKnownActionIds.Publish),
+            CreateBuiltinDescriptor(actionId),
             new ActionCatalogEntry(InProcessFactory: CreateFactory(new PublishActionState())),
-            new ActionCapabilityMetadata(ActionCapabilityCategory.Event, "Publish", IsExperimental: false));
+            new ActionCapabilityMetadata(ActionCapabilityCategory.Event, "Publish", IsExperimental: false),
+            BuiltinActionSchemas.Publish(actionId));
+    }
 
-    private static void RegisterRest(InMemoryActionCatalog catalog) =>
+    private static void RegisterRest(InMemoryActionCatalog catalog)
+    {
+        var actionId = WellKnownActionIds.Rest;
         catalog.Register(
-            CreateBuiltinDescriptor(WellKnownActionIds.Rest),
+            CreateBuiltinDescriptor(actionId),
             new ActionCatalogEntry(InProcessFactory: CreateScopedFactory<RestActionState>()),
-            new ActionCapabilityMetadata(ActionCapabilityCategory.Http, "REST", IsExperimental: false));
+            new ActionCapabilityMetadata(ActionCapabilityCategory.Http, "REST", IsExperimental: false),
+            BuiltinActionSchemas.Rest(actionId));
+    }
 
-    private static void RegisterNotification(InMemoryActionCatalog catalog) =>
+    private static void RegisterNotification(InMemoryActionCatalog catalog)
+    {
+        var actionId = WellKnownActionIds.Notify;
         catalog.Register(
-            CreateBuiltinDescriptor(WellKnownActionIds.Notify),
+            CreateBuiltinDescriptor(actionId),
             new ActionCatalogEntry(InProcessFactory: CreateScopedFactory<NotificationActionState>()),
-            new ActionCapabilityMetadata(ActionCapabilityCategory.Notification, "Notification", IsExperimental: false));
+            new ActionCapabilityMetadata(ActionCapabilityCategory.Notification, "Notification", IsExperimental: false),
+            BuiltinActionSchemas.Notify(actionId));
+    }
 
-    private static void RegisterWorkflow(InMemoryActionCatalog catalog) =>
+    private static void RegisterWorkflow(InMemoryActionCatalog catalog)
+    {
+        var actionId = WellKnownActionIds.Workflow;
         catalog.Register(
-            CreateBuiltinDescriptor(WellKnownActionIds.Workflow),
+            CreateBuiltinDescriptor(actionId),
             new ActionCatalogEntry(InProcessFactory: CreateScopedFactory<WorkflowActionState>()),
-            new ActionCapabilityMetadata(ActionCapabilityCategory.Workflow, "Workflow", IsExperimental: true));
+            new ActionCapabilityMetadata(ActionCapabilityCategory.Workflow, "Workflow", IsExperimental: true),
+            BuiltinActionSchemas.Workflow(actionId));
+    }
 
     private static ActionDescriptor CreateBuiltinDescriptor(string actionId) =>
         new()

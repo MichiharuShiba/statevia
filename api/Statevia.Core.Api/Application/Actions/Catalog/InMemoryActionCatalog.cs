@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Statevia.Actions.Abstractions.Catalog;
+using Statevia.Core.Api.Application.Actions.Publication;
+using ActionPublication = Statevia.Actions.Abstractions.Publication.ActionPublication;
 
 namespace Statevia.Core.Api.Application.Actions.Catalog;
 
@@ -9,7 +11,8 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
     private sealed record StoredRegistration(
         ActionDescriptor Descriptor,
         ActionCatalogEntry Entry,
-        ActionCapabilityMetadata? CapabilityMetadata);
+        ActionCapabilityMetadata? CapabilityMetadata,
+        ActionPublication? Publication);
 
     private readonly Dictionary<string, StoredRegistration> _byCanonicalId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _aliasToCanonicalId = new(StringComparer.Ordinal);
@@ -46,7 +49,11 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
 
     /// <inheritdoc />
     public void Register(ActionDescriptor descriptor, ActionCatalogEntry entry) =>
-        Register(descriptor, entry, capabilityMetadata: null);
+        Register(descriptor, entry, capabilityMetadata: null, publication: null);
+
+    /// <inheritdoc />
+    public void Register(ActionDescriptor descriptor, ActionCatalogEntry entry, ActionPublication publication) =>
+        Register(descriptor, entry, capabilityMetadata: null, publication);
 
     /// <summary>Capability メタデータ付きで Action を登録する。</summary>
     /// <param name="descriptor">Descriptor。</param>
@@ -55,7 +62,19 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
     public void Register(
         ActionDescriptor descriptor,
         ActionCatalogEntry entry,
-        ActionCapabilityMetadata? capabilityMetadata)
+        ActionCapabilityMetadata? capabilityMetadata) =>
+        Register(descriptor, entry, capabilityMetadata, publication: null);
+
+    /// <summary>Capability メタデータと Publication 付きで Action を登録する。</summary>
+    /// <param name="descriptor">Descriptor。</param>
+    /// <param name="entry">実行エントリ。</param>
+    /// <param name="capabilityMetadata">Capability メタデータ（任意）。</param>
+    /// <param name="publication">Schema Publication（任意）。</param>
+    public void Register(
+        ActionDescriptor descriptor,
+        ActionCatalogEntry entry,
+        ActionCapabilityMetadata? capabilityMetadata,
+        ActionPublication? publication)
     {
         ArgumentNullException.ThrowIfNull(entry);
         ActionDescriptorInvariants.Validate(descriptor);
@@ -67,8 +86,13 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
                 nameof(entry));
         }
 
+        if (publication is not null)
+        {
+            ActionUiMetadataValidator.Validate(descriptor.ActionId, publication);
+        }
+
         var canonicalId = descriptor.ActionId.Trim();
-        _byCanonicalId[canonicalId] = new StoredRegistration(descriptor, entry, capabilityMetadata);
+        _byCanonicalId[canonicalId] = new StoredRegistration(descriptor, entry, capabilityMetadata, publication);
 
         if (entry.Aliases is { Count: > 0 })
         {
@@ -132,5 +156,18 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
 
         metadata = _byCanonicalId[canonicalId].CapabilityMetadata;
         return metadata is not null;
+    }
+
+    /// <inheritdoc />
+    public bool TryGetPublication(string actionId, [NotNullWhen(true)] out ActionPublication? publication)
+    {
+        publication = null;
+        if (!TryResolveCanonicalId(actionId, out var canonicalId))
+        {
+            return false;
+        }
+
+        publication = _byCanonicalId[canonicalId].Publication;
+        return publication is not null;
     }
 }

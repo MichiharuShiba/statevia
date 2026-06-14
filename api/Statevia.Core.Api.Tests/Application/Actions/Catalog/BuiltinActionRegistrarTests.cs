@@ -38,6 +38,14 @@ public sealed class BuiltinActionRegistrarTests
         Assert.Equal(ActionCapabilityCategory.Timing, sleepMetadata!.Category);
         Assert.True(catalog.TryGetCapabilityMetadata(WellKnownActionIds.Workflow, out var workflowMetadata));
         Assert.True(workflowMetadata!.IsExperimental);
+
+        Assert.True(catalog.TryGetPublication(WellKnownActionIds.Rest, out var restPublication));
+        Assert.NotNull(restPublication);
+        Assert.Equal(WellKnownActionIds.Rest, restPublication!.Descriptor.ActionId);
+        Assert.Equal("REST", restPublication.Descriptor.DisplayName);
+        Assert.True(restPublication.SchemaBundle.InputSchema.RootElement.TryGetProperty("properties", out var properties));
+        Assert.True(properties.TryGetProperty("url", out _));
+        Assert.True(properties.TryGetProperty("method", out _));
     }
 
     /// <summary>null Catalog は ArgumentNullException。</summary>
