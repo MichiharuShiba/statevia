@@ -48,4 +48,22 @@ describe("actionCatalogUiText", () => {
     expect(actionCatalogUiTextEnOverrides["statevia.action.builtin.noop"]).toBeUndefined();
     expect(actionCatalogUiTextJa["statevia.action.builtin.rest"]).toBeDefined();
   });
+
+  it("labelKey に .ui.fields. が無い場合は undefined を返す", () => {
+    expect(
+      resolveActionCatalogLabel(
+        uiTextJa.actionCatalog,
+        "statevia.action.builtin.rest.ui.labels.url",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("存在しない field の labelKey は undefined を返す", () => {
+    expect(
+      resolveActionCatalogLabel(
+        uiTextJa.actionCatalog,
+        "statevia.action.builtin.rest.ui.fields.unknown.label",
+      ),
+    ).toBeUndefined();
+  });
 });
