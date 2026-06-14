@@ -14,6 +14,9 @@ public sealed class BuiltinActionSchemasTests
         string actionId,
         Func<string, ActionPublication> factory)
     {
+        // Arrange
+        ArgumentNullException.ThrowIfNull(factory);
+
         // Act
         var publication = factory(actionId);
 
@@ -62,6 +65,9 @@ public sealed class BuiltinActionSchemasTests
     {
         var segment = isOutput ? "/output" : "/input";
         var id = root.GetProperty("$id").GetString();
-        Assert.StartsWith($"https://statevia.dev/schemas/actions/{actionId}{segment}", id, StringComparison.Ordinal);
+        Assert.StartsWith(
+            $"{StateviaActionSchemaVocabulary.ActionSchemaIdBaseUri}/{actionId}{segment}",
+            id,
+            StringComparison.Ordinal);
     }
 }

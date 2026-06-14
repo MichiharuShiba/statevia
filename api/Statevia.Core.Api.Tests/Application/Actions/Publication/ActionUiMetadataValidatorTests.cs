@@ -65,6 +65,58 @@ public sealed class ActionUiMetadataValidatorTests
         Assert.Contains("must exactly match", ex.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>Publication Descriptor.ActionId が Catalog と不一致のとき ArgumentException。</summary>
+    [Fact]
+    public void Validate_DescriptorActionIdMismatch_Throws()
+    {
+        // Arrange
+        var publication = CreatePublication(
+            new ActionUiMetadata(
+                Fields: new Dictionary<string, ActionFieldUiHints>
+                {
+                    ["url"] = new ActionFieldUiHints(LabelKey: $"{ActionId}.ui.fields.url.label"),
+                }));
+
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(() =>
+            ActionUiMetadataValidator.Validate("statevia.action.builtin.other", publication));
+        Assert.Contains("does not match", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>enum labelKey は canonical actionId 根の .ui. 直後パスを要求する。</summary>
+    [Fact]
+    public void Validate_ValidEnumLabelKey_Passes()
+    {
+        // Arrange
+        var publication = CreatePublication(
+            new ActionUiMetadata(
+                EnumLabelKeys: new Dictionary<string, string>
+                {
+                    ["GET"] = $"{ActionId}.ui.enums.method.GET.label",
+                }));
+
+        // Act / Assert
+        ActionUiMetadataValidator.Validate(ActionId, publication);
+    }
+
+    /// <summary>enum labelKey が actionId 直後 .ui. でない場合は ArgumentException。</summary>
+    [Fact]
+    public void Validate_InvalidEnumLabelKeyUiRoot_Throws()
+    {
+        // Arrange
+        var publication = CreatePublication(
+            new ActionUiMetadata(
+                EnumLabelKeys: new Dictionary<string, string>
+                {
+                    ["GET"] = $"{ActionId}.foo.ui.enums.method.GET.label",
+                }));
+
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(() =>
+            ActionUiMetadataValidator.Validate(ActionId, publication));
+        Assert.Contains("must start with", ex.Message, StringComparison.Ordinal);
+    }
+
     /// <summary>UiMetadata が null の Publication は検証を通過する。</summary>
     [Fact]
     public void Validate_NullUiMetadata_Passes()
