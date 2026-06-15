@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Api.Application.Actions;
+using Statevia.Core.Api.Application.Actions.Validation;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Services;
@@ -525,6 +527,60 @@ public sealed class DefinitionServiceTests
         // Assert
         Assert.Equal(DefinitionValidationMessages.ValidationFailed, ex.Message);
         Assert.IsType<ArgumentException>(ex.InnerException);
+    }
+
+    /// <summary>action input schema 検証失敗時に state / actionId / jsonPath を details に含める。</summary>
+    [Fact]
+    public async Task CreateAsync_WhenSchemaValidationFails_IncludesStructuredDetails()
+    {
+        // Arrange
+        using var inDb = new InMemoryTestDatabase();
+        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
+        var display = new StubDisplayIdService();
+        var errors = new[]
+        {
+            new ActionInputValidationError(
+                "Call",
+                WellKnownActionIds.Rest,
+                "$.input.url",
+                "Required input property 'url' is missing."),
+        };
+        var compiler = new ThrowingCompiler(new ActionInputSchemaValidationException(errors));
+        var sut = CreateDefinitionService(
+            inDb,
+            display,
+            compiler,
+            definitionsRepo,
+            new FixedIdGenerator(Guid.NewGuid()));
+        var request = new CreateDefinitionRequest
+        {
+            Name = "W",
+            Yaml = """
+                workflow:
+                  name: W
+                states:
+                  Call:
+                    action: rest
+                    input:
+                      method: GET
+                    on:
+                      Completed:
+                        end: true
+                """,
+        };
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() =>
+            sut.CreateAsync(request, CancellationToken.None));
+
+        // Assert
+        Assert.Equal(DefinitionValidationMessages.ValidationFailed, ex.Message);
+        Assert.NotNull(ex.Details);
+        var detailsJson = System.Text.Json.JsonSerializer.Serialize(ex.Details);
+        Assert.Contains("Call", detailsJson, StringComparison.Ordinal);
+        Assert.Contains(WellKnownActionIds.Rest, detailsJson, StringComparison.Ordinal);
+        Assert.Contains("$.input.url", detailsJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("GET", detailsJson, StringComparison.Ordinal);
     }
 }
 

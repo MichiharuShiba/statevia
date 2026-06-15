@@ -6,6 +6,8 @@ using Statevia.Actions.Abstractions.Catalog;
 using Statevia.Actions.Abstractions.Visibility;
 using Statevia.Core.Api.Application.Actions.Builtins;
 using ActionExecutionTestSupport = Statevia.Core.Api.Tests.Application.Actions.Execution.ActionExecutionTestSupport;
+using Statevia.Core.Api.Application.Actions;
+using Statevia.Core.Api.Application.Actions.Validation;
 using Statevia.Core.Api.Application.Definition;
 using Statevia.Core.Api.Hosting;
 using Statevia.Core.Engine.Abstractions;
@@ -39,7 +41,8 @@ public sealed class DefinitionCompilerServiceTests
             catalog,
             provider.GetRequiredService<IActionVisibilityResolver>(),
             CreateDefaultStrategy(),
-            provider);
+            provider,
+            NullLogger<DefinitionCompilerService>.Instance);
     }
 
     private static void RegisterCustomInProcessAction(
@@ -68,7 +71,8 @@ public sealed class DefinitionCompilerServiceTests
             catalog,
             provider.GetRequiredService<IActionVisibilityResolver>(),
             CreateDefaultStrategy(),
-            provider);
+            provider,
+            NullLogger<DefinitionCompilerService>.Instance);
     }
 
     /// <summary>
@@ -1102,6 +1106,130 @@ public sealed class DefinitionCompilerServiceTests
 
         var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("N", yaml));
         Assert.Contains("invalid input path", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>rest action の必須 input 欠落は schema 検証で失敗する。</summary>
+    [Fact]
+    public void ValidateAndCompile_RestMissingRequiredInput_ThrowsSchemaValidationException()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              Call:
+                action: rest
+                input:
+                  method: GET
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var ex = Assert.Throws<ActionInputSchemaValidationException>(() => svc.ValidateAndCompile("W", yaml));
+
+        // Assert
+        Assert.Contains(ex.Errors, error => error.JsonPath == "$.input.url");
+        Assert.Contains(ex.Errors, error => error.ActionId == WellKnownActionIds.Rest);
+        Assert.Contains(ex.Errors, error => error.State == "Call");
+    }
+
+    /// <summary>rest action の未知 input プロパティは schema 検証で失敗する。</summary>
+    [Fact]
+    public void ValidateAndCompile_RestUnknownInputProperty_ThrowsSchemaValidationException()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              Call:
+                action: rest
+                input:
+                  url: https://example.test
+                  method: GET
+                  extra: true
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var ex = Assert.Throws<ActionInputSchemaValidationException>(() => svc.ValidateAndCompile("W", yaml));
+
+        // Assert
+        Assert.Contains(ex.Errors, error => error.JsonPath == "$.input.extra");
+    }
+
+    /// <summary>Publication 未登録 custom action は warning モードで compile 成功する。</summary>
+    [Fact]
+    public void ValidateAndCompile_CustomActionWithoutPublication_SucceedsWithWarningMode()
+    {
+        // Arrange
+        var svc = CreateSutWithCatalog(out var catalog);
+        RegisterCustomInProcessAction(
+            catalog,
+            "test.module.noschema",
+            (_, _, _) => Task.FromResult<object?>(null));
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: test.module.noschema
+                input:
+                  anything: goes
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("W", yaml);
+
+        // Assert
+        Assert.NotNull(compiled);
+    }
+
+    /// <summary>strict モードでは Publication 未登録 action を拒否する。</summary>
+    [Fact]
+    public void ValidateAndCompile_CustomActionWithoutPublication_WhenStrict_ThrowsSchemaValidationException()
+    {
+        // Arrange
+        var previous = ActionInputSchemaValidationOptions.RequireSchemaForUnpublishedActions;
+        ActionInputSchemaValidationOptions.RequireSchemaForUnpublishedActions = true;
+        try
+        {
+            var svc = CreateSutWithCatalog(out var catalog);
+            RegisterCustomInProcessAction(
+                catalog,
+                "test.module.strict",
+                (_, _, _) => Task.FromResult<object?>(null));
+            var yaml = """
+                workflow:
+                  name: W
+                states:
+                  A:
+                    action: test.module.strict
+                    on:
+                      Completed:
+                        end: true
+                """;
+
+            // Act
+            var ex = Assert.Throws<ActionInputSchemaValidationException>(() => svc.ValidateAndCompile("W", yaml));
+
+            // Assert
+            Assert.Contains(ex.Errors, error => error.JsonPath == "$.input");
+            Assert.Equal("test.module.strict", ex.Errors[0].ActionId);
+        }
+        finally
+        {
+            ActionInputSchemaValidationOptions.RequireSchemaForUnpublishedActions = previous;
+        }
     }
 
 }
