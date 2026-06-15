@@ -1,6 +1,7 @@
 using Statevia.Core.Api.Abstractions.Persistence;
 using Statevia.Core.Api.Abstractions.Security;
 using Statevia.Core.Api.Abstractions.Services;
+using Statevia.Core.Api.Application.Actions.Validation;
 using Statevia.Core.Api.Application.Security;
 using Statevia.Core.Api.Controllers;
 using Statevia.Core.Api.Hosting;
@@ -71,6 +72,13 @@ internal sealed class DefinitionService : IDefinitionService
         try
         {
             (_, compiledJson) = _compiler.ValidateAndCompile(request.Name!, request.Yaml!, tenantId);
+        }
+        catch (ActionInputSchemaValidationException ex)
+        {
+            throw new ApiValidationException(
+                DefinitionValidationMessages.ValidationFailed,
+                MapActionInputValidationDetails(ex),
+                ex);
         }
         catch (ArgumentException ex)
         {
@@ -219,6 +227,13 @@ internal sealed class DefinitionService : IDefinitionService
         {
             (_, compiledJson) = _compiler.ValidateAndCompile(request.Name, request.Yaml, tenantId);
         }
+        catch (ActionInputSchemaValidationException ex)
+        {
+            throw new ApiValidationException(
+                DefinitionValidationMessages.ValidationFailed,
+                MapActionInputValidationDetails(ex),
+                ex);
+        }
         catch (ArgumentException ex)
         {
             throw new ApiValidationException(DefinitionValidationMessages.ValidationFailed, new[]
@@ -258,6 +273,18 @@ internal sealed class DefinitionService : IDefinitionService
 
     private Task EnsureDefinitionsWriteAsync(CancellationToken ct) =>
         _runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.DefinitionsWrite, ct);
+
+    private static object[] MapActionInputValidationDetails(ActionInputSchemaValidationException ex) =>
+        ex.Errors
+            .Select(error => (object)new
+            {
+                message = error.Message,
+                field = "yaml",
+                state = error.State,
+                actionId = error.ActionId,
+                jsonPath = error.JsonPath,
+            })
+            .ToArray();
 
     private static DefinitionResponse ToResponse(DefinitionDetail detail, string? displayId, bool includeYaml = false) =>
         new()
