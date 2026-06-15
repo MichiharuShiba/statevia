@@ -1,4 +1,7 @@
+import { actionCatalogUiTextJa, type ActionCatalogUiText } from "./actionCatalogUiText";
+
 export type UiText = {
+  actionCatalog: ActionCatalogUiText;
   actionLinks: {
     aria: {
       navigation: string;
@@ -573,6 +576,7 @@ export type UiText = {
 };
 
 export const uiText: UiText = {
+  actionCatalog: actionCatalogUiTextJa,
   actionLinks: {
     aria: {
       navigation: "画面導線",

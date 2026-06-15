@@ -1,9 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Statevia.Actions.Abstractions.Catalog;
 using Statevia.Actions.Abstractions.Visibility;
 using Statevia.Core.Api.Abstractions.Services;
 using Statevia.Core.Api.Application.Actions.Catalog;
 using Statevia.Core.Api.Application.Actions.Resolution;
+using Statevia.Core.Api.Application.Actions.Validation;
 using Statevia.Core.Api.Application.Definition;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
@@ -27,6 +29,7 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
     private readonly IActionCatalog _actionCatalog;
     private readonly IActionVisibilityResolver _visibilityResolver;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<DefinitionCompilerService> _logger;
 
     /// <summary>
     /// 定義コンパイラサービスを構築する。
@@ -35,16 +38,19 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
     /// <param name="visibilityResolver">Visibility 判定。</param>
     /// <param name="definitionLoadStrategy">YAML ロード戦略。</param>
     /// <param name="serviceProvider">状態実行器ファクトリ生成用。</param>
+    /// <param name="logger">Schema 未提供 action の warning ログ用。</param>
     public DefinitionCompilerService(
         IActionCatalog actionCatalog,
         IActionVisibilityResolver visibilityResolver,
         IDefinitionLoadStrategy definitionLoadStrategy,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        ILogger<DefinitionCompilerService> logger)
     {
         _actionCatalog = actionCatalog;
         _visibilityResolver = visibilityResolver;
         _definitionLoadStrategy = definitionLoadStrategy ?? throw new ArgumentNullException(nameof(definitionLoadStrategy));
         _serviceProvider = serviceProvider;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <inheritdoc />
@@ -67,6 +73,7 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
         }
 
         ValidateRegisteredActions(def, tenantId);
+        ValidateActionInputs(def);
 
         var factory = new ActionExecutorFactory(def, _actionCatalog, _serviceProvider);
         var compiler = new DefinitionCompiler(factory);
@@ -90,6 +97,7 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
     {
         var def = ResolveActionNames(_definitionLoadStrategy.Load(sourceYaml));
         ValidateRegisteredActions(def, tenantId: null);
+        ValidateActionInputs(def);
         var factory = new ActionExecutorFactory(def, _actionCatalog, _serviceProvider);
         return CompiledDefinitionJsonReader.Read(compiledJson, factory);
     }
@@ -119,6 +127,54 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
                     $"Action '{id}' is not visible to the current tenant in state '{stateName}'.");
             }
         }
+    }
+
+    private void ValidateActionInputs(WorkflowDefinition def)
+    {
+        var errors = new List<ActionInputValidationError>();
+        foreach (var (stateName, state) in def.States)
+        {
+            if (string.IsNullOrWhiteSpace(state.Action))
+            {
+                continue;
+            }
+
+            var actionId = state.Action.Trim();
+            if (!_actionCatalog.TryGetPublication(actionId, out var publication) || publication is null)
+            {
+                HandleMissingPublication(stateName, actionId, errors);
+                continue;
+            }
+
+            errors.AddRange(ActionInputSchemaValidator.Validate(
+                stateName,
+                actionId,
+                state.Input,
+                publication.SchemaBundle.InputSchema.RootElement));
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new ActionInputSchemaValidationException(errors);
+        }
+    }
+
+    private void HandleMissingPublication(
+        string stateName,
+        string actionId,
+        List<ActionInputValidationError> errors)
+    {
+        if (ActionInputSchemaValidationOptions.RequireSchemaForUnpublishedActions)
+        {
+            errors.Add(new ActionInputValidationError(
+                stateName,
+                actionId,
+                "$.input",
+                $"Action '{actionId}' has no registered input schema."));
+            return;
+        }
+
+        DefinitionCompilerLogMessages.ActionInputSchemaMissing(_logger, stateName, actionId);
     }
 
     /// <summary>起動時に組み込みアクションを Catalog へ登録する。</summary>

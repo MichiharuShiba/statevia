@@ -95,7 +95,7 @@ describe("DefinitionGraphEditor", () => {
     );
 
     fireEvent.click(screen.getByText("slowStep"));
-    fireEvent.change(screen.getByDisplayValue("delay5s"), { target: { value: "noop" } });
+    fireEvent.change(screen.getByDisplayValue("sleep"), { target: { value: "noop" } });
     expect(onDocumentChange).toHaveBeenCalled();
   });
 });
