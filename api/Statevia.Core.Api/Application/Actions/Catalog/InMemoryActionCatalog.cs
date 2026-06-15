@@ -170,4 +170,8 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
         publication = _byCanonicalId[canonicalId].Publication;
         return publication is not null;
     }
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> GetRegisteredActionIds() =>
+        _byCanonicalId.Keys.OrderBy(static id => id, StringComparer.Ordinal).ToList();
 }
