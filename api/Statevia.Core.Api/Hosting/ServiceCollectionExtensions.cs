@@ -84,6 +84,7 @@ internal static class ServiceCollectionExtensions
         services.AddScoped<IEventStoreRepository, EventStoreRepository>();
         services.AddScoped<IDefinitionService, DefinitionService>();
         services.AddSingleton<IDefinitionSchemaService, DefinitionSchemaService>();
+        services.AddSingleton<IActionSchemaService, ActionSchemaService>();
         services.AddScoped<IExecutionService, ExecutionService>();
         services.AddOptions<ExecutionProjectionQueueOptions>()
             .Bind(configuration.GetSection("ExecutionProjectionQueue"))
