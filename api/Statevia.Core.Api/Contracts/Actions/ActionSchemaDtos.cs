@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -104,6 +105,10 @@ public sealed class ActionSchemaDescriptorDto
 
     /// <summary>ドキュメント URL（任意）。</summary>
     [JsonPropertyName("documentationUrl")]
+    [SuppressMessage(
+        "Design",
+        "CA1056:URI-like properties should not be strings",
+        Justification = "JSON API contract; publication ActionDescriptor は string URL を返す。")]
     public string? DocumentationUrl { get; init; }
 
     /// <summary>検索タグ。</summary>
