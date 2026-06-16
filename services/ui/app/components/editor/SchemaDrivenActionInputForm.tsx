@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { listRootInputFieldNames, resolveSchemaUiText } from "../../lib/actionSchema/resolveSchemaUiText";
 import { coerceScalarForSchema, normalizeActionInputRecord } from "../../lib/actionSchema/coerceActionInputValue";
 import type {
@@ -36,6 +36,8 @@ export function SchemaDrivenActionInputForm({
   validationDetails = []
 }: Readonly<SchemaDrivenActionInputFormProps>) {
   const uiText = useUiText();
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   const inputSchema = schemaDetail.schema.inputSchema;
   const fieldNames = useMemo(
     () => listRootInputFieldNames(inputSchema, schemaDetail.uiMetadata?.fieldOrder),
@@ -52,8 +54,8 @@ export function SchemaDrivenActionInputForm({
     if (!changed) {
       return;
     }
-    onChange(normalizedValue);
-  }, [fieldNames, normalizedValue, onChange, value]);
+    onChangeRef.current(normalizedValue);
+  }, [fieldNames, normalizedValue, value]);
 
   const errorsByProperty = useMemo(() => {
     const map = new Map<string, string>();

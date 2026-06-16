@@ -201,6 +201,10 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
   const [completionKeywords, setCompletionKeywords] = useState<string[]>([]);
   const yamlRef = useRef(yaml);
   const graphDocumentRef = useRef(graphDocument);
+  const graphValidationMessageOptionsRef = useRef(graphValidationMessageOptions);
+  const parseYamlMessageOptionsRef = useRef(parseYamlMessageOptions);
+  graphValidationMessageOptionsRef.current = graphValidationMessageOptions;
+  parseYamlMessageOptionsRef.current = parseYamlMessageOptions;
   // 空文字 or lint エラーを保存禁止条件として統一する。
   const hasYamlError = useMemo(
     () => !yaml.trim() || yamlHasLintErrors || yamlParseMessages.length > 0 || graphValidationMessages.length > 0,
@@ -271,12 +275,12 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
       const row = await apiGet<DefinitionDTO>(`/definitions/${encodeURIComponent(definitionId)}`);
       setDefinitionName((current) => (current.trim() ? current : row.name));
       const sourceYaml = typeof row.yaml === "string" && row.yaml.trim().length > 0 ? row.yaml : defaultDefinitionYaml;
-      const parsed = parseDefinitionYaml(sourceYaml, parseYamlMessageOptions);
+      const parsed = parseDefinitionYaml(sourceYaml, parseYamlMessageOptionsRef.current);
       if (parsed.document) {
         const normalizedYaml = serializeDefinitionYaml(parsed.document);
         setYaml(normalizedYaml);
         yamlRef.current = normalizedYaml;
-        const validated = validateGraphDocument(parsed.document, graphValidationMessageOptions);
+        const validated = validateGraphDocument(parsed.document, graphValidationMessageOptionsRef.current);
         setYamlParseMessages(validated.isValid ? [] : validated.messages);
         setGraphValidationMessages(validated.messages);
         if (validated.isValid) {
@@ -292,7 +296,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
     } finally {
       setLoadingMeta(false);
     }
-  }, [definitionId, graphValidationMessageOptions, parseYamlMessageOptions]);
+  }, [definitionId]);
 
   /**
    * 補完候補の源泉となる nodes スキーマを API から取得する。
@@ -334,7 +338,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
 
   useEffect(() => {
     void loadDefinition();
-  }, [loadDefinition]);
+  }, [definitionId, loadDefinition]);
 
   useEffect(() => {
     void loadSchemaKeywords();
@@ -350,12 +354,12 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
 
   const parseYamlImmediately = useCallback(
     (yamlText: string) => {
-      const parsed = parseDefinitionYaml(yamlText, parseYamlMessageOptions);
+      const parsed = parseDefinitionYaml(yamlText, parseYamlMessageOptionsRef.current);
       if (!parsed.document) {
         setYamlParseMessages(parsed.diagnostics);
         return false;
       }
-      const validated = validateGraphDocument(parsed.document, graphValidationMessageOptions);
+      const validated = validateGraphDocument(parsed.document, graphValidationMessageOptionsRef.current);
       setYamlParseMessages(validated.isValid ? [] : validated.messages);
       setGraphValidationMessages(validated.messages);
       if (validated.isValid) {
@@ -363,8 +367,22 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
       }
       return validated.isValid;
     },
-    [graphValidationMessageOptions, parseYamlMessageOptions]
+    []
   );
+
+  const handleGraphDocumentChange = useCallback((nextDocument: DefinitionGraphDocument) => {
+    graphDocumentRef.current = nextDocument;
+    const validated = validateGraphDocument(nextDocument, graphValidationMessageOptionsRef.current);
+    setGraphValidationMessages(validated.messages);
+    setYamlParseMessages(validated.isValid ? [] : validated.messages);
+    setGraphDocument(nextDocument);
+    if (!validated.isValid) {
+      return;
+    }
+    const serialized = serializeDefinitionYaml(nextDocument);
+    yamlRef.current = serialized;
+    setYaml(serialized);
+  }, []);
 
   // グラフタブではドキュメントが親の yaml より先行することがある（ID 編集中の無効な中間状態など）。
   // デバウンスした yaml 再パースで graphDocument を上書きすると編集中の状態が消えるため、YAML タブのときだけ同期する。
@@ -387,20 +405,6 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
       yaml
     });
   }, [definitionName, initialSnapshot, loadingMeta, yaml]);
-
-  const handleGraphDocumentChange = useCallback((nextDocument: DefinitionGraphDocument) => {
-    graphDocumentRef.current = nextDocument;
-    const validated = validateGraphDocument(nextDocument, graphValidationMessageOptions);
-    setGraphValidationMessages(validated.messages);
-    setYamlParseMessages(validated.isValid ? [] : validated.messages);
-    setGraphDocument(nextDocument);
-    if (!validated.isValid) {
-      return;
-    }
-    const serialized = serializeDefinitionYaml(nextDocument);
-    yamlRef.current = serialized;
-    setYaml(serialized);
-  }, [graphValidationMessageOptions]);
 
   const handleYamlChange = useCallback((nextYaml: string) => {
     yamlRef.current = nextYaml;

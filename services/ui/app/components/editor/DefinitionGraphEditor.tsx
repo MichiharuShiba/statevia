@@ -27,6 +27,10 @@ import { SchemaDrivenActionInputForm } from "./SchemaDrivenActionInputForm";
 import { GraphNodeShell } from "../nodes/GraphNodeShell";
 import { apiGet } from "../../lib/api";
 import { collectUpstreamOutputPathHints } from "../../lib/actionSchema/outputSchemaHints";
+import {
+  getCachedActionSchemaDetail,
+  setCachedActionSchemaDetail
+} from "../../lib/actionSchema/actionSchemaSessionCache";
 import type {
   ActionInputValidationDetail,
   ActionSchemaDetailResponse,
@@ -869,10 +873,11 @@ function GraphNodeInspector({
   const actionInputSig = node.type === "action" ? JSON.stringify(node.input ?? null) : "";
   const [actionInputDraft, setActionInputDraft] = useState("");
   const [actionInputError, setActionInputError] = useState<string | null>(null);
-  const [schemaDetail, setSchemaDetail] = useState<ActionSchemaDetailResponse | undefined>(undefined);
-  const [schemaLoadFailed, setSchemaLoadFailed] = useState(false);
-
   const actionId = node.type === "action" ? (node.action ?? "").trim() : "";
+  const [schemaDetail, setSchemaDetail] = useState<ActionSchemaDetailResponse | undefined>(() =>
+    actionId ? getCachedActionSchemaDetail(actionId) : undefined
+  );
+  const [schemaLoadFailed, setSchemaLoadFailed] = useState(false);
   const nodeValidationDetails = useMemo(
     () =>
       actionValidationDetails.filter(
@@ -1071,7 +1076,6 @@ function GraphInspector({
   onClearSelection,
   onInspectingNodeIdChange
 }: Readonly<GraphInspectorProps>) {
-  const schemaCacheRef = useRef(new Map<string, ActionSchemaDetailResponse>());
   const [outputSchemaByActionId, setOutputSchemaByActionId] = useState(
     () => new Map<string, JsonSchemaObject | undefined>()
   );
@@ -1081,7 +1085,7 @@ function GraphInspector({
     if (!trimmed) {
       return undefined;
     }
-    const cached = schemaCacheRef.current.get(trimmed);
+    const cached = getCachedActionSchemaDetail(trimmed);
     if (cached) {
       return cached;
     }
@@ -1089,7 +1093,7 @@ function GraphInspector({
       const detail = await apiGet<ActionSchemaDetailResponse>(
         `/actions/schema/${encodeURIComponent(trimmed)}`
       );
-      schemaCacheRef.current.set(trimmed, detail);
+      setCachedActionSchemaDetail(trimmed, detail);
       setOutputSchemaByActionId((previous) => {
         const next = new Map(previous);
         next.set(trimmed, detail.schema.outputSchema);
@@ -1101,10 +1105,7 @@ function GraphInspector({
     }
   }, []);
 
-  const getCachedActionSchema = useCallback((actionId: string) => {
-    const trimmed = actionId.trim();
-    return trimmed ? schemaCacheRef.current.get(trimmed) : undefined;
-  }, []);
+  const getCachedActionSchema = useCallback((actionId: string) => getCachedActionSchemaDetail(actionId), []);
 
   const edgeSourceNode =
     selection?.kind === "edge"
