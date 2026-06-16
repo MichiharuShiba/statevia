@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { buildOutputSchemaPathHints, collectUpstreamOutputPathHints } from "../../app/lib/actionSchema/outputSchemaHints";
 
 describe("outputSchemaHints", () => {
+  it("outputSchema が未定義のときは空配列を返す", () => {
+    expect(buildOutputSchemaPathHints(undefined)).toEqual([]);
+    expect(buildOutputSchemaPathHints(null)).toEqual([]);
+  });
+
   it("outputSchema.properties から when.path 候補を生成する", () => {
     const hints = buildOutputSchemaPathHints({
       type: "object",

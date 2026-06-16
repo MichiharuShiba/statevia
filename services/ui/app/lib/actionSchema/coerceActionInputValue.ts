@@ -1,5 +1,8 @@
 import type { JsonSchemaObject } from "./types";
 
+/** schema 強制後のスカラー値（未変換は undefined）。 */
+type CoercedScalarValue = string | number | boolean | undefined;
+
 /**
  * JSONPath 式（`$.` 始まり）かどうかを判定する。
  */
@@ -11,7 +14,7 @@ export function isJsonPathExpression(text: string): boolean {
  * フォーム入力文字列を schema に合わせたリテラル値へ正規化する。
  * `literalOrPath` では path は文字列のまま、数値のみの入力は integer/number に変換する。
  */
-export function coerceScalarForSchema(raw: string, propertySchema: JsonSchemaObject): unknown {
+export function coerceScalarForSchema(raw: string, propertySchema: JsonSchemaObject): CoercedScalarValue {
   const trimmed = raw.trim();
   if (!trimmed) {
     return undefined;
@@ -65,7 +68,7 @@ export function normalizeActionInputRecord(
   return result;
 }
 
-function tryCoerceForSingleSchema(trimmed: string, propertySchema: JsonSchemaObject): unknown | undefined {
+function tryCoerceForSingleSchema(trimmed: string, propertySchema: JsonSchemaObject): CoercedScalarValue {
   switch (propertySchema.type) {
     case "integer":
       if (/^-?\d+$/.test(trimmed)) {

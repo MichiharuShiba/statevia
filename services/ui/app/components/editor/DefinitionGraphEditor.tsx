@@ -21,6 +21,7 @@ import { getNodeAppearance } from "../../lib/nodeAppearance";
 import { getStatusStyle } from "../../lib/statusStyle";
 import { renameNodeIdInDocument } from "../../lib/definition-editor/renameNodeIdInDocument";
 import type { DefinitionGraphDocument, DefinitionGraphNode, NodeType } from "../../lib/definition-editor/types";
+import { buildDocumentAdjacency } from "../../lib/definition-editor/definitionGraphAdjacency";
 import { ActionInputCodeEditor } from "./ActionInputCodeEditor";
 import { SchemaDrivenActionInputForm } from "./SchemaDrivenActionInputForm";
 import { GraphNodeShell } from "../nodes/GraphNodeShell";
@@ -69,31 +70,6 @@ function inputToFormRecord(input: DefinitionGraphNode["input"]): Record<string, 
     return { ...input };
   }
   return {};
-}
-
-function buildDocumentAdjacency(
-  document: DefinitionGraphDocument
-): Array<{ sourceId: string; targetId: string }> {
-  const edges: Array<{ sourceId: string; targetId: string }> = [];
-  for (const node of document.nodes) {
-    if (node.next) {
-      edges.push({ sourceId: node.id, targetId: node.next });
-    }
-    if (node.type === "action" && node.error) {
-      edges.push({ sourceId: node.id, targetId: node.error });
-    }
-    for (const edge of node.edges ?? []) {
-      if (edge.to) {
-        edges.push({ sourceId: node.id, targetId: edge.to });
-      }
-    }
-    if (node.type === "fork") {
-      for (const branch of node.branches ?? []) {
-        edges.push({ sourceId: node.id, targetId: branch });
-      }
-    }
-  }
-  return edges;
 }
 
 type DefinitionGraphNodeData = {
@@ -1096,7 +1072,9 @@ function GraphInspector({
   onInspectingNodeIdChange
 }: Readonly<GraphInspectorProps>) {
   const schemaCacheRef = useRef(new Map<string, ActionSchemaDetailResponse>());
-  const [schemaCacheVersion, setSchemaCacheVersion] = useState(0);
+  const [outputSchemaByActionId, setOutputSchemaByActionId] = useState(
+    () => new Map<string, JsonSchemaObject | undefined>()
+  );
 
   const loadActionSchema = useCallback(async (actionId: string) => {
     const trimmed = actionId.trim();
@@ -1112,7 +1090,11 @@ function GraphInspector({
         `/actions/schema/${encodeURIComponent(trimmed)}`
       );
       schemaCacheRef.current.set(trimmed, detail);
-      setSchemaCacheVersion((value) => value + 1);
+      setOutputSchemaByActionId((previous) => {
+        const next = new Map(previous);
+        next.set(trimmed, detail.schema.outputSchema);
+        return next;
+      });
       return detail;
     } catch {
       return undefined;
@@ -1123,14 +1105,6 @@ function GraphInspector({
     const trimmed = actionId.trim();
     return trimmed ? schemaCacheRef.current.get(trimmed) : undefined;
   }, []);
-
-  const outputSchemaByActionId = useMemo(() => {
-    const map = new Map<string, JsonSchemaObject | undefined>();
-    for (const [actionId, detail] of schemaCacheRef.current.entries()) {
-      map.set(actionId, detail.schema.outputSchema);
-    }
-    return map;
-  }, [schemaCacheVersion]);
 
   const edgeSourceNode =
     selection?.kind === "edge"

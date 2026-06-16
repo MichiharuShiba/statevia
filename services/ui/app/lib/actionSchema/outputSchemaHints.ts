@@ -4,10 +4,7 @@ import type { JsonSchemaObject } from "./types";
  * outputSchema.properties から when.path 補完候補（`$.` 付き）を生成する。
  */
 export function buildOutputSchemaPathHints(outputSchema: JsonSchemaObject | undefined | null): string[] {
-  if (!outputSchema || outputSchema.type !== "object") {
-    return [];
-  }
-  const properties = outputSchema.properties ?? {};
+  const properties = outputSchema?.type === "object" ? (outputSchema.properties ?? {}) : {};
   return Object.keys(properties)
     .sort((a, b) => a.localeCompare(b))
     .map((name) => `$.${name}`);
@@ -54,8 +51,11 @@ function findUpstreamActionIds(
     if (!node) {
       continue;
     }
-    if (node.type === "action" && node.action && node.action.trim().length > 0) {
-      actionIds.push(node.action.trim());
+    if (node.type === "action") {
+      const actionId = node.action?.trim();
+      if (actionId) {
+        actionIds.push(actionId);
+      }
     }
     for (const edge of edges) {
       if (edge.targetId === currentId) {

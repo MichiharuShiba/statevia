@@ -11,6 +11,7 @@ import type {
 } from "../../lib/actionSchema/types";
 import { useUiText } from "../../lib/uiTextContext";
 
+/** Schema 駆動 action input フォームの props。 */
 export type SchemaDrivenActionInputFormProps = {
   /** canonical actionId。 */
   actionId: string;
@@ -134,7 +135,6 @@ type RenderFieldControlArgs = {
 };
 
 function renderFieldControl({
-  propertyName,
   propertySchema,
   hints,
   fieldValue,
@@ -142,7 +142,7 @@ function renderFieldControl({
   onFieldChange
 }: RenderFieldControlArgs) {
   const widget = hints?.widget ?? inferWidget(propertySchema);
-  const stringValue = fieldValue === undefined || fieldValue === null ? "" : String(fieldValue);
+  const stringValue = formatScalarFieldDisplayValue(fieldValue);
   const inputClassName =
     "mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1 text-xs";
 
@@ -154,11 +154,14 @@ function renderFieldControl({
         onChange={(event) => onFieldChange(event.target.value || undefined)}
       >
         <option value="">—</option>
-        {propertySchema.enum.map((entry) => (
-          <option key={String(entry)} value={String(entry)}>
-            {String(entry)}
-          </option>
-        ))}
+        {propertySchema.enum.map((entry) => {
+          const optionValue = formatScalarFieldDisplayValue(entry);
+          return (
+            <option key={optionValue} value={optionValue}>
+              {optionValue}
+            </option>
+          );
+        })}
       </select>
     );
   }
@@ -189,14 +192,7 @@ function renderFieldControl({
     );
   }
 
-  const inputType =
-    widget === "secret" || hints?.sensitive
-      ? "password"
-      : widget === "url"
-        ? "url"
-        : propertySchema.type === "integer" || propertySchema.type === "number"
-          ? "number"
-          : "text";
+  const inputType = resolveInputType(widget, hints, propertySchema);
 
   return (
     <input
@@ -214,6 +210,37 @@ function renderFieldControl({
       }}
     />
   );
+}
+
+function formatScalarFieldDisplayValue(fieldValue: unknown): string {
+  if (fieldValue === undefined || fieldValue === null) {
+    return "";
+  }
+  if (
+    typeof fieldValue === "string" ||
+    typeof fieldValue === "number" ||
+    typeof fieldValue === "boolean"
+  ) {
+    return String(fieldValue);
+  }
+  return JSON.stringify(fieldValue);
+}
+
+function resolveInputType(
+  widget: string,
+  hints: ActionFieldUiHints | null | undefined,
+  propertySchema: JsonSchemaObject
+): string {
+  if (widget === "secret" || hints?.sensitive) {
+    return "password";
+  }
+  if (widget === "url") {
+    return "url";
+  }
+  if (propertySchema.type === "integer" || propertySchema.type === "number") {
+    return "number";
+  }
+  return "text";
 }
 
 function inferWidget(propertySchema: JsonSchemaObject): string {
