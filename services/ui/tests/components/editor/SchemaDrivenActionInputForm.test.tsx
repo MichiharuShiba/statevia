@@ -71,4 +71,47 @@ describe("SchemaDrivenActionInputForm", () => {
     fireEvent.change(urlInput!, { target: { value: "https://example.com" } });
     expect(onChange).toHaveBeenCalledWith({ url: "https://example.com" });
   });
+
+  it("timeout 入力は integer として親へ通知する", () => {
+    const onChange = vi.fn();
+    const schemaWithTimeout = {
+      ...restSchemaDetail,
+      schema: {
+        ...restSchemaDetail.schema,
+        inputSchema: {
+          ...restSchemaDetail.schema.inputSchema,
+          properties: {
+            ...restSchemaDetail.schema.inputSchema.properties,
+            timeout: { type: "integer", "x-statevia-valueKind": "literalOrPath" }
+          }
+        }
+      },
+      uiMetadata: {
+        ...restSchemaDetail.uiMetadata,
+        fieldOrder: ["url", "method", "timeout"],
+        fields: {
+          ...restSchemaDetail.uiMetadata?.fields,
+          timeout: {
+            widget: "text",
+            labelKey: "statevia.action.builtin.rest.ui.fields.timeout.label"
+          }
+        }
+      }
+    };
+    render(
+      <UiTextProvider locale="ja">
+        <SchemaDrivenActionInputForm
+          actionId="statevia.action.builtin.rest"
+          schemaDetail={schemaWithTimeout}
+          value={{}}
+          onChange={onChange}
+        />
+      </UiTextProvider>
+    );
+    const timeoutLabel = screen.getByText("タイムアウト（秒）");
+    const timeoutInput = timeoutLabel.parentElement?.querySelector("input");
+    expect(timeoutInput).toBeTruthy();
+    fireEvent.change(timeoutInput!, { target: { value: "30" } });
+    expect(onChange).toHaveBeenCalledWith({ timeout: 30 });
+  });
 });

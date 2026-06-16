@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { listRootInputFieldNames, resolveSchemaUiText } from "../../lib/actionSchema/resolveSchemaUiText";
+import { coerceScalarForSchema, normalizeActionInputRecord } from "../../lib/actionSchema/coerceActionInputValue";
 import type {
   ActionFieldUiHints,
   ActionInputValidationDetail,
@@ -40,6 +41,19 @@ export function SchemaDrivenActionInputForm({
     [inputSchema, schemaDetail.uiMetadata?.fieldOrder]
   );
 
+  const normalizedValue = useMemo(
+    () => normalizeActionInputRecord(value, inputSchema, fieldNames),
+    [fieldNames, inputSchema, value]
+  );
+
+  useEffect(() => {
+    const changed = fieldNames.some((fieldName) => normalizedValue[fieldName] !== value[fieldName]);
+    if (!changed) {
+      return;
+    }
+    onChange(normalizedValue);
+  }, [fieldNames, normalizedValue, onChange, value]);
+
   const errorsByProperty = useMemo(() => {
     const map = new Map<string, string>();
     for (const detail of validationDetails) {
@@ -73,7 +87,7 @@ export function SchemaDrivenActionInputForm({
         const placeholder = hints?.placeholderKey
           ? resolveSchemaUiText(uiText, hints.placeholderKey)
           : undefined;
-        const fieldValue = value[propertyName];
+        const fieldValue = normalizedValue[propertyName];
         const error = errorsByProperty.get(propertyName);
 
         return (
@@ -92,7 +106,7 @@ export function SchemaDrivenActionInputForm({
               fieldValue,
               placeholder,
               onFieldChange: (nextFieldValue) => {
-                const next = { ...value };
+                const next = { ...normalizedValue };
                 if (nextFieldValue === undefined || nextFieldValue === "") {
                   delete next[propertyName];
                 } else {
@@ -196,17 +210,7 @@ function renderFieldControl({
           onFieldChange(undefined);
           return;
         }
-        if (propertySchema.type === "integer") {
-          const parsed = Number.parseInt(raw, 10);
-          onFieldChange(Number.isNaN(parsed) ? raw : parsed);
-          return;
-        }
-        if (propertySchema.type === "number") {
-          const parsed = Number.parseFloat(raw);
-          onFieldChange(Number.isNaN(parsed) ? raw : parsed);
-          return;
-        }
-        onFieldChange(raw);
+        onFieldChange(coerceScalarForSchema(raw, propertySchema));
       }}
     />
   );
