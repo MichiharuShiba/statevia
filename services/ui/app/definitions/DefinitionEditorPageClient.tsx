@@ -68,6 +68,9 @@ type ApiErrorLike = {
 type ValidationDetailItem = {
   field?: string;
   message?: string;
+  state?: string;
+  actionId?: string;
+  jsonPath?: string;
 };
 
 function isApiErrorLike(value: unknown): value is ApiErrorLike {
@@ -81,7 +84,10 @@ function toValidationDetailItem(value: unknown): ValidationDetailItem | null {
   const record = value as Record<string, unknown>;
   return {
     field: typeof record.field === "string" ? record.field : undefined,
-    message: typeof record.message === "string" ? record.message : undefined
+    message: typeof record.message === "string" ? record.message : undefined,
+    state: typeof record.state === "string" ? record.state : undefined,
+    actionId: typeof record.actionId === "string" ? record.actionId : undefined,
+    jsonPath: typeof record.jsonPath === "string" ? record.jsonPath : undefined
   };
 }
 
@@ -227,6 +233,13 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
     }
     return yamlParseMessages;
   }, [graphValidationMessages, yamlParseMessages]);
+  const actionValidationDetails = useMemo(
+    () =>
+      apiValidationDetails.filter(
+        (detail) => detail.state || detail.jsonPath || detail.actionId
+      ),
+    [apiValidationDetails]
+  );
   const canResetToInitial = useMemo(() => {
     if (!initialSnapshot) {
       return false;
@@ -556,6 +569,7 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
               document={graphDocument}
               onDocumentChange={handleGraphDocumentChange}
               validationMessages={graphHintMessages}
+              actionValidationDetails={actionValidationDetails}
               labels={uiText.definitionEditor.graph}
             />
           </>

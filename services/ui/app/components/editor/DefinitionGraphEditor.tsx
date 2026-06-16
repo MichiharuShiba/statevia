@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import ReactFlow, {
   Background,
@@ -22,7 +22,15 @@ import { getStatusStyle } from "../../lib/statusStyle";
 import { renameNodeIdInDocument } from "../../lib/definition-editor/renameNodeIdInDocument";
 import type { DefinitionGraphDocument, DefinitionGraphNode, NodeType } from "../../lib/definition-editor/types";
 import { ActionInputCodeEditor } from "./ActionInputCodeEditor";
+import { SchemaDrivenActionInputForm } from "./SchemaDrivenActionInputForm";
 import { GraphNodeShell } from "../nodes/GraphNodeShell";
+import { apiGet } from "../../lib/api";
+import { collectUpstreamOutputPathHints } from "../../lib/actionSchema/outputSchemaHints";
+import type {
+  ActionInputValidationDetail,
+  ActionSchemaDetailResponse,
+  JsonSchemaObject
+} from "../../lib/actionSchema/types";
 
 function formatActionInputForEditor(input: DefinitionGraphNode["input"]): string {
   if (input === undefined) {
@@ -54,6 +62,38 @@ function parseActionInputEditorText(text: string): string | Record<string, unkno
     throw new SyntaxError("Input JSON must be a single object for action input mapping.");
   }
   return t;
+}
+
+function inputToFormRecord(input: DefinitionGraphNode["input"]): Record<string, unknown> {
+  if (input !== null && typeof input === "object" && !Array.isArray(input)) {
+    return { ...input };
+  }
+  return {};
+}
+
+function buildDocumentAdjacency(
+  document: DefinitionGraphDocument
+): Array<{ sourceId: string; targetId: string }> {
+  const edges: Array<{ sourceId: string; targetId: string }> = [];
+  for (const node of document.nodes) {
+    if (node.next) {
+      edges.push({ sourceId: node.id, targetId: node.next });
+    }
+    if (node.type === "action" && node.error) {
+      edges.push({ sourceId: node.id, targetId: node.error });
+    }
+    for (const edge of node.edges ?? []) {
+      if (edge.to) {
+        edges.push({ sourceId: node.id, targetId: edge.to });
+      }
+    }
+    if (node.type === "fork") {
+      for (const branch of node.branches ?? []) {
+        edges.push({ sourceId: node.id, targetId: branch });
+      }
+    }
+  }
+  return edges;
 }
 
 type DefinitionGraphNodeData = {
@@ -175,6 +215,8 @@ type DefinitionGraphEditorProps = {
   document: DefinitionGraphDocument | null;
   onDocumentChange: (nextDocument: DefinitionGraphDocument) => void;
   validationMessages: string[];
+  /** Compiler 422 の action input 詳細（インライン表示用）。 */
+  actionValidationDetails?: ActionInputValidationDetail[];
   labels: {
     title: string;
     empty: string;
@@ -463,6 +505,7 @@ export function DefinitionGraphEditor({
   document,
   onDocumentChange,
   validationMessages,
+  actionValidationDetails = [],
   labels
 }: Readonly<DefinitionGraphEditorProps>) {
   const [selection, setSelection] = useState<GraphSelection>(null);
@@ -790,6 +833,7 @@ export function DefinitionGraphEditor({
               document={document}
               selection={selection}
               labels={labels}
+              actionValidationDetails={actionValidationDetails}
               onDocumentChange={onDocumentChange}
               onClearSelection={() => setSelection(null)}
               onInspectingNodeIdChange={(nextId) => setSelection({ kind: "node", nodeId: nextId })}
@@ -816,6 +860,7 @@ type GraphInspectorProps = {
   document: DefinitionGraphDocument;
   selection: GraphSelection;
   labels: DefinitionGraphEditorProps["labels"];
+  actionValidationDetails: ActionInputValidationDetail[];
   onDocumentChange: (nextDocument: DefinitionGraphDocument) => void;
   onClearSelection: () => void;
   /** id 入力でノード識別子が変わったとき選択状態を追従させる（未追従だとインスペクターが消える） */
@@ -826,6 +871,9 @@ type GraphNodeInspectorProps = {
   document: DefinitionGraphDocument;
   node: DefinitionGraphNode;
   labels: DefinitionGraphEditorProps["labels"];
+  actionValidationDetails: ActionInputValidationDetail[];
+  loadActionSchema: (actionId: string) => Promise<ActionSchemaDetailResponse | undefined>;
+  getCachedActionSchema: (actionId: string) => ActionSchemaDetailResponse | undefined;
   onDocumentChange: (nextDocument: DefinitionGraphDocument) => void;
   onClearSelection: () => void;
   onInspectingNodeIdChange?: (nextId: string) => void;
@@ -835,6 +883,9 @@ function GraphNodeInspector({
   document,
   node,
   labels,
+  actionValidationDetails,
+  loadActionSchema,
+  getCachedActionSchema,
   onDocumentChange,
   onClearSelection,
   onInspectingNodeIdChange
@@ -842,6 +893,17 @@ function GraphNodeInspector({
   const actionInputSig = node.type === "action" ? JSON.stringify(node.input ?? null) : "";
   const [actionInputDraft, setActionInputDraft] = useState("");
   const [actionInputError, setActionInputError] = useState<string | null>(null);
+  const [schemaDetail, setSchemaDetail] = useState<ActionSchemaDetailResponse | undefined>(undefined);
+  const [schemaLoadFailed, setSchemaLoadFailed] = useState(false);
+
+  const actionId = node.type === "action" ? (node.action ?? "").trim() : "";
+  const nodeValidationDetails = useMemo(
+    () =>
+      actionValidationDetails.filter(
+        (detail) => detail.state === node.id || detail.state === undefined
+      ),
+    [actionValidationDetails, node.id]
+  );
 
   useEffect(() => {
     if (node.type === "action") {
@@ -849,6 +911,36 @@ function GraphNodeInspector({
       setActionInputError(null);
     }
   }, [node.id, node.type, node.input, actionInputSig]);
+
+  useEffect(() => {
+    if (node.type !== "action" || !actionId) {
+      setSchemaDetail(undefined);
+      setSchemaLoadFailed(false);
+      return;
+    }
+
+    const cached = getCachedActionSchema(actionId);
+    if (cached) {
+      setSchemaDetail(cached);
+      setSchemaLoadFailed(false);
+      return;
+    }
+
+    let cancelled = false;
+    void loadActionSchema(actionId).then((detail) => {
+      if (cancelled) {
+        return;
+      }
+      setSchemaDetail(detail);
+      setSchemaLoadFailed(!detail);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [actionId, getCachedActionSchema, loadActionSchema, node.type]);
+
+  const useSchemaForm = node.type === "action" && schemaDetail && !schemaLoadFailed;
+  const formValue = inputToFormRecord(node.input);
 
   return (
     <section className="space-y-2 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] p-3">
@@ -904,34 +996,60 @@ function GraphNodeInspector({
         </label>
       )}
       {node.type === "action" && (
-        <label className="block text-xs">
+        <div className="block text-xs">
           <span className="block">{labels.actionInputLabel}</span>
-          <ActionInputCodeEditor
-            key={node.id}
-            value={actionInputDraft}
-            placeholder={labels.actionInputPlaceholder}
-            onChange={(next) => {
-              setActionInputDraft(next);
-              setActionInputError(null);
-            }}
-            onBlur={(latestText) => {
-              try {
-                const parsed = parseActionInputEditorText(latestText);
+          {useSchemaForm ? (
+            <SchemaDrivenActionInputForm
+              actionId={actionId}
+              schemaDetail={schemaDetail}
+              value={formValue}
+              validationDetails={nodeValidationDetails}
+              onChange={(nextValue) => {
                 setActionInputError(null);
                 onDocumentChange(
                   updateNode(document, node.id, (targetNode) =>
-                    targetNode.type === "action" ? { ...targetNode, input: parsed } : targetNode
+                    targetNode.type === "action"
+                      ? {
+                          ...targetNode,
+                          input: Object.keys(nextValue).length > 0 ? nextValue : undefined
+                        }
+                      : targetNode
                   )
                 );
-                setActionInputDraft(formatActionInputForEditor(parsed));
-              } catch {
-                setActionInputError(labels.actionInputInvalidJson);
-              }
-            }}
-          />
-          <span className="mt-0.5 block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">{labels.actionInputHint}</span>
+              }}
+            />
+          ) : (
+            <>
+              <ActionInputCodeEditor
+                key={node.id}
+                value={actionInputDraft}
+                placeholder={labels.actionInputPlaceholder}
+                onChange={(next) => {
+                  setActionInputDraft(next);
+                  setActionInputError(null);
+                }}
+                onBlur={(latestText) => {
+                  try {
+                    const parsed = parseActionInputEditorText(latestText);
+                    setActionInputError(null);
+                    onDocumentChange(
+                      updateNode(document, node.id, (targetNode) =>
+                        targetNode.type === "action" ? { ...targetNode, input: parsed } : targetNode
+                      )
+                    );
+                    setActionInputDraft(formatActionInputForEditor(parsed));
+                  } catch {
+                    setActionInputError(labels.actionInputInvalidJson);
+                  }
+                }}
+              />
+              <span className="mt-0.5 block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                {labels.actionInputHint}
+              </span>
+            </>
+          )}
           {actionInputError ? <p className="text-[10px] text-rose-600">{actionInputError}</p> : null}
-        </label>
+        </div>
       )}
       {node.type === "fork" && (
         <label className="block text-xs">
@@ -972,10 +1090,95 @@ function GraphInspector({
   document,
   selection,
   labels,
+  actionValidationDetails,
   onDocumentChange,
   onClearSelection,
   onInspectingNodeIdChange
 }: Readonly<GraphInspectorProps>) {
+  const schemaCacheRef = useRef(new Map<string, ActionSchemaDetailResponse>());
+  const [schemaCacheVersion, setSchemaCacheVersion] = useState(0);
+
+  const loadActionSchema = useCallback(async (actionId: string) => {
+    const trimmed = actionId.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    const cached = schemaCacheRef.current.get(trimmed);
+    if (cached) {
+      return cached;
+    }
+    try {
+      const detail = await apiGet<ActionSchemaDetailResponse>(
+        `/actions/schema/${encodeURIComponent(trimmed)}`
+      );
+      schemaCacheRef.current.set(trimmed, detail);
+      setSchemaCacheVersion((value) => value + 1);
+      return detail;
+    } catch {
+      return undefined;
+    }
+  }, []);
+
+  const getCachedActionSchema = useCallback((actionId: string) => {
+    const trimmed = actionId.trim();
+    return trimmed ? schemaCacheRef.current.get(trimmed) : undefined;
+  }, []);
+
+  const outputSchemaByActionId = useMemo(() => {
+    const map = new Map<string, JsonSchemaObject | undefined>();
+    for (const [actionId, detail] of schemaCacheRef.current.entries()) {
+      map.set(actionId, detail.schema.outputSchema);
+    }
+    return map;
+  }, [schemaCacheVersion]);
+
+  const edgeSourceNode =
+    selection?.kind === "edge"
+      ? document.nodes.find((entry) => entry.id === selection.nodeId)
+      : undefined;
+
+  const whenPathHints = useMemo(() => {
+    if (!edgeSourceNode) {
+      return [];
+    }
+    return collectUpstreamOutputPathHints(
+      document.nodes.map((entry) => ({ id: entry.id, type: entry.type, action: entry.action })),
+      buildDocumentAdjacency(document),
+      edgeSourceNode.id,
+      outputSchemaByActionId
+    );
+  }, [document, edgeSourceNode, outputSchemaByActionId]);
+
+  useEffect(() => {
+    if (!edgeSourceNode) {
+      return;
+    }
+    const adjacency = buildDocumentAdjacency(document);
+    const nodes = document.nodes.map((entry) => ({ id: entry.id, type: entry.type, action: entry.action }));
+    const upstreamIds = new Set<string>();
+    const visited = new Set<string>();
+    const queue = adjacency.filter((edge) => edge.targetId === edgeSourceNode.id).map((edge) => edge.sourceId);
+    while (queue.length > 0) {
+      const currentId = queue.shift();
+      if (!currentId || visited.has(currentId)) {
+        continue;
+      }
+      visited.add(currentId);
+      const node = nodes.find((entry) => entry.id === currentId);
+      if (node?.type === "action" && node.action?.trim()) {
+        upstreamIds.add(node.action.trim());
+      }
+      for (const edge of adjacency) {
+        if (edge.targetId === currentId) {
+          queue.push(edge.sourceId);
+        }
+      }
+    }
+    for (const actionId of upstreamIds) {
+      void loadActionSchema(actionId);
+    }
+  }, [document, edgeSourceNode, loadActionSchema]);
+
   if (!selection) {
     return null;
   }
@@ -990,6 +1193,9 @@ function GraphInspector({
         document={document}
         node={node}
         labels={labels}
+        actionValidationDetails={actionValidationDetails}
+        loadActionSchema={loadActionSchema}
+        getCachedActionSchema={getCachedActionSchema}
         onDocumentChange={onDocumentChange}
         onClearSelection={onClearSelection}
         onInspectingNodeIdChange={onInspectingNodeIdChange}
@@ -1094,6 +1300,7 @@ function GraphInspector({
               value={conditionalEdge?.when?.path ?? ""}
               placeholder={labels.whenPathPlaceholder}
               disabled={isWhenFieldsDisabled}
+              list={whenPathHints.length > 0 ? `when-path-hints-${sourceNode.id}` : undefined}
               onChange={(changeEvent) => {
                 const path = changeEvent.target.value;
                 onDocumentChange(
@@ -1108,6 +1315,13 @@ function GraphInspector({
                 );
               }}
             />
+            {whenPathHints.length > 0 ? (
+              <datalist id={`when-path-hints-${sourceNode.id}`}>
+                {whenPathHints.map((hint) => (
+                  <option key={hint} value={hint} />
+                ))}
+              </datalist>
+            ) : null}
           </label>
           <label className="block text-xs">
             <span className="block">when.op</span>
