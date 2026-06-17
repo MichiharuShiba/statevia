@@ -28,5 +28,7 @@ export const definitionGraphEditorTestLabels: ComponentProps<typeof DefinitionGr
   actionErrorLabel: "Error",
   actionInputPlaceholder: "JSON",
   actionInputHint: "hint",
-  actionInputInvalidJson: "invalid json"
+  actionInputInvalidJson: "invalid json",
+  actionIdCandidatesLoading: "loading actions",
+  actionIdNoResults: "no results"
 };
