@@ -542,6 +542,8 @@ export const uiTextEn: UiText = {
       actionInputPlaceholder: 'e.g. $.input.orderId or {"orderId":"$.input.orderId"}',
       actionInputHint: "Paths use $ / $. only. Enter objects as JSON.",
       actionInputInvalidJson: "Invalid JSON.",
+      actionIdCandidatesLoading: "Loading actions…",
+      actionIdNoResults: "No matching actions",
     },
     saved: {
       completePrefix: "Saved:",

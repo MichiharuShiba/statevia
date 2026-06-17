@@ -23,6 +23,7 @@ import { renameNodeIdInDocument } from "../../lib/definition-editor/renameNodeId
 import type { DefinitionGraphDocument, DefinitionGraphNode, NodeType } from "../../lib/definition-editor/types";
 import { buildDocumentAdjacency } from "../../lib/definition-editor/definitionGraphAdjacency";
 import { ActionInputCodeEditor } from "./ActionInputCodeEditor";
+import { ActionIdCombobox } from "./ActionIdCombobox";
 import { SchemaDrivenActionInputForm } from "./SchemaDrivenActionInputForm";
 import { GraphNodeShell } from "../nodes/GraphNodeShell";
 import { apiGet } from "../../lib/api";
@@ -31,9 +32,12 @@ import {
   getCachedActionSchemaDetail,
   setCachedActionSchemaDetail
 } from "../../lib/actionSchema/actionSchemaSessionCache";
+import { loadActionSchemaIndex } from "../../lib/actionSchema/actionSchemaIndexSessionCache";
+import { isIndexedActionId, buildIndexedActionIdSet } from "../../lib/actionSchema/isIndexedActionId";
 import type {
   ActionInputValidationDetail,
   ActionSchemaDetailResponse,
+  ActionSchemaIndexItem,
   JsonSchemaObject
 } from "../../lib/actionSchema/types";
 
@@ -224,6 +228,8 @@ type DefinitionGraphEditorProps = {
     actionInputPlaceholder: string;
     actionInputHint: string;
     actionInputInvalidJson: string;
+    actionIdCandidatesLoading: string;
+    actionIdNoResults: string;
   };
 };
 
@@ -854,6 +860,8 @@ type GraphNodeInspectorProps = {
   actionValidationDetails: ActionInputValidationDetail[];
   loadActionSchema: (actionId: string) => Promise<ActionSchemaDetailResponse | undefined>;
   getCachedActionSchema: (actionId: string) => ActionSchemaDetailResponse | undefined;
+  actionCandidates: ReadonlyArray<ActionSchemaIndexItem>;
+  actionCandidatesLoading: boolean;
   onDocumentChange: (nextDocument: DefinitionGraphDocument) => void;
   onClearSelection: () => void;
   onInspectingNodeIdChange?: (nextId: string) => void;
@@ -866,6 +874,8 @@ function GraphNodeInspector({
   actionValidationDetails,
   loadActionSchema,
   getCachedActionSchema,
+  actionCandidates,
+  actionCandidatesLoading,
   onDocumentChange,
   onClearSelection,
   onInspectingNodeIdChange
@@ -873,9 +883,16 @@ function GraphNodeInspector({
   const actionInputSig = node.type === "action" ? JSON.stringify(node.input ?? null) : "";
   const [actionInputDraft, setActionInputDraft] = useState("");
   const [actionInputError, setActionInputError] = useState<string | null>(null);
-  const actionId = node.type === "action" ? (node.action ?? "").trim() : "";
+  const [actionOrEventDraft, setActionOrEventDraft] = useState(
+    () => (node.type === "action" ? node.action : node.event) ?? ""
+  );
+  const schemaLookupActionId = node.type === "action" ? actionOrEventDraft.trim() : "";
+  const isIndexedSchemaAction = useMemo(
+    () => isIndexedActionId(schemaLookupActionId, actionCandidates),
+    [actionCandidates, schemaLookupActionId]
+  );
   const [schemaDetail, setSchemaDetail] = useState<ActionSchemaDetailResponse | undefined>(() =>
-    actionId ? getCachedActionSchemaDetail(actionId) : undefined
+    schemaLookupActionId ? getCachedActionSchemaDetail(schemaLookupActionId) : undefined
   );
   const [schemaLoadFailed, setSchemaLoadFailed] = useState(false);
   const nodeValidationDetails = useMemo(
@@ -890,17 +907,63 @@ function GraphNodeInspector({
     if (node.type === "action") {
       setActionInputDraft(formatActionInputForEditor(node.input));
       setActionInputError(null);
+      setActionOrEventDraft(node.action ?? "");
+    } else if (node.type === "wait") {
+      setActionOrEventDraft(node.event ?? "");
     }
-  }, [node.id, node.type, node.input, actionInputSig]);
+  }, [node.id, node.type, node.input, node.action, node.event, actionInputSig]);
+
+  const commitActionOrEventDraft = useCallback(() => {
+    if (node.type === "action") {
+      if (actionOrEventDraft === (node.action ?? "")) {
+        return;
+      }
+      onDocumentChange(
+        updateNode(document, node.id, (targetNode) =>
+          targetNode.type === "action"
+            ? { ...targetNode, action: actionOrEventDraft, input: undefined }
+            : targetNode
+        )
+      );
+      setActionInputDraft("");
+      setActionInputError(null);
+      return;
+    }
+    if (node.type === "wait") {
+      if (actionOrEventDraft === (node.event ?? "")) {
+        return;
+      }
+      onDocumentChange(
+        updateNode(document, node.id, (targetNode) =>
+          targetNode.type === "wait" ? { ...targetNode, event: actionOrEventDraft } : targetNode
+        )
+      );
+    }
+  }, [actionOrEventDraft, document, node.action, node.event, node.id, node.type, onDocumentChange]);
 
   useEffect(() => {
-    if (node.type !== "action" || !actionId) {
+    if (node.type !== "action" || !schemaLookupActionId) {
       setSchemaDetail(undefined);
       setSchemaLoadFailed(false);
       return;
     }
 
-    const cached = getCachedActionSchema(actionId);
+    if (actionCandidatesLoading) {
+      const cachedWhileLoading = getCachedActionSchema(schemaLookupActionId);
+      if (cachedWhileLoading) {
+        setSchemaDetail(cachedWhileLoading);
+        setSchemaLoadFailed(false);
+      }
+      return;
+    }
+
+    if (!isIndexedSchemaAction) {
+      setSchemaDetail(undefined);
+      setSchemaLoadFailed(false);
+      return;
+    }
+
+    const cached = getCachedActionSchema(schemaLookupActionId);
     if (cached) {
       setSchemaDetail(cached);
       setSchemaLoadFailed(false);
@@ -908,7 +971,7 @@ function GraphNodeInspector({
     }
 
     let cancelled = false;
-    void loadActionSchema(actionId).then((detail) => {
+    void loadActionSchema(schemaLookupActionId).then((detail) => {
       if (cancelled) {
         return;
       }
@@ -918,7 +981,14 @@ function GraphNodeInspector({
     return () => {
       cancelled = true;
     };
-  }, [actionId, getCachedActionSchema, loadActionSchema, node.type]);
+  }, [
+    actionCandidatesLoading,
+    getCachedActionSchema,
+    isIndexedSchemaAction,
+    loadActionSchema,
+    node.type,
+    schemaLookupActionId
+  ]);
 
   const useSchemaForm = node.type === "action" && schemaDetail && !schemaLoadFailed;
   const formValue = inputToFormRecord(node.input);
@@ -941,20 +1011,35 @@ function GraphNodeInspector({
       {(node.type === "action" || node.type === "wait") && (
         <label className="block text-xs">
           <span className="block">{node.type === "action" ? "action" : "event"}</span>
-          <input
-            className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
-            value={node.type === "action" ? node.action ?? "" : node.event ?? ""}
-            onChange={(changeEvent) => {
-              const nextValue = changeEvent.target.value;
-              onDocumentChange(
-                updateNode(document, node.id, (targetNode) =>
-                  targetNode.type === "action"
-                    ? { ...targetNode, action: nextValue }
-                    : { ...targetNode, event: nextValue }
-                )
-              );
-            }}
-          />
+          {node.type === "action" ? (
+            <ActionIdCombobox
+              value={actionOrEventDraft}
+              candidates={actionCandidates}
+              loading={actionCandidatesLoading}
+              labels={{
+                loading: labels.actionIdCandidatesLoading,
+                noResults: labels.actionIdNoResults
+              }}
+              onChange={setActionOrEventDraft}
+              onCommit={commitActionOrEventDraft}
+            />
+          ) : (
+            <input
+              className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
+              value={actionOrEventDraft}
+              onChange={(changeEvent) => {
+                setActionOrEventDraft(changeEvent.target.value);
+              }}
+              onBlur={() => {
+                commitActionOrEventDraft();
+              }}
+              onKeyDown={(keydownEvent) => {
+                if (keydownEvent.key === "Enter") {
+                  keydownEvent.currentTarget.blur();
+                }
+              }}
+            />
+          )}
         </label>
       )}
       {node.type === "action" && (
@@ -981,7 +1066,7 @@ function GraphNodeInspector({
           <span className="block">{labels.actionInputLabel}</span>
           {useSchemaForm ? (
             <SchemaDrivenActionInputForm
-              actionId={actionId}
+              actionId={schemaLookupActionId}
               schemaDetail={schemaDetail}
               value={formValue}
               validationDetails={nodeValidationDetails}
@@ -1079,31 +1164,61 @@ function GraphInspector({
   const [outputSchemaByActionId, setOutputSchemaByActionId] = useState(
     () => new Map<string, JsonSchemaObject | undefined>()
   );
+  const [actionCandidates, setActionCandidates] = useState<ReadonlyArray<ActionSchemaIndexItem>>([]);
+  const [actionCandidatesLoading, setActionCandidatesLoading] = useState(true);
+  const indexedActionIds = useMemo(() => buildIndexedActionIdSet(actionCandidates), [actionCandidates]);
+  const inflightSchemaLoadsRef = useRef(new Map<string, Promise<ActionSchemaDetailResponse | undefined>>());
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadActionSchemaIndex(() => apiGet("/actions/schema/index")).then((items) => {
+      if (!cancelled) {
+        setActionCandidates(items);
+        setActionCandidatesLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadActionSchema = useCallback(async (actionId: string) => {
     const trimmed = actionId.trim();
-    if (!trimmed) {
+    if (!trimmed || !indexedActionIds.has(trimmed)) {
       return undefined;
     }
     const cached = getCachedActionSchemaDetail(trimmed);
     if (cached) {
       return cached;
     }
-    try {
-      const detail = await apiGet<ActionSchemaDetailResponse>(
-        `/actions/schema/${encodeURIComponent(trimmed)}`
-      );
-      setCachedActionSchemaDetail(trimmed, detail);
-      setOutputSchemaByActionId((previous) => {
-        const next = new Map(previous);
-        next.set(trimmed, detail.schema.outputSchema);
-        return next;
-      });
-      return detail;
-    } catch {
-      return undefined;
+    const inflight = inflightSchemaLoadsRef.current.get(trimmed);
+    if (inflight) {
+      return inflight;
     }
-  }, []);
+    const request = (async () => {
+      try {
+        const detail = await apiGet<ActionSchemaDetailResponse>(
+          `/actions/schema/${encodeURIComponent(trimmed)}`
+        );
+        if (!detail) {
+          return undefined;
+        }
+        setCachedActionSchemaDetail(trimmed, detail);
+        setOutputSchemaByActionId((previous) => {
+          const next = new Map(previous);
+          next.set(trimmed, detail.schema.outputSchema);
+          return next;
+        });
+        return detail;
+      } catch {
+        return undefined;
+      } finally {
+        inflightSchemaLoadsRef.current.delete(trimmed);
+      }
+    })();
+    inflightSchemaLoadsRef.current.set(trimmed, request);
+    return request;
+  }, [indexedActionIds]);
 
   const getCachedActionSchema = useCallback((actionId: string) => getCachedActionSchemaDetail(actionId), []);
 
@@ -1171,6 +1286,8 @@ function GraphInspector({
         actionValidationDetails={actionValidationDetails}
         loadActionSchema={loadActionSchema}
         getCachedActionSchema={getCachedActionSchema}
+        actionCandidates={actionCandidates}
+        actionCandidatesLoading={actionCandidatesLoading}
         onDocumentChange={onDocumentChange}
         onClearSelection={onClearSelection}
         onInspectingNodeIdChange={onInspectingNodeIdChange}

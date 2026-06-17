@@ -512,6 +512,8 @@ export type UiText = {
       actionInputPlaceholder: string;
       actionInputHint: string;
       actionInputInvalidJson: string;
+      actionIdCandidatesLoading: string;
+      actionIdNoResults: string;
     };
     saved: {
       completePrefix: string;
@@ -1097,6 +1099,8 @@ export const uiText: UiText = {
       actionInputPlaceholder: '例: $.input.orderId または {"orderId":"$.input.orderId"}',
       actionInputHint: "パスは $ / $. のみ。オブジェクトは JSON で入力。",
       actionInputInvalidJson: "JSON の形式が正しくありません。",
+      actionIdCandidatesLoading: "Action 一覧を読み込み中…",
+      actionIdNoResults: "一致する Action がありません",
     },
     saved: {
       completePrefix: "保存完了:",
