@@ -77,7 +77,8 @@ Builtin 短名（MVP）:
 Action の実行パラメータ（例: rest の `url`）および状態への入力マッピングは、いずれも YAML キー **`input:`** で記述する。**`config:` キーは採用しない**（将来導入予定なし）。
 
 - **状態 input マッピング**: 直前状態の output から値を抽出する（§1.6）。`input.path` 単一形式またはキー付きマップ。
-- **Action パラメータ**: Builtin / Module action の schema に従う `input` マップ（`action-schema-plugin-system` 仕様で Compiler 検証予定）。
+- **Action パラメータ**: Builtin / Module action の schema に従う `input` マップ。Core-API Compiler が publication の `inputSchema` で **ルート直下**を検証する（422 `details`: `state`, `actionId`, `jsonPath`）。schema 未提供 action は warning モード（将来 strict 化可）。**ネスト object**（`ship.address` 等）の再帰検証はフェーズ F2。
+- **Schema API**: `GET /v1/actions/schema/{actionId}` で input/output schema と UI metadata を取得。Playground はこれを schema 駆動フォーム生成に利用する。
 
 ### 1.1.3 action レベル retry（parse only）
 

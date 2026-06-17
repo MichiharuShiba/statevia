@@ -6,7 +6,7 @@ namespace Statevia.Core.Api.Application.Security;
 /// </summary>
 internal static class RuntimePermissionRequirements
 {
-    /// <summary>GET /v1/definitions*、GET /v1/graphs/*、GET …/schema/nodes。</summary>
+    /// <summary>GET /v1/definitions*、GET /v1/graphs/*、GET …/schema/nodes、GET /v1/actions/schema*。</summary>
     public const string DefinitionsRead = WellKnownPermissionKeys.DefinitionsRead;
 
     /// <summary>POST /v1/definitions、PUT /v1/definitions/{id}。</summary>

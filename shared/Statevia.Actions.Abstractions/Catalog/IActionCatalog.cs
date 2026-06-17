@@ -35,4 +35,7 @@ public interface IActionCatalog
     /// <param name="actionId">参照 actionId（canonical またはエイリアス）。</param>
     /// <param name="publication">取得した Publication。</param>
     bool TryGetPublication(string actionId, [NotNullWhen(true)] out ActionPublication? publication);
+
+    /// <summary>登録済み canonical actionId の一覧を安定ソートで返す。</summary>
+    IReadOnlyList<string> GetRegisteredActionIds();
 }
