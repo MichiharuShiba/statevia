@@ -114,4 +114,60 @@ describe("SchemaDrivenActionInputForm", () => {
     fireEvent.change(timeoutInput!, { target: { value: "30" } });
     expect(onChange).toHaveBeenCalledWith({ timeout: 30 });
   });
+
+  it("ネスト object schema をフィールドグループ表示しネスト map で保存する", () => {
+    const onChange = vi.fn();
+    const nestedSchemaDetail: ActionSchemaDetailResponse = {
+      descriptor: {
+        actionId: "test.module.nestedship",
+        version: "1.0.0",
+        displayName: "Nested Ship"
+      },
+      schema: {
+        schemaVersion: "2020-12",
+        inputSchema: {
+          type: "object",
+          properties: {
+            ship: {
+              type: "object",
+              title: "配送情報",
+              properties: {
+                address: { type: "string", title: "住所" },
+                contact: {
+                  type: "object",
+                  properties: {
+                    email: { type: "string", format: "email", title: "メール" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        outputSchema: { type: "object" }
+      },
+      uiMetadata: {
+        fieldOrder: ["ship"]
+      }
+    };
+
+    render(
+      <UiTextProvider locale="ja">
+        <SchemaDrivenActionInputForm
+          actionId="test.module.nestedship"
+          schemaDetail={nestedSchemaDetail}
+          value={{}}
+          onChange={onChange}
+        />
+      </UiTextProvider>
+    );
+
+    expect(screen.getByText("配送情報")).toBeInTheDocument();
+    expect(screen.getByText("住所")).toBeInTheDocument();
+    expect(screen.getByText("メール")).toBeInTheDocument();
+
+    const addressInput = screen.getByText("住所").parentElement?.querySelector("input");
+    expect(addressInput).toBeTruthy();
+    fireEvent.change(addressInput!, { target: { value: "東京都" } });
+    expect(onChange).toHaveBeenCalledWith({ ship: { address: "東京都" } });
+  });
 });

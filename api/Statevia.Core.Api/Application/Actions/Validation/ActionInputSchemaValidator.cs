@@ -35,15 +35,25 @@ internal static class ActionInputSchemaValidator
 
         var values = input?.Values;
         var context = new ValidationContext(stateName, actionId);
-        ValidateObject(values, inputSchemaRoot, "$.input", context);
+        var (root, normalizationErrors) = ActionInputTreeNormalizer.Normalize(values);
+        foreach (var error in normalizationErrors)
+        {
+            context.Add(error.JsonPath, error.Message);
+        }
+
+        if (normalizationErrors.Count == 0 && root.Children is Dictionary<string, ActionInputTreeNormalizer.NormalizedInputNode> children)
+        {
+            ValidateNormalizedObject(children, inputSchemaRoot, "$.input", context);
+        }
+
         return context.Errors;
     }
 
     private static bool IsPathOnlyInput(StateInputDefinition? input) =>
         input?.Path is not null && (input.Values is null || input.Values.Count == 0);
 
-    private static void ValidateObject(
-        IReadOnlyDictionary<string, StateInputValueDefinition>? values,
+    private static void ValidateNormalizedObject(
+        IReadOnlyDictionary<string, ActionInputTreeNormalizer.NormalizedInputNode> children,
         JsonElement schema,
         string jsonPath,
         ValidationContext context)
@@ -53,23 +63,30 @@ internal static class ActionInputSchemaValidator
         var required = ResolveRequired(schema);
         var presentKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        if (values is not null)
+        foreach (var (key, node) in children)
         {
-            foreach (var (key, valueDef) in values)
+            presentKeys.Add(key);
+            var fieldPath = $"{jsonPath}.{key}";
+            if (!properties || !propertyMap!.TryGetValue(key, out var propertySchema))
             {
-                presentKeys.Add(key);
-                var fieldPath = $"{jsonPath}.{key}";
-                if (!properties || !propertyMap!.TryGetValue(key, out var propertySchema))
+                if (!additionalPropertiesAllowed)
                 {
-                    if (!additionalPropertiesAllowed)
-                    {
-                        context.Add(fieldPath, $"Unknown input property '{key}'.");
-                    }
-
-                    continue;
+                    context.Add(fieldPath, $"Unknown input property '{key}'.");
                 }
 
-                ValidateValue(valueDef, propertySchema, fieldPath, context);
+                continue;
+            }
+
+            if (node.IsObject)
+            {
+                if (node.Children is Dictionary<string, ActionInputTreeNormalizer.NormalizedInputNode> nestedChildren)
+                {
+                    ValidateNormalizedObject(nestedChildren, propertySchema, fieldPath, context);
+                }
+            }
+            else if (node.Leaf is not null)
+            {
+                ValidateValue(node.Leaf, propertySchema, fieldPath, context);
             }
         }
 

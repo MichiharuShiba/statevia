@@ -77,7 +77,11 @@ Builtin 短名（MVP）:
 Action の実行パラメータ（例: rest の `url`）および状態への入力マッピングは、いずれも YAML キー **`input:`** で記述する。**`config:` キーは採用しない**（将来導入予定なし）。
 
 - **状態 input マッピング**: 直前状態の output から値を抽出する（§1.6）。`input.path` 単一形式またはキー付きマップ。
-- **Action パラメータ**: Builtin / Module action の schema に従う `input` マップ。Core-API Compiler が publication の `inputSchema` で **ルート直下**を検証する（422 `details`: `state`, `actionId`, `jsonPath`）。schema 未提供 action は warning モード（将来 strict 化可）。**ネスト object**（`ship.address` 等）の再帰検証はフェーズ F2。
+- **Action パラメータ**: Builtin / Module action の schema に従う `input` マップ。Core-API Compiler が publication の `inputSchema` で検証する（422 `details`: `state`, `actionId`, `jsonPath` — 機微値は含めない）。schema 未提供 action は warning モード（将来 strict 化可）。
+  - **ルートフラット**（フェーズ E）: ルート直下の scalar / 浅い object リテラル（例: rest `headers`）。
+  - **ネスト object**（フェーズ F2）: `inputSchema` の `type: object` ノードを再帰検証。`Values` は実行時と同じ論理ツリーへ正規化してから schema を適用する。
+  - **ドットキーとネスト map の同等性**: `ship.address: "x"` と `ship: { address: "x" }` は同一論理ツリーとして compile 成功する。正規化衝突（例: `ship` にスカラーと `ship.address` を併記）は 422。`jsonPath` は階層を反映する（例: `$.input.ship.contact.email`）。
+  - **Playground UI**: schema 駆動フォームはネスト object をフィールドグループ表示し、保存時は **ネスト map** 形式を既定とする。
 - **Schema API**: `GET /v1/actions/schema/{actionId}` で input/output schema と UI metadata を取得。Playground はこれを schema 駆動フォーム生成に利用する。
 
 ### 1.1.3 action レベル retry（parse only）
@@ -295,7 +299,9 @@ states:
 
 - `$` または `$.` で始まる文字列はパス式
 - それ以外はリテラル
-- `foo.bar` はネストオブジェクトとして構築される（後勝ち）
+- `foo.bar` はネストオブジェクトとして構築される（`StateInputEvaluator.SetByDottedKey` と同等）
+- ネスト map（`ship: { address: "x" }`）とドットキー（`ship.address: "x"`）は実行時・Compiler schema 検証のいずれでも同等の論理ツリーになる（§1.1.2）
+- 同一ブランチでスカラーとドットキー子が競合する正規化は 422
 - パス式は `Level1Validator` と同じ単純 JSONPath 制約（`$` または `$.seg1.seg2`、セグメントは英数字と `_`）に従う。
 - `${...}` 形式のテンプレート文字列は受理しない（states/nodes ともに同一ルール）。
 

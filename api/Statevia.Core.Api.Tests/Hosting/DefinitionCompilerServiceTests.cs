@@ -1232,6 +1232,189 @@ public sealed class DefinitionCompilerServiceTests
         }
     }
 
+    /// <summary>ネスト schema にドットキー input を指定すると compile 成功する（要件2 No.6）。</summary>
+    [Fact]
+    public void ValidateAndCompile_NestedInputWithDottedKeys_Succeeds()
+    {
+        // Arrange
+        var svc = CreateSutWithCatalog(out var catalog);
+        RegisterNestedShipTestAction(catalog);
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              Ship:
+                action: test.module.nestedship
+                input:
+                  ship.address: 東京都
+                  ship.contact.email: a@example.com
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("W", yaml);
+
+        // Assert
+        Assert.NotNull(compiled.StateExecutorFactory.GetExecutor("Ship"));
+    }
+
+    /// <summary>ネスト schema にネスト map input を指定すると compile 成功する（要件2 No.7）。</summary>
+    [Fact]
+    public void ValidateAndCompile_NestedInputWithNestedMap_Succeeds()
+    {
+        // Arrange
+        var svc = CreateSutWithCatalog(out var catalog);
+        RegisterNestedShipTestAction(catalog);
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              Ship:
+                action: test.module.nestedship
+                input:
+                  ship:
+                    address: 東京都
+                    contact:
+                      email: a@example.com
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("W", yaml);
+
+        // Assert
+        Assert.NotNull(compiled.StateExecutorFactory.GetExecutor("Ship"));
+    }
+
+    /// <summary>ネスト必須欠落は階層 jsonPath で schema 検証失敗する（要件2 No.8）。</summary>
+    [Fact]
+    public void ValidateAndCompile_NestedRequiredMissing_ThrowsSchemaValidationException()
+    {
+        // Arrange
+        var svc = CreateSutWithCatalog(out var catalog);
+        RegisterNestedShipTestAction(catalog);
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              Ship:
+                action: test.module.nestedship
+                input:
+                  ship.contact.email: a@example.com
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var ex = Assert.Throws<ActionInputSchemaValidationException>(() => svc.ValidateAndCompile("W", yaml));
+
+        // Assert
+        Assert.Contains(ex.Errors, error => error.JsonPath == "$.input.ship.address");
+    }
+
+    /// <summary>オブジェクトリテラルとドットキー子の競合は schema 検証で失敗する（要件2 No.9）。</summary>
+    [Fact]
+    public void ValidateAndCompile_NestedInputNormalizationConflict_ThrowsSchemaValidationException()
+    {
+        // Arrange
+        var svc = CreateSutWithCatalog(out var catalog);
+        RegisterNestedShipTestAction(catalog);
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              Ship:
+                action: test.module.nestedship
+                input:
+                  ship: scalar-conflict
+                  ship.address: 東京都
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var ex = Assert.Throws<ActionInputSchemaValidationException>(() => svc.ValidateAndCompile("W", yaml));
+
+        // Assert
+        Assert.Contains(
+            ex.Errors,
+            error => error.JsonPath == "$.input.ship"
+                && error.Message.Contains("conflict", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void RegisterNestedShipTestAction(IActionCatalog catalog)
+    {
+        const string actionId = "test.module.nestedship";
+        using var inputSchema = JsonDocument.Parse(
+            """
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "ship": {
+                  "type": "object",
+                  "required": ["address"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "address": {
+                      "type": "string",
+                      "x-statevia-valueKind": "literalOrPath"
+                    },
+                    "contact": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "email": {
+                          "type": "string",
+                          "format": "email"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            """);
+        using var outputSchema = JsonDocument.Parse("""{"type":"object"}""");
+        var publication = new Statevia.Actions.Abstractions.Publication.ActionPublication(
+            new Statevia.Actions.Abstractions.Publication.ActionDescriptor(
+                actionId,
+                "1.0.0",
+                "Nested Ship Test",
+                Category: "Test"),
+            new Statevia.Actions.Abstractions.Publication.ActionSchemaBundle(
+                JsonDocument.Parse(inputSchema.RootElement.GetRawText()),
+                JsonDocument.Parse(outputSchema.RootElement.GetRawText())),
+            new Statevia.Actions.Abstractions.Publication.ActionUiMetadata(
+                FieldOrder: ["ship"],
+                Fields: new Dictionary<string, Statevia.Actions.Abstractions.Publication.ActionFieldUiHints>
+                {
+                    ["ship"] = new Statevia.Actions.Abstractions.Publication.ActionFieldUiHints(
+                        LabelKey: $"{actionId}.ui.fields.ship.label"),
+                    ["ship.address"] = new Statevia.Actions.Abstractions.Publication.ActionFieldUiHints(
+                        LabelKey: $"{actionId}.ui.fields.ship.address.label"),
+                }));
+
+        catalog.Register(
+            new ActionDescriptor
+            {
+                ActionId = actionId,
+                ModuleId = "test.module",
+                Version = "1.0.0",
+                TrustLevel = ActionTrustLevel.Trusted,
+                Source = ActionSourceKind.Filesystem,
+                Visibility = ActionVisibility.Builtin,
+            },
+            new ActionCatalogEntry(InProcessFactory: _ => DefaultStateExecutor.Create(new NoOpState())),
+            publication);
+    }
+
 }
 
 

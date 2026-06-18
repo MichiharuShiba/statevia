@@ -170,7 +170,7 @@ Builtin / Module action の **input/output JSON Schema** と **UI metadata** を
 
 **認可**: `definitions.read`（§4.1.2.1）。**IO-14**: レスポンスに定義 YAML の機微値は含めない（schema 契約のみ）。
 
-**Compiler 連携**: 定義 publish 時、action 状態の `input` map は publication の `inputSchema` に対し **ルートフラット**で検証される（422 `details` に `state`, `actionId`, `jsonPath`）。ネスト object の再帰検証は follow-up（フェーズ F2）。
+**Compiler 連携**: 定義 publish 時、action 状態の `input` map は publication の `inputSchema` に対し検証される（422 `details` に `state`, `actionId`, `jsonPath` — 機微値は含めない）。ルートフラットに加え、ネスト `type: object` を再帰検証する（フェーズ F2）。`ship.address` ドットキーと `ship: { address: ... }` ネスト map は同等。正規化衝突は 422。
 
 ---
 

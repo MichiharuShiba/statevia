@@ -1,8 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { listRootInputFieldNames, resolveSchemaUiText } from "../../lib/actionSchema/resolveSchemaUiText";
-import { coerceScalarForSchema, normalizeActionInputRecord } from "../../lib/actionSchema/coerceActionInputValue";
+import { coerceScalarForSchema } from "../../lib/actionSchema/coerceActionInputValue";
+import {
+  buildInputFieldTree,
+  getNestedInputValue,
+  jsonPathToLogicalPath,
+  setNestedInputValue,
+  type InputFieldNode
+} from "../../lib/actionSchema/nestedInputPaths";
+import { resolveSchemaUiText } from "../../lib/actionSchema/resolveSchemaUiText";
 import type {
   ActionFieldUiHints,
   ActionInputValidationDetail,
@@ -17,7 +24,7 @@ export type SchemaDrivenActionInputFormProps = {
   actionId: string;
   /** Schema API 詳細応答。 */
   schemaDetail: ActionSchemaDetailResponse;
-  /** 現在の input マップ（path 式は文字列として保持）。 */
+  /** 現在の input マップ（ネスト map 形式。path 式は文字列として保持）。 */
   value: Record<string, unknown>;
   /** 値変更時コールバック。 */
   onChange: (nextValue: Record<string, unknown>) => void;
@@ -27,6 +34,7 @@ export type SchemaDrivenActionInputFormProps = {
 
 /**
  * inputSchema + uiMetadata から MVP widget セットのフォームを生成する。
+ * `type: object` はネストフィールドグループとして表示する。
  */
 export function SchemaDrivenActionInputForm({
   actionId,
@@ -35,100 +43,144 @@ export function SchemaDrivenActionInputForm({
   onChange,
   validationDetails = []
 }: Readonly<SchemaDrivenActionInputFormProps>) {
-  const uiText = useUiText();
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const inputSchema = schemaDetail.schema.inputSchema;
-  const fieldNames = useMemo(
-    () => listRootInputFieldNames(inputSchema, schemaDetail.uiMetadata?.fieldOrder),
+  const fieldTree = useMemo(
+    () => buildInputFieldTree(inputSchema, schemaDetail.uiMetadata?.fieldOrder),
     [inputSchema, schemaDetail.uiMetadata?.fieldOrder]
   );
 
   const normalizedValue = useMemo(
-    () => normalizeActionInputRecord(value, inputSchema, fieldNames),
-    [fieldNames, inputSchema, value]
+    () => normalizeNestedActionInputRecord(value, fieldTree),
+    [fieldTree, value]
   );
 
   useEffect(() => {
-    const changed = fieldNames.some((fieldName) => normalizedValue[fieldName] !== value[fieldName]);
+    const changed = collectScalarPaths(fieldTree).some(
+      (logicalPath) => getNestedInputValue(normalizedValue, logicalPath) !== getNestedInputValue(value, logicalPath)
+    );
     if (!changed) {
       return;
     }
     onChangeRef.current(normalizedValue);
-  }, [fieldNames, normalizedValue, value]);
+  }, [fieldTree, normalizedValue, value]);
 
-  const errorsByProperty = useMemo(() => {
+  const errorsByLogicalPath = useMemo(() => {
     const map = new Map<string, string>();
     for (const detail of validationDetails) {
-      const propertyName = jsonPathToPropertyName(detail.jsonPath);
-      if (propertyName && detail.message) {
-        map.set(propertyName, detail.message);
+      const logicalPath = jsonPathToLogicalPath(detail.jsonPath);
+      if (logicalPath && detail.message) {
+        map.set(logicalPath, detail.message);
       }
     }
     return map;
   }, [validationDetails]);
 
-  if (fieldNames.length === 0) {
+  if (fieldTree.length === 0) {
     return null;
   }
 
   return (
     <div className="space-y-2">
-      {fieldNames.map((propertyName) => {
-        const propertySchema = inputSchema.properties?.[propertyName];
-        if (!propertySchema) {
-          return null;
-        }
-        const hints = schemaDetail.uiMetadata?.fields?.[propertyName];
-        const label = resolveSchemaUiText(uiText, hints?.labelKey, {
-          schemaTitle: propertySchema.title,
-          propertyName
-        });
-        const description = hints?.descriptionKey
-          ? resolveSchemaUiText(uiText, hints.descriptionKey)
-          : propertySchema.description ?? "";
-        const placeholder = hints?.placeholderKey
-          ? resolveSchemaUiText(uiText, hints.placeholderKey)
-          : undefined;
-        const fieldValue = normalizedValue[propertyName];
-        const error = errorsByProperty.get(propertyName);
-
-        return (
-          <label key={propertyName} className="block text-xs">
-            <span className="block font-medium">{label}</span>
-            {description ? (
-              <span className="mt-0.5 block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
-                {description}
-              </span>
-            ) : null}
-            {renderFieldControl({
-              actionId,
-              propertyName,
-              propertySchema,
-              hints,
-              fieldValue,
-              placeholder,
-              onFieldChange: (nextFieldValue) => {
-                const next = { ...normalizedValue };
-                if (nextFieldValue === undefined || nextFieldValue === "") {
-                  delete next[propertyName];
-                } else {
-                  next[propertyName] = nextFieldValue;
-                }
-                onChange(next);
-              }
-            })}
-            {error ? <p className="mt-0.5 text-[10px] text-rose-600">{error}</p> : null}
-          </label>
-        );
-      })}
+      {fieldTree.map((node) => (
+        <InputFieldTreeNode
+          key={node.logicalPath}
+          actionId={actionId}
+          node={node}
+          uiFields={schemaDetail.uiMetadata?.fields}
+          normalizedValue={normalizedValue}
+          errorsByLogicalPath={errorsByLogicalPath}
+          onChange={onChange}
+        />
+      ))}
     </div>
   );
 }
 
-type RenderFieldControlArgs = {
+type InputFieldTreeNodeProps = {
   actionId: string;
-  propertyName: string;
+  node: InputFieldNode;
+  uiFields?: Record<string, ActionFieldUiHints | null> | null;
+  normalizedValue: Record<string, unknown>;
+  errorsByLogicalPath: Map<string, string>;
+  onChange: (nextValue: Record<string, unknown>) => void;
+};
+
+function InputFieldTreeNode({
+  actionId,
+  node,
+  uiFields,
+  normalizedValue,
+  errorsByLogicalPath,
+  onChange
+}: Readonly<InputFieldTreeNodeProps>) {
+  const uiText = useUiText();
+
+  if (node.kind === "group") {
+    const hints = uiFields?.[node.logicalPath];
+    const label = resolveSchemaUiText(uiText, hints?.labelKey, {
+      schemaTitle: node.propertySchema.title,
+      propertyName: node.logicalPath.split(".").at(-1)
+    });
+    return (
+      <fieldset className="rounded border border-[var(--md-sys-color-outline-variant)] p-2">
+        <legend className="px-1 text-xs font-medium">{label}</legend>
+        <div className="space-y-2">
+          {node.children.map((child) => (
+            <InputFieldTreeNode
+              key={child.logicalPath}
+              actionId={actionId}
+              node={child}
+              uiFields={uiFields}
+              normalizedValue={normalizedValue}
+              errorsByLogicalPath={errorsByLogicalPath}
+              onChange={onChange}
+            />
+          ))}
+        </div>
+      </fieldset>
+    );
+  }
+
+  const propertyName = node.logicalPath.split(".").at(-1) ?? node.logicalPath;
+  const hints = uiFields?.[node.logicalPath];
+  const label = resolveSchemaUiText(uiText, hints?.labelKey, {
+    schemaTitle: node.propertySchema.title,
+    propertyName
+  });
+  const description = hints?.descriptionKey
+    ? resolveSchemaUiText(uiText, hints.descriptionKey)
+    : node.propertySchema.description ?? "";
+  const placeholder = hints?.placeholderKey
+    ? resolveSchemaUiText(uiText, hints.placeholderKey)
+    : undefined;
+  const fieldValue = getNestedInputValue(normalizedValue, node.logicalPath);
+  const error = errorsByLogicalPath.get(node.logicalPath);
+
+  return (
+    <label className="block text-xs">
+      <span className="block font-medium">{label}</span>
+      {description ? (
+        <span className="mt-0.5 block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+          {description}
+        </span>
+      ) : null}
+      {renderFieldControl({
+        propertySchema: node.propertySchema,
+        hints,
+        fieldValue,
+        placeholder,
+        onFieldChange: (nextFieldValue) => {
+          onChange(setNestedInputValue(normalizedValue, node.logicalPath, nextFieldValue));
+        }
+      })}
+      {error ? <p className="mt-0.5 text-[10px] text-rose-600">{error}</p> : null}
+    </label>
+  );
+}
+
+type RenderFieldControlArgs = {
   propertySchema: JsonSchemaObject;
   hints?: ActionFieldUiHints | null;
   fieldValue: unknown;
@@ -168,32 +220,6 @@ function renderFieldControl({
     );
   }
 
-  if (propertySchema.type === "object") {
-    const objectText =
-      fieldValue !== undefined && fieldValue !== null
-        ? JSON.stringify(fieldValue, null, 2)
-        : "";
-    return (
-      <textarea
-        className={`${inputClassName} min-h-[4rem] font-mono`}
-        value={objectText}
-        placeholder={placeholder ?? "{}"}
-        onChange={(event) => {
-          const text = event.target.value.trim();
-          if (!text) {
-            onFieldChange(undefined);
-            return;
-          }
-          try {
-            onFieldChange(JSON.parse(text) as unknown);
-          } catch {
-            onFieldChange(event.target.value);
-          }
-        }}
-      />
-    );
-  }
-
   const inputType = resolveInputType(widget, hints, propertySchema);
 
   return (
@@ -212,6 +238,55 @@ function renderFieldControl({
       }}
     />
   );
+}
+
+function normalizeNestedActionInputRecord(
+  value: Record<string, unknown>,
+  fieldTree: InputFieldNode[]
+): Record<string, unknown> {
+  let result = { ...value };
+  for (const logicalPath of collectScalarPaths(fieldTree)) {
+    const fieldValue = getNestedInputValue(result, logicalPath);
+    if (typeof fieldValue !== "string") {
+      continue;
+    }
+    const propertySchema = findScalarSchema(fieldTree, logicalPath);
+    if (!propertySchema) {
+      continue;
+    }
+    const coerced = coerceScalarForSchema(fieldValue, propertySchema);
+    if (coerced !== fieldValue) {
+      result = setNestedInputValue(result, logicalPath, coerced);
+    }
+  }
+  return result;
+}
+
+function collectScalarPaths(nodes: InputFieldNode[]): string[] {
+  const paths: string[] = [];
+  for (const node of nodes) {
+    if (node.kind === "scalar") {
+      paths.push(node.logicalPath);
+      continue;
+    }
+    paths.push(...collectScalarPaths(node.children));
+  }
+  return paths;
+}
+
+function findScalarSchema(nodes: InputFieldNode[], logicalPath: string): JsonSchemaObject | undefined {
+  for (const node of nodes) {
+    if (node.kind === "scalar" && node.logicalPath === logicalPath) {
+      return node.propertySchema;
+    }
+    if (node.kind === "group") {
+      const nested = findScalarSchema(node.children, logicalPath);
+      if (nested) {
+        return nested;
+      }
+    }
+  }
+  return undefined;
 }
 
 function formatScalarFieldDisplayValue(fieldValue: unknown): string {
@@ -252,9 +327,6 @@ function inferWidget(propertySchema: JsonSchemaObject): string {
   if (propertySchema.format === "uri" || propertySchema.format === "url") {
     return "url";
   }
-  if (propertySchema.type === "object") {
-    return "text";
-  }
   return "text";
 }
 
@@ -267,17 +339,4 @@ function valueKindPlaceholder(propertySchema: JsonSchemaObject): string | undefi
     return "literal or $.path";
   }
   return undefined;
-}
-
-function jsonPathToPropertyName(jsonPath: string | undefined): string | undefined {
-  if (!jsonPath) {
-    return undefined;
-  }
-  const prefix = "$.input.";
-  if (!jsonPath.startsWith(prefix)) {
-    return undefined;
-  }
-  const remainder = jsonPath.slice(prefix.length);
-  const dotIndex = remainder.indexOf(".");
-  return dotIndex >= 0 ? remainder.slice(0, dotIndex) : remainder;
 }
