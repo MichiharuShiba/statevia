@@ -46,13 +46,13 @@ export function resolveLabelKeyFromActionCatalog(
   actionCatalog: ActionCatalogUiText,
   labelKey: string
 ): string | undefined {
-  const match = /^(.+)\.ui\.fields\.([^.]+)\.(label|description|placeholder)$/.exec(labelKey);
+  const match = /^(.+)\.ui\.fields\.(.+)\.(label|description|placeholder)$/.exec(labelKey);
   if (!match) {
     return undefined;
   }
-  const [, actionId, fieldName, kind] = match;
+  const [, actionId, fieldPath, kind] = match;
   const entry = actionCatalog[actionId];
-  const field = entry?.ui?.fields?.[fieldName];
+  const field = entry?.ui?.fields?.[fieldPath];
   if (!field) {
     return undefined;
   }
