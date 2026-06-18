@@ -53,6 +53,20 @@ describe("resolveLabelKeyFromActionCatalog", () => {
       )
     ).toBe("HTTP method");
   });
+
+  it("論理パス付き labelKey（ship.address）を解決する", () => {
+    const nestedKey = "statevia.action.builtin.test.ui.fields.ship.address.label";
+    const catalog = {
+      "statevia.action.builtin.test": {
+        ui: {
+          fields: {
+            "ship.address": { label: "配送先住所" }
+          }
+        }
+      }
+    };
+    expect(resolveLabelKeyFromActionCatalog(catalog, nestedKey)).toBe("配送先住所");
+  });
 });
 
 describe("listRootInputFieldNames", () => {
