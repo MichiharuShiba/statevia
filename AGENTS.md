@@ -110,6 +110,7 @@ Comment rules, Markdownlint (e.g. `.spec-workflow/`), build or analyzer warnings
 | `CORE_API_INTERNAL_BASE` | ui            | `http://localhost:8080`                                                                                                |
 | `STATEVIA_LOG_HTTP_BODIES` | core-api (C#) | 未設定時は従来どおり。`true` のとき本番でも HTTP リクエスト/レスポンス本文をログに載せる（機密に注意）。 |
 | `STATEVIA_ENABLE_API_DOCS` | core-api (C#) | 未設定時は Production で OpenAPI / Scalar 無効。`true` で Staging / Production でも `/swagger`・`/scalar` を公開（API 構造露出に注意）。 |
+| `STATEVIA_MODULES_PATH` | core-api (C#) | 未設定時は `Statevia:Modules:Path` → `{ContentRoot}/modules` の順で Action Module ルートを解決。 |
 
 ### Core-API: HTTP リクエストログ（STV-403）
 

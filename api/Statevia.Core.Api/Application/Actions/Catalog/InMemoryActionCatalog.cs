@@ -92,6 +92,11 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
         }
 
         var canonicalId = descriptor.ActionId.Trim();
+        if (_byCanonicalId.ContainsKey(canonicalId))
+        {
+            throw new ArgumentException($"Action '{canonicalId}' is already registered.");
+        }
+
         _byCanonicalId[canonicalId] = new StoredRegistration(descriptor, entry, capabilityMetadata, publication);
 
         if (entry.Aliases is { Count: > 0 })

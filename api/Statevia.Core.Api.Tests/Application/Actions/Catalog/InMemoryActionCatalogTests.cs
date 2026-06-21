@@ -104,6 +104,22 @@ public sealed class InMemoryActionCatalogTests
         Assert.Same(expected, executor);
     }
 
+    /// <summary>同一 canonical actionId の再登録は拒否する。</summary>
+    [Fact]
+    public void Register_WhenDuplicateCanonicalId_Throws()
+    {
+        // Arrange
+        var sut = new InMemoryActionCatalog();
+        var tenantId = "11111111-1111-1111-1111-111111111111";
+        var descriptor = CreateTenantDescriptor("custom.action", tenantId);
+        sut.Register(descriptor, CreateEntry());
+
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(
+            () => sut.Register(descriptor, CreateEntry()));
+        Assert.Contains("already registered", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>同一エイリアスを別 Action に再登録すると拒否する。</summary>
     [Fact]
     public void Register_WhenAliasConflicts_Throws()
