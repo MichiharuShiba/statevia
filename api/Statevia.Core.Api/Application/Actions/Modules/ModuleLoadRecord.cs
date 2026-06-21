@@ -1,3 +1,5 @@
+using Statevia.Actions.Abstractions.Catalog;
+
 namespace Statevia.Core.Api.Application.Actions.Modules;
 
 /// <summary>Module load の監査レコード。</summary>
@@ -29,4 +31,7 @@ internal sealed record ModuleLoadRecord
 
     /// <summary>entry DLL の絶対パス。</summary>
     public required string EntryAssemblyPath { get; init; }
+
+    /// <summary>load 成功時の Module メタデータ（Trust / Source / 署名枠）。</summary>
+    public ModuleDescriptor? ModuleDescriptor { get; init; }
 }

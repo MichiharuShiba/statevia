@@ -130,7 +130,9 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<ModuleLoadHostedServiceDependencies>();
         services.AddHostedService<ModuleLoadHostedService>();
         services.AddSingleton<IActionVisibilityResolver, DefaultActionVisibilityResolver>();
-        services.AddSingleton<IActionExecutionPolicy, AlwaysInProcessPolicy>();
+        services.AddOptions<ExecutionPolicyOptions>()
+            .Bind(configuration.GetSection(ExecutionPolicyOptions.SectionName));
+        services.AddSingleton<IActionExecutionPolicy, ConfigurableExecutionPolicy>();
         services.AddSingleton<InProcessBackend>();
         services.AddSingleton<IActionExecutor, DispatchingActionExecutor>();
         services.AddSingleton<StateWorkflowDefinitionLoader>();
