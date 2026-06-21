@@ -72,6 +72,8 @@ Builtin 短名（MVP）:
 
 解決に失敗した参照（未知の Builtin 短名・未登録 module alias・Catalog 未登録 ID）はコンパイルエラー（HTTP 422）となる。
 
+**TrustLevel と実行モード（Core-API Policy）:** Catalog の `ActionDescriptor.TrustLevel` と実行環境（`ASPNETCORE_ENVIRONMENT` / `Statevia:ExecutionPolicy:DeploymentProfile`）から `ConfigurableExecutionPolicy` が最終 `ActionExecutionMode` を決定する。Builtin は `Trusted`（InProcess）。filesystem Module は既定 `Community`（本番は OutOfProcess 想定 — Phase 3 Action Host まで実行は `UnsupportedExecutionMode`）。Policy は TrustLevel 下限を緩和できない。
+
 ### 1.1.2 Action パラメータと `input` キー
 
 Action の実行パラメータ（例: rest の `url`）および状態への入力マッピングは、いずれも YAML キー **`input:`** で記述する。**`config:` キーは採用しない**（将来導入予定なし）。

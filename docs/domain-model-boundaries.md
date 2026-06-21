@@ -88,3 +88,17 @@ flowchart LR
 - `docs/statevia-data-integration-contract.md`
 - `docs/core-api-interface.md`
 - `.spec-workflow/specs/execution-platform-data-model/design.md`
+
+## 5. Action 実行プラットフォーム境界（Core-API）
+
+Engine は `IStateExecutor` のみを知る。Action の解決・テナント可視性・実行モード決定は Core-API の Platform 層が担う。
+
+| コンポーネント | 正本 / 責務 | Engine から見えるか |
+| --- | --- | --- |
+| `IActionCatalog` | actionId → `ActionDescriptor` + in-process factory。`ActionPublication` は sibling 参照 | No |
+| `IActionVisibilityResolver` | TenantId + Descriptor → 利用可否 | No |
+| `IActionExecutionPolicy` | Context + Descriptor → `ActionExecutionMode`（TrustLevel 下限、緩和不可） | No |
+| `IActionExecutor` | Catalog → Visibility → Policy → Backend ディスパッチ | No（`StateActionExecutorAdapter` 経由で間接委譲） |
+| `ModuleHost` | filesystem Module の ALC load と Catalog 登録 | No |
+
+共有契約は `shared/Statevia.Actions.Abstractions`。詳細は `.spec-workflow/specs/action-execution-abstraction/design.md`。
