@@ -118,12 +118,15 @@ internal sealed class ModuleHost
 
             _loadContexts[discoveredModule.EntryAssemblyPath] = loadContext;
 
+            var registrations = actionModule.GetActions(_serviceProvider).ToList();
+            var moduleDescriptor = BuildModuleDescriptor(actionModule, registrations);
+
             var registeredCount = 0;
             var duplicateCount = 0;
             var skippedCount = 0;
-            foreach (var registration in actionModule.GetActions(_serviceProvider))
+            foreach (var registration in registrations)
             {
-                switch (TryRegisterModuleAction(actionModule, registration, ownerTenantId))
+                switch (TryRegisterModuleAction(moduleDescriptor, registration, ownerTenantId))
                 {
                     case ModuleActionRegisterOutcome.Registered:
                         registeredCount++;
@@ -168,6 +171,7 @@ internal sealed class ModuleHost
                 LoadedAtUtc = loadedAt,
                 Message = message,
                 EntryAssemblyPath = discoveredModule.EntryAssemblyPath,
+                ModuleDescriptor = registeredCount > 0 ? moduleDescriptor : null,
             });
 
             if (registeredCount > 0)
@@ -214,40 +218,37 @@ internal sealed class ModuleHost
     }
 
     private ModuleActionRegisterOutcome TryRegisterModuleAction(
-        IActionModule actionModule,
+        ModuleDescriptor moduleDescriptor,
         ModuleActionRegistration registration,
         string ownerTenantId)
     {
         if (string.IsNullOrWhiteSpace(registration.ActionId))
         {
-            ModuleHostLog.ActionIdRequired(_logger, actionModule.ModuleId);
+            ModuleHostLog.ActionIdRequired(_logger, moduleDescriptor.ModuleId);
             return ModuleActionRegisterOutcome.Skipped;
         }
 
         var actionId = registration.ActionId.Trim();
-        if (!actionId.StartsWith($"{actionModule.ModuleId}.", StringComparison.Ordinal))
+        if (!actionId.StartsWith($"{moduleDescriptor.ModuleId}.", StringComparison.Ordinal))
         {
-            ModuleHostLog.NamespaceConventionViolation(_logger, actionId, actionModule.ModuleId);
+            ModuleHostLog.NamespaceConventionViolation(_logger, actionId, moduleDescriptor.ModuleId);
             return ModuleActionRegisterOutcome.Skipped;
         }
 
         if (_catalog.Exists(actionId))
         {
-            ModuleHostLog.DuplicateActionSkipped(_logger, actionId, actionModule.ModuleId);
+            ModuleHostLog.DuplicateActionSkipped(_logger, actionId, moduleDescriptor.ModuleId);
             return ModuleActionRegisterOutcome.Duplicate;
         }
 
         if (registration.ExecutorFactory is null)
         {
-            ModuleHostLog.ExecutorFactoryRequired(_logger, actionId, actionModule.ModuleId);
+            ModuleHostLog.ExecutorFactoryRequired(_logger, actionId, moduleDescriptor.ModuleId);
             return ModuleActionRegisterOutcome.Skipped;
         }
 
-        var descriptor = registration.Descriptor ?? CreateModuleDescriptor(
-            actionId,
-            actionModule.ModuleId,
-            actionModule.Version,
-            ownerTenantId);
+        var descriptor = registration.Descriptor
+            ?? CreateDefaultActionDescriptor(actionId, moduleDescriptor, ownerTenantId);
 
         try
         {
@@ -255,7 +256,7 @@ internal sealed class ModuleHost
         }
         catch (ArgumentException ex)
         {
-            ModuleHostLog.InvalidDescriptorSkipped(_logger, ex, actionId, actionModule.ModuleId);
+            ModuleHostLog.InvalidDescriptorSkipped(_logger, ex, actionId, moduleDescriptor.ModuleId);
             return ModuleActionRegisterOutcome.Skipped;
         }
 
@@ -289,20 +290,42 @@ internal sealed class ModuleHost
         });
     }
 
-    private static ActionDescriptor CreateModuleDescriptor(
+    private static ModuleDescriptor BuildModuleDescriptor(
+        IActionModule actionModule,
+        IReadOnlyList<ModuleActionRegistration> registrations)
+    {
+        var actionIds = registrations
+            .Select(registration => registration.ActionId.Trim())
+            .Where(actionId => !string.IsNullOrWhiteSpace(actionId))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(actionId => actionId, StringComparer.Ordinal)
+            .ToList();
+
+        return new ModuleDescriptor(
+            actionModule.ModuleId,
+            actionModule.Version,
+            new ActionPublisher(actionModule.ModuleId, actionModule.Name),
+            ActionTrustLevel.Community,
+            ActionSourceKind.Filesystem,
+            Signature: null,
+            actionIds);
+    }
+
+    private static ActionDescriptor CreateDefaultActionDescriptor(
         string actionId,
-        string moduleId,
-        string version,
+        ModuleDescriptor moduleDescriptor,
         string ownerTenantId) =>
         new()
         {
             ActionId = actionId,
-            ModuleId = moduleId,
-            Version = version,
-            TrustLevel = ActionTrustLevel.Community,
-            Source = ActionSourceKind.Filesystem,
+            ModuleId = moduleDescriptor.ModuleId,
+            Version = moduleDescriptor.Version,
+            TrustLevel = moduleDescriptor.TrustLevel,
+            Source = moduleDescriptor.Source,
             OwnerTenantId = ownerTenantId,
             Visibility = ActionVisibility.Tenant,
+            Publisher = moduleDescriptor.Publisher,
+            Signature = moduleDescriptor.Signature,
             ExecutionHints = new ActionExecutionHints
             {
                 PreferredMode = ActionExecutionMode.InProcess,

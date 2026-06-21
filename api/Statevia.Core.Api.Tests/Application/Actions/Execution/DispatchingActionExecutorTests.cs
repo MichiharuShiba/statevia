@@ -1,7 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Statevia.Actions.Abstractions.Catalog;
 using Statevia.Actions.Abstractions.Execution;
+using Statevia.Actions.Abstractions.Visibility;
 using Statevia.Core.Api.Application.Actions.Catalog;
+using Statevia.Core.Api.Application.Actions.Execution;
+using Statevia.Core.Api.Application.Actions.Visibility;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Execution;
 
@@ -118,5 +123,61 @@ public sealed class DispatchingActionExecutorTests
         // Assert
         Assert.False(result.Success);
         Assert.Equal("ActionNotVisible", result.ErrorCode);
+    }
+
+    /// <summary>Policy が InProcess 以外を返す Action は Phase 3 まで失敗する。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenPolicyRequiresOutOfProcess_ReturnsUnsupportedMode()
+    {
+        // Arrange
+        var catalog = new InMemoryActionCatalog();
+        catalog.Register(
+            new ActionDescriptor
+            {
+                ActionId = "community.action",
+                ModuleId = "test.module",
+                Version = "1.0.0",
+                TrustLevel = ActionTrustLevel.Community,
+                Source = ActionSourceKind.Filesystem,
+                Visibility = ActionVisibility.Tenant,
+                OwnerTenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
+            },
+            new ActionCatalogEntry(InProcessFactory: _ => DefaultStateExecutor.Create(new EchoState())));
+
+        var services = new ServiceCollection();
+        services.AddSingleton(catalog);
+        services.AddSingleton<IActionCatalog>(catalog);
+        services.AddSingleton<IActionVisibilityResolver, DefaultActionVisibilityResolver>();
+        services.AddSingleton<IActionExecutionPolicy, ConfigurableExecutionPolicy>();
+        services.AddSingleton(Options.Create(new ExecutionPolicyOptions()));
+        services.AddSingleton<InProcessBackend>();
+        services.AddSingleton<IHostEnvironment>(new ActionExecutionTestSupport.TestHostEnvironment
+        {
+            EnvironmentName = Environments.Production,
+        });
+        services.AddSingleton<IActionExecutor, DispatchingActionExecutor>();
+        using var provider = services.BuildServiceProvider();
+        var sut = provider.GetRequiredService<IActionExecutor>();
+        var ctx = new StateContext
+        {
+            Events = null!,
+            Store = null!,
+            ExecutionId = "exec-1",
+            StateName = "A",
+        };
+        var request = new ActionExecutionRequest
+        {
+            ExecutionId = "exec-1",
+            StateName = "A",
+            ActionId = "community.action",
+            TenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
+        };
+
+        // Act
+        var result = await sut.ExecuteAsync(request, ctx, runtimeInput: null, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Equal("UnsupportedExecutionMode", result.ErrorCode);
     }
 }

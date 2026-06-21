@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Statevia.Actions.Abstractions.Catalog;
 using Statevia.Actions.Abstractions.Execution;
 using Statevia.Actions.Abstractions.Visibility;
@@ -13,6 +14,7 @@ internal sealed class DispatchingActionExecutor : IActionExecutor
     private readonly IActionExecutionPolicy _executionPolicy;
     private readonly InProcessBackend _inProcessBackend;
     private readonly IHostEnvironment _hostEnvironment;
+    private readonly ExecutionPolicyOptions _policyOptions;
 
     /// <summary>
     /// ディスパッチャを構築する。
@@ -22,13 +24,15 @@ internal sealed class DispatchingActionExecutor : IActionExecutor
         IActionVisibilityResolver visibilityResolver,
         IActionExecutionPolicy executionPolicy,
         InProcessBackend inProcessBackend,
-        IHostEnvironment hostEnvironment)
+        IHostEnvironment hostEnvironment,
+        IOptions<ExecutionPolicyOptions> policyOptions)
     {
         _catalog = catalog;
         _visibilityResolver = visibilityResolver;
         _executionPolicy = executionPolicy;
         _inProcessBackend = inProcessBackend;
         _hostEnvironment = hostEnvironment;
+        _policyOptions = policyOptions.Value;
     }
 
     /// <inheritdoc />
@@ -55,13 +59,14 @@ internal sealed class DispatchingActionExecutor : IActionExecutor
             new ActionExecutionContext(
                 request.TenantId,
                 _hostEnvironment.EnvironmentName,
-                DeploymentProfile: null),
+                _policyOptions.DeploymentProfile),
             registration.Descriptor);
 
         if (mode != ActionExecutionMode.InProcess)
         {
-            throw new NotSupportedException(
-                $"Action execution mode '{mode}' is not supported in Phase 1.");
+            return Failure(
+                "UnsupportedExecutionMode",
+                $"Action execution mode '{mode}' is not supported until Phase 3 backends are available.");
         }
 
         var output = await _inProcessBackend
