@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Fixtures/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="8.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -37,6 +41,17 @@
   <ItemGroup>
     <ProjectReference Include="..\Statevia.Core.Api\Statevia.Core.Api.csproj" />
     <ProjectReference Include="..\Statevia.Core.Api.Bootstrap\Statevia.Core.Api.Bootstrap.csproj" />
+    <ProjectReference Include="Fixtures\TestActionModule\TestActionModule.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <Target Name="CopyTestActionModuleFixture" AfterTargets="Build">
+    <PropertyGroup>
+      <TestActionModuleOutput>$(MSBuildThisFileDirectory)Fixtures\TestActionModule\bin\$(Configuration)\net8.0\</TestActionModuleOutput>
+    </PropertyGroup>
+    <ItemGroup>
+      <TestActionModuleCopy Include="$(TestActionModuleOutput)*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(TestActionModuleCopy)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>
