@@ -8,6 +8,7 @@ using Statevia.Actions.Abstractions.Execution;
 using Statevia.Actions.Abstractions.Visibility;
 using Statevia.Core.Api.Application.Actions.Catalog;
 using Statevia.Core.Api.Application.Actions.Execution;
+using Statevia.Core.Api.Application.Actions.Modules;
 using Statevia.Core.Api.Application.Actions.Infrastructure;
 using Statevia.Core.Api.Application.Actions.Visibility;
 using Statevia.Core.Api.Application.Definition;
@@ -113,12 +114,21 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<SmtpNotificationSender>();
         services.AddSingleton<NotificationSenderResolver>();
         services.AddScoped<IChildWorkflowRunner, ChildWorkflowRunner>();
-        services.AddSingleton<IActionCatalog>(_ =>
+        services.AddSingleton<InMemoryActionCatalog>(sp =>
         {
             var catalog = new InMemoryActionCatalog();
             DefinitionCompilerService.RegisterBuiltinActions(catalog);
             return catalog;
         });
+        services.AddSingleton<IActionCatalog>(sp => sp.GetRequiredService<InMemoryActionCatalog>());
+        services.AddOptions<ModuleHostOptions>()
+            .Bind(configuration.GetSection(ModuleHostOptions.SectionName));
+        services.AddSingleton<IResolvedModulePathProvider, ResolvedModulePathProvider>();
+        services.AddSingleton<IModuleSource, FilesystemModuleSource>();
+        services.AddSingleton<ModuleLoadCatalog>();
+        services.AddSingleton<ModuleHost>();
+        services.AddSingleton<ModuleLoadHostedServiceDependencies>();
+        services.AddHostedService<ModuleLoadHostedService>();
         services.AddSingleton<IActionVisibilityResolver, DefaultActionVisibilityResolver>();
         services.AddSingleton<IActionExecutionPolicy, AlwaysInProcessPolicy>();
         services.AddSingleton<InProcessBackend>();
