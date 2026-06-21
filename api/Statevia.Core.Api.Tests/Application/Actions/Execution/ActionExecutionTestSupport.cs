@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Statevia.Actions.Abstractions.Catalog;
 using Statevia.Actions.Abstractions.Execution;
 using Statevia.Actions.Abstractions.Visibility;
@@ -37,6 +38,7 @@ internal static class ActionExecutionTestSupport
         services.AddSingleton(catalog);
         services.AddSingleton<IActionVisibilityResolver, DefaultActionVisibilityResolver>();
         services.AddSingleton<IActionExecutionPolicy, AlwaysInProcessPolicy>();
+        services.AddSingleton(Options.Create(new ExecutionPolicyOptions()));
         services.AddSingleton<InProcessBackend>();
         services.AddSingleton<IHostEnvironment, TestHostEnvironment>();
         services.AddSingleton<IActionExecutor, DispatchingActionExecutor>();
@@ -65,7 +67,7 @@ internal static class ActionExecutionTestSupport
         return catalog;
     }
 
-    private sealed class TestHostEnvironment : IHostEnvironment
+    internal sealed class TestHostEnvironment : IHostEnvironment
     {
         public string EnvironmentName { get; set; } = Environments.Development;
 

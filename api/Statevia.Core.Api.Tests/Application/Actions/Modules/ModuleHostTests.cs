@@ -35,7 +35,14 @@ public sealed class ModuleHostTests
         Assert.True(host.Catalog.TryGetDescriptor("test.module.echo", out var descriptor));
         Assert.Equal(ActionVisibility.Tenant, descriptor!.Visibility);
         Assert.Equal(OwnerTenantId, descriptor.OwnerTenantId);
-        Assert.Equal(ModuleLoadStatus.Loaded, host.LoadCatalog.GetRecords().Single().Status);
+        Assert.Equal(ActionTrustLevel.Community, descriptor.TrustLevel);
+        Assert.Equal(ActionSourceKind.Filesystem, descriptor.Source);
+        Assert.NotNull(descriptor.Publisher);
+        Assert.Equal("test.module", descriptor.Publisher!.PublisherId);
+        var loadRecord = host.LoadCatalog.GetRecords().Single();
+        Assert.Equal(ModuleLoadStatus.Loaded, loadRecord.Status);
+        Assert.NotNull(loadRecord.ModuleDescriptor);
+        Assert.Equal("test.module.echo", Assert.Single(loadRecord.ModuleDescriptor!.ActionIds));
     }
 
     /// <summary>既存 actionId との衝突時は skip し Builtin を維持する。</summary>
