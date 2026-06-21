@@ -28,6 +28,9 @@ services:
       - postgres
     ports:
       - "8080:8080"
+    volumes:
+      # Action Module 配置（ホスト ./modules → コンテナ既定ルート /app/modules）
+      - ./modules:/app/modules
 
   ui:
     build:
