@@ -79,7 +79,7 @@ Builtin 短名（MVP）:
 Action の実行パラメータ（例: rest の `url`）および状態への入力マッピングは、いずれも YAML キー **`input:`** で記述する。**`config:` キーは採用しない**（将来導入予定なし）。
 
 - **状態 input マッピング**: 直前状態の output から値を抽出する（§1.6）。`input.path` 単一形式またはキー付きマップ。
-- **Action パラメータ**: Builtin / Module action の schema に従う `input` マップ。Core-API Compiler が publication の `inputSchema` で検証する（422 `details`: `state`, `actionId`, `jsonPath` — 機微値は含めない）。schema 未提供 action は warning モード（将来 strict 化可）。
+- **Action パラメータ**: Builtin / Module action の schema に従う `input` マップ。Core-API Compiler が publication の `inputSchema` で検証する（422 `details`: `state`, `actionId`, `jsonPath` — 機微値は含めない）。**Module 由来 action**（`Visibility != Builtin`）は `ActionPublication` 未登録で **422**。Builtin カスタム登録のみ structured warning（`RequireSchemaForUnpublishedActions` で strict 化可）。
   - **ルートフラット**（フェーズ E）: ルート直下の scalar / 浅い object リテラル（例: rest `headers`）。
   - **ネスト object**（フェーズ F2）: `inputSchema` の `type: object` ノードを再帰検証。`Values` は実行時と同じ論理ツリーへ正規化してから schema を適用する。
   - **ドットキーとネスト map の同等性**: `ship.address: "x"` と `ship: { address: "x" }` は同一論理ツリーとして compile 成功する。正規化衝突（例: `ship` にスカラーと `ship.address` を併記）は 422。`jsonPath` は階層を反映する（例: `$.input.ship.contact.email`）。
