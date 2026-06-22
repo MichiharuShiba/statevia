@@ -21,9 +21,11 @@ public sealed class EchoActionModule : IActionModule
     public IEnumerable<ModuleActionRegistration> GetActions(IServiceProvider serviceProvider)
     {
         _ = serviceProvider;
+        const string actionId = "test.module.echo";
         yield return new ModuleActionRegistration(
-            "test.module.echo",
-            _ => DefaultStateExecutor.Create(new EchoState()));
+            actionId,
+            _ => DefaultStateExecutor.Create(new EchoState()),
+            Publication: EchoActionPublication.Create(actionId));
     }
 }
 

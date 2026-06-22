@@ -1232,6 +1232,66 @@ public sealed class DefinitionCompilerServiceTests
         }
     }
 
+    /// <summary>Tenant Module action は publication 未登録で compile error になる。</summary>
+    [Fact]
+    public void ValidateAndCompile_TenantModuleActionWithoutPublication_ThrowsSchemaValidationException()
+    {
+        // Arrange
+        var svc = CreateSutWithCatalog(out var catalog);
+        catalog.Register(
+            new ActionDescriptor
+            {
+                ActionId = "test.module.nopub",
+                ModuleId = "test.module",
+                Version = "1.0.0",
+                TrustLevel = ActionTrustLevel.Community,
+                Source = ActionSourceKind.Filesystem,
+                Visibility = ActionVisibility.Tenant,
+                OwnerTenantId = TestTenantId.ToString("D"),
+            },
+            new ActionCatalogEntry(InProcessFactory: _ => DefaultStateExecutor.Create(new NoOpState())));
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: test.module.nopub
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var ex = Assert.Throws<ActionInputSchemaValidationException>(() => svc.ValidateAndCompile("W", yaml));
+
+        // Assert
+        Assert.Contains(ex.Errors, error => error.ActionId == "test.module.nopub");
+    }
+
+    /// <summary>Builtin noop は publication なしでも compile 成功する。</summary>
+    [Fact]
+    public void ValidateAndCompile_BuiltinNoop_StillSucceedsWithoutExplicitPublicationCheck()
+    {
+        // Arrange
+        var svc = CreateSutWithCatalog(out _);
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: statevia.action.builtin.noop
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("W", yaml);
+
+        // Assert
+        Assert.NotNull(compiled);
+    }
+
     /// <summary>ネスト schema にドットキー input を指定すると compile 成功する（要件2 No.6）。</summary>
     [Fact]
     public void ValidateAndCompile_NestedInputWithDottedKeys_Succeeds()

@@ -164,7 +164,7 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
         string actionId,
         List<ActionInputValidationError> errors)
     {
-        if (ActionInputSchemaValidationOptions.RequireSchemaForUnpublishedActions)
+        if (ShouldRequirePublication(actionId))
         {
             errors.Add(new ActionInputValidationError(
                 stateName,
@@ -175,6 +175,26 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
         }
 
         DefinitionCompilerLogMessages.ActionInputSchemaMissing(_logger, stateName, actionId);
+    }
+
+    private bool ShouldRequirePublication(string actionId)
+    {
+        if (ActionInputSchemaValidationOptions.RequireSchemaForUnpublishedActions)
+        {
+            return true;
+        }
+
+        if (!ActionInputSchemaValidationOptions.RequireSchemaForModuleActions)
+        {
+            return false;
+        }
+
+        if (!_actionCatalog.TryGetDescriptor(actionId, out var descriptor))
+        {
+            return false;
+        }
+
+        return descriptor.Visibility != ActionVisibility.Builtin;
     }
 
     /// <summary>起動時に組み込みアクションを Catalog へ登録する。</summary>
