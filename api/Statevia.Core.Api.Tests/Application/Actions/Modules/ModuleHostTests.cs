@@ -39,6 +39,9 @@ public sealed class ModuleHostTests
         Assert.Equal(ActionSourceKind.Filesystem, descriptor.Source);
         Assert.NotNull(descriptor.Publisher);
         Assert.Equal("test.module", descriptor.Publisher!.PublisherId);
+        Assert.True(host.Catalog.TryGetPublication("test.module.echo", out var publication));
+        Assert.NotNull(publication);
+        Assert.Equal("test.module.echo", publication!.Descriptor.ActionId);
         var loadRecord = host.LoadCatalog.GetRecords().Single();
         Assert.Equal(ModuleLoadStatus.Loaded, loadRecord.Status);
         Assert.NotNull(loadRecord.ModuleDescriptor);
