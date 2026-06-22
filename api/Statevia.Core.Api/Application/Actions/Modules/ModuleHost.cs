@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Statevia.Actions.Abstractions.Catalog;
 using Statevia.Actions.Abstractions.Execution;
 using Statevia.Core.Api.Application.Actions.Catalog;
+using Statevia.Core.Api.Application.Actions.Publication;
 using Statevia.Modules;
 
 namespace Statevia.Core.Api.Application.Actions.Modules;
@@ -260,9 +261,32 @@ internal sealed class ModuleHost
             return ModuleActionRegisterOutcome.Skipped;
         }
 
-        _catalog.Register(
-            descriptor,
-            new ActionCatalogEntry(InProcessFactory: registration.ExecutorFactory));
+        if (registration.Publication is not null)
+        {
+            try
+            {
+                ActionUiMetadataValidator.Validate(actionId, registration.Publication);
+            }
+            catch (ArgumentException ex)
+            {
+                ModuleHostLog.InvalidPublicationSkipped(_logger, ex, actionId, moduleDescriptor.ModuleId);
+                return ModuleActionRegisterOutcome.Skipped;
+            }
+        }
+
+        var entry = new ActionCatalogEntry(InProcessFactory: registration.ExecutorFactory);
+        if (registration.Publication is not null)
+        {
+            _catalog.Register(descriptor, entry, registration.Publication);
+        }
+        else
+        {
+            _catalog.Register(descriptor, entry);
+            if (descriptor.Visibility != ActionVisibility.Builtin)
+            {
+                ModuleHostLog.PublicationMissing(_logger, actionId, moduleDescriptor.ModuleId);
+            }
+        }
 
         return ModuleActionRegisterOutcome.Registered;
     }
@@ -374,4 +398,10 @@ internal static partial class ModuleHostLog
 
     [LoggerMessage(EventId = 9, Level = LogLevel.Warning, Message = "Skipping action '{ActionId}' from module {ModuleId}: invalid descriptor")]
     public static partial void InvalidDescriptorSkipped(ILogger logger, Exception exception, string actionId, string moduleId);
+
+    [LoggerMessage(EventId = 10, Level = LogLevel.Warning, Message = "Skipping action '{ActionId}' from module {ModuleId}: invalid publication")]
+    public static partial void InvalidPublicationSkipped(ILogger logger, Exception exception, string actionId, string moduleId);
+
+    [LoggerMessage(EventId = 11, Level = LogLevel.Warning, Message = "Registered action '{ActionId}' from module {ModuleId} without ActionPublication; compile will require schema")]
+    public static partial void PublicationMissing(ILogger logger, string actionId, string moduleId);
 }
