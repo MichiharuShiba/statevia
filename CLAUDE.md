@@ -93,6 +93,23 @@
 
 ---
 
+## コメント・ドキュメント規約
+
+実装とあわせて、**読み手が意図・契約・制約をコード外からも追える**ことを標準とする。本文は日本語。
+
+- **新規・改修した公開 API**には、変更と同じ PR でドキュメントを付ける。
+- **自明でない振る舞い**（セキュリティ境界、サイズ上限、パス解決、例外、外部連携）には必ず説明を残す。
+- **クラス / モジュール**には目的・利用コンテキスト・主要制約（C# は `<remarks>`、TS は JSDoc）。
+- **メソッド / 関数**には引数・戻り値・例外（またはエラー条件）。
+- **定数（制限値）**には意味と採用理由。
+- **テスト**には日本語で検証シナリオを明示。
+- **書かない**: 自明な言い換えコメント、実装と矛盾する説明、機密情報。
+- **仕様・運用に影響する変更**では、関連 `docs/` / `.spec-workflow/` を依頼範囲内で整合。
+
+詳細は `.cursor/rules/documentation-standards.mdc` と `docs/development-guidelines.md` §4.3。
+
+---
+
 ## TypeScript / React コーディング規約
 
 対象は主に `services/ui/`（Next.js）。インポート順・分割方針は既存コードに合わせる。
@@ -151,7 +168,7 @@
 
 ## 補足（TypeScript）
 
-- 詳細規約は `.cursor/rules/typescript-standards.mdc` と `docs/development-guidelines.md` を参照する。
+- 詳細規約は `.cursor/rules/typescript-standards.mdc` と `docs/development-guidelines.md` を参照する。横断方針は `.cursor/rules/documentation-standards.mdc`。
 
 ---
 
@@ -160,6 +177,7 @@
 手順詳細はルールへ重複記載せず、対応するスキルを参照する。
 
 - Markdown / Spec 作業: `.cursor/skills/markdown-spec-authoring/SKILL.md`
+- コメント・ドキュメント方針: `.cursor/rules/documentation-standards.mdc`
 - `.workspace-docs` 作業: `.cursor/skills/workspace-docs-ops/SKILL.md`
 - SonarQube MCP 作業: `.cursor/skills/sonarqube-mcp-ops/SKILL.md`
 - Serena MCP（engine / api / ui の有効化切り替え）: `.cursor/skills/serena-mcp-project-switch/SKILL.md`
