@@ -374,8 +374,19 @@ Request:
 | GET | `/api-keys` | API キー一覧（平文なし。`keyPrefix` / `allowedScopes` / `expiresAt` / `lastUsedAt`） |
 | POST | `/api-keys` | API キー発行（`name`, `allowedScopes`, `expiresAt?`）。応答の `plainKey` は **一度だけ** |
 | DELETE | `/api-keys/{apiKeyId}` | API キー失効（紐づく Principal を無効化） |
+| GET | `/modules` | Action Module の load catalog 一覧（`AdminModuleListItemDto[]`） |
 
 JWT クレーム: `tenant_id`（内部 UUID）、`tenant_key`、`principal_id` / `sub`。詳細は `docs/runtime-security-boundary.md`。
+
+### 4.1.4 内部向け Module API（運用）
+
+テナント管理者 JWT 必須（403 `FORBIDDEN`）。HTTP からの module 配置は想定しない（filesystem 信頼境界）。reload は **CLI install 後の明示反映**用。
+
+| メソッド | パス | 概要 |
+| --- | --- | --- |
+| POST | `/internal/modules/reload` | `ModuleHost` へ discover / load を再実行（204） |
+
+Response（`GET /v1/admin/modules` の 1 件）: `moduleId`, `name`, `version`, `status`, `sha256`, `sourceLabel?`, `loadedAtUtc`, `message?`, `entryAssemblyPath`。
 
 ### 4.1.2 Runtime API の認証要件
 

@@ -46,3 +46,28 @@ docker compose up -d
 | ui         | `CORE_API_INTERNAL_BASE` |
 
 詳細は `docker-compose.yml` と `AGENTS.md` を参照してください。
+
+## Action Module（plugins）
+
+Core-API は起動時に **modules ルート**（`STATEVIA_MODULES_PATH` または `Statevia:Modules:Path`、未設定時は `{ContentRoot}/modules`）を scan して Action Module を load する。更新・削除の反映は **再起動**または **明示 reload** が必要（add-only watcher は新規追加のみ）。
+
+### 配置（CLI）
+
+```bash
+dotnet build cli/statevia-cli.sln
+dotnet run --project cli/Statevia.Cli -- module install ./my-module.zip \
+  --modules-path ./modules \
+  --api-base http://localhost:8080 \
+  --token "<tenant-admin-jwt>"
+```
+
+- `--skip-reload` で filesystem 配置のみ。
+- reload にはテナント管理者の Bearer JWT と `X-Tenant-Id`（既定 `default`）が必要。
+- **セキュリティ**: modules ルートへの書き込みは運用者・デプロイの信頼境界とする（テナントが HTTP から任意配置できない）。
+
+### 運用確認
+
+- `GET /v1/admin/modules`（テナント管理者 JWT）で load 状態一覧。
+- `POST /internal/modules/reload` で再 scan / load。
+
+詳細は `docs/statevia-directory.md` と `docs/action-module-zip-layout.md` を参照。

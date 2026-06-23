@@ -34,7 +34,7 @@ statevia/
 │
 ├─ cli/                          # 統合 CLI（statevia コマンド）
 │  ├─ statevia-cli.sln
-│  ├─ Statevia.Cli/
+│  ├─ Statevia.Cli/              # `statevia definition validate` / `statevia module install`
 │  └─ Statevia.Cli.Tests/
 │
 ├─ shared/                       # 横断共有（API / CLI）
