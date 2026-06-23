@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Statevia.Core.Api.Application.Actions.Modules;
 using Statevia.Core.Api.Hosting;
 using Statevia.Core.Api.Infrastructure.Security;
 using Statevia.Core.Api.Persistence;
@@ -29,6 +30,8 @@ public sealed class SecurityIntegrationWebApplicationFactory : WebApplicationFac
             services.RemoveAll<IHostedService>();
             services.RemoveAll<IDbContextFactory<CoreDbContext>>();
             services.AddSingleton<IDbContextFactory<CoreDbContext>>(_database.Factory);
+            services.Configure<ModuleHostOptions>(options =>
+                options.OwnerTenantId = TestTenantIds.DefaultTenantId.ToString("D"));
         });
     }
 
