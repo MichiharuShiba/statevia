@@ -13,6 +13,7 @@
 | HTTP 契約・エラー形式 | `docs/core-api-interface.md`, `docs/data-integration-contract.md` |
 | 作業用仕様・計画・タスク（任意） | `.workspace-docs/`（`README.md` が入口） |
 | C# 細則（命名・コメント・パターンマッチ・テスト体裁） | `.cursor/rules/csharp-standards.mdc`（Cursor 利用時） |
+| コメント・ドキュメント充実方針（言語横断） | `.cursor/rules/documentation-standards.mdc`（Cursor 利用時） |
 | TypeScript / React 細則（命名・JSDoc・型絞り込み・テスト体裁） | `.cursor/rules/typescript-standards.mdc`（Cursor 利用時） |
 | Markdown（`.spec-workflow` 等） | ルート `.markdownlint.json`（`markdownlint-cli2` で検証可能） |
 
@@ -52,7 +53,7 @@
 
 ## 4. コーディングと静的チェック
 
-- **C#** の細則は **`.cursor/rules/csharp-standards.mdc`**（§4.1）。**TypeScript / React** は **`.cursor/rules/typescript-standards.mdc`**（§4.2）。**リンター・ビルド**は §4.3。
+- **C#** の細則は **`.cursor/rules/csharp-standards.mdc`**（§4.1）。**TypeScript / React** は **`.cursor/rules/typescript-standards.mdc`**（§4.2）。**コメント・ドキュメント**は §4.3。**リンター・ビルド**は §4.4。
 
 ### 4.1 C#（コメント・XML・テストの要約）
 
@@ -60,14 +61,26 @@
 - **public / internal** の型・メンバーには **XML ドキュメント**（`/// <summary>` 等）を付ける。
 - **private** は、意図がコードだけでは分かりにくい箇所（ヘルパー・複雑な分岐・仕様参照）に `/// <summary>` や行コメントを付ける。
 - **単体テスト**では、メソッドごとに **日本語の `/// <summary>`**（何を検証するか）と、本体の **`// Arrange` / `// Act` / `// Assert`** 区切りを付ける。
-- 上記の粒度・例は **`csharp-standards.mdc`** に従う。
+- 上記の粒度・例は **`csharp-standards.mdc`** に従う。横断方針は **`documentation-standards.mdc`**。
 
 ### 4.2 TypeScript（UI）
 
 - 詳細は **`.cursor/rules/typescript-standards.mdc`**（変数名・JSDoc・型の絞り込み・React の props・Vitest の AAA と日本語ケース名）。
-- 品質チェックは **§4.3** の UI 行に従う。
+- コメント・ドキュメントの横断方針は **`.cursor/rules/documentation-standards.mdc`**。
+- 品質チェックは **§4.4** の UI 行に従う。
 
-### 4.3 リンター・ビルド警告・静的チェック
+### 4.3 コメント・ドキュメント（言語横断）
+
+今後の標準として、**実装と同時にドキュメントを充実させる**。詳細は **`.cursor/rules/documentation-standards.mdc`**。
+
+- **公開 API**（C# の `public` / `internal`、TS の `export`）には、目的・引数・戻り値・例外（またはエラー条件）を記載する。
+- **クラス / モジュール単位**では、利用コンテキスト・セキュリティ・制限値・上書きなど、コードだけでは分かりにくい契約を `<remarks>` / JSDoc で補足する。
+- **定数（上限値など）**には、値の意味と採用理由を書く（推測や誤った技術的根拠は避ける）。
+- **テスト**には日本語で「何を検証するか」を `/// <summary>` またはケース名で残す。
+- **書かない**: 自明な処理の言い換えコメント、実装と矛盾する説明、機密情報。
+- **仕様・運用に影響する変更**では、関連する `docs/` や `.spec-workflow/` を依頼範囲内で整合させる。
+
+### 4.4 リンター・ビルド警告・静的チェック
 
 - **C#**: `dotnet build` / `dotnet test` で出る **コンパイラエラー・Analyzer 警告**は、自分の変更に起因するものは **解消してから** PR に出す。触れていないファイルの既存警告をまとめて直すのは必須ではないが、**新規コードで警告を増やさない**こと。
 - **Core-API 厳格 Analyzer**: `api/Directory.Build.props` で `AnalysisMode=AllEnabledByDefault` が有効。Api 配下の本番プロジェクトは **`dotnet build api/statevia-api.sln` で警告 0** を維持する。
