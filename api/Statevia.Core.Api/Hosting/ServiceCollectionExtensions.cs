@@ -127,6 +127,7 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<IModuleSource, FilesystemModuleSource>();
         services.AddSingleton<ModuleLoadCatalog>();
         services.AddSingleton<ModuleHost>();
+        services.AddSingleton<IModuleManagementService, ModuleManagementService>();
         services.AddSingleton<ModuleLoadHostedServiceDependencies>();
         services.AddHostedService<ModuleLoadHostedService>();
         services.AddSingleton<IActionVisibilityResolver, DefaultActionVisibilityResolver>();
