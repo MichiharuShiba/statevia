@@ -18,6 +18,7 @@ docker compose up -d
 
 - **PostgreSQL**: `localhost:5432`（ユーザー/DB: `statevia` / `statevia`）
 - **Core-API**: `http://localhost:8080`（`DATABASE_URL` は compose 内で `postgres` サービス向けに設定済み）
+- **Action Host**（gRPC）: `http://localhost:5001`（`STATEVIA_MODULES_PATH=/app/modules`。task 14 以降 Core-API から OutOfProcess 実行に利用）
 - **UI**: `http://localhost:3000`（`CORE_API_INTERNAL_BASE=http://core-api:8080`）
 
 ## ヘルス
@@ -43,6 +44,7 @@ docker compose up -d
 | サービス   | 主な変数 |
 | ---------- | -------- |
 | core-api   | `DATABASE_URL`, `ASPNETCORE_URLS`, `ASPNETCORE_ENVIRONMENT`（compose では `Development`） |
+| action-host | `ASPNETCORE_URLS`（compose では `http://+:5001`）, `STATEVIA_MODULES_PATH`（`/app/modules`） |
 | ui         | `CORE_API_INTERNAL_BASE` |
 
 詳細は `docker-compose.yml` と `AGENTS.md` を参照してください。
@@ -50,6 +52,8 @@ docker compose up -d
 ## Action Module（plugins）
 
 Core-API は起動時に **modules ルート**（`STATEVIA_MODULES_PATH` または `Statevia:Modules:Path`、未設定時は `{ContentRoot}/modules`）を scan して Action Module を load する。更新・削除の反映は **再起動**または **明示 reload** が必要（add-only watcher は新規追加のみ）。
+
+**Action Host**（`docker compose` の `action-host` サービス）は同じ `./modules` ボリュームをマウントし、**別プロセス**で Module を ALC load して gRPC 実行する。現時点では Core-API の InProcess 経路が既定で、OutOfProcess 連携（task 14）は未接続。
 
 ### 配置（CLI）
 
