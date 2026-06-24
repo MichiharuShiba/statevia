@@ -27,7 +27,9 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
     <ProjectReference Include="../../engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj" />
     <ProjectReference Include="../../shared/Statevia.Actions.Abstractions/Statevia.Actions.Abstractions.csproj" />
+    <ProjectReference Include="../../shared/Statevia.Actions.Grpc/Statevia.Actions.Grpc.csproj" />
     <ProjectReference Include="../../shared/Statevia.Modules/Statevia.Modules.csproj" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.67.0" />
   </ItemGroup>
 
 </Project>

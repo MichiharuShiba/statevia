@@ -24,8 +24,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: "http://+:8080"
       DATABASE_URL: "postgres://statevia:statevia@postgres:5432/statevia"
+      Statevia__ActionHost__BaseUrl: "http://action-host:5001"
     depends_on:
       - postgres
+      - action-host
     ports:
       - "8080:8080"
     volumes:
