@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>PrivateCtorActionModule</AssemblyName>
+    <RootNamespace>Statevia.ActionHost.Tests.Fixtures.PrivateCtorActionModule</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\shared\Statevia.Modules\Statevia.Modules.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>MalformedActionModule</AssemblyName>
+    <RootNamespace>Statevia.ActionHost.Tests.Fixtures.MalformedActionModule</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\shared\Statevia.Modules\Statevia.Modules.csproj" />
+    <ProjectReference Include="..\..\..\engine\Statevia.Core.Engine\Statevia.Core.Engine.csproj" />
+  </ItemGroup>
+
+</Project>

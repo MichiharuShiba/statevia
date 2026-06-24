@@ -32,6 +32,19 @@ services:
       # Action Module 配置（ホスト ./modules → コンテナ既定ルート /app/modules）
       - ./modules:/app/modules
 
+  action-host:
+    build:
+      context: .
+      dockerfile: action-host/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: "http://+:5001"
+      STATEVIA_MODULES_PATH: "/app/modules"
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./modules:/app/modules
+
   ui:
     build:
       context: services/ui
