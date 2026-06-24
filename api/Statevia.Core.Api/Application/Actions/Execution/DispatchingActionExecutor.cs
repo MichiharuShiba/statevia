@@ -13,6 +13,7 @@ internal sealed class DispatchingActionExecutor : IActionExecutor
     private readonly IActionVisibilityResolver _visibilityResolver;
     private readonly IActionExecutionPolicy _executionPolicy;
     private readonly InProcessBackend _inProcessBackend;
+    private readonly OutOfProcessBackend _outOfProcessBackend;
     private readonly IHostEnvironment _hostEnvironment;
     private readonly ExecutionPolicyOptions _policyOptions;
 
@@ -24,6 +25,7 @@ internal sealed class DispatchingActionExecutor : IActionExecutor
         IActionVisibilityResolver visibilityResolver,
         IActionExecutionPolicy executionPolicy,
         InProcessBackend inProcessBackend,
+        OutOfProcessBackend outOfProcessBackend,
         IHostEnvironment hostEnvironment,
         IOptions<ExecutionPolicyOptions> policyOptions)
     {
@@ -31,6 +33,7 @@ internal sealed class DispatchingActionExecutor : IActionExecutor
         _visibilityResolver = visibilityResolver;
         _executionPolicy = executionPolicy;
         _inProcessBackend = inProcessBackend;
+        _outOfProcessBackend = outOfProcessBackend;
         _hostEnvironment = hostEnvironment;
         _policyOptions = policyOptions.Value;
     }
@@ -62,22 +65,29 @@ internal sealed class DispatchingActionExecutor : IActionExecutor
                 _policyOptions.DeploymentProfile),
             registration.Descriptor);
 
-        if (mode != ActionExecutionMode.InProcess)
+        if (mode == ActionExecutionMode.InProcess)
         {
-            return Failure(
-                "UnsupportedExecutionMode",
-                $"Action execution mode '{mode}' is not supported until Phase 3 backends are available.");
+            var output = await _inProcessBackend
+                .ExecuteAsync(registration, stateContext, runtimeInput, cancellationToken)
+                .ConfigureAwait(false);
+
+            return new ActionExecutionResult
+            {
+                Success = true,
+                RuntimeOutput = output,
+            };
         }
 
-        var output = await _inProcessBackend
-            .ExecuteAsync(registration, stateContext, runtimeInput, cancellationToken)
-            .ConfigureAwait(false);
-
-        return new ActionExecutionResult
+        if (mode == ActionExecutionMode.OutOfProcess)
         {
-            Success = true,
-            RuntimeOutput = output,
-        };
+            return await _outOfProcessBackend
+                .ExecuteAsync(request, runtimeInput, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        return Failure(
+            "UnsupportedExecutionMode",
+            $"Action execution mode '{mode}' is not supported until Phase 4 backends are available.");
     }
 
     private static ActionExecutionResult Failure(string errorCode, string message) =>

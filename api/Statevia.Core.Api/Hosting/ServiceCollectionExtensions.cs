@@ -133,8 +133,13 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<IActionVisibilityResolver, DefaultActionVisibilityResolver>();
         services.AddOptions<ExecutionPolicyOptions>()
             .Bind(configuration.GetSection(ExecutionPolicyOptions.SectionName));
+        services.AddOptions<ActionHostClientOptions>()
+            .Bind(configuration.GetSection(ActionHostClientOptions.SectionName));
         services.AddSingleton<IActionExecutionPolicy, ConfigurableExecutionPolicy>();
+        services.AddSingleton<GrpcActionHostExecutionClient>();
+        services.AddSingleton<IActionHostExecutionClient>(sp => sp.GetRequiredService<GrpcActionHostExecutionClient>());
         services.AddSingleton<InProcessBackend>();
+        services.AddSingleton<OutOfProcessBackend>();
         services.AddSingleton<IActionExecutor, DispatchingActionExecutor>();
         services.AddSingleton<StateWorkflowDefinitionLoader>();
         services.AddSingleton<NodesWorkflowDefinitionLoader>();

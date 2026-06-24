@@ -47,6 +47,6 @@ internal sealed class StateActionExecutorAdapter : IStateExecutor
                 result.ErrorMessage ?? result.ErrorCode ?? "Action execution failed.");
         }
 
-        return result.RuntimeOutput;
+        return ActionExecutionRuntimeInputMapper.ToRuntimeOutput(result);
     }
 }
