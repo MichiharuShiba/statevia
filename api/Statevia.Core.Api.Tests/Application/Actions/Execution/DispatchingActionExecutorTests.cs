@@ -125,9 +125,9 @@ public sealed class DispatchingActionExecutorTests
         Assert.Equal("ActionNotVisible", result.ErrorCode);
     }
 
-    /// <summary>Policy が InProcess 以外を返す Action は Phase 3 まで失敗する。</summary>
+    /// <summary>Policy が OutOfProcess を返す Action は Action Host 経由で実行する。</summary>
     [Fact]
-    public async Task ExecuteAsync_WhenPolicyRequiresOutOfProcess_ReturnsUnsupportedMode()
+    public async Task ExecuteAsync_WhenPolicyRequiresOutOfProcess_UsesActionHost()
     {
         // Arrange
         var catalog = new InMemoryActionCatalog();
@@ -150,13 +150,15 @@ public sealed class DispatchingActionExecutorTests
         services.AddSingleton<IActionVisibilityResolver, DefaultActionVisibilityResolver>();
         services.AddSingleton<IActionExecutionPolicy, ConfigurableExecutionPolicy>();
         services.AddSingleton(Options.Create(new ExecutionPolicyOptions()));
+        services.AddSingleton<IActionHostExecutionClient, ActionExecutionTestSupport.SuccessfulActionHostExecutionClient>();
         services.AddSingleton<InProcessBackend>();
+        services.AddSingleton<OutOfProcessBackend>();
         services.AddSingleton<IHostEnvironment>(new ActionExecutionTestSupport.TestHostEnvironment
         {
             EnvironmentName = Environments.Production,
         });
         services.AddSingleton<IActionExecutor, DispatchingActionExecutor>();
-        using var provider = services.BuildServiceProvider();
+        await using var provider = services.BuildServiceProvider();
         var sut = provider.GetRequiredService<IActionExecutor>();
         var ctx = new StateContext
         {
@@ -171,13 +173,14 @@ public sealed class DispatchingActionExecutorTests
             StateName = "A",
             ActionId = "community.action",
             TenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
+            Input = System.Text.Json.JsonDocument.Parse("""{"ok":true}""").RootElement.Clone(),
         };
 
         // Act
         var result = await sut.ExecuteAsync(request, ctx, runtimeInput: null, CancellationToken.None);
 
         // Assert
-        Assert.False(result.Success);
-        Assert.Equal("UnsupportedExecutionMode", result.ErrorCode);
+        Assert.True(result.Success);
+        Assert.NotNull(result.Output);
     }
 }

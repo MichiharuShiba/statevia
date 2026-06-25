@@ -39,7 +39,9 @@ internal static class ActionExecutionTestSupport
         services.AddSingleton<IActionVisibilityResolver, DefaultActionVisibilityResolver>();
         services.AddSingleton<IActionExecutionPolicy, AlwaysInProcessPolicy>();
         services.AddSingleton(Options.Create(new ExecutionPolicyOptions()));
+        services.AddSingleton<IActionHostExecutionClient, UnconfiguredActionHostExecutionClient>();
         services.AddSingleton<InProcessBackend>();
+        services.AddSingleton<OutOfProcessBackend>();
         services.AddSingleton<IHostEnvironment, TestHostEnvironment>();
         services.AddSingleton<IActionExecutor, DispatchingActionExecutor>();
 
@@ -76,5 +78,34 @@ internal static class ActionExecutionTestSupport
         public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
 
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
+
+    /// <summary>OutOfProcess 経路の単体テスト用スタブ。</summary>
+    internal sealed class UnconfiguredActionHostExecutionClient : IActionHostExecutionClient
+    {
+        /// <inheritdoc />
+        public Task<ActionExecutionResult> ExecuteAsync(
+            ActionExecutionRequest request,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new ActionExecutionResult
+            {
+                Success = false,
+                ErrorCode = "ActionHostNotConfigured",
+                ErrorMessage = "Action Host is not configured for this test.",
+            });
+    }
+
+    /// <summary>OutOfProcess 成功を返すテスト用スタブ。</summary>
+    internal sealed class SuccessfulActionHostExecutionClient : IActionHostExecutionClient
+    {
+        /// <inheritdoc />
+        public Task<ActionExecutionResult> ExecuteAsync(
+            ActionExecutionRequest request,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new ActionExecutionResult
+            {
+                Success = true,
+                Output = request.Input,
+            });
     }
 }
