@@ -111,15 +111,16 @@ Comment rules, Markdownlint (e.g. `.spec-workflow/`), build or analyzer warnings
 | `STATEVIA_LOG_HTTP_BODIES` | core-api (C#) | 未設定時は従来どおり。`true` のとき本番でも HTTP リクエスト/レスポンス本文をログに載せる（機密に注意）。 |
 | `STATEVIA_ENABLE_API_DOCS` | core-api (C#) | 未設定時は Production で OpenAPI / Scalar 無効。`true` で Staging / Production でも `/swagger`・`/scalar` を公開（API 構造露出に注意）。 |
 | `STATEVIA_MODULES_PATH` | core-api (C#) | 未設定時は `Statevia:Modules:Path` → `{ContentRoot}/modules` の順で Action Module ルートを解決。 |
+| `Statevia:ActionHost:BaseUrl` | core-api (C#) | 未設定時は OutOfProcess 実行不可（`ActionHostNotConfigured`）。ローカル例: `http://localhost:5001`。docker compose では `http://action-host:5001`。 |
 | `Statevia:ExecutionPolicy:DeploymentProfile` | core-api (C#) | 未設定時は `null`。`saas-shared` 等で Untrusted Action の Container 強制など Policy マトリクスに反映。 |
 
 ### Core-API: Action 実行プラットフォーム（Phase 2）
 
 - **契約:** `shared/Statevia.Actions.Abstractions` — `ActionDescriptor`, `ModuleDescriptor`, `IActionCatalog`, `IActionVisibilityResolver`, `IActionExecutionPolicy`, `IActionExecutor`。
-- **責務分離:** Catalog（解決・メタデータ保持）/ VisibilityResolver（テナント境界）/ Policy（`ConfigurableExecutionPolicy` — TrustLevel × Environment × Hints、緩和不可）/ Executor（`DispatchingActionExecutor` → `InProcessBackend`）。
+- **責務分離:** Catalog（解決・メタデータ保持）/ VisibilityResolver（テナント境界）/ Policy（`ConfigurableExecutionPolicy` — TrustLevel × Environment × Hints、緩和不可）/ Executor（`DispatchingActionExecutor` → `InProcessBackend` / `OutOfProcessBackend`）。
 - **Engine 境界:** `ExecutionEngine` は `IStateExecutor` のみ呼び出す。Catalog / Policy / ModuleHost は Engine 非依存。
 - **Module:** `ModuleHost` が filesystem Module を ALC load し `ActionDescriptor`（既定 `TrustLevel=Community`, `Visibility=Tenant`, `OwnerTenantId`）+ `ModuleDescriptor` を Catalog / load catalog へ登録。
-- **Phase 3 までの制約:** Policy が `OutOfProcess` 以上を返した Action は実行時 `UnsupportedExecutionMode` で失敗（Action Host 未導入）。
+- **OutOfProcess:** Production 等で Policy が `OutOfProcess` を返す Community / Verified Module は Action Host（`Statevia:ActionHost:BaseUrl`）へ gRPC dispatch。未設定時は `ActionHostNotConfigured`。`Container` / `Wasm` / `Remote` は Phase 4 まで `UnsupportedExecutionMode`。
 
 ### Core-API: HTTP リクエストログ（STV-403）
 
