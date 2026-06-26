@@ -123,9 +123,12 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<IActionCatalog>(sp => sp.GetRequiredService<InMemoryActionCatalog>());
         services.AddOptions<ModuleHostOptions>()
             .Bind(configuration.GetSection(ModuleHostOptions.SectionName));
+        services.AddOptions<ModuleSigningOptions>()
+            .Bind(configuration.GetSection(ModuleSigningOptions.SectionName));
         services.AddSingleton<IResolvedModulePathProvider, ResolvedModulePathProvider>();
         services.AddSingleton<IModuleSource, FilesystemModuleSource>();
         services.AddSingleton<ModuleLoadCatalog>();
+        services.AddSingleton<IModuleSignatureVerifier, ModuleSignatureVerifier>();
         services.AddSingleton<ModuleHost>();
         services.AddSingleton<IModuleManagementService, ModuleManagementService>();
         services.AddSingleton<ModuleLoadHostedServiceDependencies>();

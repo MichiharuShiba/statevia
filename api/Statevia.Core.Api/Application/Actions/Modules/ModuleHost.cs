@@ -15,6 +15,7 @@ internal sealed class ModuleHost
     private readonly IModuleSource _moduleSource;
     private readonly InMemoryActionCatalog _catalog;
     private readonly ModuleLoadCatalog _loadCatalog;
+    private readonly IModuleSignatureVerifier _signatureVerifier;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ModuleHost> _logger;
     private readonly object _sync = new();
@@ -25,6 +26,7 @@ internal sealed class ModuleHost
         IModuleSource moduleSource,
         InMemoryActionCatalog catalog,
         ModuleLoadCatalog loadCatalog,
+        IModuleSignatureVerifier signatureVerifier,
         IServiceProvider serviceProvider,
         IOptions<ModuleHostOptions> options,
         ILogger<ModuleHost> logger)
@@ -33,6 +35,7 @@ internal sealed class ModuleHost
         _moduleSource = moduleSource;
         _catalog = catalog;
         _loadCatalog = loadCatalog;
+        _signatureVerifier = signatureVerifier;
         _serviceProvider = serviceProvider;
         _logger = logger;
     }
@@ -86,6 +89,25 @@ internal sealed class ModuleHost
         var sha256 = ComputeSha256Hex(discoveredModule.EntryAssemblyPath);
         var loadedAt = DateTimeOffset.UtcNow;
 
+        var signatureResult = _signatureVerifier.Verify(discoveredModule.EntryAssemblyPath);
+        if (signatureResult.RejectRegistration)
+        {
+            ModuleHostLog.ModuleSkippedUnsigned(_logger, discoveredModule.ModuleDirectoryName);
+            _loadCatalog.Upsert(new ModuleLoadRecord
+            {
+                ModuleId = discoveredModule.ModuleDirectoryName,
+                Name = discoveredModule.ModuleDirectoryName,
+                Version = "unknown",
+                Status = ModuleLoadStatus.Skipped,
+                Sha256 = sha256,
+                SourceLabel = discoveredModule.SourceLabel,
+                LoadedAtUtc = loadedAt,
+                Message = "Signature required but missing",
+                EntryAssemblyPath = discoveredModule.EntryAssemblyPath,
+            });
+            return;
+        }
+
         try
         {
             var loadContext = new ModuleAssemblyLoadContext(discoveredModule.EntryAssemblyPath);
@@ -120,7 +142,12 @@ internal sealed class ModuleHost
             _loadContexts[discoveredModule.EntryAssemblyPath] = loadContext;
 
             var registrations = actionModule.GetActions(_serviceProvider).ToList();
-            var moduleDescriptor = BuildModuleDescriptor(actionModule, registrations);
+            var moduleDescriptor = BuildModuleDescriptor(actionModule, registrations, signatureResult);
+            ModuleHostLog.ModuleSignatureResolved(
+                _logger,
+                actionModule.ModuleId,
+                signatureResult.TrustLevel,
+                signatureResult.ReasonCategory);
 
             var registeredCount = 0;
             var duplicateCount = 0;
@@ -316,7 +343,8 @@ internal sealed class ModuleHost
 
     private static ModuleDescriptor BuildModuleDescriptor(
         IActionModule actionModule,
-        IReadOnlyList<ModuleActionRegistration> registrations)
+        IReadOnlyList<ModuleActionRegistration> registrations,
+        ModuleSignatureVerificationResult signatureResult)
     {
         var actionIds = registrations
             .Select(registration => registration.ActionId.Trim())
@@ -329,9 +357,9 @@ internal sealed class ModuleHost
             actionModule.ModuleId,
             actionModule.Version,
             new ActionPublisher(actionModule.ModuleId, actionModule.Name),
-            ActionTrustLevel.Community,
+            signatureResult.TrustLevel,
             ActionSourceKind.Filesystem,
-            Signature: null,
+            signatureResult.Signature,
             actionIds);
     }
 
@@ -404,4 +432,10 @@ internal static partial class ModuleHostLog
 
     [LoggerMessage(EventId = 11, Level = LogLevel.Warning, Message = "Registered action '{ActionId}' from module {ModuleId} without ActionPublication; compile will require schema")]
     public static partial void PublicationMissing(ILogger logger, string actionId, string moduleId);
+
+    [LoggerMessage(EventId = 12, Level = LogLevel.Warning, Message = "Skipping unsigned module '{ModuleDirectory}': signature required")]
+    public static partial void ModuleSkippedUnsigned(ILogger logger, string moduleDirectory);
+
+    [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "Module {ModuleId} signature resolved: TrustLevel={TrustLevel} ({ReasonCategory})")]
+    public static partial void ModuleSignatureResolved(ILogger logger, string moduleId, ActionTrustLevel trustLevel, string reasonCategory);
 }

@@ -65,6 +65,8 @@ internal sealed class ConfigurableExecutionPolicy : IActionExecutionPolicy
             (ActionTrustLevel.Trusted, _, _) => ActionExecutionMode.InProcess,
             (ActionTrustLevel.Verified, true, _) => ActionExecutionMode.InProcess,
             (ActionTrustLevel.Verified, false, _) => ActionExecutionMode.OutOfProcess,
+            // Signed（改ざんなしのみ保証・署名者未信頼）は緩和対象外。Community 相当に固定する。
+            (ActionTrustLevel.Signed, _, _) => ActionExecutionMode.OutOfProcess,
             (ActionTrustLevel.Community, _, _) => ActionExecutionMode.OutOfProcess,
             (ActionTrustLevel.Untrusted, _, true) => ActionExecutionMode.Container,
             (ActionTrustLevel.Untrusted, _, false) => ActionExecutionMode.OutOfProcess,
