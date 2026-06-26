@@ -142,6 +142,67 @@ public sealed class ModuleSignatureVerifierTests
         Assert.Equal(ActionTrustLevel.Untrusted, result.TrustLevel);
     }
 
+    /// <summary>JSON は妥当だが必須フィールドが欠落した manifest は Untrusted。</summary>
+    [Fact]
+    public void Verify_WhenManifestMissingRequiredFields_ReturnsUntrusted()
+    {
+        // Arrange
+        var entryPath = CreateEntryAssembly("test.module");
+        ModuleSignatureTestHelper.WriteRawSignatureFile(
+            entryPath,
+            "{\"algorithm\":\"RSA-SHA256\",\"publicKeyPem\":\"\",\"signatureBase64\":\"\"}");
+        var verifier = CreateVerifier();
+
+        // Act
+        var result = verifier.Verify(entryPath);
+
+        // Assert
+        Assert.Equal(ActionTrustLevel.Untrusted, result.TrustLevel);
+        Assert.Null(result.Signature);
+    }
+
+    /// <summary>署名値が Base64 として不正な manifest は Untrusted。</summary>
+    [Fact]
+    public void Verify_WhenSignatureNotBase64_ReturnsUntrusted()
+    {
+        // Arrange
+        var entryPath = CreateEntryAssembly("test.module");
+        using var rsa = ModuleSignatureTestHelper.CreateSigningKey();
+        ModuleSignatureTestHelper.WriteSignatureFile(
+            entryPath,
+            rsa,
+            signatureBase64Override: "not valid base64 @@@");
+        var verifier = CreateVerifier();
+
+        // Act
+        var result = verifier.Verify(entryPath);
+
+        // Assert
+        Assert.Equal(ActionTrustLevel.Untrusted, result.TrustLevel);
+        Assert.Null(result.Signature);
+    }
+
+    /// <summary>許可集合に空白だけの要素があっても無視され、未許可署名は Signed のまま。</summary>
+    [Fact]
+    public void Verify_WhenTrustedFingerprintsContainBlankEntry_IgnoresBlankAndReturnsSigned()
+    {
+        // Arrange
+        var entryPath = CreateEntryAssembly("test.module");
+        using var rsa = ModuleSignatureTestHelper.CreateSigningKey();
+        ModuleSignatureTestHelper.WriteSignatureFile(entryPath, rsa);
+        var verifier = CreateVerifier(new ModuleSigningOptions
+        {
+            TrustedSignerFingerprints = ["   "],
+        });
+
+        // Act
+        var result = verifier.Verify(entryPath);
+
+        // Assert
+        Assert.Equal(ActionTrustLevel.Signed, result.TrustLevel);
+        Assert.NotNull(result.Signature);
+    }
+
     private static ModuleSignatureVerifier CreateVerifier(ModuleSigningOptions? options = null) =>
         new(
             Options.Create(options ?? new ModuleSigningOptions()),
