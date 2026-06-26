@@ -140,18 +140,85 @@ public sealed class ModuleHostTests
         Assert.NotNull(compiled.StateExecutorFactory.GetExecutor("start"));
     }
 
-    private static TestModuleHost CreateHost(string modulesRoot)
+    /// <summary>有効署名かつ信頼フィンガープリントの module は Verified で登録される。</summary>
+    [Fact]
+    public async Task LoadAsync_WhenValidSignatureTrusted_RegistersAsVerified()
+    {
+        // Arrange
+        var modulesRoot = CreateModuleLayoutFromBuiltAssembly("test.module");
+        var entryPath = Path.Combine(modulesRoot, "test.module", "test.module.dll");
+        using var rsa = ModuleSignatureTestHelper.CreateSigningKey();
+        ModuleSignatureTestHelper.WriteSignatureFile(entryPath, rsa, signerName: "Statevia Official");
+        var host = CreateHost(modulesRoot, new ModuleSigningOptions
+        {
+            TrustedSignerFingerprints = [ModuleSignatureTestHelper.ComputeFingerprint(rsa)],
+        });
+
+        // Act
+        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None);
+
+        // Assert
+        Assert.True(host.Catalog.TryGetDescriptor("test.module.echo", out var descriptor));
+        Assert.Equal(ActionTrustLevel.Verified, descriptor!.TrustLevel);
+        Assert.NotNull(descriptor.Signature);
+        Assert.Equal("Statevia Official", descriptor.Signature!.SignerName);
+    }
+
+    /// <summary>有効署名だが未許可フィンガープリントの module は Signed で登録される。</summary>
+    [Fact]
+    public async Task LoadAsync_WhenValidSignatureUntrusted_RegistersAsSigned()
+    {
+        // Arrange
+        var modulesRoot = CreateModuleLayoutFromBuiltAssembly("test.module");
+        var entryPath = Path.Combine(modulesRoot, "test.module", "test.module.dll");
+        using var rsa = ModuleSignatureTestHelper.CreateSigningKey();
+        ModuleSignatureTestHelper.WriteSignatureFile(entryPath, rsa);
+        var host = CreateHost(modulesRoot, new ModuleSigningOptions
+        {
+            TrustedSignerFingerprints = ["00DEADBEEF"],
+        });
+
+        // Act
+        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None);
+
+        // Assert
+        Assert.True(host.Catalog.TryGetDescriptor("test.module.echo", out var descriptor));
+        Assert.Equal(ActionTrustLevel.Signed, descriptor!.TrustLevel);
+        Assert.NotNull(descriptor.Signature);
+    }
+
+    /// <summary>RequireSignature=true で署名なし module は登録 skip される。</summary>
+    [Fact]
+    public async Task LoadAsync_WhenSignatureRequiredAndMissing_SkipsModule()
+    {
+        // Arrange
+        var modulesRoot = CreateModuleLayoutFromBuiltAssembly("test.module");
+        var host = CreateHost(modulesRoot, new ModuleSigningOptions { RequireSignature = true });
+
+        // Act
+        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None);
+
+        // Assert
+        Assert.False(host.Catalog.Exists("test.module.echo"));
+        Assert.Equal(ModuleLoadStatus.Skipped, host.LoadCatalog.GetRecords().Single().Status);
+    }
+
+    private static TestModuleHost CreateHost(string modulesRoot, ModuleSigningOptions? signingOptions = null)
     {
         var catalog = new InMemoryActionCatalog();
         var loadCatalog = new ModuleLoadCatalog();
         var source = new FilesystemModuleSource(
             new StubModulePathProvider(modulesRoot),
             NullLogger<FilesystemModuleSource>.Instance);
+        var verifier = new ModuleSignatureVerifier(
+            Options.Create(signingOptions ?? new ModuleSigningOptions()),
+            NullLogger<ModuleSignatureVerifier>.Instance);
         using var provider = new ServiceCollection().BuildServiceProvider();
         var host = new ModuleHost(
             source,
             catalog,
             loadCatalog,
+            verifier,
             provider,
             Options.Create(new ModuleHostOptions()),
             NullLogger<ModuleHost>.Instance);
