@@ -113,13 +113,15 @@ Comment rules, Markdownlint (e.g. `.spec-workflow/`), build or analyzer warnings
 | `STATEVIA_MODULES_PATH` | core-api (C#) | 未設定時は `Statevia:Modules:Path` → `{ContentRoot}/modules` の順で Action Module ルートを解決。 |
 | `Statevia:ActionHost:BaseUrl` | core-api (C#) | 未設定時は OutOfProcess 実行不可（`ActionHostNotConfigured`）。ローカル例: `http://localhost:5001`。docker compose では `http://action-host:5001`。 |
 | `Statevia:ExecutionPolicy:DeploymentProfile` | core-api (C#) | 未設定時は `null`。`saas-shared` 等で Untrusted Action の Container 強制など Policy マトリクスに反映。 |
+| `Statevia:Modules:Signing:TrustedSignerFingerprints` | core-api (C#) | Module 署名者の信頼フィンガープリント（公開鍵 SubjectPublicKeyInfo の SHA-256, 16 進）配列。署名有効かつ含まれる場合のみ `Verified`、含まれなければ `Signed`。未設定時は信頼署名者なし。 |
+| `Statevia:Modules:Signing:RequireSignature` | core-api (C#) | 未設定時は `false`（署名なし Module は `Community` 登録）。`true` で署名なし Module の登録を skip。 |
 
 ### Core-API: Action 実行プラットフォーム（Phase 2）
 
 - **契約:** `shared/Statevia.Actions.Abstractions` — `ActionDescriptor`, `ModuleDescriptor`, `IActionCatalog`, `IActionVisibilityResolver`, `IActionExecutionPolicy`, `IActionExecutor`。
 - **責務分離:** Catalog（解決・メタデータ保持）/ VisibilityResolver（テナント境界）/ Policy（`ConfigurableExecutionPolicy` — TrustLevel × Environment × Hints、緩和不可）/ Executor（`DispatchingActionExecutor` → `InProcessBackend` / `OutOfProcessBackend`）。
 - **Engine 境界:** `ExecutionEngine` は `IStateExecutor` のみ呼び出す。Catalog / Policy / ModuleHost は Engine 非依存。
-- **Module:** `ModuleHost` が filesystem Module を ALC load し `ActionDescriptor`（既定 `TrustLevel=Community`, `Visibility=Tenant`, `OwnerTenantId`）+ `ModuleDescriptor` を Catalog / load catalog へ登録。
+- **Module:** `ModuleHost` が filesystem Module を ALC load し `ActionDescriptor`（`Visibility=Tenant`, `OwnerTenantId`）+ `ModuleDescriptor` を Catalog / load catalog へ登録。`TrustLevel` は `ModuleSignatureVerifier` の署名検証結果で決定（署名なし=`Community` / 有効+信頼=`Verified` / 有効+未信頼=`Signed` / 検証失敗=`Untrusted`。`Statevia:Modules:Signing`）。
 - **OutOfProcess:** Production 等で Policy が `OutOfProcess` を返す Community / Verified Module は Action Host（`Statevia:ActionHost:BaseUrl`）へ gRPC dispatch。未設定時は `ActionHostNotConfigured`。`Container` / `Wasm` / `Remote` は Phase 4 まで `UnsupportedExecutionMode`。
 
 ### Core-API: HTTP リクエストログ（STV-403）
