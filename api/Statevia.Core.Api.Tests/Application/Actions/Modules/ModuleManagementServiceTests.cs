@@ -91,10 +91,14 @@ public sealed class ModuleManagementServiceTests
     private static ModuleHost CreateModuleHost()
     {
         var catalog = new InMemoryActionCatalog();
+        var verifier = new ModuleSignatureVerifier(
+            Options.Create(new ModuleSigningOptions()),
+            NullLogger<ModuleSignatureVerifier>.Instance);
         return new ModuleHost(
             new EmptyModuleSource(),
             catalog,
             new ModuleLoadCatalog(),
+            verifier,
             new ServiceCollection().BuildServiceProvider(),
             Options.Create(new ModuleHostOptions()),
             NullLogger<ModuleHost>.Instance);

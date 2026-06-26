@@ -25,10 +25,14 @@ public sealed class ModuleLoadHostedServiceTests
             NullLogger<FilesystemModuleSource>.Instance);
         var services = new ServiceCollection();
         using var provider = services.BuildServiceProvider();
+        var verifier = new ModuleSignatureVerifier(
+            Options.Create(new ModuleSigningOptions()),
+            NullLogger<ModuleSignatureVerifier>.Instance);
         var moduleHost = new ModuleHost(
             source,
             catalog,
             loadCatalog,
+            verifier,
             provider,
             Options.Create(new ModuleHostOptions { OwnerTenantId = OwnerTenantId }),
             NullLogger<ModuleHost>.Instance);

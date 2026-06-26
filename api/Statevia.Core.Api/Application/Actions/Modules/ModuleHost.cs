@@ -12,9 +12,13 @@ namespace Statevia.Core.Api.Application.Actions.Modules;
 /// <summary>discover 結果の Action Module を load し Catalog へ登録する Core-API 固定ホスト。</summary>
 internal sealed class ModuleHost
 {
+    /// <summary>module メタデータが取得できないときに記録するバージョン表記。</summary>
+    private const string UnknownVersion = "unknown";
+
     private readonly IModuleSource _moduleSource;
     private readonly InMemoryActionCatalog _catalog;
     private readonly ModuleLoadCatalog _loadCatalog;
+    private readonly IModuleSignatureVerifier _signatureVerifier;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ModuleHost> _logger;
     private readonly object _sync = new();
@@ -25,6 +29,7 @@ internal sealed class ModuleHost
         IModuleSource moduleSource,
         InMemoryActionCatalog catalog,
         ModuleLoadCatalog loadCatalog,
+        IModuleSignatureVerifier signatureVerifier,
         IServiceProvider serviceProvider,
         IOptions<ModuleHostOptions> options,
         ILogger<ModuleHost> logger)
@@ -33,6 +38,7 @@ internal sealed class ModuleHost
         _moduleSource = moduleSource;
         _catalog = catalog;
         _loadCatalog = loadCatalog;
+        _signatureVerifier = signatureVerifier;
         _serviceProvider = serviceProvider;
         _logger = logger;
     }
@@ -86,6 +92,13 @@ internal sealed class ModuleHost
         var sha256 = ComputeSha256Hex(discoveredModule.EntryAssemblyPath);
         var loadedAt = DateTimeOffset.UtcNow;
 
+        var signatureResult = _signatureVerifier.Verify(discoveredModule.EntryAssemblyPath);
+        if (signatureResult.RejectRegistration)
+        {
+            RecordSignatureRejected(discoveredModule, sha256, loadedAt);
+            return;
+        }
+
         try
         {
             var loadContext = new ModuleAssemblyLoadContext(discoveredModule.EntryAssemblyPath);
@@ -99,7 +112,7 @@ internal sealed class ModuleHost
                     loadedAt,
                     moduleId: discoveredModule.ModuleDirectoryName,
                     name: discoveredModule.ModuleDirectoryName,
-                    version: "unknown",
+                    version: UnknownVersion,
                     message: "IActionModule implementation not found");
                 return;
             }
@@ -112,78 +125,13 @@ internal sealed class ModuleHost
                     loadedAt,
                     moduleId: discoveredModule.ModuleDirectoryName,
                     name: discoveredModule.ModuleDirectoryName,
-                    version: "unknown",
+                    version: UnknownVersion,
                     message: $"Failed to instantiate IActionModule type '{moduleType.FullName}'");
                 return;
             }
 
             _loadContexts[discoveredModule.EntryAssemblyPath] = loadContext;
-
-            var registrations = actionModule.GetActions(_serviceProvider).ToList();
-            var moduleDescriptor = BuildModuleDescriptor(actionModule, registrations);
-
-            var registeredCount = 0;
-            var duplicateCount = 0;
-            var skippedCount = 0;
-            foreach (var registration in registrations)
-            {
-                switch (TryRegisterModuleAction(moduleDescriptor, registration, ownerTenantId))
-                {
-                    case ModuleActionRegisterOutcome.Registered:
-                        registeredCount++;
-                        break;
-                    case ModuleActionRegisterOutcome.Duplicate:
-                        duplicateCount++;
-                        break;
-                    case ModuleActionRegisterOutcome.Skipped:
-                        skippedCount++;
-                        break;
-                }
-            }
-
-            var status = registeredCount switch
-            {
-                > 0 when duplicateCount > 0 || skippedCount > 0 => ModuleLoadStatus.Loaded,
-                > 0 => ModuleLoadStatus.Loaded,
-                0 when duplicateCount > 0 && skippedCount == 0 => ModuleLoadStatus.Duplicate,
-                _ => ModuleLoadStatus.Skipped,
-            };
-
-            var message = registeredCount switch
-            {
-                > 0 => $"Registered {registeredCount} action(s)",
-                0 when duplicateCount > 0 => "All actions were duplicates",
-                _ => "No actions were registered from module",
-            };
-
-            if (status is ModuleLoadStatus.Skipped or ModuleLoadStatus.Duplicate)
-            {
-                ModuleHostLog.ModuleLoadedWithStatus(_logger, actionModule.ModuleId, status, message);
-            }
-
-            _loadCatalog.Upsert(new ModuleLoadRecord
-            {
-                ModuleId = actionModule.ModuleId,
-                Name = actionModule.Name,
-                Version = actionModule.Version,
-                Status = status,
-                Sha256 = sha256,
-                SourceLabel = discoveredModule.SourceLabel,
-                LoadedAtUtc = loadedAt,
-                Message = message,
-                EntryAssemblyPath = discoveredModule.EntryAssemblyPath,
-                ModuleDescriptor = registeredCount > 0 ? moduleDescriptor : null,
-            });
-
-            if (registeredCount > 0)
-            {
-                ModuleHostLog.ModuleLoaded(
-                    _logger,
-                    actionModule.ModuleId,
-                    actionModule.Version,
-                    discoveredModule.EntryAssemblyPath,
-                    sha256);
-            }
+            RegisterLoadedModule(discoveredModule, actionModule, signatureResult, ownerTenantId, sha256, loadedAt);
         }
         catch (Exception ex) when (ex is InvalidOperationException
             or ArgumentException
@@ -206,9 +154,107 @@ internal sealed class ModuleHost
                 loadedAt,
                 moduleId: discoveredModule.ModuleDirectoryName,
                 name: discoveredModule.ModuleDirectoryName,
-                version: "unknown",
+                version: UnknownVersion,
                 message: ex.Message);
         }
+    }
+
+    /// <summary>load 済み module の action 群を Catalog へ登録し、load 結果を記録する。</summary>
+    private void RegisterLoadedModule(
+        DiscoveredModule discoveredModule,
+        IActionModule actionModule,
+        ModuleSignatureVerificationResult signatureResult,
+        string ownerTenantId,
+        string sha256,
+        DateTimeOffset loadedAt)
+    {
+        var registrations = actionModule.GetActions(_serviceProvider).ToList();
+        var moduleDescriptor = BuildModuleDescriptor(actionModule, registrations, signatureResult);
+        ModuleHostLog.ModuleSignatureResolved(
+            _logger,
+            actionModule.ModuleId,
+            signatureResult.TrustLevel,
+            signatureResult.ReasonCategory);
+
+        var registeredCount = 0;
+        var duplicateCount = 0;
+        var skippedCount = 0;
+        foreach (var registration in registrations)
+        {
+            switch (TryRegisterModuleAction(moduleDescriptor, registration, ownerTenantId))
+            {
+                case ModuleActionRegisterOutcome.Registered:
+                    registeredCount++;
+                    break;
+                case ModuleActionRegisterOutcome.Duplicate:
+                    duplicateCount++;
+                    break;
+                case ModuleActionRegisterOutcome.Skipped:
+                    skippedCount++;
+                    break;
+            }
+        }
+
+        var status = registeredCount switch
+        {
+            > 0 => ModuleLoadStatus.Loaded,
+            0 when duplicateCount > 0 && skippedCount == 0 => ModuleLoadStatus.Duplicate,
+            _ => ModuleLoadStatus.Skipped,
+        };
+
+        var message = registeredCount switch
+        {
+            > 0 => $"Registered {registeredCount} action(s)",
+            0 when duplicateCount > 0 => "All actions were duplicates",
+            _ => "No actions were registered from module",
+        };
+
+        if (status is ModuleLoadStatus.Skipped or ModuleLoadStatus.Duplicate)
+        {
+            ModuleHostLog.ModuleLoadedWithStatus(_logger, actionModule.ModuleId, status, message);
+        }
+
+        _loadCatalog.Upsert(new ModuleLoadRecord
+        {
+            ModuleId = actionModule.ModuleId,
+            Name = actionModule.Name,
+            Version = actionModule.Version,
+            Status = status,
+            Sha256 = sha256,
+            SourceLabel = discoveredModule.SourceLabel,
+            LoadedAtUtc = loadedAt,
+            Message = message,
+            EntryAssemblyPath = discoveredModule.EntryAssemblyPath,
+            ModuleDescriptor = registeredCount > 0 ? moduleDescriptor : null,
+        });
+
+        if (registeredCount > 0)
+        {
+            ModuleHostLog.ModuleLoaded(
+                _logger,
+                actionModule.ModuleId,
+                actionModule.Version,
+                discoveredModule.EntryAssemblyPath,
+                sha256);
+        }
+    }
+
+    /// <summary>署名が必須だが存在しないため登録を skip した結果を記録する。</summary>
+    private void RecordSignatureRejected(DiscoveredModule discoveredModule, string sha256, DateTimeOffset loadedAt)
+    {
+        ModuleHostLog.ModuleSkippedUnsigned(_logger, discoveredModule.ModuleDirectoryName);
+        _loadCatalog.Upsert(new ModuleLoadRecord
+        {
+            ModuleId = discoveredModule.ModuleDirectoryName,
+            Name = discoveredModule.ModuleDirectoryName,
+            Version = UnknownVersion,
+            Status = ModuleLoadStatus.Skipped,
+            Sha256 = sha256,
+            SourceLabel = discoveredModule.SourceLabel,
+            LoadedAtUtc = loadedAt,
+            Message = "Signature required but missing",
+            EntryAssemblyPath = discoveredModule.EntryAssemblyPath,
+        });
     }
 
     private enum ModuleActionRegisterOutcome
@@ -316,7 +362,8 @@ internal sealed class ModuleHost
 
     private static ModuleDescriptor BuildModuleDescriptor(
         IActionModule actionModule,
-        IReadOnlyList<ModuleActionRegistration> registrations)
+        IReadOnlyList<ModuleActionRegistration> registrations,
+        ModuleSignatureVerificationResult signatureResult)
     {
         var actionIds = registrations
             .Select(registration => registration.ActionId.Trim())
@@ -329,9 +376,9 @@ internal sealed class ModuleHost
             actionModule.ModuleId,
             actionModule.Version,
             new ActionPublisher(actionModule.ModuleId, actionModule.Name),
-            ActionTrustLevel.Community,
+            signatureResult.TrustLevel,
             ActionSourceKind.Filesystem,
-            Signature: null,
+            signatureResult.Signature,
             actionIds);
     }
 
@@ -404,4 +451,10 @@ internal static partial class ModuleHostLog
 
     [LoggerMessage(EventId = 11, Level = LogLevel.Warning, Message = "Registered action '{ActionId}' from module {ModuleId} without ActionPublication; compile will require schema")]
     public static partial void PublicationMissing(ILogger logger, string actionId, string moduleId);
+
+    [LoggerMessage(EventId = 12, Level = LogLevel.Warning, Message = "Skipping unsigned module '{ModuleDirectory}': signature required")]
+    public static partial void ModuleSkippedUnsigned(ILogger logger, string moduleDirectory);
+
+    [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "Module {ModuleId} signature resolved: TrustLevel={TrustLevel} ({ReasonCategory})")]
+    public static partial void ModuleSignatureResolved(ILogger logger, string moduleId, ActionTrustLevel trustLevel, string reasonCategory);
 }

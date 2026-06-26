@@ -126,6 +126,46 @@ modules/bad.module/alpha/alpha.dll   # 直下に entry DLL なし → skip
 
 ---
 
+## 3.1 署名ファイル（任意・Trust 判定用）
+
+Module ディレクトリ直下に detached 署名ファイル `{moduleDirectoryName}.signature.json` を置くと、Core-API は登録時に署名を検証して信頼レベル（`TrustLevel`）を決定する。署名がない Module は従来どおり `Community` として登録される。発行者・運用者の運用手順は `docs/action-module-signing.md` を参照。
+
+```json
+{
+  "algorithm": "RSA-SHA256",
+  "publicKeyPem": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----",
+  "signatureBase64": "<entry DLL の SHA-256 への署名(Base64)>",
+  "signerName": "Statevia Official"
+}
+```
+
+| フィールド | 必須 | 説明 |
+|------------|------|------|
+| `algorithm` | 必須 | 現状 `RSA-SHA256` のみ対応 |
+| `publicKeyPem` | 必須 | 署名者公開鍵（SubjectPublicKeyInfo, PEM） |
+| `signatureBase64` | 必須 | **entry DLL バイト列の SHA-256** への署名 |
+| `signerName` | 任意 | **自己申告・表示専用**。信頼判定には使われない |
+
+### 信頼レベルの決定
+
+| 状態 | TrustLevel |
+|------|------------|
+| 署名ファイルなし | `Community`（`Statevia:Modules:Signing:RequireSignature=true` のときは登録 skip） |
+| 署名有効・公開鍵フィンガープリントが許可集合内 | `Verified` |
+| 署名有効・公開鍵フィンガープリントが許可集合外 | `Signed`（改ざんなしのみ保証） |
+| 署名不正・破損・未対応アルゴリズム | `Untrusted` |
+
+- 許可集合は `Statevia:Modules:Signing:TrustedSignerFingerprints`（公開鍵 SubjectPublicKeyInfo の SHA-256 フィンガープリント、16 進）。
+- フィンガープリントは `publicKeyPem` から再計算した値を唯一の根拠とし、manifest 申告値は信頼しない。
+- **`Signed` は「改ざんされていないこと」のみ保証**し、運営が署名者を信頼した状態（`Verified`）とは異なる。UI 表示時は `TrustLevel` とセットで提示する。
+
+### スコープと将来拡張
+
+- 現状の署名対象は **entry DLL 単体**であり、**同梱した依存 DLL の差し替えは検知できない**。将来は「ファイル一覧 + 各 SHA-256 の manifest」を署名対象に拡張予定。
+- 鍵漏洩時のローテーションに備え、将来 `RevokedSignerFingerprints`（失効リスト）を追加できる構造とする。
+
+---
+
 ## 4. 展開サイズ上限
 
 | 制限 | 値 |
@@ -176,5 +216,6 @@ Windows で zip ツールが無い場合は、エクスプローラで `my.modul
 |------|------|
 | zip 展開・ディレクトリ名決定 | `shared/Statevia.Modules/ModuleZipInstaller.cs` |
 | entry DLL 解決 | `api/Statevia.Core.Api/Application/Actions/Modules/FilesystemModuleSource.cs` |
-| ALC・共有アセンブリ | `api/Statevia.Core.Api/Application/Actions/Modules/ModuleAssemblyLoadContext.cs` |
+| ALC・共有アセンブリ | `shared/Statevia.Modules/ModuleAssemblyLoadContext.cs` |
+| 署名検証・Trust 判定 | `api/Statevia.Core.Api/Application/Actions/Modules/ModuleSignatureVerifier.cs` |
 | 単体テスト（展開パターン） | `shared/Statevia.Modules.Tests/ModuleZipInstallerTests.cs` |
