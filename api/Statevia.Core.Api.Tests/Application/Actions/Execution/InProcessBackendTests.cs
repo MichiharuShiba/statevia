@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Statevia.Actions.Abstractions.Catalog;
+using Statevia.Actions.Abstractions.Execution;
 using Statevia.Core.Api.Application.Actions.Execution;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Execution;
@@ -30,30 +31,44 @@ public sealed class InProcessBackendTests
         return new ActionRegistration(descriptor, entry);
     }
 
-    /// <summary>InProcessFactory 経由で状態実行器を呼び出す。</summary>
+    private static ActionBackendInvocation CreateInvocation(
+        ActionRegistration registration,
+        StateContext stateContext,
+        object? runtimeInput)
+    {
+        var request = new ActionExecutionRequest
+        {
+            ExecutionId = "exec-1",
+            StateName = "A",
+            ActionId = registration.Descriptor.ActionId,
+            TenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
+        };
+        return new ActionBackendInvocation(request, runtimeInput, registration, stateContext);
+    }
+
+    private static StateContext CreateStateContext() => new()
+    {
+        Events = null!,
+        Store = null!,
+        ExecutionId = "exec-1",
+        StateName = "A",
+    };
+
+    /// <summary>InProcessFactory 経由で状態実行器を呼び出し、結果を RuntimeOutput に詰める。</summary>
     [Fact]
     public async Task ExecuteAsync_WithFactory_ReturnsExecutorOutput()
     {
         // Arrange
         using var provider = new ServiceCollection().BuildServiceProvider();
         var sut = new InProcessBackend(provider);
-        var ctx = new StateContext
-        {
-            Events = null!,
-            Store = null!,
-            ExecutionId = "exec-1",
-            StateName = "A",
-        };
+        var invocation = CreateInvocation(CreateRegistration(), CreateStateContext(), runtimeInput: 7);
 
         // Act
-        var output = await sut.ExecuteAsync(
-            CreateRegistration(),
-            ctx,
-            runtimeInput: 7,
-            CancellationToken.None);
+        var result = await sut.ExecuteAsync(invocation, CancellationToken.None);
 
         // Assert
-        Assert.Equal(7, output);
+        Assert.True(result.Success);
+        Assert.Equal(7, result.RuntimeOutput);
     }
 
     /// <summary>InProcessFactory 未設定は InvalidOperationException。</summary>
@@ -63,20 +78,34 @@ public sealed class InProcessBackendTests
         // Arrange
         using var provider = new ServiceCollection().BuildServiceProvider();
         var sut = new InProcessBackend(provider);
-        var ctx = new StateContext
-        {
-            Events = null!,
-            Store = null!,
-            ExecutionId = "exec-1",
-            StateName = "A",
-        };
+        var invocation = CreateInvocation(
+            CreateRegistration(withFactory: false),
+            CreateStateContext(),
+            runtimeInput: null);
 
         // Act / Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => sut.ExecuteAsync(
-                CreateRegistration(withFactory: false),
-                ctx,
-                runtimeInput: null,
-                CancellationToken.None));
+            () => sut.ExecuteAsync(invocation, CancellationToken.None));
+    }
+
+    /// <summary>登録情報が無い呼び出しは InvalidOperationException。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WithoutRegistration_Throws()
+    {
+        // Arrange
+        using var provider = new ServiceCollection().BuildServiceProvider();
+        var sut = new InProcessBackend(provider);
+        var request = new ActionExecutionRequest
+        {
+            ExecutionId = "exec-1",
+            StateName = "A",
+            ActionId = "test.action",
+            TenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
+        };
+        var invocation = new ActionBackendInvocation(request, RuntimeInput: null);
+
+        // Act / Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.ExecuteAsync(invocation, CancellationToken.None));
     }
 }

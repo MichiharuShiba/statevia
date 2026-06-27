@@ -20,9 +20,10 @@ public sealed class OutOfProcessBackendTests
             ActionId = "test.module.echo",
             TenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
         };
+        var invocation = new ActionBackendInvocation(request, RuntimeInput: new { value = 1 });
 
         // Act
-        var result = await sut.ExecuteAsync(request, runtimeInput: new { value = 1 }, CancellationToken.None);
+        var result = await sut.ExecuteAsync(invocation, CancellationToken.None);
 
         // Assert
         Assert.True(result.Success);

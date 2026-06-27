@@ -151,8 +151,9 @@ public sealed class DispatchingActionExecutorTests
         services.AddSingleton<IActionExecutionPolicy, ConfigurableExecutionPolicy>();
         services.AddSingleton(Options.Create(new ExecutionPolicyOptions()));
         services.AddSingleton<IActionHostExecutionClient, ActionExecutionTestSupport.SuccessfulActionHostExecutionClient>();
-        services.AddSingleton<InProcessBackend>();
-        services.AddSingleton<OutOfProcessBackend>();
+        services.AddSingleton<IActionExecutionBackend, InProcessBackend>();
+        services.AddSingleton<IActionExecutionBackend, OutOfProcessBackend>();
+        services.AddSingleton<IActionExecutionBackendSelector, ActionExecutionBackendSelector>();
         services.AddSingleton<IHostEnvironment>(new ActionExecutionTestSupport.TestHostEnvironment
         {
             EnvironmentName = Environments.Production,

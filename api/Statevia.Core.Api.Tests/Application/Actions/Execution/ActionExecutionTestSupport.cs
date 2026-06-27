@@ -40,8 +40,9 @@ internal static class ActionExecutionTestSupport
         services.AddSingleton<IActionExecutionPolicy, AlwaysInProcessPolicy>();
         services.AddSingleton(Options.Create(new ExecutionPolicyOptions()));
         services.AddSingleton<IActionHostExecutionClient, UnconfiguredActionHostExecutionClient>();
-        services.AddSingleton<InProcessBackend>();
-        services.AddSingleton<OutOfProcessBackend>();
+        services.AddSingleton<IActionExecutionBackend, InProcessBackend>();
+        services.AddSingleton<IActionExecutionBackend, OutOfProcessBackend>();
+        services.AddSingleton<IActionExecutionBackendSelector, ActionExecutionBackendSelector>();
         services.AddSingleton<IHostEnvironment, TestHostEnvironment>();
         services.AddSingleton<IActionExecutor, DispatchingActionExecutor>();
 
