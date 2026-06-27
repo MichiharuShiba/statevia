@@ -5,20 +5,17 @@ using Statevia.Actions.Abstractions.Execution;
 namespace Statevia.Core.Api.Application.Actions.Execution;
 
 /// <summary>
-/// TrustLevel × Environment × DeploymentProfile と ExecutionHints から最終実行モードを決定する。
-/// TrustLevel 下限は緩和できない。
+/// TrustLevel × Environment × DeploymentProfile（base）と階層 Policy、ExecutionHints から最終実行モードを決定する。
+/// base 下限・各階層の下限はいずれも緩和できない（最厳優先）。
 /// </summary>
-internal sealed class ConfigurableExecutionPolicy : IActionExecutionPolicy
+/// <param name="options">Policy 設定。</param>
+/// <param name="policyProviders">階層別ポリシー provider 群（base へ最厳優先で重ねる）。</param>
+internal sealed class ConfigurableExecutionPolicy(
+    IOptions<ExecutionPolicyOptions> options,
+    IEnumerable<IExecutionPolicyProvider> policyProviders) : IActionExecutionPolicy
 {
-    private readonly ExecutionPolicyOptions _options;
-
-    /// <summary>新しいインスタンスを初期化する。</summary>
-    /// <param name="options">Policy 設定。</param>
-    public ConfigurableExecutionPolicy(IOptions<ExecutionPolicyOptions> options)
-    {
-        ArgumentNullException.ThrowIfNull(options);
-        _options = options.Value;
-    }
+    private readonly ExecutionPolicyOptions _options = options.Value;
+    private readonly IReadOnlyList<IExecutionPolicyProvider> _policyProviders = [.. policyProviders];
 
     /// <inheritdoc />
     public ActionExecutionMode Resolve(ActionExecutionContext context, ActionDescriptor descriptor)
@@ -32,7 +29,10 @@ internal sealed class ConfigurableExecutionPolicy : IActionExecutionPolicy
             context.Environment,
             deploymentProfile);
 
-        var mode = trustMinimum;
+        // base 下限へ階層ポリシーを最厳優先で重ねたものが、緩和不可の実効下限になる。
+        var floor = ApplyScopedPolicies(trustMinimum, context);
+
+        var mode = floor;
 
         if (descriptor.ExecutionHints.RequiresIsolation)
         {
@@ -46,10 +46,27 @@ internal sealed class ConfigurableExecutionPolicy : IActionExecutionPolicy
 
         if (descriptor.ExecutionHints.AllowedModes is { Count: > 0 } allowedModes)
         {
-            mode = ConstrainToAllowedModes(mode, allowedModes, trustMinimum);
+            mode = ConstrainToAllowedModes(mode, allowedModes, floor);
         }
 
         return mode;
+    }
+
+    /// <summary>base 下限へ全 provider の階層ポリシー下限を最厳優先で重ねる。</summary>
+    /// <param name="trustMinimum">TrustLevel × Environment による base 下限。</param>
+    /// <param name="context">実行コンテキスト。</param>
+    /// <returns>緩和不可の実効下限。</returns>
+    private ActionExecutionMode ApplyScopedPolicies(
+        ActionExecutionMode trustMinimum,
+        ActionExecutionContext context)
+    {
+        var scopedMinimums = _policyProviders
+            .SelectMany(provider => provider.GetPolicies(context))
+            .Select(scoped => scoped.Policy.MinimumMode)
+            .Where(minimumMode => minimumMode is not null)
+            .Select(minimumMode => minimumMode!.Value);
+
+        return scopedMinimums.Aggregate(trustMinimum, ActionExecutionModeStrictness.Max);
     }
 
     private static ActionExecutionMode ResolveTrustEnvironmentMode(
