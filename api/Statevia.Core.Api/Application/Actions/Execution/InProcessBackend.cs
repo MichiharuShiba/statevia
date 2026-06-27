@@ -1,35 +1,42 @@
-using Statevia.Actions.Abstractions.Catalog;
-using Statevia.Core.Engine.Abstractions;
+using Statevia.Actions.Abstractions.Execution;
 
 namespace Statevia.Core.Api.Application.Actions.Execution;
 
-/// <summary>InProcess 実行 Backend。</summary>
-internal sealed class InProcessBackend
+/// <summary>InProcess 実行 Backend。Core-API プロセス内で <c>IStateExecutor</c> を実行する。</summary>
+internal sealed class InProcessBackend : IActionExecutionBackend
 {
     private readonly IServiceProvider _serviceProvider;
 
-    /// <summary>
-    /// InProcess Backend を構築する。
-    /// </summary>
+    /// <summary>InProcess Backend を構築する。</summary>
     /// <param name="serviceProvider">実行器ファクトリ解決用。</param>
     public InProcessBackend(IServiceProvider serviceProvider) =>
         _serviceProvider = serviceProvider;
 
-    /// <summary>
-    /// Catalog 登録に基づき InProcess で Action を実行する。
-    /// </summary>
-    /// <param name="registration">Catalog 登録情報。</param>
-    /// <param name="stateContext">Engine 状態コンテキスト。</param>
-    /// <param name="runtimeInput">Engine が解決した入力。</param>
-    /// <param name="cancellationToken">キャンセルトークン。</param>
-    public Task<object?> ExecuteAsync(
-        ActionRegistration registration,
-        StateContext stateContext,
-        object? runtimeInput,
+    /// <inheritdoc />
+    public ActionExecutionMode Mode => ActionExecutionMode.InProcess;
+
+    /// <inheritdoc />
+    public string ProviderKey => "in-process";
+
+    /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">
+    /// 登録情報・状態コンテキストが渡されない、または InProcess ファクトリが未設定の場合。
+    /// </exception>
+    public async Task<ActionExecutionResult> ExecuteAsync(
+        ActionBackendInvocation invocation,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(registration);
-        ArgumentNullException.ThrowIfNull(stateContext);
+        ArgumentNullException.ThrowIfNull(invocation);
+
+        if (invocation.Registration is not { } registration)
+        {
+            throw new InvalidOperationException("InProcess backend requires a catalog registration.");
+        }
+
+        if (invocation.StateContext is not { } stateContext)
+        {
+            throw new InvalidOperationException("InProcess backend requires a state context.");
+        }
 
         if (registration.Entry.InProcessFactory is not { } factory)
         {
@@ -38,6 +45,14 @@ internal sealed class InProcessBackend
         }
 
         var executor = factory(_serviceProvider);
-        return executor.ExecuteAsync(stateContext, runtimeInput, cancellationToken);
+        var output = await executor
+            .ExecuteAsync(stateContext, invocation.RuntimeInput, cancellationToken)
+            .ConfigureAwait(false);
+
+        return new ActionExecutionResult
+        {
+            Success = true,
+            RuntimeOutput = output,
+        };
     }
 }

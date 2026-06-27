@@ -12,8 +12,7 @@ internal sealed class DispatchingActionExecutor : IActionExecutor
     private readonly IActionCatalog _catalog;
     private readonly IActionVisibilityResolver _visibilityResolver;
     private readonly IActionExecutionPolicy _executionPolicy;
-    private readonly InProcessBackend _inProcessBackend;
-    private readonly OutOfProcessBackend _outOfProcessBackend;
+    private readonly IActionExecutionBackendSelector _backendSelector;
     private readonly IHostEnvironment _hostEnvironment;
     private readonly ExecutionPolicyOptions _policyOptions;
 
@@ -24,16 +23,14 @@ internal sealed class DispatchingActionExecutor : IActionExecutor
         IActionCatalog catalog,
         IActionVisibilityResolver visibilityResolver,
         IActionExecutionPolicy executionPolicy,
-        InProcessBackend inProcessBackend,
-        OutOfProcessBackend outOfProcessBackend,
+        IActionExecutionBackendSelector backendSelector,
         IHostEnvironment hostEnvironment,
         IOptions<ExecutionPolicyOptions> policyOptions)
     {
         _catalog = catalog;
         _visibilityResolver = visibilityResolver;
         _executionPolicy = executionPolicy;
-        _inProcessBackend = inProcessBackend;
-        _outOfProcessBackend = outOfProcessBackend;
+        _backendSelector = backendSelector;
         _hostEnvironment = hostEnvironment;
         _policyOptions = policyOptions.Value;
     }
@@ -58,36 +55,27 @@ internal sealed class DispatchingActionExecutor : IActionExecutor
             return Failure("ActionNotVisible", $"Action '{request.ActionId}' is not visible to the current tenant.");
         }
 
-        var mode = _executionPolicy.Resolve(
-            new ActionExecutionContext(
-                request.TenantId,
-                _hostEnvironment.EnvironmentName,
-                _policyOptions.DeploymentProfile),
-            registration.Descriptor);
+        var context = new ActionExecutionContext(
+            request.TenantId,
+            _hostEnvironment.EnvironmentName,
+            _policyOptions.DeploymentProfile);
 
-        if (mode == ActionExecutionMode.InProcess)
+        var mode = _executionPolicy.Resolve(context, registration.Descriptor);
+
+        if (!_backendSelector.TryResolve(mode, context, out var backend))
         {
-            var output = await _inProcessBackend
-                .ExecuteAsync(registration, stateContext, runtimeInput, cancellationToken)
-                .ConfigureAwait(false);
-
-            return new ActionExecutionResult
-            {
-                Success = true,
-                RuntimeOutput = output,
-            };
+            return Failure(
+                "UnsupportedExecutionMode",
+                $"No execution backend is registered for mode '{mode}'.");
         }
 
-        if (mode == ActionExecutionMode.OutOfProcess)
-        {
-            return await _outOfProcessBackend
-                .ExecuteAsync(request, runtimeInput, cancellationToken)
-                .ConfigureAwait(false);
-        }
+        var invocation = new ActionBackendInvocation(
+            request,
+            runtimeInput,
+            registration,
+            stateContext);
 
-        return Failure(
-            "UnsupportedExecutionMode",
-            $"Action execution mode '{mode}' is not supported until Phase 4 backends are available.");
+        return await backend.ExecuteAsync(invocation, cancellationToken).ConfigureAwait(false);
     }
 
     private static ActionExecutionResult Failure(string errorCode, string message) =>

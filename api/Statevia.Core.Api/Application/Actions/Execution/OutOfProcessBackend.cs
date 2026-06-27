@@ -3,7 +3,8 @@ using Statevia.Actions.Abstractions.Execution;
 namespace Statevia.Core.Api.Application.Actions.Execution;
 
 /// <summary>Action Host 経由の OutOfProcess 実行 Backend。</summary>
-internal sealed class OutOfProcessBackend
+/// <remarks>Engine 内部状態（<c>StateContext</c>）は渡さず、リクエストと入力のみを Host へ委譲する。</remarks>
+internal sealed class OutOfProcessBackend : IActionExecutionBackend
 {
     private readonly IActionHostExecutionClient _client;
 
@@ -12,19 +13,22 @@ internal sealed class OutOfProcessBackend
     public OutOfProcessBackend(IActionHostExecutionClient client) =>
         _client = client;
 
-    /// <summary>Action Host に実行を委譲する。</summary>
-    /// <param name="request">Platform 実行リクエスト。</param>
-    /// <param name="runtimeInput">Engine が解決した入力。</param>
-    /// <param name="cancellationToken">キャンセル。</param>
-    /// <returns>実行結果。</returns>
+    /// <inheritdoc />
+    public ActionExecutionMode Mode => ActionExecutionMode.OutOfProcess;
+
+    /// <inheritdoc />
+    public string ProviderKey => "action-host";
+
+    /// <inheritdoc />
     public Task<ActionExecutionResult> ExecuteAsync(
-        ActionExecutionRequest request,
-        object? runtimeInput,
+        ActionBackendInvocation invocation,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(invocation);
 
-        var hostRequest = ActionExecutionRuntimeInputMapper.WithRuntimeInput(request, runtimeInput);
+        var hostRequest = ActionExecutionRuntimeInputMapper.WithRuntimeInput(
+            invocation.Request,
+            invocation.RuntimeInput);
         return _client.ExecuteAsync(hostRequest, cancellationToken);
     }
 }
