@@ -233,4 +233,48 @@ public sealed class DispatchingActionExecutorTests
         Assert.False(result.Success);
         Assert.Equal("UnsupportedExecutionMode", result.ErrorCode);
     }
+
+    /// <summary>Container Backend 登録済み・サンドボックス未構成なら SandboxRuntimeNotConfigured を返す。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenContainerBackendButSandboxUnconfigured_ReturnsSandboxRuntimeNotConfigured()
+    {
+        // Arrange
+        var catalog = ActionExecutionTestSupport.CreateCatalogWithBuiltins();
+        var services = new ServiceCollection();
+        services.AddSingleton(catalog);
+        services.AddSingleton<IActionVisibilityResolver, DefaultActionVisibilityResolver>();
+        services.AddSingleton<IActionExecutionPolicy>(new FixedModePolicy(ActionExecutionMode.Container));
+        services.AddSingleton(Options.Create(new ExecutionPolicyOptions()));
+        services.AddSingleton<IActionHostExecutionClient, ActionExecutionTestSupport.UnconfiguredActionHostExecutionClient>();
+        services.AddSingleton<IActionExecutionBackend, InProcessBackend>();
+        services.AddSingleton<IActionExecutionBackend, OutOfProcessBackend>();
+        services.AddSingleton<IActionExecutionBackend, ContainerActionBackend>();
+        services.AddSingleton<IActionExecutionBackend, WasmActionBackend>();
+        services.AddSingleton<IActionExecutionBackendSelector, ActionExecutionBackendSelector>();
+        services.AddSingleton<IHostEnvironment, ActionExecutionTestSupport.TestHostEnvironment>();
+        services.AddSingleton<IActionExecutor, DispatchingActionExecutor>();
+        await using var provider = services.BuildServiceProvider();
+        var sut = provider.GetRequiredService<IActionExecutor>();
+        var ctx = new StateContext
+        {
+            Events = null!,
+            Store = null!,
+            ExecutionId = "exec-1",
+            StateName = "A",
+        };
+        var request = new ActionExecutionRequest
+        {
+            ExecutionId = "exec-1",
+            StateName = "A",
+            ActionId = "statevia.action.builtin.noop",
+            TenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
+        };
+
+        // Act
+        var result = await sut.ExecuteAsync(request, ctx, runtimeInput: null, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Equal("SandboxRuntimeNotConfigured", result.ErrorCode);
+    }
 }

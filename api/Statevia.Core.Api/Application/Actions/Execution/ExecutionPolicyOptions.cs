@@ -17,4 +17,9 @@ internal sealed class ExecutionPolicyOptions
     /// 同一 Mode に複数 Backend が登録されている場合の明示選択に用いる。単一登録時は不要。
     /// </summary>
     public Dictionary<string, string> Backends { get; set; } = [];
+
+    /// <summary>
+    /// サンドボックス実行（Container / WASM）の設定。セクション <c>Statevia:ExecutionPolicy:Sandbox</c>。
+    /// </summary>
+    public SandboxOptions Sandbox { get; set; } = new();
 }
