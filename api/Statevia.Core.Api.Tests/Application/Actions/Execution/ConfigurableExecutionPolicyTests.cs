@@ -8,11 +8,15 @@ namespace Statevia.Core.Api.Tests.Application.Actions.Execution;
 /// <summary><see cref="ConfigurableExecutionPolicy"/> の単体テスト。</summary>
 public sealed class ConfigurableExecutionPolicyTests
 {
-    private static ConfigurableExecutionPolicy CreateSut(string? deploymentProfile = null) =>
-        new(Options.Create(new ExecutionPolicyOptions
-        {
-            DeploymentProfile = deploymentProfile,
-        }));
+    private static ConfigurableExecutionPolicy CreateSut(
+        string? deploymentProfile = null,
+        IEnumerable<IExecutionPolicyProvider>? policyProviders = null) =>
+        new(
+            Options.Create(new ExecutionPolicyOptions
+            {
+                DeploymentProfile = deploymentProfile,
+            }),
+            policyProviders ?? []);
 
     /// <summary>TrustLevel × Environment マトリクスを検証する。</summary>
     [Theory]
@@ -152,6 +156,134 @@ public sealed class ConfigurableExecutionPolicyTests
         Assert.Equal(ActionExecutionMode.OutOfProcess, mode);
     }
 
+    /// <summary>階層ポリシーは base 下限より厳しい場合に Mode を引き上げる。</summary>
+    [Fact]
+    public void Resolve_WhenScopedPolicyIsStricter_RaisesMode()
+    {
+        // Arrange
+        var sut = CreateSut(policyProviders:
+            [new StubPolicyProvider(ActionExecutionMode.Container)]);
+        var descriptor = CreateDescriptor(ActionTrustLevel.Trusted);
+        var context = new ActionExecutionContext("tenant", "Development", null);
+
+        // Act
+        var mode = sut.Resolve(context, descriptor);
+
+        // Assert
+        Assert.Equal(ActionExecutionMode.Container, mode);
+    }
+
+    /// <summary>階層ポリシーは base 下限を緩和できない（より緩い指定は無視）。</summary>
+    [Fact]
+    public void Resolve_WhenScopedPolicyIsLooser_DoesNotRelax()
+    {
+        // Arrange
+        var sut = CreateSut(policyProviders:
+            [new StubPolicyProvider(ActionExecutionMode.InProcess)]);
+        var descriptor = CreateDescriptor(ActionTrustLevel.Community);
+        var context = new ActionExecutionContext("tenant", "Production", null);
+
+        // Act
+        var mode = sut.Resolve(context, descriptor);
+
+        // Assert
+        Assert.Equal(ActionExecutionMode.OutOfProcess, mode);
+    }
+
+    /// <summary>AllowedModes は階層ポリシーで引き上がった実効下限を下回れない。</summary>
+    [Fact]
+    public void Resolve_WhenAllowedModesConflictWithScopedFloor_PrefersScopedFloor()
+    {
+        // Arrange
+        var sut = CreateSut(policyProviders:
+            [new StubPolicyProvider(ActionExecutionMode.OutOfProcess)]);
+        var descriptor = CreateDescriptor(ActionTrustLevel.Trusted) with
+        {
+            ExecutionHints = new ActionExecutionHints
+            {
+                AllowedModes = new HashSet<ActionExecutionMode> { ActionExecutionMode.InProcess },
+            },
+        };
+        var context = new ActionExecutionContext("tenant", "Development", null);
+
+        // Act
+        var mode = sut.Resolve(context, descriptor);
+
+        // Assert
+        Assert.Equal(ActionExecutionMode.OutOfProcess, mode);
+    }
+
+    /// <summary>AllowedModes が現在 Mode を含む場合はそのまま採用する。</summary>
+    [Fact]
+    public void Resolve_WhenAllowedModesContainsMode_ReturnsMode()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var descriptor = CreateDescriptor(ActionTrustLevel.Trusted) with
+        {
+            ExecutionHints = new ActionExecutionHints
+            {
+                AllowedModes = new HashSet<ActionExecutionMode> { ActionExecutionMode.InProcess },
+            },
+        };
+        var context = new ActionExecutionContext("tenant", "Development", null);
+
+        // Act
+        var mode = sut.Resolve(context, descriptor);
+
+        // Assert
+        Assert.Equal(ActionExecutionMode.InProcess, mode);
+    }
+
+    /// <summary>下限以上で許可された Mode があれば、その中で下限以上の最も緩い Mode を採用する。</summary>
+    [Fact]
+    public void Resolve_WhenAllowedModesHasEligibleStricterMode_SelectsIt()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var descriptor = CreateDescriptor(ActionTrustLevel.Community) with
+        {
+            ExecutionHints = new ActionExecutionHints
+            {
+                AllowedModes = new HashSet<ActionExecutionMode> { ActionExecutionMode.Container },
+            },
+        };
+        var context = new ActionExecutionContext("tenant", "Production", null);
+
+        // Act
+        var mode = sut.Resolve(context, descriptor);
+
+        // Assert
+        Assert.Equal(ActionExecutionMode.Container, mode);
+    }
+
+    /// <summary>許可 Mode がすべて現在 Mode 未満（ただし下限以上）なら、許可内で最も厳しい Mode へ丸める。</summary>
+    [Fact]
+    public void Resolve_WhenAllowedModesBelowCurrentButAboveFloor_SelectsStrictestAllowed()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var descriptor = CreateDescriptor(ActionTrustLevel.Community) with
+        {
+            ExecutionHints = new ActionExecutionHints
+            {
+                PreferredMode = ActionExecutionMode.Wasm,
+                AllowedModes = new HashSet<ActionExecutionMode>
+                {
+                    ActionExecutionMode.OutOfProcess,
+                    ActionExecutionMode.Container,
+                },
+            },
+        };
+        var context = new ActionExecutionContext("tenant", "Production", null);
+
+        // Act
+        var mode = sut.Resolve(context, descriptor);
+
+        // Assert
+        Assert.Equal(ActionExecutionMode.Container, mode);
+    }
+
     private static ActionDescriptor CreateDescriptor(ActionTrustLevel trustLevel) =>
         new()
         {
@@ -163,4 +295,11 @@ public sealed class ConfigurableExecutionPolicyTests
             Visibility = ActionVisibility.Tenant,
             OwnerTenantId = "00000000-0000-4000-8000-000000000001",
         };
+
+    /// <summary>常に固定の Tenant スコープ下限を返す provider スタブ。</summary>
+    private sealed class StubPolicyProvider(ActionExecutionMode minimumMode) : IExecutionPolicyProvider
+    {
+        public IReadOnlyList<ScopedExecutionPolicy> GetPolicies(ActionExecutionContext context) =>
+            [new ScopedExecutionPolicy(ExecutionPolicyScope.Tenant, new ExecutionPolicy(minimumMode))];
+    }
 }

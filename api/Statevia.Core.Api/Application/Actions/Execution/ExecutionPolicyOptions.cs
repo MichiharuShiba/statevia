@@ -22,4 +22,10 @@ internal sealed class ExecutionPolicyOptions
     /// サンドボックス実行（Container / WASM）の設定。セクション <c>Statevia:ExecutionPolicy:Sandbox</c>。
     /// </summary>
     public SandboxOptions Sandbox { get; set; } = new();
+
+    /// <summary>
+    /// Tenant スコープの実行ポリシー（キー = <c>tenants.tenant_id</c> UUID 文字列）。
+    /// セクション <c>Statevia:ExecutionPolicy:Tenants</c>。MVP は appsettings 保存で、緩和不可に base へ重ねる。
+    /// </summary>
+    public Dictionary<string, ScopedExecutionPolicyOptions> Tenants { get; set; } = [];
 }

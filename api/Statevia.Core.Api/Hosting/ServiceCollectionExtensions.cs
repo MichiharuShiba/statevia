@@ -138,6 +138,7 @@ internal static class ServiceCollectionExtensions
             .Bind(configuration.GetSection(ExecutionPolicyOptions.SectionName));
         services.AddOptions<ActionHostClientOptions>()
             .Bind(configuration.GetSection(ActionHostClientOptions.SectionName));
+        services.AddSingleton<IExecutionPolicyProvider, TenantExecutionPolicyProvider>();
         services.AddSingleton<IActionExecutionPolicy, ConfigurableExecutionPolicy>();
         services.AddSingleton<GrpcActionHostExecutionClient>();
         services.AddSingleton<IActionHostExecutionClient>(sp => sp.GetRequiredService<GrpcActionHostExecutionClient>());
