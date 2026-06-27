@@ -122,7 +122,8 @@ Comment rules, Markdownlint (e.g. `.spec-workflow/`), build or analyzer warnings
 - **責務分離:** Catalog（解決・メタデータ保持）/ VisibilityResolver（テナント境界）/ Policy（`ConfigurableExecutionPolicy` — TrustLevel × Environment × Hints、緩和不可）/ Executor（`DispatchingActionExecutor` → `InProcessBackend` / `OutOfProcessBackend`）。
 - **Engine 境界:** `ExecutionEngine` は `IStateExecutor` のみ呼び出す。Catalog / Policy / ModuleHost は Engine 非依存。
 - **Module:** `ModuleHost` が filesystem Module を ALC load し `ActionDescriptor`（`Visibility=Tenant`, `OwnerTenantId`）+ `ModuleDescriptor` を Catalog / load catalog へ登録。`TrustLevel` は `ModuleSignatureVerifier` の署名検証結果で決定（署名なし=`Community` / 有効+信頼=`Verified` / 有効+未信頼=`Signed` / 検証失敗=`Untrusted`。`Statevia:Modules:Signing`）。
-- **OutOfProcess:** Production 等で Policy が `OutOfProcess` を返す Community / Verified Module は Action Host（`Statevia:ActionHost:BaseUrl`）へ gRPC dispatch。未設定時は `ActionHostNotConfigured`。`Container` / `Wasm` / `Remote` は Phase 4 まで `UnsupportedExecutionMode`。
+- **OutOfProcess:** Production 等で Policy が `OutOfProcess` を返す Community / Verified Module は Action Host（`Statevia:ActionHost:BaseUrl`）へ gRPC dispatch。未設定時は `ActionHostNotConfigured`。
+- **Container / Wasm（Phase 4 スタブ）:** Policy が `Container`（例: Untrusted × `saas-shared`）/ `Wasm` を返す経路は `ContainerActionBackend` / `WasmActionBackend` が受ける。実体の隔離は `IActionSandboxRuntime` 実装に委譲し、`Statevia:ExecutionPolicy:Sandbox`（`ContainerProvider` / `WasmProvider` ＋ CPU/メモリ/タイムアウト上限）で選択する。ランタイム未構成・未登録時は安全側に `SandboxRuntimeNotConfigured` で Failed。Engine 内部状態（`StateContext.Events` / `Store`）は委譲しない。`Remote` は Backend 未登録のため引き続き `UnsupportedExecutionMode`。
 
 ### Core-API: HTTP リクエストログ（STV-403）
 
