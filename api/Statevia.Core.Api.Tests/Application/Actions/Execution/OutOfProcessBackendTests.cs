@@ -6,6 +6,18 @@ namespace Statevia.Core.Api.Tests.Application.Actions.Execution;
 /// <summary><see cref="OutOfProcessBackend"/> の単体テスト。</summary>
 public sealed class OutOfProcessBackendTests
 {
+    /// <summary>Mode と ProviderKey は OutOfProcess 契約を公開する。</summary>
+    [Fact]
+    public void Metadata_ExposesOutOfProcessContract()
+    {
+        // Arrange
+        var sut = new OutOfProcessBackend(new RecordingActionHostExecutionClient());
+
+        // Act / Assert
+        Assert.Equal(ActionExecutionMode.OutOfProcess, sut.Mode);
+        Assert.Equal("action-host", sut.ProviderKey);
+    }
+
     /// <summary>Action Host クライアントへ委譲する。</summary>
     [Fact]
     public async Task ExecuteAsync_DelegatesToClient()

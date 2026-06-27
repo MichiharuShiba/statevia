@@ -54,6 +54,19 @@ public sealed class InProcessBackendTests
         StateName = "A",
     };
 
+    /// <summary>Mode と ProviderKey は InProcess 契約を公開する。</summary>
+    [Fact]
+    public void Metadata_ExposesInProcessContract()
+    {
+        // Arrange
+        using var provider = new ServiceCollection().BuildServiceProvider();
+        var sut = new InProcessBackend(provider);
+
+        // Act / Assert
+        Assert.Equal(ActionExecutionMode.InProcess, sut.Mode);
+        Assert.Equal("in-process", sut.ProviderKey);
+    }
+
     /// <summary>InProcessFactory 経由で状態実行器を呼び出し、結果を RuntimeOutput に詰める。</summary>
     [Fact]
     public async Task ExecuteAsync_WithFactory_ReturnsExecutorOutput()
@@ -103,6 +116,28 @@ public sealed class InProcessBackendTests
             TenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
         };
         var invocation = new ActionBackendInvocation(request, RuntimeInput: null);
+
+        // Act / Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.ExecuteAsync(invocation, CancellationToken.None));
+    }
+
+    /// <summary>状態コンテキストが無い呼び出しは InvalidOperationException。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WithoutStateContext_Throws()
+    {
+        // Arrange
+        using var provider = new ServiceCollection().BuildServiceProvider();
+        var sut = new InProcessBackend(provider);
+        var registration = CreateRegistration();
+        var request = new ActionExecutionRequest
+        {
+            ExecutionId = "exec-1",
+            StateName = "A",
+            ActionId = registration.Descriptor.ActionId,
+            TenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
+        };
+        var invocation = new ActionBackendInvocation(request, RuntimeInput: null, registration);
 
         // Act / Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
