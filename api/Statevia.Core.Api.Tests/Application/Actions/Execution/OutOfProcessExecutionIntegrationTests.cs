@@ -82,8 +82,9 @@ public sealed class OutOfProcessExecutionIntegrationTests : IAsyncLifetime
         services.AddSingleton(Options.Create(new ExecutionPolicyOptions()));
         services.AddSingleton<IActionHostExecutionClient>(
             new GrpcTestActionHostExecutionClient(grpcClient));
-        services.AddSingleton<InProcessBackend>();
-        services.AddSingleton<OutOfProcessBackend>();
+        services.AddSingleton<IActionExecutionBackend, InProcessBackend>();
+        services.AddSingleton<IActionExecutionBackend, OutOfProcessBackend>();
+        services.AddSingleton<IActionExecutionBackendSelector, ActionExecutionBackendSelector>();
         services.AddSingleton<IHostEnvironment>(new ActionExecutionTestSupport.TestHostEnvironment
         {
             EnvironmentName = Environments.Production,

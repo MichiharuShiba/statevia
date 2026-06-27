@@ -141,8 +141,9 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<IActionExecutionPolicy, ConfigurableExecutionPolicy>();
         services.AddSingleton<GrpcActionHostExecutionClient>();
         services.AddSingleton<IActionHostExecutionClient>(sp => sp.GetRequiredService<GrpcActionHostExecutionClient>());
-        services.AddSingleton<InProcessBackend>();
-        services.AddSingleton<OutOfProcessBackend>();
+        services.AddSingleton<IActionExecutionBackend, InProcessBackend>();
+        services.AddSingleton<IActionExecutionBackend, OutOfProcessBackend>();
+        services.AddSingleton<IActionExecutionBackendSelector, ActionExecutionBackendSelector>();
         services.AddSingleton<IActionExecutor, DispatchingActionExecutor>();
         services.AddSingleton<StateWorkflowDefinitionLoader>();
         services.AddSingleton<NodesWorkflowDefinitionLoader>();

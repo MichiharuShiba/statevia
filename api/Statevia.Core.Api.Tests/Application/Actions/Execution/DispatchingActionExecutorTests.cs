@@ -21,6 +21,12 @@ public sealed class DispatchingActionExecutorTests
             Task.FromResult(input);
     }
 
+    /// <summary>常に指定 Mode を返す Policy スタブ。</summary>
+    private sealed class FixedModePolicy(ActionExecutionMode mode) : IActionExecutionPolicy
+    {
+        public ActionExecutionMode Resolve(ActionExecutionContext context, ActionDescriptor descriptor) => mode;
+    }
+
     /// <summary>Builtin action を DispatchingActionExecutor 経由で実行できる。</summary>
     [Fact]
     public async Task ExecuteAsync_BuiltinNoOp_Succeeds()
@@ -151,8 +157,9 @@ public sealed class DispatchingActionExecutorTests
         services.AddSingleton<IActionExecutionPolicy, ConfigurableExecutionPolicy>();
         services.AddSingleton(Options.Create(new ExecutionPolicyOptions()));
         services.AddSingleton<IActionHostExecutionClient, ActionExecutionTestSupport.SuccessfulActionHostExecutionClient>();
-        services.AddSingleton<InProcessBackend>();
-        services.AddSingleton<OutOfProcessBackend>();
+        services.AddSingleton<IActionExecutionBackend, InProcessBackend>();
+        services.AddSingleton<IActionExecutionBackend, OutOfProcessBackend>();
+        services.AddSingleton<IActionExecutionBackendSelector, ActionExecutionBackendSelector>();
         services.AddSingleton<IHostEnvironment>(new ActionExecutionTestSupport.TestHostEnvironment
         {
             EnvironmentName = Environments.Production,
@@ -182,5 +189,48 @@ public sealed class DispatchingActionExecutorTests
         // Assert
         Assert.True(result.Success);
         Assert.NotNull(result.Output);
+    }
+
+    /// <summary>Backend 未登録の Mode を Policy が返した場合は UnsupportedExecutionMode を返す。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenNoBackendForResolvedMode_ReturnsUnsupported()
+    {
+        // Arrange
+        var catalog = ActionExecutionTestSupport.CreateCatalogWithBuiltins();
+        var services = new ServiceCollection();
+        services.AddSingleton(catalog);
+        services.AddSingleton(catalog);
+        services.AddSingleton<IActionVisibilityResolver, DefaultActionVisibilityResolver>();
+        services.AddSingleton<IActionExecutionPolicy>(new FixedModePolicy(ActionExecutionMode.Container));
+        services.AddSingleton(Options.Create(new ExecutionPolicyOptions()));
+        services.AddSingleton<IActionHostExecutionClient, ActionExecutionTestSupport.UnconfiguredActionHostExecutionClient>();
+        services.AddSingleton<IActionExecutionBackend, InProcessBackend>();
+        services.AddSingleton<IActionExecutionBackend, OutOfProcessBackend>();
+        services.AddSingleton<IActionExecutionBackendSelector, ActionExecutionBackendSelector>();
+        services.AddSingleton<IHostEnvironment, ActionExecutionTestSupport.TestHostEnvironment>();
+        services.AddSingleton<IActionExecutor, DispatchingActionExecutor>();
+        await using var provider = services.BuildServiceProvider();
+        var sut = provider.GetRequiredService<IActionExecutor>();
+        var ctx = new StateContext
+        {
+            Events = null!,
+            Store = null!,
+            ExecutionId = "exec-1",
+            StateName = "A",
+        };
+        var request = new ActionExecutionRequest
+        {
+            ExecutionId = "exec-1",
+            StateName = "A",
+            ActionId = "statevia.action.builtin.noop",
+            TenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
+        };
+
+        // Act
+        var result = await sut.ExecuteAsync(request, ctx, runtimeInput: null, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Equal("UnsupportedExecutionMode", result.ErrorCode);
     }
 }
