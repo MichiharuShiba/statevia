@@ -126,10 +126,16 @@ internal static class ServiceCollectionExtensions
         services.AddOptions<ModuleSigningOptions>()
             .Bind(configuration.GetSection(ModuleSigningOptions.SectionName));
         services.AddSingleton<IResolvedModulePathProvider, ResolvedModulePathProvider>();
+        // 各 Source を IModuleSource として登録し、CompositeModuleSource が Priority 昇順で集約する。
+        // Composite は concrete 登録（IModuleSource では登録しない）とし、自身が IEnumerable<IModuleSource>
+        // へ含まれることによる自己参照・解決時の無限再帰を避ける。
         services.AddSingleton<IModuleSource, FilesystemModuleSource>();
+        services.AddSingleton<CompositeModuleSource>();
         services.AddSingleton<ModuleLoadCatalog>();
         services.AddSingleton<IModuleSignatureVerifier, ModuleSignatureVerifier>();
-        services.AddSingleton<ModuleHost>();
+        // ModuleHost は単一 Source として CompositeModuleSource を consume する。
+        services.AddSingleton<ModuleHost>(sp =>
+            ActivatorUtilities.CreateInstance<ModuleHost>(sp, sp.GetRequiredService<CompositeModuleSource>()));
         services.AddSingleton<IModuleManagementService, ModuleManagementService>();
         services.AddSingleton<ModuleLoadHostedServiceDependencies>();
         services.AddHostedService<ModuleLoadHostedService>();
