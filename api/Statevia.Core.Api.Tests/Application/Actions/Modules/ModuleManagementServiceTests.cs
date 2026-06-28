@@ -107,6 +107,9 @@ public sealed class ModuleManagementServiceTests
     private sealed class EmptyModuleSource : IModuleSource
     {
         /// <inheritdoc />
+        public int Priority => 0;
+
+        /// <inheritdoc />
         public Task<IReadOnlyList<DiscoveredModule>> DiscoverAsync(CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<DiscoveredModule>>(Array.Empty<DiscoveredModule>());
     }

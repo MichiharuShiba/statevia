@@ -69,6 +69,20 @@ public sealed class FilesystemModuleSourceTests
         Assert.Empty(reason);
     }
 
+    /// <summary>既定 Priority は中位値で、後方互換の基準点として固定されている。</summary>
+    [Fact]
+    public void Priority_ReturnsMidLevelDefault()
+    {
+        // Arrange
+        var source = CreateSource(CreateTempDirectory());
+
+        // Act
+        var priority = source.Priority;
+
+        // Assert
+        Assert.Equal(100, priority);
+    }
+
     /// <summary>複数 DLL がある場合は skip 理由を返す。</summary>
     [Fact]
     public void TryResolveEntryAssemblyPath_WhenMultipleDlls_Fails()
