@@ -130,6 +130,15 @@ internal static class ServiceCollectionExtensions
         // Composite は concrete 登録（IModuleSource では登録しない）とし、自身が IEnumerable<IModuleSource>
         // へ含まれることによる自己参照・解決時の無限再帰を避ける。
         services.AddSingleton<IModuleSource, FilesystemModuleSource>();
+        // OCI Source は明示有効化時のみ登録する（未設定なら filesystem のみ＝後方互換）。
+        services.AddOptions<OciModuleSourceOptions>()
+            .Bind(configuration.GetSection(OciModuleSourceOptions.SectionName));
+        if (configuration.GetValue<bool>($"{OciModuleSourceOptions.SectionName}:Enabled"))
+        {
+            services.AddHttpClient(OrasOciArtifactFetcher.HttpClientName);
+            services.AddSingleton<IOciArtifactFetcher, OrasOciArtifactFetcher>();
+            services.AddSingleton<IModuleSource, OciModuleSource>();
+        }
         services.AddSingleton<CompositeModuleSource>();
         services.AddSingleton<ModuleLoadCatalog>();
         services.AddSingleton<IModuleSignatureVerifier, ModuleSignatureVerifier>();
