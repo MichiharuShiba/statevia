@@ -98,7 +98,27 @@ Engine は `IStateExecutor` のみを知る。Action の解決・テナント可
 | `IActionCatalog` | actionId → `ActionDescriptor` + in-process factory。`ActionPublication` は sibling 参照 | No |
 | `IActionVisibilityResolver` | TenantId + Descriptor → 利用可否 | No |
 | `IActionExecutionPolicy` | Context + Descriptor → `ActionExecutionMode`（TrustLevel 下限、緩和不可） | No |
-| `IActionExecutor` | Catalog → Visibility → Policy → Backend ディスパッチ | No（`StateActionExecutorAdapter` 経由で間接委譲） |
-| `ModuleHost` | filesystem Module の ALC load と Catalog 登録 | No |
+| `IExecutionPolicyProvider` | scope（Org/Project/Env/Tenant）別 `ExecutionPolicy` を返し、base へ最厳優先で合成（緩和不可） | No |
+| `IActionExecutionBackendSelector` | `ActionExecutionMode` ＋設定（`ProviderKey`）→ 具体 `IActionExecutionBackend` 選択 | No |
+| `IActionExecutionBackend` | Mode を満たす実行実装（in-process / action-host / container / wasm）。1 Mode に複数実装可 | No |
+| `IActionExecutor` | Catalog → Visibility → Policy → Selector → Backend ディスパッチ | No（`StateActionExecutorAdapter` 経由で間接委譲） |
+| `IModuleSource` / `CompositeModuleSource` | Module 取得元。`Priority` 昇順で集約し重複は高優先勝ち（DI 順非依存） | No |
+| `ModuleHost` | `CompositeModuleSource` が供給する Module の ALC load と Catalog 登録 | No |
 
-共有契約は `shared/Statevia.Actions.Abstractions`。詳細は `.spec-workflow/specs/action-execution-abstraction/design.md`。
+共有契約は `shared/Statevia.Actions.Abstractions`（実行系）/ `shared/Statevia.Modules`（Module 系）。詳細は `.spec-workflow/specs/action-execution-abstraction/design.md`、横断拡張は `.spec-workflow/specs/action-platform-extensibility-phase4/design.md`。
+
+### 5.1 ExecutionMode（隔離契約）と Backend（実装）の分離
+
+`ActionExecutionMode` は **隔離レベルの契約**（in-process / action-host / container / wasm / remote）であり、Backend は**その契約を満たす具体実装**である。1 Mode に複数 Backend を登録でき、`IActionExecutionBackendSelector` が `Backends:{Mode}` の `ProviderKey` で選択する（単一登録は自動選択、複数登録で未指定は fail-safe エラー、Backend 不在 Mode は `UnsupportedExecutionMode`）。Policy は Mode のみ決定し、実装選択には関与しない。
+
+### 5.2 階層 Execution Policy（緩和不可合成）
+
+`IExecutionPolicyProvider` が scope 別の `ExecutionPolicy`（`MinimumMode`）を返し、base（`ConfigurableExecutionPolicy` の TrustLevel×Env 結果）へ `Strictness.Max` で重ねる。**どの階層も base 下限を緩和できない**。現状実装は Tenant scope（appsettings `Statevia:ExecutionPolicy:Tenants`）のみで、Org/Project scope は将来拡張。
+
+### 5.3 Module 供給パイプライン（Source → Materialize → Host → Catalog）
+
+ModuleHost が consume するのは複数 Source を集約した `CompositeModuleSource`。各 Source は取得した Module を `MaterializedModule`（`shared/Statevia.Modules`・ローカル完全表現＝正本）へ materialize し、`DiscoveredModule`（DTO）へ射影して ModuleHost へ渡す。リモート取得は `MaterializingModuleSourceBase` 派生が acquire→cache→verify→extract→materialize を担い、最初の実装が **`OciModuleSource`**（`IOciArtifactFetcher` / OrasProject.Oras、`Statevia:Modules:Oci`）。集約は明示 `Priority` 昇順（filesystem=100 / OCI 既定=200）、同名 Module は高優先勝ち＋warning、同 Priority は `SourceLabel` で tie-break。
+
+### 5.4 version coexist（責務分離・設計のみ）
+
+同一 Module の複数版共存は、Catalog が `(moduleId, major)` を保持し、将来の `VersionResolver` が imports から minor/patch を解決する責務分離で設計確定済み（**実装は未着手**）。現状 Catalog は actionId 完全一致キーのため、同一 moduleId の複数 major は未対応。詳細は `.spec-workflow/specs/action-platform-extensibility-phase4/design.md` コンポーネント F。
