@@ -67,13 +67,7 @@ internal sealed class OrasOciArtifactFetcher(
 
     private Repository CreateRepository(OciModuleReference reference)
     {
-        var credential = new Credential
-        {
-            Username = reference.Username ?? string.Empty,
-            Password = reference.Password ?? string.Empty,
-            RefreshToken = reference.RefreshToken ?? string.Empty,
-        };
-        var credentialProvider = new SingleRegistryCredentialProvider(reference.Registry, credential);
+        var credentialProvider = CreateCredentialProvider(reference);
 
         return new Repository(new RepositoryOptions
         {
@@ -81,6 +75,33 @@ internal sealed class OrasOciArtifactFetcher(
             Client = new Client(httpClientFactory.CreateClient(HttpClientName), credentialProvider, new Cache(_tokenCache)),
             PlainHttp = reference.PlainHttp,
         });
+    }
+
+    /// <summary>
+    /// 参照の認証情報から credential provider を生成する。
+    /// </summary>
+    /// <remarks>
+    /// 認証情報が一切無い場合は匿名 provider を用いる。<see cref="SingleRegistryCredentialProvider"/> は空 credential を
+    /// 受け付けないため、公開レジストリ等の匿名 pull では使えない。匿名 provider は解決時に空 credential を返し、
+    /// ORAS の <see cref="Client"/> による匿名トークン取得経路を有効にする。
+    /// </remarks>
+    private static ICredentialProvider CreateCredentialProvider(OciModuleReference reference)
+    {
+        var hasCredential = !string.IsNullOrEmpty(reference.Username)
+            || !string.IsNullOrEmpty(reference.Password)
+            || !string.IsNullOrEmpty(reference.RefreshToken);
+        if (!hasCredential)
+        {
+            return AnonymousCredentialProvider.Instance;
+        }
+
+        var credential = new Credential
+        {
+            Username = reference.Username ?? string.Empty,
+            Password = reference.Password ?? string.Empty,
+            RefreshToken = reference.RefreshToken ?? string.Empty,
+        };
+        return new SingleRegistryCredentialProvider(reference.Registry, credential);
     }
 
     /// <summary>Module レイヤを選択する。専用 media type を優先し、無ければ単一レイヤを採用する。</summary>
@@ -104,6 +125,19 @@ internal sealed class OrasOciArtifactFetcher(
 
     /// <inheritdoc />
     public void Dispose() => _tokenCache.Dispose();
+
+    /// <summary>
+    /// 解決時に空 credential を返す匿名 credential provider。公開レジストリからの匿名 pull に用いる。
+    /// </summary>
+    private sealed class AnonymousCredentialProvider : ICredentialProvider
+    {
+        /// <summary>共有インスタンス（状態を持たない）。</summary>
+        public static readonly AnonymousCredentialProvider Instance = new();
+
+        /// <inheritdoc />
+        public Task<Credential> ResolveCredentialAsync(string hostname, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Credential());
+    }
 }
 
 internal static partial class OrasOciArtifactFetcherLog

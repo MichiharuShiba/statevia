@@ -32,6 +32,10 @@ internal sealed class OciModuleSourceOptions
 }
 
 /// <summary>取得する OCI artifact 1 件分の設定。</summary>
+/// <remarks>
+/// 認証情報（<see cref="Username"/> / <see cref="Password"/> / <see cref="RefreshToken"/>）を
+/// いずれも設定しない場合は匿名 pull となる（公開レジストリ向け）。
+/// </remarks>
 internal sealed class OciModuleArtifactOptions
 {
     /// <summary>registry ホスト（例: <c>ghcr.io</c> / <c>localhost:5000</c>）。</summary>
