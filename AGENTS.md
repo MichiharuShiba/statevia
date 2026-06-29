@@ -116,6 +116,10 @@ Comment rules, Markdownlint (e.g. `.spec-workflow/`), build or analyzer warnings
 | `Statevia:ExecutionPolicy:Tenants:{tenantId}:MinimumMode` | core-api (C#) | Tenant スコープの実行下限（`ActionExecutionMode` 名）。`IExecutionPolicyProvider` 経由で base（TrustLevel×Env）へ最厳優先で重なる。緩和不可（base より緩い指定は無視）。未設定時は階層下限なし。 |
 | `Statevia:Modules:Signing:TrustedSignerFingerprints` | core-api (C#) | Module 署名者の信頼フィンガープリント（公開鍵 SubjectPublicKeyInfo の SHA-256, 16 進）配列。署名有効かつ含まれる場合のみ `Verified`、含まれなければ `Signed`。未設定時は信頼署名者なし。 |
 | `Statevia:Modules:Signing:RequireSignature` | core-api (C#) | 未設定時は `false`（署名なし Module は `Community` 登録）。`true` で署名なし Module の登録を skip。 |
+| `Statevia:Modules:Oci:Enabled` | core-api (C#) | 未設定時は `false`（filesystem Source のみ＝後方互換）。`true` で OCI registry Source を有効化し、複数 Source を `CompositeModuleSource` が `Priority` 昇順で集約。 |
+| `Statevia:Modules:Oci:Priority` | core-api (C#) | OCI Source の集約優先度（小さいほど優先）。未設定時は `200`（filesystem=100 より低く、同名 Module はローカル配置を優先）。 |
+| `Statevia:Modules:Oci:CacheRoot` | core-api (C#) | OCI Module の materialize 先絶対パス。未設定時は `{ContentRoot}/oci-modules-cache`（filesystem modules ルートと分離し二重 discover を回避）。 |
+| `Statevia:Modules:Oci:Artifacts` | core-api (C#) | 取得対象 OCI artifact 配列（`Registry` / `Repository` / `Reference`(tag or digest) ＋任意 `Username`/`Password`/`RefreshToken`/`PlainHttp`）。認証情報は機密のためログ非出力。**認証情報（`Username`/`Password`/`RefreshToken`）を一切設定しない場合は匿名 pull**（公開レジストリ向け。ORAS の匿名トークン経路を使用）。レイヤ media type は `application/vnd.statevia.module.layer.v1+zip`（無ければ単一レイヤ）。 |
 
 ### Core-API: Action 実行プラットフォーム（Phase 2）
 
