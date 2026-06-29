@@ -5,6 +5,12 @@ namespace Statevia.Core.Api.Application.Actions.Modules;
 /// <summary>ローカル filesystem から Action Module を発見する（load は行わない）。</summary>
 internal sealed class FilesystemModuleSource : IModuleSource
 {
+    /// <summary>
+    /// Filesystem Source の既定優先度。リモート Source（OCI 等）より高くも低くもない
+    /// 中位値を採り、単独利用時の後方互換（従来挙動）を保つための基準点とする。
+    /// </summary>
+    internal const int DefaultPriority = 100;
+
     private readonly IResolvedModulePathProvider _pathProvider;
     private readonly ILogger<FilesystemModuleSource> _logger;
 
@@ -18,6 +24,9 @@ internal sealed class FilesystemModuleSource : IModuleSource
         _pathProvider = pathProvider;
         _logger = logger;
     }
+
+    /// <inheritdoc />
+    public int Priority => DefaultPriority;
 
     /// <inheritdoc />
     public Task<IReadOnlyList<DiscoveredModule>> DiscoverAsync(CancellationToken cancellationToken)

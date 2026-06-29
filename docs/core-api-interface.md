@@ -386,7 +386,7 @@ JWT クレーム: `tenant_id`（内部 UUID）、`tenant_key`、`principal_id` /
 | --- | --- | --- |
 | POST | `/internal/modules/reload` | `ModuleHost` へ discover / load を再実行（204） |
 
-Response（`GET /v1/admin/modules` の 1 件）: `moduleId`, `name`, `version`, `status`, `sha256`, `sourceLabel?`, `loadedAtUtc`, `message?`, `entryAssemblyPath`。
+Response（`GET /v1/admin/modules` の 1 件）: `moduleId`, `name`, `version`, `status`, `sha256`, `sourceLabel?`, `loadedAtUtc`, `message?`, `entryAssemblyPath`。`sourceLabel` は取得元 Source を示し、filesystem 由来は未設定、OCI 由来は `oci:{registry}/{repository}:{reference}`（`CompositeModuleSource` が複数 Source を集約）。
 
 ### 4.1.2 Runtime API の認証要件
 

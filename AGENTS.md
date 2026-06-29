@@ -116,6 +116,10 @@ Comment rules, Markdownlint (e.g. `.spec-workflow/`), build or analyzer warnings
 | `Statevia:ExecutionPolicy:Tenants:{tenantId}:MinimumMode` | core-api (C#) | Tenant スコープの実行下限（`ActionExecutionMode` 名）。`IExecutionPolicyProvider` 経由で base（TrustLevel×Env）へ最厳優先で重なる。緩和不可（base より緩い指定は無視）。未設定時は階層下限なし。 |
 | `Statevia:Modules:Signing:TrustedSignerFingerprints` | core-api (C#) | Module 署名者の信頼フィンガープリント（公開鍵 SubjectPublicKeyInfo の SHA-256, 16 進）配列。署名有効かつ含まれる場合のみ `Verified`、含まれなければ `Signed`。未設定時は信頼署名者なし。 |
 | `Statevia:Modules:Signing:RequireSignature` | core-api (C#) | 未設定時は `false`（署名なし Module は `Community` 登録）。`true` で署名なし Module の登録を skip。 |
+| `Statevia:Modules:Oci:Enabled` | core-api (C#) | 未設定時は `false`（filesystem Source のみ＝後方互換）。`true` で OCI registry Source を有効化し、複数 Source を `CompositeModuleSource` が `Priority` 昇順で集約。 |
+| `Statevia:Modules:Oci:Priority` | core-api (C#) | OCI Source の集約優先度（小さいほど優先）。未設定時は `200`（filesystem=100 より低く、同名 Module はローカル配置を優先）。 |
+| `Statevia:Modules:Oci:CacheRoot` | core-api (C#) | OCI Module の materialize 先絶対パス。未設定時は `{ContentRoot}/oci-modules-cache`（filesystem modules ルートと分離し二重 discover を回避）。 |
+| `Statevia:Modules:Oci:Artifacts` | core-api (C#) | 取得対象 OCI artifact 配列（`Registry` / `Repository` / `Reference`(tag or digest) ＋任意 `Username`/`Password`/`RefreshToken`/`PlainHttp`）。認証情報は機密のためログ非出力。**認証情報（`Username`/`Password`/`RefreshToken`）を一切設定しない場合は匿名 pull**（公開レジストリ向け。ORAS の匿名トークン経路を使用）。レイヤ media type は `application/vnd.statevia.module.layer.v1+zip`（無ければ単一レイヤ）。 |
 
 ### Core-API: Action 実行プラットフォーム（Phase 2）
 
@@ -124,6 +128,7 @@ Comment rules, Markdownlint (e.g. `.spec-workflow/`), build or analyzer warnings
 - **階層 Execution Policy:** `IExecutionPolicyProvider` が scope（Organization / Project / Environment / Tenant）別の `ExecutionPolicy`（`MinimumMode`）を返し、`ConfigurableExecutionPolicy` が base 下限へ `Strictness.Max` で重ねる。どの階層も base を緩和できない。本フェーズ実装は Tenant scope（`TenantExecutionPolicyProvider`、appsettings の `Statevia:ExecutionPolicy:Tenants`）のみ。
 - **Engine 境界:** `ExecutionEngine` は `IStateExecutor` のみ呼び出す。Catalog / Policy / ModuleHost は Engine 非依存。
 - **Module:** `ModuleHost` が filesystem Module を ALC load し `ActionDescriptor`（`Visibility=Tenant`, `OwnerTenantId`）+ `ModuleDescriptor` を Catalog / load catalog へ登録。`TrustLevel` は `ModuleSignatureVerifier` の署名検証結果で決定（署名なし=`Community` / 有効+信頼=`Verified` / 有効+未信頼=`Signed` / 検証失敗=`Untrusted`。`Statevia:Modules:Signing`）。
+- **Module Source 供給パイプライン:** ModuleHost が consume するのは複数 `IModuleSource` を集約した `CompositeModuleSource`（明示 `Priority` 昇順・DI 順非依存、同名 Module は高優先勝ち+warning、同 Priority は `SourceLabel` で tie-break）。リモート Source は `MaterializingModuleSourceBase` 派生が acquire→cache→verify→extract→materialize を担い、Module を `MaterializedModule`（`shared/Statevia.Modules`・ローカル正本）へ materialize して `DiscoveredModule` へ射影。最初のリモート実装が **`OciModuleSource`**（`IOciArtifactFetcher` / OrasProject.Oras。`Statevia:Modules:Oci`、既定 `Priority=200`）。version coexist（同一 moduleId の複数 major 共存）は責務分離を設計確定済みで実装は未着手（Catalog=major / 将来 `VersionResolver`=minor·patch）。
 - **OutOfProcess:** Production 等で Policy が `OutOfProcess` を返す Community / Verified Module は Action Host（`Statevia:ActionHost:BaseUrl`）へ gRPC dispatch。未設定時は `ActionHostNotConfigured`。
 - **Container / Wasm（Phase 4 スタブ）:** Policy が `Container`（例: Untrusted × `saas-shared`）/ `Wasm` を返す経路は `ContainerActionBackend` / `WasmActionBackend` が受ける。実体の隔離は `IActionSandboxRuntime` 実装に委譲し、`Statevia:ExecutionPolicy:Sandbox`（`ContainerProvider` / `WasmProvider` ＋ CPU/メモリ/タイムアウト上限）で選択する。ランタイム未構成・未登録時は安全側に `SandboxRuntimeNotConfigured` で Failed。Engine 内部状態（`StateContext.Events` / `Store`）は委譲しない。`Remote` は Backend 未登録のため引き続き `UnsupportedExecutionMode`。
 
