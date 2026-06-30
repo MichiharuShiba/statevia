@@ -2,6 +2,7 @@ import type { ActionCatalogUiText } from "../actionCatalogUiText";
 import type { UiText } from "../uiText";
 import type { JsonSchemaObject } from "./types";
 
+/** {@link resolveSchemaUiText} のフォールバック解決に用いるオプション。 */
 export type ResolveSchemaUiTextOptions = {
   /** Schema 任意のフォールバック表示名。 */
   fallbackLabel?: string;
