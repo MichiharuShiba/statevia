@@ -51,7 +51,7 @@ describe("ActionIdCombobox", () => {
   it("入力で候補をリアルタイム絞り込みする", () => {
     render(<StatefulActionIdCombobox />);
 
-    const input = screen.getByRole("combobox") as HTMLInputElement;
+    const input = screen.getByRole<HTMLInputElement>("combobox");
     const allOptions = getDatalistOptions(input);
     expect(allOptions.map((option) => option.value)).toEqual([
       "statevia.action.builtin.rest",
