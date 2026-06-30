@@ -121,4 +121,4 @@ ModuleHost が consume するのは複数 Source を集約した `CompositeModul
 
 ### 5.4 version coexist（責務分離・設計のみ）
 
-同一 Module の複数版共存は、Catalog が `(moduleId, major)` を保持し、将来の `VersionResolver` が imports から minor/patch を解決する責務分離で設計確定済み（**実装は未着手**）。現状 Catalog は actionId 完全一致キーのため、同一 moduleId の複数 major は未対応。詳細は `.spec-workflow/specs/action-platform-extensibility-phase4/design.md` コンポーネント F。
+同一 Module の複数版共存は、**Catalog が fullVersion（major.minor.patch）を保持・検索のみ**担当し、**Compiler 配下の `VersionResolver`** が imports の versionRange から具体版を解決、確定版を **`ResolvedModuleReference`** として不変 Definition に保存し、**Runtime は再解決・フォールバックを一切行わず exact lookup のみ**、という責務分離で設計確定済み（**実装は未着手**）。actionId は論理 ID（`{moduleId}.{actionName}`）を維持し版を含めない（案B）。現状 Catalog は actionId 完全一致キーのため、同一 moduleId の複数版は未対応。詳細は `.spec-workflow/specs/action-platform-extensibility-phase4/design.md` コンポーネント F。
