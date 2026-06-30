@@ -38,7 +38,7 @@ states:
 ```
 
 - **workflow.name**: ワークフロー名（任意、デフォルト "Unnamed"）。
-- **workflow.modules**: 任意。module alias（キー）→ ModuleId（値）のマップ。`action: mail.send` のように alias 付き action 参照を解決する。alias は **大文字小文字を区別せず一意**（重複・空キー・空 ModuleId は Loader 構文エラー）。現状 ModuleId に version 指定はできない（同一 moduleId の複数 major 共存は将来対応。版レンジ構文 `moduleId@^1.2` 等は設計のみで未実装。`.spec-workflow/specs/action-platform-extensibility-phase4/design.md` コンポーネント F）。
+- **workflow.modules**: 任意。module alias（キー）→ ModuleId（値）のマップ。`action: mail.send` のように alias 付き action 参照を解決する。alias は **大文字小文字を区別せず一意**（重複・空キー・空 ModuleId は Loader 構文エラー）。現状 ModuleId に version 指定はできない（同一 moduleId の複数版共存は将来対応）。将来は imports を `ModuleReference`（moduleId ＋ versionRange）へ構造化し、Compiler が compile 時に具体版へ解決して `ResolvedModuleReference` を不変 Definition に保存、実行時は再解決しない方針。版未指定は `@LATEST`（compile 時点の最新**安定**版を 1 回ピン・npm の `latest` 同様 pre-release 除外）、メジャーのみ指定（`@1` 等）はそのメジャー内の最新安定版へピン、版指定ありで一致版が見つからなければエラー。pre-release は全レンジで既定除外し exact 指定時のみ選択（版レンジ構文 `moduleId@^1.2` / `@1` / `@LATEST` 等は設計のみで未実装。`.spec-workflow/specs/action-platform-extensibility-phase4/design.md` コンポーネント F）。
 - **states**: 状態名 → 状態定義のマップ。各状態は `on`（遷移）、`wait`（待機）、`join`（合流）のいずれかまたは組み合わせを持つ。
 - **action**: 任意。定義登録時に Core-API が Catalog へ照合し、未登録の ID はエラーになる。**省略時**は implicit noop（canonical: `statevia.action.builtin.noop`、即時完了）と同等。Builtin 短名・module alias・FQCN のいずれでも記述できる（§1.1.1）。**`wait` または `join` を指定する状態では `action` と併記できない**。
 
