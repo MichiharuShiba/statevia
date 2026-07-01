@@ -105,7 +105,7 @@ Engine は `IStateExecutor` のみを知る。Action の解決・テナント可
 | `IModuleSource` / `CompositeModuleSource` | Module 取得元。`Priority` 昇順で集約し重複は高優先勝ち（DI 順非依存） | No |
 | `ModuleHost` | `CompositeModuleSource` が供給する Module の ALC load と Catalog 登録 | No |
 
-共有契約は `shared/Statevia.Actions.Abstractions`（実行系）/ `shared/Statevia.Modules`（Module 系）。詳細は `.spec-workflow/specs/action-execution-abstraction/design.md`、横断拡張は `.spec-workflow/specs/action-platform-extensibility-phase4/design.md`。
+共有契約は `shared/Statevia.Core.Actions.Abstractions`（実行系）/ `shared/Statevia.Modules`（Module 系）。詳細は `.spec-workflow/specs/action-execution-abstraction/design.md`、横断拡張は `.spec-workflow/specs/action-platform-extensibility-phase4/design.md`。
 
 ### 5.1 ExecutionMode（隔離契約）と Backend（実装）の分離
 

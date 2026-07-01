@@ -26,7 +26,7 @@ public sealed class ModuleAssemblyLoadContext : AssemblyLoadContext
     private static readonly HashSet<string> SharedAssemblyNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "Statevia.Modules",
-        "Statevia.Actions.Abstractions",
+        "Statevia.Core.Actions.Abstractions",
         "Statevia.Core.Engine",
         "Microsoft.Extensions.DependencyInjection.Abstractions",
     };

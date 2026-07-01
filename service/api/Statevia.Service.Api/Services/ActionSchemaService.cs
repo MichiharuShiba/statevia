@@ -1,9 +1,9 @@
-using Statevia.Actions.Abstractions.Catalog;
-using Statevia.Actions.Abstractions.Publication;
+using Statevia.Core.Actions.Abstractions.Catalog;
+using Statevia.Core.Actions.Abstractions.Publication;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Contracts.Actions;
-using PublicationActionDescriptor = Statevia.Actions.Abstractions.Publication.ActionDescriptor;
+using PublicationActionDescriptor = Statevia.Core.Actions.Abstractions.Publication.ActionDescriptor;
 
 namespace Statevia.Service.Api.Services;
 

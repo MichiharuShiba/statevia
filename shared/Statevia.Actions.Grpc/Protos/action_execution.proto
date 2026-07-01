@@ -5,7 +5,7 @@ option csharp_namespace = "Statevia.Actions.Grpc.Contracts";
 package statevia.actions.v1;
 
 // Core-API と Action Host 間の Action 実行 RPC（Phase 3）。
-// 対応 DTO: Statevia.Actions.Abstractions.Execution.ActionExecutionRequest / ActionExecutionResult
+// 対応 DTO: Statevia.Core.Actions.Abstractions.Execution.ActionExecutionRequest / ActionExecutionResult
 service ActionExecutionService {
   rpc ExecuteAction(ActionExecutionRpcRequest) returns (ActionExecutionRpcResponse);
 }

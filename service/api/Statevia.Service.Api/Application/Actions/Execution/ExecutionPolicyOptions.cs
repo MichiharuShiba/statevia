@@ -13,7 +13,7 @@ internal sealed class ExecutionPolicyOptions
     public string? DeploymentProfile { get; set; }
 
     /// <summary>
-    /// Mode 別の Backend 選択指定（キー = <see cref="Statevia.Actions.Abstractions.Execution.ActionExecutionMode"/> 名、値 = ProviderKey）。
+    /// Mode 別の Backend 選択指定（キー = <see cref="Statevia.Core.Actions.Abstractions.Execution.ActionExecutionMode"/> 名、値 = ProviderKey）。
     /// 同一 Mode に複数 Backend が登録されている場合の明示選択に用いる。単一登録時は不要。
     /// </summary>
     public Dictionary<string, string> Backends { get; set; } = [];

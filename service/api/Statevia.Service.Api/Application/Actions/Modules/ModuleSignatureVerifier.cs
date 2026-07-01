@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Statevia.Actions.Abstractions.Catalog;
+using Statevia.Core.Actions.Abstractions.Catalog;
 
 namespace Statevia.Service.Api.Application.Actions.Modules;
 

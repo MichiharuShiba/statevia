@@ -1,11 +1,11 @@
 using System.Text.Json;
-using Statevia.Actions.Abstractions.Catalog;
-using Statevia.Actions.Abstractions.Publication;
+using Statevia.Core.Actions.Abstractions.Catalog;
+using Statevia.Core.Actions.Abstractions.Publication;
 using Statevia.Service.Api.Application.Actions.Builtins;
 using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Core.Engine.Execution;
-using CatalogActionDescriptor = Statevia.Actions.Abstractions.Catalog.ActionDescriptor;
-using PublicationActionDescriptor = Statevia.Actions.Abstractions.Publication.ActionDescriptor;
+using CatalogActionDescriptor = Statevia.Core.Actions.Abstractions.Catalog.ActionDescriptor;
+using PublicationActionDescriptor = Statevia.Core.Actions.Abstractions.Publication.ActionDescriptor;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Catalog;
 

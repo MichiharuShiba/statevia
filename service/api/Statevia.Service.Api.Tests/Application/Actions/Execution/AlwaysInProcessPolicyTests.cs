@@ -1,5 +1,5 @@
-using Statevia.Actions.Abstractions.Catalog;
-using Statevia.Actions.Abstractions.Execution;
+using Statevia.Core.Actions.Abstractions.Catalog;
+using Statevia.Core.Actions.Abstractions.Execution;
 using Statevia.Service.Api.Application.Actions.Execution;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Execution;

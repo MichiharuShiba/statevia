@@ -120,7 +120,7 @@ modules/bad.module/alpha/alpha.dll   # 直下に entry DLL なし → skip
 ホストが共有するアセンブリ（同梱不要）:
 
 - `Statevia.Modules`
-- `Statevia.Actions.Abstractions`
+- `Statevia.Core.Actions.Abstractions`
 - `Statevia.Core.Engine`
 - `Microsoft.Extensions.DependencyInjection.Abstractions`
 

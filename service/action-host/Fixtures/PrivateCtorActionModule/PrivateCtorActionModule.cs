@@ -1,4 +1,4 @@
-using Statevia.Modules;
+using Statevia.Core.Actions.Abstractions.Modules;
 
 namespace Statevia.Service.ActionHost.Tests.Fixtures.PrivateCtorActionModule;
 

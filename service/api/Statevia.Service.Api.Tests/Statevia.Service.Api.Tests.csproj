@@ -38,6 +38,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Statevia.Core.Actions.Abstractions.Modules" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Statevia.Actions.Abstractions.Publication;
+using Statevia.Core.Actions.Abstractions.Publication;
 using Statevia.Service.Api.Application.Actions.Publication;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Publication;

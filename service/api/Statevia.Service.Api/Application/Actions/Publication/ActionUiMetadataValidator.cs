@@ -1,4 +1,4 @@
-using Statevia.Actions.Abstractions.Publication;
+using Statevia.Core.Actions.Abstractions.Publication;
 
 namespace Statevia.Service.Api.Application.Actions.Publication;
 

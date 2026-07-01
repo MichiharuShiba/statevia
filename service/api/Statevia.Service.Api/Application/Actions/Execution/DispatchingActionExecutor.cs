@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
-using Statevia.Actions.Abstractions.Catalog;
-using Statevia.Actions.Abstractions.Execution;
-using Statevia.Actions.Abstractions.Visibility;
+using Statevia.Core.Actions.Abstractions.Catalog;
+using Statevia.Core.Actions.Abstractions.Execution;
+using Statevia.Core.Actions.Abstractions.Visibility;
 using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Service.Api.Application.Actions.Execution;

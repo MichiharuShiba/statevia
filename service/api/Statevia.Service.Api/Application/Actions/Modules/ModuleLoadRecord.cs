@@ -1,11 +1,11 @@
-using Statevia.Actions.Abstractions.Catalog;
+using Statevia.Core.Actions.Abstractions.Catalog;
 
 namespace Statevia.Service.Api.Application.Actions.Modules;
 
 /// <summary>Module load の監査レコード。</summary>
 internal sealed record ModuleLoadRecord
 {
-    /// <summary>Module ID（<see cref="Statevia.Modules.IActionModule.ModuleId"/>）。</summary>
+    /// <summary>Module ID（<see cref="IActionModule.ModuleId"/>）。</summary>
     public required string ModuleId { get; init; }
 
     /// <summary>表示名。</summary>

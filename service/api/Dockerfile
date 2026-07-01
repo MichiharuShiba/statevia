@@ -5,7 +5,7 @@ WORKDIR /src
 # csproj だけ先にコピーして restore をキャッシュ効かせる
 COPY service/api/Statevia.Service.Api/Statevia.Service.Api.csproj ./service/api/Statevia.Service.Api/
 COPY core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj ./core/engine/Statevia.Core.Engine/
-COPY shared/Statevia.Actions.Abstractions/Statevia.Actions.Abstractions.csproj ./shared/Statevia.Actions.Abstractions/
+COPY core/actions/Statevia.Core.Actions.Abstractions/Statevia.Core.Actions.Abstractions.csproj ./core/actions/Statevia.Core.Actions.Abstractions/
 COPY shared/Statevia.Actions.Grpc/Statevia.Actions.Grpc.csproj ./shared/Statevia.Actions.Grpc/
 COPY shared/Statevia.Modules/Statevia.Modules.csproj ./shared/Statevia.Modules/
 RUN dotnet restore ./service/api/Statevia.Service.Api/Statevia.Service.Api.csproj
@@ -13,7 +13,7 @@ RUN dotnet restore ./service/api/Statevia.Service.Api/Statevia.Service.Api.cspro
 # ソースをコピーして publish
 COPY service/api/Statevia.Service.Api/ ./service/api/Statevia.Service.Api/
 COPY core/engine/Statevia.Core.Engine/ ./core/engine/Statevia.Core.Engine/
-COPY shared/Statevia.Actions.Abstractions/ ./shared/Statevia.Actions.Abstractions/
+COPY core/actions/Statevia.Core.Actions.Abstractions/ ./core/actions/Statevia.Core.Actions.Abstractions/
 COPY shared/Statevia.Actions.Grpc/ ./shared/Statevia.Actions.Grpc/
 COPY shared/Statevia.Modules/ ./shared/Statevia.Modules/
 RUN dotnet publish ./service/api/Statevia.Service.Api/Statevia.Service.Api.csproj -c Release -o /app/publish /p:UseAppHost=false

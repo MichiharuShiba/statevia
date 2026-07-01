@@ -1,4 +1,4 @@
-using Statevia.Actions.Abstractions.Catalog;
+using Statevia.Core.Actions.Abstractions.Catalog;
 using Statevia.Service.Api.Application.Actions.Catalog;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Catalog;

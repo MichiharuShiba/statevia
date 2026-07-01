@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Statevia.Actions.Abstractions.Catalog;
-using Statevia.Actions.Abstractions.Visibility;
+using Statevia.Core.Actions.Abstractions.Catalog;
+using Statevia.Core.Actions.Abstractions.Visibility;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Service.Api.Application.Actions.Resolution;

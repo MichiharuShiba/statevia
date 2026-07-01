@@ -9,7 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\shared\Statevia.Modules\Statevia.Modules.csproj" />
+    <ProjectReference Include="..\..\..\..\core\actions\Statevia.Core.Actions.Abstractions\Statevia.Core.Actions.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\core\engine\Statevia.Core.Engine\Statevia.Core.Engine.csproj" />
     <ProjectReference Include="..\..\..\..\core\engine\Statevia.Core.Engine\Statevia.Core.Engine.csproj" />
   </ItemGroup>
 

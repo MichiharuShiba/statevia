@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Options;
-using Statevia.Actions.Abstractions.Execution;
+using Statevia.Core.Actions.Abstractions.Execution;
 
 namespace Statevia.Service.Api.Application.Actions.Execution;
 

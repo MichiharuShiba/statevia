@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
-using Statevia.Actions.Abstractions.Publication;
+using Statevia.Core.Actions.Abstractions.Publication;
 using Statevia.Core.Engine.Definition;
 
 namespace Statevia.Service.Api.Application.Actions.Validation;
