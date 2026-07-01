@@ -124,8 +124,8 @@ Set-Location ..\..
 
 | コンポーネント | プロダクト | テスト |
 | -------------- | ---------- | ------ |
-| engine | `Statevia.Core.Engine`, `Statevia.Cli` | `Statevia.Core.Engine.Tests`, `Statevia.Cli.Tests` |
-| api | `Statevia.Core.Api`, `Statevia.Core.Api.Bootstrap` | `Statevia.Core.Api.Tests` |
+| engine | `Statevia.Core.Engine`, `Statevia.Service.Cli` | `Statevia.Core.Engine.Tests`, `Statevia.Service.Cli.Tests` |
+| api | `Statevia.Service.Api`, `Statevia.Service.Api.Bootstrap` | `Statevia.Service.Api.Tests` |
 | ui | `ui/studio`（`tests/`・`e2e/`・`*.test.*` を除く `*.ts` / `*.tsx`） | `tests/`、`*.test.*`、`*.spec.*`、`e2e/` |
 
 除外: `bin/`, `obj/`, `node_modules/`, `.next/`, `coverage/`。`core/engine/samples/` は含めません。

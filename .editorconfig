@@ -32,10 +32,10 @@ dotnet_diagnostic.CA2007.severity = none
 dotnet_diagnostic.CA1861.severity = none
 
 # =============================================================================
-# engine/Statevia.Cli.Tests
+# service/cli/Statevia.Service.Cli.Tests
 # =============================================================================
 
-[engine/Statevia.Cli.Tests/**/*.cs]
+[service/cli/Statevia.Service.Cli.Tests/**/*.cs]
 
 # CA1515: インスタンス化されない型は internal にせよ。
 # 除外理由: Engine.Tests と同様、xUnit の public テストクラス要件と `dotnet format` による誤 internal 化を防ぐ。
@@ -58,10 +58,10 @@ dotnet_diagnostic.CA2007.severity = none
 dotnet_diagnostic.CA1861.severity = none
 
 # =============================================================================
-# api/Statevia.Core.Api/Migrations
+# service/api/Statevia.Service.Api/Migrations
 # =============================================================================
 
-[api/Statevia.Core.Api/Migrations/*.cs]
+[service/api/Statevia.Service.Api/Migrations/*.cs]
 
 # CS1591: 公開型の XML ドキュメントがない。
 # 除外理由: EF 生成マイグレーション。手編集・XML 付与の対象外。
@@ -82,54 +82,54 @@ dotnet_analyzer_diagnostic.severity = none
 dotnet_diagnostic.S1192.severity = none
 
 # =============================================================================
-# api/Statevia.Core.Api — HTTP / DI 公開面（CA1515）
+# service/api/Statevia.Service.Api — HTTP / DI 公開面（CA1515）
 # =============================================================================
 
-[api/Statevia.Core.Api/Controllers/*.cs]
+[service/api/Statevia.Service.Api/Controllers/*.cs]
 
 # CA1515: アセンブリ API を internal にせよ（インスタンス化されない型は internal に）。
 # 除外理由: ASP.NET Core が Controller を public で発見する。internal 化するとルーティング登録されない。
 dotnet_diagnostic.CA1515.severity = none
 
-[api/Statevia.Core.Api/Contracts/*.cs]
+[service/api/Statevia.Service.Api/Contracts/*.cs]
 
 # CA1515: アセンブリ API を internal にせよ。
 # 除外理由: JSON 契約 DTO・例外型は HTTP レスポンス／フィルタの公開面として public を維持する。
 dotnet_diagnostic.CA1515.severity = none
 
-[api/Statevia.Core.Api/Abstractions/Services/*.cs]
+[service/api/Statevia.Service.Api/Abstractions/Services/*.cs]
 
 # CA1515: アセンブリ API を internal にせよ。
 # 除外理由: Controller コンストラクタ注入のサービス IF は public 必須（同一アセンブリの DI 境界）。
 dotnet_diagnostic.CA1515.severity = none
 
-[api/Statevia.Core.Api/Services/*.cs]
+[service/api/Statevia.Service.Api/Services/*.cs]
 
 # CA1515: アセンブリ API を internal にせよ。
 # 除外理由: Controller から直接注入する SSE 等のサービスは public のままとする。
 dotnet_diagnostic.CA1515.severity = none
 
 # =============================================================================
-# api/Statevia.Core.Api — 個別ファイル
+# service/api/Statevia.Service.Api — 個別ファイル
 # =============================================================================
 
-[api/Statevia.Core.Api/Hosting/**/*.cs]
+[service/api/Statevia.Service.Api/Hosting/**/*.cs]
 
 # ASP0015: ヘッダ辞書の推奨 API を使え。
 # 除外理由: W3C traceparent や X-Trace-Id 等のカスタムヘッダは文字列キー指定が契約どおり。
 dotnet_diagnostic.ASP0015.severity = none
 
-[api/Statevia.Core.Api/Abstractions/Services/IExecutionProjectionUpdateQueue.cs]
+[service/api/Statevia.Service.Api/Abstractions/Services/IExecutionProjectionUpdateQueue.cs]
 
 # CA1711: 識別子は接尾辞に型名を使うな（Queue 等の汎用語を避けよ）。
 # 除外理由: 既存の DI 契約名。Queue サフィックスへのリネームは公開面の破壊変更となる。
 dotnet_diagnostic.CA1711.severity = none
 
 # =============================================================================
-# api/Statevia.Core.Api.Tests
+# service/api/Statevia.Service.Api.Tests
 # =============================================================================
 
-[api/Statevia.Core.Api.Tests/**/*.cs]
+[service/api/Statevia.Service.Api.Tests/**/*.cs]
 
 # CA1515: インスタンス化されない型は internal にせよ（アセンブリ API 表面を狭める）。
 # 除外理由: xUnit は public なテストクラスを反射で検出する。internal 化すると xUnit1000 でビルド失敗する。
@@ -178,10 +178,10 @@ dotnet_diagnostic.CA1869.severity = none
 dotnet_diagnostic.CA2201.severity = none
 
 # =============================================================================
-# engine/Statevia.Cli
+# service/cli/Statevia.Service.Cli
 # =============================================================================
 
-[engine/Statevia.Cli/**/*.cs]
+[service/cli/Statevia.Service.Cli/**/*.cs]
 
 # CA1303: ローカライズ可能なパラメーターにリテラル文字列を渡すな（リソースファイル経由にせよ）。
 # 除外理由: 開発者向け CLI ツールであり、多言語リソース化の対象外。Usage / エラーメッセージは英語固定で十分。

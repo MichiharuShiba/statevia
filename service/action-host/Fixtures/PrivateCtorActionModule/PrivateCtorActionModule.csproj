@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>PrivateCtorActionModule</AssemblyName>
-    <RootNamespace>Statevia.ActionHost.Tests.Fixtures.PrivateCtorActionModule</RootNamespace>
+    <RootNamespace>Statevia.Service.ActionHost.Tests.Fixtures.PrivateCtorActionModule</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

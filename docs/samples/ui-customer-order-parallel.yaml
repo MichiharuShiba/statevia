@@ -19,7 +19,7 @@
 #   - ルート controls（指定するとロード時に ArgumentException）
 #   - wait.timeout（変換未対応のため記載しない）
 #
-# CLI の Statevia.Cli は states 形式のみ。本ファイルは Core-API の定義ロード経由で検証してください。
+# CLI の Statevia.Service.Cli は states 形式のみ。本ファイルは Core-API の定義ロード経由で検証してください。
 # =============================================================================
 
 version: 1

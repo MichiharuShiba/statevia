@@ -47,7 +47,7 @@ flowchart LR
 | 役割       | 場所           |
 |------------|----------------|
 | Core-Engine | `engine/Statevia.Core.Engine/` |
-| Core-API    | `api/Statevia.Core.Api/`       |
+| Core-API    | `api/Statevia.Service.Api/`       |
 | UI          | `services/ui/`                 |
 | 永続化      | API の EF Core マイグレーション |
 

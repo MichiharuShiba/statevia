@@ -1,13 +1,13 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Core.Api", "Statevia.Core.Api\Statevia.Core.Api.csproj", "{E5F6A7B8-C9D0-1234-EF01-345678901234}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Service.Api", "Statevia.Service.Api\Statevia.Service.Api.csproj", "{E5F6A7B8-C9D0-1234-EF01-345678901234}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Core.Api.Tests", "Statevia.Core.Api.Tests\Statevia.Core.Api.Tests.csproj", "{6E903B72-55BE-4F22-A27E-61FE5F4E9E00}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Service.Api.Tests", "Statevia.Service.Api.Tests\Statevia.Service.Api.Tests.csproj", "{6E903B72-55BE-4F22-A27E-61FE5F4E9E00}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Core.Api.Bootstrap", "Statevia.Core.Api.Bootstrap\Statevia.Core.Api.Bootstrap.csproj", "{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Service.Api.Bootstrap", "Statevia.Service.Api.Bootstrap\Statevia.Service.Api.Bootstrap.csproj", "{D8C3DFB1-E885-4997-9E75-F0335F9E4FA6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Actions.Abstractions", "..\..\shared\Statevia.Actions.Abstractions\Statevia.Actions.Abstractions.csproj", "{3CF52601-1840-46C5-9D0F-142CE6EAFE05}"
 EndProject
@@ -17,7 +17,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Modules", "..\..\s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Modules.Tests", "..\..\shared\Statevia.Modules.Tests\Statevia.Modules.Tests.csproj", "{B2C3D4E5-F6A7-8901-BCDE-F12345678901}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestActionModule", "Statevia.Core.Api.Tests\Fixtures\TestActionModule\TestActionModule.csproj", "{C3D4E5F6-A7B8-9012-CDEF-123456789012}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestActionModule", "Statevia.Service.Api.Tests\Fixtures\TestActionModule\TestActionModule.csproj", "{C3D4E5F6-A7B8-9012-CDEF-123456789012}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Actions.Grpc", "..\..\shared\Statevia.Actions.Grpc\Statevia.Actions.Grpc.csproj", "{A7573FF4-6E4D-4D9F-9A62-95E11D528153}"
 EndProject
