@@ -40,11 +40,15 @@ ScaffoldingReadMe.txt
 # Visual Studio
 .vs/
 
-# sonar
+# sonar（生成物・ローカルダンプは除外。スクリプトと README は共有）
 .sonarqube/
 .sonarlint/
 .scannerwork/
-sonar/
+sonar/*
+!sonar/sonar-scanner-*.ps1
+!sonar/measure-loc.ps1
+!sonar/README.md
+!sonar/docker-compose.yaml
 coverage/
 
 # Others

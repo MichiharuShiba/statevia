@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<!--
-  SonarScanner for .NET / SonarQube for IDE（プロジェクトスコープ）向け。
-  Migrations は品質リファクタ対象外。sonar-scanner-api.ps1 の exclusions と整合。
--->
-<SonarQubeAnalysisProperties xmlns="http://www.sonarsource.com/schemas/2021/1/SonarQubeAnalysisProperties">
-  <Property Name="sonar.exclusions">**/Migrations/**,**/services/ui/**,**/Statevia.Core.Engine/**,**/Program.cs</Property>
-</SonarQubeAnalysisProperties>
