@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Abstractions.Services;
+namespace Statevia.Core.Application.Contracts.Services;
 
 /// <summary>
 /// コマンド冪等（dedup）キーとエンドポイント情報の組。

@@ -1,7 +1,7 @@
-namespace Statevia.Service.Api.Abstractions.Persistence;
+namespace Statevia.Core.Application.Contracts.Persistence;
 
 /// <summary>定義版 publish の入力。</summary>
-internal sealed record DefinitionVersionPublishCommand(
+public sealed record DefinitionVersionPublishCommand(
     Guid TenantId,
     Guid DefinitionId,
     string Name,

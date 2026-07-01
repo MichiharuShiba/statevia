@@ -1,9 +1,9 @@
-namespace Statevia.Service.Api.Abstractions.Persistence;
+namespace Statevia.Core.Application.Contracts.Persistence;
 
 /// <summary>
 /// <c>event_delivery_dedup.status</c> の取りうる値（設計上の状態遷移: RECEIVED → APPLIED / FAILED）。
 /// </summary>
-internal static class EventDeliveryDedupStatuses
+public static class EventDeliveryDedupStatuses
 {
     /// <summary>受信済み（永続化直後）。</summary>
     public const string Received = "RECEIVED";

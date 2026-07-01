@@ -1,5 +1,5 @@
 using System.Security.Cryptography;
-using Statevia.Service.Api.Abstractions.Services;
+using Statevia.Core.Application.Contracts.Services;
 
 namespace Statevia.Service.Api.Infrastructure;
 

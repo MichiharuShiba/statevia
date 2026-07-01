@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Abstractions.Services;
+namespace Statevia.Core.Application.Contracts.Services;
 
 /// <summary>
 /// 分散環境で衝突しにくい ID 生成の契約。
