@@ -267,7 +267,7 @@
         "tags": [
           "Definitions"
         ],
-        "summary": "GET /v1/definitions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&name=&sortBy=&sortOrder=` で Statevia.Core.Api.Contracts.PagedResult`1（name は部分一致）。",
+        "summary": "GET /v1/definitions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&name=&sortBy=&sortOrder=` で Statevia.Service.Api.Contracts.PagedResult`1（name は部分一致）。",
         "parameters": [
           {
             "name": "limit",
@@ -769,7 +769,7 @@
         "tags": [
           "Executions"
         ],
-        "summary": "GET /v1/executions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&status=&definitionId=&name=&sortBy=&sortOrder=` で Statevia.Core.Api.Contracts.PagedResult`1（O1/O2）。\r\n`definitionId` は定義の display / UUID。 `name` は execution の `displayId` 部分一致、または execution の UUID 完全一致で絞り込み。",
+        "summary": "GET /v1/executions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&status=&definitionId=&name=&sortBy=&sortOrder=` で Statevia.Service.Api.Contracts.PagedResult`1（O1/O2）。\r\n`definitionId` は定義の display / UUID。 `name` は execution の `displayId` 部分一致、または execution の UUID 完全一致で絞り込み。",
         "parameters": [
           {
             "name": "limit",
@@ -907,7 +907,7 @@
         "tags": [
           "Executions"
         ],
-        "summary": "GET /v1/executions/{id} — 一覧と同一の Statevia.Core.Api.Controllers.ExecutionResponse（UI ExecutionDTO 向け）。X-Tenant-Id でスコープ。",
+        "summary": "GET /v1/executions/{id} — 一覧と同一の Statevia.Service.Api.Controllers.ExecutionResponse（UI ExecutionDTO 向け）。X-Tenant-Id でスコープ。",
         "parameters": [
           {
             "name": "id",
@@ -2122,7 +2122,7 @@
           },
           "stateName": {
             "type": "string",
-            "description": "ワークフロー定義上の状態名（Statevia.Core.Api.Contracts.ExecutionViewNodeDto.ExecutionNodeId とは別）。",
+            "description": "ワークフロー定義上の状態名（Statevia.Service.Api.Contracts.ExecutionViewNodeDto.ExecutionNodeId とは別）。",
             "nullable": true
           },
           "nodeType": {

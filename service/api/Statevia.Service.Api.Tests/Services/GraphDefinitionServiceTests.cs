@@ -1,0 +1,324 @@
+using Statevia.Service.Api.Abstractions.Persistence;
+using Statevia.Service.Api.Abstractions.Security;
+using Statevia.Service.Api.Abstractions.Services;
+using Statevia.Service.Api.Application.Security;
+using Statevia.Service.Api.Contracts;
+using Statevia.Service.Api.Persistence;
+using Statevia.Service.Api.Services;
+using Statevia.Service.Api.Tests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+
+namespace Statevia.Service.Api.Tests.Services;
+
+public sealed class GraphDefinitionServiceTests
+{
+    private static GraphDefinitionService CreateSut(InMemoryTestDatabase db, StubDisplayIdService display) =>
+        new(
+            new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)),
+            display,
+            TestRepositoryFactory.CreateDefinitionRepository(),
+            new FixedTenantContextAccessor(TestTenantIds.DefaultContext),
+            new AllowAllRuntimePermissionAuthorization());
+
+    private static async Task<Guid> SeedDefaultTenantAndProjectAsync(DbContextOptions<CoreDbContext> options)
+    {
+        await using var ctx = new CoreDbContext(options);
+        if (!await ctx.Tenants.AnyAsync().ConfigureAwait(false))
+        {
+            var now = DateTime.UtcNow;
+            ctx.Tenants.Add(new TenantRow
+            {
+                TenantId = TestTenantIds.DefaultTenantId,
+                TenantKey = "default",
+                DisplayName = "Default",
+                Lifecycle = TenantLifecycle.Active,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        var project = ProjectTestData.AddDefaultProject(ctx, TestTenantIds.DefaultTenantId, "default");
+        await ctx.SaveChangesAsync().ConfigureAwait(false);
+        return project.ProjectId;
+    }
+
+    private sealed class StubDisplayIdService : IDisplayIdService
+    {
+        private readonly Guid? _resolveResult;
+        public StubDisplayIdService(Guid? resolveResult) => _resolveResult = resolveResult;
+
+        
+
+        public Task<Guid?> ResolveAsync(string kind, string idOrUuid, CancellationToken ct = default) =>
+            Task.FromResult(_resolveResult);
+
+        public Task<string?> GetDisplayIdAsync(string kind, string idOrUuid, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyDictionary<Guid, string>> GetDisplayIdsAsync(string kind, IEnumerable<Guid> resourceIds, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// 識別子解決に失敗したとき未検出例外を投げる。
+    /// </summary>
+    [Fact]
+    public async Task GetByGraphIdAsync_ThrowsNotFound_WhenResolveReturnsNull()
+    {
+        // Act & Assert
+        using var db = new InMemoryTestDatabase();
+        var sut = CreateSut(db, new StubDisplayIdService(resolveResult: null));
+
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByGraphIdAsync("G", CancellationToken.None));
+    }
+
+    /// <summary>
+    /// 定義行が見つからないとき未検出例外を投げる。
+    /// </summary>
+    [Fact]
+    public async Task GetByGraphIdAsync_ThrowsNotFound_WhenDefinitionRowMissing()
+    {
+        // Act & Assert
+        using var db = new InMemoryTestDatabase();
+        var uuid = Guid.NewGuid();
+        var sut = CreateSut(db, new StubDisplayIdService(uuid));
+
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetByGraphIdAsync("G", CancellationToken.None));
+    }
+
+    /// <summary>
+    /// 変換済み定義からノード種別とエッジを期待どおりに構築する。
+    /// </summary>
+    [Fact]
+    public async Task GetByGraphIdAsync_BuildsNodesAndEdgesWithExpectedNodeTypes()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uuid = Guid.NewGuid();
+        var graphId = "graph-1";
+
+        // Act
+        var compiledJson = """
+            {
+              "name": "g1",
+              "initialState": "StartState",
+              "transitions": {
+                "StartState": {
+                  "Completed": {
+                    "next": "WaitState",
+                    "fork": null,
+                    "end": false
+                  }
+                },
+                "WaitState": {
+                  "Completed": {
+                    "next": "ForkState",
+                    "fork": null,
+                    "end": false
+                  }
+                },
+                "EndState": {
+                  "Completed": {
+                    "next": null,
+                    "fork": null,
+                    "end": true
+                  }
+                }
+              },
+              "forkTable": {
+                "ForkState": ["JoinState"]
+              },
+              "joinTable": {
+                "JoinState": ["WaitState", "ForkState"]
+              },
+              "waitTable": {
+                "WaitState": "UserApproved"
+              }
+            }
+            """;
+
+        var projectId = await SeedDefaultTenantAndProjectAsync(db.Options);
+
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            var now = DateTime.UtcNow;
+            DefinitionTestData.AddDefinitionWithVersion(ctx, TestTenantIds.DefaultTenantId, uuid, "def", projectId, compiledJson: compiledJson, createdAt: now);
+            await ctx.SaveChangesAsync();
+        }
+
+        var sut = CreateSut(db, new StubDisplayIdService(uuid));
+        var res = await sut.GetByGraphIdAsync(graphId, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(graphId, res.GraphId);
+
+        var nodeById = new Dictionary<string, GraphNodeDefinition>(StringComparer.OrdinalIgnoreCase);
+        foreach (var n in res.Nodes)
+            nodeById[n.NodeId] = n;
+
+        Assert.Equal("Start", nodeById["StartState"].NodeType);
+        Assert.Equal("Wait", nodeById["WaitState"].NodeType);
+        Assert.Equal("Fork", nodeById["ForkState"].NodeType);
+        Assert.Equal("Join", nodeById["JoinState"].NodeType);
+        Assert.Equal("End", nodeById["EndState"].NodeType);
+
+        Assert.Contains(res.Edges, e => e.From == "StartState" && e.To == "WaitState");
+        Assert.Contains(res.Edges, e => e.From == "WaitState" && e.To == "ForkState");
+        Assert.Contains(res.Edges, e => e.From == "WaitState" && e.To == "JoinState");
+        Assert.Contains(res.Edges, e => e.From == "ForkState" && e.To == "JoinState");
+    }
+
+    /// <summary>
+    /// 終端遷移がない状態を通常ノードとして組み立てる。
+    /// </summary>
+    [Fact]
+    public async Task GetByGraphIdAsync_BuildsTaskNodeType_WhenTransitionsExistButNoEndTargets()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uuid = Guid.NewGuid();
+        var graphId = "graph-task";
+
+        // Act
+        var compiledJson = """
+            {
+              "name": "g1",
+              "initialState": "StartState",
+              "transitions": {
+                "StartState": {
+                  "Completed": {
+                    "next": "TaskState",
+                    "fork": null,
+                    "end": false
+                  }
+                },
+                "TaskState": {
+                  "Completed": {
+                    "next": null,
+                    "fork": null,
+                    "end": false
+                  }
+                }
+              }
+            }
+            """;
+
+        var projectId = await SeedDefaultTenantAndProjectAsync(db.Options);
+
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            var now = DateTime.UtcNow;
+            DefinitionTestData.AddDefinitionWithVersion(ctx, TestTenantIds.DefaultTenantId, uuid, "def", projectId, compiledJson: compiledJson, createdAt: now);
+            await ctx.SaveChangesAsync();
+        }
+
+        var sut = CreateSut(db, new StubDisplayIdService(uuid));
+        var res = await sut.GetByGraphIdAsync(graphId, CancellationToken.None);
+
+        var nodeById = new Dictionary<string, GraphNodeDefinition>(StringComparer.OrdinalIgnoreCase);
+        foreach (var n in res.Nodes)
+            nodeById[n.NodeId] = n;
+
+        // Assert
+        Assert.Equal("Start", nodeById["StartState"].NodeType);
+        Assert.Equal("Task", nodeById["TaskState"].NodeType);
+    }
+
+    /// <summary>
+    /// conditionalTransitions（cases/default）の遷移先もエッジへ展開される。
+    /// </summary>
+    [Fact]
+    public async Task GetByGraphIdAsync_IncludesEdgesFromConditionalTransitions()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uuid = Guid.NewGuid();
+        var graphId = "graph-conditional";
+
+        var compiledJson = """
+            {
+              "name": "g1",
+              "initialState": "start",
+              "transitions": {
+                "start": {
+                  "Completed": {
+                    "next": "slowStep",
+                    "fork": null,
+                    "end": false
+                  }
+                }
+              },
+              "conditionalTransitions": {
+                "slowStep": {
+                  "Completed": {
+                    "linearTarget": null,
+                    "cases": [
+                      {
+                        "target": {
+                          "next": "endNode",
+                          "fork": null,
+                          "end": false
+                        }
+                      }
+                    ],
+                    "defaultTarget": {
+                      "next": "fork1",
+                      "fork": null,
+                      "end": false
+                    }
+                  }
+                }
+              }
+            }
+            """;
+
+        var projectId = await SeedDefaultTenantAndProjectAsync(db.Options);
+
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            var now = DateTime.UtcNow;
+            DefinitionTestData.AddDefinitionWithVersion(ctx, TestTenantIds.DefaultTenantId, uuid, "def", projectId, compiledJson: compiledJson, createdAt: now);
+            await ctx.SaveChangesAsync();
+        }
+
+        var sut = CreateSut(db, new StubDisplayIdService(uuid));
+
+        // Act
+        var res = await sut.GetByGraphIdAsync(graphId, CancellationToken.None);
+
+        // Assert
+        Assert.Contains(res.Edges, e => e.From == "start" && e.To == "slowStep");
+        Assert.Contains(res.Edges, e => e.From == "slowStep" && e.To == "fork1");
+        Assert.Contains(res.Edges, e => e.From == "slowStep" && e.To == "endNode");
+    }
+
+    /// <summary>
+    /// 変換済み定義が空値のとき空の構成要素を返す。
+    /// </summary>
+    [Fact]
+    public async Task GetByGraphIdAsync_WhenCompiledJsonIsNull_ReturnsEmpty()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uuid = Guid.NewGuid();
+        var graphId = "graph-empty";
+
+        // Act
+        var projectId = await SeedDefaultTenantAndProjectAsync(db.Options);
+
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            var now = DateTime.UtcNow;
+            DefinitionTestData.AddDefinitionWithVersion(ctx, TestTenantIds.DefaultTenantId, uuid, "def", projectId, compiledJson: "null", createdAt: now);
+            await ctx.SaveChangesAsync();
+        }
+
+        var sut = CreateSut(db, new StubDisplayIdService(uuid));
+        var res = await sut.GetByGraphIdAsync(graphId, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(res.Nodes);
+        Assert.Empty(res.Edges);
+    }
+}
+

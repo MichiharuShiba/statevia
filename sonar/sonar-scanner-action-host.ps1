@@ -26,7 +26,7 @@ $sonarAnalysisExclusions = @(
     '**/service/cli/**',
     '**/cli/**',
     '**/Statevia.Core.Engine/**',
-    '**/Statevia.Core.Api/**',
+    '**/Statevia.Service.Api/**',
     '**/Statevia.Actions.Abstractions/**',
     '**/shared/**',
     '**/Migrations/**',

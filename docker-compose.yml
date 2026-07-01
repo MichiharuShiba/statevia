@@ -1,7 +1,7 @@
 # v2: engine (C#), core-api (C# ASP.NET Core), ui (Next.js/TS)
 # 初回: postgres 起動後、ホストでマイグレーション実行
-#   Bash:   cd service/api && DATABASE_URL="postgres://core:core@localhost:5432/core" dotnet ef database update --project Statevia.Core.Api
-#   PowerShell: cd service/api; $env:DATABASE_URL="postgres://statevia:<password>@localhost:5432/statevia"; dotnet ef database update --project Statevia.Core.Api
+#   Bash:   cd service/api && DATABASE_URL="postgres://core:core@localhost:5432/core" dotnet ef database update --project Statevia.Service.Api
+#   PowerShell: cd service/api; $env:DATABASE_URL="postgres://statevia:<password>@localhost:5432/statevia"; dotnet ef database update --project Statevia.Service.Api
 services:
   postgres:
     image: postgres:16

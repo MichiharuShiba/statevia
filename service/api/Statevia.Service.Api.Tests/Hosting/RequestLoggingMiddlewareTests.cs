@@ -1,0 +1,464 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Statevia.Service.Api.Abstractions.Security;
+using Statevia.Service.Api.Hosting;
+using Statevia.Service.Api.Persistence;
+using Statevia.Service.Api.Tests.Infrastructure;
+
+namespace Statevia.Service.Api.Tests.Hosting;
+
+/// <summary>STV-403: リクエスト開始/完了ログと X-Trace-Id 方針の単体テスト。</summary>
+public sealed class RequestLoggingMiddlewareTests
+{
+    [Fact]
+    public async Task InvokeAsync_LogsStartAndComplete()
+    {
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/health";
+        ctx.Response.StatusCode = 200;
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions
+        {
+            LogRequestBody = false,
+            LogResponseBody = false
+        });
+
+        RequestDelegate next = c =>
+        {
+            c.Response.StatusCode = 204;
+            return Task.CompletedTask;
+        };
+
+        var mw = new RequestLoggingMiddleware(next);
+        await InvokeAsync(mw, ctx, logger, opts);
+
+        Assert.Contains(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
+        Assert.Contains(collector.Entries, e => e.Contains("HTTP request complete", StringComparison.Ordinal));
+        Assert.Contains(collector.Entries, e => e.Contains("204", StringComparison.Ordinal));
+        Assert.True(ctx.Items.ContainsKey(RequestLogContext.TraceIdItemKey));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_SkipsXTraceId_WhenRequestHeaderMatchesResolved()
+    {
+        // クライアント値と解決 traceId が同一のときは OnStarting を登録しない（重複ヘッダ回避）
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/health";
+        ctx.Request.Headers["X-Trace-Id"] = "same-id-please-use-ascii";
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions
+        {
+            LogRequestBody = false,
+            LogResponseBody = false,
+            EmitXTraceIdResponseHeader = true
+        });
+
+        RequestDelegate next = c => c.Response.WriteAsync("ok");
+
+        var mw = new RequestLoggingMiddleware(next);
+        await InvokeAsync(mw, ctx, logger, opts);
+
+        Assert.False(ctx.Response.Headers.ContainsKey("X-Trace-Id"));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_LogsResponseBodySnippet_WhenResponseBodyLoggingEnabled()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "POST";
+        ctx.Request.Path = "/v1/executions/wf-1/events";
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions
+        {
+            LogRequestBody = false,
+            LogResponseBody = true,
+            MaxResponseBodyLogBytes = 64
+        });
+
+        RequestDelegate next = c => c.Response.WriteAsync("""{"secret":"token-xyz"}""");
+
+        var mw = new RequestLoggingMiddleware(next);
+
+        // Act
+        await InvokeAsync(mw, ctx, logger, opts);
+
+        // Assert
+        var completeLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request complete", StringComparison.Ordinal));
+        Assert.DoesNotContain("token-xyz", completeLog, StringComparison.Ordinal);
+        Assert.Contains("[redacted]", completeLog, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_RedactsSensitiveQueryParameters()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/executions";
+        ctx.Request.QueryString = new QueryString("?password=secret-value&limit=10");
+        ctx.Response.StatusCode = 200;
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions { LogRequestBody = false, LogResponseBody = false });
+
+        RequestDelegate next = c => Task.CompletedTask;
+        var mw = new RequestLoggingMiddleware(next);
+
+        // Act
+        await InvokeAsync(mw, ctx, logger, opts);
+
+        // Assert
+        var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
+        Assert.DoesNotContain("secret-value", startLog, StringComparison.Ordinal);
+        Assert.Contains("password=[redacted]", startLog, StringComparison.Ordinal);
+        Assert.Contains("limit=10", startLog, StringComparison.Ordinal);
+    }
+
+    /// <summary>応答本文キャプチャ無効時は Content-Length を完了ログのサイズに使う。</summary>
+    [Fact]
+    public async Task InvokeAsync_LogsContentLength_WhenResponseBodyCaptureDisabled()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/health";
+        ctx.Response.Body = new MemoryStream();
+        ctx.Response.ContentLength = 42;
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions { LogRequestBody = false, LogResponseBody = false });
+        var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
+
+        // Act
+        await InvokeAsync(middleware, ctx, logger, opts);
+
+        // Assert
+        var completeLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request complete", StringComparison.Ordinal));
+        Assert.Contains("42", completeLog, StringComparison.Ordinal);
+    }
+
+    /// <summary>リクエスト本文ログが有効なときマスキングして記録する。</summary>
+    [Fact]
+    public async Task InvokeAsync_LogsRequestBody_WhenEnabled()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "POST";
+        ctx.Request.Path = "/v1/definitions";
+        ctx.Request.ContentType = "application/json";
+        var bodyBytes = """{"token":"secret-token"}"""u8.ToArray();
+        ctx.Request.Body = new MemoryStream(bodyBytes);
+        ctx.Request.ContentLength = bodyBytes.Length;
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions
+        {
+            LogRequestBody = true,
+            LogResponseBody = false,
+            MaxRequestBodyLogBytes = 1024
+        });
+        RequestDelegate next = _ => Task.CompletedTask;
+        var middleware = new RequestLoggingMiddleware(next);
+
+        // Act
+        await InvokeAsync(middleware, ctx, logger, opts);
+
+        // Assert
+        var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
+        Assert.DoesNotContain("secret-token", startLog, StringComparison.Ordinal);
+        Assert.Contains("[redacted]", startLog, StringComparison.Ordinal);
+    }
+
+    /// <summary>chunked で Content-Length が無いリクエスト本文は省略する。</summary>
+    [Fact]
+    public async Task InvokeAsync_OmitsChunkedRequestBody()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "POST";
+        ctx.Request.Path = "/v1/executions";
+        ctx.Request.ContentType = "text/plain";
+        ctx.Request.Headers["Transfer-Encoding"] = "chunked";
+        ctx.Request.Body = new MemoryStream("data"u8.ToArray());
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions { LogRequestBody = true, LogResponseBody = false });
+        var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
+
+        // Act
+        await InvokeAsync(middleware, ctx, logger, opts);
+
+        // Assert
+        var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
+        Assert.Contains("chunked body omitted", startLog, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>traceparent から trace ID を解決する。</summary>
+    [Fact]
+    public async Task InvokeAsync_UsesTraceParentForTraceId()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/health";
+        ctx.Request.Headers["traceparent"] =
+            "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
+        ctx.Response.Body = new MemoryStream();
+        var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
+
+        // Act
+        await InvokeAsync(
+            middleware,
+            ctx,
+            NullLogger<RequestLoggingMiddleware>.Instance,
+            Options.Create(new RequestLogOptions()));
+
+        // Assert
+        Assert.Equal("0af7651916cd43dd8448eb211c80319c", ctx.Items[RequestLogContext.TraceIdItemKey]);
+    }
+
+    /// <summary>未処理例外時にエラーログを出力する。</summary>
+    [Fact]
+    public async Task InvokeAsync_LogsErrorOnUnhandledException()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/x";
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions { LogRequestBody = false, LogResponseBody = false });
+
+        RequestDelegate next = _ => throw new InvalidOperationException("boom");
+
+        var middleware = new RequestLoggingMiddleware(next);
+
+        // Act
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            InvokeAsync(middleware, ctx, logger, opts));
+
+        // Assert
+        Assert.Contains(collector.Entries, e => e.Contains("unhandled exception", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>非テキスト Content-Type のリクエスト本文は省略する。</summary>
+    [Fact]
+    public async Task InvokeAsync_OmitsNonTextRequestBody()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "POST";
+        ctx.Request.Path = "/v1/executions";
+        ctx.Request.ContentType = "application/octet-stream";
+        ctx.Request.Body = new MemoryStream([1, 2, 3]);
+        ctx.Request.ContentLength = 3;
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions { LogRequestBody = true, LogResponseBody = false });
+        var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
+
+        // Act
+        await InvokeAsync(middleware, ctx, logger, opts);
+
+        // Assert
+        var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
+        Assert.Contains("non-text body omitted", startLog, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>上限を超えるリクエスト本文は省略する。</summary>
+    [Fact]
+    public async Task InvokeAsync_OmitsOversizedRequestBody()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "POST";
+        ctx.Request.Path = "/v1/executions";
+        ctx.Request.ContentType = "application/json";
+        ctx.Request.Body = new MemoryStream("x"u8.ToArray());
+        ctx.Request.ContentLength = 4096;
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions
+        {
+            LogRequestBody = true,
+            LogResponseBody = false,
+            MaxRequestBodyLogBytes = 64
+        });
+        var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
+
+        // Act
+        await InvokeAsync(middleware, ctx, logger, opts);
+
+        // Assert
+        var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
+        Assert.Contains("larger than 64 bytes", startLog, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>長い User-Agent は切り詰めてログに載せる。</summary>
+    [Fact]
+    public async Task InvokeAsync_TruncatesLongUserAgent()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/health";
+        ctx.Request.Headers.UserAgent = new string('u', 300);
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions { LogRequestBody = false, LogResponseBody = false });
+        var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
+
+        // Act
+        await InvokeAsync(middleware, ctx, logger, opts);
+
+        // Assert
+        var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
+        Assert.Contains("...", startLog, StringComparison.Ordinal);
+    }
+
+    /// <summary>非テキスト応答本文はスナップショットを省略する。</summary>
+    [Fact]
+    public async Task InvokeAsync_OmitsNonTextResponseBody()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/health";
+        ctx.Response.Body = new MemoryStream();
+        ctx.Response.ContentType = "application/octet-stream";
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions
+        {
+            LogRequestBody = false,
+            LogResponseBody = true,
+            MaxResponseBodyLogBytes = 64
+        });
+        RequestDelegate next = async c => await c.Response.Body.WriteAsync(new byte[] { 1, 2, 3 });
+        var middleware = new RequestLoggingMiddleware(next);
+
+        // Act
+        await InvokeAsync(middleware, ctx, logger, opts);
+
+        // Assert
+        var completeLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request complete", StringComparison.Ordinal));
+        Assert.Contains("non-text response omitted", completeLog, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>解決済みテナント UUID を開始ログに載せる。</summary>
+    [Fact]
+    public async Task InvokeAsync_LogsTenantId_WhenTenantContextIsResolved()
+    {
+        // Arrange
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Path = "/v1/executions";
+        ctx.Response.Body = new MemoryStream();
+
+        var collector = new LogCollector();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(collector));
+        var logger = factory.CreateLogger<RequestLoggingMiddleware>();
+        var opts = Options.Create(new RequestLogOptions { LogRequestBody = false, LogResponseBody = false });
+        var tenantAccessor = new SettableTenantContextAccessor();
+        tenantAccessor.Set(TestTenantIds.T1Context);
+        var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask);
+
+        // Act
+        await InvokeAsync(middleware, ctx, logger, opts, tenantAccessor);
+
+        // Assert
+        var startLog = Assert.Single(collector.Entries, e => e.Contains("HTTP request start", StringComparison.Ordinal));
+        Assert.Contains(TestTenantIds.T1TenantId.ToString("D"), startLog, StringComparison.Ordinal);
+    }
+
+    private static Task InvokeAsync(
+        RequestLoggingMiddleware middleware,
+        HttpContext context,
+        ILogger<RequestLoggingMiddleware> logger,
+        IOptions<RequestLogOptions> options,
+        ITenantContextAccessor? tenantContextAccessor = null) =>
+        middleware.InvokeAsync(
+            context,
+            logger,
+            options,
+            tenantContextAccessor ?? NullTenantContextAccessor.Instance);
+
+    private sealed class LogCollector : ILoggerProvider, IDisposable
+    {
+        public List<string> Entries { get; } = [];
+
+        public ILogger CreateLogger(string categoryName) => new CollLogger(Entries);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class CollLogger : ILogger
+        {
+            private readonly List<string> _entries;
+
+            public CollLogger(List<string> entries) => _entries = entries;
+
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull => NoopScope.Instance;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                _entries.Add(formatter(state, exception));
+            }
+        }
+
+        private sealed class NoopScope : IDisposable
+        {
+            public static readonly NoopScope Instance = new();
+            public void Dispose()
+            {
+            }
+        }
+    }
+}

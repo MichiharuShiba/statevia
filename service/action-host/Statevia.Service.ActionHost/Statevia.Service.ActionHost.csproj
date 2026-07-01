@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Statevia.Service.ActionHost</RootNamespace>
+    <AssemblyName>Statevia.Service.ActionHost</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA2007</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Statevia.Service.ActionHost.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.67.0" />
+    <ProjectReference Include="../../../core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj" />
+    <ProjectReference Include="../../../shared/Statevia.Actions.Abstractions/Statevia.Actions.Abstractions.csproj" />
+    <ProjectReference Include="../../../shared/Statevia.Actions.Grpc/Statevia.Actions.Grpc.csproj" />
+    <ProjectReference Include="../../../shared/Statevia.Modules/Statevia.Modules.csproj" />
+  </ItemGroup>
+
+</Project>

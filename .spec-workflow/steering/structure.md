@@ -11,7 +11,7 @@ services/ui/            # Web ダッシュボード（Next.js）
 docs/                   # 契約・運用・開発ガイド
 ```
 
-## Core-API（`api/Statevia.Core.Api/`）
+## Core-API（`api/Statevia.Service.Api/`）
 
 レイヤー責務の目安（詳細は `AGENTS.md`）。
 
@@ -29,13 +29,13 @@ docs/                   # 契約・運用・開発ガイド
 
 - ワークフロー定義の実行・グラフ／状態機械の責務に限定する。
 - **HTTP や DB に直接依存しない**（Core-API が境界となる）。
-- `engine/Statevia.Cli` は開発用の既存 CLI。**ユーザー向け統合 CLI は `cli/Statevia.Cli` に集約**する（段階移行）。
+- `engine/Statevia.Service.Cli` は開発用の既存 CLI。**ユーザー向け統合 CLI は `cli/Statevia.Service.Cli` に集約**する（段階移行）。
 
 ## CLI（`cli/`）
 
-- **`cli/Statevia.Cli`**: 統合 `statevia` コマンド（platform / module / 定義検証など）。
+- **`cli/Statevia.Service.Cli`**: 統合 `statevia` コマンド（platform / module / 定義検証など）。
 - **`cli/statevia-cli.sln`**: CLI 用ソリューション。
-- Engine 向けの旧 CLI 機能はサブコマンドとして移行し、最終的に `engine/Statevia.Cli` は廃止または thin wrapper とする。
+- Engine 向けの旧 CLI 機能はサブコマンドとして移行し、最終的に `engine/Statevia.Service.Cli` は廃止または thin wrapper とする。
 
 ## Shared（`shared/`）
 

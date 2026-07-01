@@ -215,7 +215,7 @@ Windows で zip ツールが無い場合は、エクスプローラで `my.modul
 | 処理 | 実装 |
 |------|------|
 | zip 展開・ディレクトリ名決定 | `shared/Statevia.Modules/ModuleZipInstaller.cs` |
-| entry DLL 解決 | `api/Statevia.Core.Api/Application/Actions/Modules/FilesystemModuleSource.cs` |
+| entry DLL 解決 | `api/Statevia.Service.Api/Application/Actions/Modules/FilesystemModuleSource.cs` |
 | ALC・共有アセンブリ | `shared/Statevia.Modules/ModuleAssemblyLoadContext.cs` |
-| 署名検証・Trust 判定 | `api/Statevia.Core.Api/Application/Actions/Modules/ModuleSignatureVerifier.cs` |
+| 署名検証・Trust 判定 | `api/Statevia.Service.Api/Application/Actions/Modules/ModuleSignatureVerifier.cs` |
 | 単体テスト（展開パターン） | `shared/Statevia.Modules.Tests/ModuleZipInstallerTests.cs` |

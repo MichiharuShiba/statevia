@@ -18,7 +18,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$project = Join-Path $repoRoot "service\api\Statevia.Core.Api.Bootstrap\Statevia.Core.Api.Bootstrap.csproj"
+$project = Join-Path $repoRoot "service\api\Statevia.Service.Api.Bootstrap\Statevia.Service.Api.Bootstrap.csproj"
 
 if ([string]::IsNullOrWhiteSpace($Password)) {
     throw "Set -Password or environment variable STATEVIA_BOOTSTRAP_PASSWORD."

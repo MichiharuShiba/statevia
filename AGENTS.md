@@ -20,10 +20,10 @@ Core-API は C# のみ。PostgreSQL 16 は EF Core 経由で使用。UI は Next
 
 | Layer | Role | Location / types |
 | ----- | ---- | ---------------- |
-| **Controllers** | HTTP I/O: route, headers (`X-Tenant-Id`, `X-Idempotency-Key`), binding, status codes. Prefer `[Required]` / model validation; avoid business logic. | `api/Statevia.Core.Api/Controllers/` |
-| **Services** | Use cases: orchestrate **repositories**, **display IDs**, **command dedup**, and the in-process **`IExecutionEngine`**. | `api/Statevia.Core.Api/Services/`, interfaces in `Abstractions/Services/` |
-| **Repositories** | Persistence only: operate on `ICoreUnitOfWork.Db` passed by the caller. No `SaveChanges`, `BeginTransaction`, or `IDbContextFactory` in repository implementations. | `api/Statevia.Core.Api/Persistence/Repositories/`, interfaces in `Abstractions/Persistence/` |
-| **UoW / Executor** | `ICoreUnitOfWork` + `ICoreUnitOfWorkFactory` own DbContext lifetime and transactions. `ICoreTransactionExecutor` runs ReadCommitted / ReadOnly use cases. `IExecutionMutationPersistence` owns Serializable retry for Cancel / Publish. | `api/Statevia.Core.Api/Persistence/` |
+| **Controllers** | HTTP I/O: route, headers (`X-Tenant-Id`, `X-Idempotency-Key`), binding, status codes. Prefer `[Required]` / model validation; avoid business logic. | `api/Statevia.Service.Api/Controllers/` |
+| **Services** | Use cases: orchestrate **repositories**, **display IDs**, **command dedup**, and the in-process **`IExecutionEngine`**. | `api/Statevia.Service.Api/Services/`, interfaces in `Abstractions/Services/` |
+| **Repositories** | Persistence only: operate on `ICoreUnitOfWork.Db` passed by the caller. No `SaveChanges`, `BeginTransaction`, or `IDbContextFactory` in repository implementations. | `api/Statevia.Service.Api/Persistence/Repositories/`, interfaces in `Abstractions/Persistence/` |
+| **UoW / Executor** | `ICoreUnitOfWork` + `ICoreUnitOfWorkFactory` own DbContext lifetime and transactions. `ICoreTransactionExecutor` runs ReadCommitted / ReadOnly use cases. `IExecutionMutationPersistence` owns Serializable retry for Cancel / Publish. | `api/Statevia.Service.Api/Persistence/` |
 | **Engine** | Workflow execution (in-memory); Core-API calls it as a singleton. | `engine/` → `IExecutionEngine` / `ExecutionEngine` |
 
 **Persistence note:** Application services decide commit boundaries via **`ICoreTransactionExecutor`** or **`IExecutionMutationPersistence`**. Repositories only mutate `uow.Db`. **`IDbContextFactory<CoreDbContext>`** is closed inside **`CoreUnitOfWork`** (not in services or repositories). Read-model assembly (`ExecutionReadModelService`, `GraphDefinitionService`) uses **`ExecuteReadOnlyAsync`** on the executor.
@@ -68,12 +68,12 @@ Further HTTP contract: `docs/core-api-interface.md`.
 2. **core-api (C#)** — run (requires PostgreSQL; run migrations first):
 
    ```bash
-   cd api && dotnet run --project Statevia.Core.Api
+   cd api && dotnet run --project Statevia.Service.Api
    ```
 
-   Or with env: `DATABASE_URL="postgres://statevia:statevia@localhost:5432/statevia" ASPNETCORE_URLS="http://0.0.0.0:8080" dotnet run --project Statevia.Core.Api --no-launch-profile`
+   Or with env: `DATABASE_URL="postgres://statevia:statevia@localhost:5432/statevia" ASPNETCORE_URLS="http://0.0.0.0:8080" dotnet run --project Statevia.Service.Api --no-launch-profile`
    **Gotcha**: `launchSettings.json` hardcodes ports 62427/62428. Use `--no-launch-profile` + `ASPNETCORE_URLS` to bind to port 8080.
-   Migrations: `cd api && dotnet ef database update --project Statevia.Core.Api`.
+   Migrations: `cd api && dotnet ef database update --project Statevia.Service.Api`.
 
    **OpenAPI / Scalar**: Core-API 起動後、`/scalar/v1` で閲覧（OpenAPI JSON は `/swagger/v1/swagger.json`）。`docker compose` の core-api は `ASPNETCORE_ENVIRONMENT=Development` で有効。本番イメージ単体（Production）では既定オフ — `STATEVIA_ENABLE_API_DOCS=true` で有効化。export は `.\scripts\export-core-api-openapi.ps1`。
 3. **ui** — run dev server:

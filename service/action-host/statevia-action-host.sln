@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.ActionHost", "Statevia.ActionHost\Statevia.ActionHost.csproj", "{A1A1A1A1-B2B2-C3C3-D4D4-E5E5E5E5E5E5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Service.ActionHost", "Statevia.Service.ActionHost\Statevia.Service.ActionHost.csproj", "{A1A1A1A1-B2B2-C3C3-D4D4-E5E5E5E5E5E5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.ActionHost.Tests", "Statevia.ActionHost.Tests\Statevia.ActionHost.Tests.csproj", "{B2B2B2B2-C3C3-D4D4-E5E5-F6F6F6F6F6F6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Service.ActionHost.Tests", "Statevia.Service.ActionHost.Tests\Statevia.Service.ActionHost.Tests.csproj", "{B2B2B2B2-C3C3-D4D4-E5E5-F6F6F6F6F6F6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

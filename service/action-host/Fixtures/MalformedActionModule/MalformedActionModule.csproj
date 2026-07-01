@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>MalformedActionModule</AssemblyName>
-    <RootNamespace>Statevia.ActionHost.Tests.Fixtures.MalformedActionModule</RootNamespace>
+    <RootNamespace>Statevia.Service.ActionHost.Tests.Fixtures.MalformedActionModule</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

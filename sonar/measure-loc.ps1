@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
   engine / api / ui の行数をプロダクト・テスト別に集計する。
@@ -281,21 +281,21 @@ function Write-SummaryTable {
 
 $engineProductDefs = @(
     @{ Name = 'Statevia.Core.Engine'; RelativePath = 'core\engine\Statevia.Core.Engine' }
-    @{ Name = 'Statevia.Cli'; RelativePath = 'core\engine\Statevia.Cli' }
+    @{ Name = 'Statevia.Service.Cli'; RelativePath = 'core\engine\Statevia.Service.Cli' }
 )
 
 $engineTestDefs = @(
     @{ Name = 'Statevia.Core.Engine.Tests'; RelativePath = 'core\engine\Statevia.Core.Engine.Tests' }
-    @{ Name = 'Statevia.Cli.Tests'; RelativePath = 'core\engine\Statevia.Cli.Tests' }
+    @{ Name = 'Statevia.Service.Cli.Tests'; RelativePath = 'core\engine\Statevia.Service.Cli.Tests' }
 )
 
 $apiProductDefs = @(
-    @{ Name = 'Statevia.Core.Api'; RelativePath = 'service\api\Statevia.Core.Api' }
-    @{ Name = 'Statevia.Core.Api.Bootstrap'; RelativePath = 'service\api\Statevia.Core.Api.Bootstrap' }
+    @{ Name = 'Statevia.Service.Api'; RelativePath = 'service\api\Statevia.Service.Api' }
+    @{ Name = 'Statevia.Service.Api.Bootstrap'; RelativePath = 'service\api\Statevia.Service.Api.Bootstrap' }
 )
 
 $apiTestDefs = @(
-    @{ Name = 'Statevia.Core.Api.Tests'; RelativePath = 'service\api\Statevia.Core.Api.Tests' }
+    @{ Name = 'Statevia.Service.Api.Tests'; RelativePath = 'service\api\Statevia.Service.Api.Tests' }
 )
 
 function Measure-DefinitionGroup {
@@ -367,7 +367,7 @@ foreach ($key in @('Files', 'Physical', 'Blank', 'Comment', 'Code')) {
     $uiUnitTestStats[$key] -= $uiE2e.Stats[$key]
 }
 
-$apiMigrationsPath = Join-Path $RepoRoot 'service\api\Statevia.Core.Api\Migrations'
+$apiMigrationsPath = Join-Path $RepoRoot 'service\api\Statevia.Service.Api\Migrations'
 $apiMigrations = Measure-PathGroup -RootPath $apiMigrationsPath -Extensions @('.cs') -Language 'csharp'
 
 $apiProductWithoutMigrations = New-LineStats

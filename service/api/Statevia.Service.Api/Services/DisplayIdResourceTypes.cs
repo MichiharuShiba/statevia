@@ -1,0 +1,11 @@
+namespace Statevia.Service.Api.Services;
+
+/// <summary>
+/// Display ID サービスのリソース種別キー。
+/// </summary>
+internal static class DisplayIdResourceTypes
+{
+    public const string Definition = "definition";
+
+    public const string Execution = "execution";
+}

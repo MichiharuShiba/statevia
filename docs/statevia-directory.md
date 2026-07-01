@@ -34,8 +34,8 @@ statevia/
 │
 ├─ cli/                          # 統合 CLI（statevia コマンド）
 │  ├─ statevia-cli.sln
-│  ├─ Statevia.Cli/              # `statevia definition validate` / `statevia module install`
-│  └─ Statevia.Cli.Tests/
+│  ├─ Statevia.Service.Cli/              # `statevia definition validate` / `statevia module install`
+│  └─ Statevia.Service.Cli.Tests/
 │
 ├─ shared/                       # 横断共有（API / CLI）
 │  └─ Statevia.Modules/          # modules パス解決等
@@ -52,16 +52,16 @@ statevia/
 │  │  ├─ Definition/             # 定義ロード・コンパイル・検証
 │  │  ├─ ExecutionGraph/        # 実行グラフ
 │  │  └─ Abstractions/
-│  ├─ Statevia.Cli/              # 既存（YAML 検証）→ cli/Statevia.Cli へ段階移行
+│  ├─ Statevia.Service.Cli/              # 既存（YAML 検証）→ cli/Statevia.Service.Cli へ段階移行
 │  ├─ Statevia.Core.Engine.Tests/
-│  ├─ Statevia.Cli.Tests/
+│  ├─ Statevia.Service.Cli.Tests/
 │  └─ samples/
 │     └─ hello-statevia/
 │
 ├─ api/                          # Core-API（C# ASP.NET Core）
 │  ├─ statevia-api.sln
 │  ├─ Dockerfile
-│  └─ Statevia.Core.Api/
+│  └─ Statevia.Service.Api/
 │     ├─ Program.cs
 │     ├─ Controllers/
 │     │  ├─ DefinitionsController.cs   # v1/definitions
