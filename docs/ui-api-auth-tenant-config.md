@@ -25,7 +25,7 @@ REST および Push（SSE）で Core API に認証・テナントヘッダを送
 
 | 変数名 | 必須 | 説明 |
 |--------|------|------|
-| `CORE_API_INTERNAL_BASE` | はい | Core API の内部 URL（例: `http://core-api:8080`）。既存仕様。 |
+| `CORE_API_INTERNAL_BASE` | はい | Core API の内部 URL（例: `http://service-api:8080`）。既存仕様。 |
 | `CORE_API_AUTH_TOKEN` | いいえ | Core API 用 Bearer トークン。`Bearer ` なしで設定すると自動で付与する。クライアントからヘッダが来ない場合に使用。 |
 | `CORE_API_TENANT_ID` | いいえ | テナント ID。クライアントからヘッダ・クエリが来ない場合に使用。 |
 
@@ -62,9 +62,9 @@ route が Core API に転送するときの付与順序:
 ### Docker Compose の例
 
 ```yaml
-ui:
+ui-studio:
   environment:
-    CORE_API_INTERNAL_BASE: "http://core-api:8080"
+    CORE_API_INTERNAL_BASE: "http://service-api:8080"
     CORE_API_AUTH_TOKEN: "your-service-token"
     CORE_API_TENANT_ID: "tenant-default"
 ```

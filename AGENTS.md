@@ -75,7 +75,7 @@ Further HTTP contract: `docs/core-api-interface.md`.
    **Gotcha**: `launchSettings.json` hardcodes ports 62427/62428. Use `--no-launch-profile` + `ASPNETCORE_URLS` to bind to port 8080.
    Migrations: `cd api && dotnet ef database update --project Statevia.Service.Api`.
 
-   **OpenAPI / Scalar**: Core-API 起動後、`/scalar/v1` で閲覧（OpenAPI JSON は `/swagger/v1/swagger.json`）。`docker compose` の core-api は `ASPNETCORE_ENVIRONMENT=Development` で有効。本番イメージ単体（Production）では既定オフ — `STATEVIA_ENABLE_API_DOCS=true` で有効化。export は `.\scripts\export-core-api-openapi.ps1`。
+   **OpenAPI / Scalar**: Core-API 起動後、`/scalar/v1` で閲覧（OpenAPI JSON は `/swagger/v1/swagger.json`）。`docker compose` の service-api は `ASPNETCORE_ENVIRONMENT=Development` で有効。本番イメージ単体（Production）では既定オフ — `STATEVIA_ENABLE_API_DOCS=true` で有効化。export は `.\scripts\export-core-api-openapi.ps1`。
 3. **ui** — run dev server:
 
    ```bash

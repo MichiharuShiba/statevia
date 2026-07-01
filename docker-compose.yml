@@ -1,4 +1,4 @@
-# v2: engine (C#), core-api (C# ASP.NET Core), ui (Next.js/TS)
+# v2: engine (C#), service-api (C# ASP.NET Core), ui-studio (Next.js/TS)
 # 初回: postgres 起動後、ホストでマイグレーション実行
 #   Bash:   cd service/api && DATABASE_URL="postgres://core:core@localhost:5432/core" dotnet ef database update --project Statevia.Service.Api
 #   PowerShell: cd service/api; $env:DATABASE_URL="postgres://statevia:<password>@localhost:5432/statevia"; dotnet ef database update --project Statevia.Service.Api
@@ -15,7 +15,7 @@ services:
       - pgdata:/var/lib/postgresql/data
     # C# API は EF Core マイグレーションでスキーマ作成するため init SQL は不要
 
-  core-api:
+  service-api:
     build:
       context: .
       dockerfile: service/api/Dockerfile
@@ -47,15 +47,15 @@ services:
     volumes:
       - ./modules:/app/modules
 
-  ui:
+  ui-studio:
     build:
       context: ui/studio
     environment:
-      CORE_API_INTERNAL_BASE: "http://core-api:8080"
+      CORE_API_INTERNAL_BASE: "http://service-api:8080"
     ports:
       - "3000:3000"
     depends_on:
-      - core-api
+      - service-api
 
 volumes:
   pgdata: {}

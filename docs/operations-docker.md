@@ -5,7 +5,7 @@
 ## 前提
 
 - Docker / Docker Compose が利用できること
-- 初回は **EF Core マイグレーション**で DB スキーマを作成する（`core-api` コンテナ起動前または起動後にホストから実行する運用が一般的）
+- 初回は **EF Core マイグレーション**で DB スキーマを作成する（`service-api` コンテナ起動前または起動後にホストから実行する運用が一般的）
 
 ## 起動
 
@@ -19,7 +19,7 @@ docker compose up -d
 - **PostgreSQL**: `localhost:5432`（ユーザー/DB: `statevia` / `statevia`）
 - **Core-API**: `http://localhost:8080`（`DATABASE_URL` は compose 内で `postgres` サービス向けに設定済み）
 - **Action Host**（gRPC）: `http://localhost:5001`（`STATEVIA_MODULES_PATH=/app/modules`。task 14 以降 Core-API から OutOfProcess 実行に利用）
-- **UI**: `http://localhost:3000`（`CORE_API_INTERNAL_BASE=http://core-api:8080`）
+- **UI**: `http://localhost:3000`（`CORE_API_INTERNAL_BASE=http://service-api:8080`）
 
 ## ヘルス
 
@@ -27,25 +27,26 @@ docker compose up -d
 
 ## API ドキュメント（OpenAPI / Scalar）
 
-`docker compose` の **core-api** は `ASPNETCORE_ENVIRONMENT=Development` のため、次にアクセスできます。
+`docker compose` の **service-api** は `ASPNETCORE_ENVIRONMENT=Development` のため、次にアクセスできます。
 
 - Scalar UI: `http://localhost:8080/scalar/v1`
 - OpenAPI JSON: `http://localhost:8080/swagger/v1/swagger.json`
 
-**本番向けに core-api イメージだけ**を Production で動かす場合は、上記は **既定で無効**です。意図的に有効化する場合は `STATEVIA_ENABLE_API_DOCS=true` を設定してください（API 構造の露出に注意）。
+**本番向けに service-api イメージだけ**を Production で動かす場合は、上記は **既定で無効**です。意図的に有効化する場合は `STATEVIA_ENABLE_API_DOCS=true` を設定してください（API 構造の露出に注意）。
 
 ## トラブルシュート
 
-- マイグレーション未適用で API が失敗する → `database update` を実行してから `core-api` を再起動
-- UI から API に届かない → compose では `ui` → `core-api` は内部 DNS 名。ブラウザからは UI のプロキシ（`/api/core/...`）経由でアクセス
+- compose のサービス名を変更したあと `port is already allocated` や `Found orphan containers` が出る → 旧コンテナ（例: `statevia-core-api-1`, `statevia-ui-1`）がポートを占有している。`docker compose up -d --remove-orphans` で orphan を削除するか、`docker compose down --remove-orphans` のあと再起動する
+- マイグレーション未適用で API が失敗する → `database update` を実行してから `service-api` を再起動
+- UI から API に届かない → compose では `ui-studio` → `service-api` は内部 DNS 名。ブラウザからは UI のプロキシ（`/api/core/...`）経由でアクセス
 
 ## 環境変数（参照）
 
 | サービス   | 主な変数 |
 | ---------- | -------- |
-| core-api   | `DATABASE_URL`, `ASPNETCORE_URLS`, `ASPNETCORE_ENVIRONMENT`（compose では `Development`） |
+| service-api | `DATABASE_URL`, `ASPNETCORE_URLS`, `ASPNETCORE_ENVIRONMENT`（compose では `Development`） |
 | action-host | `ASPNETCORE_URLS`（compose では `http://+:5001`）, `STATEVIA_MODULES_PATH`（`/app/modules`） |
-| ui         | `CORE_API_INTERNAL_BASE` |
+| ui-studio  | `CORE_API_INTERNAL_BASE` |
 
 詳細は `docker-compose.yml` と `AGENTS.md` を参照してください。
 

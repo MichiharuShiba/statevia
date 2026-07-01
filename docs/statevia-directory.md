@@ -13,7 +13,7 @@ statevia/
 ├─ LICENSE
 ├─ .gitignore
 ├─ .editorconfig
-├─ docker-compose.yml            # postgres + core-api (C#) + ui
+├─ docker-compose.yml            # postgres + service-api (C#) + ui-studio
 ├─ .env.example                  # POSTGRES_*（.env はコミットしない）
 │
 ├─ docs/
