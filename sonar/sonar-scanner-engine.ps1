@@ -22,14 +22,15 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $engineDir = Join-Path $repoRoot 'core\engine'
 $coverageXml = Join-Path $PSScriptRoot 'core-engine-coverage.xml'
 
-# API / shared / UI 等が混ざらないよう除外（samples は LOC 集計と同様に対象外）
+# Engine sln 内の *.Tests と他コンポーネントを除外
 $sonarAnalysisExclusions = @(
     '**/service/**',
     '**/shared/**',
     '**/ui/**',
     '**/infrastructure/**',
     '**/samples/**',
-    '**/docker-compose.yml'
+    '**/docker-compose.yml',
+    '**/*.Tests/**'
 ) -join ','
 $sonarCoverageExclusions = $sonarAnalysisExclusions
 
@@ -44,6 +45,7 @@ try {
         /d:sonar.host.url="http://localhost:9000" `
         /d:sonar.token="$($env:SONAR_TOKEN)" `
         /d:sonar.projectBaseDir="$repoRoot" `
+        /d:sonar.dotnet.excludeTestProjects=true `
         /d:sonar.cs.vscoveragexml.reportsPaths="$coverageXml" `
         "/d:sonar.exclusions=$sonarAnalysisExclusions" `
         "/d:sonar.coverage.exclusions=$sonarCoverageExclusions"

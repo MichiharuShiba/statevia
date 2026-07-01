@@ -28,7 +28,8 @@ $sonarAnalysisExclusions = @(
     '**/Statevia.Core.Engine/**',
     '**/Migrations/**',
     '**/Program.cs',
-    '**/docker-compose.yml'
+    '**/Dockerfile',
+    '**/*.Tests/**'
 ) -join ','
 $sonarCoverageExclusions = $sonarAnalysisExclusions
 
@@ -52,6 +53,7 @@ try {
         /d:sonar.host.url="http://localhost:9000" `
         /d:sonar.token="$($env:SONAR_TOKEN)" `
         /d:sonar.projectBaseDir="$repoRoot" `
+        /d:sonar.dotnet.excludeTestProjects=true `
         /d:sonar.cs.vscoveragexml.reportsPaths="$coverageXml" `
         "/d:sonar.exclusions=$sonarAnalysisExclusions" `
         "/d:sonar.coverage.exclusions=$sonarCoverageExclusions"
