@@ -355,17 +355,14 @@ public sealed partial class ExecutionEngineLoggingTests
             Task.FromResult(_output);
     }
 
-    private static partial class LoggingTestMessages
-    {
-        [LoggerMessage(EventId = 9901, Level = LogLevel.Information, Message = "StateContext user log")]
-        public static partial void StateContextUserLog(ILogger logger);
-    }
+    private static void LogStateContextUserMessage(ILogger logger) =>
+        logger.LogInformation("StateContext user log");
 
     private sealed class LoggingState : IState<Unit, Unit>
     {
         public Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
         {
-            LoggingTestMessages.StateContextUserLog(ctx.Logger);
+            LogStateContextUserMessage(ctx.Logger);
             return Task.FromResult(Unit.Value);
         }
     }
