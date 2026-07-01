@@ -1,5 +1,5 @@
-using Statevia.Actions.Abstractions.Catalog;
-using Statevia.Actions.Abstractions.Visibility;
+using Statevia.Core.Actions.Abstractions.Catalog;
+using Statevia.Core.Actions.Abstractions.Visibility;
 
 namespace Statevia.Service.Api.Application.Actions.Visibility;
 

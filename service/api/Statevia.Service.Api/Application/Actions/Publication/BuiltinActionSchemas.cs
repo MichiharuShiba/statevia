@@ -1,8 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
-using Statevia.Actions.Abstractions.Publication;
-using ActionPublication = Statevia.Actions.Abstractions.Publication.ActionPublication;
-using PublicationDescriptor = Statevia.Actions.Abstractions.Publication.ActionDescriptor;
+using Statevia.Core.Actions.Abstractions.Publication;
+using ActionPublication = Statevia.Core.Actions.Abstractions.Publication.ActionPublication;
+using PublicationDescriptor = Statevia.Core.Actions.Abstractions.Publication.ActionDescriptor;
 
 namespace Statevia.Service.Api.Application.Actions.Publication;
 

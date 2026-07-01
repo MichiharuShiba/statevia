@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Statevia.Actions.Abstractions\Statevia.Actions.Abstractions.csproj" />
+    <ProjectReference Include="..\..\core\actions\Statevia.Core.Actions.Abstractions\Statevia.Core.Actions.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Execution;
-using Statevia.Modules;
+using Statevia.Core.Actions.Abstractions.Modules;
 
 namespace Statevia.Service.Api.Tests.Fixtures.TestActionModule;
 

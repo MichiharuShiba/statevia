@@ -4,14 +4,14 @@ WORKDIR /src
 
 COPY service/action-host/Statevia.Service.ActionHost/Statevia.Service.ActionHost.csproj ./service/action-host/Statevia.Service.ActionHost/
 COPY core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj ./core/engine/Statevia.Core.Engine/
-COPY shared/Statevia.Actions.Abstractions/Statevia.Actions.Abstractions.csproj ./shared/Statevia.Actions.Abstractions/
+COPY core/actions/Statevia.Core.Actions.Abstractions/Statevia.Core.Actions.Abstractions.csproj ./core/actions/Statevia.Core.Actions.Abstractions/
 COPY shared/Statevia.Actions.Grpc/Statevia.Actions.Grpc.csproj ./shared/Statevia.Actions.Grpc/
 COPY shared/Statevia.Modules/Statevia.Modules.csproj ./shared/Statevia.Modules/
 RUN dotnet restore ./service/action-host/Statevia.Service.ActionHost/Statevia.Service.ActionHost.csproj
 
 COPY service/action-host/Statevia.Service.ActionHost/ ./service/action-host/Statevia.Service.ActionHost/
 COPY core/engine/Statevia.Core.Engine/ ./core/engine/Statevia.Core.Engine/
-COPY shared/Statevia.Actions.Abstractions/ ./shared/Statevia.Actions.Abstractions/
+COPY core/actions/Statevia.Core.Actions.Abstractions/ ./core/actions/Statevia.Core.Actions.Abstractions/
 COPY shared/Statevia.Actions.Grpc/ ./shared/Statevia.Actions.Grpc/
 COPY shared/Statevia.Modules/ ./shared/Statevia.Modules/
 RUN dotnet publish ./service/action-host/Statevia.Service.ActionHost/Statevia.Service.ActionHost.csproj \

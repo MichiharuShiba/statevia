@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Statevia.Actions.Abstractions.Execution;
+using Statevia.Core.Actions.Abstractions.Execution;
 using Statevia.Actions.Grpc.Contracts;
 
 namespace Statevia.Actions.Grpc.Tests;

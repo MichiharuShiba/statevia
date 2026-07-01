@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
-using Statevia.Actions.Abstractions.Execution;
+using Statevia.Core.Actions.Abstractions.Execution;
 using Statevia.Service.ActionHost.Execution;
 using Statevia.Service.ActionHost.Modules;
 using Statevia.Core.Engine.Abstractions;

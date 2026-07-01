@@ -123,7 +123,7 @@ Comment rules, Markdownlint (e.g. `.spec-workflow/`), build or analyzer warnings
 
 ### Core-API: Action 実行プラットフォーム（Phase 2）
 
-- **契約:** `shared/Statevia.Actions.Abstractions` — `ActionDescriptor`, `ModuleDescriptor`, `IActionCatalog`, `IActionVisibilityResolver`, `IActionExecutionPolicy`, `IActionExecutor`。
+- **契約:** `shared/Statevia.Core.Actions.Abstractions` — `ActionDescriptor`, `ModuleDescriptor`, `IActionCatalog`, `IActionVisibilityResolver`, `IActionExecutionPolicy`, `IActionExecutor`。
 - **責務分離:** Catalog（解決・メタデータ保持）/ VisibilityResolver（テナント境界）/ Policy（`ConfigurableExecutionPolicy` — base＝TrustLevel × Environment、`IExecutionPolicyProvider` による階層下限を最厳優先で合成、Hints、いずれも緩和不可）/ Executor（`DispatchingActionExecutor` → `IActionExecutionBackendSelector` → 各 `IActionExecutionBackend`）。
 - **階層 Execution Policy:** `IExecutionPolicyProvider` が scope（Organization / Project / Environment / Tenant）別の `ExecutionPolicy`（`MinimumMode`）を返し、`ConfigurableExecutionPolicy` が base 下限へ `Strictness.Max` で重ねる。どの階層も base を緩和できない。本フェーズ実装は Tenant scope（`TenantExecutionPolicyProvider`、appsettings の `Statevia:ExecutionPolicy:Tenants`）のみ。
 - **Engine 境界:** `ExecutionEngine` は `IStateExecutor` のみ呼び出す。Catalog / Policy / ModuleHost は Engine 非依存。

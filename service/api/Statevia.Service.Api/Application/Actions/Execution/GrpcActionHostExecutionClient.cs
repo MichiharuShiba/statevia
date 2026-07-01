@@ -1,6 +1,6 @@
 using Grpc.Net.Client;
 using Microsoft.Extensions.Options;
-using Statevia.Actions.Abstractions.Execution;
+using Statevia.Core.Actions.Abstractions.Execution;
 using Statevia.Actions.Grpc.Contracts;
 
 namespace Statevia.Service.Api.Application.Actions.Execution;

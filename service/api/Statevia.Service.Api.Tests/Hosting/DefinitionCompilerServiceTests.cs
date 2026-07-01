@@ -2,8 +2,8 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using Statevia.Service.Api.Abstractions.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Statevia.Actions.Abstractions.Catalog;
-using Statevia.Actions.Abstractions.Visibility;
+using Statevia.Core.Actions.Abstractions.Catalog;
+using Statevia.Core.Actions.Abstractions.Visibility;
 using Statevia.Service.Api.Application.Actions.Builtins;
 using ActionExecutionTestSupport = Statevia.Service.Api.Tests.Application.Actions.Execution.ActionExecutionTestSupport;
 using Statevia.Service.Api.Application.Actions;
@@ -1442,22 +1442,22 @@ public sealed class DefinitionCompilerServiceTests
             }
             """);
         using var outputSchema = JsonDocument.Parse("""{"type":"object"}""");
-        var publication = new Statevia.Actions.Abstractions.Publication.ActionPublication(
-            new Statevia.Actions.Abstractions.Publication.ActionDescriptor(
+        var publication = new Statevia.Core.Actions.Abstractions.Publication.ActionPublication(
+            new Statevia.Core.Actions.Abstractions.Publication.ActionDescriptor(
                 actionId,
                 "1.0.0",
                 "Nested Ship Test",
                 Category: "Test"),
-            new Statevia.Actions.Abstractions.Publication.ActionSchemaBundle(
+            new Statevia.Core.Actions.Abstractions.Publication.ActionSchemaBundle(
                 JsonDocument.Parse(inputSchema.RootElement.GetRawText()),
                 JsonDocument.Parse(outputSchema.RootElement.GetRawText())),
-            new Statevia.Actions.Abstractions.Publication.ActionUiMetadata(
+            new Statevia.Core.Actions.Abstractions.Publication.ActionUiMetadata(
                 FieldOrder: ["ship"],
-                Fields: new Dictionary<string, Statevia.Actions.Abstractions.Publication.ActionFieldUiHints>
+                Fields: new Dictionary<string, Statevia.Core.Actions.Abstractions.Publication.ActionFieldUiHints>
                 {
-                    ["ship"] = new Statevia.Actions.Abstractions.Publication.ActionFieldUiHints(
+                    ["ship"] = new Statevia.Core.Actions.Abstractions.Publication.ActionFieldUiHints(
                         LabelKey: $"{actionId}.ui.fields.ship.label"),
-                    ["ship.address"] = new Statevia.Actions.Abstractions.Publication.ActionFieldUiHints(
+                    ["ship.address"] = new Statevia.Core.Actions.Abstractions.Publication.ActionFieldUiHints(
                         LabelKey: $"{actionId}.ui.fields.ship.address.label"),
                 }));
 

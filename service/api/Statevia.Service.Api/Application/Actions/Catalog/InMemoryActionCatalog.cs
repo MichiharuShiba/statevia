@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
-using Statevia.Actions.Abstractions.Catalog;
+using Statevia.Core.Actions.Abstractions.Catalog;
 using Statevia.Service.Api.Application.Actions.Publication;
-using ActionPublication = Statevia.Actions.Abstractions.Publication.ActionPublication;
+using ActionPublication = Statevia.Core.Actions.Abstractions.Publication.ActionPublication;
 
 namespace Statevia.Service.Api.Application.Actions.Catalog;
 

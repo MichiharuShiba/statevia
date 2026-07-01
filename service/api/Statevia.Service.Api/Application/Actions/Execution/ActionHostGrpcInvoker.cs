@@ -1,5 +1,5 @@
 using Grpc.Core;
-using Statevia.Actions.Abstractions.Execution;
+using Statevia.Core.Actions.Abstractions.Execution;
 using Statevia.Actions.Grpc;
 using Statevia.Actions.Grpc.Contracts;
 
