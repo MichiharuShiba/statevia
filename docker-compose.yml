@@ -1,14 +1,12 @@
 # v2: engine (C#), service-api (C# ASP.NET Core), ui-studio (Next.js/TS)
-# 初回: postgres 起動後、ホストでマイグレーション実行
-#   Bash:   cd service/api && DATABASE_URL="postgres://core:core@localhost:5432/core" dotnet ef database update --project Statevia.Service.Api
-#   PowerShell: cd service/api; $env:DATABASE_URL="postgres://statevia:<password>@localhost:5432/statevia"; dotnet ef database update --project Statevia.Service.Api
+# 初回: cp .env.example .env（POSTGRES_*）。マイグレーションは docs/operations-docker.md を参照services:
 services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: statevia
-      POSTGRES_PASSWORD: statevia
-      POSTGRES_DB: statevia
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -23,7 +21,7 @@ services:
       # ローカル compose は Development（OpenAPI / Scalar を /scalar/v1 で公開）。本番イメージ単体では Production のまま。
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: "http://+:8080"
-      DATABASE_URL: "postgres://statevia:statevia@postgres:5432/statevia"
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       Statevia__ActionHost__BaseUrl: "http://action-host:5001"
     depends_on:
       - postgres

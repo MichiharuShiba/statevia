@@ -5,19 +5,23 @@
 ## 前提
 
 - Docker / Docker Compose が利用できること
+- リポジトリルートに **`.env`** があること（初回は `cp .env.example .env`）。`POSTGRES_*` は compose の `postgres` / `service-api` で共有する
 - 初回は **EF Core マイグレーション**で DB スキーマを作成する（`service-api` コンテナ起動前または起動後にホストから実行する運用が一般的）
 
 ## 起動
 
 ```bash
+cp .env.example .env   # 初回のみ
 docker compose up -d postgres
-# マイグレーション（例: ホストに .NET SDK がある場合）
-cd api && dotnet ef database update --project Statevia.Service.Api
+# マイグレーション（ホストから。DB ホスト名は localhost）
+set -a && source .env && set +a
+export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:${POSTGRES_PORT}/${POSTGRES_DB}"
+cd service/api && dotnet ef database update --project Statevia.Service.Api
 docker compose up -d
 ```
 
 - **PostgreSQL**: `localhost:5432`（ユーザー/DB: `statevia` / `statevia`）
-- **Core-API**: `http://localhost:8080`（`DATABASE_URL` は compose 内で `postgres` サービス向けに設定済み）
+- **Core-API**: `http://localhost:8080`（`DATABASE_URL` は compose 内で `POSTGRES_*` から組み立て。ホストからの `ef` は `.env` または手元の URL）
 - **Action Host**（gRPC）: `http://localhost:5001`（`STATEVIA_MODULES_PATH=/app/modules`。task 14 以降 Core-API から OutOfProcess 実行に利用）
 - **UI**: `http://localhost:3000`（`CORE_API_INTERNAL_BASE=http://service-api:8080`）
 
@@ -44,7 +48,8 @@ docker compose up -d
 
 | サービス   | 主な変数 |
 | ---------- | -------- |
-| service-api | `DATABASE_URL`, `ASPNETCORE_URLS`, `ASPNETCORE_ENVIRONMENT`（compose では `Development`） |
+| service-api | `DATABASE_URL`（`POSTGRES_*` から組み立て）, `ASPNETCORE_URLS`, `ASPNETCORE_ENVIRONMENT`（compose では `Development`） |
+| postgres    | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`（`.env` / `.env.example`） |
 | action-host | `ASPNETCORE_URLS`（compose では `http://+:5001`）, `STATEVIA_MODULES_PATH`（`/app/modules`） |
 | ui-studio  | `CORE_API_INTERNAL_BASE` |
 
