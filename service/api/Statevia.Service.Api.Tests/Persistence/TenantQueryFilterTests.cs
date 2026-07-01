@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Security;
 using Statevia.Service.Api.Application.Security;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Persistence;

@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Statevia.Service.Api.Abstractions.Security;
 
 namespace Statevia.Service.Api.Persistence;
 

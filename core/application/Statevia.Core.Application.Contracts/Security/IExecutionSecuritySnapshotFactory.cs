@@ -1,6 +1,4 @@
-using Statevia.Service.Api.Application.Security;
-
-namespace Statevia.Service.Api.Abstractions.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>Start 時点の <see cref="ExecutionSecuritySnapshot"/> を構築する。</summary>
 public interface IExecutionSecuritySnapshotFactory

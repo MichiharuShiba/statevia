@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Abstractions.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary><see cref="ITenantContext"/> の共通ヘルパー。</summary>
 public static class TenantContextExtensions

@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Abstractions.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>現在リクエスト／ワーカーのテナント文脈（読み取り専用）。</summary>
 public interface ITenantContext
@@ -42,5 +42,5 @@ public sealed record TenantContextState(
     Guid TenantId,
     string TenantKey,
     Guid? PrincipalId,
-    Application.Security.TenantLifecycle Lifecycle,
+    TenantLifecycle Lifecycle,
     IReadOnlySet<string>? EffectivePermissionKeys = null);

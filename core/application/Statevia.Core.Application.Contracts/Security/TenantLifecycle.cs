@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>テナントのライフサイクル状態。</summary>
 public enum TenantLifecycle

@@ -1,6 +1,4 @@
-using Statevia.Service.Api.Application.Security;
-
-namespace Statevia.Service.Api.Abstractions.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>Resume / Cancel 等の実行変異操作の Owner / Operator 認可。</summary>
 public interface IExecutionMutationAuthorization

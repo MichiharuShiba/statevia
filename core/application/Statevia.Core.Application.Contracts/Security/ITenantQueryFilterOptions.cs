@@ -1,14 +1,14 @@
-namespace Statevia.Service.Api.Abstractions.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>EF HasQueryFilter の有効／無効（テストでは無効化可能）。</summary>
-internal interface ITenantQueryFilterOptions
+public interface ITenantQueryFilterOptions
 {
     /// <summary>テナント QueryFilter を適用するか。</summary>
     bool IsEnabled { get; }
 }
 
 /// <summary>本番既定: QueryFilter 有効。</summary>
-internal sealed class EnabledTenantQueryFilterOptions : ITenantQueryFilterOptions
+public sealed class EnabledTenantQueryFilterOptions : ITenantQueryFilterOptions
 {
     /// <summary>共有インスタンス。</summary>
     public static readonly EnabledTenantQueryFilterOptions Instance = new();
@@ -20,7 +20,7 @@ internal sealed class EnabledTenantQueryFilterOptions : ITenantQueryFilterOption
 }
 
 /// <summary>テスト用: QueryFilter 無効。</summary>
-internal sealed class DisabledTenantQueryFilterOptions : ITenantQueryFilterOptions
+public sealed class DisabledTenantQueryFilterOptions : ITenantQueryFilterOptions
 {
     /// <summary>共有インスタンス。</summary>
     public static readonly DisabledTenantQueryFilterOptions Instance = new();

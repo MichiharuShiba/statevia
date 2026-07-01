@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Abstractions.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>テナント管理者判定（<c>users.is_tenant_admin</c>。グループのみに依存しない）。</summary>
 public interface ITenantAdminAuthorization

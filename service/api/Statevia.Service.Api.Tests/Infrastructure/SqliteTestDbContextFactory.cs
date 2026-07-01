@@ -1,6 +1,5 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Security;
 using Statevia.Service.Api.Application.Security;
 using Statevia.Service.Api.Persistence;
 

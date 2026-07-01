@@ -16,6 +16,6 @@ internal class ExecutionRow
     public bool CancelRequested { get; set; }
     public bool RestartLost { get; set; }
 
-    /// <summary>Start 時点の <see cref="Application.Security.ExecutionSecuritySnapshot"/> JSON。</summary>
+    /// <summary>Start 時点の <see cref="ExecutionSecuritySnapshot"/> JSON。</summary>
     public string? SecuritySnapshotJson { get; set; }
 }

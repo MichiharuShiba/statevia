@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Statevia.Core.Actions.Abstractions.Catalog;
 using Statevia.Core.Actions.Abstractions.Execution;
-using Statevia.Service.Api.Abstractions.Security;
 using Statevia.Service.Api.Application.Actions;
 using Statevia.Service.Api.Application.Actions.Builtins;
 using Statevia.Service.Api.Application.Actions.Execution;

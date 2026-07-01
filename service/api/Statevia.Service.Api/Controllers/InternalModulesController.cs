@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Statevia.Service.Api.Abstractions.Security;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Infrastructure.Security;
 

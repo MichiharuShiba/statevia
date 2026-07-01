@@ -12,7 +12,6 @@ using Statevia.Service.Api.Application.Actions.Modules;
 using Statevia.Service.Api.Application.Actions.Infrastructure;
 using Statevia.Service.Api.Application.Actions.Visibility;
 using Statevia.Service.Api.Application.Definition;
-using Statevia.Service.Api.Abstractions.Security;
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Infrastructure;

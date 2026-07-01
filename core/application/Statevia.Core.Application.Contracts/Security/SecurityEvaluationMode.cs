@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>
 /// Owner 経路の Resume / Cancel 認可が Snapshot か Live か。

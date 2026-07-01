@@ -1,4 +1,3 @@
-using Statevia.Service.Api.Abstractions.Security;
 
 namespace Statevia.Service.Api.Infrastructure.Security;
 

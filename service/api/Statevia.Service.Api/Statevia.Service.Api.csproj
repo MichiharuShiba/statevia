@@ -14,6 +14,7 @@
   <ItemGroup>
     <Using Include="Statevia.Core.Actions.Abstractions.Modules" />
     <Using Include="Statevia.Core.Application.Contracts.Persistence" />
+    <Using Include="Statevia.Core.Application.Contracts.Security" />
     <Using Include="Statevia.Core.Application.Contracts.Services" />
   </ItemGroup>
 

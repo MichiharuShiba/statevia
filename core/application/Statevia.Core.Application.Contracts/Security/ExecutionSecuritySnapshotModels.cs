@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>Start 時点の所属グループ（監査用）。</summary>
 /// <param name="Id">グループ ID。</param>

@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Abstractions.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>Runtime API の global permission 評価。</summary>
 public interface IRuntimePermissionAuthorization

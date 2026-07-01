@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Statevia.Service.Api.Abstractions.Security;
 using Statevia.Service.Api.Hosting;
 using Statevia.Service.Api.Infrastructure.Security;
 using Statevia.Service.Api.Persistence;
