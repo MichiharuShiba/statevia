@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\shared\Statevia.Modules\Statevia.Modules.csproj" />
+    <ProjectReference Include="..\..\..\..\shared\Statevia.Modules\Statevia.Modules.csproj" />
   </ItemGroup>
 
 </Project>

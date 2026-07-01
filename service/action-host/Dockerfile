@@ -2,19 +2,19 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
 WORKDIR /src
 
-COPY action-host/Statevia.ActionHost/Statevia.ActionHost.csproj ./action-host/Statevia.ActionHost/
-COPY engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj ./engine/Statevia.Core.Engine/
+COPY service/action-host/Statevia.ActionHost/Statevia.ActionHost.csproj ./service/action-host/Statevia.ActionHost/
+COPY core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj ./core/engine/Statevia.Core.Engine/
 COPY shared/Statevia.Actions.Abstractions/Statevia.Actions.Abstractions.csproj ./shared/Statevia.Actions.Abstractions/
 COPY shared/Statevia.Actions.Grpc/Statevia.Actions.Grpc.csproj ./shared/Statevia.Actions.Grpc/
 COPY shared/Statevia.Modules/Statevia.Modules.csproj ./shared/Statevia.Modules/
-RUN dotnet restore ./action-host/Statevia.ActionHost/Statevia.ActionHost.csproj
+RUN dotnet restore ./service/action-host/Statevia.ActionHost/Statevia.ActionHost.csproj
 
-COPY action-host/Statevia.ActionHost/ ./action-host/Statevia.ActionHost/
-COPY engine/Statevia.Core.Engine/ ./engine/Statevia.Core.Engine/
+COPY service/action-host/Statevia.ActionHost/ ./service/action-host/Statevia.ActionHost/
+COPY core/engine/Statevia.Core.Engine/ ./core/engine/Statevia.Core.Engine/
 COPY shared/Statevia.Actions.Abstractions/ ./shared/Statevia.Actions.Abstractions/
 COPY shared/Statevia.Actions.Grpc/ ./shared/Statevia.Actions.Grpc/
 COPY shared/Statevia.Modules/ ./shared/Statevia.Modules/
-RUN dotnet publish ./action-host/Statevia.ActionHost/Statevia.ActionHost.csproj \
+RUN dotnet publish ./service/action-host/Statevia.ActionHost/Statevia.ActionHost.csproj \
     -c Release -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime

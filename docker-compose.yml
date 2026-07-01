@@ -1,7 +1,7 @@
 # v2: engine (C#), core-api (C# ASP.NET Core), ui (Next.js/TS)
 # 初回: postgres 起動後、ホストでマイグレーション実行
-#   Bash:   cd api && DATABASE_URL="postgres://core:core@localhost:5432/core" dotnet ef database update --project Statevia.Core.Api
-#   PowerShell: cd api; $env:DATABASE_URL="postgres://statevia:<password>@localhost:5432/statevia"; dotnet ef database update --project Statevia.Core.Api
+#   Bash:   cd service/api && DATABASE_URL="postgres://core:core@localhost:5432/core" dotnet ef database update --project Statevia.Core.Api
+#   PowerShell: cd service/api; $env:DATABASE_URL="postgres://statevia:<password>@localhost:5432/statevia"; dotnet ef database update --project Statevia.Core.Api
 services:
   postgres:
     image: postgres:16
@@ -18,7 +18,7 @@ services:
   core-api:
     build:
       context: .
-      dockerfile: api/Dockerfile
+      dockerfile: service/api/Dockerfile
     environment:
       # ローカル compose は Development（OpenAPI / Scalar を /scalar/v1 で公開）。本番イメージ単体では Production のまま。
       ASPNETCORE_ENVIRONMENT: Development
@@ -37,7 +37,7 @@ services:
   action-host:
     build:
       context: .
-      dockerfile: action-host/Dockerfile
+      dockerfile: service/action-host/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: "http://+:5001"
@@ -49,7 +49,7 @@ services:
 
   ui:
     build:
-      context: services/ui
+      context: ui/studio
     environment:
       CORE_API_INTERNAL_BASE: "http://core-api:8080"
     ports:

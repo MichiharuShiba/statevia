@@ -72,8 +72,8 @@ public sealed class OpenApiDocumentTests : IClassFixture<StateviaApiWebApplicati
         using var response = await client.GetAsync(new Uri("/swagger/v1/swagger.json", UriKind.Relative));
         var json = await response.Content.ReadAsStringAsync();
 
-        var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
-        var outputPath = Path.Combine(repoRoot, "api", "openapi", "core-api-v1.openapi.json");
+        var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", ".."));
+        var outputPath = Path.Combine(repoRoot, "service", "api", "openapi", "core-api-v1.openapi.json");
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
         await File.WriteAllTextAsync(outputPath, json);
 

@@ -1,7 +1,7 @@
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Definition.Validation;
 
-// 移行期: 新しい統合 CLI は cli/Statevia.Cli（`statevia definition validate`）を使用してください。
+// 移行期: 新しい統合 CLI は service/cli/Statevia.Cli（`statevia definition validate`）を使用してください。
 
 if (args.Length < 1)
 {

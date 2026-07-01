@@ -16,10 +16,10 @@
 
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.67.0" />
-    <ProjectReference Include="..\..\engine\Statevia.Core.Engine\Statevia.Core.Engine.csproj" />
-    <ProjectReference Include="..\..\shared\Statevia.Actions.Abstractions\Statevia.Actions.Abstractions.csproj" />
-    <ProjectReference Include="..\..\shared\Statevia.Actions.Grpc\Statevia.Actions.Grpc.csproj" />
-    <ProjectReference Include="..\..\shared\Statevia.Modules\Statevia.Modules.csproj" />
+    <ProjectReference Include="../../../core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj" />
+    <ProjectReference Include="../../../shared/Statevia.Actions.Abstractions/Statevia.Actions.Abstractions.csproj" />
+    <ProjectReference Include="../../../shared/Statevia.Actions.Grpc/Statevia.Actions.Grpc.csproj" />
+    <ProjectReference Include="../../../shared/Statevia.Modules/Statevia.Modules.csproj" />
   </ItemGroup>
 
 </Project>

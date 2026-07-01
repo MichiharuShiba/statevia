@@ -3,20 +3,20 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # csproj だけ先にコピーして restore をキャッシュ効かせる
-COPY api/Statevia.Core.Api/Statevia.Core.Api.csproj ./api/Statevia.Core.Api/
-COPY engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj ./engine/Statevia.Core.Engine/
+COPY service/api/Statevia.Core.Api/Statevia.Core.Api.csproj ./service/api/Statevia.Core.Api/
+COPY core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj ./core/engine/Statevia.Core.Engine/
 COPY shared/Statevia.Actions.Abstractions/Statevia.Actions.Abstractions.csproj ./shared/Statevia.Actions.Abstractions/
 COPY shared/Statevia.Actions.Grpc/Statevia.Actions.Grpc.csproj ./shared/Statevia.Actions.Grpc/
 COPY shared/Statevia.Modules/Statevia.Modules.csproj ./shared/Statevia.Modules/
-RUN dotnet restore ./api/Statevia.Core.Api/Statevia.Core.Api.csproj
+RUN dotnet restore ./service/api/Statevia.Core.Api/Statevia.Core.Api.csproj
 
 # ソースをコピーして publish
-COPY api/Statevia.Core.Api/ ./api/Statevia.Core.Api/
-COPY engine/Statevia.Core.Engine/ ./engine/Statevia.Core.Engine/
+COPY service/api/Statevia.Core.Api/ ./service/api/Statevia.Core.Api/
+COPY core/engine/Statevia.Core.Engine/ ./core/engine/Statevia.Core.Engine/
 COPY shared/Statevia.Actions.Abstractions/ ./shared/Statevia.Actions.Abstractions/
 COPY shared/Statevia.Actions.Grpc/ ./shared/Statevia.Actions.Grpc/
 COPY shared/Statevia.Modules/ ./shared/Statevia.Modules/
-RUN dotnet publish ./api/Statevia.Core.Api/Statevia.Core.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish ./service/api/Statevia.Core.Api/Statevia.Core.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 
@@ -36,4 +36,3 @@ ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "Statevia.Core.Api.dll"]
-

@@ -10,12 +10,12 @@ internal static class BootstrapHelp
             Statevia platform bootstrap CLI
 
             Usage:
-              dotnet run --project api/Statevia.Core.Api.Bootstrap -- [options] <command> [command options]
+              dotnet run --project service/api/Statevia.Core.Api.Bootstrap -- [options] <command> [command options]
 
             Global options (before command):
               --database-url <url>       PostgreSQL URL or Npgsql connection string (overrides DATABASE_URL)
               --connection-string <cs>   Alias for --database-url
-              --config <path>            Additional JSON settings (e.g. api/Statevia.Core.Api/appsettings.json)
+              --config <path>            Additional JSON settings (e.g. service/api/Statevia.Core.Api/appsettings.json)
               -h, --help                 Show help
 
             Commands:
