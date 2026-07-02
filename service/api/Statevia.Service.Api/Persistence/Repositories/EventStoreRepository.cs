@@ -2,7 +2,6 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Persistence;
 
@@ -21,14 +20,14 @@ internal sealed class EventStoreRepository : IEventStoreRepository
         string? payloadJson,
         CancellationToken ct = default)
     {
-        var persistedMax = await uow.Db.EventStore
+        var persistedMax = await uow.GetDb().EventStore
             .AsNoTracking()
             .Where(e => e.ExecutionId == executionId)
             .Select(e => (long?)e.Seq)
             .MaxAsync(ct)
             .ConfigureAwait(false) ?? 0L;
 
-        var localMax = uow.Db.ChangeTracker.Entries<EventStoreRow>()
+        var localMax = uow.GetDb().ChangeTracker.Entries<EventStoreRow>()
             .Where(e => e.Entity.ExecutionId == executionId && e.State != EntityState.Deleted)
             .Select(e => e.Entity.Seq)
             .DefaultIfEmpty(0L)
@@ -37,7 +36,7 @@ internal sealed class EventStoreRepository : IEventStoreRepository
         var nextSeq = Math.Max(persistedMax, localMax) + 1L;
         var now = DateTime.UtcNow;
 
-        uow.Db.EventStore.Add(new EventStoreRow
+        uow.GetDb().EventStore.Add(new EventStoreRow
         {
             EventId = _ids.NewGuid(),
             ExecutionId = executionId,
@@ -61,22 +60,22 @@ internal sealed class EventStoreRepository : IEventStoreRepository
         var typeString = eventType.ToPersistedString();
         var fingerprintEventId = ComputeFingerprintEventId(executionId, clientEventId, typeString);
 
-        if (uow.Db.EventStore.Local.Any(e => e.EventId == fingerprintEventId))
+        if (uow.GetDb().EventStore.Local.Any(e => e.EventId == fingerprintEventId))
             return false;
 
-        if (await uow.Db.EventStore.AsNoTracking()
+        if (await uow.GetDb().EventStore.AsNoTracking()
                 .AnyAsync(e => e.EventId == fingerprintEventId, cancellationToken)
                 .ConfigureAwait(false))
             return false;
 
-        var persistedMax = await uow.Db.EventStore
+        var persistedMax = await uow.GetDb().EventStore
             .AsNoTracking()
             .Where(e => e.ExecutionId == executionId)
             .Select(e => (long?)e.Seq)
             .MaxAsync(cancellationToken)
             .ConfigureAwait(false) ?? 0L;
 
-        var localMax = uow.Db.ChangeTracker.Entries<EventStoreRow>()
+        var localMax = uow.GetDb().ChangeTracker.Entries<EventStoreRow>()
             .Where(e => e.Entity.ExecutionId == executionId && e.State != EntityState.Deleted)
             .Select(e => e.Entity.Seq)
             .DefaultIfEmpty(0L)
@@ -85,7 +84,7 @@ internal sealed class EventStoreRepository : IEventStoreRepository
         var nextSeq = Math.Max(persistedMax, localMax) + 1L;
         var now = DateTime.UtcNow;
 
-        uow.Db.EventStore.Add(new EventStoreRow
+        uow.GetDb().EventStore.Add(new EventStoreRow
         {
             EventId = fingerprintEventId,
             ExecutionId = executionId,
@@ -111,7 +110,7 @@ internal sealed class EventStoreRepository : IEventStoreRepository
         ArgumentOutOfRangeException.ThrowIfLessThan(limit, 1);
 
         var take = limit + 1;
-        var list = await uow.Db.EventStore.AsNoTracking()
+        var list = await uow.GetDb().EventStore.AsNoTracking()
             .Where(e => e.ExecutionId == executionId && e.Seq > afterSeq)
             .OrderBy(e => e.Seq)
             .Take(take)
@@ -127,7 +126,7 @@ internal sealed class EventStoreRepository : IEventStoreRepository
 
     public async Task<long> GetMaxSeqAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct = default)
     {
-        var max = await uow.Db.EventStore.AsNoTracking()
+        var max = await uow.GetDb().EventStore.AsNoTracking()
             .Where(e => e.ExecutionId == executionId)
             .Select(e => (long?)e.Seq)
             .MaxAsync(ct)

@@ -1,7 +1,7 @@
-namespace Statevia.Service.Api.Persistence;
+namespace Statevia.Core.Application.Contracts.Persistence;
 
 /// <summary>definition_versions テーブル（immutable 定義版の truth）。</summary>
-internal class DefinitionVersionRow
+public class DefinitionVersionRow
 {
     public Guid DefinitionVersionId { get; set; }
 

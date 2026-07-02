@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Infrastructure;
@@ -36,13 +35,13 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
         return await _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
-                var execution = await uow.Db.Executions.AsNoTracking()
+                var execution = await uow.GetDb().Executions.AsNoTracking()
                     .FirstOrDefaultAsync(x => x.ExecutionId == uuid && x.TenantId == tenantId, innerCt)
                     .ConfigureAwait(false);
                 if (execution is null)
                     throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-                var snapshot = await uow.Db.ExecutionGraphSnapshots.AsNoTracking()
+                var snapshot = await uow.GetDb().ExecutionGraphSnapshots.AsNoTracking()
                     .FirstOrDefaultAsync(x => x.ExecutionId == uuid, innerCt)
                     .ConfigureAwait(false);
                 if (snapshot is null)

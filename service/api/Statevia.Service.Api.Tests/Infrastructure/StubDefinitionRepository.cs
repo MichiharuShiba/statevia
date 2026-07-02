@@ -1,4 +1,3 @@
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Persistence;
 
 namespace Statevia.Service.Api.Tests.Infrastructure;

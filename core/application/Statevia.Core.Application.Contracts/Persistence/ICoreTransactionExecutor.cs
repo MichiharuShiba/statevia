@@ -1,9 +1,9 @@
-namespace Statevia.Service.Api.Abstractions.Persistence;
+namespace Statevia.Core.Application.Contracts.Persistence;
 
 /// <summary>
 /// ReadCommitted / ReadOnly の定型トランザクション実行。
 /// </summary>
-internal interface ICoreTransactionExecutor
+public interface ICoreTransactionExecutor
 {
     /// <summary>ReadCommitted で 1 トランザクションを実行し、成功時にコミットする。</summary>
     Task ExecuteReadCommittedAsync(

@@ -1,6 +1,5 @@
 using System;
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Persistence;
 
 namespace Statevia.Service.Api.Persistence.Repositories;
@@ -14,11 +13,11 @@ internal sealed class ExecutionRepository : IExecutionRepository
     }
 
     public Task<ExecutionRow?> GetByIdAsync(ICoreUnitOfWork uow, Guid tenantId, Guid executionId, CancellationToken ct) =>
-        uow.Db.Executions.AsNoTracking()
+        uow.GetDb().Executions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ExecutionId == executionId && x.TenantId == tenantId, ct);
 
     public Task<ExecutionRow?> GetByExecutionIdAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct) =>
-        uow.Db.Executions.IgnoreQueryFilters().AsNoTracking()
+        uow.GetDb().Executions.IgnoreQueryFilters().AsNoTracking()
             .FirstOrDefaultAsync(x => x.ExecutionId == executionId, ct);
 
     public async Task<(int TotalCount, List<(ExecutionRow Execution, string? DisplayId)> Items)> ListWithDisplayIdsPageAsync(
@@ -27,7 +26,7 @@ internal sealed class ExecutionRepository : IExecutionRepository
         ExecutionListPageQuery query,
         CancellationToken ct)
     {
-        var joinQuery = QueryExecutionsWithDisplayIds(uow.Db, tenantId);
+        var joinQuery = QueryExecutionsWithDisplayIds(uow.GetDb(), tenantId);
 
         if (!string.IsNullOrWhiteSpace(query.StatusFilter))
             joinQuery = joinQuery.Where(x => x.Execution.Status == query.StatusFilter);
@@ -68,13 +67,13 @@ internal sealed class ExecutionRepository : IExecutionRepository
         ExecutionGraphSnapshotRow snapshot,
         CancellationToken ct)
     {
-        uow.Db.Executions.Add(execution);
-        uow.Db.ExecutionGraphSnapshots.Add(snapshot);
+        uow.GetDb().Executions.Add(execution);
+        uow.GetDb().ExecutionGraphSnapshots.Add(snapshot);
         return Task.CompletedTask;
     }
 
     public Task<ExecutionGraphSnapshotRow?> GetSnapshotByExecutionIdAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct) =>
-        uow.Db.ExecutionGraphSnapshots.AsNoTracking()
+        uow.GetDb().ExecutionGraphSnapshots.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ExecutionId == executionId, ct);
 
     public async Task UpdateExecutionAndSnapshotAsync(
@@ -85,7 +84,7 @@ internal sealed class ExecutionRepository : IExecutionRepository
         string graphJson,
         CancellationToken ct)
     {
-        var w = await uow.Db.Executions.FirstOrDefaultAsync(x => x.ExecutionId == executionId, ct).ConfigureAwait(false);
+        var w = await uow.GetDb().Executions.FirstOrDefaultAsync(x => x.ExecutionId == executionId, ct).ConfigureAwait(false);
         if (w is not null)
         {
             w.Status = status;
@@ -96,7 +95,7 @@ internal sealed class ExecutionRepository : IExecutionRepository
             }
         }
 
-        var g = await uow.Db.ExecutionGraphSnapshots.FirstOrDefaultAsync(x => x.ExecutionId == executionId, ct).ConfigureAwait(false);
+        var g = await uow.GetDb().ExecutionGraphSnapshots.FirstOrDefaultAsync(x => x.ExecutionId == executionId, ct).ConfigureAwait(false);
         if (g is not null)
         {
             g.GraphJson = graphJson;

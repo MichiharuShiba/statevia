@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Application.Security;
 
 namespace Statevia.Service.Api.Persistence.Repositories;
@@ -17,7 +16,7 @@ internal sealed class ProjectRepository : IProjectRepository
         string ownerTenantKey,
         CancellationToken ct)
     {
-        var existing = await uow.Db.Projects
+        var existing = await uow.GetDb().Projects
             .FirstOrDefaultAsync(
                 p => p.OwnerTenantId == ownerTenantId && p.Slug == DefaultProjectSlug,
                 ct)
@@ -37,7 +36,7 @@ internal sealed class ProjectRepository : IProjectRepository
             Description = "Auto-created default project",
             CreatedAt = now
         };
-        uow.Db.Projects.Add(project);
+        uow.GetDb().Projects.Add(project);
         return project;
     }
 
@@ -48,7 +47,7 @@ internal sealed class ProjectRepository : IProjectRepository
         Guid projectId,
         CancellationToken ct)
     {
-        var project = await uow.Db.Projects.AsNoTracking()
+        var project = await uow.GetDb().Projects.AsNoTracking()
             .FirstOrDefaultAsync(p => p.ProjectId == projectId, ct)
             .ConfigureAwait(false);
 
@@ -58,7 +57,7 @@ internal sealed class ProjectRepository : IProjectRepository
         if (project.OwnerTenantId == tenantId)
             return ProjectAccessRole.Admin;
 
-        var access = await uow.Db.ProjectAccesses.AsNoTracking()
+        var access = await uow.GetDb().ProjectAccesses.AsNoTracking()
             .FirstOrDefaultAsync(
                 pa => pa.ProjectId == projectId && pa.TenantId == tenantId,
                 ct)
@@ -75,7 +74,7 @@ internal sealed class ProjectRepository : IProjectRepository
         ProjectAccessRole role,
         CancellationToken ct)
     {
-        uow.Db.ProjectAccesses.Add(new ProjectAccessRow
+        uow.GetDb().ProjectAccesses.Add(new ProjectAccessRow
         {
             ProjectId = projectId,
             TenantId = granteeTenantId,

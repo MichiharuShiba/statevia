@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Application.Contracts.Persistence;
 
 namespace Statevia.Service.Api.Persistence;
 
-internal class CoreDbContext : DbContext
+internal class CoreDbContext : DbContext, ICoreDatabase
 {
     private static class Columns
     {

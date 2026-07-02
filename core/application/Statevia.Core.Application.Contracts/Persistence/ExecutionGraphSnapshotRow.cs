@@ -1,7 +1,7 @@
-namespace Statevia.Service.Api.Persistence;
+namespace Statevia.Core.Application.Contracts.Persistence;
 
 /// <summary>execution_graph_snapshots テーブル（projection）。</summary>
-internal class ExecutionGraphSnapshotRow
+public class ExecutionGraphSnapshotRow
 {
     public Guid ExecutionId { get; set; }
     public required string GraphJson { get; set; }

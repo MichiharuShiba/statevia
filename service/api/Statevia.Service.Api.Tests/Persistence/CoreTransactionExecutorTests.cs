@@ -20,7 +20,7 @@ public sealed class CoreTransactionExecutorTests
         await executor.ExecuteReadCommittedAsync(
             async (uow, ct) =>
             {
-                uow.Db.WorkflowDefinitions.Add(new WorkflowDefinitionRow
+                uow.GetDb().WorkflowDefinitions.Add(new WorkflowDefinitionRow
                 {
                     DefinitionId = definitionId,
                     TenantId = TestTenantIds.DefaultTenantId,
@@ -55,7 +55,7 @@ public sealed class CoreTransactionExecutorTests
             executor.ExecuteReadCommittedAsync<int>(
                 async (uow, ct) =>
                 {
-                    uow.Db.WorkflowDefinitions.Add(new WorkflowDefinitionRow
+                    uow.GetDb().WorkflowDefinitions.Add(new WorkflowDefinitionRow
                     {
                         DefinitionId = definitionId,
                         TenantId = TestTenantIds.DefaultTenantId,
@@ -87,7 +87,7 @@ public sealed class CoreTransactionExecutorTests
 
         // Act
         var count = await executor.ExecuteReadCommittedAsync(
-            (uow, ct) => uow.Db.Tenants.CountAsync(ct),
+            (uow, ct) => uow.GetDb().Tenants.CountAsync(ct),
             CancellationToken.None);
 
         // Assert
@@ -107,7 +107,7 @@ public sealed class CoreTransactionExecutorTests
         var count = await executor.ExecuteReadOnlyAsync(
             async (uow, ct) =>
             {
-                uow.Db.WorkflowDefinitions.Add(new WorkflowDefinitionRow
+                uow.GetDb().WorkflowDefinitions.Add(new WorkflowDefinitionRow
                 {
                     DefinitionId = definitionId,
                     TenantId = TestTenantIds.DefaultTenantId,
@@ -117,7 +117,7 @@ public sealed class CoreTransactionExecutorTests
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 });
-                return await uow.Db.WorkflowDefinitions.CountAsync(ct);
+                return await uow.GetDb().WorkflowDefinitions.CountAsync(ct);
             },
             CancellationToken.None);
 
@@ -140,7 +140,7 @@ public sealed class CoreTransactionExecutorTests
         // Act
         var exception = await Record.ExceptionAsync(() =>
             executor.ExecuteReadOnlyAsync(
-                async (uow, ct) => { _ = await uow.Db.Tenants.CountAsync(ct); },
+                async (uow, ct) => { _ = await uow.GetDb().Tenants.CountAsync(ct); },
                 CancellationToken.None));
 
         // Assert

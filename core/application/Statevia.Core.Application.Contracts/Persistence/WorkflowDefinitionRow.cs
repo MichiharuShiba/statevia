@@ -1,7 +1,7 @@
-namespace Statevia.Service.Api.Persistence;
+namespace Statevia.Core.Application.Contracts.Persistence;
 
 /// <summary>workflow_definitions テーブル。</summary>
-internal class WorkflowDefinitionRow
+public class WorkflowDefinitionRow
 {
     public Guid DefinitionId { get; set; }
     public Guid TenantId { get; set; }

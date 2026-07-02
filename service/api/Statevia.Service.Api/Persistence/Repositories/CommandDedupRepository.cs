@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Persistence;
 
 namespace Statevia.Service.Api.Persistence.Repositories;
@@ -11,7 +10,7 @@ internal sealed class CommandDedupRepository : ICommandDedupRepository
         string dedupKey,
         DateTime utcNow,
         CancellationToken ct) =>
-        uow.Db.CommandDedup.AsNoTracking()
+        uow.GetDb().CommandDedup.AsNoTracking()
             .FirstOrDefaultAsync(x => x.DedupKey == dedupKey && x.ExpiresAt > utcNow, ct);
 
     public Task<CommandDedupRow?> FindValidConflictingRequestHashAsync(
@@ -24,7 +23,7 @@ internal sealed class CommandDedupRepository : ICommandDedupRepository
         CancellationToken ct)
     {
         var tenantPrefix = $"{tenantKey}|";
-        return uow.Db.CommandDedup.AsNoTracking()
+        return uow.GetDb().CommandDedup.AsNoTracking()
             .Where(x =>
                 x.ExpiresAt > utcNow
                 && x.Endpoint == endpoint
@@ -36,7 +35,7 @@ internal sealed class CommandDedupRepository : ICommandDedupRepository
 
     public Task SaveAsync(ICoreUnitOfWork uow, CommandDedupRow row, CancellationToken ct)
     {
-        uow.Db.CommandDedup.Add(row);
+        uow.GetDb().CommandDedup.Add(row);
         return Task.CompletedTask;
     }
 }

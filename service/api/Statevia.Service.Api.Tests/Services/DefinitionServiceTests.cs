@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Statevia.Service.Api.Application.Actions;
 using Statevia.Service.Api.Application.Actions.Validation;
 using Statevia.Core.Engine.Abstractions;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Application.Security;
 using Statevia.Service.Api.Contracts;
@@ -123,7 +122,7 @@ public sealed class DefinitionServiceTests
         public override Task<string> AllocateAsync(ICoreUnitOfWork uow, string kind, Guid uuid, CancellationToken ct = default)
         {
             var displayId = AllocateValue ?? "DISP-1";
-            uow.Db.DisplayIds.Add(new DisplayIdRow
+            uow.GetDb().DisplayIds.Add(new DisplayIdRow
             {
                 Kind = kind,
                 DisplayId = displayId,

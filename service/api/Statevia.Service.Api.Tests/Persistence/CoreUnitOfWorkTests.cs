@@ -22,7 +22,7 @@ public sealed class CoreUnitOfWorkTests
         await using (var uow = await factory.CreateAsync())
         {
             await uow.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, CancellationToken.None);
-            uow.Db.WorkflowDefinitions.Add(new WorkflowDefinitionRow
+            uow.GetDb().WorkflowDefinitions.Add(new WorkflowDefinitionRow
             {
                 DefinitionId = definitionId,
                 TenantId = tenantId,
@@ -59,7 +59,7 @@ public sealed class CoreUnitOfWorkTests
         await using (var uow = await factory.CreateAsync())
         {
             await uow.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, CancellationToken.None);
-            uow.Db.WorkflowDefinitions.Add(new WorkflowDefinitionRow
+            uow.GetDb().WorkflowDefinitions.Add(new WorkflowDefinitionRow
             {
                 DefinitionId = definitionId,
                 TenantId = TestTenantIds.DefaultTenantId,

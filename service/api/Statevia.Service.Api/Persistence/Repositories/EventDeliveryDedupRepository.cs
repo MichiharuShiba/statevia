@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Persistence;
 
 namespace Statevia.Service.Api.Persistence.Repositories;
@@ -16,7 +15,7 @@ internal sealed class EventDeliveryDedupRepository : IEventDeliveryDedupReposito
         Guid executionId,
         Guid clientEventId,
         CancellationToken cancellationToken) =>
-        uow.Db.EventDeliveryDedup.AsNoTracking()
+        uow.GetDb().EventDeliveryDedup.AsNoTracking()
             .FirstOrDefaultAsync(
                 x => x.TenantId == tenantId && x.ExecutionId == executionId && x.ClientEventId == clientEventId,
                 cancellationToken);
@@ -24,7 +23,7 @@ internal sealed class EventDeliveryDedupRepository : IEventDeliveryDedupReposito
     /// <inheritdoc />
     public Task AddReceivedAsync(ICoreUnitOfWork uow, EventDeliveryDedupRow row, CancellationToken cancellationToken)
     {
-        uow.Db.EventDeliveryDedup.Add(row);
+        uow.GetDb().EventDeliveryDedup.Add(row);
         return Task.CompletedTask;
     }
 
@@ -38,7 +37,7 @@ internal sealed class EventDeliveryDedupRepository : IEventDeliveryDedupReposito
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(update);
-        var affected = await uow.Db.EventDeliveryDedup
+        var affected = await uow.GetDb().EventDeliveryDedup
             .Where(x => x.TenantId == tenantId && x.ExecutionId == executionId && x.ClientEventId == clientEventId)
             .ExecuteUpdateAsync(
                 s => s

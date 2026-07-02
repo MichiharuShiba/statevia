@@ -1,7 +1,7 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Statevia.Service.Api.Abstractions.Persistence;
+using Statevia.Core.Application.Contracts.Persistence;
 
 namespace Statevia.Service.Api.Persistence;
 
@@ -20,7 +20,7 @@ internal sealed class CoreUnitOfWork : ICoreUnitOfWork
     public CoreUnitOfWork(CoreDbContext db) => _db = db;
 
     /// <inheritdoc />
-    public CoreDbContext Db => _db;
+    public ICoreDatabase Db => _db;
 
     /// <inheritdoc />
     public async Task BeginTransactionAsync(IsolationLevel level, CancellationToken cancellationToken)

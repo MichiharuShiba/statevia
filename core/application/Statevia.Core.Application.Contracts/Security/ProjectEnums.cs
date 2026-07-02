@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>project_accesses.role の値。数値順が権限強度（Reader &lt; Executor &lt; Publisher &lt; Admin）。</summary>
 public enum ProjectAccessRole

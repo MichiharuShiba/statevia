@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Core.Actions.Abstractions.Catalog;
 using Statevia.Core.Actions.Abstractions.Execution;

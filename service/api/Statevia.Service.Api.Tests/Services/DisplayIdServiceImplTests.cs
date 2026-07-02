@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Persistence;
 using Statevia.Service.Api.Services;

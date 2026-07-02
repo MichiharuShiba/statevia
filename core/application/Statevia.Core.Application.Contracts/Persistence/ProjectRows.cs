@@ -1,9 +1,9 @@
-using Statevia.Service.Api.Application.Security;
+using Statevia.Core.Application.Contracts.Security;
 
-namespace Statevia.Service.Api.Persistence;
+namespace Statevia.Core.Application.Contracts.Persistence;
 
 /// <summary>projects テーブル。</summary>
-internal sealed class ProjectRow
+public sealed class ProjectRow
 {
     public Guid ProjectId { get; set; }
 
@@ -24,7 +24,7 @@ internal sealed class ProjectRow
 }
 
 /// <summary>project_accesses テーブル — 認可 truth。</summary>
-internal sealed class ProjectAccessRow
+public sealed class ProjectAccessRow
 {
     public Guid ProjectId { get; set; }
 

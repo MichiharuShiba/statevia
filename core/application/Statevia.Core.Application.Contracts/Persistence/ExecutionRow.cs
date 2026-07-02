@@ -1,7 +1,7 @@
-namespace Statevia.Service.Api.Persistence;
+namespace Statevia.Core.Application.Contracts.Persistence;
 
 /// <summary>executions テーブル（projection）。</summary>
-internal class ExecutionRow
+public class ExecutionRow
 {
     public Guid ExecutionId { get; set; }
     public Guid TenantId { get; set; }
@@ -16,6 +16,6 @@ internal class ExecutionRow
     public bool CancelRequested { get; set; }
     public bool RestartLost { get; set; }
 
-    /// <summary>Start 時点の <see cref="ExecutionSecuritySnapshot"/> JSON。</summary>
+    /// <summary>Start 時点の <see cref="Security.ExecutionSecuritySnapshot"/> JSON。</summary>
     public string? SecuritySnapshotJson { get; set; }
 }

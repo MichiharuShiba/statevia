@@ -1,7 +1,7 @@
-namespace Statevia.Service.Api.Persistence;
+namespace Statevia.Core.Application.Contracts.Persistence;
 
 /// <summary>event_delivery_dedup テーブル（イベント配送の冪等制御）。</summary>
-internal class EventDeliveryDedupRow
+public class EventDeliveryDedupRow
 {
     public required Guid TenantId { get; set; }
     public Guid ExecutionId { get; set; }
@@ -14,3 +14,9 @@ internal class EventDeliveryDedupRow
     public DateTime UpdatedAt { get; set; }
 }
 
+/// <summary>event_delivery_dedup ステータス更新用 DTO。</summary>
+public sealed record EventDeliveryDedupStatusUpdate(
+    string Status,
+    DateTime UtcNow,
+    DateTime? AppliedAt,
+    string? ErrorCode);

@@ -73,7 +73,7 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("api_keys", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.CommandDedupRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.CommandDedupRow", b =>
                 {
                     b.Property<string>("DedupKey")
                         .HasColumnType("text")
@@ -114,7 +114,7 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("command_dedup", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.DefinitionRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.DefinitionRow", b =>
                 {
                     b.Property<Guid>("DefinitionId")
                         .ValueGeneratedOnAdd()
@@ -163,7 +163,7 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("definitions", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.DefinitionVersionRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.DefinitionVersionRow", b =>
                 {
                     b.Property<Guid>("DefinitionVersionId")
                         .ValueGeneratedOnAdd()
@@ -200,7 +200,7 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("definition_versions", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.DisplayIdRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.DisplayIdRow", b =>
                 {
                     b.Property<string>("Kind")
                         .HasMaxLength(32)
@@ -229,7 +229,7 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("display_ids", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.EventDeliveryDedupRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.EventDeliveryDedupRow", b =>
                 {
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -277,7 +277,7 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("event_delivery_dedup", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.EventStoreRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.EventStoreRow", b =>
                 {
                     b.Property<Guid>("ExecutionId")
                         .HasColumnType("uuid")
@@ -340,7 +340,7 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("event_store", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.ExecutionCursorRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionCursorRow", b =>
                 {
                     b.Property<Guid>("ExecutionId")
                         .HasColumnType("uuid")
@@ -416,7 +416,7 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("execution_events", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.ExecutionGraphSnapshotRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionGraphSnapshotRow", b =>
                 {
                     b.Property<Guid>("ExecutionId")
                         .ValueGeneratedOnAdd()
@@ -437,7 +437,7 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("execution_graph_snapshots", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.ExecutionRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionRow", b =>
                 {
                     b.Property<Guid>("ExecutionId")
                         .ValueGeneratedOnAdd()
@@ -491,7 +491,7 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("executions", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.ExecutionWaitRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionWaitRow", b =>
                 {
                     b.Property<Guid>("ExecutionId")
                         .HasColumnType("uuid")
@@ -694,7 +694,7 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("principals", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.ProjectAccessRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ProjectAccessRow", b =>
                 {
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid")
@@ -721,7 +721,7 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("project_accesses", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.ProjectRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ProjectRow", b =>
                 {
                     b.Property<Guid>("ProjectId")
                         .ValueGeneratedOnAdd()
@@ -937,7 +937,7 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("users", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.WorkflowDefinitionRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.WorkflowDefinitionRow", b =>
                 {
                     b.Property<Guid>("DefinitionId")
                         .ValueGeneratedOnAdd()
@@ -979,9 +979,9 @@ namespace Statevia.Service.Api.Migrations
                     b.ToTable("workflow_definitions", (string)null);
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.DefinitionRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.DefinitionRow", b =>
                 {
-                    b.HasOne("Statevia.Service.Api.Persistence.ProjectRow", null)
+                    b.HasOne("Statevia.Core.Application.Contracts.Persistence.ProjectRow", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -994,16 +994,16 @@ namespace Statevia.Service.Api.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.DefinitionVersionRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.DefinitionVersionRow", b =>
                 {
-                    b.HasOne("Statevia.Service.Api.Persistence.DefinitionRow", null)
+                    b.HasOne("Statevia.Core.Application.Contracts.Persistence.DefinitionRow", null)
                         .WithMany()
                         .HasForeignKey("DefinitionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.EventDeliveryDedupRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.EventDeliveryDedupRow", b =>
                 {
                     b.HasOne("Statevia.Service.Api.Persistence.TenantRow", null)
                         .WithMany()
@@ -1012,9 +1012,9 @@ namespace Statevia.Service.Api.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.ExecutionCursorRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionCursorRow", b =>
                 {
-                    b.HasOne("Statevia.Service.Api.Persistence.ExecutionRow", null)
+                    b.HasOne("Statevia.Core.Application.Contracts.Persistence.ExecutionRow", null)
                         .WithMany()
                         .HasForeignKey("ExecutionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1027,9 +1027,9 @@ namespace Statevia.Service.Api.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.ExecutionRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionRow", b =>
                 {
-                    b.HasOne("Statevia.Service.Api.Persistence.DefinitionVersionRow", null)
+                    b.HasOne("Statevia.Core.Application.Contracts.Persistence.DefinitionVersionRow", null)
                         .WithMany()
                         .HasForeignKey("DefinitionVersionId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1042,18 +1042,18 @@ namespace Statevia.Service.Api.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.ExecutionWaitRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionWaitRow", b =>
                 {
-                    b.HasOne("Statevia.Service.Api.Persistence.ExecutionRow", null)
+                    b.HasOne("Statevia.Core.Application.Contracts.Persistence.ExecutionRow", null)
                         .WithMany()
                         .HasForeignKey("ExecutionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.ProjectAccessRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ProjectAccessRow", b =>
                 {
-                    b.HasOne("Statevia.Service.Api.Persistence.ProjectRow", null)
+                    b.HasOne("Statevia.Core.Application.Contracts.Persistence.ProjectRow", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1066,7 +1066,7 @@ namespace Statevia.Service.Api.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.ProjectRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ProjectRow", b =>
                 {
                     b.HasOne("Statevia.Service.Api.Persistence.TenantRow", null)
                         .WithMany()
@@ -1075,7 +1075,7 @@ namespace Statevia.Service.Api.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Statevia.Service.Api.Persistence.WorkflowDefinitionRow", b =>
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.WorkflowDefinitionRow", b =>
                 {
                     b.HasOne("Statevia.Service.Api.Persistence.TenantRow", null)
                         .WithMany()

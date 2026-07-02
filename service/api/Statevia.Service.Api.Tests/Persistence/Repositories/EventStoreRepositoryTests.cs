@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Infrastructure;
 using Statevia.Service.Api.Persistence;
 using Statevia.Service.Api.Persistence.Repositories;
@@ -59,10 +58,10 @@ public sealed class EventStoreRepositoryTests
         await repo.AppendAsync(uow, wfId, EventStoreEventType.WorkflowStarted, payloadJson: null, default);
 
         // Assert
-        Assert.Empty(await uow.Db.EventStore.AsNoTracking().Where(e => e.ExecutionId == wfId).ToListAsync());
+        Assert.Empty(await uow.GetDb().EventStore.AsNoTracking().Where(e => e.ExecutionId == wfId).ToListAsync());
 
         await uow.SaveChangesAsync(CancellationToken.None);
-        Assert.Equal(1, await uow.Db.EventStore.AsNoTracking().CountAsync(e => e.ExecutionId == wfId));
+        Assert.Equal(1, await uow.GetDb().EventStore.AsNoTracking().CountAsync(e => e.ExecutionId == wfId));
     }
 
     /// <summary>
@@ -228,7 +227,7 @@ public sealed class EventStoreRepositoryTests
         // Assert
         Assert.True(first);
         Assert.False(second);
-        Assert.Equal(1, await uow.Db.EventStore.AsNoTracking().CountAsync(e => e.ExecutionId == executionId));
+        Assert.Equal(1, await uow.GetDb().EventStore.AsNoTracking().CountAsync(e => e.ExecutionId == executionId));
     }
 
     /// <summary>
@@ -268,6 +267,6 @@ public sealed class EventStoreRepositoryTests
 
         // Assert
         Assert.False(again);
-        Assert.Equal(1, await uow2.Db.EventStore.AsNoTracking().CountAsync(e => e.ExecutionId == executionId));
+        Assert.Equal(1, await uow2.GetDb().EventStore.AsNoTracking().CountAsync(e => e.ExecutionId == executionId));
     }
 }

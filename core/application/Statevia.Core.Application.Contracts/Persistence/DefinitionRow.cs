@@ -1,7 +1,7 @@
-namespace Statevia.Service.Api.Persistence;
+namespace Statevia.Core.Application.Contracts.Persistence;
 
 /// <summary>definitions テーブル（論理定義の投影メタ）。</summary>
-internal class DefinitionRow
+public class DefinitionRow
 {
     public Guid DefinitionId { get; set; }
 
