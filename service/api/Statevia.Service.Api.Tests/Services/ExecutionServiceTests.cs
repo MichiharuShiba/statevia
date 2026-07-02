@@ -4,8 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using Statevia.Service.Api.Abstractions.Persistence;
-using Statevia.Service.Api.Abstractions.Security;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Application.Security;
 using Statevia.Service.Api.Persistence;

@@ -37,7 +37,7 @@ public sealed class ProjectRepositoryTests
         // Act
         await using var uow = await uowFactory.CreateAsync();
         var project = await repo.EnsureDefaultProjectAsync(uow, ownerTenantId, "owner", default);
-        await uow.Db.SaveChangesAsync();
+        await uow.GetDb().SaveChangesAsync();
 
         // Assert
         await using var verify = db.Factory.CreateDbContext();

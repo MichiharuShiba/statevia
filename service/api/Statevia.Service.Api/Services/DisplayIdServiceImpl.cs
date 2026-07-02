@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Persistence;
 
@@ -22,11 +21,11 @@ internal sealed class DisplayIdServiceImpl : IDisplayIdService, IDisplayIdWriteS
         for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
             var displayId = GenerateDisplayId();
-            var exists = await uow.Db.DisplayIds.AnyAsync(x => x.DisplayId == displayId, ct).ConfigureAwait(false);
+            var exists = await uow.GetDb().DisplayIds.AnyAsync(x => x.DisplayId == displayId, ct).ConfigureAwait(false);
             if (exists)
                 continue;
 
-            uow.Db.DisplayIds.Add(new DisplayIdRow
+            uow.GetDb().DisplayIds.Add(new DisplayIdRow
             {
                 Kind = kind,
                 DisplayId = displayId,
@@ -69,17 +68,17 @@ internal sealed class DisplayIdServiceImpl : IDisplayIdService, IDisplayIdWriteS
     {
         if (Guid.TryParse(idOrUuid, out var guid))
         {
-            var byDisplay = await uow.Db.DisplayIds.FirstOrDefaultAsync(x => x.Kind == kind && x.ResourceId == guid, ct)
+            var byDisplay = await uow.GetDb().DisplayIds.FirstOrDefaultAsync(x => x.Kind == kind && x.ResourceId == guid, ct)
                 .ConfigureAwait(false);
             if (byDisplay is not null) return guid;
-            if (kind is "definition" && await uow.Db.Definitions.AnyAsync(x => x.DefinitionId == guid, ct).ConfigureAwait(false))
+            if (kind is "definition" && await uow.GetDb().Definitions.AnyAsync(x => x.DefinitionId == guid, ct).ConfigureAwait(false))
                 return guid;
-            if (kind is "execution" && await uow.Db.Executions.AnyAsync(x => x.ExecutionId == guid, ct).ConfigureAwait(false))
+            if (kind is "execution" && await uow.GetDb().Executions.AnyAsync(x => x.ExecutionId == guid, ct).ConfigureAwait(false))
                 return guid;
             return null;
         }
 
-        var row = await uow.Db.DisplayIds.FirstOrDefaultAsync(x => x.Kind == kind && x.DisplayId == idOrUuid, ct)
+        var row = await uow.GetDb().DisplayIds.FirstOrDefaultAsync(x => x.Kind == kind && x.DisplayId == idOrUuid, ct)
             .ConfigureAwait(false);
         return row?.ResourceId;
     }
@@ -93,7 +92,7 @@ internal sealed class DisplayIdServiceImpl : IDisplayIdService, IDisplayIdWriteS
         if (!Guid.TryParse(idOrUuid, out var guid))
             return idOrUuid;
 
-        return await uow.Db.DisplayIds.AsNoTracking()
+        return await uow.GetDb().DisplayIds.AsNoTracking()
             .Where(x => x.Kind == kind && x.ResourceId == guid)
             .Select(x => x.DisplayId)
             .FirstOrDefaultAsync(ct)
@@ -109,7 +108,7 @@ internal sealed class DisplayIdServiceImpl : IDisplayIdService, IDisplayIdWriteS
         var ids = resourceIds.Distinct().ToList();
         if (ids.Count == 0) return new Dictionary<Guid, string>();
 
-        var pairs = await uow.Db.DisplayIds.AsNoTracking()
+        var pairs = await uow.GetDb().DisplayIds.AsNoTracking()
             .Where(x => x.Kind == kind && ids.Contains(x.ResourceId))
             .Select(x => new { x.ResourceId, x.DisplayId })
             .ToListAsync(ct)

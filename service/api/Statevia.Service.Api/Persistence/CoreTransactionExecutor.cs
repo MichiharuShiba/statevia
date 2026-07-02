@@ -1,5 +1,4 @@
 using System.Data;
-using Statevia.Service.Api.Abstractions.Persistence;
 
 namespace Statevia.Service.Api.Persistence;
 

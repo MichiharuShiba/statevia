@@ -3,7 +3,6 @@ using System.Data.Common;
 using System.Runtime.ExceptionServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Hosting;
 using Statevia.Service.Api.Infrastructure;

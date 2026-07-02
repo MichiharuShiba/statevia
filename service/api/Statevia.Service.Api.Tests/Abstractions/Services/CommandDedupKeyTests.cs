@@ -1,4 +1,4 @@
-using Statevia.Service.Api.Abstractions.Services;
+using Statevia.Core.Application.Contracts.Services;
 
 namespace Statevia.Service.Api.Tests.Abstractions.Services;
 

@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Persistence;
 
 namespace Statevia.Service.Api.Persistence.Repositories;
@@ -10,13 +9,13 @@ internal sealed class ExecutionCursorRepository : IExecutionCursorRepository
     /// <inheritdoc />
     public async Task UpsertAsync(ICoreUnitOfWork uow, ExecutionCursorRow row, CancellationToken ct)
     {
-        var existing = await uow.Db.ExecutionCursors
+        var existing = await uow.GetDb().ExecutionCursors
             .FirstOrDefaultAsync(x => x.ExecutionId == row.ExecutionId, ct)
             .ConfigureAwait(false);
 
         if (existing is null)
         {
-            uow.Db.ExecutionCursors.Add(row);
+            uow.GetDb().ExecutionCursors.Add(row);
             return;
         }
 
@@ -31,15 +30,15 @@ internal sealed class ExecutionCursorRepository : IExecutionCursorRepository
     /// <inheritdoc />
     public async Task DeleteAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct)
     {
-        var existing = await uow.Db.ExecutionCursors
+        var existing = await uow.GetDb().ExecutionCursors
             .FirstOrDefaultAsync(x => x.ExecutionId == executionId, ct)
             .ConfigureAwait(false);
         if (existing is not null)
-            uow.Db.ExecutionCursors.Remove(existing);
+            uow.GetDb().ExecutionCursors.Remove(existing);
     }
 
     /// <inheritdoc />
     public Task<ExecutionCursorRow?> GetByExecutionIdAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct) =>
-        uow.Db.ExecutionCursors.AsNoTracking()
+        uow.GetDb().ExecutionCursors.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ExecutionId == executionId, ct);
 }

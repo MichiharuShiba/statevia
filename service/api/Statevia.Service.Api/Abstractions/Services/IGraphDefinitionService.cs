@@ -8,7 +8,7 @@ namespace Statevia.Service.Api.Abstractions.Services;
 public interface IGraphDefinitionService
 {
     /// <summary>
-    /// グラフ ID（定義の display_id）でグラフ定義を取得する。テナントは <see cref="Abstractions.Security.ITenantContext"/> から解決する。
+    /// グラフ ID（定義の display_id）でグラフ定義を取得する。テナントは <see cref="Statevia.Core.Application.Contracts.Security.ITenantContext"/> から解決する。
     /// </summary>
     /// <param name="graphId">グラフ ID。</param>
     /// <param name="ct">キャンセルトークン。</param>

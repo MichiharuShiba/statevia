@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Statevia.Core.Application.Contracts</RootNamespace>
+    <AssemblyName>Statevia.Core.Application.Contracts</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Persistence 行 POCO は契約 DTO。プロパティ単位 XML は Phase 3 infrastructure 抽出時に整理する。 -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\engine\Statevia.Core.Engine\Statevia.Core.Engine.csproj" />
+  </ItemGroup>
+
+</Project>

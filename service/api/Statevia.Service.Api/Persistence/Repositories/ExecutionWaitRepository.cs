@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Persistence;
 
 namespace Statevia.Service.Api.Persistence.Repositories;
@@ -15,7 +14,7 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
         CancellationToken ct)
     {
         // 当該 execution_id の execution_waits 行を取得
-        var existingRows = await uow.Db.ExecutionWaits
+        var existingRows = await uow.GetDb().ExecutionWaits
             .Where(x => x.ExecutionId == executionId)
             .ToListAsync(ct)
             .ConfigureAwait(false);
@@ -23,7 +22,7 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
         // 存在しない node_id の execution_waits 行を削除
         var desiredNodeIds = waits.Select(x => x.NodeId).ToHashSet(StringComparer.Ordinal);
         foreach (var stale in existingRows.Where(x => !desiredNodeIds.Contains(x.NodeId)))
-            uow.Db.ExecutionWaits.Remove(stale);
+            uow.GetDb().ExecutionWaits.Remove(stale);
 
         var existingByNodeId = existingRows.ToDictionary(x => x.NodeId, StringComparer.Ordinal);
         foreach (var wait in waits)
@@ -39,7 +38,7 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
             }
 
             // 存在しない node_id の execution_waits 行を追加
-            uow.Db.ExecutionWaits.Add(new ExecutionWaitRow
+            uow.GetDb().ExecutionWaits.Add(new ExecutionWaitRow
             {
                 ExecutionId = executionId,
                 NodeId = wait.NodeId,
@@ -59,7 +58,7 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
         CancellationToken ct)
     {
         // resume_token 一致行を取得
-        var rows = await uow.Db.ExecutionWaits
+        var rows = await uow.GetDb().ExecutionWaits
             .Where(x => x.ExecutionId == executionId && x.ResumeToken == resumeToken)
             .ToListAsync(ct)
             .ConfigureAwait(false);
@@ -67,7 +66,7 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
             return;
 
         // resume_token 一致行を削除
-        uow.Db.ExecutionWaits.RemoveRange(rows);
+        uow.GetDb().ExecutionWaits.RemoveRange(rows);
     }
 
     /// <inheritdoc />
@@ -75,7 +74,7 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
         ICoreUnitOfWork uow,
         Guid executionId,
         CancellationToken ct) =>
-        await uow.Db.ExecutionWaits.AsNoTracking()
+        await uow.GetDb().ExecutionWaits.AsNoTracking()
             .Where(x => x.ExecutionId == executionId)
             .OrderBy(x => x.CreatedAt)
             .ThenBy(x => x.NodeId)

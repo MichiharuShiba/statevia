@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using Statevia.Service.Api.Abstractions.Security;
 using Statevia.Service.Api.Application.Security;
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Contracts;

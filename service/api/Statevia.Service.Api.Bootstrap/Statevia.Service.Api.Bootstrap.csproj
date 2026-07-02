@@ -10,6 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Using Include="Statevia.Core.Application.Contracts.Security" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\core\application\Statevia.Core.Application.Contracts\Statevia.Core.Application.Contracts.csproj" />
     <ProjectReference Include="..\Statevia.Service.Api\Statevia.Service.Api.csproj" />
   </ItemGroup>
 

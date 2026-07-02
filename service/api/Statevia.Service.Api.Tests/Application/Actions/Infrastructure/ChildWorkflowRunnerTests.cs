@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Statevia.Service.Api.Abstractions.Security;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Application.Actions.Infrastructure;
 using Statevia.Service.Api.Controllers;

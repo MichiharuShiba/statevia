@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Application.Security;
-using Statevia.Service.Api.Abstractions.Security;
 
 namespace Statevia.Service.Api.Controllers;
 

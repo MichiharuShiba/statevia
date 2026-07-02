@@ -13,6 +13,9 @@
 
   <ItemGroup>
     <Using Include="Statevia.Core.Actions.Abstractions.Modules" />
+    <Using Include="Statevia.Core.Application.Contracts.Persistence" />
+    <Using Include="Statevia.Core.Application.Contracts.Security" />
+    <Using Include="Statevia.Core.Application.Contracts.Services" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,6 +35,7 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
     <ProjectReference Include="../../../core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj" />
     <ProjectReference Include="../../../core/actions/Statevia.Core.Actions.Abstractions/Statevia.Core.Actions.Abstractions.csproj" />
+    <ProjectReference Include="../../../core/application/Statevia.Core.Application.Contracts/Statevia.Core.Application.Contracts.csproj" />
     <ProjectReference Include="../../../shared/Statevia.Actions.Grpc/Statevia.Actions.Grpc.csproj" />
     <ProjectReference Include="../../../shared/Statevia.Modules/Statevia.Modules.csproj" />
     <PackageReference Include="Grpc.Net.Client" Version="2.67.0" />

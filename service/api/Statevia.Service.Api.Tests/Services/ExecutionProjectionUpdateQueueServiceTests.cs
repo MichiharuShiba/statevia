@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Statevia.Service.Api.Abstractions.Security;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Application.Security;
 using Statevia.Service.Api.Configuration;

@@ -39,9 +39,13 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="Statevia.Core.Actions.Abstractions.Modules" />
+    <Using Include="Statevia.Core.Application.Contracts.Persistence" />
+    <Using Include="Statevia.Core.Application.Contracts.Security" />
+    <Using Include="Statevia.Core.Application.Contracts.Services" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\core\application\Statevia.Core.Application.Contracts\Statevia.Core.Application.Contracts.csproj" />
     <ProjectReference Include="..\Statevia.Service.Api\Statevia.Service.Api.csproj" />
     <ProjectReference Include="..\Statevia.Service.Api.Bootstrap\Statevia.Service.Api.Bootstrap.csproj" />
     <ProjectReference Include="..\..\action-host\Statevia.Service.ActionHost\Statevia.Service.ActionHost.csproj" Aliases="ActionHost" />

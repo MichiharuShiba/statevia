@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Persistence;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Application.Security;
 using Statevia.Service.Api.Persistence;
@@ -28,7 +27,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         Guid definitionId,
         CancellationToken ct)
     {
-        var definition = await uow.Db.Definitions.AsNoTracking()
+        var definition = await uow.GetDb().Definitions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.DefinitionId == definitionId, ct)
             .ConfigureAwait(false);
         if (definition is null)
@@ -38,7 +37,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
             .ConfigureAwait(false);
 
-        var version = await uow.Db.DefinitionVersions.AsNoTracking()
+        var version = await uow.GetDb().DefinitionVersions.AsNoTracking()
             .FirstOrDefaultAsync(
                 x => x.DefinitionId == definitionId && x.Version == definition.LatestVersion,
                 ct)
@@ -56,14 +55,14 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         Guid definitionVersionId,
         CancellationToken ct)
     {
-        var version = await uow.Db.DefinitionVersions.AsNoTracking()
+        var version = await uow.GetDb().DefinitionVersions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.DefinitionVersionId == definitionVersionId, ct)
             .ConfigureAwait(false);
 
         if (version is null)
             return null;
 
-        var definition = await uow.Db.Definitions.AsNoTracking()
+        var definition = await uow.GetDb().Definitions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.DefinitionId == version.DefinitionId, ct)
             .ConfigureAwait(false);
 
@@ -85,7 +84,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         int version,
         CancellationToken ct)
     {
-        var definition = await uow.Db.Definitions.AsNoTracking()
+        var definition = await uow.GetDb().Definitions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.DefinitionId == definitionId, ct)
             .ConfigureAwait(false);
 
@@ -96,7 +95,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
             .ConfigureAwait(false);
 
-        return await uow.Db.DefinitionVersions.AsNoTracking()
+        return await uow.GetDb().DefinitionVersions.AsNoTracking()
             .FirstOrDefaultAsync(
                 x => x.DefinitionId == definitionId && x.Version == version,
                 ct)
@@ -110,7 +109,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         Guid definitionId,
         CancellationToken ct)
     {
-        var definition = await uow.Db.Definitions.AsNoTracking()
+        var definition = await uow.GetDb().Definitions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.DefinitionId == definitionId, ct)
             .ConfigureAwait(false);
 
@@ -131,8 +130,8 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         DefinitionVersionRow version,
         CancellationToken ct)
     {
-        uow.Db.Definitions.Add(definition);
-        uow.Db.DefinitionVersions.Add(version);
+        uow.GetDb().Definitions.Add(definition);
+        uow.GetDb().DefinitionVersions.Add(version);
         return Task.CompletedTask;
     }
 
@@ -142,7 +141,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         DefinitionVersionPublishCommand command,
         CancellationToken ct)
     {
-        var definition = await uow.Db.Definitions
+        var definition = await uow.GetDb().Definitions
             .FirstOrDefaultAsync(x => x.DefinitionId == command.DefinitionId, ct)
             .ConfigureAwait(false);
         if (definition is null)
@@ -163,7 +162,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             CompiledJson = command.CompiledJson,
             CreatedAt = now
         };
-        uow.Db.DefinitionVersions.Add(versionRow);
+        uow.GetDb().DefinitionVersions.Add(versionRow);
 
         definition.Name = command.Name;
         definition.LatestVersion = nextVersion;
@@ -179,7 +178,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         DefinitionListPageQuery query,
         CancellationToken ct)
     {
-        var joinQuery = QueryDefinitionsWithDisplayIds(uow.Db, tenantId, ProjectAccessRole.Reader);
+        var joinQuery = QueryDefinitionsWithDisplayIds(uow.GetDb(), tenantId, ProjectAccessRole.Reader);
 
         if (!string.IsNullOrWhiteSpace(query.NameContains))
             joinQuery = joinQuery.Where(x => x.Definition.Name.Contains(query.NameContains));
