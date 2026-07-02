@@ -1,6 +1,6 @@
 using Statevia.Core.Engine.Definition;
 
-namespace Statevia.Service.Api.Abstractions.Services;
+namespace Statevia.Core.Application.Contracts.Services;
 
 /// <summary>
 /// 定義 YAML の形式に応じて適切な <see cref="Statevia.Core.Engine.Abstractions.IDefinitionLoader"/> を選び、

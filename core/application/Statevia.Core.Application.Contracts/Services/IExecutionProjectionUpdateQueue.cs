@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Abstractions.Services;
+namespace Statevia.Core.Application.Contracts.Services;
 
 /// <summary>
 /// ワークフロー投影更新の非同期キュー。

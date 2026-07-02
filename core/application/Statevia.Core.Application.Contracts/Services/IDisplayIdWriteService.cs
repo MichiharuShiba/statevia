@@ -1,10 +1,11 @@
+using Statevia.Core.Application.Contracts.Persistence;
 
-namespace Statevia.Service.Api.Abstractions.Services;
+namespace Statevia.Core.Application.Contracts.Services;
 
 /// <summary>
 /// 表示用 ID の書き込み（UoW 参加型）。
 /// </summary>
-internal interface IDisplayIdWriteService
+public interface IDisplayIdWriteService
 {
     /// <summary>
     /// 新しい表示用 ID を <paramref name="uow"/> に追加する。SaveChanges は呼び出し側。

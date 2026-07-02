@@ -1,6 +1,6 @@
 using Statevia.Core.Engine.Abstractions;
 
-namespace Statevia.Service.Api.Abstractions.Services;
+namespace Statevia.Core.Application.Contracts.Services;
 
 /// <summary>YAML を検証・コンパイルして CompiledWorkflowDefinition を返す。</summary>
 public interface IDefinitionCompilerService

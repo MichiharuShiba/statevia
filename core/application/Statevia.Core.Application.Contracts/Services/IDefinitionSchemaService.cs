@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Abstractions.Services;
+namespace Statevia.Core.Application.Contracts.Services;
 
 /// <summary>
 /// Definition 入力スキーマの供給サービス。
