@@ -1,4 +1,4 @@
-using Statevia.Service.Api.Application.Security;
+
 using Statevia.Service.Api.Contracts;
 
 namespace Statevia.Service.Api.Infrastructure.Security;

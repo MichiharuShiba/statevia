@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Persistence;
+using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Service.Api.Tests.Infrastructure;
 

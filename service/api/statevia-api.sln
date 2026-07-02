@@ -25,6 +25,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Actions.Grpc.Tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Core.Application.Contracts", "..\..\core\application\Statevia.Core.Application.Contracts\Statevia.Core.Application.Contracts.csproj", "{0B5C6661-7072-440C-BA5D-DAC0C7E3640A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Infrastructure.Persistence", "..\..\infrastructure\Statevia.Infrastructure.Persistence\Statevia.Infrastructure.Persistence.csproj", "{0F99D271-543E-4FC1-B2AE-1D9F21CEB711}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -131,6 +133,18 @@ Global
 		{0B5C6661-7072-440C-BA5D-DAC0C7E3640A}.Release|x64.Build.0 = Release|Any CPU
 		{0B5C6661-7072-440C-BA5D-DAC0C7E3640A}.Release|x86.ActiveCfg = Release|Any CPU
 		{0B5C6661-7072-440C-BA5D-DAC0C7E3640A}.Release|x86.Build.0 = Release|Any CPU
+		{0F99D271-543E-4FC1-B2AE-1D9F21CEB711}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F99D271-543E-4FC1-B2AE-1D9F21CEB711}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F99D271-543E-4FC1-B2AE-1D9F21CEB711}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0F99D271-543E-4FC1-B2AE-1D9F21CEB711}.Debug|x64.Build.0 = Debug|Any CPU
+		{0F99D271-543E-4FC1-B2AE-1D9F21CEB711}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0F99D271-543E-4FC1-B2AE-1D9F21CEB711}.Debug|x86.Build.0 = Debug|Any CPU
+		{0F99D271-543E-4FC1-B2AE-1D9F21CEB711}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F99D271-543E-4FC1-B2AE-1D9F21CEB711}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F99D271-543E-4FC1-B2AE-1D9F21CEB711}.Release|x64.ActiveCfg = Release|Any CPU
+		{0F99D271-543E-4FC1-B2AE-1D9F21CEB711}.Release|x64.Build.0 = Release|Any CPU
+		{0F99D271-543E-4FC1-B2AE-1D9F21CEB711}.Release|x86.ActiveCfg = Release|Any CPU
+		{0F99D271-543E-4FC1-B2AE-1D9F21CEB711}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

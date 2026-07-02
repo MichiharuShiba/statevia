@@ -1,5 +1,5 @@
 using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Persistence;
+using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Service.Api.Infrastructure.Security;
 

@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Statevia.Service.Api.Application.Security;
+
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Infrastructure.Security;
 

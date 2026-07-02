@@ -15,6 +15,7 @@ using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Infrastructure;
 using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Persistence.DependencyInjection;
 using Statevia.Service.Api.Persistence;
 using Statevia.Service.Api.Persistence.Repositories;
 using Statevia.Service.Api.Services;
@@ -41,8 +42,7 @@ internal static class ServiceCollectionExtensions
         var connectionString = DatabaseConnection.Resolve(configuration);
         services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
         services.AddSingleton<ITenantQueryFilterOptions>(EnabledTenantQueryFilterOptions.Instance);
-        services.AddDbContextFactory<CoreDbContext>((serviceProvider, options) =>
-            options.UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__ef_migrations_history")));
+        services.AddStateviaInfrastructurePersistence(connectionString);
 
         services.AddSingleton<JwtTokenService>();
         services.AddSingleton<PasswordCredentialService>();
@@ -58,8 +58,6 @@ internal static class ServiceCollectionExtensions
         services.AddOptions<JwtAuthOptions>()
             .Bind(configuration.GetSection(JwtAuthOptions.SectionName));
 
-        services.AddScoped<ICoreUnitOfWorkFactory, CoreUnitOfWorkFactory>();
-        services.AddScoped<ICoreTransactionExecutor, CoreTransactionExecutor>();
         services.AddScoped<IExecutionMutationPersistence, ExecutionMutationPersistence>();
 
         services.AddScoped<DisplayIdServiceImpl>();
@@ -73,14 +71,7 @@ internal static class ServiceCollectionExtensions
         services.AddStateviaExecutionEngine();
         services.AddScoped<ICommandDedupService, CommandDedupService>();
         services.AddScoped<IDefinitionRepository, DefinitionRepository>();
-        services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IProjectAuthorizationService, ProjectAuthorizationService>();
-        services.AddScoped<IExecutionRepository, ExecutionRepository>();
-        services.AddScoped<IExecutionCursorRepository, ExecutionCursorRepository>();
-        services.AddScoped<IExecutionWaitRepository, ExecutionWaitRepository>();
-        services.AddScoped<ICommandDedupRepository, CommandDedupRepository>();
-        services.AddScoped<IEventDeliveryDedupRepository, EventDeliveryDedupRepository>();
-        services.AddScoped<IEventStoreRepository, EventStoreRepository>();
         services.AddScoped<IDefinitionService, DefinitionService>();
         services.AddSingleton<IDefinitionSchemaService, DefinitionSchemaService>();
         services.AddSingleton<IActionSchemaService, ActionSchemaService>();

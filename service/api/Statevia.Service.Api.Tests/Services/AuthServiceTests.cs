@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Statevia.Service.Api.Application.Security;
+
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Contracts.Auth;

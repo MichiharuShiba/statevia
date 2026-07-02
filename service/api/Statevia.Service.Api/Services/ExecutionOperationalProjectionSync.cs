@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Statevia.Service.Api.Infrastructure;
-using Statevia.Service.Api.Persistence;
+using Statevia.Infrastructure.Persistence;
 using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Service.Api.Services;

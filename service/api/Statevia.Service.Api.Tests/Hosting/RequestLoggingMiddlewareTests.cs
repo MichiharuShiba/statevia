@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Statevia.Service.Api.Hosting;
-using Statevia.Service.Api.Persistence;
+using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Hosting;

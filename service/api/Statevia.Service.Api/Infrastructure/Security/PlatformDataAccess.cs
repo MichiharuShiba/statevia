@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Application.Security;
+
 using Statevia.Service.Api.Hosting;
-using Statevia.Service.Api.Persistence;
+using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Service.Api.Infrastructure.Security;
 

@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Infrastructure;
-using Statevia.Service.Api.Persistence;
+using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Service.Api.Services;
 

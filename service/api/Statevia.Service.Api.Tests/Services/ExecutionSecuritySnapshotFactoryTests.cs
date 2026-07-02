@@ -1,7 +1,7 @@
-using Statevia.Service.Api.Application.Security;
+
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Infrastructure.Security;
-using Statevia.Service.Api.Persistence.Repositories;
+using Statevia.Infrastructure.Persistence.Repositories;
 using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 using Statevia.Service.Api.Tests.Infrastructure.Security;

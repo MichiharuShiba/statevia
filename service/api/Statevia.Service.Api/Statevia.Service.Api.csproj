@@ -16,6 +16,7 @@
     <Using Include="Statevia.Core.Application.Contracts.Persistence" />
     <Using Include="Statevia.Core.Application.Contracts.Security" />
     <Using Include="Statevia.Core.Application.Contracts.Services" />
+    <Using Include="Statevia.Service.Api.Application.Security" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,10 +25,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+    <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Persistence/Statevia.Infrastructure.Persistence.csproj" />
     <PackageReference Include="OrasProject.Oras" Version="0.5.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.14.14" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
