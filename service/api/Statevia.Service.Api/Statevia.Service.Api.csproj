@@ -35,6 +35,7 @@
     <ProjectReference Include="../../../core/application/Statevia.Core.Application.Contracts/Statevia.Core.Application.Contracts.csproj" />
     <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Persistence/Statevia.Infrastructure.Persistence.csproj" />
     <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Security/Statevia.Infrastructure.Security.csproj" />
+    <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Notification/Statevia.Infrastructure.Notification.csproj" />
     <ProjectReference Include="../../../shared/Statevia.Actions.Grpc/Statevia.Actions.Grpc.csproj" />
     <ProjectReference Include="../../../shared/Statevia.Modules/Statevia.Modules.csproj" />
   </ItemGroup>

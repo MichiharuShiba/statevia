@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Actions.Infrastructure;
+namespace Statevia.Infrastructure.Notification;
 
 /// <summary>SMTP 送信に使う接続設定（workflow input とは分離）。</summary>
 /// <param name="Host">SMTP ホスト。</param>

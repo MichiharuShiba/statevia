@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Options;
-using Statevia.Service.Api.Configuration;
 
-namespace Statevia.Service.Api.Application.Actions.Infrastructure;
+namespace Statevia.Infrastructure.Notification;
 
 /// <summary>
 /// 環境変数および <see cref="NotificationOptions.Smtp"/> から SMTP 接続設定を解決する。

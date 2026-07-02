@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Actions.Infrastructure;
+namespace Statevia.Infrastructure.Notification;
 
 /// <summary>
 /// KMS / Secret Manager 等から SMTP 接続設定を解決する（未実装プレースホルダ）。

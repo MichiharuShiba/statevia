@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Mail;
 
-namespace Statevia.Service.Api.Application.Actions.Infrastructure;
+namespace Statevia.Infrastructure.Notification;
 
 /// <summary>解決済み SMTP 接続設定で email 送信する。</summary>
 internal sealed class SmtpNotificationSender : INotificationSender

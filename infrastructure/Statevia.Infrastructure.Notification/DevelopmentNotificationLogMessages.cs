@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace Statevia.Service.Api.Application.Actions.Infrastructure;
+namespace Statevia.Infrastructure.Notification;
 
 /// <summary><see cref="DevelopmentNotificationSender"/> 用のログ（<see cref="LoggerMessageAttribute"/>）。</summary>
 internal static partial class DevelopmentNotificationLogMessages

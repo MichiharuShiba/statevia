@@ -46,6 +46,8 @@
     <Using Include="Statevia.Service.Api.Persistence" />
     <Using Include="Statevia.Infrastructure.Security" />
     <Using Include="Statevia.Infrastructure.Security.Configuration" />
+    <Using Include="Statevia.Infrastructure.Notification" />
+    <Using Include="Statevia.Infrastructure.Notification.Configuration" />
   </ItemGroup>
 
   <ItemGroup>

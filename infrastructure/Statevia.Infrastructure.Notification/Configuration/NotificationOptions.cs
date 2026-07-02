@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Configuration;
+namespace Statevia.Infrastructure.Notification.Configuration;
 
 /// <summary>notify builtin の SMTP 接続設定の読み取り元。</summary>
 internal enum NotificationSmtpSettingsSource

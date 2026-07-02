@@ -7,13 +7,14 @@ using Statevia.Core.Actions.Abstractions.Execution;
 using Statevia.Core.Actions.Abstractions.Visibility;
 using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Service.Api.Application.Actions.Execution;
-using Statevia.Service.Api.Application.Actions.Modules;
 using Statevia.Service.Api.Application.Actions.Infrastructure;
+using Statevia.Service.Api.Application.Actions.Modules;
 using Statevia.Service.Api.Application.Actions.Visibility;
 using Statevia.Service.Api.Application.Definition;
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Infrastructure;
+using Statevia.Infrastructure.Notification.DependencyInjection;
 using Statevia.Infrastructure.Persistence.DependencyInjection;
 using Statevia.Infrastructure.Security.DependencyInjection;
 using Statevia.Service.Api.Persistence;
@@ -81,18 +82,7 @@ internal static class ServiceCollectionExtensions
         services.AddScoped<ExecutionStreamService>();
         services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
         services.AddHttpClient();
-        services.AddOptions<NotificationOptions>()
-            .Bind(configuration.GetSection(NotificationOptions.SectionName))
-            .PostConfigure(ApplyNotificationOptionsEnvironmentOverrides);
-        services.AddSingleton<EnvironmentSmtpConnectionSettingsProvider>();
-        services.AddSingleton<DatabaseSmtpConnectionSettingsProvider>();
-        services.AddSingleton<KmsSmtpConnectionSettingsProvider>();
-        services.AddSingleton<SmtpConnectionSettingsProviderFactory>();
-        services.AddSingleton<ISmtpConnectionSettingsProvider>(sp =>
-            sp.GetRequiredService<SmtpConnectionSettingsProviderFactory>());
-        services.AddSingleton<DevelopmentNotificationSender>();
-        services.AddSingleton<SmtpNotificationSender>();
-        services.AddSingleton<NotificationSenderResolver>();
+        services.AddStateviaInfrastructureNotification(configuration);
         services.AddScoped<IChildWorkflowRunner, ChildWorkflowRunner>();
         services.AddSingleton<InMemoryActionCatalog>(sp =>
         {
@@ -195,26 +185,6 @@ internal static class ServiceCollectionExtensions
         {
             options.LogRequestBody = true;
             options.LogResponseBody = true;
-        }
-    }
-
-    private static void ApplyNotificationOptionsEnvironmentOverrides(NotificationOptions options)
-    {
-        var source = Environment.GetEnvironmentVariable(NotificationOptions.SmtpSourceEnvironmentVariable);
-        if (string.IsNullOrWhiteSpace(source))
-        {
-            return;
-        }
-
-        if (string.Equals(source, "Kms", StringComparison.OrdinalIgnoreCase))
-        {
-            options.SmtpSettingsSource = NotificationSmtpSettingsSource.KeyManagementService;
-            return;
-        }
-
-        if (Enum.TryParse(source, ignoreCase: true, out NotificationSmtpSettingsSource parsed))
-        {
-            options.SmtpSettingsSource = parsed;
         }
     }
 

@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Actions.Infrastructure;
+namespace Statevia.Infrastructure.Notification;
 
 /// <summary>notification builtin の送信先（email 等）。</summary>
 internal interface INotificationSender

@@ -29,6 +29,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Infrastructure.Per
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Infrastructure.Security", "..\..\infrastructure\Statevia.Infrastructure.Security\Statevia.Infrastructure.Security.csproj", "{BA1EC691-4918-46B8-92CC-D1C370A820AE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Infrastructure.Notification", "..\..\infrastructure\Statevia.Infrastructure.Notification\Statevia.Infrastructure.Notification.csproj", "{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -159,6 +161,18 @@ Global
 		{BA1EC691-4918-46B8-92CC-D1C370A820AE}.Release|x64.Build.0 = Release|Any CPU
 		{BA1EC691-4918-46B8-92CC-D1C370A820AE}.Release|x86.ActiveCfg = Release|Any CPU
 		{BA1EC691-4918-46B8-92CC-D1C370A820AE}.Release|x86.Build.0 = Release|Any CPU
+		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Debug|x64.Build.0 = Debug|Any CPU
+		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Debug|x86.Build.0 = Debug|Any CPU
+		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Release|x64.ActiveCfg = Release|Any CPU
+		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Release|x64.Build.0 = Release|Any CPU
+		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Release|x86.ActiveCfg = Release|Any CPU
+		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

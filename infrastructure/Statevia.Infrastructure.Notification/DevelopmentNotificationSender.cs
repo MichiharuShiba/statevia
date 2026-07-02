@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Actions.Infrastructure;
+namespace Statevia.Infrastructure.Notification;
 
 /// <summary>Development 向け no-op 通知（Warning ログのみ）。</summary>
 internal sealed class DevelopmentNotificationSender : INotificationSender

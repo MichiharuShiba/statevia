@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Options;
-using Statevia.Service.Api.Configuration;
 
-namespace Statevia.Service.Api.Application.Actions.Infrastructure;
+namespace Statevia.Infrastructure.Notification;
 
 /// <summary><see cref="NotificationOptions.SmtpSettingsSource"/> に応じて <see cref="ISmtpConnectionSettingsProvider"/> を選択する。</summary>
 internal sealed class SmtpConnectionSettingsProviderFactory : ISmtpConnectionSettingsProvider

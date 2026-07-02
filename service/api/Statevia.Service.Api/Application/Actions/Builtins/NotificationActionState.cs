@@ -1,4 +1,4 @@
-using Statevia.Service.Api.Application.Actions.Infrastructure;
+using Statevia.Infrastructure.Notification;
 using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Service.Api.Application.Actions.Builtins;
