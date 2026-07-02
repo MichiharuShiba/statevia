@@ -1,7 +1,7 @@
-namespace Statevia.Service.Api.Application.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>グローバル権限カタログの semantic key（表示メタは <see cref="PermissionCatalog"/>）。</summary>
-internal static class WellKnownPermissionKeys
+public static class WellKnownPermissionKeys
 {
     /// <summary>定義の読み取り。</summary>
     public const string DefinitionsRead = "definitions.read";

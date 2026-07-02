@@ -6,7 +6,7 @@ WORKDIR /src
 COPY service/api/Statevia.Service.Api/Statevia.Service.Api.csproj ./service/api/Statevia.Service.Api/
 COPY core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj ./core/engine/Statevia.Core.Engine/
 COPY core/actions/Statevia.Core.Actions.Abstractions/Statevia.Core.Actions.Abstractions.csproj ./core/actions/Statevia.Core.Actions.Abstractions/
-COPY infrastructure/Statevia.Infrastructure.Persistence/Statevia.Infrastructure.Persistence.csproj ./infrastructure/Statevia.Infrastructure.Persistence/
+COPY infrastructure/Statevia.Infrastructure.Security/Statevia.Infrastructure.Security.csproj ./infrastructure/Statevia.Infrastructure.Security/
 COPY core/application/Statevia.Core.Application.Contracts/Statevia.Core.Application.Contracts.csproj ./core/application/Statevia.Core.Application.Contracts/
 COPY shared/Statevia.Actions.Grpc/Statevia.Actions.Grpc.csproj ./shared/Statevia.Actions.Grpc/
 COPY shared/Statevia.Modules/Statevia.Modules.csproj ./shared/Statevia.Modules/
@@ -16,6 +16,7 @@ RUN dotnet restore ./service/api/Statevia.Service.Api/Statevia.Service.Api.cspro
 COPY service/api/Statevia.Service.Api/ ./service/api/Statevia.Service.Api/
 COPY core/engine/Statevia.Core.Engine/ ./core/engine/Statevia.Core.Engine/
 COPY core/actions/Statevia.Core.Actions.Abstractions/ ./core/actions/Statevia.Core.Actions.Abstractions/
+COPY infrastructure/Statevia.Infrastructure.Security/ ./infrastructure/Statevia.Infrastructure.Security/
 COPY infrastructure/Statevia.Infrastructure.Persistence/ ./infrastructure/Statevia.Infrastructure.Persistence/
 COPY core/application/Statevia.Core.Application.Contracts/ ./core/application/Statevia.Core.Application.Contracts/
 COPY shared/Statevia.Actions.Grpc/ ./shared/Statevia.Actions.Grpc/

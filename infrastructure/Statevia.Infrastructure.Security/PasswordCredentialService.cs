@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 
-namespace Statevia.Service.Api.Infrastructure.Security;
+namespace Statevia.Infrastructure.Security;
 
 /// <summary>パスワードのハッシュ化・検証。</summary>
 internal sealed class PasswordCredentialService

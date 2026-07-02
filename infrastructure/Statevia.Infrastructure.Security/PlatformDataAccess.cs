@@ -1,9 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 
-using Statevia.Service.Api.Hosting;
 using Statevia.Infrastructure.Persistence;
 
-namespace Statevia.Service.Api.Infrastructure.Security;
+namespace Statevia.Infrastructure.Security;
 
 /// <summary>ログイン資格情報の lookup 結果。</summary>
 /// <param name="Tenant">テナント行。</param>
@@ -248,7 +247,7 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var exists = await db.Tenants
             .IgnoreQueryFilters()
-            .AnyAsync(t => t.TenantKey == TenantHeader.DefaultTenantId, cancellationToken)
+            .AnyAsync(t => t.TenantKey == TenantRequestHeaders.DefaultTenantId, cancellationToken)
             .ConfigureAwait(false);
 
         if (exists)
@@ -258,7 +257,7 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
         db.Tenants.Add(new TenantRow
         {
             TenantId = DefaultTenantId,
-            TenantKey = TenantHeader.DefaultTenantId,
+            TenantKey = TenantRequestHeaders.DefaultTenantId,
             DisplayName = "Default",
             Lifecycle = TenantLifecycle.Active,
             CreatedAt = now,

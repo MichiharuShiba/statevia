@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Statevia.Service.Api.Infrastructure.Security;
+namespace Statevia.Infrastructure.Security;
 
 /// <summary>外部テナントキー（<c>tenant_key</c>）の検証。</summary>
 internal static partial class TenantKeyValidator

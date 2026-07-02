@@ -1,9 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 
-using Statevia.Service.Api.Hosting;
 using Statevia.Infrastructure.Persistence;
 
-namespace Statevia.Service.Api.Infrastructure.Security;
+namespace Statevia.Infrastructure.Security;
 
 /// <summary>テナント管理者ブートストラップ結果。</summary>
 /// <param name="TenantId">テナント内部 ID。</param>
@@ -68,7 +67,7 @@ internal sealed class TenantAdminBootstrap
         if (string.IsNullOrWhiteSpace(password))
             throw new ArgumentException("password is required.", nameof(password));
 
-        if (string.Equals(normalizedTenantKey, TenantHeader.DefaultTenantId, StringComparison.Ordinal))
+        if (string.Equals(normalizedTenantKey, TenantRequestHeaders.DefaultTenantId, StringComparison.Ordinal))
             await _platformDataAccess.EnsureDefaultTenantAsync(cancellationToken).ConfigureAwait(false);
 
         await _platformDataAccess.EnsurePermissionCatalogAsync(cancellationToken).ConfigureAwait(false);

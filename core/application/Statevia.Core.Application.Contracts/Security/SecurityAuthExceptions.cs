@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Contracts;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>401 Unauthorized。</summary>
 public sealed class UnauthorizedException : Exception

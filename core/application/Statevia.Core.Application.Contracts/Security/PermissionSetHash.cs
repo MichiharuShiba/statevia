@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Statevia.Service.Api.Application.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary><see cref="ExecutionSecuritySnapshot.PermissionSetHash"/> の算出。</summary>
 public static class PermissionSetHash

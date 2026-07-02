@@ -1,7 +1,7 @@
-namespace Statevia.Service.Api.Application.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>テナントライフサイクル遷移の許可・禁止を検証する。</summary>
-internal static class LifecycleTransitionPolicy
+public static class LifecycleTransitionPolicy
 {
     /// <summary>新規テナントの初期状態。</summary>
     public static TenantLifecycle InitialState => TenantLifecycle.Active;

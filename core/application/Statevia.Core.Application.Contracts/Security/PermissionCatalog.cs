@@ -1,16 +1,16 @@
-namespace Statevia.Service.Api.Application.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary>権限カタログ 1 件（semantic key と表示メタの分離）。</summary>
 /// <param name="PermissionKey">semantic key。</param>
 /// <param name="DisplayLabel">UI 向けラベル。</param>
 /// <param name="DisplayKey">i18n 辞書キー（任意）。</param>
-internal sealed record PermissionCatalogEntry(
+public sealed record PermissionCatalogEntry(
     string PermissionKey,
     string DisplayLabel,
     string? DisplayKey);
 
 /// <summary>初版のシステム権限カタログ。</summary>
-internal static class PermissionCatalog
+public static class PermissionCatalog
 {
     /// <summary>登録対象の権限定義。</summary>
     public static IReadOnlyList<PermissionCatalogEntry> Entries { get; } =

@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Infrastructure.Security;
+namespace Statevia.Infrastructure.Security;
 
 /// <summary>API キー有効スコープを交差のみで評価する。</summary>
 internal static class ApiKeyScopeEvaluator

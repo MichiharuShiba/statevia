@@ -1,7 +1,7 @@
 using System.Security.Claims;
 
 using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
 
 namespace Statevia.Service.Api.Hosting;
 
@@ -37,7 +37,7 @@ internal sealed class TenantContextMiddleware
             return;
         }
 
-        var headerTenantKey = context.Request.Headers[TenantHeader.HeaderName].FirstOrDefault() ?? TenantHeader.DefaultTenantId;
+        var headerTenantKey = context.Request.Headers[TenantRequestHeaders.HeaderName].FirstOrDefault() ?? TenantRequestHeaders.DefaultTenantId;
         var resolvedIdentity = await ResolveIdentityAsync(context, headerTenantKey).ConfigureAwait(false);
 
         var tenant = await platformDataAccess
@@ -116,7 +116,7 @@ internal sealed class TenantContextMiddleware
         if (tenantId is null || string.IsNullOrWhiteSpace(jwtTenantKey) || principalId is null)
             throw new UnauthorizedException("Invalid token claims.", "UNAUTHORIZED");
 
-        if (context.Request.Headers.ContainsKey(TenantHeader.HeaderName) &&
+        if (context.Request.Headers.ContainsKey(TenantRequestHeaders.HeaderName) &&
             !string.Equals(headerTenantKey, jwtTenantKey, StringComparison.Ordinal))
             throw new ForbiddenException("X-Tenant-Id does not match JWT tenant.", "TENANT_HEADER_MISMATCH");
 

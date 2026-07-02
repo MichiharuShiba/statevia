@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Statevia.Infrastructure.Persistence;
 
-namespace Statevia.Service.Api.Infrastructure.Security;
+namespace Statevia.Infrastructure.Security;
 
 /// <summary>API キー検証結果。</summary>
 /// <param name="Tenant">テナント行。</param>

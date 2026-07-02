@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Infrastructure.Security;

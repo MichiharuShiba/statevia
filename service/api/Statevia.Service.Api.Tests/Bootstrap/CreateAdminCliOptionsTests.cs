@@ -46,6 +46,6 @@ public sealed class CreateAdminCliOptionsTests
         var options = CreateAdminCliOptions.Parse(["--email", "a@b.c", "--password", "p"]);
 
         // Assert
-        Assert.Equal(TenantHeader.DefaultTenantId, options.TenantKey);
+        Assert.Equal(TenantRequestHeaders.DefaultTenantId, options.TenantKey);
     }
 }

@@ -12,7 +12,7 @@ using Statevia.Service.Api.Controllers;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Hosting;
 using Statevia.Service.Api.Infrastructure;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Configuration;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Core.Engine.Abstractions;

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Contracts.Admin;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
 
 namespace Statevia.Service.Api.Controllers;
 

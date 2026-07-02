@@ -3,7 +3,7 @@ using Statevia.Service.Api.Application.Actions.Validation;
 
 using Statevia.Service.Api.Controllers;
 using Statevia.Service.Api.Hosting;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Contracts;
 

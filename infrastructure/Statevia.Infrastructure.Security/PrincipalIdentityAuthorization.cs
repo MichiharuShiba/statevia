@@ -1,7 +1,6 @@
-using Statevia.Service.Api.Contracts;
 using Statevia.Infrastructure.Persistence;
 
-namespace Statevia.Service.Api.Infrastructure.Security;
+namespace Statevia.Infrastructure.Security;
 
 /// <summary>Principal の Identity（Live）検証。</summary>
 internal static class PrincipalIdentityAuthorization

@@ -1,9 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 
-using Statevia.Service.Api.Hosting;
 using Statevia.Infrastructure.Persistence;
 
-namespace Statevia.Service.Api.Infrastructure.Security;
+namespace Statevia.Infrastructure.Security;
 
 /// <summary>テナント作成結果。</summary>
 /// <param name="TenantId">テナント内部 ID。</param>
@@ -69,7 +68,7 @@ internal sealed class TenantBootstrap
             throw new InvalidOperationException($"Tenant '{normalizedKey}' already exists.");
         }
 
-        if (string.Equals(normalizedKey, TenantHeader.DefaultTenantId, StringComparison.Ordinal))
+        if (string.Equals(normalizedKey, TenantRequestHeaders.DefaultTenantId, StringComparison.Ordinal))
         {
             await _platformDataAccess.EnsureDefaultTenantAsync(cancellationToken).ConfigureAwait(false);
             var defaultTenant = await _platformDataAccess

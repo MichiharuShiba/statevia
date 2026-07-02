@@ -4,7 +4,7 @@ using Statevia.Service.Api.Abstractions.Services;
 
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Contracts.Admin;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
 using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Service.Api.Services;

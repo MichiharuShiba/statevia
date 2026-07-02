@@ -14,8 +14,8 @@ using Statevia.Service.Api.Application.Definition;
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Infrastructure;
-using Statevia.Service.Api.Infrastructure.Security;
 using Statevia.Infrastructure.Persistence.DependencyInjection;
+using Statevia.Infrastructure.Security.DependencyInjection;
 using Statevia.Service.Api.Persistence;
 using Statevia.Service.Api.Persistence.Repositories;
 using Statevia.Service.Api.Services;
@@ -40,23 +40,14 @@ internal static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         var connectionString = DatabaseConnection.Resolve(configuration);
-        services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
         services.AddSingleton<ITenantQueryFilterOptions>(EnabledTenantQueryFilterOptions.Instance);
         services.AddStateviaInfrastructurePersistence(connectionString);
+        services.AddStateviaInfrastructureSecurity(configuration);
 
-        services.AddSingleton<JwtTokenService>();
-        services.AddSingleton<PasswordCredentialService>();
-        services.AddScoped<IPlatformDataAccess, PlatformDataAccess>();
-        services.AddScoped<IApiKeyAuthenticationService, ApiKeyAuthenticationService>();
-        services.AddScoped<ITenantAdminAuthorization, TenantAdminAuthorization>();
-        services.AddScoped<IRuntimePermissionAuthorization, RuntimePermissionAuthorization>();
-        services.AddScoped<IExecutionMutationAuthorization, ExecutionMutationAuthorization>();
         services.AddScoped<IExecutionSecuritySnapshotFactory, ExecutionSecuritySnapshotFactory>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITenantAdministrationService, TenantAdministrationService>();
         services.AddHostedService<TenantBootstrapHostedService>();
-        services.AddOptions<JwtAuthOptions>()
-            .Bind(configuration.GetSection(JwtAuthOptions.SectionName));
 
         services.AddScoped<IExecutionMutationPersistence, ExecutionMutationPersistence>();
 

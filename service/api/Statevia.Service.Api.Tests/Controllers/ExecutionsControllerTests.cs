@@ -234,7 +234,7 @@ public sealed class ExecutionsControllerTests
     /// テナントヘッダー未指定 の場合は 既定テナントを渡す。
     /// </summary>
     [Fact]
-    public async Task List_WhenTenantHeaderMissing_PassesDefaultTenant()
+    public async Task List_WhenTenantRequestHeadersMissing_PassesDefaultTenant()
     {
         // Arrange
         var http = new DefaultHttpContext();
@@ -629,7 +629,7 @@ public sealed class ExecutionsControllerTests
     /// テナントヘッダー未指定 の場合は 既定テナントを渡す。
     /// </summary>
     [Fact]
-    public async Task ResumeNode_WhenTenantHeaderMissing_PassesDefaultTenant()
+    public async Task ResumeNode_WhenTenantRequestHeadersMissing_PassesDefaultTenant()
     {
         // Arrange
         var http = new DefaultHttpContext();
@@ -940,7 +940,7 @@ public sealed class ExecutionsControllerTests
     /// ヘッダー未指定時は既定テナントと空値の冪等キーを渡す。
     /// </summary>
     [Fact]
-    public async Task Create_WhenTenantHeaderMissing_AndIdempotencyMissing_PassesDefaultTenantAndNullIdempotencyKey()
+    public async Task Create_WhenTenantRequestHeadersMissing_AndIdempotencyMissing_PassesDefaultTenantAndNullIdempotencyKey()
     {
         // Arrange
         var http = new DefaultHttpContext();
@@ -971,7 +971,7 @@ public sealed class ExecutionsControllerTests
     /// テナントヘッダー未指定 の場合は 既定テナントを渡す。
     /// </summary>
     [Fact]
-    public async Task Cancel_WhenTenantHeaderMissing_PassesDefaultTenant()
+    public async Task Cancel_WhenTenantRequestHeadersMissing_PassesDefaultTenant()
     {
         // Arrange
         var http = new DefaultHttpContext();
@@ -996,7 +996,7 @@ public sealed class ExecutionsControllerTests
     /// テナントヘッダー未指定 の場合は 既定テナントを渡す。
     /// </summary>
     [Fact]
-    public async Task Get_WhenTenantHeaderMissing_PassesDefaultTenant()
+    public async Task Get_WhenTenantRequestHeadersMissing_PassesDefaultTenant()
     {
         // Arrange
         var http = new DefaultHttpContext();
@@ -1019,7 +1019,7 @@ public sealed class ExecutionsControllerTests
     /// テナントヘッダー未指定 の場合は 既定テナントを渡す。
     /// </summary>
     [Fact]
-    public async Task GetGraph_WhenTenantHeaderMissing_PassesDefaultTenant()
+    public async Task GetGraph_WhenTenantRequestHeadersMissing_PassesDefaultTenant()
     {
         // Arrange
         var http = new DefaultHttpContext();
@@ -1041,7 +1041,7 @@ public sealed class ExecutionsControllerTests
     /// テナントヘッダー未指定 の場合は 既定テナントを渡す。
     /// </summary>
     [Fact]
-    public async Task GetState_WhenTenantHeaderMissing_PassesDefaultTenant()
+    public async Task GetState_WhenTenantRequestHeadersMissing_PassesDefaultTenant()
     {
         // Arrange
         var http = new DefaultHttpContext();
@@ -1066,7 +1066,7 @@ public sealed class ExecutionsControllerTests
     /// テナントヘッダー未指定 の場合は 既定テナントを渡す。
     /// </summary>
     [Fact]
-    public async Task GetEvents_WhenTenantHeaderMissing_PassesDefaultTenant()
+    public async Task GetEvents_WhenTenantRequestHeadersMissing_PassesDefaultTenant()
     {
         // Arrange
         var http = new DefaultHttpContext();
@@ -1091,7 +1091,7 @@ public sealed class ExecutionsControllerTests
     /// テナントヘッダー未指定 の場合は 404 を設定する。
     /// </summary>
     [Fact]
-    public async Task GetStream_WhenTenantHeaderMissing_Sets404()
+    public async Task GetStream_WhenTenantRequestHeadersMissing_Sets404()
     {
         // Arrange
         var http = new DefaultHttpContext();
@@ -1113,7 +1113,7 @@ public sealed class ExecutionsControllerTests
     /// ヘッダー未指定時は既定テナントと空値の冪等キーを渡す。
     /// </summary>
     [Fact]
-    public async Task PublishEvent_WhenTenantHeaderMissing_AndIdempotencyMissing_PassesDefaultTenantAndNullIdempotencyKey()
+    public async Task PublishEvent_WhenTenantRequestHeadersMissing_AndIdempotencyMissing_PassesDefaultTenantAndNullIdempotencyKey()
     {
         // Arrange
         var http = new DefaultHttpContext();

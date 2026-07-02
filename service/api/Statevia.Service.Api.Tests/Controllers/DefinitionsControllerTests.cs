@@ -102,7 +102,7 @@ public sealed class DefinitionsControllerTests
     /// テナントヘッダー未指定 の場合は 既定テナントを渡す。
     /// </summary>
     [Fact]
-    public async Task List_WhenTenantHeaderMissing_PassesDefaultTenant()
+    public async Task List_WhenTenantRequestHeadersMissing_PassesDefaultTenant()
     {
         // Arrange
         var http = new DefaultHttpContext();
@@ -282,7 +282,7 @@ public sealed class DefinitionsControllerTests
     /// テナントヘッダー未指定 の場合は 既定テナントを渡す。
     /// </summary>
     [Fact]
-    public async Task Create_WhenTenantHeaderMissing_PassesDefaultTenant()
+    public async Task Create_WhenTenantRequestHeadersMissing_PassesDefaultTenant()
     {
         // Arrange
         var http = new DefaultHttpContext();
@@ -313,7 +313,7 @@ public sealed class DefinitionsControllerTests
     /// テナントヘッダー未指定 の場合は 既定テナントを渡す。
     /// </summary>
     [Fact]
-    public async Task Get_WhenTenantHeaderMissing_PassesDefaultTenant()
+    public async Task Get_WhenTenantRequestHeadersMissing_PassesDefaultTenant()
     {
         // Arrange
         var http = new DefaultHttpContext();

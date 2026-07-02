@@ -44,6 +44,8 @@
     <Using Include="Statevia.Core.Application.Contracts.Services" />
     <Using Include="Statevia.Service.Api.Application.Security" />
     <Using Include="Statevia.Service.Api.Persistence" />
+    <Using Include="Statevia.Infrastructure.Security" />
+    <Using Include="Statevia.Infrastructure.Security.Configuration" />
   </ItemGroup>
 
   <ItemGroup>

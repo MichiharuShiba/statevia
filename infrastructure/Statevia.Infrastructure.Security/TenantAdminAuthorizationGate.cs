@@ -1,6 +1,5 @@
-using Statevia.Service.Api.Contracts;
 
-namespace Statevia.Service.Api.Infrastructure.Security;
+namespace Statevia.Infrastructure.Security;
 
 /// <summary>テナント管理者向け API の認可ゲート。</summary>
 internal static class TenantAdminAuthorizationGate

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Statevia.Service.Api.Application.Security;
+namespace Statevia.Core.Application.Contracts.Security;
 
 /// <summary><see cref="ExecutionSecuritySnapshot"/> の JSON 永続化。</summary>
 public static class ExecutionSecuritySnapshotJson

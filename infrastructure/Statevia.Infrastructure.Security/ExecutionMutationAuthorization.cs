@@ -1,7 +1,6 @@
 
-using Statevia.Service.Api.Contracts;
 
-namespace Statevia.Service.Api.Infrastructure.Security;
+namespace Statevia.Infrastructure.Security;
 
 /// <inheritdoc />
 internal sealed class ExecutionMutationAuthorization : IExecutionMutationAuthorization

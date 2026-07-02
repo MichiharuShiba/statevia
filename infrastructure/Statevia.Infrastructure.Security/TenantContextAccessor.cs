@@ -1,5 +1,5 @@
 
-namespace Statevia.Service.Api.Infrastructure.Security;
+namespace Statevia.Infrastructure.Security;
 
 /// <summary>AsyncLocal ベースのテナント文脈。</summary>
 internal sealed class TenantContextAccessor : ITenantContextAccessor

@@ -1,7 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.Options;
 using Statevia.Service.Api.Application.Actions.Modules;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
 
 namespace Statevia.Service.Api.Hosting;
 
@@ -159,7 +159,7 @@ internal sealed class ModuleLoadHostedService : IHostedService, IDisposable
         await using var scope = _scopeFactory.CreateAsyncScope();
         var platformDataAccess = scope.ServiceProvider.GetRequiredService<IPlatformDataAccess>();
         var tenant = await platformDataAccess
-            .FindTenantByKeyAsync(TenantHeader.DefaultTenantId, cancellationToken)
+            .FindTenantByKeyAsync(TenantRequestHeaders.DefaultTenantId, cancellationToken)
             .ConfigureAwait(false);
         if (tenant is null)
         {

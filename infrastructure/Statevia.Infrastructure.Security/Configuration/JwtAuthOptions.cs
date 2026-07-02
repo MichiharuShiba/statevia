@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Configuration;
+namespace Statevia.Infrastructure.Security.Configuration;
 
 /// <summary>JWT 認証設定。</summary>
 internal sealed class JwtAuthOptions
