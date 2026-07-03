@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option csharp_namespace = "Statevia.Actions.Grpc.Contracts";
+option csharp_namespace = "Statevia.Infrastructure.Actions.Grpc.Contracts";
 
 package statevia.actions.v1;
 

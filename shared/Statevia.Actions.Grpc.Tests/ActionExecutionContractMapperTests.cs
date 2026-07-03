@@ -1,8 +1,9 @@
 using System.Text.Json;
 using Statevia.Core.Actions.Abstractions.Execution;
-using Statevia.Actions.Grpc.Contracts;
+using Statevia.Infrastructure.Actions.Grpc;
+using Statevia.Infrastructure.Actions.Grpc.Contracts;
 
-namespace Statevia.Actions.Grpc.Tests;
+namespace Statevia.Infrastructure.Actions.Grpc.Tests;
 
 /// <summary><see cref="ActionExecutionContractMapper"/> の双方向変換を検証する。</summary>
 public sealed class ActionExecutionContractMapperTests

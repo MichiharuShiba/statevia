@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Statevia.Core.Actions.Abstractions.Execution;
-using Statevia.Actions.Grpc.Contracts;
+using Statevia.Infrastructure.Actions.Grpc.Contracts;
 
-namespace Statevia.Actions.Grpc;
+namespace Statevia.Infrastructure.Actions.Grpc;
 
 /// <summary>
 /// Phase 1 DTO と gRPC 契約メッセージの相互変換。

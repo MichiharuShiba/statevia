@@ -4,8 +4,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>Statevia.Actions.Grpc</RootNamespace>
-    <AssemblyName>Statevia.Actions.Grpc</AssemblyName>
+    <RootNamespace>Statevia.Infrastructure.Actions.Grpc</RootNamespace>
+    <AssemblyName>Statevia.Infrastructure.Actions.Grpc</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 

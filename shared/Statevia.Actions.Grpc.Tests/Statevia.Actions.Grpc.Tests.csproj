@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Statevia.Actions.Grpc\Statevia.Actions.Grpc.csproj" />
+    <ProjectReference Include="..\..\infrastructure\Statevia.Infrastructure.Actions.Grpc\Statevia.Infrastructure.Actions.Grpc.csproj" />
   </ItemGroup>
 
 </Project>

@@ -22,7 +22,7 @@
     <PackageReference Include="Grpc.AspNetCore" Version="2.67.0" />
     <ProjectReference Include="../../../core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj" />
     <ProjectReference Include="../../../core/actions/Statevia.Core.Actions.Abstractions/Statevia.Core.Actions.Abstractions.csproj" />
-    <ProjectReference Include="../../../shared/Statevia.Actions.Grpc/Statevia.Actions.Grpc.csproj" />
+    <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Actions.Grpc/Statevia.Infrastructure.Actions.Grpc.csproj" />
     <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Modules/Statevia.Infrastructure.Modules.csproj" />
   </ItemGroup>
 

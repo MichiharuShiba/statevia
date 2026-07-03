@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Statevia.Actions.Grpc.Contracts;
+using Statevia.Infrastructure.Actions.Grpc.Contracts;
 
 namespace Statevia.Service.ActionHost.Tests;
 
