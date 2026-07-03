@@ -12,7 +12,7 @@ internal sealed class CreateAdminCliOptions
     public bool IsHelpOnly { get; init; }
 
     /// <summary>テナントキー。</summary>
-    public string TenantKey { get; init; } = TenantHeader.DefaultTenantId;
+    public string TenantKey { get; init; } = TenantRequestHeaders.DefaultTenantId;
 
     /// <summary>メールアドレス。</summary>
     public string Email { get; init; } = "";
@@ -29,7 +29,7 @@ internal sealed class CreateAdminCliOptions
     /// <summary>引数を解析する。</summary>
     public static CreateAdminCliOptions Parse(string[] args)
     {
-        var tenantKey = TenantHeader.DefaultTenantId;
+        var tenantKey = TenantRequestHeaders.DefaultTenantId;
         var email = "";
         string? password = null;
         string? displayName = null;

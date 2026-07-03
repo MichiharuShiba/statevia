@@ -1,5 +1,4 @@
-using Statevia.Service.Api.Application.Actions.Modules;
-using Statevia.Modules;
+using Statevia.Infrastructure.Modules;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Modules;
 

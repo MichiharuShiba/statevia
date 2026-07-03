@@ -4,8 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Statevia.Service.Api.Application.Actions.Builtins;
-using Statevia.Service.Api.Application.Actions.Infrastructure;
-using Statevia.Service.Api.Configuration;
+using Statevia.Infrastructure.Notification;
+using Statevia.Infrastructure.Notification.Configuration;
 using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Builtins;
@@ -217,7 +217,7 @@ public sealed class BuiltinCapabilityStatesTests
         services.AddSingleton<DevelopmentNotificationSender>();
         services.AddSingleton<SmtpNotificationSender>();
         services.AddSingleton<NotificationSenderResolver>();
-        
+
         var provider = services.BuildServiceProvider();
         var state = new NotificationActionState(provider.GetRequiredService<IServiceScopeFactory>());
         var input = new Dictionary<string, object?>

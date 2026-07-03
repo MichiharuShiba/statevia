@@ -1,4 +1,4 @@
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
 
 namespace Statevia.Service.Api.Hosting;
 

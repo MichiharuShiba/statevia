@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Statevia.Core.Engine.Abstractions;
-using Statevia.Modules;
+using Statevia.Infrastructure.Modules;
 
 namespace Statevia.Service.ActionHost.Modules;
 

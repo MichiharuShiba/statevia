@@ -5,7 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Configuration;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
 using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Service.Api.Services;

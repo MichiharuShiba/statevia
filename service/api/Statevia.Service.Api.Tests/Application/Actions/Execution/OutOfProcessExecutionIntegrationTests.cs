@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 using Statevia.Core.Actions.Abstractions.Catalog;
 using Statevia.Core.Actions.Abstractions.Execution;
 using Statevia.Core.Actions.Abstractions.Visibility;
-using Statevia.Actions.Grpc.Contracts;
+using Statevia.Infrastructure.Actions.Grpc.Contracts;
 using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Service.Api.Application.Actions.Execution;
 using Statevia.Service.Api.Application.Actions.Visibility;

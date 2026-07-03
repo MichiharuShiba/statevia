@@ -1,7 +1,7 @@
 using Statevia.Service.Api.Abstractions.Services;
-using Statevia.Service.Api.Application.Security;
+
 using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Persistence;
+using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -45,7 +45,7 @@ public sealed class GraphDefinitionServiceTests
         private readonly Guid? _resolveResult;
         public StubDisplayIdService(Guid? resolveResult) => _resolveResult = resolveResult;
 
-        
+
 
         public Task<Guid?> ResolveAsync(string kind, string idOrUuid, CancellationToken ct = default) =>
             Task.FromResult(_resolveResult);

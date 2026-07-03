@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Statevia.Service.Api.Abstractions.Services;
-using Statevia.Service.Api.Persistence;
+using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 

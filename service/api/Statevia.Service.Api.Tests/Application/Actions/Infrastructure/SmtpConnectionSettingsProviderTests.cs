@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
-using Statevia.Service.Api.Application.Actions.Infrastructure;
-using Statevia.Service.Api.Configuration;
+using Statevia.Infrastructure.Notification;
+using Statevia.Infrastructure.Notification.Configuration;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Infrastructure;
 

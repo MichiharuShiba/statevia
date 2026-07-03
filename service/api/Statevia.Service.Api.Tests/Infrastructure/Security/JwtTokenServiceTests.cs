@@ -3,8 +3,8 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using Statevia.Service.Api.Configuration;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security.Configuration;
+using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Infrastructure.Security;

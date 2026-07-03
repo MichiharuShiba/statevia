@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Persistence;
-using Statevia.Service.Api.Persistence.Repositories;
+using Statevia.Infrastructure.Persistence;
+using Statevia.Infrastructure.Persistence.Repositories;
 using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Persistence.Repositories;

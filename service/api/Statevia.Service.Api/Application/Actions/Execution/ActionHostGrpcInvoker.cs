@@ -1,7 +1,7 @@
 using Grpc.Core;
 using Statevia.Core.Actions.Abstractions.Execution;
-using Statevia.Actions.Grpc;
-using Statevia.Actions.Grpc.Contracts;
+using Statevia.Infrastructure.Actions.Grpc;
+using Statevia.Infrastructure.Actions.Grpc.Contracts;
 
 namespace Statevia.Service.Api.Application.Actions.Execution;
 

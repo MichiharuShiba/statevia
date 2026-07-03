@@ -2,7 +2,8 @@ using Microsoft.Extensions.Options;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Contracts.Admin;
 using Statevia.Service.Api.Hosting;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
+using Statevia.Infrastructure.Modules;
 
 namespace Statevia.Service.Api.Application.Actions.Modules;
 
@@ -62,7 +63,7 @@ internal sealed class ModuleManagementService : IModuleManagementService
         await using var scope = _scopeFactory.CreateAsyncScope();
         var platformDataAccess = scope.ServiceProvider.GetRequiredService<IPlatformDataAccess>();
         var tenant = await platformDataAccess
-            .FindTenantByKeyAsync(TenantHeader.DefaultTenantId, cancellationToken)
+            .FindTenantByKeyAsync(TenantRequestHeaders.DefaultTenantId, cancellationToken)
             .ConfigureAwait(false);
         if (tenant is null)
         {

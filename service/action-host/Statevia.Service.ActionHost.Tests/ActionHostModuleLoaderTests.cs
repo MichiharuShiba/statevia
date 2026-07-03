@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Statevia.Service.ActionHost;
 using Statevia.Service.ActionHost.Modules;
-using Statevia.Modules;
+using Statevia.Infrastructure.Modules;
 
 namespace Statevia.Service.ActionHost.Tests;
 

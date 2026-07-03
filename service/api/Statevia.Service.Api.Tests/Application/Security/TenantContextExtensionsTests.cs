@@ -1,4 +1,4 @@
-using Statevia.Service.Api.Persistence;
+using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Application.Security;

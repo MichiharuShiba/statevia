@@ -5,11 +5,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using Statevia.Service.Api.Application.Security;
+
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Hosting;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Tests.Infrastructure;
 using Statevia.Service.Api.Tests.Infrastructure.Security;
 
@@ -32,7 +32,7 @@ public sealed class TenantContextMiddlewareTests
 
         var context = new DefaultHttpContext();
         context.Request.Headers.Authorization = $"Bearer {token}";
-        context.Request.Headers[TenantHeader.HeaderName] = "other-tenant";
+        context.Request.Headers[TenantRequestHeaders.HeaderName] = "other-tenant";
         context.Response.Body = new MemoryStream();
 
         var accessor = new SettableTenantContextAccessor();
@@ -95,7 +95,7 @@ public sealed class TenantContextMiddlewareTests
 
         var context = new DefaultHttpContext();
         context.Request.Path = "/v1/executions";
-        context.Request.Headers[TenantHeader.HeaderName] = "default";
+        context.Request.Headers[TenantRequestHeaders.HeaderName] = "default";
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<UnauthorizedException>(() =>
@@ -145,7 +145,7 @@ public sealed class TenantContextMiddlewareTests
 
         var context = new DefaultHttpContext();
         context.Request.Path = "/v1/executions";
-        context.Request.Headers[TenantHeader.HeaderName] = "unknown-tenant";
+        context.Request.Headers[TenantRequestHeaders.HeaderName] = "unknown-tenant";
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<UnauthorizedException>(() =>
@@ -230,7 +230,7 @@ public sealed class TenantContextMiddlewareTests
 
         var context = new DefaultHttpContext();
         context.Request.Path = "/v1/graphs/graph-1";
-        context.Request.Headers[TenantHeader.HeaderName] = "default";
+        context.Request.Headers[TenantRequestHeaders.HeaderName] = "default";
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<UnauthorizedException>(() =>

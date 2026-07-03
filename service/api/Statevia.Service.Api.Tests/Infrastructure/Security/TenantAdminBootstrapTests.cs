@@ -1,5 +1,5 @@
 using Statevia.Service.Api.Contracts.Auth;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 
@@ -122,7 +122,7 @@ public sealed class TenantAdminBootstrapTests
     private static JwtTokenService CreateJwt()
     {
         var options = Microsoft.Extensions.Options.Options.Create(
-            new Configuration.JwtAuthOptions { SigningKey = "test-signing-key-at-least-32-bytes-long!!" });
+            new JwtAuthOptions { SigningKey = "test-signing-key-at-least-32-bytes-long!!" });
         return new JwtTokenService(options);
     }
 }

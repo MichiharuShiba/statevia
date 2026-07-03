@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Statevia.Service.Api.Infrastructure;
-using Statevia.Service.Api.Persistence;
+using Statevia.Infrastructure.Persistence;
 using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Service.Api.Services;
@@ -96,7 +96,7 @@ internal static class ExecutionOperationalProjectionSync
                 && !string.IsNullOrWhiteSpace(n.WaitKey))
             .OrderByDescending(n => n.StartedAt)
             .ToList();
-        
+
         // Wait ノードが存在する場合はそれを選択
         if (waitCandidates.Count > 0)
         {

@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Abstractions.Services;
-using Statevia.Service.Api.Application.Security;
-using Statevia.Service.Api.Persistence;
 
 namespace Statevia.Service.Api.Persistence.Repositories;
 

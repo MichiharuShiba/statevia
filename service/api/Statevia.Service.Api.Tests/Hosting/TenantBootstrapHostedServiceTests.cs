@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Statevia.Service.Api.Hosting;
-using Statevia.Service.Api.Infrastructure.Security;
-using Statevia.Service.Api.Persistence;
+using Statevia.Infrastructure.Security;
+using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Hosting;

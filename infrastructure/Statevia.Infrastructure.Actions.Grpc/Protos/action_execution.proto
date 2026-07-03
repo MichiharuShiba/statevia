@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+option csharp_namespace = "Statevia.Infrastructure.Actions.Grpc.Contracts";
+
+package statevia.actions.v1;
+
+// Core-API と Action Host 間の Action 実行 RPC（Phase 3）。
+// 対応 DTO: Statevia.Core.Actions.Abstractions.Execution.ActionExecutionRequest / ActionExecutionResult
+service ActionExecutionService {
+  rpc ExecuteAction(ActionExecutionRpcRequest) returns (ActionExecutionRpcResponse);
+}
+
+// OutOfProcess 実行リクエスト。InProcess 専用の StateContext は送らない。
+message ActionExecutionRpcRequest {
+  string execution_id = 1;
+  string state_name = 2;
+  string action_id = 3;
+  string tenant_id = 4;
+  // UTF-8 JSON 本文。省略時は入力なし。
+  optional string input_json = 5;
+  optional string correlation_id = 6;
+  // UTC の Unix エポックからのミリ秒。省略時は期限なし。
+  optional int64 deadline_unix_ms = 7;
+}
+
+// OutOfProcess 実行結果。RuntimeOutput は InProcess 専用のため含めない。
+message ActionExecutionRpcResponse {
+  bool success = 1;
+  optional string output_json = 2;
+  optional string error_code = 3;
+  optional string error_message = 4;
+}

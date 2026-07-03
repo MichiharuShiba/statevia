@@ -7,14 +7,18 @@ using Statevia.Core.Actions.Abstractions.Execution;
 using Statevia.Core.Actions.Abstractions.Visibility;
 using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Service.Api.Application.Actions.Execution;
-using Statevia.Service.Api.Application.Actions.Modules;
 using Statevia.Service.Api.Application.Actions.Infrastructure;
+using Statevia.Infrastructure.Modules;
+using Statevia.Infrastructure.Modules.DependencyInjection;
+using Statevia.Service.Api.Application.Actions.Modules;
 using Statevia.Service.Api.Application.Actions.Visibility;
 using Statevia.Service.Api.Application.Definition;
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Infrastructure;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Common.DependencyInjection;
+using Statevia.Infrastructure.Notification.DependencyInjection;
+using Statevia.Infrastructure.Persistence.DependencyInjection;
+using Statevia.Infrastructure.Security.DependencyInjection;
 using Statevia.Service.Api.Persistence;
 using Statevia.Service.Api.Persistence.Repositories;
 using Statevia.Service.Api.Services;
@@ -39,48 +43,29 @@ internal static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         var connectionString = DatabaseConnection.Resolve(configuration);
-        services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
         services.AddSingleton<ITenantQueryFilterOptions>(EnabledTenantQueryFilterOptions.Instance);
-        services.AddDbContextFactory<CoreDbContext>((serviceProvider, options) =>
-            options.UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__ef_migrations_history")));
+        services.AddStateviaInfrastructurePersistence(connectionString);
+        services.AddStateviaInfrastructureSecurity(configuration);
 
-        services.AddSingleton<JwtTokenService>();
-        services.AddSingleton<PasswordCredentialService>();
-        services.AddScoped<IPlatformDataAccess, PlatformDataAccess>();
-        services.AddScoped<IApiKeyAuthenticationService, ApiKeyAuthenticationService>();
-        services.AddScoped<ITenantAdminAuthorization, TenantAdminAuthorization>();
-        services.AddScoped<IRuntimePermissionAuthorization, RuntimePermissionAuthorization>();
-        services.AddScoped<IExecutionMutationAuthorization, ExecutionMutationAuthorization>();
         services.AddScoped<IExecutionSecuritySnapshotFactory, ExecutionSecuritySnapshotFactory>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITenantAdministrationService, TenantAdministrationService>();
         services.AddHostedService<TenantBootstrapHostedService>();
-        services.AddOptions<JwtAuthOptions>()
-            .Bind(configuration.GetSection(JwtAuthOptions.SectionName));
 
-        services.AddScoped<ICoreUnitOfWorkFactory, CoreUnitOfWorkFactory>();
-        services.AddScoped<ICoreTransactionExecutor, CoreTransactionExecutor>();
         services.AddScoped<IExecutionMutationPersistence, ExecutionMutationPersistence>();
 
         services.AddScoped<DisplayIdServiceImpl>();
         services.AddScoped<IDisplayIdService>(sp => sp.GetRequiredService<DisplayIdServiceImpl>());
         services.AddScoped<IDisplayIdWriteService>(sp => sp.GetRequiredService<DisplayIdServiceImpl>());
         services.AddScoped<IExecutionReadModelService, ExecutionReadModelService>();
-        services.AddSingleton<IIdGenerator, UuidV7Generator>();
+        services.AddStateviaInfrastructureCommon();
 
         services.AddSingleton<IExecutionIdGenerator>(
             sp => new DelegateExecutionIdGenerator(() => sp.GetRequiredService<IIdGenerator>().NewGuid().ToString()));
         services.AddStateviaExecutionEngine();
         services.AddScoped<ICommandDedupService, CommandDedupService>();
         services.AddScoped<IDefinitionRepository, DefinitionRepository>();
-        services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IProjectAuthorizationService, ProjectAuthorizationService>();
-        services.AddScoped<IExecutionRepository, ExecutionRepository>();
-        services.AddScoped<IExecutionCursorRepository, ExecutionCursorRepository>();
-        services.AddScoped<IExecutionWaitRepository, ExecutionWaitRepository>();
-        services.AddScoped<ICommandDedupRepository, CommandDedupRepository>();
-        services.AddScoped<IEventDeliveryDedupRepository, EventDeliveryDedupRepository>();
-        services.AddScoped<IEventStoreRepository, EventStoreRepository>();
         services.AddScoped<IDefinitionService, DefinitionService>();
         services.AddSingleton<IDefinitionSchemaService, DefinitionSchemaService>();
         services.AddSingleton<IActionSchemaService, ActionSchemaService>();
@@ -99,18 +84,7 @@ internal static class ServiceCollectionExtensions
         services.AddScoped<ExecutionStreamService>();
         services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
         services.AddHttpClient();
-        services.AddOptions<NotificationOptions>()
-            .Bind(configuration.GetSection(NotificationOptions.SectionName))
-            .PostConfigure(ApplyNotificationOptionsEnvironmentOverrides);
-        services.AddSingleton<EnvironmentSmtpConnectionSettingsProvider>();
-        services.AddSingleton<DatabaseSmtpConnectionSettingsProvider>();
-        services.AddSingleton<KmsSmtpConnectionSettingsProvider>();
-        services.AddSingleton<SmtpConnectionSettingsProviderFactory>();
-        services.AddSingleton<ISmtpConnectionSettingsProvider>(sp =>
-            sp.GetRequiredService<SmtpConnectionSettingsProviderFactory>());
-        services.AddSingleton<DevelopmentNotificationSender>();
-        services.AddSingleton<SmtpNotificationSender>();
-        services.AddSingleton<NotificationSenderResolver>();
+        services.AddStateviaInfrastructureNotification(configuration);
         services.AddScoped<IChildWorkflowRunner, ChildWorkflowRunner>();
         services.AddSingleton<InMemoryActionCatalog>(sp =>
         {
@@ -119,30 +93,7 @@ internal static class ServiceCollectionExtensions
             return catalog;
         });
         services.AddSingleton<IActionCatalog>(sp => sp.GetRequiredService<InMemoryActionCatalog>());
-        services.AddOptions<ModuleHostOptions>()
-            .Bind(configuration.GetSection(ModuleHostOptions.SectionName));
-        services.AddOptions<ModuleSigningOptions>()
-            .Bind(configuration.GetSection(ModuleSigningOptions.SectionName));
-        services.AddSingleton<IResolvedModulePathProvider, ResolvedModulePathProvider>();
-        // 各 Source を IModuleSource として登録し、CompositeModuleSource が Priority 昇順で集約する。
-        // Composite は concrete 登録（IModuleSource では登録しない）とし、自身が IEnumerable<IModuleSource>
-        // へ含まれることによる自己参照・解決時の無限再帰を避ける。
-        services.AddSingleton<IModuleSource, FilesystemModuleSource>();
-        // OCI Source は明示有効化時のみ登録する（未設定なら filesystem のみ＝後方互換）。
-        services.AddOptions<OciModuleSourceOptions>()
-            .Bind(configuration.GetSection(OciModuleSourceOptions.SectionName));
-        if (configuration.GetValue<bool>($"{OciModuleSourceOptions.SectionName}:Enabled"))
-        {
-            services.AddHttpClient(OrasOciArtifactFetcher.HttpClientName);
-            services.AddSingleton<IOciArtifactFetcher, OrasOciArtifactFetcher>();
-            services.AddSingleton<IModuleSource, OciModuleSource>();
-        }
-        services.AddSingleton<CompositeModuleSource>();
-        services.AddSingleton<ModuleLoadCatalog>();
-        services.AddSingleton<IModuleSignatureVerifier, ModuleSignatureVerifier>();
-        // ModuleHost は単一 Source として CompositeModuleSource を consume する。
-        services.AddSingleton<ModuleHost>(sp =>
-            ActivatorUtilities.CreateInstance<ModuleHost>(sp, sp.GetRequiredService<CompositeModuleSource>()));
+        services.AddStateviaInfrastructureModules(configuration);
         services.AddSingleton<IModuleManagementService, ModuleManagementService>();
         services.AddSingleton<ModuleLoadHostedServiceDependencies>();
         services.AddHostedService<ModuleLoadHostedService>();
@@ -213,26 +164,6 @@ internal static class ServiceCollectionExtensions
         {
             options.LogRequestBody = true;
             options.LogResponseBody = true;
-        }
-    }
-
-    private static void ApplyNotificationOptionsEnvironmentOverrides(NotificationOptions options)
-    {
-        var source = Environment.GetEnvironmentVariable(NotificationOptions.SmtpSourceEnvironmentVariable);
-        if (string.IsNullOrWhiteSpace(source))
-        {
-            return;
-        }
-
-        if (string.Equals(source, "Kms", StringComparison.OrdinalIgnoreCase))
-        {
-            options.SmtpSettingsSource = NotificationSmtpSettingsSource.KeyManagementService;
-            return;
-        }
-
-        if (Enum.TryParse(source, ignoreCase: true, out NotificationSmtpSettingsSource parsed))
-        {
-            options.SmtpSettingsSource = parsed;
         }
     }
 

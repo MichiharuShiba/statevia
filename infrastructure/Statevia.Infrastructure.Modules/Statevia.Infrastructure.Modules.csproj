@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Statevia.Infrastructure.Modules</RootNamespace>
+    <AssemblyName>Statevia.Infrastructure.Modules</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA2007</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.Extensions.Hosting" />
+    <Using Include="Microsoft.Extensions.Logging" />
+    <Using Include="Statevia.Core.Actions.Abstractions.Modules" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Statevia.Service.Api" />
+    <InternalsVisibleTo Include="Statevia.Service.Api.Tests" />
+    <InternalsVisibleTo Include="Statevia.Service.Api.Bootstrap" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+    <PackageReference Include="OrasProject.Oras" Version="0.5.0" />
+    <ProjectReference Include="..\..\core\engine\Statevia.Core.Engine\Statevia.Core.Engine.csproj" />
+    <ProjectReference Include="..\..\core\actions\Statevia.Core.Actions.Abstractions\Statevia.Core.Actions.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
-using Statevia.Service.Api.Application.Security;
+
 using Statevia.Service.Api.Tests.Infrastructure.Security;
 
 namespace Statevia.Service.Api.Tests.Hosting;

@@ -8,9 +8,9 @@ using Statevia.Core.Actions.Abstractions.Visibility;
 using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Service.Api.Application.Actions.Execution;
 using Statevia.Service.Api.Application.Actions.Visibility;
-using Statevia.Service.Api.Application.Security;
+
 using Statevia.Service.Api.Hosting;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Execution;
 

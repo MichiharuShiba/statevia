@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Statevia.Service.Api.Application.Actions.Modules;
+using Statevia.Infrastructure.Modules;
 using Statevia.Service.Api.Hosting;
 using Statevia.Service.Api.Tests.Infrastructure;
 

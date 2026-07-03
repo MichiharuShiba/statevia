@@ -297,19 +297,19 @@ internal static class ActionInputTreeNormalizer
                 map = readOnly;
                 return true;
             case IDictionary generic:
-            {
-                var result = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-                foreach (DictionaryEntry entry in generic)
                 {
-                    if (entry.Key is string key)
+                    var result = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                    foreach (DictionaryEntry entry in generic)
                     {
-                        result[key] = entry.Value;
+                        if (entry.Key is string key)
+                        {
+                            result[key] = entry.Value;
+                        }
                     }
-                }
 
-                map = result;
-                return true;
-            }
+                    map = result;
+                    return true;
+                }
             default:
                 map = null!;
                 return false;

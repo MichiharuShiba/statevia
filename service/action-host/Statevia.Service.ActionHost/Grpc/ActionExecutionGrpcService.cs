@@ -1,6 +1,6 @@
 using Grpc.Core;
-using Statevia.Actions.Grpc;
-using Statevia.Actions.Grpc.Contracts;
+using Statevia.Infrastructure.Actions.Grpc;
+using Statevia.Infrastructure.Actions.Grpc.Contracts;
 using Statevia.Service.ActionHost.Execution;
 
 namespace Statevia.Service.ActionHost.Grpc;

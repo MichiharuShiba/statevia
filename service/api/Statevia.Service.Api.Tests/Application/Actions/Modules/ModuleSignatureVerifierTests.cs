@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Statevia.Core.Actions.Abstractions.Catalog;
-using Statevia.Service.Api.Application.Actions.Modules;
+using Statevia.Infrastructure.Modules;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Modules;
 

@@ -4,7 +4,7 @@ using Statevia.Core.Engine.Abstractions;
 namespace Statevia.Core.Engine.Infrastructure;
 
 /// <summary>
-/// UUID v7（時刻プレフィックス + ランダム）。Core-API の <c>UuidV7Generator</c> と同じバイト構成。
+/// UUID v7（時刻プレフィックス + ランダム）。Core-API の <c>UuidV7Generator</c>（<c>Statevia.Infrastructure.Common</c>）と同じバイト構成。
 /// </summary>
 public sealed class UuidV7ExecutionIdGenerator : IExecutionIdGenerator
 {

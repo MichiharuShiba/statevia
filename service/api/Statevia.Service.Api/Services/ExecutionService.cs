@@ -7,14 +7,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Statevia.Service.Api.Abstractions.Services;
-using Statevia.Service.Api.Application.Security;
+
 using Statevia.Service.Api.Controllers;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Hosting;
 using Statevia.Service.Api.Infrastructure;
-using Statevia.Service.Api.Infrastructure.Security;
+using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Configuration;
-using Statevia.Service.Api.Persistence;
+using Statevia.Infrastructure.Persistence;
 using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Service.Api.Services;

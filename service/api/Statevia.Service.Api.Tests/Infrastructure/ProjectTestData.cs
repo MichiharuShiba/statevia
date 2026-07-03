@@ -1,6 +1,6 @@
-using Statevia.Service.Api.Application.Security;
-using Statevia.Service.Api.Persistence;
-using Statevia.Service.Api.Persistence.Repositories;
+
+using Statevia.Infrastructure.Persistence;
+using Statevia.Infrastructure.Persistence.Repositories;
 
 namespace Statevia.Service.Api.Tests.Infrastructure;
 

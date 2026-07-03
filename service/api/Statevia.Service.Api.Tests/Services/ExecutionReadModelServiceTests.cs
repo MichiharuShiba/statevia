@@ -1,6 +1,6 @@
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Persistence;
+using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 
@@ -16,7 +16,7 @@ public sealed class ExecutionReadModelServiceTests
         public string? ExecutionDisplayId { get; set; }
         public string? DefinitionDisplayId { get; set; }
 
-        
+
 
         public Task<Guid?> ResolveAsync(string kind, string idOrUuid, CancellationToken ct = default)
         {

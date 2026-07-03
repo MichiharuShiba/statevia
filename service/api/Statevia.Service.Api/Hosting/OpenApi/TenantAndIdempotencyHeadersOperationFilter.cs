@@ -18,7 +18,7 @@ internal sealed class TenantAndIdempotencyHeadersOperationFilter : IOperationFil
         ArgumentNullException.ThrowIfNull(context);
 
         operation.Parameters ??= [];
-        operation.Parameters.Add(CreateTenantHeaderParameter());
+        operation.Parameters.Add(CreateTenantRequestHeadersParameter());
 
         if (RequiresIdempotencyKey(context))
             operation.Parameters.Add(CreateIdempotencyKeyParameter());
@@ -34,14 +34,14 @@ internal sealed class TenantAndIdempotencyHeadersOperationFilter : IOperationFil
         return relativePath.StartsWith("v1/executions", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static OpenApiParameter CreateTenantHeaderParameter() =>
+    private static OpenApiParameter CreateTenantRequestHeadersParameter() =>
         new()
         {
-            Name = TenantHeader.HeaderName,
+            Name = TenantRequestHeaders.HeaderName,
             In = ParameterLocation.Header,
             Required = false,
-            Description = $"テナント ID。未指定時は \"{TenantHeader.DefaultTenantId}\"。",
-            Schema = new OpenApiSchema { Type = "string", Default = new Microsoft.OpenApi.Any.OpenApiString(TenantHeader.DefaultTenantId) }
+            Description = $"テナント ID。未指定時は \"{TenantRequestHeaders.DefaultTenantId}\"。",
+            Schema = new OpenApiSchema { Type = "string", Default = new Microsoft.OpenApi.Any.OpenApiString(TenantRequestHeaders.DefaultTenantId) }
         };
 
     private static OpenApiParameter CreateIdempotencyKeyParameter() =>

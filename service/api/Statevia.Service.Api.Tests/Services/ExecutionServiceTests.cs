@@ -5,9 +5,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using Statevia.Service.Api.Abstractions.Services;
-using Statevia.Service.Api.Application.Security;
-using Statevia.Service.Api.Persistence;
-using Statevia.Service.Api.Persistence.Repositories;
+
+using Statevia.Infrastructure.Persistence;
+using Statevia.Infrastructure.Persistence.Repositories;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Controllers;
 using Statevia.Service.Api.Hosting;

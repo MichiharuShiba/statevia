@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Statevia.Service.Api.Infrastructure.Security;
-using Statevia.Service.Api.Persistence;
-using Statevia.Service.Api.Persistence.Repositories;
+using Statevia.Infrastructure.Security;
+using Statevia.Infrastructure.Persistence;
+using Statevia.Infrastructure.Persistence.Repositories;
 using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 using Statevia.Service.Api.Tests.Infrastructure.Security;
@@ -15,11 +15,11 @@ public sealed class PostgresPlatformDataAccessTests
     private const string DefaultConnectionString =
         "Host=localhost;Port=5432;Database=statevia;Username=statevia;Password=statevia";
 
-  private static bool IsSmokeEnabled =>
-        string.Equals(
-            Environment.GetEnvironmentVariable("STATEVIA_POSTGRES_SMOKE"),
-            "1",
-            StringComparison.Ordinal);
+    private static bool IsSmokeEnabled =>
+          string.Equals(
+              Environment.GetEnvironmentVariable("STATEVIA_POSTGRES_SMOKE"),
+              "1",
+              StringComparison.Ordinal);
 
     /// <summary>テナント管理者 Principal のグループ取得が PostgreSQL で例外にならない。</summary>
     [Fact]

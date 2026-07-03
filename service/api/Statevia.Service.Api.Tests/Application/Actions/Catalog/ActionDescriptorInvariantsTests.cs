@@ -1,5 +1,5 @@
 using Statevia.Core.Actions.Abstractions.Catalog;
-using Statevia.Service.Api.Application.Actions.Catalog;
+using Statevia.Infrastructure.Modules.Catalog;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Catalog;
 
