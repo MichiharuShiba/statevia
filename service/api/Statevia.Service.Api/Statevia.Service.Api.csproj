@@ -36,6 +36,7 @@
     <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Security/Statevia.Infrastructure.Security.csproj" />
     <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Notification/Statevia.Infrastructure.Notification.csproj" />
     <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Modules/Statevia.Infrastructure.Modules.csproj" />
+    <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Common/Statevia.Infrastructure.Common.csproj" />
     <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Actions.Grpc/Statevia.Infrastructure.Actions.Grpc.csproj" />
   </ItemGroup>
 

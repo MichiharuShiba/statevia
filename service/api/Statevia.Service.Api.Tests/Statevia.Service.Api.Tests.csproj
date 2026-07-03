@@ -47,11 +47,12 @@
     <Using Include="Statevia.Infrastructure.Security" />
     <Using Include="Statevia.Infrastructure.Security.Configuration" />
     <Using Include="Statevia.Infrastructure.Notification" />
-    <Using Include="Statevia.Infrastructure.Notification.Configuration" />
+    <Using Include="Statevia.Infrastructure.Common" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\core\application\Statevia.Core.Application.Contracts\Statevia.Core.Application.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\infrastructure\Statevia.Infrastructure.Common\Statevia.Infrastructure.Common.csproj" />
     <ProjectReference Include="..\Statevia.Service.Api\Statevia.Service.Api.csproj" />
     <ProjectReference Include="..\Statevia.Service.Api.Bootstrap\Statevia.Service.Api.Bootstrap.csproj" />
     <ProjectReference Include="..\..\action-host\Statevia.Service.ActionHost\Statevia.Service.ActionHost.csproj" Aliases="ActionHost" />

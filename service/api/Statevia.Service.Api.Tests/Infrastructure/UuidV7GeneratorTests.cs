@@ -1,5 +1,3 @@
-using Statevia.Service.Api.Infrastructure;
-
 namespace Statevia.Service.Api.Tests.Infrastructure;
 
 public sealed class UuidV7GeneratorTests

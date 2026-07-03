@@ -15,7 +15,7 @@ using Statevia.Service.Api.Application.Actions.Visibility;
 using Statevia.Service.Api.Application.Definition;
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Infrastructure;
+using Statevia.Infrastructure.Common.DependencyInjection;
 using Statevia.Infrastructure.Notification.DependencyInjection;
 using Statevia.Infrastructure.Persistence.DependencyInjection;
 using Statevia.Infrastructure.Security.DependencyInjection;
@@ -58,7 +58,7 @@ internal static class ServiceCollectionExtensions
         services.AddScoped<IDisplayIdService>(sp => sp.GetRequiredService<DisplayIdServiceImpl>());
         services.AddScoped<IDisplayIdWriteService>(sp => sp.GetRequiredService<DisplayIdServiceImpl>());
         services.AddScoped<IExecutionReadModelService, ExecutionReadModelService>();
-        services.AddSingleton<IIdGenerator, UuidV7Generator>();
+        services.AddStateviaInfrastructureCommon();
 
         services.AddSingleton<IExecutionIdGenerator>(
             sp => new DelegateExecutionIdGenerator(() => sp.GetRequiredService<IIdGenerator>().NewGuid().ToString()));

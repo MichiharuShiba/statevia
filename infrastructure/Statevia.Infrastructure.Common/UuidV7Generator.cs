@@ -1,11 +1,12 @@
 using System.Security.Cryptography;
 using Statevia.Core.Application.Contracts.Services;
 
-namespace Statevia.Service.Api.Infrastructure;
+namespace Statevia.Infrastructure.Common;
 
 /// <summary>.NET 8 向け UUID v7（時刻プレフィックス + ランダム）。.NET 9 の Guid.CreateVersion7 と同趣旨。</summary>
-internal sealed class UuidV7Generator : IIdGenerator
+public sealed class UuidV7Generator : IIdGenerator
 {
+    /// <inheritdoc />
     public Guid NewGuid()
     {
         Span<byte> b = stackalloc byte[16];
