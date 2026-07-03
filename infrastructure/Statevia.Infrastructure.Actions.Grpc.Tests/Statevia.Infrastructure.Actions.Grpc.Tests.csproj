@@ -4,6 +4,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RootNamespace>Statevia.Infrastructure.Actions.Grpc.Tests</RootNamespace>
+    <AssemblyName>Statevia.Infrastructure.Actions.Grpc.Tests</AssemblyName>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
@@ -19,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\infrastructure\Statevia.Infrastructure.Modules\Statevia.Infrastructure.Modules.csproj" />
+    <ProjectReference Include="..\Statevia.Infrastructure.Actions.Grpc\Statevia.Infrastructure.Actions.Grpc.csproj" />
   </ItemGroup>
 
 </Project>

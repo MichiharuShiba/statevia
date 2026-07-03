@@ -6,7 +6,7 @@
 .DESCRIPTION
   スクリプト配置（リポジトリの sonar/）から action-host とカバレッジ出力パスを解決する。
   カレントディレクトリに依存しない。
-  依存アセンブリ（engine / api / cli / ui / shared）が混ざらないよう解析・カバレッジ除外を設定する。
+  依存アセンブリ（engine / api / cli / ui / infrastructure）が混ざらないよう解析・カバレッジ除外を設定する。
 
 .NOTES
   環境変数 SONAR_TOKEN を事前に設定すること。
@@ -28,7 +28,7 @@ $sonarAnalysisExclusions = @(
     '**/Statevia.Core.Engine/**',
     '**/Statevia.Service.Api/**',
     '**/Statevia.Actions.Abstractions/**',
-    '**/shared/**',
+    '**/infrastructure/**',
     '**/Migrations/**',
     '**/docker-compose.yml'
 ) -join ','

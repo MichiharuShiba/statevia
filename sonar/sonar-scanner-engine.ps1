@@ -25,7 +25,7 @@ $coverageXml = Join-Path $PSScriptRoot 'core-engine-coverage.xml'
 # Engine sln 内の *.Tests と他コンポーネントを除外
 $sonarAnalysisExclusions = @(
     '**/service/**',
-    '**/shared/**',
+    '**/infrastructure/**',
     '**/ui/**',
     '**/infrastructure/**',
     '**/samples/**',
