@@ -13,8 +13,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Core.Actions.Abstr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Core.Engine", "..\..\core\engine\Statevia.Core.Engine\Statevia.Core.Engine.csproj", "{6CDF6D46-C617-4428-8AE7-88D9683B9377}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Modules", "..\..\shared\Statevia.Modules\Statevia.Modules.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Modules.Tests", "..\..\shared\Statevia.Modules.Tests\Statevia.Modules.Tests.csproj", "{B2C3D4E5-F6A7-8901-BCDE-F12345678901}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestActionModule", "Statevia.Service.Api.Tests\Fixtures\TestActionModule\TestActionModule.csproj", "{C3D4E5F6-A7B8-9012-CDEF-123456789012}"
@@ -30,6 +28,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Infrastructure.Security", "..\..\infrastructure\Statevia.Infrastructure.Security\Statevia.Infrastructure.Security.csproj", "{BA1EC691-4918-46B8-92CC-D1C370A820AE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Infrastructure.Notification", "..\..\infrastructure\Statevia.Infrastructure.Notification\Statevia.Infrastructure.Notification.csproj", "{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Infrastructure.Modules", "..\..\infrastructure\Statevia.Infrastructure.Modules\Statevia.Infrastructure.Modules.csproj", "{486C758E-FC6C-43EB-8956-9824E6563A76}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -173,6 +173,18 @@ Global
 		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Release|x64.Build.0 = Release|Any CPU
 		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Release|x86.ActiveCfg = Release|Any CPU
 		{B9EB1F27-57A7-4E06-AB0F-6A8B63FB3F0C}.Release|x86.Build.0 = Release|Any CPU
+		{486C758E-FC6C-43EB-8956-9824E6563A76}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{486C758E-FC6C-43EB-8956-9824E6563A76}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{486C758E-FC6C-43EB-8956-9824E6563A76}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{486C758E-FC6C-43EB-8956-9824E6563A76}.Debug|x64.Build.0 = Debug|Any CPU
+		{486C758E-FC6C-43EB-8956-9824E6563A76}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{486C758E-FC6C-43EB-8956-9824E6563A76}.Debug|x86.Build.0 = Debug|Any CPU
+		{486C758E-FC6C-43EB-8956-9824E6563A76}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{486C758E-FC6C-43EB-8956-9824E6563A76}.Release|Any CPU.Build.0 = Release|Any CPU
+		{486C758E-FC6C-43EB-8956-9824E6563A76}.Release|x64.ActiveCfg = Release|Any CPU
+		{486C758E-FC6C-43EB-8956-9824E6563A76}.Release|x64.Build.0 = Release|Any CPU
+		{486C758E-FC6C-43EB-8956-9824E6563A76}.Release|x86.ActiveCfg = Release|Any CPU
+		{486C758E-FC6C-43EB-8956-9824E6563A76}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

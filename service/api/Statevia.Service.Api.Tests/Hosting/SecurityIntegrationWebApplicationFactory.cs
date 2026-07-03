@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Statevia.Service.Api.Application.Actions.Modules;
+using Statevia.Infrastructure.Modules;
 using Statevia.Service.Api.Hosting;
 using Statevia.Infrastructure.Security;
 using Statevia.Infrastructure.Persistence;

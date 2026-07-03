@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Actions.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>OCI registry を取得元とする Action Module Source の設定。</summary>
 /// <remarks>

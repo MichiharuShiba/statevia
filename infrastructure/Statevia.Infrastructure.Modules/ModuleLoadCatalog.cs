@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Actions.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>Module load 結果の読み取り専用カタログ。</summary>
 internal sealed class ModuleLoadCatalog

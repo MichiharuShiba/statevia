@@ -11,7 +11,7 @@ COPY infrastructure/Statevia.Infrastructure.Security/Statevia.Infrastructure.Sec
 COPY infrastructure/Statevia.Infrastructure.Notification/Statevia.Infrastructure.Notification.csproj ./infrastructure/Statevia.Infrastructure.Notification/
 COPY core/application/Statevia.Core.Application.Contracts/Statevia.Core.Application.Contracts.csproj ./core/application/Statevia.Core.Application.Contracts/
 COPY shared/Statevia.Actions.Grpc/Statevia.Actions.Grpc.csproj ./shared/Statevia.Actions.Grpc/
-COPY shared/Statevia.Modules/Statevia.Modules.csproj ./shared/Statevia.Modules/
+COPY infrastructure/Statevia.Infrastructure.Modules/Statevia.Infrastructure.Modules.csproj ./infrastructure/Statevia.Infrastructure.Modules/
 RUN dotnet restore ./service/api/Statevia.Service.Api/Statevia.Service.Api.csproj
 
 # ソースをコピーして publish
@@ -23,7 +23,7 @@ COPY infrastructure/Statevia.Infrastructure.Security/ ./infrastructure/Statevia.
 COPY infrastructure/Statevia.Infrastructure.Persistence/ ./infrastructure/Statevia.Infrastructure.Persistence/
 COPY core/application/Statevia.Core.Application.Contracts/ ./core/application/Statevia.Core.Application.Contracts/
 COPY shared/Statevia.Actions.Grpc/ ./shared/Statevia.Actions.Grpc/
-COPY shared/Statevia.Modules/ ./shared/Statevia.Modules/
+COPY infrastructure/Statevia.Infrastructure.Modules/ ./infrastructure/Statevia.Infrastructure.Modules/
 RUN dotnet publish \
     ./service/api/Statevia.Service.Api/Statevia.Service.Api.csproj \
     -c Release \

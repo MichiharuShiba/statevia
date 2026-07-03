@@ -1,6 +1,6 @@
 using Statevia.Core.Actions.Abstractions.Publication;
 
-namespace Statevia.Service.Api.Application.Actions.Publication;
+namespace Statevia.Infrastructure.Modules.Publication;
 
 /// <summary>ActionUiMetadata の labelKey プレフィックスを登録時に検証する。</summary>
 internal static class ActionUiMetadataValidator

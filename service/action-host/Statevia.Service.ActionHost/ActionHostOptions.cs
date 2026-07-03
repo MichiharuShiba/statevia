@@ -7,7 +7,7 @@ public sealed class ActionHostOptions
     public const string SectionName = "Statevia:ActionHost";
 
     /// <summary>
-    /// modules ルート（未設定時は <see cref="Statevia.Modules.ModulePathResolver"/> で解決）。
+    /// modules ルート（未設定時は <see cref="Statevia.Infrastructure.Modules.ModulePathResolver"/> で解決）。
     /// </summary>
     public string? ModulesPath { get; set; }
 

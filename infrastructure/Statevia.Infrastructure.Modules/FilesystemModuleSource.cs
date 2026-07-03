@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace Statevia.Service.Api.Application.Actions.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>ローカル filesystem から Action Module を発見する（load は行わない）。</summary>
 internal sealed class FilesystemModuleSource : IModuleSource

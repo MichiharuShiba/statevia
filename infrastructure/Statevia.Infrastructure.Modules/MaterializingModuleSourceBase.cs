@@ -1,6 +1,6 @@
-using Statevia.Modules;
 
-namespace Statevia.Service.Api.Application.Actions.Modules;
+
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>
 /// リモート取得を伴う <see cref="IModuleSource"/> の共通基底。取得元に依らず ModuleHost が

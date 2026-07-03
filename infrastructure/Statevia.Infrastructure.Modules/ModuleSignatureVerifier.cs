@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Statevia.Core.Actions.Abstractions.Catalog;
 
-namespace Statevia.Service.Api.Application.Actions.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>
 /// module ディレクトリ直下の detached 署名ファイルを検証し、<see cref="ActionTrustLevel"/> を決定する。

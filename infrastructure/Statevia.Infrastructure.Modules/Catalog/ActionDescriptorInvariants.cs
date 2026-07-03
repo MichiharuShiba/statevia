@@ -1,6 +1,6 @@
 using Statevia.Core.Actions.Abstractions.Catalog;
 
-namespace Statevia.Service.Api.Application.Actions.Catalog;
+namespace Statevia.Infrastructure.Modules.Catalog;
 
 /// <summary><see cref="ActionDescriptor"/> 登録時の不変条件検証。</summary>
 internal static class ActionDescriptorInvariants

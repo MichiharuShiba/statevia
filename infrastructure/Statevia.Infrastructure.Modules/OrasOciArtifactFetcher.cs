@@ -6,7 +6,7 @@ using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry.Remote.Auth;
 
-namespace Statevia.Service.Api.Application.Actions.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>ORAS .NET（<c>OrasProject.Oras</c>）を用いた <see cref="IOciArtifactFetcher"/> 実装。</summary>
 /// <remarks>

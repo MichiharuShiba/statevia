@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Actions.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>Module load の結果状態。</summary>
 internal enum ModuleLoadStatus

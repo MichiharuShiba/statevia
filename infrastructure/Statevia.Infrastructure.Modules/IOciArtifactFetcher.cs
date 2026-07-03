@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Actions.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>OCI artifact 取得の抽象。具体ライブラリ（ORAS 等）への依存を本契約に封じ込める。</summary>
 /// <remarks>

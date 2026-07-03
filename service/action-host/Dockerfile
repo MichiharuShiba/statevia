@@ -6,14 +6,14 @@ COPY service/action-host/Statevia.Service.ActionHost/Statevia.Service.ActionHost
 COPY core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj ./core/engine/Statevia.Core.Engine/
 COPY core/actions/Statevia.Core.Actions.Abstractions/Statevia.Core.Actions.Abstractions.csproj ./core/actions/Statevia.Core.Actions.Abstractions/
 COPY shared/Statevia.Actions.Grpc/Statevia.Actions.Grpc.csproj ./shared/Statevia.Actions.Grpc/
-COPY shared/Statevia.Modules/Statevia.Modules.csproj ./shared/Statevia.Modules/
+COPY infrastructure/Statevia.Infrastructure.Modules/Statevia.Infrastructure.Modules.csproj ./infrastructure/Statevia.Infrastructure.Modules/
 RUN dotnet restore ./service/action-host/Statevia.Service.ActionHost/Statevia.Service.ActionHost.csproj
 
 COPY service/action-host/Statevia.Service.ActionHost/ ./service/action-host/Statevia.Service.ActionHost/
 COPY core/engine/Statevia.Core.Engine/ ./core/engine/Statevia.Core.Engine/
 COPY core/actions/Statevia.Core.Actions.Abstractions/ ./core/actions/Statevia.Core.Actions.Abstractions/
 COPY shared/Statevia.Actions.Grpc/ ./shared/Statevia.Actions.Grpc/
-COPY shared/Statevia.Modules/ ./shared/Statevia.Modules/
+COPY infrastructure/Statevia.Infrastructure.Modules/ ./infrastructure/Statevia.Infrastructure.Modules/
 RUN dotnet publish ./service/action-host/Statevia.Service.ActionHost/Statevia.Service.ActionHost.csproj \
     -c Release -o /app/publish /p:UseAppHost=false
 

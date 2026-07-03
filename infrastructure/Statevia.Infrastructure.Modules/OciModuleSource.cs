@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
-using Statevia.Modules;
 
-namespace Statevia.Service.Api.Application.Actions.Modules;
+
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>OCI registry から Module artifact を取得して materialize する <see cref="IModuleSource"/>。</summary>
 /// <remarks>

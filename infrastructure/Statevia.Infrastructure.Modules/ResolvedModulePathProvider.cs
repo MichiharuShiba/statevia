@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Statevia.Modules;
 
-namespace Statevia.Service.Api.Application.Actions.Modules;
+
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>解決済み modules ルートを提供する。</summary>
 internal interface IResolvedModulePathProvider

@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Actions.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>Module 署名検証の設定。</summary>
 /// <remarks>

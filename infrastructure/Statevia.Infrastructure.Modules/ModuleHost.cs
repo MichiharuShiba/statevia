@@ -3,11 +3,12 @@ using System.Security.Cryptography;
 using Microsoft.Extensions.Options;
 using Statevia.Core.Actions.Abstractions.Catalog;
 using Statevia.Core.Actions.Abstractions.Execution;
-using Statevia.Service.Api.Application.Actions.Catalog;
-using Statevia.Service.Api.Application.Actions.Publication;
-using Statevia.Modules;
 
-namespace Statevia.Service.Api.Application.Actions.Modules;
+using Statevia.Infrastructure.Modules.Publication;
+using Statevia.Infrastructure.Modules.Catalog;
+
+
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>discover 結果の Action Module を load し Catalog へ登録する Core-API 固定ホスト。</summary>
 internal sealed class ModuleHost
@@ -16,7 +17,7 @@ internal sealed class ModuleHost
     private const string UnknownVersion = "unknown";
 
     private readonly IModuleSource _moduleSource;
-    private readonly InMemoryActionCatalog _catalog;
+    private readonly IActionCatalog _catalog;
     private readonly ModuleLoadCatalog _loadCatalog;
     private readonly IModuleSignatureVerifier _signatureVerifier;
     private readonly IServiceProvider _serviceProvider;
@@ -27,7 +28,7 @@ internal sealed class ModuleHost
     /// <summary>新しいインスタンスを初期化する。</summary>
     public ModuleHost(
         IModuleSource moduleSource,
-        InMemoryActionCatalog catalog,
+        IActionCatalog catalog,
         ModuleLoadCatalog loadCatalog,
         IModuleSignatureVerifier signatureVerifier,
         IServiceProvider serviceProvider,

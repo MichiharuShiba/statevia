@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Statevia.Service.Api.Application.Actions.Catalog;
+using Statevia.Infrastructure.Modules;
 using Statevia.Service.Api.Application.Actions.Modules;
 using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Tests.Infrastructure;

@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Actions.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>Module の detached 署名を検証し、信頼レベルを決定する。</summary>
 internal interface IModuleSignatureVerifier

@@ -1,7 +1,7 @@
 using System.IO.Compression;
-using Statevia.Modules;
+using Statevia.Infrastructure.Modules;
 
-namespace Statevia.Modules.Tests;
+namespace Statevia.Infrastructure.Modules.Tests;
 
 /// <summary><see cref="ModuleZipInstaller"/> の単体テスト。</summary>
 public sealed class ModuleZipInstallerTests

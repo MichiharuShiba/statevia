@@ -1,4 +1,4 @@
-namespace Statevia.Service.Api.Application.Actions.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>ModuleHost の設定。</summary>
 internal sealed class ModuleHostOptions

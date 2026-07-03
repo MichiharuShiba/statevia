@@ -1,4 +1,4 @@
-namespace Statevia.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>modules ルートの優先順位付き解決（ASP.NET 非依存）。</summary>
 public static class ModulePathResolver

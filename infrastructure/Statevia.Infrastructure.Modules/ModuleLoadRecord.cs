@@ -1,6 +1,6 @@
 using Statevia.Core.Actions.Abstractions.Catalog;
 
-namespace Statevia.Service.Api.Application.Actions.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>Module load の監査レコード。</summary>
 internal sealed record ModuleLoadRecord

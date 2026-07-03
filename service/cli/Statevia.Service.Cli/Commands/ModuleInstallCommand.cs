@@ -1,6 +1,6 @@
 using System.CommandLine;
 using System.Net.Http.Headers;
-using Statevia.Modules;
+using Statevia.Infrastructure.Modules;
 
 namespace Statevia.Service.Cli.Commands;
 

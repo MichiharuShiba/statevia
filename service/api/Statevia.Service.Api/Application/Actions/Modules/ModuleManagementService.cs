@@ -3,6 +3,7 @@ using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Contracts.Admin;
 using Statevia.Service.Api.Hosting;
 using Statevia.Infrastructure.Security;
+using Statevia.Infrastructure.Modules;
 
 namespace Statevia.Service.Api.Application.Actions.Modules;
 

@@ -16,7 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../../core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj" />
-    <ProjectReference Include="../../../shared/Statevia.Modules/Statevia.Modules.csproj" />
+    <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Modules/Statevia.Infrastructure.Modules.csproj" />
   </ItemGroup>
 
 </Project>

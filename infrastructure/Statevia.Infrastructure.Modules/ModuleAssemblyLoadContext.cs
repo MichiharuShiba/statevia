@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace Statevia.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>1 Action Module = 1 隔離 ALC。プラットフォーム契約は Default コンテキストを共有する。</summary>
 /// <remarks>
@@ -25,7 +25,7 @@ public sealed class ModuleAssemblyLoadContext : AssemblyLoadContext
     /// </summary>
     private static readonly HashSet<string> SharedAssemblyNames = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Statevia.Modules",
+        "Statevia.Infrastructure.Modules",
         "Statevia.Core.Actions.Abstractions",
         "Statevia.Core.Engine",
         "Microsoft.Extensions.DependencyInjection.Abstractions",

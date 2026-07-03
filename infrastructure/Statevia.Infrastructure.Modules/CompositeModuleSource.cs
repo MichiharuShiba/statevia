@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace Statevia.Service.Api.Application.Actions.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>複数の <see cref="IModuleSource"/> を決定的に集約する Source。</summary>
 /// <remarks>

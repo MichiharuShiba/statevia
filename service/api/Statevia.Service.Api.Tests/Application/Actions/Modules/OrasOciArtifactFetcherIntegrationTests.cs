@@ -6,7 +6,7 @@ using OrasProject.Oras;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
-using Statevia.Service.Api.Application.Actions.Modules;
+using Statevia.Infrastructure.Modules;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Modules;
 

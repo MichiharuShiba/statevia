@@ -1,4 +1,4 @@
-namespace Statevia.Modules.Tests;
+namespace Statevia.Infrastructure.Modules.Tests;
 
 /// <summary><see cref="ModulePathResolver"/> の単体テスト。</summary>
 public sealed class ModulePathResolverTests

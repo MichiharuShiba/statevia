@@ -1,6 +1,6 @@
 using System.IO.Compression;
 
-namespace Statevia.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>
 /// Action Module 配布 zip を modules ルート配下へ安全に展開するユーティリティ。

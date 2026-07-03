@@ -1,6 +1,6 @@
 using Statevia.Core.Actions.Abstractions.Catalog;
 
-namespace Statevia.Service.Api.Application.Actions.Modules;
+namespace Statevia.Infrastructure.Modules;
 
 /// <summary>Module 署名検証の結果。</summary>
 /// <remarks>

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 using Statevia.Core.Actions.Abstractions.Catalog;
 using Statevia.Core.Actions.Abstractions.Visibility;
 using Statevia.Service.Api.Application.Actions.Catalog;
-using Statevia.Service.Api.Application.Actions.Modules;
+using Statevia.Infrastructure.Modules;
 using Statevia.Service.Api.Application.Definition;
 using Statevia.Service.Api.Hosting;
 using Statevia.Service.Api.Tests.Application.Actions.Execution;
