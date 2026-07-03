@@ -217,7 +217,7 @@ public sealed class BuiltinCapabilityStatesTests
         services.AddSingleton<DevelopmentNotificationSender>();
         services.AddSingleton<SmtpNotificationSender>();
         services.AddSingleton<NotificationSenderResolver>();
-        
+
         var provider = services.BuildServiceProvider();
         var state = new NotificationActionState(provider.GetRequiredService<IServiceScopeFactory>());
         var input = new Dictionary<string, object?>

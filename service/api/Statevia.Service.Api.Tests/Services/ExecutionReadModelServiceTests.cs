@@ -16,7 +16,7 @@ public sealed class ExecutionReadModelServiceTests
         public string? ExecutionDisplayId { get; set; }
         public string? DefinitionDisplayId { get; set; }
 
-        
+
 
         public Task<Guid?> ResolveAsync(string kind, string idOrUuid, CancellationToken ct = default)
         {

@@ -45,7 +45,7 @@ public sealed class GraphDefinitionServiceTests
         private readonly Guid? _resolveResult;
         public StubDisplayIdService(Guid? resolveResult) => _resolveResult = resolveResult;
 
-        
+
 
         public Task<Guid?> ResolveAsync(string kind, string idOrUuid, CancellationToken ct = default) =>
             Task.FromResult(_resolveResult);

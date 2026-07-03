@@ -110,7 +110,7 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         public Task<ExecutionEventsResponseDto> ListEventsAsync(string idOrUuid, long afterSeq, int limit, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task ResumeNodeAsync( string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task ResumeNodeAsync(string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
@@ -164,7 +164,7 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         public Task<ExecutionEventsResponseDto> ListEventsAsync(string idOrUuid, long afterSeq, int limit, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task ResumeNodeAsync( string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task ResumeNodeAsync(string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
@@ -216,7 +216,7 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         public Task<ExecutionEventsResponseDto> ListEventsAsync(string idOrUuid, long afterSeq, int limit, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task ResumeNodeAsync( string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
+        public Task ResumeNodeAsync(string idOrUuid, string nodeId, string? resumeKey, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>

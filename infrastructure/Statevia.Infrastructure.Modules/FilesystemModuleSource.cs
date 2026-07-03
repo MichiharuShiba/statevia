@@ -56,7 +56,7 @@ internal sealed class FilesystemModuleSource : IModuleSource
                 FilesystemModuleSourceLog.ModuleDirectorySkipped(_logger, moduleDirectoryName, reason);
                 continue;
             }
-        
+
 
             discovered.Add(new DiscoveredModule(
                 moduleDirectoryName,

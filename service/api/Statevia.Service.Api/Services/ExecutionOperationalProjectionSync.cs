@@ -96,7 +96,7 @@ internal static class ExecutionOperationalProjectionSync
                 && !string.IsNullOrWhiteSpace(n.WaitKey))
             .OrderByDescending(n => n.StartedAt)
             .ToList();
-        
+
         // Wait ノードが存在する場合はそれを選択
         if (waitCandidates.Count > 0)
         {

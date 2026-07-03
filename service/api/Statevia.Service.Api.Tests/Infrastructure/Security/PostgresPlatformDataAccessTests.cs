@@ -15,11 +15,11 @@ public sealed class PostgresPlatformDataAccessTests
     private const string DefaultConnectionString =
         "Host=localhost;Port=5432;Database=statevia;Username=statevia;Password=statevia";
 
-  private static bool IsSmokeEnabled =>
-        string.Equals(
-            Environment.GetEnvironmentVariable("STATEVIA_POSTGRES_SMOKE"),
-            "1",
-            StringComparison.Ordinal);
+    private static bool IsSmokeEnabled =>
+          string.Equals(
+              Environment.GetEnvironmentVariable("STATEVIA_POSTGRES_SMOKE"),
+              "1",
+              StringComparison.Ordinal);
 
     /// <summary>テナント管理者 Principal のグループ取得が PostgreSQL で例外にならない。</summary>
     [Fact]
