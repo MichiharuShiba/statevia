@@ -18,10 +18,10 @@ public class CancelTests
         var def = CreateDefinitionWithLongRunningState();
         var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
-        await Task.Delay(50);
+        await Task.Delay(50).ConfigureAwait(false);
 
         // Act: キャンセルを実行
-        await engine.CancelAsync(id);
+        await engine.CancelAsync(id).ConfigureAwait(false);
 
         // Assert: スナップショットが取得でき、IsCancelled が true であること
         var snapshot = engine.GetSnapshot(id);
@@ -37,12 +37,12 @@ public class CancelTests
         var def = CreateDefinitionWithLongRunningState();
         var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
-        await Task.Delay(50);
+        await Task.Delay(50).ConfigureAwait(false);
         var clientEventId = Guid.Parse("b2c3d4e5-f6a7-4890-b123-456789abcdef");
 
         // Act
-        var first = await engine.CancelAsync(id, clientEventId);
-        var second = await engine.CancelAsync(id, clientEventId);
+        var first = await engine.CancelAsync(id, clientEventId).ConfigureAwait(false);
+        var second = await engine.CancelAsync(id, clientEventId).ConfigureAwait(false);
 
         // Assert
         Assert.True(first.IsApplied);
@@ -79,7 +79,7 @@ public class CancelTests
         var id = engine.Start(def);
 
         // Act
-        await Task.Delay(5100);
+        await Task.Delay(5100).ConfigureAwait(false);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -91,7 +91,7 @@ public class CancelTests
     {
         public async Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
         {
-            await Task.Delay(5000, ct);
+            await Task.Delay(5000, ct).ConfigureAwait(false);
             return Unit.Value;
         }
     }

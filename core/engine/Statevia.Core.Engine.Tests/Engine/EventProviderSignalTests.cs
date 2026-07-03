@@ -13,13 +13,13 @@ public sealed class EventProviderSignalTests
         // Arrange
         var provider = new EventProvider("wf1");
         var waitTask = provider.WaitForSignalAsync("approval", CancellationToken.None);
-        await Task.Delay(50);
+        await Task.Delay(50).ConfigureAwait(false);
 
         // Act
         provider.Signal("approval");
 
         // Assert
-        await waitTask;
+        await waitTask.ConfigureAwait(false);
         Assert.True(waitTask.IsCompletedSuccessfully);
     }
 
@@ -30,7 +30,7 @@ public sealed class EventProviderSignalTests
         // Arrange
         var provider = new EventProvider("wf1");
         var waitTask = provider.WaitForSignalAsync("approval", CancellationToken.None);
-        await Task.Delay(50);
+        await Task.Delay(50).ConfigureAwait(false);
 
         // Act
         provider.PublishTopic("payment.completed", payloadSummary: "summary");
@@ -38,6 +38,6 @@ public sealed class EventProviderSignalTests
         // Assert
         Assert.False(waitTask.IsCompleted);
         provider.Signal("approval");
-        await waitTask;
+        await waitTask.ConfigureAwait(false);
     }
 }

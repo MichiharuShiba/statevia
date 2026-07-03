@@ -19,12 +19,12 @@ public class SchedulerTests
         var tasks = Enumerable.Range(0, 5).Select(_ => limiter.RunAsync(async ct =>
         {
             lock (lockObj) { concurrent++; maxConcurrent = Math.Max(maxConcurrent, concurrent); }
-            await Task.Delay(50, ct);
+            await Task.Delay(50, ct).ConfigureAwait(false);
             lock (lockObj) { concurrent--; }
             return 1;
         }));
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
         // Assert: 同時実行数の最大値が 2 であること
         Assert.Equal(2, maxConcurrent);
@@ -38,7 +38,7 @@ public class SchedulerTests
         using var scheduler = new DefaultScheduler(2);
 
         // Act
-        var result = await scheduler.RunAsync(ct => Task.FromResult(42));
+        var result = await scheduler.RunAsync(ct => Task.FromResult(42)).ConfigureAwait(false);
 
         // Assert
         Assert.Equal(42, result);
@@ -54,7 +54,7 @@ public class SchedulerTests
 
         // Act / Assert
         await Assert.ThrowsAsync<ObjectDisposedException>(() =>
-            limiter.RunAsync(_ => Task.FromResult(0)));
+            limiter.RunAsync(_ => Task.FromResult(0))).ConfigureAwait(false);
     }
 
     /// <summary>二重 Dispose が例外を投げないことを検証する。</summary>

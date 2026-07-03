@@ -12,13 +12,13 @@ public class WaitResumeTests
         // Arrange: EventProvider を作成し、WaitAsync で待機開始
         var provider = new EventProvider("wf1");
         var waitTask = provider.WaitAsync("TestEvent", CancellationToken.None);
-        await Task.Delay(50);
+        await Task.Delay(50).ConfigureAwait(false);
 
         // Act: Publish でイベント発行
         provider.Publish("TestEvent");
 
         // Assert: Wait が完了すること
-        await waitTask;
+        await waitTask.ConfigureAwait(false);
         Assert.True(waitTask.IsCompletedSuccessfully);
     }
 
@@ -32,9 +32,9 @@ public class WaitResumeTests
         var waitTask = provider.WaitAsync("TestEvent", cts.Token);
 
         // Act: トークンをキャンセル
-        await cts.CancelAsync();
+        await cts.CancelAsync().ConfigureAwait(false);
 
         // Assert: TaskCanceledException がスローされること
-        await Assert.ThrowsAsync<TaskCanceledException>(async () => await waitTask);
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await waitTask.ConfigureAwait(false)).ConfigureAwait(false);
     }
 }

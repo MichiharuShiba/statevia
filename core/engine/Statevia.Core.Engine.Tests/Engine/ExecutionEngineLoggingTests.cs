@@ -23,7 +23,7 @@ public sealed partial class ExecutionEngineLoggingTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(200);
+        await Task.Delay(200).ConfigureAwait(false);
 
         // Assert
         Assert.Contains(sink.Entries, e => e.Level == LogLevel.Information && e.Message.Contains("Execution started", StringComparison.Ordinal) && e.Message.Contains(id, StringComparison.Ordinal));
@@ -44,7 +44,7 @@ public sealed partial class ExecutionEngineLoggingTests
 
         // Act
         engine.Start(def);
-        await Task.Delay(200);
+        await Task.Delay(200).ConfigureAwait(false);
 
         // Assert
         Assert.Contains(sink.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("State execute failed", StringComparison.Ordinal));
@@ -63,7 +63,7 @@ public sealed partial class ExecutionEngineLoggingTests
 
         // Act
         engine.Start(def);
-        await Task.Delay(600);
+        await Task.Delay(600).ConfigureAwait(false);
 
         // Assert
         Assert.Contains(sink.Entries, e => e.Message.Contains("Kind=Join", StringComparison.Ordinal));
@@ -106,7 +106,7 @@ public sealed partial class ExecutionEngineLoggingTests
 
         // Act
         engine.Start(def);
-        await Task.Delay(300);
+        await Task.Delay(300).ConfigureAwait(false);
 
         // Assert
         Assert.Contains(
@@ -145,7 +145,7 @@ public sealed partial class ExecutionEngineLoggingTests
 
         // Act
         engine.Start(def);
-        await Task.Delay(200);
+        await Task.Delay(200).ConfigureAwait(false);
 
         // Assert
         Assert.Contains(
@@ -169,7 +169,7 @@ public sealed partial class ExecutionEngineLoggingTests
 
         // Act
         var executionId = engine.Start(def);
-        await Task.Delay(200);
+        await Task.Delay(200).ConfigureAwait(false);
 
         // Assert
         var snapshot = engine.GetSnapshot(executionId);
@@ -203,7 +203,7 @@ public sealed partial class ExecutionEngineLoggingTests
 
         // Act
         var executionId = engine.Start(def);
-        await Task.Delay(250);
+        await Task.Delay(250).ConfigureAwait(false);
 
         // Assert
         Assert.Contains(
