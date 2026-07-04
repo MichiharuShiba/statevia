@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using Statevia.Service.Api.Abstractions.Services;
+using Statevia.Core.Application.Contracts;
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Service.Api.Application.Actions.Infrastructure;
-using Statevia.Service.Api.Controllers;
 using Statevia.Service.Api.Contracts;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Infrastructure;
@@ -91,7 +91,7 @@ public sealed class ChildWorkflowRunnerTests
             CancellationToken ct) =>
             Task.FromResult(StartResult);
 
-        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct) =>
+        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListPageQuery query, CancellationToken ct) =>
             throw new NotImplementedException();
 
         public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>

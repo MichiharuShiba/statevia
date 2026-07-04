@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Statevia.Core.Application.Services;
 using Statevia.Infrastructure.Security;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Persistence.Repositories;
-using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 using Statevia.Service.Api.Tests.Infrastructure.Security;
 
@@ -76,7 +76,7 @@ public sealed class PostgresPlatformDataAccessTests
         var uowFactory = new TestCoreUnitOfWorkFactory(postgresFactory);
         var factory = new ExecutionSecuritySnapshotFactory(
             database.TenantAccessor,
-            new PlatformDataAccess(postgresFactory),
+            new PrincipalDataAccessAdapter(new PlatformDataAccess(postgresFactory)),
             new TestCoreTransactionExecutor(uowFactory),
             TestRepositoryFactory.CreateDefinitionRepository(),
             new ProjectRepository());

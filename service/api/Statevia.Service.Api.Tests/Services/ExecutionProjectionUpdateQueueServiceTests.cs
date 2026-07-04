@@ -1,11 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Statevia.Service.Api.Abstractions.Services;
-
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Controllers;
 using Statevia.Infrastructure.Security;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Services;
@@ -88,7 +86,7 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct) =>
+        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListPageQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
@@ -142,7 +140,7 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct) =>
+        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListPageQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
@@ -194,7 +192,7 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
-        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct) =>
+        public Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListPageQuery query, CancellationToken ct) =>
             throw new NotSupportedException();
 
         public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>

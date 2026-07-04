@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Controllers;
 
@@ -24,9 +23,9 @@ public sealed class DefinitionsControllerTests
             return CreateResult;
         }
 
-        public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(DefinitionListQuery query, CancellationToken ct)
+        public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(DefinitionListPageQuery query, CancellationToken ct)
         {
-            await Task.Yield(); // async boundary for coverage
+            await Task.Yield();
             if (ExceptionToThrow is { } ex) throw ex;
             return ListPagedResult;
         }

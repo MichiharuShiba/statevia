@@ -1,8 +1,8 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using Statevia.Service.Api.Configuration;
-using Statevia.Service.Api.Infrastructure;
+using Statevia.Core.Application.Configuration;
+using Statevia.Core.Application.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Infrastructure;
 

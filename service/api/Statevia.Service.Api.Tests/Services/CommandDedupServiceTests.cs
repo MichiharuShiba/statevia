@@ -1,4 +1,4 @@
-using Statevia.Service.Api.Services;
+using Statevia.Core.Application.Services;
 
 namespace Statevia.Service.Api.Tests.Services;
 

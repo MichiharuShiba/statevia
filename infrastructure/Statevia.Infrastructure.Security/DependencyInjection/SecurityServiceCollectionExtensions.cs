@@ -22,6 +22,7 @@ public static class SecurityServiceCollectionExtensions
         services.AddSingleton<JwtTokenService>();
         services.AddSingleton<PasswordCredentialService>();
         services.AddScoped<IPlatformDataAccess, PlatformDataAccess>();
+        services.AddScoped<Statevia.Core.Application.Contracts.Security.IPrincipalDataAccess, PrincipalDataAccessAdapter>();
         services.AddScoped<IApiKeyAuthenticationService, ApiKeyAuthenticationService>();
         services.AddScoped<ITenantAdminAuthorization, TenantAdminAuthorization>();
         services.AddScoped<IRuntimePermissionAuthorization, RuntimePermissionAuthorization>();

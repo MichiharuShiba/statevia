@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using Statevia.Service.Api.Services;
+using Statevia.Core.Application.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Services;

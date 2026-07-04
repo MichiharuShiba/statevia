@@ -1,9 +1,9 @@
 using System.Text.Json;
 using Statevia.Core.Actions.Abstractions.Catalog;
 using Statevia.Core.Actions.Abstractions.Publication;
+using Statevia.Core.Application.Services;
 using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Application.Actions.Builtins;
 using Statevia.Core.Engine.Execution;
 using CatalogActionDescriptor = Statevia.Core.Actions.Abstractions.Catalog.ActionDescriptor;

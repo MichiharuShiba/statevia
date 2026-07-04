@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Services;
-using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Infrastructure;
+using Statevia.Core.Application.Contracts;
+using Statevia.Core.Application.Contracts.Persistence;
+using Statevia.Core.Application.Contracts.Security;
+using Statevia.Core.Application.Contracts.Services;
+using Statevia.Core.Application.Infrastructure;
 using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Service.Api.Services;

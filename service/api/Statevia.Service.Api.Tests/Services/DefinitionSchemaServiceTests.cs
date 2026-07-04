@@ -1,5 +1,5 @@
+using Statevia.Core.Application.Services;
 using Statevia.Service.Api.Application.Definition;
-using Statevia.Service.Api.Services;
 
 namespace Statevia.Service.Api.Tests.Services;
 
@@ -11,7 +11,7 @@ public sealed class DefinitionSchemaServiceTests
     public void GetNodesSchemaVersion_ReturnsDefinitionConstant()
     {
         // Arrange
-        var sut = new DefinitionSchemaService();
+        var sut = new DefinitionSchemaService(new NodesSchemaProvider());
 
         // Act
         var version = sut.GetNodesSchemaVersion();
@@ -25,7 +25,7 @@ public sealed class DefinitionSchemaServiceTests
     public void GetNodesVersion_ReturnsDefinitionConstant()
     {
         // Arrange
-        var sut = new DefinitionSchemaService();
+        var sut = new DefinitionSchemaService(new NodesSchemaProvider());
 
         // Act
         var version = sut.GetNodesVersion();
@@ -39,7 +39,7 @@ public sealed class DefinitionSchemaServiceTests
     public void GetNodesSchemaDocument_ReturnsNonNullDocument()
     {
         // Arrange
-        var sut = new DefinitionSchemaService();
+        var sut = new DefinitionSchemaService(new NodesSchemaProvider());
 
         // Act
         var document = sut.GetNodesSchemaDocument();

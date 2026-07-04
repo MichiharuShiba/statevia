@@ -1,7 +1,8 @@
 using System.Text.Json;
-using Statevia.Service.Api.Abstractions.Services;
-
-using Statevia.Service.Api.Contracts;
+using Statevia.Core.Application.Contracts;
+using Statevia.Core.Application.Contracts.Persistence;
+using Statevia.Core.Application.Contracts.Security;
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Service.Api.Services;

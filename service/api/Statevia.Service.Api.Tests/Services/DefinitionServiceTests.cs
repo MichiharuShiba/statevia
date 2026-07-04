@@ -8,6 +8,7 @@ using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Controllers;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Persistence.Repositories;
+using Statevia.Core.Application.Services;
 using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 
@@ -268,7 +269,11 @@ public sealed class DefinitionServiceTests
         var sut = CreateDefinitionService(inDb, display, compiler, definitionsRepo, idGen);
 
         // Assert
-        var page = await sut.ListPagedAsync(new DefinitionListQuery { Offset = 0, Limit = 10, SortBy = "createdAt", SortOrder = "asc" },
+        var page = await sut.ListPagedAsync(
+            new DefinitionListPageQuery(
+                Page: new PageQuery(0, 10),
+                Sort: new SortQuery("createdAt", "asc"),
+                NameContains: null),
             CancellationToken.None);
         Assert.Equal(2, page.TotalCount);
         Assert.Equal(2, page.Items.Count);
@@ -308,7 +313,12 @@ public sealed class DefinitionServiceTests
         var sut = CreateDefinitionService(inDb, display, compiler, definitionsRepo, idGen);
 
         // Assert
-        var page = await sut.ListPagedAsync(new DefinitionListQuery { Offset = 0, Limit = 1, Name = "order" }, CancellationToken.None);
+        var page = await sut.ListPagedAsync(
+            new DefinitionListPageQuery(
+                Page: new PageQuery(0, 1),
+                Sort: new SortQuery(null, null),
+                NameContains: "order"),
+            CancellationToken.None);
         Assert.Equal(2, page.TotalCount);
         Assert.Single(page.Items);
         Assert.True(page.HasMore);
