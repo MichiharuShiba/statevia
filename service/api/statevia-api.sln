@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.7.11925.98 stable
+VisualStudioVersion = 18.7.11925.98
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Service.Api", "Statevia.Service.Api\Statevia.Service.Api.csproj", "{E5F6A7B8-C9D0-1234-EF01-345678901234}"
 EndProject
@@ -34,6 +34,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Infrastructure.Actions.Grpc.Tests", "..\..\infrastructure\Statevia.Infrastructure.Actions.Grpc.Tests\Statevia.Infrastructure.Actions.Grpc.Tests.csproj", "{71A703E5-BF4E-4C49-9F47-A0FC3D4C03EA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Core.Application", "..\..\core\application\Statevia.Core.Application\Statevia.Core.Application.csproj", "{A01FF8BD-FA60-421A-A3F6-E1CF48A6A89B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Statevia.Architecture.Tests", "..\..\tests\Statevia.Architecture.Tests\Statevia.Architecture.Tests.csproj", "{36C010E5-6F05-48DA-AF73-3C97DE51D95E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -237,6 +239,18 @@ Global
 		{A01FF8BD-FA60-421A-A3F6-E1CF48A6A89B}.Release|x64.Build.0 = Release|Any CPU
 		{A01FF8BD-FA60-421A-A3F6-E1CF48A6A89B}.Release|x86.ActiveCfg = Release|Any CPU
 		{A01FF8BD-FA60-421A-A3F6-E1CF48A6A89B}.Release|x86.Build.0 = Release|Any CPU
+		{36C010E5-6F05-48DA-AF73-3C97DE51D95E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36C010E5-6F05-48DA-AF73-3C97DE51D95E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36C010E5-6F05-48DA-AF73-3C97DE51D95E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{36C010E5-6F05-48DA-AF73-3C97DE51D95E}.Debug|x64.Build.0 = Debug|Any CPU
+		{36C010E5-6F05-48DA-AF73-3C97DE51D95E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{36C010E5-6F05-48DA-AF73-3C97DE51D95E}.Debug|x86.Build.0 = Debug|Any CPU
+		{36C010E5-6F05-48DA-AF73-3C97DE51D95E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36C010E5-6F05-48DA-AF73-3C97DE51D95E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36C010E5-6F05-48DA-AF73-3C97DE51D95E}.Release|x64.ActiveCfg = Release|Any CPU
+		{36C010E5-6F05-48DA-AF73-3C97DE51D95E}.Release|x64.Build.0 = Release|Any CPU
+		{36C010E5-6F05-48DA-AF73-3C97DE51D95E}.Release|x86.ActiveCfg = Release|Any CPU
+		{36C010E5-6F05-48DA-AF73-3C97DE51D95E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

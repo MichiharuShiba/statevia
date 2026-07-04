@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>Statevia.Architecture.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NetArchTest.eNhancedEdition" Version="1.4.5" />
+    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+  </ItemGroup>
+
+  <!-- 全アセンブリを参照して依存方向を検証する -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\engine\Statevia.Core.Engine\Statevia.Core.Engine.csproj" />
+    <ProjectReference Include="..\..\core\application\Statevia.Core.Application.Contracts\Statevia.Core.Application.Contracts.csproj" />
+    <ProjectReference Include="..\..\core\application\Statevia.Core.Application\Statevia.Core.Application.csproj" />
+    <ProjectReference Include="..\..\core\actions\Statevia.Core.Actions.Abstractions\Statevia.Core.Actions.Abstractions.csproj" />
+    <ProjectReference Include="..\..\infrastructure\Statevia.Infrastructure.Persistence\Statevia.Infrastructure.Persistence.csproj" />
+    <ProjectReference Include="..\..\infrastructure\Statevia.Infrastructure.Security\Statevia.Infrastructure.Security.csproj" />
+    <ProjectReference Include="..\..\infrastructure\Statevia.Infrastructure.Notification\Statevia.Infrastructure.Notification.csproj" />
+    <ProjectReference Include="..\..\infrastructure\Statevia.Infrastructure.Modules\Statevia.Infrastructure.Modules.csproj" />
+    <ProjectReference Include="..\..\infrastructure\Statevia.Infrastructure.Actions.Grpc\Statevia.Infrastructure.Actions.Grpc.csproj" />
+    <ProjectReference Include="..\..\infrastructure\Statevia.Infrastructure.Common\Statevia.Infrastructure.Common.csproj" />
+    <ProjectReference Include="..\..\service\api\Statevia.Service.Api\Statevia.Service.Api.csproj" />
+    <ProjectReference Include="..\..\service\api\Statevia.Service.Api.Bootstrap\Statevia.Service.Api.Bootstrap.csproj" />
+  </ItemGroup>
+
+</Project>
