@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Contracts.Actions;
 using Statevia.Service.Api.Controllers;
 using Statevia.Service.Api.Tests.Infrastructure;
 

@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Statevia.Core.Application</RootNamespace>
+    <AssemblyName>Statevia.Core.Application</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Statevia.Core.Application.Contracts" />
+    <Using Include="Statevia.Core.Application.Contracts.Persistence" />
+    <Using Include="Statevia.Core.Application.Contracts.Security" />
+    <Using Include="Statevia.Core.Application.Contracts.Services" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Statevia.Service.Api" />
+    <InternalsVisibleTo Include="Statevia.Service.Api.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Statevia.Core.Application.Contracts\Statevia.Core.Application.Contracts.csproj" />
+    <ProjectReference Include="..\..\engine\Statevia.Core.Engine\Statevia.Core.Engine.csproj" />
+    <ProjectReference Include="..\..\actions\Statevia.Core.Actions.Abstractions\Statevia.Core.Actions.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

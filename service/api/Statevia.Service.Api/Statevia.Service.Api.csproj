@@ -13,10 +13,11 @@
 
   <ItemGroup>
     <Using Include="Statevia.Core.Actions.Abstractions.Modules" />
+    <Using Include="Statevia.Core.Application.Contracts" />
     <Using Include="Statevia.Core.Application.Contracts.Persistence" />
     <Using Include="Statevia.Core.Application.Contracts.Security" />
     <Using Include="Statevia.Core.Application.Contracts.Services" />
-    <Using Include="Statevia.Service.Api.Application.Security" />
+    <Using Include="Statevia.Core.Application.Services" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,6 +33,7 @@
     <ProjectReference Include="../../../core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj" />
     <ProjectReference Include="../../../core/actions/Statevia.Core.Actions.Abstractions/Statevia.Core.Actions.Abstractions.csproj" />
     <ProjectReference Include="../../../core/application/Statevia.Core.Application.Contracts/Statevia.Core.Application.Contracts.csproj" />
+    <ProjectReference Include="../../../core/application/Statevia.Core.Application/Statevia.Core.Application.csproj" />
     <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Persistence/Statevia.Infrastructure.Persistence.csproj" />
     <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Security/Statevia.Infrastructure.Security.csproj" />
     <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Notification/Statevia.Infrastructure.Notification.csproj" />

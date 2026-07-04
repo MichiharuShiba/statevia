@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Core.Actions.Abstractions.Catalog;
 using Statevia.Core.Actions.Abstractions.Execution;
 using Statevia.Core.Actions.Abstractions.Visibility;
@@ -19,9 +18,11 @@ using Statevia.Infrastructure.Common.DependencyInjection;
 using Statevia.Infrastructure.Notification.DependencyInjection;
 using Statevia.Infrastructure.Persistence.DependencyInjection;
 using Statevia.Infrastructure.Security.DependencyInjection;
+using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Persistence;
 using Statevia.Service.Api.Persistence.Repositories;
 using Statevia.Service.Api.Services;
+using Statevia.Core.Application.DependencyInjection;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.DependencyInjection;
@@ -47,7 +48,9 @@ internal static class ServiceCollectionExtensions
         services.AddStateviaInfrastructurePersistence(connectionString);
         services.AddStateviaInfrastructureSecurity(configuration);
 
-        services.AddScoped<IExecutionSecuritySnapshotFactory, ExecutionSecuritySnapshotFactory>();
+        services.AddSingleton<INodesSchemaProvider, Application.Definition.NodesSchemaProvider>();
+        services.AddStateviaCoreApplication();
+
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITenantAdministrationService, TenantAdministrationService>();
         services.AddHostedService<TenantBootstrapHostedService>();
@@ -63,13 +66,7 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<IExecutionIdGenerator>(
             sp => new DelegateExecutionIdGenerator(() => sp.GetRequiredService<IIdGenerator>().NewGuid().ToString()));
         services.AddStateviaExecutionEngine();
-        services.AddScoped<ICommandDedupService, CommandDedupService>();
         services.AddScoped<IDefinitionRepository, DefinitionRepository>();
-        services.AddScoped<IProjectAuthorizationService, ProjectAuthorizationService>();
-        services.AddScoped<IDefinitionService, DefinitionService>();
-        services.AddSingleton<IDefinitionSchemaService, DefinitionSchemaService>();
-        services.AddSingleton<IActionSchemaService, ActionSchemaService>();
-        services.AddScoped<IExecutionService, ExecutionService>();
         services.AddOptions<ExecutionProjectionQueueOptions>()
             .Bind(configuration.GetSection("ExecutionProjectionQueue"))
             .Validate(o => o.MaxGlobalQueueSize >= 1, "ExecutionProjectionQueue:MaxGlobalQueueSize must be >= 1.")
@@ -120,7 +117,7 @@ internal static class ServiceCollectionExtensions
         services.AddOptions<RequestLogOptions>()
             .Configure<IHostEnvironment>(ConfigureRequestLogOptions);
 
-        services.AddOptions<EventDeliveryRetryOptions>()
+        services.AddOptions<Statevia.Core.Application.Configuration.EventDeliveryRetryOptions>()
             .Bind(configuration.GetSection("EventDelivery:Retry"))
             .Validate(o => o.MaxAttempts is >= 1 and <= 50, "EventDelivery:Retry:MaxAttempts must be between 1 and 50.")
             .Validate(o => o.BaseDelayMs is >= 0 and <= 600_000, "EventDelivery:Retry:BaseDelayMs is out of range.")
@@ -131,6 +128,7 @@ internal static class ServiceCollectionExtensions
                 "EventDelivery:Retry:SerializablePersistenceMaxAttempts must be between 1 and 50.");
 
         services.AddHttpContextAccessor();
+        services.AddScoped<Statevia.Core.Application.Contracts.Services.ICorrelationIdAccessor, Infrastructure.HttpContextCorrelationIdAccessor>();
         services.AddCors();
         services.AddStateviaOpenApi();
         services.AddControllers(options => options.Filters.Add<ApiExceptionFilter>())

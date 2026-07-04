@@ -1,9 +1,7 @@
-using System;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using Statevia.Service.Api.Abstractions.Services;
+using Statevia.Core.Application.Contracts;
+using Statevia.Core.Application.Contracts.Persistence;
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Services;
 
@@ -24,18 +22,22 @@ public class ExecutionsController : ControllerBase
 
     private readonly IExecutionService _executions;
     private readonly ExecutionStreamService _stream;
+    private readonly IDisplayIdService _displayIds;
 
     /// <summary>
     /// <see cref="ExecutionsController"/> を生成する。
     /// </summary>
     /// <param name="executions">実行サービス。</param>
     /// <param name="stream">SSE 用ストリームサービス。</param>
+    /// <param name="displayIds">表示 ID 解決。</param>
     public ExecutionsController(
         IExecutionService executions,
-        ExecutionStreamService stream)
+        ExecutionStreamService stream,
+        IDisplayIdService displayIds)
     {
         _executions = executions;
         _stream = stream;
+        _displayIds = displayIds;
     }
 
     /// <summary>POST /v1/executions — definitionId で定義を取得し、Engine.Start を呼ぶ。display_id と resource_id を返す（U4）。</summary>
@@ -76,7 +78,23 @@ public class ExecutionsController : ControllerBase
         if (query.Limit.Value > 500)
             throw new ArgumentException("limit must be at most 500");
 
-        var paged = await _executions.ListPagedAsync(query, ct).ConfigureAwait(false);
+        Guid? definitionIdFilter = null;
+        if (!string.IsNullOrWhiteSpace(query.DefinitionId))
+        {
+            definitionIdFilter = await _displayIds.ResolveAsync(
+                Statevia.Core.Application.Services.DisplayIdResourceTypes.Definition, query.DefinitionId, ct).ConfigureAwait(false);
+            if (definitionIdFilter is null)
+                return Ok(new PagedResult<ExecutionResponse> { Items = [], TotalCount = 0, Offset = offset, Limit = query.Limit.Value, HasMore = false });
+        }
+
+        var pageQuery = new ExecutionListPageQuery(
+            Page: new PageQuery(offset, query.Limit.Value),
+            Sort: new SortQuery(query.SortBy, query.SortOrder),
+            StatusFilter: query.Status,
+            DefinitionIdFilter: definitionIdFilter,
+            NameContains: string.IsNullOrWhiteSpace(query.Name) ? null : query.Name.Trim());
+
+        var paged = await _executions.ListPagedAsync(pageQuery, ct).ConfigureAwait(false);
         return Ok(paged);
     }
 
@@ -199,67 +217,4 @@ public class ExecutionsController : ControllerBase
             ct).ConfigureAwait(false);
         return NoContent();
     }
-}
-
-/// <summary>POST /v1/executions のリクエスト本文。</summary>
-public class StartExecutionRequest
-{
-    /// <summary>開始に用いる定義 ID（display または UUID）。</summary>
-    [Required]
-    public string DefinitionId { get; set; } = "";
-
-    /// <summary>開始に用いる版番号（省略時は latestVersion）。</summary>
-    [JsonPropertyName("definitionVersion")]
-    public int? DefinitionVersion { get; set; }
-
-    /// <summary>開始に用いる版 UUID（definitionVersion より優先）。</summary>
-    [JsonPropertyName("definitionVersionId")]
-    public Guid? DefinitionVersionId { get; set; }
-
-    /// <summary>実行開始時の入力（任意）。</summary>
-    public JsonElement? Input { get; set; }
-}
-
-/// <summary>POST …/events のリクエスト本文。</summary>
-public class PublishEventRequest
-{
-    /// <summary>発行するイベント名。</summary>
-    [Required]
-    public string Name { get; set; } = "";
-}
-
-/// <summary>ワークフロー一覧・単票の JSON 応答形（U4）。</summary>
-public class ExecutionResponse
-{
-    /// <summary>表示用ワークフロー ID。</summary>
-    [JsonPropertyName("displayId")]
-    public string DisplayId { get; set; } = "";
-
-    /// <summary>ワークフローのリソース UUID。</summary>
-    [JsonPropertyName("resourceId")]
-    public Guid ResourceId { get; set; }
-
-    /// <summary>定義グラフ ID。</summary>
-    [JsonPropertyName("graphId")]
-    public string GraphId { get; set; } = "";
-
-    /// <summary>状態文字列。</summary>
-    [JsonPropertyName("status")]
-    public string Status { get; set; } = "";
-
-    /// <summary>開始日時（UTC）。</summary>
-    [JsonPropertyName("startedAt")]
-    public DateTime StartedAt { get; set; }
-
-    /// <summary>最終更新日時（UTC）。</summary>
-    [JsonPropertyName("updatedAt")]
-    public DateTime? UpdatedAt { get; set; }
-
-    /// <summary>キャンセル要求フラグ。</summary>
-    [JsonPropertyName("cancelRequested")]
-    public bool CancelRequested { get; set; }
-
-    /// <summary>再起動喪失フラグ。</summary>
-    [JsonPropertyName("restartLost")]
-    public bool RestartLost { get; set; }
 }

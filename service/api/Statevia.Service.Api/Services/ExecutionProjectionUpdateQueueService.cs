@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Configuration;
 using Statevia.Infrastructure.Security;

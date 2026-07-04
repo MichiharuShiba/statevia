@@ -1,6 +1,6 @@
 using System.Text.Json;
-using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Services;
+using Statevia.Core.Application.Contracts.Services;
+using Statevia.Core.Application.Services;
 using Xunit;
 
 namespace Statevia.Service.Api.Tests.Services;

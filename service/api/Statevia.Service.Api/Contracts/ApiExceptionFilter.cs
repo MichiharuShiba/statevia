@@ -1,6 +1,7 @@
 using System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Statevia.Core.Application.Contracts;
 
 namespace Statevia.Service.Api.Contracts;
 

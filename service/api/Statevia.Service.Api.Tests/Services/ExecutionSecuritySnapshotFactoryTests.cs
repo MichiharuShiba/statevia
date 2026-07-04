@@ -1,8 +1,8 @@
 
 using Statevia.Service.Api.Contracts;
+using Statevia.Core.Application.Services;
 using Statevia.Infrastructure.Security;
 using Statevia.Infrastructure.Persistence.Repositories;
-using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 using Statevia.Service.Api.Tests.Infrastructure.Security;
 
@@ -131,7 +131,7 @@ public sealed class ExecutionSecuritySnapshotFactoryTests
         var uowFactory = new TestCoreUnitOfWorkFactory(database.Factory);
         return new ExecutionSecuritySnapshotFactory(
             database.TenantAccessor,
-            new PlatformDataAccess(database.Factory),
+            new PrincipalDataAccessAdapter(new PlatformDataAccess(database.Factory)),
             new TestCoreTransactionExecutor(uowFactory),
             TestRepositoryFactory.CreateDefinitionRepository(),
             new ProjectRepository());

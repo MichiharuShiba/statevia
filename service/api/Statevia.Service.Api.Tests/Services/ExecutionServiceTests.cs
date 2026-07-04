@@ -4,14 +4,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using Statevia.Service.Api.Abstractions.Services;
-
+using Statevia.Core.Application.Configuration;
+using Statevia.Core.Application.Contracts;
+using Statevia.Core.Application.Contracts.Persistence;
+using Statevia.Core.Application.Contracts.Security;
+using Statevia.Core.Application.Contracts.Services;
+using Statevia.Core.Application.Infrastructure;
+using Statevia.Core.Application.Services;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Persistence.Repositories;
 using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Controllers;
 using Statevia.Service.Api.Hosting;
-using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Services;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Service.Api.Tests.Infrastructure;
@@ -36,6 +39,11 @@ public sealed class ExecutionServiceTests
         var httpContext = new DefaultHttpContext();
         httpContext.Items[RequestLogContext.TraceIdItemKey] = traceId;
         return new HttpContextAccessor { HttpContext = httpContext };
+    }
+
+    private sealed class FixedCorrelationIdAccessor(string correlationId = "trace-unit-test") : ICorrelationIdAccessor
+    {
+        public string GetCorrelationId() => correlationId;
     }
 
     private sealed class FixedIdGenerator : IIdGenerator
@@ -2543,7 +2551,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var page = await sut.ListPagedAsync(new ExecutionListQuery { Offset = 0, Limit = 10 }, CancellationToken.None);
+        var page = await sut.ListPagedAsync(new ExecutionListPageQuery(new PageQuery(0, 10), new SortQuery(null, null), null, null, null), CancellationToken.None);
 
         // Assert
         Assert.Equal(2, page.Items.Count);
@@ -2595,7 +2603,7 @@ public sealed class ExecutionServiceTests
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var page = await sut.ListPagedAsync(new ExecutionListQuery { Offset = 0, Limit = 2 }, CancellationToken.None);
+        var page = await sut.ListPagedAsync(new ExecutionListPageQuery(new PageQuery(0, 2), new SortQuery(null, null), null, null, null), CancellationToken.None);
 
         // Assert
         Assert.Equal(3, page.TotalCount);
@@ -2605,33 +2613,33 @@ public sealed class ExecutionServiceTests
         executionRepo.ListWithDisplayIdsPageResult = (2, new List<(ExecutionRow Execution, string? DisplayId)> { (w1, null), (w2, null) });
 
         // Act
-        var page2 = await sut.ListPagedAsync(new ExecutionListQuery { Offset = 0, Limit = 2 }, CancellationToken.None);
+        var page2 = await sut.ListPagedAsync(new ExecutionListPageQuery(new PageQuery(0, 2), new SortQuery(null, null), null, null, null), CancellationToken.None);
 
         // Assert
         Assert.Equal(2, page2.TotalCount);
         Assert.False(page2.HasMore);
     }
 
-    /// <summary>定義 id が解決できない場合は件数 0（一覧用フィルタ）。</summary>
+    /// <summary>定義 ID フィルタに一致しない場合は件数 0（リポジトリが空結果を返す）。</summary>
     [Fact]
-    public async Task ListPagedAsync_UnknownDefinitionId_ReturnsEmptyPage_WithoutQueryingPage()
+    public async Task ListPagedAsync_DefinitionIdFilter_NoMatches_ReturnsEmptyPage()
     {
         // Arrange
-        var display = new FakeDisplayIdService { ResolveResultDefinition = null };
+        var unknownDefId = Guid.NewGuid();
         var executionRepo = new FakeExecutionRepository
         {
-            ListWithDisplayIdsPageResult = (5, new List<(ExecutionRow Execution, string? DisplayId)> { })
+            ListWithDisplayIdsPageResult = (0, new List<(ExecutionRow Execution, string? DisplayId)>())
         };
         var sut = MakeSut(
             dedupService: new FakeCommandDedupService(null),
             dedupRepo: new FakeCommandDedupRepository(),
             engine: new FakeExecutionEngine(),
-            display: display,
+            display: new FakeDisplayIdService(),
             executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository());
 
         // Act
-        var page = await sut.ListPagedAsync(new ExecutionListQuery { Offset = 0, Limit = 10, DefinitionId = "no-such-def" }, CancellationToken.None);
+        var page = await sut.ListPagedAsync(new ExecutionListPageQuery(new PageQuery(0, 10), new SortQuery(null, null), null, unknownDefId, null), CancellationToken.None);
 
         // Assert
         Assert.Equal(0, page.TotalCount);
@@ -3639,7 +3647,7 @@ public sealed class ExecutionServiceTests
             mutationPersistence,
             NullLogger<ExecutionService>.Instance,
             retryOptions,
-            UnitTestHttpContextAccessor(),
+            new FixedCorrelationIdAccessor(),
             projectionUpdateQueue);
     }
 

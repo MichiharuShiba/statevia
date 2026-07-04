@@ -1,8 +1,4 @@
-using System;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
-using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Contracts;
 
 namespace Statevia.Service.Api.Controllers;
@@ -69,7 +65,12 @@ public class DefinitionsController : ControllerBase
         if (query.Limit.Value > 500)
             throw new ArgumentException("limit must be at most 500");
 
-        var paged = await _definitions.ListPagedAsync(query, ct).ConfigureAwait(false);
+        var pageQuery = new DefinitionListPageQuery(
+            Page: new PageQuery(offset, query.Limit.Value),
+            Sort: new SortQuery(query.SortBy, query.SortOrder),
+            NameContains: query.Name);
+
+        var paged = await _definitions.ListPagedAsync(pageQuery, ct).ConfigureAwait(false);
         return Ok(paged);
     }
 
@@ -83,61 +84,4 @@ public class DefinitionsController : ControllerBase
         var row = await _definitions.GetAsync(id, ct).ConfigureAwait(false);
         return Ok(row);
     }
-
-}
-
-/// <summary>POST /v1/definitions のリクエスト本文。</summary>
-public class CreateDefinitionRequest
-{
-    /// <summary>定義名。</summary>
-    [Required]
-    public string Name { get; set; } = "";
-
-    /// <summary>定義ソース YAML。</summary>
-    [Required]
-    public string Yaml { get; set; } = "";
-}
-
-/// <summary>PUT /v1/definitions/{id} のリクエスト本文。</summary>
-public class UpdateDefinitionRequest
-{
-    /// <summary>定義名。</summary>
-    [Required]
-    public string Name { get; set; } = "";
-
-    /// <summary>定義ソース YAML。</summary>
-    [Required]
-    public string Yaml { get; set; } = "";
-}
-
-/// <summary>定義の JSON 応答形（U4）。</summary>
-public class DefinitionResponse
-{
-    /// <summary>表示用定義 ID。</summary>
-    [JsonPropertyName("displayId")]
-    public string DisplayId { get; set; } = "";
-
-    /// <summary>定義のリソース UUID。</summary>
-    [JsonPropertyName("resourceId")]
-    public Guid ResourceId { get; set; }
-
-    /// <summary>定義名。</summary>
-    [JsonPropertyName("name")]
-    public string Name { get; set; } = "";
-
-    /// <summary>作成日時（UTC）。</summary>
-    [JsonPropertyName("createdAt")]
-    public DateTime CreatedAt { get; set; }
-
-    /// <summary>更新日時（UTC）。</summary>
-    [JsonPropertyName("updatedAt")]
-    public DateTime UpdatedAt { get; set; }
-
-    /// <summary>最新版番号（投影。truth は definition_versions）。</summary>
-    [JsonPropertyName("latestVersion")]
-    public int LatestVersion { get; set; }
-
-    /// <summary>ソース YAML（取得時のみ。任意）。</summary>
-    [JsonPropertyName("yaml")]
-    public string? Yaml { get; set; }
 }

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
-using Statevia.Service.Api.Abstractions.Services;
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Controllers;
 using Statevia.Service.Api.Services;
@@ -84,7 +84,7 @@ public sealed class ExecutionsControllerTests
             return StartResult;
         }
 
-        public async Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListQuery query, CancellationToken ct)
+        public async Task<PagedResult<ExecutionResponse>> ListPagedAsync(ExecutionListPageQuery query, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
@@ -171,7 +171,7 @@ public sealed class ExecutionsControllerTests
 
     private static ExecutionsController CreateController(DefaultHttpContext http, FakeExecutionService executions, ExecutionStreamService stream)
     {
-        return new ExecutionsController(executions, stream)
+        return new ExecutionsController(executions, stream, new FakeDisplayIdService())
         {
             ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = http }
         };

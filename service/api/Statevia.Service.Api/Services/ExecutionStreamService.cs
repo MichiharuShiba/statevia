@@ -4,7 +4,8 @@ using System.Text;
 using System.Text.Json;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
-using Statevia.Service.Api.Abstractions.Services;
+using Statevia.Core.Application.Contracts.Services;
+using Statevia.Core.Application.Services;
 
 namespace Statevia.Service.Api.Services;
 
