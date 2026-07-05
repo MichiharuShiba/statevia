@@ -6,7 +6,7 @@
 .DESCRIPTION
   スクリプト配置（リポジトリの sonar/）から api とカバレッジ出力パスを解決する。
   カレントディレクトリに依存しない。
-  解析・カバレッジ除外は api/coverage.runsettings の意図（Engine / Program / Migrations）に合わせる。
+  解析・カバレッジ除外は service/api/coverage.runsettings の意図（Engine / Program / Migrations）に合わせる。
   誤ってリポジトリルート等から実行した場合に UI / engine が混ざらないよう、ui/studio と core/engine も除外する。
 
 .NOTES
@@ -16,11 +16,11 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# api/coverage.runsettings の Exclude / ExcludeByFile と整合
+# service/api/coverage.runsettings の Exclude / ExcludeByFile と整合
 # sonar.projectBaseDir をリポジトリルートに固定し、移動後パス（core/engine 等）でも除外が効くようにする
 $sonarAnalysisExclusions = @(
     '**/ui/studio/**',
-    '**/services/ui/**',
+    '**/ui/studio/**',
     '**/core/engine/**',
     '**/engine/**',
     '**/service/cli/**',

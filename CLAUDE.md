@@ -113,7 +113,7 @@
 
 ## TypeScript / React コーディング規約
 
-対象は主に `services/ui/`（Next.js）。インポート順・分割方針は既存コードに合わせる。
+対象は主に `ui/studio/`（Next.js）。インポート順・分割方針は既存コードに合わせる。
 
 ## 常時原則（TypeScript）
 

@@ -1,11 +1,12 @@
 # ディレクトリ構成
 
-Version: 1.0
-Project: 実行型ステートマシン
+Version: 2.0
+Project: Statevia — 実行型ステートマシン
+更新日: 2026-07-04
 
 ---
 
-現在の実装（Core-Engine / Core-API / UI）に基づく構成です。
+4 カテゴリ構成（`core/` / `infrastructure/` / `service/` / `ui/`）に基づく現行レイアウトです。
 
 ```txt
 statevia/
@@ -13,76 +14,84 @@ statevia/
 ├─ LICENSE
 ├─ .gitignore
 ├─ .editorconfig
-├─ docker-compose.yml            # postgres + service-api (C#) + ui-studio
+├─ docker-compose.yml            # postgres + service-api (C#) + ui
 ├─ .env.example                  # POSTGRES_*（.env はコミットしない）
 │
 ├─ docs/
-│  ├─ statevia-architecture.md   # システム構成 + Core-Engine レイヤー
+│  ├─ statevia-architecture.md   # システム構成 + レイヤー
 │  ├─ statevia-design-philosophy.md
-│  ├─ statevia-directory.md     # 本ファイル
-│  ├─ core-api-interface.md    # Core-API HTTP 契約（v1）
-│  ├─ core-engine-definition-spec.md
-│  ├─ core-engine-fsm-spec.md
-│  ├─ core-engine-fork-join-spec.md
-│  ├─ core-engine-wait-cancel-spec.md
-│  ├─ core-engine-execution-graph-spec.md
-│  ├─ core-engine-events-spec.md
-│  ├─ core-engine-commands-spec.md
-│  ├─ core-engine-reducer-spec.md
-│  ├─ core-engine-state-machine-spec.md
-│  └─ （ui-*, statevia-* その他仕様）
+│  ├─ statevia-directory.md      # 本ファイル
+│  ├─ development-guidelines.md  # 開発ガイドライン
+│  ├─ core-api-interface.md      # Core-API HTTP 契約（v1）
+│  ├─ operations-docker.md       # Docker Compose 運用
+│  ├─ core-engine-*.md           # Engine 各仕様
+│  └─ statevia-data-integration-contract.md
 │
-├─ cli/                          # 統合 CLI（statevia コマンド）
-│  ├─ statevia-cli.sln
-│  ├─ Statevia.Service.Cli/              # `statevia definition validate` / `statevia module install`
-│  └─ Statevia.Service.Cli.Tests/
+├─ core/                         # ドメイン・契約（非デプロイ）
+│  ├─ engine/
+│  │  ├─ statevia-engine.sln
+│  │  ├─ Statevia.Core.Engine/          # ワークフローエンジン
+│  │  │  ├─ Engine/                     # ExecutionEngine, ExecutionInstance
+│  │  │  ├─ FSM/                        # 遷移評価
+│  │  │  ├─ Scheduler/                  # 並列制御
+│  │  │  ├─ Execution/                  # DefaultStateExecutor
+│  │  │  ├─ Join/                       # JoinTracker
+│  │  │  ├─ Definition/                 # 定義ロード・コンパイル・検証
+│  │  │  ├─ ExecutionGraph/             # 実行グラフ
+│  │  │  └─ Abstractions/
+│  │  ├─ Statevia.Core.Engine.Tests/
+│  │  └─ samples/hello-statevia/
+│  ├─ application/
+│  │  ├─ Statevia.Core.Application/           # ユースケース実装
+│  │  └─ Statevia.Core.Application.Contracts/ # DDD ポート・DTO
+│  └─ actions/
+│     └─ Statevia.Core.Actions.Abstractions/  # Action / Module SPI
 │
-├─ shared/                       # 横断共有（API / CLI）
-│  └─ Statevia.Modules/          # modules パス解決等
+├─ infrastructure/               # 技術実装（差し替え可能・最外殻）
+│  ├─ statevia-infrastructure.sln
+│  ├─ Statevia.Infrastructure.Persistence/    # EF Core + Migrations
+│  ├─ Statevia.Infrastructure.Security/       # JWT, Tenant, 認可
+│  ├─ Statevia.Infrastructure.Notification/   # SMTP 通知
+│  ├─ Statevia.Infrastructure.Modules/        # Module ホスト + Source
+│  ├─ Statevia.Infrastructure.Actions.Grpc/   # gRPC Action Backend
+│  ├─ Statevia.Infrastructure.Common/         # IdGenerator 等
+│  ├─ Statevia.Infrastructure.Modules.Tests/
+│  └─ Statevia.Infrastructure.Actions.Grpc.Tests/
 │
-├─ engine/                       # Core-Engine（C# ライブラリ；CLI は cli/ へ段階移行）
-│  ├─ statevia-engine.sln
-│  ├─ Directory.Build.props
-│  ├─ Statevia.Core.Engine/      # エンジンコア
-│  │  ├─ Engine/                 # ExecutionEngine, ExecutionInstance
-│  │  ├─ FSM/                    # 遷移評価
-│  │  ├─ Scheduler/              # 並列制御
-│  │  ├─ Execution/             # DefaultStateExecutor
-│  │  ├─ Join/                   # JoinTracker
-│  │  ├─ Definition/             # 定義ロード・コンパイル・検証
-│  │  ├─ ExecutionGraph/        # 実行グラフ
-│  │  └─ Abstractions/
-│  ├─ Statevia.Service.Cli/              # 既存（YAML 検証）→ cli/Statevia.Service.Cli へ段階移行
-│  ├─ Statevia.Core.Engine.Tests/
-│  ├─ Statevia.Service.Cli.Tests/
-│  └─ samples/
-│     └─ hello-statevia/
+├─ service/                      # デプロイ可能なインターフェイス
+│  ├─ api/
+│  │  ├─ statevia-api.sln
+│  │  ├─ Dockerfile
+│  │  ├─ Statevia.Service.Api/              # HTTP アダプタ（Controllers + DI）
+│  │  ├─ Statevia.Service.Api.Bootstrap/    # エントリポイント（Program.cs）
+│  │  └─ Statevia.Service.Api.Tests/
+│  ├─ action-host/
+│  │  ├─ statevia-action-host.sln
+│  │  ├─ Statevia.Service.ActionHost/       # gRPC sandbox
+│  │  └─ Statevia.Service.ActionHost.Tests/
+│  └─ cli/
+│     ├─ statevia-cli.sln
+│     ├─ Statevia.Service.Cli/              # statevia コマンド
+│     └─ Statevia.Service.Cli.Tests/
 │
-├─ api/                          # Core-API（C# ASP.NET Core）
-│  ├─ statevia-api.sln
-│  ├─ Dockerfile
-│  └─ Statevia.Service.Api/
-│     ├─ Program.cs
-│     ├─ Controllers/
-│     │  ├─ DefinitionsController.cs   # v1/definitions
-│     │  └─ WorkflowsController.cs      # v1/workflows
-│     ├─ Persistence/            # EF Core（CoreDbContext）
-│     ├─ Services/               # DisplayIdService
-│     └─ Hosting/                # DefinitionCompilerService
+├─ ui/
+│  └─ studio/                    # UI（Next.js / React / ReactFlow — @statevia/studio）
+│     ├─ package.json
+│     ├─ app/
+│     │  ├─ api/core/[...path]/  # Core-API プロキシ（/v1 へ転送）
+│     │  ├─ components/
+│     │  ├─ features/
+│     │  └─ lib/
+│     └─ Dockerfile
 │
-└─ services/
-   └─ ui/                        # UI（Next.js / React / ReactFlow）
-      ├─ package.json
-      ├─ app/
-      │  ├─ api/core/[...path]/  # Core-API プロキシ（/v1 へ転送）
-      │  ├─ page.tsx
-      │  ├─ graphs/              # 静的グラフ定義・registry
-      │  ├─ components/
-      │  ├─ features/
-      │  └─ lib/
-      └─ Dockerfile
+├─ tests/                        # 横断テスト
+│  └─ Statevia.Architecture.Tests/  # 依存方向テスト
+│
+└─ scripts/                      # ビルド・運用スクリプト
 ```
 
-- **Core-Engine**: `engine/`。定義駆動 FSM / Fork-Join / ExecutionGraph。API から同一プロセスで参照（`IExecutionEngine`）。
-- **Core-API**: `api/`。v1/definitions（POST 登録・PUT 更新・GET）・v1/workflows・v1/health。PostgreSQL は EF Core マイグレーションで管理。
-- **UI**: `services/ui/`。Next.js。`/api/core/*` で Core-API（C#）にプロキシ。
+- **core/**: ドメインと契約。Engine は HTTP/DB に非依存。Application がユースケースを実装し、Contracts が DDD ポートを定義。
+- **infrastructure/**: core の契約の技術実装。DB、認証、通知、Module ホスト等。
+- **service/**: HTTP / gRPC / CLI のアダプタ。Composition Root として DI を組み立てる。
+- **ui/studio/**: Next.js（`@statevia/studio`）。`/api/core/*` で Core-API にプロキシ。
+- **tests/**: ソリューション横断のアーキテクチャテスト。

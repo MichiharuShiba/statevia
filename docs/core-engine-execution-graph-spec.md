@@ -7,7 +7,7 @@ Project: 実行型ステートマシン
 
 ## 1. 対象と責務
 
-本書は、`engine/Statevia.Core.Engine/ExecutionGraph` の**現行実装**が返す JSON 契約を定義する。
+本書は、`core/engine/Statevia.Core.Engine/ExecutionGraph` の**現行実装**が返す JSON 契約を定義する。
 
 - 対象出力: `ExecutionEngine.ExportExecutionGraph(executionId)`
 - 用途: 実行可視化、デバッグ、API/UI 連携
@@ -192,6 +192,6 @@ JSON プロパティ名は **camelCase** のため、C# の `From` / `To` は **
 - `GET /v1/executions/{id}/graph` の本文は、本書の **`nodes` / `edges` 構造をそのまま** `execution_graph_snapshots` から返す（キー名・意味はエンジン `ExportJson` と一致）。
 - API は実行グラフの `conditionRouting` を透過的に返却する。
 - UI は `conditionRouting` を再評価しない（表示専用データとして扱う）。
-- UI が定義グラフ（`GET /v1/graphs/{graphId}`）と合成するときは、**実行ノードの `nodeId` と定義ノードの `nodeId`（状態名）が一致しない**前提で、`stateName` やエッジの `from`/`to` を用いて対応付ける（`services/ui/app/lib/mergeGraph.ts`）。
+- UI が定義グラフ（`GET /v1/graphs/{graphId}`）と合成するときは、**実行ノードの `nodeId` と定義ノードの `nodeId`（状態名）が一致しない**前提で、`stateName` やエッジの `from`/`to` を用いて対応付ける（`ui/studio/app/lib/mergeGraph.ts`）。
 
 詳細は `docs/core-api-interface.md` を参照。

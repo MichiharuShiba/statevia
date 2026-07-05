@@ -20,7 +20,7 @@ $sonarAnalysisExclusions = @(
     '**/service/api/**',
     '**/api/**',
     '**/ui/studio/**',
-    '**/services/ui/**',
+    '**/ui/studio/**',
     '**/core/engine/**',
     '**/engine/**',
     '**/service/cli/**',

@@ -1,15 +1,9 @@
 # アーキテクチャ
 
-Version: 1.2
-Project: 実行型ステートマシン
+Version: 2.0
+Project: Statevia — 実行型ステートマシン
 
-**Version 1.2（2026-05-26）**: ExecutionSpace 命名統一（`/v1/executions`、`IExecutionEngine`、`executions` テーブル）。
-
-**Version 1.1（2026-05-05）**: v1/definitions に定義更新（PUT）と `updatedAt` を反映。
-
----
-
-statevia のアーキテクチャ：システム構成（Core-Engine / Core-API / UI）と、Core-Engine 内部のレイヤー。
+**Version 2.0（2026-07-04）**: 4 カテゴリ構成（core / infrastructure / service / ui）とクリーン・アーキテクチャ準拠を反映。
 
 ---
 
@@ -17,9 +11,11 @@ statevia のアーキテクチャ：システム構成（Core-Engine / Core-API 
 
 ### 1.1 構成の要点
 
-- **Core-Engine（C#）**: `engine/` のライブラリ。API プロセス内で `IExecutionEngine` として同一プロセス利用。独立 HTTP サービスはない。
-- **Core-API（C#）**: `api/`。ASP.NET Core。v1/definitions・v1/executions を提供。DB 所有者（EF Core + PostgreSQL）。Engine を参照して実行開始・キャンセル・イベント発行を行う。
-- **UI（TypeScript）**: `services/ui/`。Next.js。Route Handler のプロキシ（`/api/core/*`）で Core-API の `/v1/*` に転送。CORS 回避。
+- **Core-Engine（C#）**: `core/engine/` のライブラリ。API プロセス内で `IExecutionEngine` として同一プロセス利用。独立 HTTP サービスはない。
+- **Core-Application（C#）**: `core/application/`。ユースケース実装。Engine / Actions.Abstractions のみに依存し、infrastructure / service を参照しない。
+- **Infrastructure（C#）**: `infrastructure/`。EF Core 永続化、JWT 認証、通知、Module ホスト等の技術実装。
+- **Core-API（C#）**: `service/api/`。ASP.NET Core。HTTP アダプタとして v1/definitions・v1/executions を提供。Composition Root として全層を結合。
+- **UI（TypeScript）**: `ui/studio/`。Next.js。Route Handler のプロキシ（`/api/core/*`）で Core-API の `/v1/*` に転送。
 
 ### 1.2 全体図
 
@@ -30,32 +26,60 @@ flowchart LR
     Proxy["/api/core/*"]
   end
 
-  subgraph API["Core-API (C#)"]
-    Controllers["v1/definitions<br>v1/executions<br>v1/health"]
-    EngineRef["IExecutionEngine<br>(engine/)"]
-    Db["EF Core<br>PostgreSQL"]
+  subgraph Service["Service Layer"]
+    Api["Service.Api<br>(HTTP Adapter)"]
+    ActionHost["Service.ActionHost<br>(gRPC sandbox)"]
+    Cli["Service.Cli"]
+  end
+
+  subgraph Infra["Infrastructure"]
+    Persist["Persistence<br>(EF Core + PostgreSQL)"]
+    Security["Security<br>(JWT, Tenant)"]
+    Modules["Modules<br>(Host + Source)"]
+  end
+
+  subgraph Core["Core"]
+    App["Application<br>(Use Cases)"]
+    Contracts["Application.Contracts<br>(DDD Ports)"]
+    Engine["Engine<br>(FSM, Graph)"]
+    Actions["Actions.Abstractions<br>(SPI)"]
   end
 
   Web --> Proxy
-  Proxy --> Controllers
-  Controllers --> EngineRef
-  Controllers --> Db
+  Proxy --> Api
+  Api --> App
+  Api --> Persist
+  Api --> Security
+  App --> Engine
+  App --> Contracts
+  App --> Actions
+  Persist --> Contracts
+  Security --> Contracts
+  Modules --> Actions
+  ActionHost --> Engine
+  ActionHost --> Actions
 ```
 
 ### 1.3 ディレクトリ対応
 
-| 役割       | 場所           |
-|------------|----------------|
-| Core-Engine | `engine/Statevia.Core.Engine/` |
-| Core-API    | `api/Statevia.Service.Api/`       |
-| UI          | `services/ui/`                 |
-| 永続化      | API の EF Core マイグレーション |
+| 役割 | 場所 |
+| --- | --- |
+| Core-Engine | `core/engine/Statevia.Core.Engine/` |
+| Core-Application | `core/application/Statevia.Core.Application/` |
+| Application Contracts | `core/application/Statevia.Core.Application.Contracts/` |
+| Actions Abstractions | `core/actions/Statevia.Core.Actions.Abstractions/` |
+| Persistence | `infrastructure/Statevia.Infrastructure.Persistence/` |
+| Security | `infrastructure/Statevia.Infrastructure.Security/` |
+| Core-API | `service/api/Statevia.Service.Api/` |
+| Action Host | `service/action-host/Statevia.Service.ActionHost/` |
+| CLI | `service/cli/Statevia.Service.Cli/` |
+| UI | `ui/studio/` |
 
 ### 1.4 Docker 構成（参考）
 
 - **postgres**: データベース
-- **core-api**: C# API（`api/Dockerfile`）
-- **ui**: Next.js（`services/ui/Dockerfile`）
+- **service-api**: C# API（`service/api/Dockerfile`）
+- **ui**: Next.js（`ui/studio/Dockerfile`）
 
 `docker-compose.yml` はリポジトリルートに配置。
 
@@ -70,40 +94,80 @@ flowchart LR
 - 状態実行・ExecutionGraph の更新（Execution / ExecutionGraph）
 - 終端の優先順位はエンジン内で保証
 
-### 2.2 Core-API（C# / DB 所有者）
+### 2.2 Core-Application（ユースケース）
 
-- **v1/definitions**: 定義の登録・publish（版 append）・一覧・取得（YAML 検証・`definition_versions` へ immutable 保存）
-- **v1/executions**: 実行開始（definitionId 指定）・一覧・取得・グラフ取得・キャンセル・イベント発行
+- 定義の登録・publish・一覧・取得
+- 実行の開始・キャンセル・イベント発行
+- コマンド重複排除（dedup）
+- セキュリティスナップショット・認可判定
+- Action スキーマ検証
+
+### 2.3 Infrastructure
+
+- EF Core 永続化（CoreDbContext、Migrations）
+- JWT 発行・検証・テナントコンテキスト
+- 通知送信（SMTP）
+- Module ホスト・OCI Source・署名検証
+- gRPC Action Backend
+- ID 生成（UUID v7）
+
+### 2.4 Core-API（HTTP アダプタ / DB 所有者）
+
+- **v1/definitions**: 定義の登録・publish・一覧・取得
+- **v1/executions**: 実行開始・一覧・取得・グラフ取得・キャンセル・イベント発行
 - **v1/health**: 死活
-- 永続化: EF Core（`definitions` / `definition_versions` / `executions` / `execution_events` / `execution_graph_snapshots` / `event_store` / `display_ids` 等。レガシー `workflow_definitions` は参照専用）
+- Composition Root: 全層の DI 登録
 - Engine は同一プロセスで呼び出しのみ（RPC/HTTP はなし）
 
-### 2.3 UI（Next.js）
+### 2.5 UI（Next.js）
 
 - `/api/core/*` で Core-API の `/v1/*` にプロキシ
 - 一覧・詳細・グラフ表示（ReactFlow）。キャンセル・イベント送信
 
 ---
 
-## 3. Core-Engine のレイヤー
+## 3. 依存方向（不変条件）
 
-Core-Engine は定義駆動・事実駆動型 FSM に基づくワークフローエンジン。以下はエンジン内部のレイヤーと責務（`engine/Statevia.Core.Engine/` に実装）。
+クリーン・アーキテクチャ（オニオン）に準拠し、以下の依存方向を維持する。
 
-### 3.1 概要（データフロー）
+```text
+core/engine                              ← 参照なし（最内殻）
+core/application.contracts             → core/engine
+core/actions.abstractions                → core/engine
+core/application                         → core/engine, application.contracts, actions.abstractions
 
-Definition (YAML / JSON)  
-→ AST  
-→ Compiler  
-→ FSM / Fork / Join / JoinTracker  
-→ Scheduler（並列制御）  
-→ State Executor（非同期実行）  
+infrastructure/*                         → core/application.contracts or core/actions.abstractions
+service/*                                → core/* + infrastructure/*（Composition Root）
+ui                                       → service/api（HTTP のみ）
+```
+
+**禁止（`tests/Statevia.Architecture.Tests` で機械的に検出）:**
+
+- `core/*` → `infrastructure/*`
+- `core/*` → `service/*`
+- `infrastructure/*` → `service/*`
+
+---
+
+## 4. Core-Engine のレイヤー
+
+Core-Engine は定義駆動・事実駆動型 FSM に基づくワークフローエンジン。以下はエンジン内部のレイヤーと責務（`core/engine/Statevia.Core.Engine/` に実装）。
+
+### 4.1 概要（データフロー）
+
+Definition (YAML / JSON)
+→ AST
+→ Compiler
+→ FSM / Fork / Join / JoinTracker
+→ Scheduler（並列制御）
+→ State Executor（非同期実行）
 → Execution Graph（観測）
 
-### 3.2 定義レイヤー (Definition)
+### 4.2 定義レイヤー (Definition)
 
 ワークフロー定義の読み込みと検証を担当。
 
-### 3.3 コンパイラレイヤー (Compiler)
+### 4.3 コンパイラレイヤー (Compiler)
 
 定義を内部ランタイム構造に変換する：
 
@@ -111,18 +175,18 @@ Definition (YAML / JSON)
 - Fork テーブル
 - Join トラッカー
 
-### 3.4 FSM レイヤー
+### 4.4 FSM レイヤー
 
 事実に基づいて遷移を評価する：(State, Fact) → TransitionResult
 
-### 3.5 スケジューラレイヤー (Scheduler)
+### 4.5 スケジューラレイヤー (Scheduler)
 
 実行順序と並列度を制御。エンジンは同時実行制限を超えるポリシーは強制しない。
 
-### 3.6 エグゼキュータレイヤー (Executor)
+### 4.6 エグゼキュータレイヤー (Executor)
 
 ユーザー定義の状態を非同期で実行する。
 
-### 3.7 実行グラフ (Execution Graph)
+### 4.7 実行グラフ (Execution Graph)
 
 デバッグと可視化のための実行履歴を記録。観測用であり、実行には影響しない。

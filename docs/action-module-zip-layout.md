@@ -5,7 +5,7 @@ Project: 実行型ステートマシン
 
 ---
 
-CLI の `statevia module install` は `ModuleZipInstaller`（`shared/Statevia.Modules`）で zip を **modules ルート**配下へ展開する。  
+CLI の `statevia module install` は `ModuleZipInstaller`（`infrastructure/Statevia.Infrastructure.Modules`）で zip を **modules ルート**配下へ展開する。  
 展開後のディレクトリ構成が Core-API の filesystem scan（`FilesystemModuleSource`）と一致している必要がある。
 
 関連:
@@ -214,8 +214,8 @@ Windows で zip ツールが無い場合は、エクスプローラで `my.modul
 
 | 処理 | 実装 |
 |------|------|
-| zip 展開・ディレクトリ名決定 | `shared/Statevia.Modules/ModuleZipInstaller.cs` |
-| entry DLL 解決 | `api/Statevia.Service.Api/Application/Actions/Modules/FilesystemModuleSource.cs` |
-| ALC・共有アセンブリ | `shared/Statevia.Modules/ModuleAssemblyLoadContext.cs` |
-| 署名検証・Trust 判定 | `api/Statevia.Service.Api/Application/Actions/Modules/ModuleSignatureVerifier.cs` |
-| 単体テスト（展開パターン） | `shared/Statevia.Modules.Tests/ModuleZipInstallerTests.cs` |
+| zip 展開・ディレクトリ名決定 | `infrastructure/Statevia.Infrastructure.Modules/ModuleZipInstaller.cs` |
+| entry DLL 解決 | `infrastructure/Statevia.Infrastructure.Modules/FilesystemModuleSource.cs` |
+| ALC・共有アセンブリ | `infrastructure/Statevia.Infrastructure.Modules/ModuleAssemblyLoadContext.cs` |
+| 署名検証・Trust 判定 | `infrastructure/Statevia.Infrastructure.Modules/ModuleSignatureVerifier.cs` |
+| 単体テスト（展開パターン） | `infrastructure/Statevia.Infrastructure.Modules.Tests/ModuleZipInstallerTests.cs` |

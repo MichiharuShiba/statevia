@@ -30,21 +30,21 @@
 
 ## 3. コンポーネント別
 
-### 3.1 Core-API（`api/`）
+### 3.1 Core-API（`service/api/`）
 
 - **Controller**: ルーティング・バインディング・ヘッダ・HTTP ステータスのみ。ビジネスロジックは Service へ。
 - **Service**: ユースケース境界。`ICoreTransactionExecutor` / `IExecutionMutationPersistence` 経由でコミット境界を決め、Repository・DisplayId・command dedup・`IExecutionEngine` を組み合わせる。Service から `IDbContextFactory` を直接使わない。
 - **Repository**: 永続化のみ。書き込み API の第一引数は常に `ICoreUnitOfWork`。`SaveChanges` / `BeginTransaction` / `IDbContextFactory` を Repository 内に持たない。
 - **UoW**: `IDbContextFactory<CoreDbContext>` は `CoreUnitOfWork` 実装内に閉じる。
 - **例外**: `ApiExceptionFilter` と契約に沿ったエラー JSON（404 / 422 / 500）。
-- **OpenAPI / Scalar**: Development では `http://localhost:8080/scalar/v1`（起動 URL に依存）。JSON は `/swagger/v1/swagger.json`。コミット用 export はリポジトリルートから `.\scripts\export-core-api-openapi.ps1` → `api/openapi/core-api-v1.openapi.json`。本番は既定オフ、`STATEVIA_ENABLE_API_DOCS=true` で有効化可。手書き契約は `docs/core-api-interface.md`（運用叙述は Markdown に残す）。
+- **OpenAPI / Scalar**: Development では `http://localhost:8080/scalar/v1`（起動 URL に依存）。JSON は `/swagger/v1/swagger.json`。コミット用 export はリポジトリルートから `.\scripts\export-core-api-openapi.ps1` → `service/api/openapi/core-api-v1.openapi.json`。本番は既定オフ、`STATEVIA_ENABLE_API_DOCS=true` で有効化可。手書き契約は `docs/core-api-interface.md`（運用叙述は Markdown に残す）。
 
-### 3.2 Engine（`engine/`）
+### 3.2 Engine（`core/engine/`）
 
 - ワークフロー実行・FSM・グラフの責務に留める。HTTP や DB に直接触れない。
 - 公開 API の変更は、Core-API や契約ドキュメントへの影響を確認する。
 
-### 3.3 UI（`services/ui/`）
+### 3.3 UI（`ui/studio/`）
 
 - Core-API へは Next.js の route handler 経由でプロキシ（CORS 回避）。環境変数は `AGENTS.md` の表を参照。
 - 静的解析: `npm run lint`（ESLint 9 strict）。型チェック: `npm run typecheck`（`tsc --noEmit`）。テスト: `npm run test:run`（Vitest）。Sonar は **§5.2**。
@@ -83,15 +83,15 @@
 ### 4.4 リンター・ビルド警告・静的チェック
 
 - **C#**: `dotnet build` / `dotnet test` で出る **コンパイラエラー・Analyzer 警告**は、自分の変更に起因するものは **解消してから** PR に出す。触れていないファイルの既存警告をまとめて直すのは必須ではないが、**新規コードで警告を増やさない**こと。
-- **Core-API 厳格 Analyzer**: `api/Directory.Build.props` で `AnalysisMode=AllEnabledByDefault` が有効。Api 配下の本番プロジェクトは **`dotnet build api/statevia-api.sln` で警告 0** を維持する。
-- **Core-API テスト向け抑制**: ルート `.editorconfig` に加え、`api/Statevia.Service.Api.Tests/.editorconfig` で xUnit 向け CA（例: CA1812）を抑制している。テストの命名・`ConfigureAwait` 方針は Engine.Tests と同趣旨。
+- **Core-API 厳格 Analyzer**: `service/api/Directory.Build.props` で `AnalysisMode=AllEnabledByDefault` が有効。Api 配下の本番プロジェクトは **`dotnet build service/api/statevia-api.sln` で警告 0** を維持する。
+- **Core-API テスト向け抑制**: ルート `.editorconfig` に加え、`service/api/Statevia.Service.Api.Tests/.editorconfig` で xUnit 向け CA（例: CA1812）を抑制している。テストの命名・`ConfigureAwait` 方針は Engine.Tests と同趣旨。
 - **Markdown**: リポジトリ直下の **`.markdownlint.json`** に従う。`.spec-workflow/**/*.md` などを編集したときは例として次で確認できる。
 
   ```bash
   npx markdownlint-cli2 ".spec-workflow/**/*.md"
   ```
 
-- **UI（TypeScript）**: **`npm run lint`**（error 厳格）、**`npm run typecheck`**、**`npm run test:run`** を PR 前の必須チェックとする。設定は `services/ui/eslint.config.js`（`typescript-eslint` strict、`react-hooks`、`jsx-a11y`、`jsdoc`）。
+- **UI（TypeScript）**: **`npm run lint`**（error 厳格）、**`npm run typecheck`**、**`npm run test:run`** を PR 前の必須チェックとする。設定は `ui/studio/eslint.config.js`（`typescript-eslint` strict、`react-hooks`、`jsx-a11y`、`jsdoc`）。
 - **SonarQube（Core-API）**: プロジェクトキー **`StateviaCoreAPI`**。新規コードの Quality Gate（`new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.1**。
 - **SonarQube（Service UI）**: プロジェクトキー **`StateviaServiceUI`**。全体・新規コードの Quality Gate（`coverage` / `new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.2**。
 
@@ -101,10 +101,10 @@
 
 | 領域 | コマンド（例） |
 |------|----------------|
-| Engine | `cd engine && dotnet test statevia-engine.sln` |
-| Core-API | `cd api && dotnet test statevia-api.sln` |
-| UI | `cd services/ui && npm run lint && npm run typecheck && npm run test:run` |
-| UI（Sonar 前） | `cd services/ui && npm run test:coverage` |
+| Engine | `cd core/engine && dotnet test statevia-engine.sln` |
+| Core-API | `cd service/api && dotnet test statevia-api.sln` |
+| UI | `cd ui/studio && npm run lint && npm run typecheck && npm run test:run` |
+| UI（Sonar 前） | `cd ui/studio && npm run test:coverage` |
 
 変更した領域に対応するテストを追加または更新し、ローカルで green を確認してから共有する。UI を Sonar に送る前はカバレッジ付きテストを実行する（**§5.2**）。
 
@@ -118,10 +118,10 @@
 
 **カバレッジ runsettings（単体テストのみ確認するとき）**
 
-`api/coverage.runsettings` では Engine アセンブリと `Program.cs` / `Migrations/` を cobertura から除外する。Api 本体の行が計測対象に含まれることを確認する。
+`service/api/coverage.runsettings` では Engine アセンブリと `Program.cs` / `Migrations/` を cobertura から除外する。Api 本体の行が計測対象に含まれることを確認する。
 
 ```powershell
-cd api
+cd service/api
 dotnet test --settings coverage.runsettings --collect:"XPlat Code Coverage"
 ```
 
@@ -140,13 +140,13 @@ dotnet build-server shutdown
 スクリプトは次を順に実行する。
 
 1. `dotnet sonarscanner begin`（キー `StateviaCoreAPI`、除外は Engine / UI / Program / Migrations 等）
-2. `dotnet build api/statevia-api.sln`
+2. `dotnet build service/api/statevia-api.sln`
 3. `dotnet-coverage collect "dotnet test"` → `sonar/core-api-coverage.xml`
 4. `dotnet sonarscanner end`
 
 **注意**
 
-- `api/sonar-project.properties` は **Scanner for .NET では使わない**（設定は `begin` の `/d:` で渡す）。
+- `service/api/sonar-project.properties` は **Scanner for .NET では使わない**（設定は `begin` の `/d:` で渡す）。
 - スキャン直後は Sonar UI の数値が遅れて反映されることがある。Quality Gate 判定は Sonar のプロジェクト画面を正とする。
 
 ### 5.2 Service UI — カバレッジと Sonar（手動）
@@ -155,17 +155,17 @@ dotnet build-server shutdown
 
 - ローカル SonarQube が起動していること（既定 URL: `http://localhost:9000`。`sonar/docker-compose.yaml` 参照）
 - 環境変数 **`SONAR_TOKEN`** を設定していること
-- Node.js / npm が PATH にあり、`services/ui` で `npm install` 済みであること
+- Node.js / npm が PATH にあり、`ui/studio` で `npm install` 済みであること
 - グローバルまたは `npx` で **`sonar-scanner`** が実行できること
 
 **カバレッジ（Vitest のみ確認するとき）**
 
 ```powershell
-cd services/ui
+cd ui/studio
 npm run test:coverage
 ```
 
-`coverage/lcov.info` が生成される。除外方針は `services/ui/sonar-project.properties` の `sonar.coverage.exclusions` と `vitest.config.ts` の `coverage.exclude` を揃える（正本の説明: `.spec-workflow/specs/ui-quality-refactor/sonar-scan-results.md`）。
+`coverage/lcov.info` が生成される。除外方針は `ui/studio/sonar-project.properties` の `sonar.coverage.exclusions` と `vitest.config.ts` の `coverage.exclude` を揃える（正本の説明: `.spec-workflow/specs/ui-quality-refactor/sonar-scan-results.md`）。
 
 **Sonar スキャン（正本スクリプト）**
 
@@ -178,13 +178,13 @@ npm run test:coverage
 
 スクリプトは次を順に実行する。
 
-1. `npm run test:coverage`（`services/ui/coverage/lcov.info` を生成）
-2. `npx sonar-scanner`（キー **`StateviaServiceUI`**、`services/ui/sonar-project.properties` を読み込み）
+1. `npm run test:coverage`（`ui/studio/coverage/lcov.info` を生成）
+2. `npx sonar-scanner`（キー **`StateviaServiceUI`**、`ui/studio/sonar-project.properties` を読み込み）
 
-**手動（`services/ui` をカレントに）**
+**手動（`ui/studio` をカレントに）**
 
 ```powershell
-cd services/ui
+cd ui/studio
 npm run test:coverage
 npx --yes sonar-scanner "-Dsonar.token=$($env:SONAR_TOKEN)"
 ```

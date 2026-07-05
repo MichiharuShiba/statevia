@@ -17,7 +17,7 @@ npx playwright install
 - ヘッドレスで実行: `npm run test:e2e`
 - UI モードで実行: `npm run test:e2e:ui`
 
-`services/ui` から実行してください。テスト実行時に `next dev` が自動で起動します。
+`ui/studio` から実行してください。テスト実行時に `next dev` が自動で起動します。
 
 通常のスペック（`smoke.spec.ts` / `execution.spec.ts` など）はブラウザ側で API をモックしているため、**Core-API の起動は不要**です。
 
@@ -30,7 +30,7 @@ npx playwright install
 **PowerShell の例**
 
 ```powershell
-cd services/ui
+cd ui/studio
 $env:CI = "true"
 $env:CORE_API_E2E_URL = "http://localhost:8080"
 npx playwright test e2e/core-api-real.spec.ts
@@ -42,7 +42,7 @@ npx playwright test e2e/core-api-real.spec.ts e2e/core-api-ui-execution.spec.ts
 **bash の例**
 
 ```bash
-cd services/ui
+cd ui/studio
 CORE_API_E2E_URL=http://localhost:8080 npx playwright test e2e/core-api-real.spec.ts
 CORE_API_E2E_URL=http://localhost:8080 npx playwright test e2e/core-api-ui-execution.spec.ts
 ```

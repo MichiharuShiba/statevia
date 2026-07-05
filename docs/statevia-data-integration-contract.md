@@ -5,7 +5,7 @@ Project: 実行型ステートマシン
 Scope: Core-Engine / Core-API / UI 間のデータ連携
 Goal: 「どのデータを」「どのタイミングで」「どの形式で」連携するかを固定する
 
-**現在の実装**: Core-Engine は `engine/`（C# ライブラリ）、Core-API は `api/`（C#）。Engine は API プロセス内で `IExecutionEngine` として利用。UI は `/api/core/*` で API にプロキシ。以下は原則と、実装に存在する部分に沿った記述。
+**現在の実装**: Core-Engine は `core/engine/`（C# ライブラリ）、Core-API は `service/api/`（C#）。Engine は API プロセス内で `IExecutionEngine` として利用。UI は `/api/core/*` で API にプロキシ。以下は原則と、実装に存在する部分に沿った記述。
 
 **Version 1.5（2026-05-26）**: ExecutionSpace 命名統一（7a〜7d）。HTTP `/v1/executions`、永続 `executions` / `execution_events`、`StartExecutionRequest.input` / `IExecutionEngine.Start(..., input)` に同期。
 

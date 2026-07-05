@@ -5,5 +5,5 @@
   sonar-scanner-api.ps1 の begin パラメータと整合させる。
 -->
 <SonarQubeAnalysisProperties xmlns="http://www.sonarsource.com/schemas/2021/1/SonarQubeAnalysisProperties">
-  <Property Name="sonar.exclusions">**/Migrations/**,**/ui/studio/**,**/services/ui/**,**/core/engine/**,**/engine/**,**/Statevia.Core.Engine/**,**/*.Tests/**,**/Program.cs,**/Dockerfile</Property>
+  <Property Name="sonar.exclusions">**/Migrations/**,**/ui/studio/**,**/core/engine/**,**/engine/**,**/Statevia.Core.Engine/**,**/*.Tests/**,**/Program.cs,**/Dockerfile</Property>
 </SonarQubeAnalysisProperties>
