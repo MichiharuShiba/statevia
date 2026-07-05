@@ -7,21 +7,25 @@
 ## Primary Languages & Runtimes
 
 | 領域 | 言語 / ランタイム |
-|------|-------------------|
-| Engine | C# / .NET 8 |
-| Core-API | C# / ASP.NET Core（.NET 8） |
+| --- | --- |
+| Engine / Application / Infrastructure | C# / .NET 8 |
+| Core-API / Action Host / CLI | C# / ASP.NET Core（.NET 8） |
 | UI | TypeScript / React / Next.js |
 
 ## Key Dependencies（概要）
 
 - **Core-API**: ASP.NET Core、**EF Core**、**Npgsql**、PostgreSQL への接続（`DATABASE_URL` 等）
 - **Engine**: ワークフロー実行・FSM・グラフ（HTTP/DB に直接依存しないライブラリとして維持）
+- **Application**: ユースケース実装（Engine + Contracts にのみ依存）
+- **Infrastructure**: EF Core、JWT、SMTP、gRPC（core の契約を技術実装）
 - **UI**: React、ReactFlow、Next.js（API 呼び出しは route handler 経由で Core-API にプロキシし CORS を回避）
 
 ## Application Architecture
 
 - **Engine**: `IExecutionEngine` をシングルトンとして Core-API が利用。定義コンパイルは専用サービス経由。
-- **Core-API**: Controllers → Services → Repositories / `IExecutionEngine`。例外は `ApiExceptionFilter` と契約エラー JSON に集約。
+- **Application**: ユースケース（`IDefinitionService`, `IExecutionService` 等）を実装。`Application.Contracts` のポート（Repository, UoW）経由で永続化。
+- **Infrastructure**: `Application.Contracts` / `Actions.Abstractions` のポートを技術実装。
+- **Core-API**: HTTP アダプタ + Composition Root。Controllers → Application Services → Repositories / Engine。例外は `ApiExceptionFilter` と契約エラー JSON に集約。
 - **Persistence**: `CoreDbContext` は `IDbContextFactory<>` を主に使用。書き込み経路はユースケースとトランザクション境界を `AGENTS.md` に従う。
 
 ## Data Storage
@@ -31,10 +35,13 @@
 ## Build & Quality
 
 | 領域 | コマンド（例） |
-|------|----------------|
-| Engine | `cd engine && dotnet test statevia-engine.sln` |
-| Core-API | `cd api && dotnet test statevia-api.sln` |
-| UI | `cd services/ui && npm run test:run`（Vitest）、型は `tsc --noEmit` |
+| --- | --- |
+| Engine | `cd core/engine && dotnet test statevia-engine.sln` |
+| Core-API + Infrastructure + Architecture | `cd service/api && dotnet test statevia-api.sln` |
+| Infrastructure (standalone) | `cd infrastructure && dotnet test statevia-infrastructure.sln` |
+| Action Host | `cd service/action-host && dotnet test statevia-action-host.sln` |
+| CLI | `cd service/cli && dotnet test statevia-cli.sln` |
+| UI | `cd ui/studio && npm run test:run`（Vitest）、型は `tsc --noEmit` |
 
 - **C# のコメント・XML・テスト**: `.cursor/rules/csharp-standards.mdc`。
 - **TypeScript / React のコメント・テスト**: `.cursor/rules/typescript-standards.mdc`。
@@ -50,6 +57,7 @@
 
 - **Core-API は C# のみ**: 単一スタックでの保守と EF / ホスティング統合のため。
 - **UI からの API はプロキシ経由**: ブラウザ CORS を避け、同一オリジンで扱うため。
+- **4 カテゴリ構成**: クリーン・アーキテクチャの依存方向をディレクトリで物理的に表現し、Architecture.Tests で機械的に維持するため。
 
 ## References
 

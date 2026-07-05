@@ -3,66 +3,74 @@
 ## Top-Level Layout
 
 ```text
-engine/                 # ワークフロー実行エンジン（C# ライブラリ；既存 CLI は cli/ へ段階移行）
-api/                    # Core-API（ASP.NET Core）— HTTP 契約の正
-cli/                    # 統合 CLI（statevia コマンド；module install 等）
-shared/                 # 横断共有ライブラリ（例: Statevia.Modules）
-services/ui/            # Web ダッシュボード（Next.js）
-docs/                   # 契約・運用・開発ガイド
+core/                  # ドメイン・契約（非デプロイ）
+infrastructure/        # 技術実装（差し替え可能・最外殻）
+service/               # デプロイ可能なインターフェイス（API / CLI / action-host）
+ui/studio/             # Web ダッシュボード（Next.js — @statevia/studio）
+tests/                 # 横断テスト（Architecture.Tests）
+docs/                  # 契約・運用・開発ガイド
+scripts/               # ビルド・運用スクリプト
 ```
 
-## Core-API（`api/Statevia.Service.Api/`）
+## Core（`core/`）
 
-レイヤー責務の目安（詳細は `AGENTS.md`）。
+ドメインと契約。HTTP/DB に直接依存しない。
 
-| 領域 | 役割 | 配置の例 |
-|------|------|----------|
-| Controllers | ルート・ヘッダ・バインディング・HTTP ステータス | `Controllers/` |
-| Services | ユースケース（Repository・DisplayId・dedup・Engine 連携） | `Services/`、インターフェースは `Abstractions/Services/` |
-| Repositories | 永続化のみ | `Persistence/Repositories/`、`Abstractions/Persistence/` |
-| Hosting | HTTP パイプラインに近い横断関心（テナントヘッダ、リクエストログ等） | `Hosting/` |
-| Infrastructure | ID 生成など横断インフラ | `Infrastructure/` |
+| プロジェクト | 役割 |
+| --- | --- |
+| `core/engine/Statevia.Core.Engine` | ワークフローエンジン（FSM, Graph, Scheduler） |
+| `core/application/Statevia.Core.Application` | ユースケース実装 |
+| `core/application/Statevia.Core.Application.Contracts` | DDD ポート / DTO（リポジトリ、UoW、サービスインターフェース） |
+| `core/actions/Statevia.Core.Actions.Abstractions` | Action / Module SPI |
 
-- **read-model 系**で Repository 表面を増やさず局所クエリするサービスは、`IDbContextFactory<CoreDbContext>` を直接使う場合がある（`AGENTS.md` の Persistence note）。
+## Infrastructure（`infrastructure/`）
 
-## Engine（`engine/`）
+core の契約（`Application.Contracts` / `Actions.Abstractions`）の技術実装。
 
-- ワークフロー定義の実行・グラフ／状態機械の責務に限定する。
-- **HTTP や DB に直接依存しない**（Core-API が境界となる）。
-- `engine/Statevia.Service.Cli` は開発用の既存 CLI。**ユーザー向け統合 CLI は `cli/Statevia.Service.Cli` に集約**する（段階移行）。
+| プロジェクト | 役割 |
+| --- | --- |
+| `Statevia.Infrastructure.Persistence` | EF Core + Migrations |
+| `Statevia.Infrastructure.Security` | JWT, Tenant context, 認可 |
+| `Statevia.Infrastructure.Notification` | SMTP 通知 |
+| `Statevia.Infrastructure.Modules` | Module ホスト + OCI/filesystem Source |
+| `Statevia.Infrastructure.Actions.Grpc` | gRPC Action Backend |
+| `Statevia.Infrastructure.Common` | IdGenerator (UUID v7) 等 |
 
-## CLI（`cli/`）
+## Service（`service/`）
 
-- **`cli/Statevia.Service.Cli`**: 統合 `statevia` コマンド（platform / module / 定義検証など）。
-- **`cli/statevia-cli.sln`**: CLI 用ソリューション。
-- Engine 向けの旧 CLI 機能はサブコマンドとして移行し、最終的に `engine/Statevia.Service.Cli` は廃止または thin wrapper とする。
+HTTP / gRPC / CLI のアダプタ。Composition Root として全層を DI で結合。
 
-## Shared（`shared/`）
+| プロジェクト | 役割 |
+| --- | --- |
+| `service/api/Statevia.Service.Api` | HTTP アダプタ（Controllers + Hosting） |
+| `service/api/Statevia.Service.Api.Bootstrap` | エントリポイント（Program.cs） |
+| `service/action-host/Statevia.Service.ActionHost` | OutOfProcess Action 実行（gRPC sandbox） |
+| `service/cli/Statevia.Service.Cli` | 統合 `statevia` コマンド |
 
-- **`shared/Statevia.Modules`**: modules ルート解決（`ModulePathResolver`）など、**API と CLI の両方**から参照する横断ライブラリ。
-- ASP.NET 固有の型は API 側アダプタに留め、shared はフレームワーク非依存を優先する。
-
-## UI（`services/ui/`）
+## UI（`ui/studio/`）
 
 - Next.js の route handler で Core-API にプロキシし、ブラウザからは同一オリジンの `/api/core/...` 等を利用。
 - 環境変数 `CORE_API_INTERNAL_BASE` でバックエンド基底 URL を指定（`AGENTS.md` の表）。
 
+## Tests（`tests/`）
+
+- `tests/Statevia.Architecture.Tests`: `NetArchTest.eNhancedEdition` で依存方向禁止ルールを機械的に検証。
+
+## Module Boundaries
+
+- **Engine ↔ Application**: `IExecutionEngine` 越しのみ。Application はユースケースを実装し Engine を利用。
+- **Application ↔ Infrastructure**: `Application.Contracts` のポート越しのみ。Infrastructure が実装を提供。
+- **Service ↔ Core/Infrastructure**: DI で結合。Service は HTTP/gRPC 境界のみ担当。
+- **UI ↔ Service**: HTTP（プロキシ）のみ。DB に直接接続しない。
+
 ## Documentation & Specs
 
 | 種類 | 場所 |
-|------|------|
+| --- | --- |
 | エージェント／起動・テスト | ルート `AGENTS.md` |
 | 開発の共通ルール | `docs/development-guidelines.md` |
 | Spec Workflow（本 Steering を含む） | `.spec-workflow/` |
 | 作業用メモ・タスク（任意） | `.workspace-docs/`（入口 `README.md`） |
-
-## Module Boundaries
-
-- **Engine ↔ Core-API**: 公開 API（`IExecutionEngine` 等）越しのみ。
-- **Core-API ↔ PostgreSQL**: DbContext / Repository 経由。イベントストアやトランザクション境界は `AGENTS.md` の event_store 記述に従う。
-- **UI ↔ Core-API**: HTTP（プロキシ）のみ。DB に直接接続しない。
-- **CLI ↔ Core-API**: HTTP（reload 等）または **filesystem 上の modules ルート共有**（`shared/Statevia.Modules`）。CLI は DB に直接接続しない。
-- **shared ↔ api/cli**: 共有はパス解決・軽量 DTO に限定し、ModuleHost や IActionRegistry は API 内に閉じる。
 
 ## References
 
