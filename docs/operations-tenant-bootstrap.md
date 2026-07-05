@@ -132,7 +132,7 @@ curl -s -X POST http://localhost:8080/v1/auth/login \
   -d '{"tenantKey":"default","email":"admin@example.com","password":"<plain-for-dev-only>"}'
 ```
 
-UI では `/login` から同じ資格情報でサインインできる（`services/ui`）。
+UI では `/login` から同じ資格情報でサインインできる（`ui/studio`）。
 
 ## 4. API キー（CI / サーバー間）
 

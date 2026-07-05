@@ -20,7 +20,7 @@ $ErrorActionPreference = 'Stop'
 # sonar.projectBaseDir をリポジトリルートに固定し、移動後パス（core/engine 等）でも除外が効くようにする
 $sonarAnalysisExclusions = @(
     '**/ui/studio/**',
-    '**/services/ui/**',
+    '**/ui/studio/**',
     '**/core/engine/**',
     '**/engine/**',
     '**/service/cli/**',

@@ -44,7 +44,7 @@
 - ワークフロー実行・FSM・グラフの責務に留める。HTTP や DB に直接触れない。
 - 公開 API の変更は、Core-API や契約ドキュメントへの影響を確認する。
 
-### 3.3 UI（`services/ui/`）
+### 3.3 UI（`ui/studio/`）
 
 - Core-API へは Next.js の route handler 経由でプロキシ（CORS 回避）。環境変数は `AGENTS.md` の表を参照。
 - 静的解析: `npm run lint`（ESLint 9 strict）。型チェック: `npm run typecheck`（`tsc --noEmit`）。テスト: `npm run test:run`（Vitest）。Sonar は **§5.2**。
@@ -91,7 +91,7 @@
   npx markdownlint-cli2 ".spec-workflow/**/*.md"
   ```
 
-- **UI（TypeScript）**: **`npm run lint`**（error 厳格）、**`npm run typecheck`**、**`npm run test:run`** を PR 前の必須チェックとする。設定は `services/ui/eslint.config.js`（`typescript-eslint` strict、`react-hooks`、`jsx-a11y`、`jsdoc`）。
+- **UI（TypeScript）**: **`npm run lint`**（error 厳格）、**`npm run typecheck`**、**`npm run test:run`** を PR 前の必須チェックとする。設定は `ui/studio/eslint.config.js`（`typescript-eslint` strict、`react-hooks`、`jsx-a11y`、`jsdoc`）。
 - **SonarQube（Core-API）**: プロジェクトキー **`StateviaCoreAPI`**。新規コードの Quality Gate（`new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.1**。
 - **SonarQube（Service UI）**: プロジェクトキー **`StateviaServiceUI`**。全体・新規コードの Quality Gate（`coverage` / `new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.2**。
 
@@ -103,8 +103,8 @@
 |------|----------------|
 | Engine | `cd engine && dotnet test statevia-engine.sln` |
 | Core-API | `cd api && dotnet test statevia-api.sln` |
-| UI | `cd services/ui && npm run lint && npm run typecheck && npm run test:run` |
-| UI（Sonar 前） | `cd services/ui && npm run test:coverage` |
+| UI | `cd ui/studio && npm run lint && npm run typecheck && npm run test:run` |
+| UI（Sonar 前） | `cd ui/studio && npm run test:coverage` |
 
 変更した領域に対応するテストを追加または更新し、ローカルで green を確認してから共有する。UI を Sonar に送る前はカバレッジ付きテストを実行する（**§5.2**）。
 
@@ -155,17 +155,17 @@ dotnet build-server shutdown
 
 - ローカル SonarQube が起動していること（既定 URL: `http://localhost:9000`。`sonar/docker-compose.yaml` 参照）
 - 環境変数 **`SONAR_TOKEN`** を設定していること
-- Node.js / npm が PATH にあり、`services/ui` で `npm install` 済みであること
+- Node.js / npm が PATH にあり、`ui/studio` で `npm install` 済みであること
 - グローバルまたは `npx` で **`sonar-scanner`** が実行できること
 
 **カバレッジ（Vitest のみ確認するとき）**
 
 ```powershell
-cd services/ui
+cd ui/studio
 npm run test:coverage
 ```
 
-`coverage/lcov.info` が生成される。除外方針は `services/ui/sonar-project.properties` の `sonar.coverage.exclusions` と `vitest.config.ts` の `coverage.exclude` を揃える（正本の説明: `.spec-workflow/specs/ui-quality-refactor/sonar-scan-results.md`）。
+`coverage/lcov.info` が生成される。除外方針は `ui/studio/sonar-project.properties` の `sonar.coverage.exclusions` と `vitest.config.ts` の `coverage.exclude` を揃える（正本の説明: `.spec-workflow/specs/ui-quality-refactor/sonar-scan-results.md`）。
 
 **Sonar スキャン（正本スクリプト）**
 
@@ -178,13 +178,13 @@ npm run test:coverage
 
 スクリプトは次を順に実行する。
 
-1. `npm run test:coverage`（`services/ui/coverage/lcov.info` を生成）
-2. `npx sonar-scanner`（キー **`StateviaServiceUI`**、`services/ui/sonar-project.properties` を読み込み）
+1. `npm run test:coverage`（`ui/studio/coverage/lcov.info` を生成）
+2. `npx sonar-scanner`（キー **`StateviaServiceUI`**、`ui/studio/sonar-project.properties` を読み込み）
 
-**手動（`services/ui` をカレントに）**
+**手動（`ui/studio` をカレントに）**
 
 ```powershell
-cd services/ui
+cd ui/studio
 npm run test:coverage
 npx --yes sonar-scanner "-Dsonar.token=$($env:SONAR_TOKEN)"
 ```

@@ -192,6 +192,6 @@ JSON プロパティ名は **camelCase** のため、C# の `From` / `To` は **
 - `GET /v1/executions/{id}/graph` の本文は、本書の **`nodes` / `edges` 構造をそのまま** `execution_graph_snapshots` から返す（キー名・意味はエンジン `ExportJson` と一致）。
 - API は実行グラフの `conditionRouting` を透過的に返却する。
 - UI は `conditionRouting` を再評価しない（表示専用データとして扱う）。
-- UI が定義グラフ（`GET /v1/graphs/{graphId}`）と合成するときは、**実行ノードの `nodeId` と定義ノードの `nodeId`（状態名）が一致しない**前提で、`stateName` やエッジの `from`/`to` を用いて対応付ける（`services/ui/app/lib/mergeGraph.ts`）。
+- UI が定義グラフ（`GET /v1/graphs/{graphId}`）と合成するときは、**実行ノードの `nodeId` と定義ノードの `nodeId`（状態名）が一致しない**前提で、`stateName` やエッジの `from`/`to` を用いて対応付ける（`ui/studio/app/lib/mergeGraph.ts`）。
 
 詳細は `docs/core-api-interface.md` を参照。

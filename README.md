@@ -236,12 +236,13 @@ t8: E Completed → Execution completed
 
 ```txt
 statevia/
-├─ api/                          # Core-API（C# ASP.NET Core）
-├─ engine/                       # C# ワークフローエンジン（.NET）
+├─ core/                         # ドメイン・契約
+├─ infrastructure/               # 技術実装
+├─ service/                      # API / CLI / action-host
+├─ ui/studio/                    # Web UI（@statevia/studio）
 ├─ docs/
 ├─ docker-compose.yml
-└─ services/
-   └─ ui/
+└─ tests/
 ```
 
 ---
