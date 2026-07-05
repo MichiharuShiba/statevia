@@ -7,7 +7,7 @@ Project: 実行型ステートマシン
 
 ## 1. 対象と責務
 
-本書は、`engine/Statevia.Core.Engine/ExecutionGraph` の**現行実装**が返す JSON 契約を定義する。
+本書は、`core/engine/Statevia.Core.Engine/ExecutionGraph` の**現行実装**が返す JSON 契約を定義する。
 
 - 対象出力: `ExecutionEngine.ExportExecutionGraph(executionId)`
 - 用途: 実行可視化、デバッグ、API/UI 連携

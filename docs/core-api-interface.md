@@ -3,7 +3,7 @@
 Version: 1.8
 Project: 実行型ステートマシン
 
-Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
+Core-API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 
 **Version 1.8（2026-05-28）**: Runtime API（`/v1/definitions` / `/v1/executions`）を **Principal 必須**に変更。JWT または API キー（`X-Api-Key`）で `ITenantContext.PrincipalId` を解決し、`X-Tenant-Id` 単独は 401。
 
@@ -21,7 +21,7 @@ Core-API（C#、`api/`）の HTTP 契約。実装に準拠。
 
 | 項目 | 内容 |
 | --- | --- |
-| スキーマ・操作の正本 | Swashbuckle 生成の `/swagger/v1/swagger.json`、およびリポジトリ内 [`api/openapi/core-api-v1.openapi.json`](../api/openapi/core-api-v1.openapi.json) |
+| スキーマ・操作の正本 | Swashbuckle 生成の `/swagger/v1/swagger.json`、およびリポジトリ内 [`service/api/openapi/core-api-v1.openapi.json`](../service/api/openapi/core-api-v1.openapi.json) |
 | 閲覧 UI（Development） | Scalar — 例: `http://localhost:8080/scalar/v1`（`ASPNETCORE_URLS` に依存） |
 | 本番 | OpenAPI / Scalar は **既定オフ**。Staging または `STATEVIA_ENABLE_API_DOCS=true` で有効化 |
 | export | リポジトリルートから `.\scripts\export-core-api-openapi.ps1` |

@@ -15,7 +15,7 @@
 ## 1. マイグレーション適用
 
 ```bash
-cd api
+cd service/api
 dotnet ef database update --project Statevia.Service.Api
 ```
 
@@ -38,13 +38,13 @@ $env:DATABASE_URL = "postgres://statevia:statevia@localhost:5432/statevia"
 
 # Core API の appsettings を使う場合
 .\scripts\bootstrap-tenant.ps1 -TenantKey "acme-corp" `
-  -Config "api/Statevia.Service.Api/appsettings.json"
+  -Config "service/api/Statevia.Service.Api/appsettings.json"
 ```
 
 **dotnet のみ:**
 
 ```bash
-cd api
+cd service/api
 dotnet run --project Statevia.Service.Api.Bootstrap -- \
   --database-url "postgres://statevia:statevia@localhost:5432/statevia" \
   create-tenant \
@@ -55,7 +55,7 @@ dotnet run --project Statevia.Service.Api.Bootstrap -- \
 | オプション（グローバル・コマンドの前） | 説明 |
 | --- | --- |
 | `--database-url` / `--connection-string` | PostgreSQL URL または Npgsql 形式（`DATABASE_URL` より優先） |
-| `--config <path>` | 追加の JSON 設定（例: `api/Statevia.Service.Api/appsettings.json`） |
+| `--config <path>` | 追加の JSON 設定（例: `service/api/Statevia.Service.Api/appsettings.json`） |
 
 読み込み順（低→高）: カレントの `appsettings.json` → `--config` → 環境変数 → `--database-url`。
 
@@ -104,7 +104,7 @@ $env:STATEVIA_BOOTSTRAP_PASSWORD = "<plain-for-dev-only>"
 **dotnet のみ:**
 
 ```bash
-cd api
+cd service/api
 export DATABASE_URL="postgres://statevia:statevia@localhost:5432/statevia"
 export STATEVIA_BOOTSTRAP_PASSWORD="<plain-for-dev-only>"
 dotnet run --project Statevia.Service.Api.Bootstrap -- \

@@ -18,7 +18,7 @@ Project: 実行型ステートマシン
 ---
 
 Core-API（C#）の EF Core マイグレーションで管理する PostgreSQL スキーマ。  
-実装: `api/Statevia.Service.Api/Persistence/` および `Migrations/`。
+実装: `infrastructure/Statevia.Infrastructure.Persistence/` および `Migrations/`。
 
 **書き込み経路（2026-05-20 時点）:** 定義の新規作成・publish は **`definitions` + `definition_versions` のみ**。`workflow_definitions` は移行期のレガシーテーブル（バックフィル元）として残存し、**新規 INSERT は行わない**。
 
@@ -747,7 +747,7 @@ erDiagram
 | `20260607143608_ExecutionTenantIdUuidFk` | 実行系 `tenant_id` を uuid FK（`tenants.tenant_id`）へ統一 |
 | `20260608093652_AddExecutionSecuritySnapshot` | `executions.security_snapshot_json` 追加（E4） |
 
-適用: `cd api && dotnet ef database update --project Statevia.Service.Api`
+適用: `cd service/api && dotnet ef database update --project Statevia.Service.Api`
 
 **既存 DB への注意:** テーブルが手動作成済みで `InitialCreate` が失敗する場合は、マイグレーション履歴（`__EFMigrationsHistory`）と実スキーマの整合を確認してから適用する。未適用分のみ実行するか、クリーン DB で検証する。
 

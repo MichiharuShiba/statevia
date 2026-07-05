@@ -105,7 +105,7 @@ Engine は `IStateExecutor` のみを知る。Action の解決・テナント可
 | `IModuleSource` / `CompositeModuleSource` | Module 取得元。`Priority` 昇順で集約し重複は高優先勝ち（DI 順非依存） | No |
 | `ModuleHost` | `CompositeModuleSource` が供給する Module の ALC load と Catalog 登録 | No |
 
-共有契約は `shared/Statevia.Core.Actions.Abstractions`（実行系）/ `shared/Statevia.Modules`（Module 系）。詳細は `.spec-workflow/specs/action-execution-abstraction/design.md`、横断拡張は `.spec-workflow/specs/action-platform-extensibility-phase4/design.md`。
+共有契約は `core/actions/Statevia.Core.Actions.Abstractions`（実行系）/ `infrastructure/Statevia.Infrastructure.Modules`（Module 系）。詳細は `.spec-workflow/specs/action-execution-abstraction/design.md`、横断拡張は `.spec-workflow/specs/action-platform-extensibility-phase4/design.md`。
 
 ### 5.1 ExecutionMode（隔離契約）と Backend（実装）の分離
 
@@ -117,7 +117,7 @@ Engine は `IStateExecutor` のみを知る。Action の解決・テナント可
 
 ### 5.3 Module 供給パイプライン（Source → Materialize → Host → Catalog）
 
-ModuleHost が consume するのは複数 Source を集約した `CompositeModuleSource`。各 Source は取得した Module を `MaterializedModule`（`shared/Statevia.Modules`・ローカル完全表現＝正本）へ materialize し、`DiscoveredModule`（DTO）へ射影して ModuleHost へ渡す。リモート取得は `MaterializingModuleSourceBase` 派生が acquire→cache→verify→extract→materialize を担い、最初の実装が **`OciModuleSource`**（`IOciArtifactFetcher` / OrasProject.Oras、`Statevia:Modules:Oci`）。集約は明示 `Priority` 昇順（filesystem=100 / OCI 既定=200）、同名 Module は高優先勝ち＋warning、同 Priority は `SourceLabel` で tie-break。
+ModuleHost が consume するのは複数 Source を集約した `CompositeModuleSource`。各 Source は取得した Module を `MaterializedModule`（`infrastructure/Statevia.Infrastructure.Modules`・ローカル完全表現＝正本）へ materialize し、`DiscoveredModule`（DTO）へ射影して ModuleHost へ渡す。リモート取得は `MaterializingModuleSourceBase` 派生が acquire→cache→verify→extract→materialize を担い、最初の実装が **`OciModuleSource`**（`IOciArtifactFetcher` / OrasProject.Oras、`Statevia:Modules:Oci`）。集約は明示 `Priority` 昇順（filesystem=100 / OCI 既定=200）、同名 Module は高優先勝ち＋warning、同 Priority は `SourceLabel` で tie-break。
 
 ### 5.4 version coexist（責務分離・設計のみ）
 

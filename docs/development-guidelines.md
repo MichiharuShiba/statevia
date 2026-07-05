@@ -30,16 +30,16 @@
 
 ## 3. コンポーネント別
 
-### 3.1 Core-API（`api/`）
+### 3.1 Core-API（`service/api/`）
 
 - **Controller**: ルーティング・バインディング・ヘッダ・HTTP ステータスのみ。ビジネスロジックは Service へ。
 - **Service**: ユースケース境界。`ICoreTransactionExecutor` / `IExecutionMutationPersistence` 経由でコミット境界を決め、Repository・DisplayId・command dedup・`IExecutionEngine` を組み合わせる。Service から `IDbContextFactory` を直接使わない。
 - **Repository**: 永続化のみ。書き込み API の第一引数は常に `ICoreUnitOfWork`。`SaveChanges` / `BeginTransaction` / `IDbContextFactory` を Repository 内に持たない。
 - **UoW**: `IDbContextFactory<CoreDbContext>` は `CoreUnitOfWork` 実装内に閉じる。
 - **例外**: `ApiExceptionFilter` と契約に沿ったエラー JSON（404 / 422 / 500）。
-- **OpenAPI / Scalar**: Development では `http://localhost:8080/scalar/v1`（起動 URL に依存）。JSON は `/swagger/v1/swagger.json`。コミット用 export はリポジトリルートから `.\scripts\export-core-api-openapi.ps1` → `api/openapi/core-api-v1.openapi.json`。本番は既定オフ、`STATEVIA_ENABLE_API_DOCS=true` で有効化可。手書き契約は `docs/core-api-interface.md`（運用叙述は Markdown に残す）。
+- **OpenAPI / Scalar**: Development では `http://localhost:8080/scalar/v1`（起動 URL に依存）。JSON は `/swagger/v1/swagger.json`。コミット用 export はリポジトリルートから `.\scripts\export-core-api-openapi.ps1` → `service/api/openapi/core-api-v1.openapi.json`。本番は既定オフ、`STATEVIA_ENABLE_API_DOCS=true` で有効化可。手書き契約は `docs/core-api-interface.md`（運用叙述は Markdown に残す）。
 
-### 3.2 Engine（`engine/`）
+### 3.2 Engine（`core/engine/`）
 
 - ワークフロー実行・FSM・グラフの責務に留める。HTTP や DB に直接触れない。
 - 公開 API の変更は、Core-API や契約ドキュメントへの影響を確認する。
@@ -83,8 +83,8 @@
 ### 4.4 リンター・ビルド警告・静的チェック
 
 - **C#**: `dotnet build` / `dotnet test` で出る **コンパイラエラー・Analyzer 警告**は、自分の変更に起因するものは **解消してから** PR に出す。触れていないファイルの既存警告をまとめて直すのは必須ではないが、**新規コードで警告を増やさない**こと。
-- **Core-API 厳格 Analyzer**: `api/Directory.Build.props` で `AnalysisMode=AllEnabledByDefault` が有効。Api 配下の本番プロジェクトは **`dotnet build api/statevia-api.sln` で警告 0** を維持する。
-- **Core-API テスト向け抑制**: ルート `.editorconfig` に加え、`api/Statevia.Service.Api.Tests/.editorconfig` で xUnit 向け CA（例: CA1812）を抑制している。テストの命名・`ConfigureAwait` 方針は Engine.Tests と同趣旨。
+- **Core-API 厳格 Analyzer**: `service/api/Directory.Build.props` で `AnalysisMode=AllEnabledByDefault` が有効。Api 配下の本番プロジェクトは **`dotnet build service/api/statevia-api.sln` で警告 0** を維持する。
+- **Core-API テスト向け抑制**: ルート `.editorconfig` に加え、`service/api/Statevia.Service.Api.Tests/.editorconfig` で xUnit 向け CA（例: CA1812）を抑制している。テストの命名・`ConfigureAwait` 方針は Engine.Tests と同趣旨。
 - **Markdown**: リポジトリ直下の **`.markdownlint.json`** に従う。`.spec-workflow/**/*.md` などを編集したときは例として次で確認できる。
 
   ```bash
@@ -101,8 +101,8 @@
 
 | 領域 | コマンド（例） |
 |------|----------------|
-| Engine | `cd engine && dotnet test statevia-engine.sln` |
-| Core-API | `cd api && dotnet test statevia-api.sln` |
+| Engine | `cd core/engine && dotnet test statevia-engine.sln` |
+| Core-API | `cd service/api && dotnet test statevia-api.sln` |
 | UI | `cd ui/studio && npm run lint && npm run typecheck && npm run test:run` |
 | UI（Sonar 前） | `cd ui/studio && npm run test:coverage` |
 
@@ -118,10 +118,10 @@
 
 **カバレッジ runsettings（単体テストのみ確認するとき）**
 
-`api/coverage.runsettings` では Engine アセンブリと `Program.cs` / `Migrations/` を cobertura から除外する。Api 本体の行が計測対象に含まれることを確認する。
+`service/api/coverage.runsettings` では Engine アセンブリと `Program.cs` / `Migrations/` を cobertura から除外する。Api 本体の行が計測対象に含まれることを確認する。
 
 ```powershell
-cd api
+cd service/api
 dotnet test --settings coverage.runsettings --collect:"XPlat Code Coverage"
 ```
 
@@ -140,13 +140,13 @@ dotnet build-server shutdown
 スクリプトは次を順に実行する。
 
 1. `dotnet sonarscanner begin`（キー `StateviaCoreAPI`、除外は Engine / UI / Program / Migrations 等）
-2. `dotnet build api/statevia-api.sln`
+2. `dotnet build service/api/statevia-api.sln`
 3. `dotnet-coverage collect "dotnet test"` → `sonar/core-api-coverage.xml`
 4. `dotnet sonarscanner end`
 
 **注意**
 
-- `api/sonar-project.properties` は **Scanner for .NET では使わない**（設定は `begin` の `/d:` で渡す）。
+- `service/api/sonar-project.properties` は **Scanner for .NET では使わない**（設定は `begin` の `/d:` で渡す）。
 - スキャン直後は Sonar UI の数値が遅れて反映されることがある。Quality Gate 判定は Sonar のプロジェクト画面を正とする。
 
 ### 5.2 Service UI — カバレッジと Sonar（手動）
