@@ -15,11 +15,6 @@ public interface IActionCatalog
     /// <param name="descriptor">取得した Descriptor。</param>
     bool TryGetDescriptor(string actionId, [NotNullWhen(true)] out ActionDescriptor? descriptor);
 
-    /// <summary>Descriptor と実行エントリを取得する。</summary>
-    /// <param name="actionId">参照 actionId。</param>
-    /// <param name="registration">取得した登録情報。</param>
-    bool TryGetRegistration(string actionId, [NotNullWhen(true)] out ActionRegistration? registration);
-
     /// <summary>版付きキーで Descriptor を取得する（exact lookup）。</summary>
     /// <param name="moduleId">Module ID。</param>
     /// <param name="version">fullVersion。</param>
@@ -30,6 +25,11 @@ public interface IActionCatalog
         string version,
         string actionName,
         [NotNullWhen(true)] out ActionDescriptor? descriptor);
+
+    /// <summary>Descriptor と実行エントリを取得する。</summary>
+    /// <param name="actionId">参照 actionId。</param>
+    /// <param name="registration">取得した登録情報。</param>
+    bool TryGetRegistration(string actionId, [NotNullWhen(true)] out ActionRegistration? registration);
 
     /// <summary>版付きキーで Descriptor と実行エントリを取得する（exact lookup）。</summary>
     /// <param name="moduleId">Module ID。</param>
