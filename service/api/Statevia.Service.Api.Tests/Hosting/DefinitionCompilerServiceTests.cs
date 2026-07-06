@@ -8,6 +8,7 @@ using Statevia.Service.Api.Application.Actions.Builtins;
 using ActionExecutionTestSupport = Statevia.Service.Api.Tests.Application.Actions.Execution.ActionExecutionTestSupport;
 using Statevia.Service.Api.Application.Actions;
 using Statevia.Service.Api.Application.Actions.Validation;
+using Statevia.Service.Api.Application.Actions.Versioning;
 using Statevia.Service.Api.Application.Definition;
 using Statevia.Service.Api.Hosting;
 using Statevia.Core.Engine.Abstractions;
@@ -50,11 +51,13 @@ public sealed class DefinitionCompilerServiceTests
         string actionId,
         Func<StateContext, object?, CancellationToken, Task<object?>> execute)
     {
+        var lastDot = actionId.LastIndexOf('.');
+        var moduleId = lastDot > 0 ? actionId[..lastDot] : "test.module";
         catalog.Register(
             new ActionDescriptor
             {
                 ActionId = actionId,
-                ModuleId = "test.module",
+                ModuleId = moduleId,
                 Version = "1.0.0",
                 TrustLevel = ActionTrustLevel.Trusted,
                 Source = ActionSourceKind.Filesystem,
@@ -411,6 +414,93 @@ public sealed class DefinitionCompilerServiceTests
 
         // Assert
         Assert.NotNull(restored.StateExecutorFactory.GetExecutor("A"));
+    }
+
+    /// <summary>保存済み bindings を再解決せず復元する（D1 決定論的実行）。</summary>
+    [Fact]
+    public void RestoreFromStoredVersion_UsesStoredBindingsWithoutReResolving()
+    {
+        // Arrange
+        var svc = CreateSutWithCatalog(out var catalog);
+        RegisterModuleVersion(catalog, "demo.module", "echo", "1.0.0");
+        RegisterModuleVersion(catalog, "demo.module", "echo", "2.0.0");
+        var yaml = """
+            workflow:
+              name: W
+              modules:
+                mail: demo.module@2.0.0
+            states:
+              A:
+                action: mail.echo
+                on:
+                  Completed:
+                    end: true
+            """;
+        var (_, compiledJson) = svc.ValidateAndCompile("W", yaml);
+        RegisterModuleVersion(catalog, "demo.module", "echo", "3.0.0");
+
+        // Act
+        var restored = svc.RestoreFromStoredVersion(yaml, compiledJson);
+
+        // Assert
+        Assert.Equal("2.0.0", restored.StateActionBindings["A"].ResolvedModuleVersion);
+        Assert.NotNull(restored.StateExecutorFactory.GetExecutor("A"));
+    }
+
+    /// <summary>ピン版が未ロードのときは MigrationRequired 相当エラーになる。</summary>
+    [Fact]
+    public void RestoreFromStoredVersion_WhenPinnedVersionNotLoaded_ThrowsMigrationRequired()
+    {
+        // Arrange
+        var svc = CreateSutWithCatalog(out var catalog);
+        RegisterModuleVersion(catalog, "demo.module", "echo", "1.0.0");
+        var yaml = """
+            workflow:
+              name: W
+              modules:
+                mail: demo.module@1.0.0
+            states:
+              A:
+                action: mail.echo
+                on:
+                  Completed:
+                    end: true
+            """;
+        var (_, compiledJson) = svc.ValidateAndCompile("W", yaml);
+        var catalogWithoutPinned = ActionExecutionTestSupport.CreateCatalogWithBuiltins();
+        RegisterModuleVersion(catalogWithoutPinned, "demo.module", "echo", "2.0.0");
+        var provider = ActionExecutionTestSupport.CreateProvider(catalogWithoutPinned);
+        var restoreSvc = new DefinitionCompilerService(
+            catalogWithoutPinned,
+            provider.GetRequiredService<IActionVisibilityResolver>(),
+            CreateDefaultStrategy(),
+            provider,
+            NullLogger<DefinitionCompilerService>.Instance);
+
+        // Act & Assert
+        var ex = Assert.Throws<DefinitionMigrationRequiredException>(
+            () => restoreSvc.RestoreFromStoredVersion(yaml, compiledJson));
+
+        Assert.Contains("1.0.0", ex.Message, StringComparison.Ordinal);
+    }
+
+    private static void RegisterModuleVersion(
+        IActionCatalog catalog,
+        string moduleId,
+        string actionName,
+        string version)
+    {
+        catalog.Register(
+            new ActionDescriptor
+            {
+                ActionId = $"{moduleId}.{actionName}",
+                ModuleId = moduleId,
+                Version = version,
+                TrustLevel = ActionTrustLevel.Trusted,
+                Source = ActionSourceKind.Filesystem,
+                Visibility = ActionVisibility.Builtin,
+            },
+            new ActionCatalogEntry(InProcessFactory: _ => new DefaultStateExecutor((_, _, _) => Task.FromResult<object?>(null))));
     }
 
     /// <summary>

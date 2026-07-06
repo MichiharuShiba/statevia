@@ -14,6 +14,12 @@ public sealed record ActionExecutionRequest
     /// <summary>canonical actionId。</summary>
     public required string ActionId { get; init; }
 
+    /// <summary>
+    /// compile 時にピンした Module fullVersion。Module action の exact lookup に使用する。
+    /// 未指定時は論理 actionId 経由の Legacy lookup（単一版のみ）を行う。
+    /// </summary>
+    public string? ResolvedModuleVersion { get; init; }
+
     /// <summary><c>tenants.tenant_id</c> UUID 文字列。</summary>
     public required string TenantId { get; init; }
 

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using System.Diagnostics.CodeAnalysis;
 using Statevia.Core.Actions.Abstractions.Catalog;
 using Statevia.Core.Actions.Abstractions.Execution;
 using Statevia.Core.Actions.Abstractions.Visibility;
@@ -45,7 +46,7 @@ internal sealed class DispatchingActionExecutor : IActionExecutor
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(stateContext);
 
-        if (!_catalog.TryGetRegistration(request.ActionId, out var registration) || registration is null)
+        if (!TryGetRegistration(request, out var registration) || registration is null)
         {
             return Failure("UnknownAction", $"Unknown action '{request.ActionId}'.");
         }
@@ -85,4 +86,37 @@ internal sealed class DispatchingActionExecutor : IActionExecutor
             ErrorCode = errorCode,
             ErrorMessage = message,
         };
+
+    private bool TryGetRegistration(
+        ActionExecutionRequest request,
+        [NotNullWhen(true)] out ActionRegistration? registration)
+    {
+        registration = null;
+        if (request.ResolvedModuleVersion is { Length: > 0 } version
+            && TryParseVersionedAction(request.ActionId, out var moduleId, out var actionName))
+        {
+            return _catalog.TryGetRegistration(moduleId, version, actionName, out registration);
+        }
+
+        return _catalog.TryGetRegistration(request.ActionId, out registration);
+    }
+
+    private static bool TryParseVersionedAction(
+        string logicalActionId,
+        out string moduleId,
+        out string actionName)
+    {
+        moduleId = string.Empty;
+        actionName = string.Empty;
+
+        var lastDot = logicalActionId.LastIndexOf('.');
+        if (lastDot <= 0 || lastDot >= logicalActionId.Length - 1)
+        {
+            return false;
+        }
+
+        moduleId = logicalActionId[..lastDot];
+        actionName = logicalActionId[(lastDot + 1)..];
+        return true;
+    }
 }

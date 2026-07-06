@@ -611,8 +611,36 @@ public class StateWorkflowDefinitionLoaderTests
         // Assert
         Assert.NotNull(def.Modules);
         Assert.Single(def.Modules!);
-        Assert.Equal("com.company.mail", def.Modules!["mail"]);
+        Assert.Equal("com.company.mail", def.Modules!["mail"].ModuleId);
         Assert.Equal("mail.send", def.States["A"].Action);
+    }
+
+    /// <summary>workflow.modules の moduleId@range を構造化して保持する。</summary>
+    [Fact]
+    public void Load_ParsesWorkflowModulesWithVersionRange()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+              modules:
+                mail: com.company.mail@^1.2
+            states:
+              A:
+                action: mail.send
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        Assert.NotNull(def.Modules);
+        Assert.Equal("com.company.mail", def.Modules!["mail"].ModuleId);
+        Assert.Equal("^1.2", def.Modules!["mail"].VersionRange);
     }
 
     /// <summary>状態直下の retry を RetryDefinition として保持する。</summary>

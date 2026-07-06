@@ -29,12 +29,12 @@ internal static class ActionNameResolver
         };
     }
 
-    private static readonly IReadOnlyDictionary<string, string> EmptyModules =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    private static readonly IReadOnlyDictionary<string, ModuleImportReference> EmptyModules =
+        new Dictionary<string, ModuleImportReference>(StringComparer.OrdinalIgnoreCase);
 
     private static StateDefinition ResolveState(
         StateDefinition state,
-        IReadOnlyDictionary<string, string> modules)
+        IReadOnlyDictionary<string, ModuleImportReference> modules)
     {
         if (state.Wait is not null || state.Join is not null)
         {
@@ -56,7 +56,7 @@ internal static class ActionNameResolver
         };
     }
 
-    private static string ResolveActionRef(string actionRef, IReadOnlyDictionary<string, string> modules)
+    private static string ResolveActionRef(string actionRef, IReadOnlyDictionary<string, ModuleImportReference> modules)
     {
         if (WellKnownActionIds.IsBuiltinShortName(actionRef))
         {
@@ -75,9 +75,9 @@ internal static class ActionNameResolver
                     $"Invalid action '{actionRef}': action name is required after module alias.");
             }
 
-            if (modules.TryGetValue(alias, out var moduleId))
+            if (modules.TryGetValue(alias, out var moduleImport))
             {
-                return $"{moduleId}.{actionName}";
+                return $"{moduleImport.ModuleId}.{actionName}";
             }
 
             if (!actionRef.AsSpan(dotIndex + 1).Contains('.'))

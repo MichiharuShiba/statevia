@@ -7,6 +7,7 @@ namespace Statevia.Service.Api.Application.Actions.Execution;
 internal sealed class StateActionExecutorAdapter : IStateExecutor
 {
     private readonly string _actionId;
+    private readonly string? _resolvedModuleVersion;
     private readonly string _tenantId;
     private readonly IActionExecutor _actionExecutor;
 
@@ -14,14 +15,20 @@ internal sealed class StateActionExecutorAdapter : IStateExecutor
     /// Adapter を構築する。
     /// </summary>
     /// <param name="actionId">canonical actionId。</param>
+    /// <param name="resolvedModuleVersion">compile 時にピンした Module 版（任意）。</param>
     /// <param name="tenantId"><c>tenants.tenant_id</c> UUID 文字列。</param>
     /// <param name="actionExecutor">Platform 実行ディスパッチャ。</param>
-    public StateActionExecutorAdapter(string actionId, string tenantId, IActionExecutor actionExecutor)
+    public StateActionExecutorAdapter(
+        string actionId,
+        string? resolvedModuleVersion,
+        string tenantId,
+        IActionExecutor actionExecutor)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentNullException.ThrowIfNull(actionExecutor);
         _actionId = actionId;
+        _resolvedModuleVersion = string.IsNullOrWhiteSpace(resolvedModuleVersion) ? null : resolvedModuleVersion.Trim();
         _tenantId = tenantId;
         _actionExecutor = actionExecutor;
     }
@@ -34,6 +41,7 @@ internal sealed class StateActionExecutorAdapter : IStateExecutor
             ExecutionId = ctx.ExecutionId,
             StateName = ctx.StateName,
             ActionId = _actionId,
+            ResolvedModuleVersion = _resolvedModuleVersion,
             TenantId = _tenantId,
         };
 

@@ -1,7 +1,7 @@
-using System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Statevia.Core.Application.Contracts;
+using Statevia.Service.Api.Application.Actions.Versioning;
 
 namespace Statevia.Service.Api.Contracts;
 
@@ -36,6 +36,12 @@ public sealed class ApiExceptionFilter : IExceptionFilter
             UnauthorizedException unauthorized => ApiErrorResult.Unauthorized(unauthorized.Code, unauthorized.Message),
             ForbiddenException forbidden => ApiErrorResult.Forbidden(forbidden.Code, forbidden.Message),
             IdempotencyConflictException idem => ApiErrorResult.Conflict("IDEMPOTENCY_KEY_CONFLICT", idem.Message),
+            DefinitionMigrationRequiredException migration => ApiErrorResult.ValidationError(
+                DefinitionMigrationRequiredException.ErrorCode,
+                migration.Message),
+            ModuleVersionResolutionException versionResolution => ApiErrorResult.ValidationError(
+                "MODULE_VERSION_RESOLUTION_FAILED",
+                versionResolution.Message),
             ArgumentException arg => ApiErrorResult.ValidationError(arg.Message),
             _ => LogInternalError(ex)
         };

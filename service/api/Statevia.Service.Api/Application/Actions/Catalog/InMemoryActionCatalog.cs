@@ -6,7 +6,11 @@ using ActionPublication = Statevia.Core.Actions.Abstractions.Publication.ActionP
 
 namespace Statevia.Service.Api.Application.Actions.Catalog;
 
-/// <summary>プロセス内の actionId → Descriptor / 実行ファクトリ / Capability メタデータ マップ。</summary>
+/// <summary>プロセス内の版付き action キー → Descriptor / 実行ファクトリ マップ。</summary>
+/// <remarks>
+/// 内部キーは <see cref="VersionedActionKey"/>（moduleId + fullVersion + actionName）。
+/// 論理 actionId（版なし）経由の lookup は、当該 Module のロード版がちょうど 1 つのときのみ成功する（Legacy 互換）。
+/// </remarks>
 internal sealed class InMemoryActionCatalog : IActionCatalog
 {
     private sealed record StoredRegistration(
@@ -15,37 +19,99 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
         ActionCapabilityMetadata? CapabilityMetadata,
         ActionPublication? Publication);
 
-    private readonly Dictionary<string, StoredRegistration> _byCanonicalId = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, string> _aliasToCanonicalId = new(StringComparer.Ordinal);
+    private readonly Dictionary<VersionedActionKey, StoredRegistration> _byVersionedKey = [];
+    private readonly Dictionary<string, List<VersionedActionKey>> _logicalActionIdIndex = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _aliasToLogicalActionId = new(StringComparer.Ordinal);
 
     /// <inheritdoc />
-    public bool Exists(string actionId) => TryResolveCanonicalId(actionId, out _);
+    public bool Exists(string actionId) => TryResolveLogicalActionId(actionId, out _);
 
     /// <inheritdoc />
     public bool TryGetDescriptor(string actionId, [NotNullWhen(true)] out ActionDescriptor? descriptor)
     {
         descriptor = null;
-        if (!TryResolveCanonicalId(actionId, out var canonicalId))
+        if (!TryGetRegistration(actionId, out var registration))
         {
             return false;
         }
 
-        descriptor = _byCanonicalId[canonicalId].Descriptor;
-        return true;
+        descriptor = registration!.Descriptor;
+        return descriptor is not null;
+    }
+
+    /// <inheritdoc />
+    public bool TryGetDescriptor(
+        string moduleId,
+        string version,
+        string actionName,
+        [NotNullWhen(true)] out ActionDescriptor? descriptor)
+    {
+        descriptor = null;
+        if (!TryGetRegistration(moduleId, version, actionName, out var registration))
+        {
+            return false;
+        }
+
+        descriptor = registration!.Descriptor;
+        return descriptor is not null;
     }
 
     /// <inheritdoc />
     public bool TryGetRegistration(string actionId, [NotNullWhen(true)] out ActionRegistration? registration)
     {
         registration = null;
-        if (!TryResolveCanonicalId(actionId, out var canonicalId))
+        if (!TryResolveLogicalActionId(actionId, out var logicalActionId))
         {
             return false;
         }
 
-        var stored = _byCanonicalId[canonicalId];
-        registration = new ActionRegistration(stored.Descriptor, stored.Entry);
+        if (!_logicalActionIdIndex.TryGetValue(logicalActionId, out var keys) || keys.Count == 0)
+        {
+            return false;
+        }
+
+        if (keys.Count > 1)
+        {
+            return false;
+        }
+
+        registration = ToRegistration(_byVersionedKey[keys[0]]);
         return true;
+    }
+
+    /// <inheritdoc />
+    public bool TryGetRegistration(
+        string moduleId,
+        string version,
+        string actionName,
+        [NotNullWhen(true)] out ActionRegistration? registration)
+    {
+        registration = null;
+        if (!TryCreateVersionedKey(moduleId, version, actionName, out var key))
+        {
+            return false;
+        }
+
+        if (!_byVersionedKey.TryGetValue(key, out var stored))
+        {
+            return false;
+        }
+
+        registration = ToRegistration(stored);
+        return true;
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> GetLoadedVersions(string moduleId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(moduleId);
+
+        return _byVersionedKey.Keys
+            .Where(key => string.Equals(key.ModuleId, moduleId.Trim(), StringComparison.Ordinal))
+            .Select(key => key.Version)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(static version => version, StringComparer.Ordinal)
+            .ToList();
     }
 
     /// <inheritdoc />
@@ -92,13 +158,23 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
             ActionUiMetadataValidator.Validate(descriptor.ActionId, publication);
         }
 
-        var canonicalId = descriptor.ActionId.Trim();
-        if (_byCanonicalId.ContainsKey(canonicalId))
+        var versionedKey = VersionedActionKey.FromDescriptor(descriptor);
+        if (_byVersionedKey.ContainsKey(versionedKey))
         {
-            throw new ArgumentException($"Action '{canonicalId}' is already registered.");
+            throw new ArgumentException(
+                $"Action '{versionedKey.LogicalActionId}' version '{versionedKey.Version}' is already registered.");
         }
 
-        _byCanonicalId[canonicalId] = new StoredRegistration(descriptor, entry, capabilityMetadata, publication);
+        var stored = new StoredRegistration(descriptor, entry, capabilityMetadata, publication);
+        _byVersionedKey[versionedKey] = stored;
+
+        if (!_logicalActionIdIndex.TryGetValue(versionedKey.LogicalActionId, out var keys))
+        {
+            keys = [];
+            _logicalActionIdIndex[versionedKey.LogicalActionId] = keys;
+        }
+
+        keys.Add(versionedKey);
 
         if (entry.Aliases is { Count: > 0 })
         {
@@ -106,46 +182,71 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
             {
                 ArgumentException.ThrowIfNullOrWhiteSpace(alias);
                 var trimmedAlias = alias.Trim();
-                if (string.Equals(trimmedAlias, canonicalId, StringComparison.Ordinal))
+                if (string.Equals(trimmedAlias, versionedKey.LogicalActionId, StringComparison.Ordinal))
                 {
                     continue;
                 }
 
-                if (_aliasToCanonicalId.TryGetValue(trimmedAlias, out var existingCanonical)
-                    && !string.Equals(existingCanonical, canonicalId, StringComparison.Ordinal))
+                if (_aliasToLogicalActionId.TryGetValue(trimmedAlias, out var existingLogical)
+                    && !string.Equals(existingLogical, versionedKey.LogicalActionId, StringComparison.Ordinal))
                 {
                     throw new ArgumentException(
-                        $"Alias '{trimmedAlias}' is already registered for action '{existingCanonical}'.");
+                        $"Alias '{trimmedAlias}' is already registered for action '{existingLogical}'.");
                 }
 
-                _aliasToCanonicalId[trimmedAlias] = canonicalId;
+                _aliasToLogicalActionId[trimmedAlias] = versionedKey.LogicalActionId;
             }
         }
     }
 
-    private bool TryResolveCanonicalId(string actionId, [NotNullWhen(true)] out string? canonicalId)
+    private bool TryResolveLogicalActionId(string actionId, [NotNullWhen(true)] out string? logicalActionId)
     {
-        canonicalId = null;
+        logicalActionId = null;
         if (string.IsNullOrWhiteSpace(actionId))
         {
             return false;
         }
 
         var trimmed = actionId.Trim();
-        if (_byCanonicalId.ContainsKey(trimmed))
+        if (_logicalActionIdIndex.ContainsKey(trimmed))
         {
-            canonicalId = trimmed;
+            logicalActionId = trimmed;
             return true;
         }
 
-        if (_aliasToCanonicalId.TryGetValue(trimmed, out var resolved))
+        if (_aliasToLogicalActionId.TryGetValue(trimmed, out var resolved))
         {
-            canonicalId = resolved;
+            logicalActionId = resolved;
             return true;
         }
 
         return false;
     }
+
+    private static bool TryCreateVersionedKey(
+        string moduleId,
+        string version,
+        string actionName,
+        out VersionedActionKey key)
+    {
+        key = default;
+        if (string.IsNullOrWhiteSpace(moduleId)
+            || string.IsNullOrWhiteSpace(version)
+            || string.IsNullOrWhiteSpace(actionName))
+        {
+            return false;
+        }
+
+        var trimmedModuleId = moduleId.Trim();
+        var trimmedVersion = version.Trim();
+        var trimmedActionName = actionName.Trim();
+        var logicalActionId = $"{trimmedModuleId}.{trimmedActionName}";
+        key = new VersionedActionKey(trimmedModuleId, trimmedVersion, trimmedActionName, logicalActionId);
+        return true;
+    }
+
+    private static ActionRegistration ToRegistration(StoredRegistration stored) =>
+        new(stored.Descriptor, stored.Entry);
 
     /// <summary>Capability メタデータを取得する。</summary>
     /// <param name="actionId">参照 actionId。</param>
@@ -155,12 +256,14 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
         [NotNullWhen(true)] out ActionCapabilityMetadata? metadata)
     {
         metadata = null;
-        if (!TryResolveCanonicalId(actionId, out var canonicalId))
+        if (!TryResolveLogicalActionId(actionId, out var logicalActionId)
+            || !_logicalActionIdIndex.TryGetValue(logicalActionId!, out var keys)
+            || keys.Count != 1)
         {
             return false;
         }
 
-        metadata = _byCanonicalId[canonicalId].CapabilityMetadata;
+        metadata = _byVersionedKey[keys[0]].CapabilityMetadata;
         return metadata is not null;
     }
 
@@ -168,16 +271,36 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
     public bool TryGetPublication(string actionId, [NotNullWhen(true)] out ActionPublication? publication)
     {
         publication = null;
-        if (!TryResolveCanonicalId(actionId, out var canonicalId))
+        if (!TryResolveLogicalActionId(actionId, out var logicalActionId)
+            || !_logicalActionIdIndex.TryGetValue(logicalActionId!, out var keys)
+            || keys.Count != 1)
         {
             return false;
         }
 
-        publication = _byCanonicalId[canonicalId].Publication;
+        publication = _byVersionedKey[keys[0]].Publication;
+        return publication is not null;
+    }
+
+    /// <inheritdoc />
+    public bool TryGetPublication(
+        string moduleId,
+        string version,
+        string actionName,
+        [NotNullWhen(true)] out ActionPublication? publication)
+    {
+        publication = null;
+        if (!TryCreateVersionedKey(moduleId, version, actionName, out var key)
+            || !_byVersionedKey.TryGetValue(key, out var stored))
+        {
+            return false;
+        }
+
+        publication = stored.Publication;
         return publication is not null;
     }
 
     /// <inheritdoc />
     public IReadOnlyList<string> GetRegisteredActionIds() =>
-        _byCanonicalId.Keys.OrderBy(static id => id, StringComparer.Ordinal).ToList();
+        _logicalActionIdIndex.Keys.OrderBy(static id => id, StringComparer.Ordinal).ToList();
 }

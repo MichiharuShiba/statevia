@@ -43,6 +43,39 @@ public sealed class CompiledDefinitionJsonReaderTests
         Assert.Same(factory, compiled.StateExecutorFactory);
     }
 
+    /// <summary>compiled_json の版バインディングを復元する。</summary>
+    [Fact]
+    public void Read_WhenBindingsPresent_RestoresVersionMetadata()
+    {
+        // Arrange
+        const string json = """
+            {
+              "name": "W",
+              "initialState": "A",
+              "transitions": {},
+              "resolvedModules": {
+                "mail": { "moduleId": "demo.module", "resolvedVersion": "1.0.0" }
+              },
+              "stateActionBindings": {
+                "A": {
+                  "logicalActionId": "demo.module.echo",
+                  "resolvedModuleVersion": "1.0.0",
+                  "moduleId": "demo.module",
+                  "actionName": "echo"
+                }
+              }
+            }
+            """;
+        var factory = new StubExecutorFactory();
+
+        // Act
+        var compiled = CompiledDefinitionJsonReader.Read(json, factory);
+
+        // Assert
+        Assert.Equal("1.0.0", compiled.ResolvedModules["mail"].ResolvedVersion);
+        Assert.Equal("1.0.0", compiled.StateActionBindings["A"].ResolvedModuleVersion);
+    }
+
     /// <summary>無効な compiled_json は ArgumentException になる。</summary>
     [Fact]
     public void Read_InvalidJson_ThrowsArgumentException()

@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Logging.Abstractions;
+using Statevia.Service.Api.Application.Actions;
+using Statevia.Service.Api.Application.Actions.Versioning;
 using Statevia.Service.Api.Contracts;
 
 namespace Statevia.Service.Api.Tests.Controllers;
@@ -123,6 +125,26 @@ public sealed class ApiExceptionFilterTests
         Assert.True(ctx.ExceptionHandled);
         var result = Assert.IsType<ObjectResult>(ctx.Result);
         Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+    }
+
+    /// <summary>DefinitionMigrationRequiredException を DEFINITION_MIGRATION_REQUIRED（422）に写像する。</summary>
+    [Fact]
+    public void OnException_MapsDefinitionMigrationRequiredExceptionTo422()
+    {
+        // Arrange
+        var http = new DefaultHttpContext();
+        var filter = CreateFilter();
+        var ctx = CreateContext(http, new DefinitionMigrationRequiredException("recompile required"));
+
+        // Act
+        filter.OnException(ctx);
+
+        // Assert
+        Assert.True(ctx.ExceptionHandled);
+        var result = Assert.IsType<ObjectResult>(ctx.Result);
+        Assert.Equal(StatusCodes.Status422UnprocessableEntity, result.StatusCode);
+        var payload = Assert.IsType<ErrorResponse>(result.Value);
+        Assert.Equal(DefinitionMigrationRequiredException.ErrorCode, payload.Error.Code);
     }
 
     /// <summary>

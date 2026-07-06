@@ -34,6 +34,14 @@ public sealed class CompiledWorkflowDefinition
 
     /// <summary>状態名から IStateExecutor を取得するファクトリ。</summary>
     public required IStateExecutorFactory StateExecutorFactory { get; init; }
+
+    /// <summary>compile 時に確定した module alias → 版ピン（未使用ワークフローでは空）。</summary>
+    public IReadOnlyDictionary<string, Statevia.Core.Engine.Definition.ResolvedModuleBinding> ResolvedModules { get; init; }
+        = new Dictionary<string, Statevia.Core.Engine.Definition.ResolvedModuleBinding>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>状態ごとの Action バインディング（版ピン付き exact lookup 用）。</summary>
+    public IReadOnlyDictionary<string, Statevia.Core.Engine.Definition.StateActionBinding> StateActionBindings { get; init; }
+        = new Dictionary<string, Statevia.Core.Engine.Definition.StateActionBinding>(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>遷移の行き先。next / fork / end のいずれか。</summary>
