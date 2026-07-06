@@ -19,7 +19,7 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
         ActionCapabilityMetadata? CapabilityMetadata,
         ActionPublication? Publication);
 
-    private readonly Dictionary<VersionedActionKey, StoredRegistration> _byVersionedKey = new();
+    private readonly Dictionary<VersionedActionKey, StoredRegistration> _byVersionedKey = [];
     private readonly Dictionary<string, List<VersionedActionKey>> _logicalActionIdIndex = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _aliasToLogicalActionId = new(StringComparer.Ordinal);
 
@@ -30,8 +30,30 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
     public bool TryGetDescriptor(string actionId, [NotNullWhen(true)] out ActionDescriptor? descriptor)
     {
         descriptor = null;
-        return TryGetRegistration(actionId, out var registration)
-            && (descriptor = registration!.Descriptor) is not null;
+        if (!TryGetRegistration(actionId, out var registration))
+        {
+            return false;
+        }
+
+        descriptor = registration!.Descriptor;
+        return descriptor is not null;
+    }
+
+    /// <inheritdoc />
+    public bool TryGetDescriptor(
+        string moduleId,
+        string version,
+        string actionName,
+        [NotNullWhen(true)] out ActionDescriptor? descriptor)
+    {
+        descriptor = null;
+        if (!TryGetRegistration(moduleId, version, actionName, out var registration))
+        {
+            return false;
+        }
+
+        descriptor = registration!.Descriptor;
+        return descriptor is not null;
     }
 
     /// <inheritdoc />
@@ -55,18 +77,6 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
 
         registration = ToRegistration(_byVersionedKey[keys[0]]);
         return true;
-    }
-
-    /// <inheritdoc />
-    public bool TryGetDescriptor(
-        string moduleId,
-        string version,
-        string actionName,
-        [NotNullWhen(true)] out ActionDescriptor? descriptor)
-    {
-        descriptor = null;
-        return TryGetRegistration(moduleId, version, actionName, out var registration)
-            && (descriptor = registration!.Descriptor) is not null;
     }
 
     /// <inheritdoc />
