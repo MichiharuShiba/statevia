@@ -25,10 +25,17 @@ public sealed class ActionNameResolverTests
         return new WorkflowDefinition
         {
             Name = "W",
-            Modules = modules,
+            Modules = ParseModules(modules),
             States = stateMap,
         };
     }
+
+    private static IReadOnlyDictionary<string, ModuleImportReference>? ParseModules(
+        IReadOnlyDictionary<string, string>? modules) =>
+        modules?.ToDictionary(
+            entry => entry.Key,
+            entry => ModuleImportReference.ParseImportValue(entry.Value),
+            StringComparer.OrdinalIgnoreCase);
 
     /// <summary>builtin 短名 noop は canonical FQCN に正規化される。</summary>
     [Fact]

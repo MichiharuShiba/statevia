@@ -1191,7 +1191,7 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         // Assert
         Assert.NotNull(definition.Modules);
         Assert.Single(definition.Modules!);
-        Assert.Equal("com.company.mail", definition.Modules!["mail"]);
+        Assert.Equal("com.company.mail", definition.Modules!["mail"].ModuleId);
         Assert.Equal("mail.send", definition.States["act"].Action);
     }
 

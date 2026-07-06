@@ -17,7 +17,15 @@ public static class ApiErrorResult
     /// <param name="details">フィールド別エラー等（任意）。</param>
     /// <returns>VALIDATION_ERROR のエラーボディ。</returns>
     public static ObjectResult ValidationError(string message, object? details = null)
-        => new(new ErrorResponse { Error = new ApiError { Code = "VALIDATION_ERROR", Message = message, Details = details } })
+        => ValidationError("VALIDATION_ERROR", message, details);
+
+    /// <summary>422 Unprocessable Entity の <see cref="ObjectResult"/> を生成する（コード指定）。</summary>
+    /// <param name="code">エラーコード。</param>
+    /// <param name="message">検証エラーメッセージ。</param>
+    /// <param name="details">フィールド別エラー等（任意）。</param>
+    /// <returns>指定コードのエラーボディ。</returns>
+    public static ObjectResult ValidationError(string code, string message, object? details = null)
+        => new(new ErrorResponse { Error = new ApiError { Code = code, Message = message, Details = details } })
         { StatusCode = StatusCodes.Status422UnprocessableEntity };
 
     /// <summary>401 Unauthorized の <see cref="ObjectResult"/> を生成する。</summary>

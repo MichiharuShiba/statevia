@@ -12,14 +12,39 @@ internal static class CompiledDefinitionJsonReader
         PropertyNameCaseInsensitive = true
     };
 
+    /// <summary>保存済み compiled_json に版バインディングが含まれるか。</summary>
+    public static bool HasStoredBindings(string compiledJson)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(compiledJson);
+
+        var dto = Deserialize(compiledJson);
+        return dto.StateActionBindings is { Count: > 0 };
+    }
+
+    /// <summary>保存済み compiled_json から版バインディングを読み取る。</summary>
+    public static (
+        IReadOnlyDictionary<string, ResolvedModuleBinding> ResolvedModules,
+        IReadOnlyDictionary<string, StateActionBinding> StateActionBindings) ReadStoredBindings(string compiledJson)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(compiledJson);
+
+        var dto = Deserialize(compiledJson);
+        return (MapResolvedModules(dto.ResolvedModules), MapStateActionBindings(dto.StateActionBindings));
+    }
+
     /// <summary>保存済み compiled_json と factory から実行定義を復元する。</summary>
-    public static CompiledWorkflowDefinition Read(string compiledJson, IStateExecutorFactory factory)
+    public static CompiledWorkflowDefinition Read(
+        string compiledJson,
+        IStateExecutorFactory factory,
+        IReadOnlyDictionary<string, ResolvedModuleBinding>? resolvedModules = null,
+        IReadOnlyDictionary<string, StateActionBinding>? stateActionBindings = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(compiledJson);
         ArgumentNullException.ThrowIfNull(factory);
 
-        var dto = JsonSerializer.Deserialize<CompiledDefinitionDto>(compiledJson, s_options)
-            ?? throw new ArgumentException("compiled_json is empty or invalid.");
+        var dto = Deserialize(compiledJson);
+        var modules = resolvedModules ?? MapResolvedModules(dto.ResolvedModules);
+        var bindings = stateActionBindings ?? MapStateActionBindings(dto.StateActionBindings);
 
         return new CompiledWorkflowDefinition
         {
@@ -31,8 +56,46 @@ internal static class CompiledDefinitionJsonReader
             JoinTable = MapStringListTable(dto.JoinTable),
             WaitTable = dto.WaitTable ?? [],
             StateInputs = dto.StateInputs ?? [],
+            ResolvedModules = modules,
+            StateActionBindings = bindings,
             StateExecutorFactory = factory
         };
+    }
+
+    private static CompiledDefinitionDto Deserialize(string compiledJson) =>
+        JsonSerializer.Deserialize<CompiledDefinitionDto>(compiledJson, s_options)
+        ?? throw new ArgumentException("compiled_json is empty or invalid.");
+
+    private static Dictionary<string, ResolvedModuleBinding> MapResolvedModules(
+        Dictionary<string, ResolvedModuleBindingDto>? resolvedModules)
+    {
+        if (resolvedModules is null || resolvedModules.Count == 0)
+        {
+            return new Dictionary<string, ResolvedModuleBinding>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        return resolvedModules.ToDictionary(
+            pair => pair.Key,
+            pair => new ResolvedModuleBinding(pair.Value.ModuleId, pair.Value.ResolvedVersion),
+            StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static Dictionary<string, StateActionBinding> MapStateActionBindings(
+        Dictionary<string, StateActionBindingDto>? stateActionBindings)
+    {
+        if (stateActionBindings is null || stateActionBindings.Count == 0)
+        {
+            return new Dictionary<string, StateActionBinding>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        return stateActionBindings.ToDictionary(
+            pair => pair.Key,
+            pair => new StateActionBinding(
+                pair.Value.LogicalActionId,
+                pair.Value.ResolvedModuleVersion,
+                pair.Value.ModuleId,
+                pair.Value.ActionName),
+            StringComparer.OrdinalIgnoreCase);
     }
 
     private static Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>> MapTransitions(
@@ -124,6 +187,22 @@ internal static class CompiledDefinitionJsonReader
         public Dictionary<string, List<string>?>? JoinTable { get; set; } = [];
         public Dictionary<string, string>? WaitTable { get; set; } = [];
         public Dictionary<string, StateInputDefinition>? StateInputs { get; set; } = [];
+        public Dictionary<string, ResolvedModuleBindingDto>? ResolvedModules { get; set; } = [];
+        public Dictionary<string, StateActionBindingDto>? StateActionBindings { get; set; } = [];
+    }
+
+    private sealed class ResolvedModuleBindingDto
+    {
+        public string ModuleId { get; set; } = string.Empty;
+        public string ResolvedVersion { get; set; } = string.Empty;
+    }
+
+    private sealed class StateActionBindingDto
+    {
+        public string LogicalActionId { get; set; } = string.Empty;
+        public string? ResolvedModuleVersion { get; set; }
+        public string? ModuleId { get; set; }
+        public string? ActionName { get; set; }
     }
 
     private sealed class CompiledFactTransitionDto

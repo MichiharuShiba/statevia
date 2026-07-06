@@ -8,8 +8,8 @@ public sealed class WorkflowDefinition
     /// <summary>ワークフロー名（<c>workflow.name</c>）。</summary>
     public required string Name { get; init; }
 
-    /// <summary><c>workflow.modules</c> から読み込んだ module alias → ModuleId マップ（syntax parse のみ）。</summary>
-    public IReadOnlyDictionary<string, string>? Modules { get; init; }
+    /// <summary><c>workflow.modules</c> から読み込んだ module alias → import 宣言（syntax parse のみ）。</summary>
+    public IReadOnlyDictionary<string, ModuleImportReference>? Modules { get; init; }
 
     /// <summary>状態名 → 状態定義のマップ。</summary>
     public required IReadOnlyDictionary<string, StateDefinition> States { get; init; }

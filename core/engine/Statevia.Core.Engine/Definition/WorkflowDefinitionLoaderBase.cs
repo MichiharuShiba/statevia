@@ -153,8 +153,8 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
 
     /// <summary><c>workflow.modules</c> を syntax parse する（semantic resolution は行わない）。</summary>
     /// <param name="workflowDict"><c>workflow</c> ブロックの辞書。</param>
-    /// <returns>module alias → ModuleId マップ。未指定時は null。</returns>
-    protected static IReadOnlyDictionary<string, string>? ParseWorkflowModules(Dictionary<string, object?> workflowDict)
+    /// <returns>module alias → import 宣言。未指定時は null。</returns>
+    protected static IReadOnlyDictionary<string, ModuleImportReference>? ParseWorkflowModules(Dictionary<string, object?> workflowDict)
     {
         ArgumentNullException.ThrowIfNull(workflowDict);
         if (!workflowDict.TryGetValue("modules", out var modulesVal) || modulesVal is null)
@@ -175,8 +175,8 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
             .ToList();
 
         var seenAliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var modules = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (aliasRaw, moduleIdRaw) in entries)
+        var modules = new Dictionary<string, ModuleImportReference>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (aliasRaw, importValueRaw) in entries)
         {
             var alias = aliasRaw.Trim();
             if (alias.Length == 0)
@@ -189,13 +189,13 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
                 throw new ArgumentException($"workflow.modules contains duplicate alias '{alias}'.");
             }
 
-            var moduleId = moduleIdRaw.Trim();
-            if (moduleId.Length == 0)
+            var importValue = importValueRaw.Trim();
+            if (importValue.Length == 0)
             {
                 throw new ArgumentException($"workflow.modules['{alias}'] requires a non-empty ModuleId.");
             }
 
-            modules[alias] = moduleId;
+            modules[alias] = ModuleImportReference.ParseImportValue(importValue);
         }
 
         return modules;

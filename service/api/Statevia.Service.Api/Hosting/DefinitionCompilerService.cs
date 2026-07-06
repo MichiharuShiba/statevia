@@ -60,8 +60,9 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
         string yaml,
         Guid? tenantId = null)
     {
-        var def = ResolveActionNames(_definitionLoadStrategy.Load(yaml));
+        var def = _definitionLoadStrategy.Load(yaml);
         var compileBindings = ModuleActionCompileBinder.Bind(def, _actionCatalog);
+        def = ResolveActionNames(def);
         var l1 = Level1Validator.Validate(def);
         if (!l1.IsValid)
         {
@@ -106,8 +107,9 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
     /// <inheritdoc />
     public CompiledWorkflowDefinition RestoreFromStoredVersion(string sourceYaml, string compiledJson)
     {
-        var def = ResolveActionNames(_definitionLoadStrategy.Load(sourceYaml));
-        var compileBindings = ModuleActionCompileBinder.Bind(def, _actionCatalog);
+        var def = _definitionLoadStrategy.Load(sourceYaml);
+        var compileBindings = StoredDefinitionBindingResolver.Resolve(def, compiledJson, _actionCatalog);
+        def = ResolveActionNames(def);
         ValidateRegisteredActions(def, compileBindings.StateActionBindings, tenantId: null);
         ValidateActionInputs(def, compileBindings.StateActionBindings);
         var factory = new ActionExecutorFactory(
@@ -115,7 +117,11 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
             compileBindings.StateActionBindings,
             _actionCatalog,
             _serviceProvider);
-        return CompiledDefinitionJsonReader.Read(compiledJson, factory);
+        return CompiledDefinitionJsonReader.Read(
+            compiledJson,
+            factory,
+            compileBindings.ResolvedModules,
+            compileBindings.StateActionBindings);
     }
 
     private static WorkflowDefinition ResolveActionNames(WorkflowDefinition def) =>

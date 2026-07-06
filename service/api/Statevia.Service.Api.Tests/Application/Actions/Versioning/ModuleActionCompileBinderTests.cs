@@ -40,12 +40,19 @@ public sealed class ModuleActionCompileBinderTests
         new()
         {
             Name = "W",
-            Modules = modules,
+            Modules = ParseModules(modules),
             States = states.ToDictionary(
                 s => s.Name,
                 s => s.State,
                 StringComparer.OrdinalIgnoreCase),
         };
+
+    private static IReadOnlyDictionary<string, ModuleImportReference>? ParseModules(
+        IReadOnlyDictionary<string, string>? modules) =>
+        modules?.ToDictionary(
+            entry => entry.Key,
+            entry => ModuleImportReference.ParseImportValue(entry.Value),
+            StringComparer.OrdinalIgnoreCase);
 
     private static StateDefinition ActionState(string? action) =>
         new()
@@ -265,7 +272,7 @@ public sealed class ModuleActionCompileBinderTests
         var definition = CreateDefinition(null, ("A", ActionState("demo.module.echo")));
 
         // Act & Assert
-        var ex = Assert.Throws<ModuleVersionResolutionException>(
+        var ex = Assert.Throws<DefinitionMigrationRequiredException>(
             () => ModuleActionCompileBinder.Bind(definition, catalog));
 
         Assert.Contains("multiple loaded versions", ex.Message, StringComparison.OrdinalIgnoreCase);

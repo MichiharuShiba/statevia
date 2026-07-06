@@ -30,18 +30,18 @@ internal static class ModuleActionCompileBinder
         return new Result(resolvedModules, stateBindings);
     }
 
-    private static readonly IReadOnlyDictionary<string, string> EmptyModules =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    private static readonly IReadOnlyDictionary<string, ModuleImportReference> EmptyModules =
+        new Dictionary<string, ModuleImportReference>(StringComparer.OrdinalIgnoreCase);
 
     private static Dictionary<string, ResolvedModuleBinding> ResolveModuleImports(
-        IReadOnlyDictionary<string, string> modules,
+        IReadOnlyDictionary<string, ModuleImportReference> modules,
         IActionCatalog catalog)
     {
         var resolved = new Dictionary<string, ResolvedModuleBinding>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var (alias, importValue) in modules)
+        foreach (var (alias, import) in modules)
         {
-            var reference = ModuleImportParser.Parse(alias, importValue);
+            var reference = ModuleImportParser.Parse(alias, import);
             var loadedVersionStrings = catalog.GetLoadedVersions(reference.ModuleId);
             if (loadedVersionStrings.Count == 0)
             {
@@ -64,7 +64,7 @@ internal static class ModuleActionCompileBinder
 
     private static Dictionary<string, StateActionBinding> BuildStateBindings(
         WorkflowDefinition definition,
-        IReadOnlyDictionary<string, string> modules,
+        IReadOnlyDictionary<string, ModuleImportReference> modules,
         IReadOnlyDictionary<string, ResolvedModuleBinding> resolvedModules,
         IActionCatalog catalog)
     {
@@ -89,7 +89,7 @@ internal static class ModuleActionCompileBinder
 
     private static StateActionBinding ResolveStateBinding(
         string actionRef,
-        IReadOnlyDictionary<string, string> modules,
+        IReadOnlyDictionary<string, ModuleImportReference> modules,
         IReadOnlyDictionary<string, ResolvedModuleBinding> resolvedModules,
         IActionCatalog catalog)
     {
@@ -148,8 +148,8 @@ internal static class ModuleActionCompileBinder
         var fqcnVersions = catalog.GetLoadedVersions(moduleId);
         if (fqcnVersions.Count > 1)
         {
-            throw new ModuleVersionResolutionException(
-                $"Module '{moduleId}' has multiple loaded versions; use workflow.modules alias imports.");
+            throw new DefinitionMigrationRequiredException(
+                $"Module '{moduleId}' has multiple loaded versions; recompile the workflow with workflow.modules alias imports.");
         }
 
         if (fqcnVersions.Count == 1)
