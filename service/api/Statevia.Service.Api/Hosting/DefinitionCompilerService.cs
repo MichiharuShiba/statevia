@@ -75,7 +75,7 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
             throw new ArgumentException("Level 2 validation failed: " + string.Join("; ", l2.Errors));
         }
 
-        ValidateRegisteredActions(def, compileBindings.StateActionBindings, tenantId);
+        ValidateRegisteredActions(compileBindings.StateActionBindings, tenantId);
         ValidateActionInputs(def, compileBindings.StateActionBindings);
 
         var factory = new ActionExecutorFactory(
@@ -110,7 +110,7 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
         var def = _definitionLoadStrategy.Load(sourceYaml);
         var compileBindings = StoredDefinitionBindingResolver.Resolve(def, compiledJson, _actionCatalog);
         def = ResolveActionNames(def);
-        ValidateRegisteredActions(def, compileBindings.StateActionBindings, tenantId: null);
+        ValidateRegisteredActions(compileBindings.StateActionBindings, tenantId: null);
         ValidateActionInputs(def, compileBindings.StateActionBindings);
         var factory = new ActionExecutorFactory(
             def,
@@ -128,7 +128,6 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
         ActionNameResolver.Resolve(def);
 
     private void ValidateRegisteredActions(
-        WorkflowDefinition def,
         IReadOnlyDictionary<string, Statevia.Core.Engine.Definition.StateActionBinding> bindings,
         Guid? tenantId)
     {
