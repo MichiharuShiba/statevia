@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
@@ -200,8 +201,35 @@ internal static class CompiledDefinitionJsonReader
     private sealed class StateActionBindingDto
     {
         public string LogicalActionId { get; set; } = string.Empty;
+
+        [SuppressMessage(
+            "Major Code Smell",
+            "S1144:Unused private types or members should be removed",
+            Justification = "JSON 逆シリアル化が setter を使用する。")]
+        [SuppressMessage(
+            "Minor Code Smell",
+            "S3459:Unassigned members should be set or removed",
+            Justification = "JSON 逆シリアル化で代入される。")]
         public string? ResolvedModuleVersion { get; set; }
+
+        [SuppressMessage(
+            "Major Code Smell",
+            "S1144:Unused private types or members should be removed",
+            Justification = "JSON 逆シリアル化が setter を使用する。")]
+        [SuppressMessage(
+            "Minor Code Smell",
+            "S3459:Unassigned members should be set or removed",
+            Justification = "JSON 逆シリアル化で代入される。")]
         public string? ModuleId { get; set; }
+
+        [SuppressMessage(
+            "Major Code Smell",
+            "S1144:Unused private types or members should be removed",
+            Justification = "JSON 逆シリアル化が setter を使用する。")]
+        [SuppressMessage(
+            "Minor Code Smell",
+            "S3459:Unassigned members should be set or removed",
+            Justification = "JSON 逆シリアル化で代入される。")]
         public string? ActionName { get; set; }
     }
 
