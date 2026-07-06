@@ -17,7 +17,13 @@ public sealed class DefinitionCompiler
     public DefinitionCompiler(IStateExecutorFactory executorFactory) => _executorFactory = executorFactory;
 
     /// <summary>ワークフロー定義をコンパイルし、実行可能なコンパイル済み定義を返します。</summary>
-    public CompiledWorkflowDefinition Compile(WorkflowDefinition definition)
+    /// <param name="definition">ワークフロー定義。</param>
+    /// <param name="resolvedModules">compile 時に確定した module alias → 版ピン。</param>
+    /// <param name="stateActionBindings">状態別 Action バインディング。</param>
+    public CompiledWorkflowDefinition Compile(
+        WorkflowDefinition definition,
+        IReadOnlyDictionary<string, ResolvedModuleBinding>? resolvedModules = null,
+        IReadOnlyDictionary<string, StateActionBinding>? stateActionBindings = null)
     {
         ArgumentNullException.ThrowIfNull(definition);
         return new CompiledWorkflowDefinition
@@ -30,9 +36,17 @@ public sealed class DefinitionCompiler
             WaitTable = BuildWaitTable(definition),
             StateInputs = BuildStateInputTable(definition),
             InitialState = DetermineInitialState(definition),
-            StateExecutorFactory = _executorFactory
+            StateExecutorFactory = _executorFactory,
+            ResolvedModules = resolvedModules ?? EmptyResolvedModules,
+            StateActionBindings = stateActionBindings ?? EmptyStateActionBindings,
         };
     }
+
+    private static readonly IReadOnlyDictionary<string, ResolvedModuleBinding> EmptyResolvedModules =
+        new Dictionary<string, ResolvedModuleBinding>(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly IReadOnlyDictionary<string, StateActionBinding> EmptyStateActionBindings =
+        new Dictionary<string, StateActionBinding>(StringComparer.OrdinalIgnoreCase);
 
     private static Dictionary<string, StateInputDefinition> BuildStateInputTable(WorkflowDefinition definition)
     {

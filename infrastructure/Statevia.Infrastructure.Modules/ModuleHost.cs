@@ -283,12 +283,6 @@ internal sealed class ModuleHost
             return ModuleActionRegisterOutcome.Skipped;
         }
 
-        if (_catalog.Exists(actionId))
-        {
-            ModuleHostLog.DuplicateActionSkipped(_logger, actionId, moduleDescriptor.ModuleId);
-            return ModuleActionRegisterOutcome.Duplicate;
-        }
-
         if (registration.ExecutorFactory is null)
         {
             ModuleHostLog.ExecutorFactoryRequired(_logger, actionId, moduleDescriptor.ModuleId);
@@ -306,6 +300,17 @@ internal sealed class ModuleHost
         {
             ModuleHostLog.InvalidDescriptorSkipped(_logger, ex, actionId, moduleDescriptor.ModuleId);
             return ModuleActionRegisterOutcome.Skipped;
+        }
+
+        var versionedKey = VersionedActionKey.FromDescriptor(descriptor);
+        if (_catalog.TryGetRegistration(
+                versionedKey.ModuleId,
+                versionedKey.Version,
+                versionedKey.ActionName,
+                out _))
+        {
+            ModuleHostLog.DuplicateActionSkipped(_logger, actionId, moduleDescriptor.ModuleId);
+            return ModuleActionRegisterOutcome.Duplicate;
         }
 
         if (registration.Publication is not null)

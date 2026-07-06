@@ -48,7 +48,7 @@ public sealed class ModuleHostTests
         Assert.Equal("test.module.echo", Assert.Single(loadRecord.ModuleDescriptor!.ActionIds));
     }
 
-    /// <summary>既存 actionId との衝突時は skip し Builtin を維持する。</summary>
+    /// <summary>同一 moduleId + version + action の重複登録時は skip する。</summary>
     [Fact]
     public async Task LoadAsync_WhenDuplicateActionId_SkipsAndKeepsExisting()
     {
@@ -59,7 +59,7 @@ public sealed class ModuleHostTests
             new ActionDescriptor
             {
                 ActionId = "test.module.echo",
-                ModuleId = "existing.module",
+                ModuleId = "test.module",
                 Version = "1.0.0",
                 TrustLevel = ActionTrustLevel.Trusted,
                 Source = ActionSourceKind.Builtin,
@@ -71,8 +71,8 @@ public sealed class ModuleHostTests
         await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None);
 
         // Assert
-        Assert.True(host.Catalog.TryGetDescriptor("test.module.echo", out var descriptor));
-        Assert.Equal("existing.module", descriptor!.ModuleId);
+        Assert.True(host.Catalog.TryGetDescriptor("test.module", "1.0.0", "echo", out var descriptor));
+        Assert.Equal(ActionTrustLevel.Trusted, descriptor!.TrustLevel);
         Assert.Equal(ModuleLoadStatus.Duplicate, host.LoadCatalog.GetRecords().Single().Status);
     }
 

@@ -50,11 +50,13 @@ public sealed class DefinitionCompilerServiceTests
         string actionId,
         Func<StateContext, object?, CancellationToken, Task<object?>> execute)
     {
+        var lastDot = actionId.LastIndexOf('.');
+        var moduleId = lastDot > 0 ? actionId[..lastDot] : "test.module";
         catalog.Register(
             new ActionDescriptor
             {
                 ActionId = actionId,
-                ModuleId = "test.module",
+                ModuleId = moduleId,
                 Version = "1.0.0",
                 TrustLevel = ActionTrustLevel.Trusted,
                 Source = ActionSourceKind.Filesystem,

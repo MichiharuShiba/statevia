@@ -5,6 +5,7 @@ using Statevia.Core.Actions.Abstractions.Visibility;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Service.Api.Application.Actions.Resolution;
+using Statevia.Service.Api.Application.Actions.Versioning;
 using Statevia.Service.Api.Application.Actions.Validation;
 using Statevia.Service.Api.Application.Definition;
 using Statevia.Core.Engine.Abstractions;
@@ -60,6 +61,7 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
         Guid? tenantId = null)
     {
         var def = ResolveActionNames(_definitionLoadStrategy.Load(yaml));
+        var compileBindings = ModuleActionCompileBinder.Bind(def, _actionCatalog);
         var l1 = Level1Validator.Validate(def);
         if (!l1.IsValid)
         {
@@ -72,12 +74,19 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
             throw new ArgumentException("Level 2 validation failed: " + string.Join("; ", l2.Errors));
         }
 
-        ValidateRegisteredActions(def, tenantId);
-        ValidateActionInputs(def);
+        ValidateRegisteredActions(def, compileBindings.StateActionBindings, tenantId);
+        ValidateActionInputs(def, compileBindings.StateActionBindings);
 
-        var factory = new ActionExecutorFactory(def, _actionCatalog, _serviceProvider);
+        var factory = new ActionExecutorFactory(
+            def,
+            compileBindings.StateActionBindings,
+            _actionCatalog,
+            _serviceProvider);
         var compiler = new DefinitionCompiler(factory);
-        var compiled = compiler.Compile(def);
+        var compiled = compiler.Compile(
+            def,
+            compileBindings.ResolvedModules,
+            compileBindings.StateActionBindings);
         var compiledJson = System.Text.Json.JsonSerializer.Serialize(new
         {
             compiled.Name,
@@ -87,7 +96,9 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
             forkTable = compiled.ForkTable,
             joinTable = compiled.JoinTable,
             waitTable = compiled.WaitTable,
-            stateInputs = compiled.StateInputs
+            stateInputs = compiled.StateInputs,
+            resolvedModules = compiled.ResolvedModules,
+            stateActionBindings = compiled.StateActionBindings,
         }, s_compiledJsonOptions);
         return (compiled, compiledJson);
     }
@@ -96,51 +107,79 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
     public CompiledWorkflowDefinition RestoreFromStoredVersion(string sourceYaml, string compiledJson)
     {
         var def = ResolveActionNames(_definitionLoadStrategy.Load(sourceYaml));
-        ValidateRegisteredActions(def, tenantId: null);
-        ValidateActionInputs(def);
-        var factory = new ActionExecutorFactory(def, _actionCatalog, _serviceProvider);
+        var compileBindings = ModuleActionCompileBinder.Bind(def, _actionCatalog);
+        ValidateRegisteredActions(def, compileBindings.StateActionBindings, tenantId: null);
+        ValidateActionInputs(def, compileBindings.StateActionBindings);
+        var factory = new ActionExecutorFactory(
+            def,
+            compileBindings.StateActionBindings,
+            _actionCatalog,
+            _serviceProvider);
         return CompiledDefinitionJsonReader.Read(compiledJson, factory);
     }
 
     private static WorkflowDefinition ResolveActionNames(WorkflowDefinition def) =>
         ActionNameResolver.Resolve(def);
 
-    private void ValidateRegisteredActions(WorkflowDefinition def, Guid? tenantId)
+    private void ValidateRegisteredActions(
+        WorkflowDefinition def,
+        IReadOnlyDictionary<string, Statevia.Core.Engine.Definition.StateActionBinding> bindings,
+        Guid? tenantId)
     {
-        foreach (var (stateName, state) in def.States)
+        foreach (var (stateName, binding) in bindings)
         {
-            if (string.IsNullOrWhiteSpace(state.Action))
+            ActionDescriptor? descriptor = null;
+            if (!TryGetVersionedDescriptor(binding, out descriptor)
+                && !_actionCatalog.TryGetDescriptor(binding.LogicalActionId, out descriptor))
             {
-                continue;
+                throw new ArgumentException(
+                    $"Unknown action '{binding.LogicalActionId}' in state '{stateName}'.");
             }
 
-            var id = state.Action.Trim();
-            if (!_actionCatalog.TryGetDescriptor(id, out var descriptor) || descriptor is null)
+            if (descriptor is null)
             {
-                throw new ArgumentException($"Unknown action '{id}' in state '{stateName}'.");
+                throw new ArgumentException(
+                    $"Unknown action '{binding.LogicalActionId}' in state '{stateName}'.");
             }
 
             if (tenantId is not null
                 && !_visibilityResolver.CanUse(tenantId.Value.ToString("D"), descriptor))
             {
                 throw new ArgumentException(
-                    $"Action '{id}' is not visible to the current tenant in state '{stateName}'.");
+                    $"Action '{binding.LogicalActionId}' is not visible to the current tenant in state '{stateName}'.");
             }
         }
     }
 
-    private void ValidateActionInputs(WorkflowDefinition def)
+    private bool TryGetVersionedDescriptor(
+        Statevia.Core.Engine.Definition.StateActionBinding binding,
+        out ActionDescriptor? descriptor)
+    {
+        descriptor = null;
+        if (binding.ResolvedModuleVersion is not { Length: > 0 } version
+            || binding.ModuleId is not { Length: > 0 } moduleId
+            || binding.ActionName is not { Length: > 0 } actionName)
+        {
+            return false;
+        }
+
+        return _actionCatalog.TryGetDescriptor(moduleId, version, actionName, out descriptor);
+    }
+
+    private void ValidateActionInputs(
+        WorkflowDefinition def,
+        IReadOnlyDictionary<string, Statevia.Core.Engine.Definition.StateActionBinding> bindings)
     {
         var errors = new List<ActionInputValidationError>();
-        foreach (var (stateName, state) in def.States)
+        foreach (var (stateName, binding) in bindings)
         {
-            if (string.IsNullOrWhiteSpace(state.Action))
+            if (!def.States.TryGetValue(stateName, out var state))
             {
                 continue;
             }
 
-            var actionId = state.Action.Trim();
-            if (!_actionCatalog.TryGetPublication(actionId, out var publication) || publication is null)
+            var actionId = binding.LogicalActionId;
+            if (!TryGetPublication(binding, out var publication) || publication is null)
             {
                 HandleMissingPublication(stateName, actionId, errors);
                 continue;
@@ -157,6 +196,21 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
         {
             throw new ActionInputSchemaValidationException(errors);
         }
+    }
+
+    private bool TryGetPublication(
+        Statevia.Core.Engine.Definition.StateActionBinding binding,
+        out Statevia.Core.Actions.Abstractions.Publication.ActionPublication? publication)
+    {
+        publication = null;
+        if (binding.ResolvedModuleVersion is { Length: > 0 } version
+            && binding.ModuleId is { Length: > 0 } moduleId
+            && binding.ActionName is { Length: > 0 } actionName)
+        {
+            return _actionCatalog.TryGetPublication(moduleId, version, actionName, out publication);
+        }
+
+        return _actionCatalog.TryGetPublication(binding.LogicalActionId, out publication);
     }
 
     private void HandleMissingPublication(

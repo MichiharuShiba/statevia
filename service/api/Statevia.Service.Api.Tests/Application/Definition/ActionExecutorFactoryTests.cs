@@ -1,5 +1,6 @@
 using Statevia.Core.Actions.Abstractions.Catalog;
 using ActionExecutionTestSupport = Statevia.Service.Api.Tests.Application.Actions.Execution.ActionExecutionTestSupport;
+using Statevia.Service.Api.Application.Actions.Versioning;
 using Statevia.Service.Api.Application.Definition;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
@@ -13,7 +14,8 @@ public sealed class ActionExecutorFactoryTests
     {
         var catalog = ActionExecutionTestSupport.CreateCatalogWithBuiltins();
         var provider = ActionExecutionTestSupport.CreateProvider(catalog);
-        return (new ActionExecutorFactory(definition, catalog, provider), catalog);
+        var bindings = ModuleActionCompileBinder.Bind(definition, catalog);
+        return (new ActionExecutorFactory(definition, bindings.StateActionBindings, catalog, provider), catalog);
     }
 
     /// <summary>未定義の状態名を指定した場合は実行器を返さない。</summary>
@@ -106,7 +108,13 @@ public sealed class ActionExecutorFactoryTests
                 },
             },
         };
-        var (sut, _) = CreateSut(def);
+        var catalog = ActionExecutionTestSupport.CreateCatalogWithBuiltins();
+        var provider = ActionExecutionTestSupport.CreateProvider(catalog);
+        var sut = new ActionExecutorFactory(
+            def,
+            stateActionBindings: new Dictionary<string, StateActionBinding>(StringComparer.OrdinalIgnoreCase),
+            catalog,
+            provider);
 
         // Act / Assert
         Assert.Null(sut.GetExecutor("A"));

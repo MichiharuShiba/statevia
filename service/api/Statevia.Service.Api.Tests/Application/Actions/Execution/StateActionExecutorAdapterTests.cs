@@ -38,6 +38,7 @@ public sealed class StateActionExecutorAdapterTests
         var expected = new { value = 42 };
         var sut = new StateActionExecutorAdapter(
             "test.action",
+            resolvedModuleVersion: null,
             ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
             new StubActionExecutor(new ActionExecutionResult
             {
@@ -60,6 +61,7 @@ public sealed class StateActionExecutorAdapterTests
         // Arrange
         var sut = new StateActionExecutorAdapter(
             "test.action",
+            resolvedModuleVersion: null,
             ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
             new StubActionExecutor(new ActionExecutionResult
             {
