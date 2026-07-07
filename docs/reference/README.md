@@ -23,7 +23,6 @@ HTTP 契約の叙述は [`../specifications/api-http.md`](../specifications/api-
 
 ## 将来追加候補（未作成）
 
-- Error Codes 一覧
-- Permission Keys 一覧
-- Environment Variables 一覧
+- Error Codes 一覧（`api-http.md` のエラー契約から切り出し）
+- Permission Keys 一覧（`security-runtime.md` / PermissionCatalog から切り出し）
 - YAML Schema 参照（調べ物）
