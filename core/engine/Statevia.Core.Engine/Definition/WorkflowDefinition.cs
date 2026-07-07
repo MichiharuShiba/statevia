@@ -35,6 +35,13 @@ public sealed class StateDefinition
 
     /// <summary>action ノード直下の retry 宣言（syntax parse のみ。MVP では実行時リトライ未適用）。</summary>
     public RetryDefinition? Retry { get; init; }
+
+    /// <summary>
+    /// Compiler / Catalog が action 参照を解決する対象かどうか。
+    /// <see cref="Wait"/> または <see cref="Join"/> を持つ状態は解決対象外（Level 1 で action 併記不可）。
+    /// action 省略時は <see langword="true"/>（implicit noop 解決の対象）。
+    /// </summary>
+    public bool IsActionResolvable => Wait is null && Join is null;
 }
 
 /// <summary>action レベルの retry ポリシー宣言（parse only）。</summary>

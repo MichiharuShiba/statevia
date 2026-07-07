@@ -36,7 +36,7 @@ internal static class ActionNameResolver
         StateDefinition state,
         IReadOnlyDictionary<string, ModuleImportReference> modules)
     {
-        if (state.Wait is not null || state.Join is not null)
+        if (!state.IsActionResolvable)
         {
             return state;
         }

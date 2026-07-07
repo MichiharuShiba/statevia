@@ -72,7 +72,7 @@ internal static class ModuleActionCompileBinder
 
         foreach (var (stateName, state) in definition.States)
         {
-            if (state.Wait is not null || state.Join is not null)
+            if (!state.IsActionResolvable)
             {
                 continue;
             }
