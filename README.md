@@ -1,257 +1,174 @@
 # ![statevia icon](docs/images/icon-mark-32.png) statevia
 
-**statevia** は、
-State / FSM / Fork-Join / Wait / Resume / Cancel を統合した
-**型安全・非同期・イベント駆動ワークフローエンジンの中核ライブラリ**です。
+**YAML でワークフローを宣言し、実行・可視化・拡張まで一貫して扱えるプラットフォーム**です。
 
-- 実装はシンプル
-- 設計は厳密
-- 可視化と監査に強い ExecutionGraph
-- Definition から自動構築される FSM / Fork / Join
+Definition（定義）を正本に、ビジネスプロセスを **実行可能なワークフロー** として動かします。  
+初めての方は、まず [Quick Start](#quick-start) で動かしてみてください。
 
 ---
 
-## 特徴
+## Statevia でできること
 
-- 明示的 FSM（(State, Fact) → TransitionResult）
-- Fork / Join による並列実行
-- Wait / Resume（イベント駆動 or 明示再開）
-- Cancel 伝播と安全なキャンセル設計
-- ExecutionGraph による完全な実行可視化
-- Payload Snapshot + redactionPolicy による情報統制
-- State 単体はジェネリック / Engine 全体は非ジェネリック
+| | |
+| --- | --- |
+| **Definition → 実行** | YAML/JSON の定義を publish し、その版に固定した実行を開始する |
+| **Durable Execution** | 進行状態を永続化し、API / UI から再開・確認できる |
+| **Event Driven** | 事実（完了・失敗・キャンセル等）に基づいて状態が遷移する |
+| **Extensible Actions** | Action Module としてビジネスロジックを追加・配布できる |
+| **Visual Workflow** | Studio UI で実行グラフを可視化し、進行を追える |
+
+Fork / Join、Wait、協調的キャンセルなど、非同期・並列の業務処理向けの制御を定義から組み立てられます。
 
 ---
 
-## 設計思想
+## Quick Start
 
-statevia は以下の思想をベースに設計されています。
+初回安定版リリース前のため、取得タイミングやブランチによっては手順どおりに動かない場合があります。
 
-- State は処理に集中する
-- Engine は実行制御に集中する
-- Definition は実行構造のみを表す
-- ExecutionGraph は「事実ログ」でありロジックではない
-- Fork / Join / Wait / Cancel は FSM の拡張構文である
-- 非同期 Task ベースでブロッキングしない
+**Clone → DB 起動 → マイグレーション → 全サービス起動 → 実行** まで試せます。詳細は [getting-started](docs/guides/getting-started.md) を参照してください。
 
-設計思想の詳細:
+**前提:** Docker / Docker Compose。初回の DB 作成には **.NET 8 SDK**（ホストから `dotnet ef`）。以下の curl 例には **`jq`**。
 
-- docs/statevia-design-philosophy.md
+```bash
+git clone https://github.com/MichiharuShiba/statevia.git
+cd statevia
+cp .env.example .env          # 初回のみ
 
-## 📸 UI スクリーンショット
+docker compose up -d postgres
+# 初回のみ: 空の PostgreSQL にスキーマを作成（ホストから接続するため DB ホストは localhost）
+set -a && source .env && set +a
+export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:${POSTGRES_PORT}/${POSTGRES_DB}"
+(cd service/api && dotnet ef database update --project Statevia.Service.Api)
 
-### Graph View（Fork / Join / WAIT / Resume）
-
-## ![Graph View](docs/images/execution-graph-example.png)
-
-## アーキテクチャ概要
-
-```txt
-Definition (JSON/YAML)
-        ↓
-  FSM / Fork / Join 自動構築
-        ↓
-     Execution Engine
-        ↓
- StateExecution (async Task)
-        ↓
-   ExecutionGraph（事実ログ）
+docker compose up -d
 ```
 
-詳細:
+既に `docker compose up -d` 済みで API が落ちている場合は、マイグレーション後に `docker compose restart service-api`。
 
-- docs/statevia-architecture.md
+| 確認 | URL / コマンド |
+| --- | --- |
+| API ヘルス | `curl -s http://localhost:8080/v1/health` |
+| API ドキュメント | [http://localhost:8080/scalar/v1](http://localhost:8080/scalar/v1) |
+| Studio UI | [http://localhost:3000](http://localhost:3000) |
 
----
+**開発用の既定アカウント**（`ASPNETCORE_ENVIRONMENT=Development` で API 起動時に自動作成。初回マイグレーション後）:
 
-## Quick start (Engine)
+| 項目 | 値 |
+| --- | --- |
+| テナント | `default` |
+| ユーザー（email） | `admin` |
+| パスワード | `admin` |
 
-最小構成サンプル:
+**1 回実行する**（ログイン → 定義登録 → 実行）:
 
-- samples/hello-statevia
+```bash
+# トークン取得
+TOKEN=$(curl -s -X POST http://localhost:8080/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"tenantKey":"default","email":"admin","password":"admin"}' | jq -r .accessToken)
 
-```csharp
-using Microsoft.Extensions.Logging.Abstractions;
-using Statevia.Core.Engine.Abstractions;
-using Statevia.Core.Engine.Engine;
-using Statevia.Core.Engine.Infrastructure;
-using Statevia.Core.Engine.Scheduler;
+# 定義を初回登録（POST。PUT は既存定義への版追加のみ）
+DEF_ID=$(curl -s -X POST "http://localhost:8080/v1/definitions" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: default" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d "$(jq -n --rawfile yaml docs/samples/ui-customer-order-parallel.yaml \
+    '{name:"my-workflow",yaml:$yaml}')" | jq -r .displayId)
 
-// compiled は DefinitionCompiler 等で用意した CompiledWorkflowDefinition（ここでは省略）
-using var engine = new ExecutionEngine(
-    new DefaultScheduler(maxParallelism: 4),
-    new DefaultExecutionInstanceFactory(),
-    new UuidV7ExecutionIdGenerator(),
-    NullLoggerFactory.Instance);
-
-var executionId = engine.Start(compiled, input: null);
-engine.PublishEvent(executionId, "resume-event");
-var graphJson = engine.ExportExecutionGraph(executionId);
+# 実行を開始（definitionId は登録応答の displayId）
+curl -s -X POST "http://localhost:8080/v1/executions" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: default" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Idempotency-Key: demo-run-1" \
+  -d "{\"definitionId\":\"$DEF_ID\",\"input\":{}}"
 ```
 
-ASP.NET Core から使う場合は、`Program.cs` のとおり `AddStateviaExecutionEngine` で `IExecutionEngine` を登録し、コンストラクタ組み立てはホスト側に任せます。HTTP で実行を開始する場合は Core-API の **`POST /v1/executions`**（リクエスト本文の `input`）を参照（`docs/core-api-interface.md`）。
+UI からは [http://localhost:3000/login](http://localhost:3000/login) で同じ資格情報を使えます。
+
+→ セットアップ・認証・トラブルシュート: **[docs/guides/getting-started.md](docs/guides/getting-started.md)**
+
+Engine ライブラリだけ試す: [hello-statevia](core/engine/samples/hello-statevia) / [engine-standalone-guide](docs/guides/engine-standalone-guide.md)
 
 ---
 
-## 仕様ドキュメント
+## 推奨読書順
 
-- Definition
-  - docs/core-engine-definition-spec.md
-
-- FSM
-  - docs/core-engine-fsm-spec.md
-
-- Fork / Join
-  - docs/core-engine-fork-join-spec.md
-
-- Wait / Cancel
-  - docs/core-engine-wait-cancel-spec.md
-
-- ExecutionGraph
-  - docs/core-engine-execution-graph-spec.md
-
----
-
-## 実行イメージ（Definition × 実行フロー × ExecutionGraph）
-
-### サンプル定義
-
-```yaml
-workflow:
-  start: A
-  states:
-    A:
-      onCompleted: Fork1
-
-    Fork1:
-      fork:
-        - B
-        - C
-
-    B:
-      onCompleted: WaitB
-
-    WaitB:
-      wait:
-        event: resumeB
-      onResume: Join1
-
-    C:
-      onCompleted: D
-
-    D:
-      onCompleted: Join1
-
-    Join1:
-      join:
-        requires: [WaitB, D]
-      onCompleted: E
-
-    E:
-      end: true
-```
-
----
-
-### 実行フロー（論理構造図）
+初めて Statevia を学ぶときは、次の順がおすすめです。
 
 ```text
-A
-│
-▼
-Fork1
-├─▶ B ─▶ WaitB ──(resumeB)──┐
-│                           ├─▶ Join1 ─▶ E
-└─▶ C ─▶ D ─────────────────┘
+Quick Start（この README）
+    ↓
+Guides — 手順・運用
+    ↓
+Concepts — なぜ・全体像
+    ↓
+Specifications — 契約・必須要件
+    ↓
+Reference — 辞書・一覧（必要になったら）
 ```
 
 ---
 
-### 時系列実行イメージ
+## Guides — やりたいことから
+
+| やりたいこと | ドキュメント |
+| --- | --- |
+| **定義を書く** | [concepts/definition](docs/concepts/definition.md) → [specifications/definition](docs/specifications/definition.md) |
+| **実行する** | [getting-started](docs/guides/getting-started.md) · [http-request-examples](docs/guides/http-request-examples.md) |
+| **状態を確認する** | [ui-user-guide](docs/guides/ui-user-guide.md) |
+| **拡張する** | [actions 概念](docs/concepts/actions.md) · [module-zip-layout](docs/specifications/actions/module-zip-layout.md) |
+
+その他の手順一覧: [docs/guides/README.md](docs/guides/README.md)
+
+---
+
+## ドキュメント
+
+詳細な索引は **[docs/README.md](docs/README.md)** にあります。カテゴリ別の入口:
+
+| カテゴリ | 内容 | 入口 |
+| --- | --- | --- |
+| **Concepts** | 思想・全体像 | [docs/concepts/](docs/concepts/README.md) |
+| **Specifications** | HTTP / 定義 / 実行の契約 | [docs/specifications/](docs/specifications/README.md) |
+| **Reference** | スキーマ・ログキー・env 等 | [docs/reference/](docs/reference/README.md) |
+| **Architecture** | レイヤー・リポジトリ構成 | [docs/architecture/](docs/architecture/README.md) |
+| **Decisions** | 設計判断（ADR） | [docs/decisions/](docs/decisions/README.md) |
+| **Future** | 未実装の構想 | [docs/future/](docs/future/README.md) |
+
+---
+
+## 実行イメージ
+
+定義（Definition）→ 実行フロー → ExecutionGraph として観測されます。
+
+![ExecutionGraph の例](docs/images/execution-graph-example.png)
+
+サンプル定義: [docs/samples/ui-customer-order-parallel.yaml](docs/samples/ui-customer-order-parallel.yaml)  
+実行モデルの概要: [docs/concepts/execution-model.md](docs/concepts/execution-model.md)
+
+---
+
+## リポジトリ構成
 
 ```text
-t0: A Running → Completed
-t1: Fork1 発火 → B / C 並列実行
-
-t2: B Completed → WaitB (Waiting)
-t3: C Completed → D Running → Completed
-
-t4: Join1 は WaitB 未完了のため待機
-
-t5: Event: resumeB
-t6: WaitB Resumed → Completed
-
-t7: Join1 条件成立 → E 実行
-t8: E Completed → Execution completed
-```
-
----
-
-### ExecutionGraph（スナップショット例）
-
-```json
-{
-  "status": "Completed",
-  "nodes": [
-    { "id": "A", "status": "Completed", "type": "Task" },
-    { "id": "B", "status": "Completed", "type": "Task" },
-    { "id": "WaitB", "status": "Completed", "type": "Wait" },
-    { "id": "C", "status": "Completed", "type": "Task" },
-    { "id": "D", "status": "Completed", "type": "Task" },
-    { "id": "Join1", "status": "Completed", "type": "Join" },
-    { "id": "E", "status": "Completed", "type": "Task" }
-  ],
-  "edges": [
-    { "from": "A", "to": "B", "type": "Fork" },
-    { "from": "A", "to": "C", "type": "Fork" },
-    { "from": "B", "to": "WaitB", "type": "Normal" },
-    { "from": "WaitB", "to": "Join1", "type": "Resume", "event": "resumeB" },
-    { "from": "C", "to": "D", "type": "Normal" },
-    { "from": "D", "to": "Join1", "type": "Join" },
-    { "from": "Join1", "to": "E", "type": "Normal" }
-  ]
-}
-```
-
-## 使いどころ
-
-- 非同期ジョブオーケストレーション
-- ワークフローエンジン
-- 複雑な状態遷移を持つ業務処理
-- イベント駆動処理
-- 並列タスクの制御と可視化
-
----
-
-## 実装ポリシー
-
-- Engine Core はライブラリ配布前提
-- ユーザーは State 実装のみ担当
-- 並列数制御・キャンセルポリシーはユーザー責務
-- 危険な状態の検知機構はエンジン側で提供
-
----
-
-## Repository Structure
-
-```txt
 statevia/
-├─ core/                         # ドメイン・契約
-├─ infrastructure/               # 技術実装
-├─ service/                      # API / CLI / action-host
-├─ ui/studio/                    # Web UI（@statevia/studio）
-├─ docs/
-├─ docker-compose.yml
-└─ tests/
+├─ core/              # Engine · Application
+├─ infrastructure/    # 永続化 · Module · Security
+├─ service/           # Core-API · CLI · action-host
+├─ ui/studio/         # Web UI
+└─ docs/              # ドキュメント正本
 ```
 
 ---
 
-## 開発者向け
+## 開発者・コントリビュータ向け
 
-- コーディング方針・レイヤー責務・テスト・コミットルール: [docs/development-guidelines.md](docs/development-guidelines.md)
-- HTTP / 永続化契約: [docs/core-api-interface.md](docs/core-api-interface.md)（`/v1/executions` 等）
-- エージェント向けの起動・DI・契約の要約: リポジトリ直下 [AGENTS.md](AGENTS.md)
+| 内容 | ドキュメント |
+| --- | --- |
+| ドキュメント体系・執筆ルール | [docs/README.md](docs/README.md) · [DOCUMENTATION-STANDARD](docs/DOCUMENTATION-STANDARD.md) |
+| コーディング方針 | [development-guidelines](docs/development-guidelines.md) |
+| 起動・テスト・環境変数 | [AGENTS.md](AGENTS.md) |
 
 ---
 

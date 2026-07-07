@@ -63,4 +63,4 @@
 
 - `AGENTS.md`（DI、イベントストア、環境変数の表）
 - `docs/development-guidelines.md`（コメント規約・リンター・品質ゲート）
-- `docs/core-api-interface.md`、`docs/statevia-data-integration-contract.md`
+- `docs/specifications/api-http.md`、`docs/specifications/data-integration.md`

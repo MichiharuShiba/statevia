@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # 配置: docs/samples/ui-customer-order-parallel.yaml（UI / Definition Editor 向け）
 #
-# docs/core-engine-definition-spec.md §2 に沿ったフィールド例です。
+# docs/specifications/definition.md §2 に沿ったフィールド例です。
 #
 # 含めるもの:
 #   - workflow: id / name / description

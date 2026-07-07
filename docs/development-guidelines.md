@@ -1,7 +1,9 @@
 # 開発ガイドライン
 
-本ドキュメントは、リポジトリでコードを書く際の**共通ルール**をまとめたものです。  
-アーキテクチャや起動方法の詳細は **`AGENTS.md`** を正本とします。
+本ドキュメントは、リポジトリでコードを書く際の**共通ルールの正本**です。  
+アーキテクチャ・契約・利用者向けドキュメントの入口は **[`docs/README.md`](README.md)**。起動・テスト・主要 env は **[`AGENTS.md`](../AGENTS.md)** を参照してください。
+
+Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD.md)。Cursor 等のエージェント向けローカル設定は本書と同内容を参照しますが、**Git 上の正本は `docs/` 配下**です。
 
 ---
 
@@ -9,13 +11,13 @@
 
 | 種類 | 場所 |
 |------|------|
-| エージェント／レイヤー／DI／テスト実行 | リポジトリ直下 `AGENTS.md` |
-| HTTP 契約・エラー形式 | `docs/core-api-interface.md`, `docs/data-integration-contract.md` |
-| 作業用仕様・計画・タスク（任意） | `.workspace-docs/`（`README.md` が入口） |
-| C# 細則（命名・コメント・パターンマッチ・テスト体裁） | `.cursor/rules/csharp-standards.mdc`（Cursor 利用時） |
-| コメント・ドキュメント充実方針（言語横断） | `.cursor/rules/documentation-standards.mdc`（Cursor 利用時） |
-| TypeScript / React 細則（命名・JSDoc・型絞り込み・テスト体裁） | `.cursor/rules/typescript-standards.mdc`（Cursor 利用時） |
-| Markdown（`.spec-workflow` 等） | ルート `.markdownlint.json`（`markdownlint-cli2` で検証可能） |
+| ドキュメント索引・知識体系 | [`docs/README.md`](README.md) |
+| コーディング共通ルール（C# / TS / コメント） | 本書 **§4** |
+| Markdown 執筆 | [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD.md) |
+| エージェント向け起動・テスト・env 索引 | [`AGENTS.md`](../AGENTS.md) |
+| HTTP 契約・エラー形式 | [`specifications/api-http.md`](specifications/api-http.md), [`specifications/data-integration.md`](specifications/data-integration.md) |
+| 作業用仕様・計画（任意） | `.workspace-docs/`（`README.md` が入口） |
+| Markdown lint | ルート [`.markdownlint.json`](../.markdownlint.json)（`markdownlint-cli2` で検証） |
 
 ---
 
@@ -37,7 +39,7 @@
 - **Repository**: 永続化のみ。書き込み API の第一引数は常に `ICoreUnitOfWork`。`SaveChanges` / `BeginTransaction` / `IDbContextFactory` を Repository 内に持たない。
 - **UoW**: `IDbContextFactory<CoreDbContext>` は `CoreUnitOfWork` 実装内に閉じる。
 - **例外**: `ApiExceptionFilter` と契約に沿ったエラー JSON（404 / 422 / 500）。
-- **OpenAPI / Scalar**: Development では `http://localhost:8080/scalar/v1`（起動 URL に依存）。JSON は `/swagger/v1/swagger.json`。コミット用 export はリポジトリルートから `.\scripts\export-core-api-openapi.ps1` → `service/api/openapi/core-api-v1.openapi.json`。本番は既定オフ、`STATEVIA_ENABLE_API_DOCS=true` で有効化可。手書き契約は `docs/core-api-interface.md`（運用叙述は Markdown に残す）。
+- **OpenAPI / Scalar**: Development では `http://localhost:8080/scalar/v1`（起動 URL に依存）。JSON は `/swagger/v1/swagger.json`。コミット用 export はリポジトリルートから `.\scripts\export-core-api-openapi.ps1` → `service/api/openapi/core-api-v1.openapi.json`。本番は既定オフ、`STATEVIA_ENABLE_API_DOCS=true` で有効化可。手書き契約は `docs/specifications/api-http.md`（運用叙述は Markdown に残す）。
 
 ### 3.2 Engine（`core/engine/`）
 
@@ -53,42 +55,48 @@
 
 ## 4. コーディングと静的チェック
 
-- **C#** の細則は **`.cursor/rules/csharp-standards.mdc`**（§4.1）。**TypeScript / React** は **`.cursor/rules/typescript-standards.mdc`**（§4.2）。**コメント・ドキュメント**は §4.3。**リンター・ビルド**は §4.4。
+- **C#** → **§4.1**。**TypeScript / React** → **§4.2**。**コメント・ドキュメント** → **§4.3**。**リンター・ビルド** → **§4.4**。
 
-### 4.1 C#（コメント・XML・テストの要約）
+### 4.1 .NET（C#）
 
-- **モダン C# のパターンマッチ**（`is` パターン、switch 式）を優先する。粒度の詳細は **`csharp-standards.mdc`**。
-- **public / internal** の型・メンバーには **XML ドキュメント**（`/// <summary>` 等）を付ける。
-- **private** は、意図がコードだけでは分かりにくい箇所（ヘルパー・複雑な分岐・仕様参照）に `/// <summary>` や行コメントを付ける。
-- **単体テスト**では、メソッドごとに **日本語の `/// <summary>`**（何を検証するか）と、本体の **`// Arrange` / `// Act` / `// Assert`** 区切りを付ける。
-- 上記の粒度・例は **`csharp-standards.mdc`** に従う。横断方針は **`documentation-standards.mdc`**。
+- **命名**: 意図が伝わる名前。省略しすぎない。
+- **コンストラクタ**: プライマリコンストラクタを優先する。
+- **分岐**: パターンマッチング・`switch` を優先し、`as` の多用を避ける。
+- **反復**: LINQ を主構文とし、`foreach` / `for` は可読性・性能上の理由が明確な場合に限る。
+- **XML ドキュメント**: `public` / `internal` の型・メンバーに `/// <summary>` 等を付ける。`private` は意図が自明でない箇所のみ。
+- **テスト**: メソッドごとに日本語の `/// <summary>` と **`// Arrange` / `// Act` / `// Assert`** 区切り。1 テスト 1 シナリオ（AAA）。
+- **セキュリティ**: 外部入力の検証、認可・テナント境界、機密情報の非出力（ログ・エラー応答含む）。
 
-### 4.2 TypeScript（UI）
+### 4.2 TypeScript / React（UI）
 
-- 詳細は **`.cursor/rules/typescript-standards.mdc`**（変数名・JSDoc・型の絞り込み・React の props・Vitest の AAA と日本語ケース名）。
-- コメント・ドキュメントの横断方針は **`.cursor/rules/documentation-standards.mdc`**。
-- 品質チェックは **§4.4** の UI 行に従う。
+- **命名**: 意図が伝わる名前。`export` には JSDoc を付ける。
+- **型**: ナローイングで表現し、`as` の多用を避ける。
+- **分岐**: `switch` / `Record` を優先する。
+- **データ変換**: `map` / `filter` / `reduce` 等の宣言的配列操作を主構文とする。
+- **i18n**: UI 文言は辞書経由とし、`*.tsx` へハードコードしない。
+- **テスト**: Vitest で AAA。ケース名は日本語で検証シナリオが分かるようにする。
+- **品質チェック**: **§4.4** の UI 行に従う。
 
 ### 4.3 コメント・ドキュメント（言語横断）
 
-今後の標準として、**実装と同時にドキュメントを充実させる**。詳細は **`.cursor/rules/documentation-standards.mdc`**。
+**実装と同時にドキュメントを充実させる**。Markdown 固有の書き方は [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD.md)。
 
 - **公開 API**（C# の `public` / `internal`、TS の `export`）には、目的・引数・戻り値・例外（またはエラー条件）を記載する。
 - **クラス / モジュール単位**では、利用コンテキスト・セキュリティ・制限値・上書きなど、コードだけでは分かりにくい契約を `<remarks>` / JSDoc で補足する。
 - **定数（上限値など）**には、値の意味と採用理由を書く（推測や誤った技術的根拠は避ける）。
 - **テスト**には日本語で「何を検証するか」を `/// <summary>` またはケース名で残す。
 - **書かない**: 自明な処理の言い換えコメント、実装と矛盾する説明、機密情報。
-- **仕様・運用に影響する変更**では、関連する `docs/` や `.spec-workflow/` を依頼範囲内で整合させる。
+- **仕様・運用に影響する変更**では、関連する `docs/` を依頼範囲内で整合させる。
 
 ### 4.4 リンター・ビルド警告・静的チェック
 
 - **C#**: `dotnet build` / `dotnet test` で出る **コンパイラエラー・Analyzer 警告**は、自分の変更に起因するものは **解消してから** PR に出す。触れていないファイルの既存警告をまとめて直すのは必須ではないが、**新規コードで警告を増やさない**こと。
 - **Core-API 厳格 Analyzer**: `service/api/Directory.Build.props` で `AnalysisMode=AllEnabledByDefault` が有効。Api 配下の本番プロジェクトは **`dotnet build service/api/statevia-api.sln` で警告 0** を維持する。
 - **Core-API テスト向け抑制**: ルート `.editorconfig` に加え、`service/api/Statevia.Service.Api.Tests/.editorconfig` で xUnit 向け CA（例: CA1812）を抑制している。テストの命名・`ConfigureAwait` 方針は Engine.Tests と同趣旨。
-- **Markdown**: リポジトリ直下の **`.markdownlint.json`** に従う。`.spec-workflow/**/*.md` などを編集したときは例として次で確認できる。
+- **Markdown**: リポジトリ直下の **`.markdownlint.json`** に従う。編集した Markdown には例として次で確認できる。
 
   ```bash
-  npx markdownlint-cli2 ".spec-workflow/**/*.md"
+  npx markdownlint-cli2 "path/to/edited.md"
   ```
 
 - **UI（TypeScript）**: **`npm run lint`**（error 厳格）、**`npm run typecheck`**、**`npm run test:run`** を PR 前の必須チェックとする。設定は `ui/studio/eslint.config.js`（`typescript-eslint` strict、`react-hooks`、`jsx-a11y`、`jsdoc`）。
@@ -165,7 +173,7 @@ cd ui/studio
 npm run test:coverage
 ```
 
-`coverage/lcov.info` が生成される。除外方針は `ui/studio/sonar-project.properties` の `sonar.coverage.exclusions` と `vitest.config.ts` の `coverage.exclude` を揃える（正本の説明: `.spec-workflow/specs/ui-quality-refactor/sonar-scan-results.md`）。
+`coverage/lcov.info` が生成される。除外方針は `ui/studio/sonar-project.properties` の `sonar.coverage.exclusions` と `vitest.config.ts` の `coverage.exclude` を揃える（本書 §5.2）。
 
 **Sonar スキャン（正本スクリプト）**
 
@@ -191,7 +199,7 @@ npx --yes sonar-scanner "-Dsonar.token=$($env:SONAR_TOKEN)"
 
 **注意**
 
-- HTTP 契約・プロキシ挙動は本リファクタの対象外（`docs/core-api-interface.md` 等は変更しない）。
+- HTTP 契約・プロキシ挙動は本リファクタの対象外（`docs/specifications/api-http.md` 等は変更しない）。
 - スキャン直後は Sonar UI の数値が遅れて反映されることがある。Quality Gate 判定は Sonar のプロジェクト画面を正とする。
 - 詳細は `sonar/README.md` も参照。
 
@@ -222,7 +230,8 @@ npx --yes sonar-scanner "-Dsonar.token=$($env:SONAR_TOKEN)"
 
 ## 7. コミットと説明文
 
-- **コミットメッセージは日本語**で、何を・なぜかが分かる一行以上にする（詳細は `.cursor/rules/Generate-commit-messages.mdc`）。
+- **コミットメッセージは日本語**で、何を・なぜかが分かるように書く（英語や他言語は使わない）。
+- 1 行で簡潔に。例: バグ修正「〇〇のバグを修正」、機能追加「〇〇機能を追加」、リファクタ「〇〇をリファクタ」。
 - PR 説明も日本語で、変更範囲と影響（API 契約・マイグレーション有無）を簡潔に書く。
 
 ---
@@ -231,7 +240,8 @@ npx --yes sonar-scanner "-Dsonar.token=$($env:SONAR_TOKEN)"
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-07 | §1 / §4 / §7 を Git 上の正本として自己完結化（`.cursor` パス参照を廃止） |
 | 2026-05-19 | §4.3 / §5 に UI の ESLint・`StateviaServiceUI` Sonar 手順（§5.2・`sonar-scanner-ui.ps1`）を追記 |
 | 2026-05-17 | §4.3 / §5.1 に Core-API 厳格ビルド・coverlet runsettings・`sonar-scanner-api.ps1` 手順を追記 |
-| 2026-04-05 | §4 再編（4.1 C#・4.2 TypeScript・4.3 静的チェック）、`typescript-standards.mdc` 追加、正本表に TypeScript 細則を追記 |
+| 2026-04-05 | §4 再編（4.1 C#・4.2 TypeScript・4.3 静的チェック）、正本表に TypeScript 細則を追記 |
 | 2026-03-28 | 初版・ブランチ命名を追加 |
