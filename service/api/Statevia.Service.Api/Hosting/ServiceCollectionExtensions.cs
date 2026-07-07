@@ -53,6 +53,8 @@ internal static class ServiceCollectionExtensions
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITenantAdministrationService, TenantAdministrationService>();
+        services.AddOptions<DevAdminBootstrapOptions>()
+            .Bind(configuration.GetSection(DevAdminBootstrapOptions.SectionName));
         services.AddHostedService<TenantBootstrapHostedService>();
 
         services.AddScoped<IExecutionMutationPersistence, ExecutionMutationPersistence>();
