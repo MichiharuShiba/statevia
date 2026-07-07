@@ -67,7 +67,7 @@ internal static class StoredDefinitionBindingResolver
 
         foreach (var state in definition.States.Values)
         {
-            if (state.Wait is not null || state.Join is not null || string.IsNullOrWhiteSpace(state.Action))
+            if (!state.IsActionResolvable || string.IsNullOrWhiteSpace(state.Action))
             {
                 continue;
             }
