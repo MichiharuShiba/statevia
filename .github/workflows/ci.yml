@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  architecture-tests:
+    name: Architecture tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Run architecture tests
+        run: dotnet test tests/Statevia.Architecture.Tests/Statevia.Architecture.Tests.csproj --configuration Release --verbosity minimal
