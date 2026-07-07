@@ -20,7 +20,7 @@
 | [`ui-user-guide.md`](ui-user-guide.md) | Studio の起動と基本操作 |
 | [`action-host.md`](action-host.md) | OutOfProcess 用 Action Host |
 | [`cli-reference.md`](cli-reference.md) | `statevia` CLI |
-| [`guides/operations-docker.md`](guides/operations-docker.md) | Docker Compose 運用 |
+| [`operations-docker.md`](operations-docker.md) | Docker Compose 運用 |
 | [`operations-tenant-bootstrap.md`](operations-tenant-bootstrap.md) | テナント・管理者ブートストラップ |
 | [`action-module-signing.md`](action-module-signing.md) | Module 署名の運用手順 |
 | [`ui-auth-tenant-config.md`](ui-auth-tenant-config.md) | UI / API 認証・テナント設定 |

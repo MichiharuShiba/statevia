@@ -5,7 +5,7 @@
 | 種別 | Guide |
 | Version | 1.0 |
 | 更新日 | 2026-07-07 |
-| 関連 | [../concepts/actions.md](../concepts/actions.md), [guides/operations-docker.md](guides/operations-docker.md) |
+| 関連 | [../concepts/actions.md](../concepts/actions.md), [operations-docker.md](operations-docker.md) |
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## ローカル起動（例）
 
-PostgreSQL と Core-API と併せて起動する場合は Docker Compose が簡便です（[guides/operations-docker.md](guides/operations-docker.md)）。
+PostgreSQL と Core-API と併せて起動する場合は Docker Compose が簡便です（[operations-docker.md](operations-docker.md)）。
 
 単体で Action Host をホスト起動する例:
 
@@ -45,7 +45,7 @@ dotnet run --project Statevia.Service.ActionHost
 
 ## Module の reload
 
-Module zip を配置したあと、Core-API が新 DLL を読み込むには再起動または `POST /internal/modules/reload` が必要です（[guides/operations-docker.md](guides/operations-docker.md)、[cli-reference.md](cli-reference.md)）。
+Module zip を配置したあと、Core-API が新 DLL を読み込むには再起動または `POST /internal/modules/reload` が必要です（[operations-docker.md](operations-docker.md)、[cli-reference.md](cli-reference.md)）。
 
 ## 次に読むもの
 

@@ -20,7 +20,7 @@ cd ui/studio
 CORE_API_INTERNAL_BASE="http://localhost:8080" npm run dev
 ```
 
-ブラウザで `http://localhost:3000` を開きます。Docker Compose 利用時は [guides/operations-docker.md](guides/operations-docker.md) を参照。
+ブラウザで `http://localhost:3000` を開きます。Docker Compose 利用時は [operations-docker.md](operations-docker.md) を参照。
 
 ## サインイン
 

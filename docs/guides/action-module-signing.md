@@ -9,8 +9,8 @@ Action Module の署名検証は、Module の **改ざん検知**（Signed）と
 
 関連:
 
-- zip 構成・署名ファイル配置: `docs/specifications/actions/module-zip-layout.md`
-- 配置・reload 手順: `docs/guides/operations-docker.md`
+- zip 構成・署名ファイル配置: [module-zip-layout 仕様](../specifications/actions/module-zip-layout.md)
+- 配置・reload 手順: [operations-docker.md](operations-docker.md)
 - 設定キー: `AGENTS.md`（`Statevia:Modules:Signing`）
 - 実装: `infrastructure/Statevia.Infrastructure.Modules/ModuleSignatureVerifier.cs`
 

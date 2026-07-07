@@ -80,5 +80,5 @@ ui-studio:
 
 ## 6. 関連仕様
 
-- [UI Push API Specification](./ui-push-api-spec.md) — 認証・テナントヘッダの仕様
-- [Core API Contract](./specifications/api-http.md) — 共通ヘッダ（Authorization 任意）
+- [push-api 仕様](../specifications/ui/push-api.md) — 認証・テナントヘッダの仕様
+- [api-http 仕様](../specifications/api-http.md) — 共通ヘッダ（Authorization 任意）
