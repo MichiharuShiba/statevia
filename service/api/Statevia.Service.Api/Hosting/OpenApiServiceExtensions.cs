@@ -31,7 +31,7 @@ internal static class OpenApiServiceExtensions
                 Title = "Statevia Core API",
                 Version = "v1",
                 Description =
-                    "Core-API HTTP 契約。運用・SSE・冪等・IO-14 等の叙述は docs/core-api-interface.md を参照。"
+                    "Core-API HTTP 契約。運用・SSE・冪等・IO-14 等の叙述は docs/specifications/api-http.md を参照。"
             });
 
             var xmlPath = Path.Combine(

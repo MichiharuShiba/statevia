@@ -27,6 +27,7 @@ public static class SecurityServiceCollectionExtensions
         services.AddScoped<ITenantAdminAuthorization, TenantAdminAuthorization>();
         services.AddScoped<IRuntimePermissionAuthorization, RuntimePermissionAuthorization>();
         services.AddScoped<IExecutionMutationAuthorization, ExecutionMutationAuthorization>();
+        services.AddScoped<TenantAdminBootstrap>();
 
         services.AddOptions<JwtAuthOptions>()
             .Bind(configuration.GetSection(JwtAuthOptions.SectionName));

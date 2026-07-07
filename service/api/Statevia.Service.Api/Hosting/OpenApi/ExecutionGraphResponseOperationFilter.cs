@@ -9,7 +9,7 @@ namespace Statevia.Service.Api.Hosting.OpenApi;
 internal sealed class ExecutionGraphResponseOperationFilter : IOperationFilter
 {
     private const string GraphDescription =
-        "実行グラフ JSON（engine 契約）。詳細は docs/core-engine-execution-graph-spec.md を参照。";
+        "実行グラフ JSON（engine 契約）。詳細は docs/specifications/execution/execution-graph.md を参照。";
 
     /// <inheritdoc />
     public void Apply(OpenApiOperation operation, OperationFilterContext context)

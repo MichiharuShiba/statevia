@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "Statevia Core API",
-    "description": "Core-API HTTP 契約。運用・SSE・冪等・IO-14 等の叙述は docs/core-api-interface.md を参照。",
+    "description": "Core-API HTTP 契約。運用・SSE・冪等・IO-14 等の叙述は docs/specifications/api-http.md を参照。",
     "version": "v1"
   },
   "paths": {
@@ -1027,7 +1027,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "実行グラフ JSON（engine 契約）。詳細は docs/core-engine-execution-graph-spec.md を参照。"
+                  "description": "実行グラフ JSON（engine 契約）。詳細は docs/specifications/execution/execution-graph.md を参照。"
                 }
               }
             }
@@ -1697,7 +1697,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "実行グラフ JSON（engine 契約）。詳細は docs/core-engine-execution-graph-spec.md を参照。"
+                  "description": "実行グラフ JSON（engine 契約）。詳細は docs/specifications/execution/execution-graph.md を参照。"
                 }
               }
             }

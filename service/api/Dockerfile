@@ -7,6 +7,7 @@ COPY service/api/Statevia.Service.Api/Statevia.Service.Api.csproj ./service/api/
 COPY core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj ./core/engine/Statevia.Core.Engine/
 COPY core/actions/Statevia.Core.Actions.Abstractions/Statevia.Core.Actions.Abstractions.csproj ./core/actions/Statevia.Core.Actions.Abstractions/
 COPY core/application/Statevia.Core.Application.Contracts/Statevia.Core.Application.Contracts.csproj ./core/application/Statevia.Core.Application.Contracts/
+COPY core/application/Statevia.Core.Application/Statevia.Core.Application.csproj ./core/application/Statevia.Core.Application/
 COPY infrastructure/Statevia.Infrastructure.Persistence/Statevia.Infrastructure.Persistence.csproj ./infrastructure/Statevia.Infrastructure.Persistence/
 COPY infrastructure/Statevia.Infrastructure.Security/Statevia.Infrastructure.Security.csproj ./infrastructure/Statevia.Infrastructure.Security/
 COPY infrastructure/Statevia.Infrastructure.Notification/Statevia.Infrastructure.Notification.csproj ./infrastructure/Statevia.Infrastructure.Notification/
@@ -20,6 +21,7 @@ COPY service/api/Statevia.Service.Api/ ./service/api/Statevia.Service.Api/
 COPY core/engine/Statevia.Core.Engine/ ./core/engine/Statevia.Core.Engine/
 COPY core/actions/Statevia.Core.Actions.Abstractions/ ./core/actions/Statevia.Core.Actions.Abstractions/
 COPY core/application/Statevia.Core.Application.Contracts/ ./core/application/Statevia.Core.Application.Contracts/
+COPY core/application/Statevia.Core.Application/ ./core/application/Statevia.Core.Application/
 COPY infrastructure/Statevia.Infrastructure.Notification/ ./infrastructure/Statevia.Infrastructure.Notification/
 COPY infrastructure/Statevia.Infrastructure.Security/ ./infrastructure/Statevia.Infrastructure.Security/
 COPY infrastructure/Statevia.Infrastructure.Persistence/ ./infrastructure/Statevia.Infrastructure.Persistence/
