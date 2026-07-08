@@ -129,3 +129,5 @@ Start 成功時に `ExecutionSecuritySnapshot` を `executions.security_snapshot
 - **Operator** = Owner 以外。常に Live の `executions.write` を要求。
 - スナップショット未保存の execution（移行前データ）は Resume / Cancel で **Live** にフォールバック。
 - Principal 無効化（`disabled_at` / `deleted_at` / `is_active=false`）は Identity で **403**（`PRINCIPAL_INACTIVE`）。
+
+Permission key 一覧: [permission-keys.md](../../reference/permission-keys.md) · エラーコード: [error-codes.md](../../reference/error-codes.md)。

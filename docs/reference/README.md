@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Reference |
-| Version | 1.0 |
-| 更新日 | 2026-07-07 |
+| Version | 1.1 |
+| 更新日 | 2026-07-08 |
 
 ---
 
@@ -18,11 +18,11 @@
 | ログキー | [`logging-property-keys.md`](logging-property-keys.md) |
 | OpenAPI / Scalar | [`api-openapi.md`](api-openapi.md) |
 | 環境変数・設定（抜粋） | [`environment-variables.md`](environment-variables.md) |
+| HTTP エラーコード | [`error-codes.md`](error-codes.md) |
+| Permission keys | [`permission-keys.md`](permission-keys.md) |
 
 HTTP 契約の叙述は [`../specifications/api-http.md`](../specifications/api-http.md) を正とする。
 
 ## 将来追加候補（未作成）
 
-- Error Codes 一覧（`api-http.md` のエラー契約から切り出し）
-- Permission Keys 一覧（`security-runtime.md` / PermissionCatalog から切り出し）
 - YAML Schema 参照（調べ物）
