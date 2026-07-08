@@ -63,6 +63,8 @@ Guide のあと、なぜそうなっているかを理解する。
 | ログキー | [logging-property-keys.md](reference/logging-property-keys.md) |
 | OpenAPI / Scalar | [api-openapi.md](reference/api-openapi.md) |
 | 環境変数（抜粋） | [environment-variables.md](reference/environment-variables.md) |
+| HTTP エラーコード | [error-codes.md](reference/error-codes.md) |
+| Permission keys | [permission-keys.md](reference/permission-keys.md) |
 
 一覧: [reference/README.md](reference/README.md)
 
