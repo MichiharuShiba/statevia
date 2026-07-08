@@ -1,0 +1,3 @@
+# docs/ 内部リンク検証（CI: .github/workflows/ci.yml の docs-link-check）
+# 外部 URL はオフライン検証対象外（レート制限・不安定さを避ける）
+offline = true

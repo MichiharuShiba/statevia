@@ -7,11 +7,11 @@ Project: 実行型ステートマシン
 
 **Version 1.5（2026-05-25）**: `projects.is_public` を削除。discoverability は `visibility` のみ（公開カタログ API 未着手のため占位カラムを整理）。
 
-**Version 1.4（2026-05-25）**: `projects` / `project_accesses` を追記。`definitions.project_id` を NOT NULL 化し `UNIQUE(project_id, slug)` に変更。project 認可 truth と discoverability（`visibility`）の分離を明記。HTTP 契約は [`specifications/api-http.md`](./specifications/api-http.md) §1.1 を参照。
+**Version 1.4（2026-05-25）**: `projects` / `project_accesses` を追記。`definitions.project_id` を NOT NULL 化し `UNIQUE(project_id, slug)` に変更。project 認可 truth と discoverability（`visibility`）の分離を明記。HTTP 契約は [`specifications/api-http.md`](../specifications/api-http.md) §1.1 を参照。
 
-**Version 1.3（2026-05-21）**: ランタイムセキュリティ境界（`tenants` / `principals` / `users` / `groups` / `api_keys` 等）を追記。Platform テーブルの PK は `<table>.<entity>_id` 命名（例: `tenants.tenant_id`, `users.user_id`）。詳細は [`runtime-security-boundary.md`](./runtime-security-boundary.md) を参照。
+**Version 1.3（2026-05-21）**: ランタイムセキュリティ境界（`tenants` / `principals` / `users` / `groups` / `api_keys` 等）を追記。Platform テーブルの PK は `<table>.<entity>_id` 命名（例: `tenants.tenant_id`, `users.user_id`）。詳細は [`security-runtime.md`](../specifications/platform/security-runtime.md) を参照。
 
-**Version 1.2（2026-05-20）**: immutable 定義版（`definitions` / `definition_versions`）と `executions.definition_version_id` を追記。`command_dedup` / `event_delivery_dedup` を一覧に含める。truth / projection の役割分担を明記。HTTP 契約は [`specifications/api-http.md`](./specifications/api-http.md) §1.1 を参照。
+**Version 1.2（2026-05-20）**: immutable 定義版（`definitions` / `definition_versions`）と `executions.definition_version_id` を追記。`command_dedup` / `event_delivery_dedup` を一覧に含める。truth / projection の役割分担を明記。HTTP 契約は [`specifications/api-http.md`](../specifications/api-http.md) §1.1 を参照。
 
 **Version 1.1（2026-05-05）**: `workflow_definitions` に `tenant_id`・`updated_at` を追記（EF マイグレーション実装に準拠）。
 
@@ -751,4 +751,4 @@ erDiagram
 
 **既存 DB への注意:** テーブルが手動作成済みで `InitialCreate` が失敗する場合は、マイグレーション履歴（`__EFMigrationsHistory`）と実スキーマの整合を確認してから適用する。未適用分のみ実行するか、クリーン DB で検証する。
 
-スキーマの追加・変更は EF Core マイグレーションで行う。契約・運用叙述は [`specifications/api-http.md`](./specifications/api-http.md) および [`specifications/data-integration.md`](./specifications/data-integration.md) を参照。
+スキーマの追加・変更は EF Core マイグレーションで行う。契約・運用叙述は [`specifications/api-http.md`](../specifications/api-http.md) および [`specifications/data-integration.md`](../specifications/data-integration.md) を参照。
