@@ -46,8 +46,7 @@ internal sealed class TenantBootstrapHostedService : IHostedService
             || string.IsNullOrWhiteSpace(_devAdminOptions.Password)
             || string.IsNullOrWhiteSpace(_devAdminOptions.TenantKey))
         {
-            _logger.LogWarning(
-                "Dev admin bootstrap is enabled but TenantKey, Email, or Password is missing; skipping.");
+            _logger.DevAdminBootstrapConfigMissing();
             return;
         }
 
@@ -62,10 +61,7 @@ internal sealed class TenantBootstrapHostedService : IHostedService
 
         if (result.Created)
         {
-            _logger.LogInformation(
-                "Development admin user created for tenant {TenantKey} (email: {Email}).",
-                result.TenantKey,
-                result.Email);
+            _logger.DevAdminUserCreated(result.TenantKey, result.Email);
         }
     }
 
