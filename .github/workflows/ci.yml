@@ -17,3 +17,14 @@ jobs:
 
       - name: Run architecture tests
         run: dotnet test tests/Statevia.Architecture.Tests/Statevia.Architecture.Tests.csproj --configuration Release --verbosity minimal
+
+  docs-link-check:
+    name: Docs link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check internal links in docs
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --config .lychee.toml --no-progress 'docs/**/*.md'
