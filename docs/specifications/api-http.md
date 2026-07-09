@@ -87,6 +87,8 @@ Core-API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 | GET      | /v1/health                | 死活                          |
 | POST     | /v1/definitions           | 定義登録                      |
 | PUT      | /v1/definitions/{id}      | 定義更新（displayId または UUID） |
+| DELETE   | /v1/definitions/{id}      | 定義の catalog 論理削除       |
+| POST     | /v1/definitions/{id}/restore | 削除済み定義の復元         |
 | GET      | /v1/definitions           | 定義一覧                      |
 | GET      | /v1/definitions/{id}      | 定義取得                      |
 | GET      | /v1/definitions/schema/nodes | nodes 入力スキーマ取得     |
@@ -126,15 +128,36 @@ Core-API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 - 存在しない／他テナント: **404**。検証・コンパイル失敗: **422**（`POST` と同様の `error.details`）。
 - 並行 publish で `UNIQUE(definition_id, version)` 競合: **422**（成功した版のみ truth）。
 
+### 2.1.2 catalog 論理削除
+
+**DELETE /v1/definitions/{id}**
+
+- `id`: displayId または UUID
+- 成功: **204 No Content**（`definitions.deleted_at` を **UTC** で設定）。既に削除済みの場合も冪等 **204**。
+- 存在しない／他テナント／削除済みの operational invisibility: **404**。
+- `definition_versions`・既存 `executions` は物理削除しない。
+
+### 2.1.3 catalog 復元
+
+**POST /v1/definitions/{id}/restore**
+
+- 削除済み定義のみ対象。成功: **200 OK** + `DefinitionResponse`（`deletedAt` は含めない）。
+- 未削除定義: **409**（`error.code`: `STATE_CONFLICT`）。
+- 同一 project 内で active な別定義が同 slug を保持: **422**（`slug` フィールドに details）。
+- 存在しない／他テナント: **404**。
+
+**operational invisibility:** soft delete 後、単体 GET・一覧（既定）・新規 Start・`GET /v1/graphs/{graphId}` は **404**（存在秘匿。410 は不採用）。削除前に開始した execution の GET / events / graph snapshot は **200 維持**。
+
 ### 2.2 定義一覧
 
 **GET /v1/definitions**
 
-- **`?limit=&offset=&name=&sortBy=&sortOrder=`**（`limit` 必須）: 200 OK、`PagedResult<DefinitionResponse>`（`items`, `totalCount`, `offset`, `limit`, `hasMore`）。
+- **`?limit=&offset=&name=&sortBy=&sortOrder=&includeDeleted=`**（`limit` 必須）: 200 OK、`PagedResult<DefinitionResponse>`（`items`, `totalCount`, `offset`, `limit`, `hasMore`）。
   - `name`: 名前の部分一致
   - `sortBy`: `createdAt` / `name`（未指定時は `createdAt`）
   - `sortOrder`: `asc` / `desc`（未指定時は `desc`）
   - `limit`: 1〜500（必須）、`offset`: 0 以上（省略時 0）
+  - `includeDeleted`: `true` のとき削除行を含む。各 item に **`deletedAt`**（UTC）のみ追加返却（通常 GET では出さない）
 - `limit` 未指定・不正: **422**
 
 **移行:** 一覧取得は `?limit=N&offset=M` を必須とする。全件が必要な場合は `limit=500` と `hasMore` を用いてページを繰り返す。
@@ -144,7 +167,7 @@ Core-API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 **GET /v1/definitions/{id}**
 
 - `id`: displayId または UUID
-- Response: 200 OK で 1 件（`displayId`, `resourceId`, `name`, `latestVersion`, `createdAt`, `updatedAt`, **`yaml`**（**最新版**の保存済みソース））。存在しなければ 404。
+- Response: 200 OK で 1 件（`displayId`, `resourceId`, `name`, `latestVersion`, `createdAt`, `updatedAt`, **`yaml`**（**最新版**の保存済みソース））。catalog 上削除済み・存在しない・他テナントは **404**（operational invisibility）。
 
 ### 2.4 Graph Definition（構造）
 
@@ -153,7 +176,7 @@ Core-API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 - `graphId`: 定義の **displayId** または UUID（実装コメント上は display_id 解決）。
 - **X-Tenant-Id**: 任意。省略時 `"default"`。
 - Response: 200 OK、`GraphDefinitionResponse`（`graphId`, `nodes[]`, `edges[]` 等。詳細は実装の `GraphDefinitionResponse`）。
-- 404: 定義が存在しない、または当該テナントに無い。
+- 404: 定義が存在しない、catalog 上削除済み、または当該テナントに無い（operational invisibility）。
 
 ### 2.5 nodes スキーマ取得
 

@@ -826,27 +826,77 @@ internal sealed class ExecutionService : IExecutionService
         StartExecutionRequest request,
         CancellationToken ct) =>
         _executor.ExecuteReadOnlyAsync(
-            async (uow, innerCt) =>
-            {
-                if (request.DefinitionVersionId is { } versionId)
-                {
-                    var byId = await _definitions.GetVersionByIdAsync(uow, tenantId, versionId, innerCt)
-                        .ConfigureAwait(false);
-                    return byId is not null && byId.DefinitionId == definitionId ? byId : null;
-                }
-
-                if (request.DefinitionVersion is { } versionNumber)
-                {
-                    return await _definitions
-                        .GetVersionAsync(uow, tenantId, definitionId, versionNumber, innerCt)
-                        .ConfigureAwait(false);
-                }
-
-                var latest = await _definitions.GetLatestByIdAsync(uow, tenantId, definitionId, innerCt)
-                    .ConfigureAwait(false);
-                return latest?.Version;
-            },
+            (uow, innerCt) => ResolveStartDefinitionVersionInUowAsync(uow, tenantId, definitionId, request, innerCt),
             ct);
+
+    private async Task<DefinitionVersionRow?> ResolveStartDefinitionVersionInUowAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        StartExecutionRequest request,
+        CancellationToken ct)
+    {
+        if (request.DefinitionVersionId is { } versionId)
+            return await ResolveVersionByIdForAdmissionAsync(uow, tenantId, definitionId, versionId, ct)
+                .ConfigureAwait(false);
+
+        if (request.DefinitionVersion is { } versionNumber)
+            return await ResolveVersionByNumberForAdmissionAsync(uow, tenantId, definitionId, versionNumber, ct)
+                .ConfigureAwait(false);
+
+        var latest = await _definitions
+            .GetLatestForApiAsync(uow, tenantId, definitionId, ct)
+            .ConfigureAwait(false);
+        return latest?.Version;
+    }
+
+    private async Task<DefinitionVersionRow?> ResolveVersionByIdForAdmissionAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        Guid versionId,
+        CancellationToken ct)
+    {
+        var byId = await _definitions
+            .GetVersionForExecutionByIdAsync(uow, tenantId, versionId, ct)
+            .ConfigureAwait(false);
+        if (byId is null || byId.DefinitionId != definitionId)
+            return null;
+
+        return await EnsureActiveParentForAdmissionAsync(uow, tenantId, definitionId, ct).ConfigureAwait(false)
+            ? byId
+            : null;
+    }
+
+    private async Task<DefinitionVersionRow?> ResolveVersionByNumberForAdmissionAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        int versionNumber,
+        CancellationToken ct)
+    {
+        var byNumber = await _definitions
+            .GetVersionForExecutionAsync(uow, tenantId, definitionId, versionNumber, ct)
+            .ConfigureAwait(false);
+        if (byNumber is null)
+            return null;
+
+        return await EnsureActiveParentForAdmissionAsync(uow, tenantId, definitionId, ct).ConfigureAwait(false)
+            ? byNumber
+            : null;
+    }
+
+    private async Task<bool> EnsureActiveParentForAdmissionAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        CancellationToken ct)
+    {
+        var active = await _definitions
+            .GetLatestForApiAsync(uow, tenantId, definitionId, ct)
+            .ConfigureAwait(false);
+        return active is not null;
+    }
 
     private Task EnsureCanExecuteOnDefinitionAsync(
         Guid tenantId,

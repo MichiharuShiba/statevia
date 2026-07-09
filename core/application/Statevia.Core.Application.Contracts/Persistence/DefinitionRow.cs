@@ -23,4 +23,7 @@ public class DefinitionRow
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
+
+    /// <summary>catalog 論理削除日時（UTC）。NULL は Active。</summary>
+    public DateTime? DeletedAt { get; set; }
 }

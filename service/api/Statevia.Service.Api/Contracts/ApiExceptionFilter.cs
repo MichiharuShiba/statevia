@@ -36,6 +36,7 @@ public sealed class ApiExceptionFilter : IExceptionFilter
             UnauthorizedException unauthorized => ApiErrorResult.Unauthorized(unauthorized.Code, unauthorized.Message),
             ForbiddenException forbidden => ApiErrorResult.Forbidden(forbidden.Code, forbidden.Message),
             IdempotencyConflictException idem => ApiErrorResult.Conflict("IDEMPOTENCY_KEY_CONFLICT", idem.Message),
+            StateConflictException state => ApiErrorResult.Conflict("STATE_CONFLICT", state.Message),
             DefinitionMigrationRequiredException migration => ApiErrorResult.ValidationError(
                 DefinitionMigrationRequiredException.ErrorCode,
                 migration.Message),

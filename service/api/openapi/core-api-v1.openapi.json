@@ -6,6 +6,1341 @@
     "version": "v1"
   },
   "paths": {
+    "/v1/actions/schema": {
+      "get": {
+        "tags": [
+          "ActionSchemas"
+        ],
+        "summary": "GET /v1/actions/schema — 登録 action 一覧と descriptor 概要を返す。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionSchemaListResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionSchemaListResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionSchemaListResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/actions/schema/index": {
+      "get": {
+        "tags": [
+          "ActionSchemas"
+        ],
+        "summary": "GET /v1/actions/schema/index — Playground 向け軽量 index を返す。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionSchemaIndexResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionSchemaIndexResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionSchemaIndexResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/actions/schema/{actionId}": {
+      "get": {
+        "tags": [
+          "ActionSchemas"
+        ],
+        "summary": "GET /v1/actions/schema/{actionId} — input/output schema と UI metadata を返す。",
+        "parameters": [
+          {
+            "name": "actionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionSchemaDetailResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionSchemaDetailResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionSchemaDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/permissions": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "GET /v1/admin/permissions — 権限カタログ。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionDefinitionDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionDefinitionDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionDefinitionDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "GET /v1/admin/users — ユーザー一覧。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminUserListItemDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminUserListItemDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminUserListItemDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "POST /v1/admin/users — ユーザー作成。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminUserRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminUserRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserListItemDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserListItemDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserListItemDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users/{userId}": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "PATCH /v1/admin/users/{userId} — ユーザー更新。",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminUserRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminUserRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserListItemDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserListItemDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserListItemDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/groups": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "GET /v1/admin/groups — グループ一覧。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminGroupListItemDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminGroupListItemDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminGroupListItemDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "POST /v1/admin/groups — グループ作成。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminGroupRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminGroupRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminGroupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGroupDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGroupDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGroupDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/groups/{groupId}": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "GET /v1/admin/groups/{groupId} — グループ詳細。",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGroupDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGroupDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGroupDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/groups/{groupId}/members": {
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "PUT /v1/admin/groups/{groupId}/members — メンバー置換。",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAdminGroupMembersRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAdminGroupMembersRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAdminGroupMembersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGroupDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGroupDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGroupDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/groups/{groupId}/permissions": {
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "PUT /v1/admin/groups/{groupId}/permissions — 権限置換。",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAdminGroupPermissionsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAdminGroupPermissionsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAdminGroupPermissionsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGroupDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGroupDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGroupDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/api-keys": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "GET /v1/admin/api-keys — API キー一覧（平文なし）。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminApiKeyListItemDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminApiKeyListItemDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminApiKeyListItemDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "POST /v1/admin/api-keys — API キー発行（平文は応答のみ）。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminApiKeyRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminApiKeyRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminApiKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedAdminApiKeyDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedAdminApiKeyDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedAdminApiKeyDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/api-keys/{apiKeyId}": {
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "DELETE /v1/admin/api-keys/{apiKeyId} — API キー失効。",
+        "parameters": [
+          {
+            "name": "apiKeyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/modules": {
+      "get": {
+        "tags": [
+          "AdminModules"
+        ],
+        "summary": "GET /v1/admin/modules — Module load catalog 一覧。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminModuleListItemDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminModuleListItemDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminModuleListItemDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/auth/login": {
       "post": {
         "tags": [
@@ -177,13 +1512,6 @@
           {
             "name": "X-Tenant-Id",
             "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
             "description": "テナント ID。未指定時は \"default\"。",
             "schema": {
               "type": "string",
@@ -267,7 +1595,7 @@
         "tags": [
           "Definitions"
         ],
-        "summary": "GET /v1/definitions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&name=&sortBy=&sortOrder=` で Statevia.Service.Api.Contracts.PagedResult`1（name は部分一致）。",
+        "summary": "GET /v1/definitions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&name=&sortBy=&sortOrder=` で Statevia.Core.Application.Contracts.PagedResult`1（name は部分一致）。",
         "parameters": [
           {
             "name": "limit",
@@ -314,10 +1642,11 @@
             }
           },
           {
-            "name": "X-Tenant-Id",
-            "in": "header",
+            "name": "includeDeleted",
+            "in": "query",
+            "description": "削除済み定義を一覧に含める。",
             "schema": {
-              "type": "string"
+              "type": "boolean"
             }
           },
           {
@@ -395,13 +1724,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
             "schema": {
               "type": "string"
             }
@@ -505,6 +1827,138 @@
           {
             "name": "X-Tenant-Id",
             "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Definitions"
+        ],
+        "summary": "DELETE /v1/definitions/{id} — catalog から論理削除する。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/definitions/{id}/restore": {
+      "post": {
+        "tags": [
+          "Definitions"
+        ],
+        "summary": "POST /v1/definitions/{id}/restore — 削除済み定義を復元する。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -652,13 +2106,6 @@
         "summary": "POST /v1/executions — definitionId で定義を取得し、Engine.Start を呼ぶ。display_id と resource_id を返す（U4）。",
         "parameters": [
           {
-            "name": "X-Tenant-Id",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "X-Idempotency-Key",
             "in": "header",
             "schema": {
@@ -769,7 +2216,7 @@
         "tags": [
           "Executions"
         ],
-        "summary": "GET /v1/executions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&status=&definitionId=&name=&sortBy=&sortOrder=` で Statevia.Service.Api.Contracts.PagedResult`1（O1/O2）。\r\n`definitionId` は定義の display / UUID。 `name` は execution の `displayId` 部分一致、または execution の UUID 完全一致で絞り込み。",
+        "summary": "GET /v1/executions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&status=&definitionId=&name=&sortBy=&sortOrder=` で Statevia.Core.Application.Contracts.PagedResult`1（O1/O2）。\r\n`definitionId` は定義の display / UUID。 `name` は execution の `displayId` 部分一致、または execution の UUID 完全一致で絞り込み。",
         "parameters": [
           {
             "name": "limit",
@@ -827,13 +2274,6 @@
             "name": "sortOrder",
             "in": "query",
             "description": "ソート順。",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
             "schema": {
               "type": "string"
             }
@@ -907,19 +2347,12 @@
         "tags": [
           "Executions"
         ],
-        "summary": "GET /v1/executions/{id} — 一覧と同一の Statevia.Service.Api.Controllers.ExecutionResponse（UI ExecutionDTO 向け）。X-Tenant-Id でスコープ。",
+        "summary": "GET /v1/executions/{id} — 一覧と同一の Statevia.Core.Application.Contracts.Services.ExecutionResponse（UI ExecutionDTO 向け）。X-Tenant-Id でスコープ。",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
             "schema": {
               "type": "string"
             }
@@ -1006,13 +2439,6 @@
           {
             "name": "X-Tenant-Id",
             "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
             "description": "テナント ID。未指定時は \"default\"。",
             "schema": {
               "type": "string",
@@ -1086,13 +2512,6 @@
             "schema": {
               "type": "integer",
               "format": "int64"
-            }
-          },
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
-            "schema": {
-              "type": "string"
             }
           },
           {
@@ -1195,13 +2614,6 @@
           {
             "name": "X-Tenant-Id",
             "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
             "description": "テナント ID。未指定時は \"default\"。",
             "schema": {
               "type": "string",
@@ -1272,13 +2684,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
             "schema": {
               "type": "string"
             }
@@ -1392,13 +2797,6 @@
           {
             "name": "X-Tenant-Id",
             "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
             "description": "テナント ID。未指定時は \"default\"。",
             "schema": {
               "type": "string",
@@ -1454,13 +2852,6 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
             "schema": {
               "type": "string"
             }
@@ -1561,13 +2952,6 @@
             }
           },
           {
-            "name": "X-Tenant-Id",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "X-Idempotency-Key",
             "in": "header",
             "schema": {
@@ -1663,19 +3047,12 @@
         "tags": [
           "Graphs"
         ],
-        "summary": "GET /v1/graphs/{graphId} — 契約 4.1 Graph Definition（nodes / edges）を返す。graphId は definition の display_id。X-Tenant-Id でスコープ。",
+        "summary": "GET /v1/graphs/{graphId} — 契約 4.1 Graph Definition（nodes / edges）を返す。graphId は definition の display_id。",
         "parameters": [
           {
             "name": "graphId",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Tenant-Id",
-            "in": "header",
             "schema": {
               "type": "string"
             }
@@ -1775,10 +3152,515 @@
           }
         }
       }
+    },
+    "/internal/modules/reload": {
+      "post": {
+        "tags": [
+          "InternalModules"
+        ],
+        "summary": "POST /internal/modules/reload — discover / load を明示実行する。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "ActionExampleDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "input": {
+            "type": "object",
+            "description": "任意の JSON オブジェクト"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ActionFieldUiHintsDto": {
+        "type": "object",
+        "properties": {
+          "widget": {
+            "type": "string",
+            "nullable": true
+          },
+          "labelKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "descriptionKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "placeholderKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "sensitive": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ActionSchemaBundleDto": {
+        "type": "object",
+        "properties": {
+          "inputSchema": {
+            "type": "object",
+            "description": "任意の JSON オブジェクト"
+          },
+          "outputSchema": {
+            "type": "object",
+            "description": "任意の JSON オブジェクト"
+          },
+          "schemaVersion": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ActionSchemaDescriptorDto": {
+        "type": "object",
+        "properties": {
+          "actionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          },
+          "documentationUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "examples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActionExampleDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ActionSchemaDetailResponse": {
+        "type": "object",
+        "properties": {
+          "descriptor": {
+            "$ref": "#/components/schemas/ActionSchemaDescriptorDto"
+          },
+          "schema": {
+            "$ref": "#/components/schemas/ActionSchemaBundleDto"
+          },
+          "uiMetadata": {
+            "$ref": "#/components/schemas/ActionUiMetadataDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ActionSchemaIndexItemDto": {
+        "type": "object",
+        "properties": {
+          "actionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ActionSchemaIndexResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActionSchemaIndexItemDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ActionSchemaListItemDto": {
+        "type": "object",
+        "properties": {
+          "actionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasSchema": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ActionSchemaListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActionSchemaListItemDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ActionUiMetadataDto": {
+        "type": "object",
+        "properties": {
+          "fieldOrder": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ActionFieldUiHintsDto"
+            },
+            "nullable": true
+          },
+          "enumLabelKeys": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AdminApiKeyListItemDto": {
+        "type": "object",
+        "properties": {
+          "apiKeyId": {
+            "type": "string",
+            "description": "API キー ID。",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "表示名（Principal 表示名）。",
+            "nullable": true
+          },
+          "keyPrefix": {
+            "type": "string",
+            "description": "lookup 用 prefix。",
+            "nullable": true
+          },
+          "allowedScopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "許可スコープ（semantic key）。",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "有効期限（UTC、未設定時 null）。",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "description": "最終利用日時（UTC）。",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "作成日時（UTC）。",
+            "format": "date-time"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Principal が有効か。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "API キー一覧項目（平文は含まない）。"
+      },
+      "AdminGroupDetailDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "グループ ID。",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "グループ名。",
+            "nullable": true
+          },
+          "isSystem": {
+            "type": "boolean",
+            "description": "システム予約か。"
+          },
+          "memberUserIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "メンバー Principal ID。",
+            "nullable": true
+          },
+          "permissionKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "付与 semantic key。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "グループ詳細。"
+      },
+      "AdminGroupListItemDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "グループ ID。",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "グループ名。",
+            "nullable": true
+          },
+          "isSystem": {
+            "type": "boolean",
+            "description": "システム予約か。"
+          },
+          "memberCount": {
+            "type": "integer",
+            "description": "メンバー数。",
+            "format": "int32"
+          },
+          "permissionCount": {
+            "type": "integer",
+            "description": "付与権限数。",
+            "format": "int32"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "更新日時（UTC）。",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "description": "グループ一覧項目。"
+      },
+      "AdminModuleListItemDto": {
+        "required": [
+          "entryAssemblyPath",
+          "loadedAtUtc",
+          "moduleId",
+          "name",
+          "sha256",
+          "status",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "moduleId": {
+            "type": "string",
+            "description": "Module ID。",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "表示名。",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "description": "バージョン。",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "load 状態（Loaded / Failed / Skipped / Duplicate）。",
+            "nullable": true
+          },
+          "sha256": {
+            "type": "string",
+            "description": "entry DLL の SHA256（hex）。",
+            "nullable": true
+          },
+          "sourceLabel": {
+            "type": "string",
+            "description": "発見元ラベル。",
+            "nullable": true
+          },
+          "loadedAtUtc": {
+            "type": "string",
+            "description": "load 完了 UTC。",
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string",
+            "description": "状態説明。",
+            "nullable": true
+          },
+          "entryAssemblyPath": {
+            "type": "string",
+            "description": "entry DLL の絶対パス。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "GET /v1/admin/modules の 1 件。"
+      },
+      "AdminUserListItemDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "ユーザー ID。",
+            "format": "uuid"
+          },
+          "principalId": {
+            "type": "string",
+            "description": "Principal ID。",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "description": "メールアドレス。",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Principal 表示名。",
+            "nullable": true
+          },
+          "isTenantAdmin": {
+            "type": "boolean",
+            "description": "テナント管理者か。"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "有効か。"
+          },
+          "groupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "所属グループ ID。",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "作成日時（UTC）。",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "description": "テナントユーザー一覧項目。"
+      },
       "ApiError": {
         "type": "object",
         "properties": {
@@ -1831,26 +3713,149 @@
         "additionalProperties": false,
         "description": "認証済み Principal 情報。"
       },
-      "CreateDefinitionRequest": {
+      "CreateAdminApiKeyRequest": {
         "required": [
-          "name",
-          "yaml"
+          "allowedScopes",
+          "name"
         ],
         "type": "object",
         "properties": {
           "name": {
             "minLength": 1,
             "type": "string",
-            "description": "定義名。"
+            "description": "表示名。"
           },
-          "yaml": {
-            "minLength": 1,
+          "allowedScopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "許可スコープ（`tenant.admin` は不可）。"
+          },
+          "expiresAt": {
             "type": "string",
-            "description": "定義ソース YAML。"
+            "description": "有効期限（UTC、任意）。",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false,
-        "description": "POST /v1/definitions のリクエスト本文。"
+        "description": "API キー作成要求。"
+      },
+      "CreateAdminGroupRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "type": "string",
+            "description": "グループ名。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "グループ作成要求。"
+      },
+      "CreateAdminUserRequest": {
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "minLength": 1,
+            "type": "string",
+            "description": "メールアドレス。"
+          },
+          "password": {
+            "minLength": 1,
+            "type": "string",
+            "description": "平文パスワード。"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Principal 表示名（未指定時は email）。",
+            "nullable": true
+          },
+          "isTenantAdmin": {
+            "type": "boolean",
+            "description": "テナント管理者にするか（未指定時は false）。",
+            "nullable": true
+          },
+          "groupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "初期所属グループ ID（任意）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "ユーザー作成要求。"
+      },
+      "CreateDefinitionRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "yaml": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreatedAdminApiKeyDto": {
+        "type": "object",
+        "properties": {
+          "apiKeyId": {
+            "type": "string",
+            "description": "API キー ID。",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "表示名。",
+            "nullable": true
+          },
+          "keyPrefix": {
+            "type": "string",
+            "description": "lookup 用 prefix。",
+            "nullable": true
+          },
+          "plainKey": {
+            "type": "string",
+            "description": "平文キー（再表示不可）。",
+            "nullable": true
+          },
+          "allowedScopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "許可スコープ。",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "有効期限（UTC）。",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "作成日時（UTC）。",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "description": "API キー作成応答（平文はこの応答でのみ返す）。"
       },
       "DefinitionNodesSchemaResponse": {
         "type": "object",
@@ -1878,42 +3883,39 @@
         "properties": {
           "displayId": {
             "type": "string",
-            "description": "表示用定義 ID。",
             "nullable": true
           },
           "resourceId": {
             "type": "string",
-            "description": "定義のリソース UUID。",
             "format": "uuid"
           },
           "name": {
             "type": "string",
-            "description": "定義名。",
             "nullable": true
           },
           "createdAt": {
             "type": "string",
-            "description": "作成日時（UTC）。",
             "format": "date-time"
           },
           "updatedAt": {
             "type": "string",
-            "description": "更新日時（UTC）。",
             "format": "date-time"
           },
           "latestVersion": {
             "type": "integer",
-            "description": "最新版番号（投影。truth は definition_versions）。",
             "format": "int32"
           },
           "yaml": {
             "type": "string",
-            "description": "ソース YAML（取得時のみ。任意）。",
+            "nullable": true
+          },
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "定義の JSON 応答形（U4）。"
+        "additionalProperties": false
       },
       "DefinitionResponsePagedResult": {
         "type": "object",
@@ -1923,31 +3925,25 @@
             "items": {
               "$ref": "#/components/schemas/DefinitionResponse"
             },
-            "description": "ページ内の要素。",
             "nullable": true
           },
           "totalCount": {
             "type": "integer",
-            "description": "条件に一致する総件数。",
             "format": "int32"
           },
           "offset": {
             "type": "integer",
-            "description": "先頭からのオフセット。",
             "format": "int32"
           },
           "limit": {
             "type": "integer",
-            "description": "ページサイズ。",
             "format": "int32"
           },
           "hasMore": {
-            "type": "boolean",
-            "description": "次ページが存在するか。"
+            "type": "boolean"
           }
         },
-        "additionalProperties": false,
-        "description": "一覧 API のページング（O1）。"
+        "additionalProperties": false
       },
       "ErrorResponse": {
         "type": "object",
@@ -1967,62 +3963,50 @@
             "items": {
               "$ref": "#/components/schemas/TimelineEventDto"
             },
-            "description": "タイムラインイベントの列。",
             "nullable": true
           },
           "hasMore": {
-            "type": "boolean",
-            "description": "さらに後続イベントがあるか。"
+            "type": "boolean"
           }
         },
-        "additionalProperties": false,
-        "description": "GET …/events のレスポンス（UI `ExecutionEventsResponse`）。"
+        "additionalProperties": false
       },
       "ExecutionResponse": {
         "type": "object",
         "properties": {
           "displayId": {
             "type": "string",
-            "description": "表示用ワークフロー ID。",
             "nullable": true
           },
           "resourceId": {
             "type": "string",
-            "description": "ワークフローのリソース UUID。",
             "format": "uuid"
           },
           "graphId": {
             "type": "string",
-            "description": "定義グラフ ID。",
             "nullable": true
           },
           "status": {
             "type": "string",
-            "description": "状態文字列。",
             "nullable": true
           },
           "startedAt": {
             "type": "string",
-            "description": "開始日時（UTC）。",
             "format": "date-time"
           },
           "updatedAt": {
             "type": "string",
-            "description": "最終更新日時（UTC）。",
             "format": "date-time",
             "nullable": true
           },
           "cancelRequested": {
-            "type": "boolean",
-            "description": "キャンセル要求フラグ。"
+            "type": "boolean"
           },
           "restartLost": {
-            "type": "boolean",
-            "description": "再起動喪失フラグ。"
+            "type": "boolean"
           }
         },
-        "additionalProperties": false,
-        "description": "ワークフロー一覧・単票の JSON 応答形（U4）。"
+        "additionalProperties": false
       },
       "ExecutionResponsePagedResult": {
         "type": "object",
@@ -2032,153 +4016,127 @@
             "items": {
               "$ref": "#/components/schemas/ExecutionResponse"
             },
-            "description": "ページ内の要素。",
             "nullable": true
           },
           "totalCount": {
             "type": "integer",
-            "description": "条件に一致する総件数。",
             "format": "int32"
           },
           "offset": {
             "type": "integer",
-            "description": "先頭からのオフセット。",
             "format": "int32"
           },
           "limit": {
             "type": "integer",
-            "description": "ページサイズ。",
             "format": "int32"
           },
           "hasMore": {
-            "type": "boolean",
-            "description": "次ページが存在するか。"
+            "type": "boolean"
           }
         },
-        "additionalProperties": false,
-        "description": "一覧 API のページング（O1）。"
+        "additionalProperties": false
       },
       "ExecutionViewDto": {
         "type": "object",
         "properties": {
           "displayId": {
             "type": "string",
-            "description": "表示用ワークフロー ID。",
             "nullable": true
           },
           "resourceId": {
             "type": "string",
-            "description": "ワークフローのリソース UUID。",
             "nullable": true
           },
           "graphId": {
             "type": "string",
-            "description": "定義グラフ ID（定義の resource_id の文字列化）。",
             "nullable": true
           },
           "status": {
             "type": "string",
-            "description": "ワークフロー状態文字列（Running 等）。",
             "nullable": true
           },
           "startedAt": {
             "type": "string",
-            "description": "開始日時（UTC）。",
             "format": "date-time"
           },
           "updatedAt": {
             "type": "string",
-            "description": "最終更新日時（UTC）。未更新なら null。",
             "format": "date-time",
             "nullable": true
           },
           "cancelRequested": {
-            "type": "boolean",
-            "description": "キャンセル要求が出ているか。"
+            "type": "boolean"
           },
           "restartLost": {
-            "type": "boolean",
-            "description": "再起動でランタイム状態が失われた疑いがあるか。"
+            "type": "boolean"
           },
           "nodes": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ExecutionViewNodeDto"
             },
-            "description": "実行ノードの一覧。",
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "UI `ExecutionView` に近い形（camelCase JSON）。GET …/state 等で返す。"
+        "additionalProperties": false
       },
       "ExecutionViewNodeDto": {
         "type": "object",
         "properties": {
           "executionNodeId": {
             "type": "string",
-            "description": "ExecutionGraph が付与するノード識別子（試行単位）。定義キャンバスのノードキーとは別。",
             "nullable": true
           },
           "stateName": {
             "type": "string",
-            "description": "ワークフロー定義上の状態名（Statevia.Service.Api.Contracts.ExecutionViewNodeDto.ExecutionNodeId とは別）。",
             "nullable": true
           },
           "nodeType": {
             "type": "string",
-            "description": "ノード種別（例: Action, Wait）。",
             "nullable": true
           },
           "status": {
             "type": "string",
-            "description": "ノードの実行状態。",
             "nullable": true
           },
           "attempt": {
             "type": "integer",
-            "description": "試行番号（1 始まり）。",
             "format": "int32"
           },
           "workerId": {
             "type": "string",
-            "description": "ワーカー識別子（任意）。",
             "nullable": true
           },
           "waitKey": {
             "type": "string",
-            "description": "Wait 解除キー（任意）。",
             "nullable": true
           },
           "canceledByExecution": {
-            "type": "boolean",
-            "description": "実行キャンセルにより打ち切られたか。"
+            "type": "boolean"
           },
           "input": {
             "type": "object",
-            "description": "ノード入力（デバッグ用途。機密の可能性あり）。",
+            "description": "任意の JSON オブジェクト",
             "nullable": true
           },
           "output": {
             "type": "object",
-            "description": "ノード出力（デバッグ用途。機密の可能性あり）。",
+            "description": "任意の JSON オブジェクト",
             "nullable": true
           },
           "conditionRouting": {
             "type": "object",
-            "description": "条件遷移の評価情報（ExecutionGraph の conditionRouting をそのまま透過）。",
+            "description": "任意の JSON オブジェクト",
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "実行ビュー上の 1 ノード。"
+        "additionalProperties": false
       },
       "GraphDefinitionResponse": {
         "type": "object",
         "properties": {
           "graphId": {
             "type": "string",
-            "description": "グラフ ID（定義の display 等）。",
             "nullable": true
           },
           "nodes": {
@@ -2186,7 +4144,6 @@
             "items": {
               "$ref": "#/components/schemas/GraphNodeDefinition"
             },
-            "description": "ノード定義の列。",
             "nullable": true
           },
           "edges": {
@@ -2194,94 +4151,77 @@
             "items": {
               "$ref": "#/components/schemas/GraphEdgeDefinition"
             },
-            "description": "辺定義の列。",
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "契約 4.1 Graph Definition（UI 描画用の構造）。"
+        "additionalProperties": false
       },
       "GraphEdgeDefinition": {
         "type": "object",
         "properties": {
           "from": {
             "type": "string",
-            "description": "始点ノード ID。",
             "nullable": true
           },
           "to": {
             "type": "string",
-            "description": "終点ノード ID。",
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "グラフ上の 1 辺。"
+        "additionalProperties": false
       },
       "GraphNodeDefinition": {
         "type": "object",
         "properties": {
           "nodeId": {
             "type": "string",
-            "description": "ノード ID（キャンバス上のキー）。",
             "nullable": true
           },
           "nodeType": {
             "type": "string",
-            "description": "ノード種別。",
             "nullable": true
           },
           "label": {
             "type": "string",
-            "description": "表示ラベル。",
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "グラフ上の 1 ノード。"
+        "additionalProperties": false
       },
       "GraphPatchNodeDto": {
         "type": "object",
         "properties": {
           "executionNodeId": {
             "type": "string",
-            "description": "実行ノード ID。",
             "nullable": true
           },
           "stateName": {
             "type": "string",
-            "description": "状態名（任意）。",
             "nullable": true
           },
           "status": {
             "type": "string",
-            "description": "ノード状態（任意）。",
             "nullable": true
           },
           "attempt": {
             "type": "integer",
-            "description": "試行番号（任意）。",
             "format": "int32",
             "nullable": true
           },
           "workerId": {
             "type": "string",
-            "description": "ワーカー ID（任意）。",
             "nullable": true
           },
           "waitKey": {
             "type": "string",
-            "description": "Wait キー（任意）。",
             "nullable": true
           },
           "canceledByExecution": {
             "type": "boolean",
-            "description": "実行キャンセルフラグ（任意）。",
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "グラフ差分の 1 ノード分。"
+        "additionalProperties": false
       },
       "GraphUpdatedPatchDto": {
         "type": "object",
@@ -2291,12 +4231,10 @@
             "items": {
               "$ref": "#/components/schemas/GraphPatchNodeDto"
             },
-            "description": "更新されたノードの列（任意）。",
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "GraphUpdated イベント内の patch 本体。"
+        "additionalProperties": false
       },
       "HealthResponse": {
         "type": "object",
@@ -2364,6 +4302,63 @@
         "additionalProperties": false,
         "description": "ログイン成功応答。"
       },
+      "PermissionDefinitionDto": {
+        "type": "object",
+        "properties": {
+          "permissionKey": {
+            "type": "string",
+            "description": "semantic key。",
+            "nullable": true
+          },
+          "displayLabel": {
+            "type": "string",
+            "description": "表示ラベル。",
+            "nullable": true
+          },
+          "displayKey": {
+            "type": "string",
+            "description": "i18n 辞書キー（任意）。",
+            "nullable": true
+          },
+          "isSystem": {
+            "type": "boolean",
+            "description": "システム予約か。"
+          },
+          "isDeprecated": {
+            "type": "boolean",
+            "description": "非推奨か。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "権限カタログ 1 件。"
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": { }
+      },
       "PublishEventRequest": {
         "required": [
           "name"
@@ -2372,24 +4367,51 @@
         "properties": {
           "name": {
             "minLength": 1,
-            "type": "string",
-            "description": "発行するイベント名。"
+            "type": "string"
           }
         },
-        "additionalProperties": false,
-        "description": "POST …/events のリクエスト本文。"
+        "additionalProperties": false
       },
       "ResumeNodeRequest": {
         "type": "object",
         "properties": {
           "resumeKey": {
             "type": "string",
-            "description": "Wait を再開するイベント名（Engine.PublishEvent に渡す）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetAdminGroupMembersRequest": {
+        "type": "object",
+        "properties": {
+          "userIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "所属させるユーザー ID。",
             "nullable": true
           }
         },
         "additionalProperties": false,
-        "description": "POST …/nodes/…/resume のリクエスト本文。"
+        "description": "グループメンバー更新要求。"
+      },
+      "SetAdminGroupPermissionsRequest": {
+        "type": "object",
+        "properties": {
+          "permissionKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "付与する semantic key（`tenant.admin` は不可）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "グループ権限更新要求。"
       },
       "StartExecutionRequest": {
         "required": [
@@ -2399,56 +4421,47 @@
         "properties": {
           "definitionId": {
             "minLength": 1,
-            "type": "string",
-            "description": "開始に用いる定義 ID（display または UUID）。"
+            "type": "string"
           },
           "definitionVersion": {
             "type": "integer",
-            "description": "開始に用いる版番号（省略時は latestVersion）。",
             "format": "int32",
             "nullable": true
           },
           "definitionVersionId": {
             "type": "string",
-            "description": "開始に用いる版 UUID（definitionVersion より優先）。",
             "format": "uuid",
             "nullable": true
           },
           "input": {
             "type": "object",
-            "description": "実行開始時の入力（任意）。",
+            "description": "任意の JSON オブジェクト",
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "POST /v1/executions のリクエスト本文。"
+        "additionalProperties": false
       },
       "TimelineEventDto": {
         "type": "object",
         "properties": {
           "seq": {
             "type": "integer",
-            "description": "event_store 上のシーケンス番号。",
             "format": "int64"
           },
           "type": {
             "type": "string",
-            "description": "イベント種別。",
             "nullable": true
           },
           "executionId": {
             "type": "string",
-            "description": "実行（ワークフロー表示）ID。",
             "nullable": true
           },
           "to": {
             "type": "string",
-            "description": "遷移先ノード ID（任意）。",
             "nullable": true
           },
           "from": {
             "type": "string",
-            "description": "遷移元ノード ID（任意）。",
             "nullable": true
           },
           "patch": {
@@ -2456,37 +4469,57 @@
           },
           "at": {
             "type": "string",
-            "description": "イベント発生時刻の ISO 文字列（任意）。",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateAdminUserRequest": {
+        "type": "object",
+        "properties": {
+          "isActive": {
+            "type": "boolean",
+            "description": "有効か。false で無効化。",
+            "nullable": true
+          },
+          "isTenantAdmin": {
+            "type": "boolean",
+            "description": "テナント管理者フラグ。",
             "nullable": true
           }
         },
         "additionalProperties": false,
-        "description": "タイムライン／SSE 用のイベント（UI の `ExecutionStreamEvent` + seq）。"
+        "description": "ユーザー更新要求。"
       },
       "UpdateDefinitionRequest": {
-        "required": [
-          "name",
-          "yaml"
-        ],
         "type": "object",
         "properties": {
           "name": {
-            "minLength": 1,
             "type": "string",
-            "description": "定義名。"
+            "nullable": true
           },
           "yaml": {
-            "minLength": 1,
             "type": "string",
-            "description": "定義ソース YAML。"
+            "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "PUT /v1/definitions/{id} のリクエスト本文。"
+        "additionalProperties": false
       }
     }
   },
   "tags": [
+    {
+      "name": "ActionSchemas",
+      "description": "Action Schema REST API（`/v1/actions/schema`）。"
+    },
+    {
+      "name": "Admin",
+      "description": "テナント管理者向け users / groups API。"
+    },
+    {
+      "name": "AdminModules",
+      "description": "Module load 状態の管理者向け API。"
+    },
     {
       "name": "Auth",
       "description": "認証 API。"
@@ -2510,6 +4543,10 @@
     {
       "name": "Health",
       "description": "死活監視（`/v1/health`）。"
+    },
+    {
+      "name": "InternalModules",
+      "description": "Module reload 等の内部向け API。"
     }
   ]
 }

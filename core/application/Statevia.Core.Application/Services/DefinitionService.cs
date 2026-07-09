@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Application.Infrastructure;
+
 namespace Statevia.Core.Application.Services;
 
 /// <summary>ワークフロー定義の登録・更新・一覧・取得。</summary>
@@ -142,7 +145,11 @@ internal sealed class DefinitionService : IDefinitionService
                 var (total, pairs) = await _definitions
                     .ListWithDisplayIdsPageAsync(uow, tenantId, query, innerCt)
                     .ConfigureAwait(false);
-                var items = pairs.Select(p => ToResponse(p.Detail, p.DisplayId)).ToList();
+                var items = pairs.Select(p => ToResponse(
+                    p.Detail,
+                    p.DisplayId,
+                    includeYaml: false,
+                    includeDeletedAt: query.IncludeDeleted)).ToList();
 
                 return new PagedResult<DefinitionResponse>
                 {
@@ -168,7 +175,9 @@ internal sealed class DefinitionService : IDefinitionService
         return await _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
-                var detail = await _definitions.GetLatestByIdAsync(uow, tenantId, uuid.Value, innerCt).ConfigureAwait(false);
+                var detail = await _definitions
+                    .GetLatestForApiAsync(uow, tenantId, uuid.Value, innerCt)
+                    .ConfigureAwait(false);
                 if (detail is null)
                     throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
@@ -230,6 +239,8 @@ internal sealed class DefinitionService : IDefinitionService
         return await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
             {
+                await RequireActiveDefinitionAsync(uow, tenantId, uuid.Value, innerCt).ConfigureAwait(false);
+
                 var detail = await _definitions
                     .PublishVersionAsync(
                         uow,
@@ -252,6 +263,118 @@ internal sealed class DefinitionService : IDefinitionService
             ct).ConfigureAwait(false);
     }
 
+    public async Task DeleteAsync(string idOrUuid, CancellationToken ct)
+    {
+        await EnsureDefinitionsWriteAsync(ct).ConfigureAwait(false);
+
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, idOrUuid, ct).ConfigureAwait(false);
+        if (uuid is null)
+            throw new NotFoundException(DefinitionValidationMessages.NotFound);
+
+        var tenantId = _tenantContext.GetRequiredTenantId();
+        var deletedAt = DateTime.UtcNow;
+
+        var outcome = await _executor.ExecuteReadCommittedAsync(
+            (uow, innerCt) => _definitions.SoftDeleteAsync(uow, tenantId, uuid.Value, deletedAt, innerCt),
+            ct).ConfigureAwait(false);
+
+        if (outcome == DefinitionSoftDeleteOutcome.NotFound)
+            throw new NotFoundException(DefinitionValidationMessages.NotFound);
+    }
+
+    public async Task<DefinitionResponse> RestoreAsync(string idOrUuid, CancellationToken ct)
+    {
+        await EnsureDefinitionsWriteAsync(ct).ConfigureAwait(false);
+
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, idOrUuid, ct).ConfigureAwait(false);
+        if (uuid is null)
+            throw new NotFoundException(DefinitionValidationMessages.NotFound);
+
+        var tenantId = _tenantContext.GetRequiredTenantId();
+
+        try
+        {
+            // SaveChanges は ExecuteReadCommittedAsync 内でコールバック後に走るため、
+            // slug 部分 UNIQUE 違反の DbUpdateException はここで捕捉する。
+            return await _executor.ExecuteReadCommittedAsync(
+                async (uow, innerCt) =>
+                {
+                    var deleted = await RequireDeletedDefinitionAsync(uow, tenantId, uuid.Value, innerCt)
+                        .ConfigureAwait(false);
+
+                    if (await _definitions.ExistsActiveSlugInProjectAsync(
+                            uow,
+                            deleted.ProjectId,
+                            deleted.Slug,
+                            deleted.DefinitionId,
+                            innerCt).ConfigureAwait(false))
+                    {
+                        throw new ApiValidationException(
+                            DefinitionValidationMessages.SlugConflict,
+                            new[] { new { message = DefinitionValidationMessages.SlugConflict, field = "slug" } });
+                    }
+
+                    var restored = await _definitions.RestoreAsync(uow, tenantId, uuid.Value, innerCt)
+                        .ConfigureAwait(false);
+                    if (!restored)
+                        throw new NotFoundException(DefinitionValidationMessages.NotFound);
+
+                    var detail = await _definitions.GetLatestForApiAsync(uow, tenantId, uuid.Value, innerCt)
+                        .ConfigureAwait(false);
+                    if (detail is null)
+                        throw new NotFoundException(DefinitionValidationMessages.NotFound);
+
+                    var displayId = await _displayIds
+                        .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, idOrUuid, innerCt)
+                        .ConfigureAwait(false);
+                    return ToResponse(detail, displayId, includeYaml: true);
+                },
+                ct).ConfigureAwait(false);
+        }
+        catch (DbUpdateException ex) when (EventDeliveryRetryPolicy.IsUniqueConstraintViolation(ex))
+        {
+            throw new ApiValidationException(
+                DefinitionValidationMessages.SlugConflict,
+                new[] { new { message = DefinitionValidationMessages.SlugConflict, field = "slug" } },
+                ex);
+        }
+    }
+
+    private async Task<DefinitionRow> RequireActiveDefinitionAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        CancellationToken ct)
+    {
+        var definition = await _definitions.GetLatestForMutationAsync(uow, tenantId, definitionId, ct)
+            .ConfigureAwait(false);
+        if (definition is null)
+            throw new NotFoundException(DefinitionValidationMessages.NotFound);
+
+        return definition;
+    }
+
+    private async Task<DefinitionRow> RequireDeletedDefinitionAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        CancellationToken ct)
+    {
+        var definition = await _definitions.GetDeletedCatalogEntryAsync(uow, tenantId, definitionId, ct)
+            .ConfigureAwait(false);
+        if (definition is null)
+        {
+            var active = await _definitions.GetLatestForMutationAsync(uow, tenantId, definitionId, ct)
+                .ConfigureAwait(false);
+            if (active is not null)
+                throw new StateConflictException(DefinitionValidationMessages.NotDeleted);
+
+            throw new NotFoundException(DefinitionValidationMessages.NotFound);
+        }
+
+        return definition;
+    }
+
     private Task EnsureDefinitionsReadAsync(CancellationToken ct) =>
         _runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.DefinitionsRead, ct);
 
@@ -270,7 +393,11 @@ internal sealed class DefinitionService : IDefinitionService
             })
             .ToArray();
 
-    private static DefinitionResponse ToResponse(DefinitionDetail detail, string? displayId, bool includeYaml = false) =>
+    private static DefinitionResponse ToResponse(
+        DefinitionDetail detail,
+        string? displayId,
+        bool includeYaml = false,
+        bool includeDeletedAt = false) =>
         new()
         {
             DisplayId = displayId ?? detail.Definition.DefinitionId.ToString(),
@@ -279,6 +406,7 @@ internal sealed class DefinitionService : IDefinitionService
             LatestVersion = detail.Definition.LatestVersion,
             CreatedAt = detail.Definition.CreatedAt,
             UpdatedAt = detail.Definition.UpdatedAt,
-            Yaml = includeYaml ? detail.Version.SourceYaml : null
+            Yaml = includeYaml ? detail.Version.SourceYaml : null,
+            DeletedAt = includeDeletedAt ? detail.Definition.DeletedAt : null
         };
 }

@@ -109,6 +109,26 @@ public sealed class ApiExceptionFilterTests
         Assert.Equal("IDEMPOTENCY_KEY_CONFLICT", payload.Error.Code);
     }
 
+    /// <summary>StateConflictException を 409 に写像する。</summary>
+    [Fact]
+    public void OnException_MapsStateConflictExceptionTo409()
+    {
+        // Arrange
+        var http = new DefaultHttpContext();
+        var filter = CreateFilter();
+        var ctx = CreateContext(http, new StateConflictException("not deleted"));
+
+        // Act
+        filter.OnException(ctx);
+
+        // Assert
+        Assert.True(ctx.ExceptionHandled);
+        var result = Assert.IsType<ObjectResult>(ctx.Result);
+        Assert.Equal(StatusCodes.Status409Conflict, result.StatusCode);
+        var payload = Assert.IsType<ErrorResponse>(result.Value);
+        Assert.Equal("STATE_CONFLICT", payload.Error.Code);
+    }
+
     /// <summary>パラメータ無し NotFoundException を 404 に写像する。</summary>
     [Fact]
     public void OnException_MapsDefaultNotFoundExceptionTo404()
