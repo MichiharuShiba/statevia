@@ -292,50 +292,52 @@ internal sealed class DefinitionService : IDefinitionService
 
         var tenantId = _tenantContext.GetRequiredTenantId();
 
-        return await _executor.ExecuteReadCommittedAsync(
-            async (uow, innerCt) =>
-            {
-                var deleted = await RequireDeletedDefinitionAsync(uow, tenantId, uuid.Value, innerCt)
-                    .ConfigureAwait(false);
-
-                if (await _definitions.ExistsActiveSlugInProjectAsync(
-                        uow,
-                        deleted.ProjectId,
-                        deleted.Slug,
-                        deleted.DefinitionId,
-                        innerCt).ConfigureAwait(false))
+        try
+        {
+            // SaveChanges は ExecuteReadCommittedAsync 内でコールバック後に走るため、
+            // slug 部分 UNIQUE 違反の DbUpdateException はここで捕捉する。
+            return await _executor.ExecuteReadCommittedAsync(
+                async (uow, innerCt) =>
                 {
-                    throw new ApiValidationException(
-                        DefinitionValidationMessages.SlugConflict,
-                        new[] { new { message = DefinitionValidationMessages.SlugConflict, field = "slug" } });
-                }
+                    var deleted = await RequireDeletedDefinitionAsync(uow, tenantId, uuid.Value, innerCt)
+                        .ConfigureAwait(false);
 
-                try
-                {
+                    if (await _definitions.ExistsActiveSlugInProjectAsync(
+                            uow,
+                            deleted.ProjectId,
+                            deleted.Slug,
+                            deleted.DefinitionId,
+                            innerCt).ConfigureAwait(false))
+                    {
+                        throw new ApiValidationException(
+                            DefinitionValidationMessages.SlugConflict,
+                            new[] { new { message = DefinitionValidationMessages.SlugConflict, field = "slug" } });
+                    }
+
                     var restored = await _definitions.RestoreAsync(uow, tenantId, uuid.Value, innerCt)
                         .ConfigureAwait(false);
                     if (!restored)
                         throw new NotFoundException(DefinitionValidationMessages.NotFound);
-                }
-                catch (DbUpdateException ex) when (EventDeliveryRetryPolicy.IsUniqueConstraintViolation(ex))
-                {
-                    throw new ApiValidationException(
-                        DefinitionValidationMessages.SlugConflict,
-                        new[] { new { message = DefinitionValidationMessages.SlugConflict, field = "slug" } },
-                        ex);
-                }
 
-                var detail = await _definitions.GetLatestForApiAsync(uow, tenantId, uuid.Value, innerCt)
-                    .ConfigureAwait(false);
-                if (detail is null)
-                    throw new NotFoundException(DefinitionValidationMessages.NotFound);
+                    var detail = await _definitions.GetLatestForApiAsync(uow, tenantId, uuid.Value, innerCt)
+                        .ConfigureAwait(false);
+                    if (detail is null)
+                        throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
-                var displayId = await _displayIds
-                    .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, idOrUuid, innerCt)
-                    .ConfigureAwait(false);
-                return ToResponse(detail, displayId, includeYaml: true);
-            },
-            ct).ConfigureAwait(false);
+                    var displayId = await _displayIds
+                        .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, idOrUuid, innerCt)
+                        .ConfigureAwait(false);
+                    return ToResponse(detail, displayId, includeYaml: true);
+                },
+                ct).ConfigureAwait(false);
+        }
+        catch (DbUpdateException ex) when (EventDeliveryRetryPolicy.IsUniqueConstraintViolation(ex))
+        {
+            throw new ApiValidationException(
+                DefinitionValidationMessages.SlugConflict,
+                new[] { new { message = DefinitionValidationMessages.SlugConflict, field = "slug" } },
+                ex);
+        }
     }
 
     private async Task<DefinitionRow> RequireActiveDefinitionAsync(
