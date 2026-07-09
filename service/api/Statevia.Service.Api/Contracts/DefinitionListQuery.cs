@@ -27,7 +27,7 @@ public sealed class DefinitionListQuery
     [FromQuery(Name = "sortOrder")]
     public string? SortOrder { get; init; }
 
-    /// <summary>削除済み定義を一覧に含める。</summary>
+    /// <summary>削除済み定義を一覧に含める（省略時は false）。</summary>
     [FromQuery(Name = "includeDeleted")]
-    public bool IncludeDeleted { get; init; }
+    public bool? IncludeDeleted { get; init; }
 }

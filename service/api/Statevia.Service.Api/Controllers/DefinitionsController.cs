@@ -69,7 +69,7 @@ public class DefinitionsController : ControllerBase
             Page: new PageQuery(offset, query.Limit.Value),
             Sort: new SortQuery(query.SortBy, query.SortOrder),
             NameContains: query.Name,
-            IncludeDeleted: query.IncludeDeleted);
+            IncludeDeleted: query.IncludeDeleted ?? false);
 
         var paged = await _definitions.ListPagedAsync(pageQuery, ct).ConfigureAwait(false);
         return Ok(paged);
