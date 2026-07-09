@@ -18,4 +18,10 @@ public interface IDefinitionService
 
     /// <summary>表示 ID または UUID で単一定義を取得する。</summary>
     Task<DefinitionResponse> GetAsync(string idOrUuid, CancellationToken ct);
+
+    /// <summary>catalog から定義を論理削除する。</summary>
+    Task DeleteAsync(string idOrUuid, CancellationToken ct);
+
+    /// <summary>削除済み定義を catalog に復元する。</summary>
+    Task<DefinitionResponse> RestoreAsync(string idOrUuid, CancellationToken ct);
 }

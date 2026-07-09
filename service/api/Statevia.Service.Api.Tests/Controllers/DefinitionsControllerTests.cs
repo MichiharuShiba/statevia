@@ -43,6 +43,19 @@ public sealed class DefinitionsControllerTests
             if (ExceptionToThrow is { } ex) throw ex;
             return UpdateResult;
         }
+
+        public async Task DeleteAsync(string idOrUuid, CancellationToken ct)
+        {
+            await Task.Yield();
+            if (ExceptionToThrow is { } ex) throw ex;
+        }
+
+        public async Task<DefinitionResponse> RestoreAsync(string idOrUuid, CancellationToken ct)
+        {
+            await Task.Yield();
+            if (ExceptionToThrow is { } ex) throw ex;
+            return GetResult;
+        }
     }
 
     /// <summary>

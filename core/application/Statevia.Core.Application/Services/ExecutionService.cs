@@ -830,23 +830,50 @@ internal sealed class ExecutionService : IExecutionService
             {
                 if (request.DefinitionVersionId is { } versionId)
                 {
-                    var byId = await _definitions.GetVersionByIdAsync(uow, tenantId, versionId, innerCt)
+                    var byId = await _definitions
+                        .GetVersionForExecutionByIdAsync(uow, tenantId, versionId, innerCt)
                         .ConfigureAwait(false);
-                    return byId is not null && byId.DefinitionId == definitionId ? byId : null;
+                    if (byId is null || byId.DefinitionId != definitionId)
+                        return null;
+
+                    return await EnsureActiveParentForAdmissionAsync(uow, tenantId, definitionId, innerCt)
+                        .ConfigureAwait(false)
+                        ? byId
+                        : null;
                 }
 
                 if (request.DefinitionVersion is { } versionNumber)
                 {
-                    return await _definitions
-                        .GetVersionAsync(uow, tenantId, definitionId, versionNumber, innerCt)
+                    var byNumber = await _definitions
+                        .GetVersionForExecutionAsync(uow, tenantId, definitionId, versionNumber, innerCt)
                         .ConfigureAwait(false);
+                    if (byNumber is null)
+                        return null;
+
+                    return await EnsureActiveParentForAdmissionAsync(uow, tenantId, definitionId, innerCt)
+                        .ConfigureAwait(false)
+                        ? byNumber
+                        : null;
                 }
 
-                var latest = await _definitions.GetLatestByIdAsync(uow, tenantId, definitionId, innerCt)
+                var latest = await _definitions
+                    .GetLatestForApiAsync(uow, tenantId, definitionId, innerCt)
                     .ConfigureAwait(false);
                 return latest?.Version;
             },
             ct);
+
+    private async Task<bool> EnsureActiveParentForAdmissionAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        CancellationToken ct)
+    {
+        var active = await _definitions
+            .GetLatestForApiAsync(uow, tenantId, definitionId, ct)
+            .ConfigureAwait(false);
+        return active is not null;
+    }
 
     private Task EnsureCanExecuteOnDefinitionAsync(
         Guid tenantId,

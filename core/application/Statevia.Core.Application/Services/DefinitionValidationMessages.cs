@@ -13,4 +13,8 @@ internal static class DefinitionValidationMessages
     public const string ValidationFailed = "Definition validation failed.";
 
     public const string NotFound = "Definition not found";
+
+    public const string NotDeleted = "Definition is not deleted.";
+
+    public const string SlugConflict = "Definition slug is already in use in this project.";
 }

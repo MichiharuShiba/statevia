@@ -52,4 +52,8 @@ public sealed class DefinitionResponse
     /// <summary>ソース YAML（取得時のみ。任意）。</summary>
     [JsonPropertyName("yaml")]
     public string? Yaml { get; set; }
+
+    /// <summary>論理削除日時（UTC）。<c>includeDeleted=true</c> の一覧時のみ。</summary>
+    [JsonPropertyName("deletedAt")]
+    public DateTime? DeletedAt { get; set; }
 }

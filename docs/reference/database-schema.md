@@ -1,9 +1,11 @@
 # スキーマ定義
 
-Version: 1.7
+Version: 1.9
 Project: 実行型ステートマシン
 
 **Version 1.7（2026-05-27）**: task 8 — `execution_cursors` / `execution_waits` 追加（operational projection / EventWait durable wait）。
+
+**Version 1.9（2026-07-08）**: `definitions.deleted_at`（catalog 論理削除）と `UNIQUE(project_id, slug) WHERE deleted_at IS NULL` を追記。HTTP 契約は [`specifications/api-http.md`](../specifications/api-http.md) §2.1.2〜2.1.3 を参照。
 
 **Version 1.5（2026-05-25）**: `projects.is_public` を削除。discoverability は `visibility` のみ（公開カタログ API 未着手のため占位カラムを整理）。
 
@@ -150,8 +152,9 @@ project の **認可 truth**。付与先はテナント単位（Principal 単位
 | latest_version | int | NOT NULL | 最新版番号（**投影**。truth は `definition_versions`） |
 | created_at | timestamptz | NOT NULL | 作成日時 |
 | updated_at | timestamptz | NOT NULL | 最終 publish 日時 |
+| deleted_at | timestamptz | NULL | catalog 論理削除日時（UTC）。NULL = Active |
 
-**インデックス:** `UNIQUE(project_id, slug)`
+**インデックス:** `UNIQUE(project_id, slug) WHERE deleted_at IS NULL`（restore 時 slug 競合の最終防衛）
 
 **認可:** 取得・publish は `project_accesses`（+ オーナー）で評価。`definitions` は `TenantInternalId` で HasQueryFilter。
 

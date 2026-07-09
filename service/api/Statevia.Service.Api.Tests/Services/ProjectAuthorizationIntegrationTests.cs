@@ -50,7 +50,7 @@ public sealed class ProjectAuthorizationIntegrationTests
         // Act
         await using var uow = await uowFactory.CreateAsync();
         var ex = await Assert.ThrowsAsync<NotFoundException>(() =>
-            repo.GetLatestByIdAsync(uow, otherTenantId, defId, default));
+            repo.GetLatestForApiAsync(uow, otherTenantId, defId, default));
 
         // Assert
         Assert.NotNull(ex);

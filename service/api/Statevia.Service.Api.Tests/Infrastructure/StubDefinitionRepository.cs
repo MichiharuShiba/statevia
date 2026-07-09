@@ -11,9 +11,24 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
 
     public DefinitionVersionRow? VersionByNumber { get; init; }
 
+    public DefinitionRow? DeletedCatalogEntry { get; init; }
+
     public Exception? AddWithInitialVersionException { get; set; }
 
-    public Task<DefinitionDetail?> GetLatestByIdAsync(
+    public DefinitionSoftDeleteOutcome SoftDeleteOutcome { get; init; } = DefinitionSoftDeleteOutcome.Deleted;
+
+    public bool RestoreResult { get; init; } = true;
+
+    public bool ExistsActiveSlugConflict { get; init; }
+
+    public Task<DefinitionDetail?> GetLatestForApiAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        CancellationToken ct) =>
+        GetLatestDetail(definitionId, activeOnly: true);
+
+    public Task<DefinitionRow?> GetLatestForMutationAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,
         Guid definitionId,
@@ -22,13 +37,60 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
         _ = uow;
         _ = tenantId;
         _ = ct;
-        if (LatestDetail is null || LatestDetail.Definition.DefinitionId != definitionId)
-            return Task.FromResult<DefinitionDetail?>(null);
+        if (LatestDetail is null
+            || LatestDetail.Definition.DefinitionId != definitionId
+            || LatestDetail.Definition.DeletedAt is not null)
+            return Task.FromResult<DefinitionRow?>(null);
 
-        return Task.FromResult<DefinitionDetail?>(LatestDetail);
+        return Task.FromResult<DefinitionRow?>(LatestDetail.Definition);
     }
 
-    public Task<DefinitionVersionRow?> GetVersionByIdAsync(
+    public Task<DefinitionVersionRow?> GetVersionForExecutionAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        int version,
+        CancellationToken ct) =>
+        GetVersionByNumber(uow, tenantId, definitionId, version, ct);
+
+    public Task<DefinitionVersionRow?> GetVersionForExecutionByIdAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionVersionId,
+        CancellationToken ct) =>
+        GetVersionById(uow, tenantId, definitionVersionId, ct);
+
+    public Task<DefinitionVersionRow?> GetVersionForApiAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        int version,
+        CancellationToken ct)
+    {
+        if (LatestDetail is null
+            || LatestDetail.Definition.DefinitionId != definitionId
+            || LatestDetail.Definition.DeletedAt is not null)
+            return Task.FromResult<DefinitionVersionRow?>(null);
+
+        return GetVersionByNumber(uow, tenantId, definitionId, version, ct);
+    }
+
+    public Task<DefinitionRow?> GetDeletedCatalogEntryAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        CancellationToken ct)
+    {
+        _ = uow;
+        _ = tenantId;
+        _ = ct;
+        if (DeletedCatalogEntry is null || DeletedCatalogEntry.DefinitionId != definitionId)
+            return Task.FromResult<DefinitionRow?>(null);
+
+        return Task.FromResult<DefinitionRow?>(DeletedCatalogEntry);
+    }
+
+    private Task<DefinitionVersionRow?> GetVersionById(
         ICoreUnitOfWork uow,
         Guid tenantId,
         Guid definitionVersionId,
@@ -45,7 +107,7 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
             : Task.FromResult<DefinitionVersionRow?>(null);
     }
 
-    public Task<DefinitionVersionRow?> GetVersionAsync(
+    private Task<DefinitionVersionRow?> GetVersionByNumber(
         ICoreUnitOfWork uow,
         Guid tenantId,
         Guid definitionId,
@@ -63,6 +125,17 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
         return LatestDetail is not null
             ? Task.FromResult<DefinitionVersionRow?>(VersionByNumber)
             : Task.FromResult<DefinitionVersionRow?>(null);
+    }
+
+    private Task<DefinitionDetail?> GetLatestDetail(Guid definitionId, bool activeOnly)
+    {
+        if (LatestDetail is null || LatestDetail.Definition.DefinitionId != definitionId)
+            return Task.FromResult<DefinitionDetail?>(null);
+
+        if (activeOnly && LatestDetail.Definition.DeletedAt is not null)
+            return Task.FromResult<DefinitionDetail?>(null);
+
+        return Task.FromResult<DefinitionDetail?>(LatestDetail);
     }
 
     public Task AddWithInitialVersionAsync(
@@ -114,6 +187,49 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
 
         return Task.FromResult<Guid?>(LatestDetail.Definition.ProjectId);
     }
+
+    public Task<DefinitionSoftDeleteOutcome> SoftDeleteAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        DateTime deletedAt,
+        CancellationToken ct)
+    {
+        _ = uow;
+        _ = tenantId;
+        _ = definitionId;
+        _ = deletedAt;
+        _ = ct;
+        return Task.FromResult(SoftDeleteOutcome);
+    }
+
+    public Task<bool> RestoreAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        CancellationToken ct)
+    {
+        _ = uow;
+        _ = tenantId;
+        _ = definitionId;
+        _ = ct;
+        return Task.FromResult(RestoreResult);
+    }
+
+    public Task<bool> ExistsActiveSlugInProjectAsync(
+        ICoreUnitOfWork uow,
+        Guid projectId,
+        string slug,
+        Guid excludingDefinitionId,
+        CancellationToken ct)
+    {
+        _ = uow;
+        _ = projectId;
+        _ = slug;
+        _ = excludingDefinitionId;
+        _ = ct;
+        return Task.FromResult(ExistsActiveSlugConflict);
+    }
 }
 
 /// <summary>definitionId に紐づく最新版を返すスタブを生成する。</summary>
@@ -125,7 +241,8 @@ internal static class StubDefinitionRepositoryFactory
         string name,
         Guid? projectId = null,
         string sourceYaml = "yaml",
-        string compiledJson = "{}")
+        string compiledJson = "{}",
+        DateTime? deletedAt = null)
     {
         var now = DateTime.UtcNow;
         var definition = new DefinitionRow
@@ -137,7 +254,8 @@ internal static class StubDefinitionRepositoryFactory
             Name = name,
             LatestVersion = 1,
             CreatedAt = now,
-            UpdatedAt = now
+            UpdatedAt = now,
+            DeletedAt = deletedAt
         };
         var version = new DefinitionVersionRow
         {

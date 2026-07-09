@@ -14,7 +14,7 @@ public sealed class DefinitionRepositoryTests
     /// 未存在の識別子では空値を返す。
     /// </summary>
     [Fact]
-    public async Task GetLatestByIdAsync_ReturnsNull_WhenNotFound()
+    public async Task GetLatestForApiAsync_ReturnsNull_WhenNotFound()
     {
         // Arrange
         using var db = new SqliteTestDatabase();
@@ -23,7 +23,7 @@ public sealed class DefinitionRepositoryTests
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        var res = await repo.GetLatestByIdAsync(uow, OwnerTenantId, Guid.NewGuid(), default);
+        var res = await repo.GetLatestForApiAsync(uow, OwnerTenantId, Guid.NewGuid(), default);
 
         // Assert
         Assert.Null(res);
@@ -33,7 +33,7 @@ public sealed class DefinitionRepositoryTests
     /// 初版追加後に最新版を取得できる。
     /// </summary>
     [Fact]
-    public async Task AddWithInitialVersionAsync_PersistsRows_ThenGetLatestByIdAsyncReturns()
+    public async Task AddWithInitialVersionAsync_PersistsRows_ThenGetLatestForApiAsyncReturns()
     {
         // Arrange
         using var db = new SqliteTestDatabase();
@@ -79,7 +79,7 @@ public sealed class DefinitionRepositoryTests
 
         // Assert
         await using var readUow = await uowFactory.CreateAsync();
-        var res = await repo.GetLatestByIdAsync(readUow, OwnerTenantId, defId, default);
+        var res = await repo.GetLatestForApiAsync(readUow, OwnerTenantId, defId, default);
         Assert.NotNull(res);
         Assert.Equal(defId, res!.Definition.DefinitionId);
         Assert.Equal("def-1", res.Definition.Name);
@@ -124,7 +124,7 @@ public sealed class DefinitionRepositoryTests
         Assert.Equal("{\"new\":true}", published.Version.CompiledJson);
 
         await using var verify = await uowFactory.CreateAsync();
-        var v1 = await repo.GetVersionAsync(verify, OwnerTenantId, defId, 1, default);
+        var v1 = await repo.GetVersionForExecutionAsync(verify, OwnerTenantId, defId, 1, default);
         Assert.NotNull(v1);
         Assert.Equal("{}", v1!.CompiledJson);
     }
@@ -133,7 +133,7 @@ public sealed class DefinitionRepositoryTests
     /// 他テナントの版は取得できない。
     /// </summary>
     [Fact]
-    public async Task GetVersionByIdAsync_ReturnsNull_ForOtherTenant()
+    public async Task GetVersionForExecutionByIdAsync_ReturnsNull_ForOtherTenant()
     {
         // Arrange
         using var db = new SqliteTestDatabase();
@@ -174,7 +174,7 @@ public sealed class DefinitionRepositoryTests
         // Act
         await using var uow = await uowFactory.CreateAsync();
         var ex = await Assert.ThrowsAsync<NotFoundException>(() =>
-            repo.GetVersionByIdAsync(uow, otherTenantId, versionId, default));
+            repo.GetVersionForExecutionByIdAsync(uow, otherTenantId, versionId, default));
 
         // Assert
         Assert.NotNull(ex);
@@ -270,5 +270,90 @@ public sealed class DefinitionRepositoryTests
         Assert.Equal(2, total);
         Assert.Single(items);
         Assert.Equal(defId1, items[0].Detail.Definition.DefinitionId);
+    }
+
+    /// <summary>
+    /// 削除済み定義は ForApi では取得できないが ForExecution では版を取得できる。
+    /// </summary>
+    [Fact]
+    public async Task GetLatestForApiAsync_ExcludesDeleted_WhileGetVersionForExecutionAsync_IncludesVersion()
+    {
+        // Arrange
+        using var db = new SqliteTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = TestRepositoryFactory.CreateDefinitionRepository();
+        var defId = Guid.NewGuid();
+        var created = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var projectId = Guid.NewGuid();
+        var deletedAt = new DateTime(2020, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        await using (var seed = db.Factory.CreateDbContext())
+        {
+            ProjectTestData.AddDefaultProject(seed, OwnerTenantId, OwnerTenantKey, projectId);
+            DefinitionTestData.AddDefinitionWithVersion(
+                seed, OwnerTenantId, defId, "def-1", projectId, createdAt: created);
+            var definition = await seed.Definitions.FindAsync(defId);
+            definition!.DeletedAt = deletedAt;
+            await seed.SaveChangesAsync();
+        }
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var apiDetail = await repo.GetLatestForApiAsync(uow, OwnerTenantId, defId, default);
+        var executionVersion = await repo.GetVersionForExecutionAsync(uow, OwnerTenantId, defId, 1, default);
+
+        // Assert
+        Assert.Null(apiDetail);
+        Assert.NotNull(executionVersion);
+        Assert.Equal(1, executionVersion!.Version);
+    }
+
+    /// <summary>
+    /// soft delete 後は一覧から除外し、includeDeleted で含める。
+    /// </summary>
+    [Fact]
+    public async Task ListWithDisplayIdsPageAsync_ExcludesDeletedUnlessIncludeDeleted()
+    {
+        // Arrange
+        using var db = new SqliteTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = TestRepositoryFactory.CreateDefinitionRepository();
+        var defId = Guid.NewGuid();
+        var created = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var projectId = Guid.NewGuid();
+
+        await using (var seed = db.Factory.CreateDbContext())
+        {
+            ProjectTestData.AddDefaultProject(seed, OwnerTenantId, OwnerTenantKey, projectId);
+            DefinitionTestData.AddDefinitionWithVersion(seed, OwnerTenantId, defId, "def-1", projectId, createdAt: created);
+            var definition = await seed.Definitions.FindAsync(defId);
+            definition!.DeletedAt = created.AddDays(1);
+            await seed.SaveChangesAsync();
+        }
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var (defaultTotal, _) = await repo.ListWithDisplayIdsPageAsync(
+            uow,
+            OwnerTenantId,
+            new DefinitionListPageQuery(
+                Page: new PageQuery(0, 10),
+                Sort: new SortQuery(null, null),
+                NameContains: null),
+            default);
+        var (includedTotal, includedItems) = await repo.ListWithDisplayIdsPageAsync(
+            uow,
+            OwnerTenantId,
+            new DefinitionListPageQuery(
+                Page: new PageQuery(0, 10),
+                Sort: new SortQuery(null, null),
+                NameContains: null,
+                IncludeDeleted: true),
+            default);
+
+        // Assert
+        Assert.Equal(0, defaultTotal);
+        Assert.Equal(1, includedTotal);
+        Assert.NotNull(includedItems[0].Detail.Definition.DeletedAt);
     }
 }

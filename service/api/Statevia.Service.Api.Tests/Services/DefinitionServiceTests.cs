@@ -591,5 +591,41 @@ public sealed class DefinitionServiceTests
         Assert.Contains("$.input.url", detailsJson, StringComparison.Ordinal);
         Assert.DoesNotContain("GET", detailsJson, StringComparison.Ordinal);
     }
+
+    /// <summary>削除 API は冪等 204 を返す。</summary>
+    [Fact]
+    public async Task DeleteAsync_Completes_WhenRepositoryReportsDeleted()
+    {
+        // Arrange
+        var defId = Guid.NewGuid();
+        var display = new StubDisplayIdService();
+        display.ResolveMap["definition|DISP-1"] = defId;
+        var definitionsRepo = new StubDefinitionRepository
+        {
+            LatestDetail = StubDefinitionRepositoryFactory.ForDefinition(defId, TestTenantIds.DefaultTenantId, "def").LatestDetail,
+            SoftDeleteOutcome = DefinitionSoftDeleteOutcome.Deleted
+        };
+        using var inDb = new InMemoryTestDatabase();
+        var sut = CreateDefinitionService(inDb, display, new StubCompiler("{}"), definitionsRepo, new FixedIdGenerator(Guid.NewGuid()));
+
+        // Act
+        await sut.DeleteAsync("DISP-1", CancellationToken.None);
+    }
+
+    /// <summary>未削除定義への restore は StateConflictException。</summary>
+    [Fact]
+    public async Task RestoreAsync_ThrowsStateConflict_WhenDefinitionIsActive()
+    {
+        // Arrange
+        var defId = Guid.NewGuid();
+        var display = new StubDisplayIdService();
+        display.ResolveMap["definition|DISP-1"] = defId;
+        var definitionsRepo = StubDefinitionRepositoryFactory.ForDefinition(defId, TestTenantIds.DefaultTenantId, "def");
+        using var inDb = new InMemoryTestDatabase();
+        var sut = CreateDefinitionService(inDb, display, new StubCompiler("{}"), definitionsRepo, new FixedIdGenerator(Guid.NewGuid()));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<StateConflictException>(() => sut.RestoreAsync("DISP-1", CancellationToken.None));
+    }
 }
 

@@ -49,7 +49,7 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
             async (uow, innerCt) =>
             {
                 var detail = await _definitions
-                    .GetLatestByIdAsync(uow, tenantId, uuid.Value, innerCt)
+                    .GetLatestForApiAsync(uow, tenantId, uuid.Value, innerCt)
                     .ConfigureAwait(false);
                 if (detail is null)
                     throw new NotFoundException("Graph not found");

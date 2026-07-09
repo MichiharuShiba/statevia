@@ -20,35 +20,44 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         _projectAuth = projectAuth;
 
     /// <inheritdoc />
-    public async Task<DefinitionDetail?> GetLatestByIdAsync(
+    public Task<DefinitionDetail?> GetLatestForApiAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        CancellationToken ct) =>
+        GetLatestDetailAsync(uow, tenantId, definitionId, activeOnly: true, tracked: false, ct);
+
+    /// <inheritdoc />
+    public async Task<DefinitionRow?> GetLatestForMutationAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,
         Guid definitionId,
         CancellationToken ct)
     {
-        var definition = await uow.GetDb().Definitions.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId, ct)
+        var definition = await uow.GetDb().Definitions
+            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.DeletedAt == null, ct)
             .ConfigureAwait(false);
         if (definition is null)
             return null;
 
         await _projectAuth
-            .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
+            .EnsureCanPublishAsync(uow, tenantId, definition.ProjectId, ct)
             .ConfigureAwait(false);
 
-        var version = await uow.GetDb().DefinitionVersions.AsNoTracking()
-            .FirstOrDefaultAsync(
-                x => x.DefinitionId == definitionId && x.Version == definition.LatestVersion,
-                ct)
-            .ConfigureAwait(false);
-        if (version is null)
-            return null;
-
-        return new DefinitionDetail { Definition = definition, Version = version };
+        return definition;
     }
 
     /// <inheritdoc />
-    public async Task<DefinitionVersionRow?> GetVersionByIdAsync(
+    public Task<DefinitionVersionRow?> GetVersionForExecutionAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        int version,
+        CancellationToken ct) =>
+        GetVersionInternalAsync(uow, tenantId, definitionId, version, activeParentOnly: false, ct);
+
+    /// <inheritdoc />
+    public async Task<DefinitionVersionRow?> GetVersionForExecutionByIdAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,
         Guid definitionVersionId,
@@ -57,14 +66,12 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         var version = await uow.GetDb().DefinitionVersions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.DefinitionVersionId == definitionVersionId, ct)
             .ConfigureAwait(false);
-
         if (version is null)
             return null;
 
         var definition = await uow.GetDb().Definitions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.DefinitionId == version.DefinitionId, ct)
             .ConfigureAwait(false);
-
         if (definition is null)
             return null;
 
@@ -76,29 +83,32 @@ internal sealed class DefinitionRepository : IDefinitionRepository
     }
 
     /// <inheritdoc />
-    public async Task<DefinitionVersionRow?> GetVersionAsync(
+    public Task<DefinitionVersionRow?> GetVersionForApiAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,
         Guid definitionId,
         int version,
+        CancellationToken ct) =>
+        GetVersionInternalAsync(uow, tenantId, definitionId, version, activeParentOnly: true, ct);
+
+    /// <inheritdoc />
+    public async Task<DefinitionRow?> GetDeletedCatalogEntryAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
         CancellationToken ct)
     {
         var definition = await uow.GetDb().Definitions.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId, ct)
+            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.DeletedAt != null, ct)
             .ConfigureAwait(false);
-
         if (definition is null)
             return null;
 
         await _projectAuth
-            .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
+            .EnsureCanPublishAsync(uow, tenantId, definition.ProjectId, ct)
             .ConfigureAwait(false);
 
-        return await uow.GetDb().DefinitionVersions.AsNoTracking()
-            .FirstOrDefaultAsync(
-                x => x.DefinitionId == definitionId && x.Version == version,
-                ct)
-            .ConfigureAwait(false);
+        return definition;
     }
 
     /// <inheritdoc />
@@ -141,7 +151,9 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         CancellationToken ct)
     {
         var definition = await uow.GetDb().Definitions
-            .FirstOrDefaultAsync(x => x.DefinitionId == command.DefinitionId, ct)
+            .FirstOrDefaultAsync(
+                x => x.DefinitionId == command.DefinitionId && x.DeletedAt == null,
+                ct)
             .ConfigureAwait(false);
         if (definition is null)
             return null;
@@ -178,6 +190,8 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         CancellationToken ct)
     {
         var joinQuery = QueryDefinitionsWithDisplayIds(uow.GetDb(), tenantId, ProjectAccessRole.Reader);
+        if (!query.IncludeDeleted)
+            joinQuery = joinQuery.Where(x => x.Definition.DeletedAt == null);
 
         if (!string.IsNullOrWhiteSpace(query.NameContains))
             joinQuery = joinQuery.Where(x => x.Definition.Name.Contains(query.NameContains));
@@ -196,6 +210,139 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             DisplayId: x.DisplayId));
         return (total, list);
     }
+
+    /// <inheritdoc />
+    public async Task<DefinitionSoftDeleteOutcome> SoftDeleteAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        DateTime deletedAt,
+        CancellationToken ct)
+    {
+        var definition = await uow.GetDb().Definitions
+            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId, ct)
+            .ConfigureAwait(false);
+        if (definition is null)
+            return DefinitionSoftDeleteOutcome.NotFound;
+
+        await _projectAuth
+            .EnsureCanPublishAsync(uow, tenantId, definition.ProjectId, ct)
+            .ConfigureAwait(false);
+
+        if (definition.DeletedAt is not null)
+            return DefinitionSoftDeleteOutcome.AlreadyDeleted;
+
+        definition.DeletedAt = deletedAt;
+        definition.UpdatedAt = deletedAt;
+        return DefinitionSoftDeleteOutcome.Deleted;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> RestoreAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        CancellationToken ct)
+    {
+        var definition = await uow.GetDb().Definitions
+            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.DeletedAt != null, ct)
+            .ConfigureAwait(false);
+        if (definition is null)
+            return false;
+
+        await _projectAuth
+            .EnsureCanPublishAsync(uow, tenantId, definition.ProjectId, ct)
+            .ConfigureAwait(false);
+
+        var now = DateTime.UtcNow;
+        definition.DeletedAt = null;
+        definition.UpdatedAt = now;
+        return true;
+    }
+
+    /// <inheritdoc />
+    public Task<bool> ExistsActiveSlugInProjectAsync(
+        ICoreUnitOfWork uow,
+        Guid projectId,
+        string slug,
+        Guid excludingDefinitionId,
+        CancellationToken ct) =>
+        uow.GetDb().Definitions.AsNoTracking()
+            .AnyAsync(
+                x => x.ProjectId == projectId
+                     && x.Slug == slug
+                     && x.DefinitionId != excludingDefinitionId
+                     && x.DeletedAt == null,
+                ct);
+
+    private async Task<DefinitionDetail?> GetLatestDetailAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        bool activeOnly,
+        bool tracked,
+        CancellationToken ct)
+    {
+        var query = tracked
+            ? uow.GetDb().Definitions.AsQueryable()
+            : uow.GetDb().Definitions.AsNoTracking();
+
+        if (activeOnly)
+            query = WhereActive(query);
+
+        var definition = await query
+            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId, ct)
+            .ConfigureAwait(false);
+        if (definition is null)
+            return null;
+
+        await _projectAuth
+            .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
+            .ConfigureAwait(false);
+
+        var version = await uow.GetDb().DefinitionVersions.AsNoTracking()
+            .FirstOrDefaultAsync(
+                x => x.DefinitionId == definitionId && x.Version == definition.LatestVersion,
+                ct)
+            .ConfigureAwait(false);
+        if (version is null)
+            return null;
+
+        return new DefinitionDetail { Definition = definition, Version = version };
+    }
+
+    private async Task<DefinitionVersionRow?> GetVersionInternalAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        int version,
+        bool activeParentOnly,
+        CancellationToken ct)
+    {
+        var definitionQuery = uow.GetDb().Definitions.AsNoTracking()
+            .Where(x => x.DefinitionId == definitionId);
+        if (activeParentOnly)
+            definitionQuery = WhereActive(definitionQuery);
+
+        var definition = await definitionQuery
+            .FirstOrDefaultAsync(ct)
+            .ConfigureAwait(false);
+        if (definition is null)
+            return null;
+
+        await _projectAuth
+            .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
+            .ConfigureAwait(false);
+
+        return await uow.GetDb().DefinitionVersions.AsNoTracking()
+            .FirstOrDefaultAsync(
+                x => x.DefinitionId == definitionId && x.Version == version,
+                ct)
+            .ConfigureAwait(false);
+    }
+
+    private static IQueryable<DefinitionRow> WhereActive(IQueryable<DefinitionRow> query) =>
+        query.Where(x => x.DeletedAt == null);
 
     private static IQueryable<DefinitionWithDisplay> QueryDefinitionsWithDisplayIds(
         CoreDbContext db,

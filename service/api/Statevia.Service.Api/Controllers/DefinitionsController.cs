@@ -68,7 +68,8 @@ public class DefinitionsController : ControllerBase
         var pageQuery = new DefinitionListPageQuery(
             Page: new PageQuery(offset, query.Limit.Value),
             Sort: new SortQuery(query.SortBy, query.SortOrder),
-            NameContains: query.Name);
+            NameContains: query.Name,
+            IncludeDeleted: query.IncludeDeleted);
 
         var paged = await _definitions.ListPagedAsync(pageQuery, ct).ConfigureAwait(false);
         return Ok(paged);
@@ -83,5 +84,23 @@ public class DefinitionsController : ControllerBase
     {
         var row = await _definitions.GetAsync(id, ct).ConfigureAwait(false);
         return Ok(row);
+    }
+
+    /// <summary>DELETE /v1/definitions/{id} — catalog から論理削除する。</summary>
+    [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Delete(string id, CancellationToken ct = default)
+    {
+        await _definitions.DeleteAsync(id, ct).ConfigureAwait(false);
+        return NoContent();
+    }
+
+    /// <summary>POST /v1/definitions/{id}/restore — 削除済み定義を復元する。</summary>
+    [HttpPost("{id}/restore")]
+    [ProducesResponseType(typeof(DefinitionResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<DefinitionResponse>> Restore(string id, CancellationToken ct = default)
+    {
+        var restored = await _definitions.RestoreAsync(id, ct).ConfigureAwait(false);
+        return Ok(restored);
     }
 }

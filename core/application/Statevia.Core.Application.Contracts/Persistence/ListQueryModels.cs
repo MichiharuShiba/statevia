@@ -14,7 +14,8 @@ public sealed record SortQuery(
 public sealed record DefinitionListPageQuery(
     PageQuery Page,
     SortQuery Sort,
-    string? NameContains);
+    string? NameContains,
+    bool IncludeDeleted = false);
 
 /// <summary>実行一覧のページクエリ。</summary>
 public sealed record ExecutionListPageQuery(

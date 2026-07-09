@@ -178,7 +178,10 @@ internal class CoreDbContext : DbContext, ICoreDatabase
             e.Property(x => x.LatestVersion).HasColumnName(Columns.LatestVersion);
             e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
-            e.HasIndex(x => new { x.ProjectId, x.Slug }).IsUnique();
+            e.Property(x => x.DeletedAt).HasColumnName(Columns.DeletedAt);
+            e.HasIndex(x => new { x.ProjectId, x.Slug })
+                .IsUnique()
+                .HasFilter("\"deleted_at\" IS NULL");
             e.HasOne<ProjectRow>()
                 .WithMany()
                 .HasForeignKey(x => x.ProjectId)
