@@ -188,6 +188,8 @@
 
 Plan の設計を `.spec-workflow/specs/` に書き起こすチャットコマンド: `/spec-from-plan-design`（`.cursor/commands/spec-from-plan-design.md`）。
 
+完了した仕様セットを `.spec-workflow/archive/specs/` へ移すチャットコマンド: `/spec-archive`（`.cursor/commands/spec-archive.md`）。
+
 常時原則としては次を維持する。
 
 - Markdown 本文は日本語で記述する（テンプレート由来の英語見出しは維持可）。
