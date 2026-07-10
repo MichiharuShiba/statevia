@@ -356,4 +356,42 @@ public sealed class DefinitionRepositoryTests
         Assert.Equal(1, includedTotal);
         Assert.NotNull(includedItems[0].Detail.Definition.DeletedAt);
     }
+
+    /// <summary>
+    /// 同一 UoW 内で restore した直後は、追跡エンティティから詳細を返せる（SaveChanges 前の GetLatestForApi は null）。
+    /// </summary>
+    [Fact]
+    public async Task RestoreAsync_ReturnsDetail_BeforeSaveChanges_WhileGetLatestForApiStillNull()
+    {
+        // Arrange
+        using var db = new SqliteTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = TestRepositoryFactory.CreateDefinitionRepository();
+        var defId = Guid.NewGuid();
+        var created = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var projectId = Guid.NewGuid();
+        var deletedAt = new DateTime(2020, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        await using (var seed = db.Factory.CreateDbContext())
+        {
+            ProjectTestData.AddDefaultProject(seed, OwnerTenantId, OwnerTenantKey, projectId);
+            DefinitionTestData.AddDefinitionWithVersion(
+                seed, OwnerTenantId, defId, "def-1", projectId, createdAt: created);
+            var definition = await seed.Definitions.FindAsync(defId);
+            definition!.DeletedAt = deletedAt;
+            await seed.SaveChangesAsync();
+        }
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var restored = await repo.RestoreAsync(uow, OwnerTenantId, defId, default);
+        var apiBeforeSave = await repo.GetLatestForApiAsync(uow, OwnerTenantId, defId, default);
+
+        // Assert — restore は追跡行から詳細を返す。AsNoTracking+activeOnly はまだ DB 上 deleted。
+        Assert.NotNull(restored);
+        Assert.Null(restored!.Definition.DeletedAt);
+        Assert.Equal(defId, restored.Definition.DefinitionId);
+        Assert.NotNull(restored.Version);
+        Assert.Null(apiBeforeSave);
+    }
 }

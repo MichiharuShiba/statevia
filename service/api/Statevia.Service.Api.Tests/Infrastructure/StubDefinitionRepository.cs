@@ -17,7 +17,8 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
 
     public DefinitionSoftDeleteOutcome SoftDeleteOutcome { get; init; } = DefinitionSoftDeleteOutcome.Deleted;
 
-    public bool RestoreResult { get; init; } = true;
+    /// <summary>restore 成功時に返す詳細。null のとき失敗（NotFound）。</summary>
+    public DefinitionDetail? RestoreDetail { get; init; }
 
     public bool ExistsActiveSlugConflict { get; init; }
 
@@ -203,7 +204,7 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
         return Task.FromResult(SoftDeleteOutcome);
     }
 
-    public Task<bool> RestoreAsync(
+    public Task<DefinitionDetail?> RestoreAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,
         Guid definitionId,
@@ -213,7 +214,7 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
         _ = tenantId;
         _ = definitionId;
         _ = ct;
-        return Task.FromResult(RestoreResult);
+        return Task.FromResult(RestoreDetail);
     }
 
     public Task<bool> ExistsActiveSlugInProjectAsync(
@@ -268,7 +269,15 @@ internal static class StubDefinitionRepositoryFactory
         };
         return new StubDefinitionRepository
         {
-            LatestDetail = new DefinitionDetail { Definition = definition, Version = version }
+            LatestDetail = new DefinitionDetail { Definition = definition, Version = version },
+            DeletedCatalogEntry = deletedAt is null ? null : definition,
+            RestoreDetail = deletedAt is null
+                ? null
+                : new DefinitionDetail
+                {
+                    Definition = definition,
+                    Version = version
+                }
         };
     }
 }

@@ -314,12 +314,8 @@ internal sealed class DefinitionService : IDefinitionService
                             new[] { new { message = DefinitionValidationMessages.SlugConflict, field = "slug" } });
                     }
 
-                    var restored = await _definitions.RestoreAsync(uow, tenantId, uuid.Value, innerCt)
-                        .ConfigureAwait(false);
-                    if (!restored)
-                        throw new NotFoundException(DefinitionValidationMessages.NotFound);
-
-                    var detail = await _definitions.GetLatestForApiAsync(uow, tenantId, uuid.Value, innerCt)
+                    // RestoreAsync は追跡エンティティから詳細を返す（SaveChanges 前の AsNoTracking 再取得は不可）。
+                    var detail = await _definitions.RestoreAsync(uow, tenantId, uuid.Value, innerCt)
                         .ConfigureAwait(false);
                     if (detail is null)
                         throw new NotFoundException(DefinitionValidationMessages.NotFound);
