@@ -300,6 +300,24 @@ describe("buildDefinitionsListPath", () => {
     });
     expect(path).toBe("/definitions?limit=10&offset=0&name=demo&sortBy=name&sortOrder=asc");
   });
+
+  it("includeDeleted が true のときのみクエリに含める", () => {
+    // Arrange / Act
+    const withDeleted = buildDefinitionsListPath({
+      pagination: { limit: 20, offset: 0 },
+      sort: {},
+      includeDeleted: true
+    });
+    const withoutDeleted = buildDefinitionsListPath({
+      pagination: { limit: 20, offset: 0 },
+      sort: {},
+      includeDeleted: false
+    });
+
+    // Assert
+    expect(withDeleted).toBe("/definitions?limit=20&offset=0&includeDeleted=true");
+    expect(withoutDeleted).toBe("/definitions?limit=20&offset=0");
+  });
 });
 
 describe("buildExecutionsListPath", () => {
