@@ -15,6 +15,10 @@ namespace Statevia.Infrastructure.Modules;
 /// とし、filesystem Source による二重 discover を避ける。digest 単位のサブディレクトリへ展開し、再 reload の冪等性を保つ。
 /// </para>
 /// <para>
+/// キャッシュ: 先に manifest digest を解決し、同一 digest の展開済みディレクトリがあればレイヤ blob の再取得をスキップする。
+/// tag 参照は毎回 digest を解決するため、tag が別 digest へ移った場合はキャッシュミスとなり再取得する。
+/// </para>
+/// <para>
 /// 信頼性: artifact 単位で例外を隔離し、1 件の取得・展開失敗は他 artifact の materialize を妨げない
 /// （該当 Module のみ未登録とし、API は継続）。
 /// </para>
@@ -81,8 +85,16 @@ internal sealed class OciModuleSource(
 
         try
         {
+            var digest = await ResolveDigestAsync(reference, cancellationToken).ConfigureAwait(false);
+            var artifactCacheDir = Path.Combine(cacheRoot, SanitizeDigest(digest));
+            if (TryReuseCachedModule(artifactCacheDir, reference, digest, out var cached))
+            {
+                return cached;
+            }
+
             var fetched = await fetcher.FetchModuleAsync(reference, cancellationToken).ConfigureAwait(false);
-            var artifactCacheDir = Path.Combine(cacheRoot, SanitizeDigest(fetched.ManifestDigest));
+            // tag 解決と pull の間に digest が変わった場合は pull 結果を正とする
+            artifactCacheDir = Path.Combine(cacheRoot, SanitizeDigest(fetched.ManifestDigest));
             var moduleDirectory = MaterializeLayer(fetched.LayerZip, artifactCacheDir);
             var moduleDirectoryName = Path.GetFileName(moduleDirectory);
 
@@ -108,6 +120,58 @@ internal sealed class OciModuleSource(
             OciModuleSourceLog.MaterializeFailed(logger, ex, reference.Label);
             return null;
         }
+    }
+
+    /// <summary>
+    /// manifest digest を解決する。reference が既に digest 形式ならネットワークなしでそれを用い、
+    /// それ以外（tag）は <see cref="IOciArtifactFetcher.ResolveManifestDigestAsync"/> で解決する。
+    /// </summary>
+    private Task<string> ResolveDigestAsync(OciModuleReference reference, CancellationToken cancellationToken) =>
+        IsDigestReference(reference.Reference)
+            ? Task.FromResult(reference.Reference)
+            : fetcher.ResolveManifestDigestAsync(reference, cancellationToken);
+
+    /// <summary>
+    /// 同一 digest の展開済みキャッシュがあれば再利用する（レイヤ blob 再取得なし）。
+    /// </summary>
+    /// <returns>再利用できた場合 <see langword="true"/>。</returns>
+    private bool TryReuseCachedModule(
+        string artifactCacheDir,
+        OciModuleReference reference,
+        string digest,
+        out MaterializedModule? cached)
+    {
+        cached = null;
+        if (!Directory.Exists(artifactCacheDir))
+        {
+            return false;
+        }
+
+        var moduleDirectories = Directory.GetDirectories(artifactCacheDir);
+        if (moduleDirectories.Length != 1)
+        {
+            return false;
+        }
+
+        var moduleDirectory = moduleDirectories[0];
+        var moduleDirectoryName = Path.GetFileName(moduleDirectory);
+        if (!TryResolveEntryAssemblyPath(moduleDirectory, moduleDirectoryName, out var entryAssemblyPath, out _))
+        {
+            return false;
+        }
+
+        OciModuleSourceLog.CacheHit(logger, reference.Label, digest);
+        cached = new MaterializedModule
+        {
+            ModuleDirectory = moduleDirectory,
+            EntryAssemblyPath = entryAssemblyPath,
+            SignaturePath = ResolveSignaturePath(moduleDirectory, moduleDirectoryName),
+            SourceType = SourceType,
+            SourceLabel = reference.Label,
+            ContentDigest = digest,
+            MaterializedAt = DateTimeOffset.UtcNow,
+        };
+        return true;
     }
 
     /// <summary>取得した配布 zip レイヤをキャッシュディレクトリへ安全展開し、module ディレクトリを返す。</summary>
@@ -144,6 +208,10 @@ internal sealed class OciModuleSource(
 
     /// <summary>digest を安全なディレクトリ名へ変換する（<c>sha256:...</c> の <c>:</c> を除去）。</summary>
     private static string SanitizeDigest(string digest) => digest.Replace(':', '-');
+
+    /// <summary>reference が OCI digest（<c>sha256:...</c>）形式か。</summary>
+    private static bool IsDigestReference(string reference) =>
+        reference.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary><see cref="OciModuleSource"/> の構造化ログ。機密（認証情報）は含めない。</summary>
@@ -166,4 +234,10 @@ internal static partial class OciModuleSourceLog
         Level = LogLevel.Error,
         Message = "Failed to materialize OCI module '{Reference}'")]
     public static partial void MaterializeFailed(ILogger logger, Exception exception, string reference);
+
+    [LoggerMessage(
+        EventId = 4,
+        Level = LogLevel.Information,
+        Message = "Reusing cached OCI module '{Reference}' (manifest digest {Digest}); skipping layer blob fetch")]
+    public static partial void CacheHit(ILogger logger, string reference, string digest);
 }

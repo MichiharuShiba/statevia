@@ -145,6 +145,68 @@ public sealed class OciModuleSourceTests
         Assert.True(catalog.Exists("test.module.echo"));
     }
 
+    /// <summary>同一 digest がキャッシュ済みなら 2 回目の discover でレイヤ blob 取得をスキップする。</summary>
+    [Fact]
+    public async Task DiscoverAsync_WhenDigestCached_SkipsLayerBlobFetch()
+    {
+        // Arrange
+        var fetcher = new FakeOciArtifactFetcher();
+        fetcher.SetModule("ghcr.io", "myorg/test.module", "1.0.0", BuildModuleZip("test.module"), "sha256:cache01");
+        var cacheRoot = CreateTempDirectory();
+        var options = new OciModuleSourceOptions
+        {
+            Enabled = true,
+            CacheRoot = cacheRoot,
+            Artifacts =
+            [
+                new OciModuleArtifactOptions { Registry = "ghcr.io", Repository = "myorg/test.module", Reference = "1.0.0" },
+            ],
+        };
+        var sut = CreateSut(fetcher, options);
+
+        // Act
+        var first = await sut.DiscoverAsync(CancellationToken.None);
+        var second = await sut.DiscoverAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Single(first);
+        Assert.Single(second);
+        Assert.Equal(2, fetcher.ResolveCount);
+        Assert.Equal(1, fetcher.FetchCount);
+        Assert.Equal(first[0].EntryAssemblyPath, second[0].EntryAssemblyPath);
+    }
+
+    /// <summary>digest 参照でキャッシュ済みなら Resolve / Fetch とも呼ばず再利用する。</summary>
+    [Fact]
+    public async Task DiscoverAsync_WhenDigestReferenceCached_SkipsResolveAndFetch()
+    {
+        // Arrange
+        const string digest = "sha256:direct01";
+        var fetcher = new FakeOciArtifactFetcher();
+        fetcher.SetModule("ghcr.io", "myorg/test.module", digest, BuildModuleZip("test.module"), digest);
+        var cacheRoot = CreateTempDirectory();
+        var options = new OciModuleSourceOptions
+        {
+            Enabled = true,
+            CacheRoot = cacheRoot,
+            Artifacts =
+            [
+                new OciModuleArtifactOptions { Registry = "ghcr.io", Repository = "myorg/test.module", Reference = digest },
+            ],
+        };
+        var sut = CreateSut(fetcher, options);
+
+        // Act — 1 回目で materialize、2 回目は digest 参照のため Resolve も Fetch も不要
+        _ = await sut.DiscoverAsync(CancellationToken.None);
+        fetcher.ResetCounts();
+        var second = await sut.DiscoverAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Single(second);
+        Assert.Equal(0, fetcher.ResolveCount);
+        Assert.Equal(0, fetcher.FetchCount);
+    }
+
     private static OciModuleSource CreateSut(IOciArtifactFetcher fetcher, OciModuleSourceOptions options)
     {
         options.CacheRoot ??= CreateTempDirectory();
@@ -199,11 +261,31 @@ public sealed class OciModuleSourceTests
 
         public int FetchCount { get; private set; }
 
+        public int ResolveCount { get; private set; }
+
         public void SetModule(string registry, string repository, string reference, byte[] layerZip, string digest) =>
             _modules[Key(registry, repository, reference)] = new OciFetchedModule(layerZip, digest);
 
         public void SetFailure(string registry, string repository, string reference) =>
             _failures.Add(Key(registry, repository, reference));
+
+        public void ResetCounts()
+        {
+            FetchCount = 0;
+            ResolveCount = 0;
+        }
+
+        public Task<string> ResolveManifestDigestAsync(OciModuleReference reference, CancellationToken cancellationToken)
+        {
+            ResolveCount++;
+            var key = Key(reference.Registry, reference.Repository, reference.Reference);
+            if (_failures.Contains(key))
+            {
+                throw new InvalidOperationException($"Simulated resolve failure for '{reference.Label}'.");
+            }
+
+            return Task.FromResult(_modules[key].ManifestDigest);
+        }
 
         public Task<OciFetchedModule> FetchModuleAsync(OciModuleReference reference, CancellationToken cancellationToken)
         {

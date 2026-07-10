@@ -117,7 +117,7 @@ Engine は `IStateExecutor` のみを知る。Action の解決・テナント可
 
 ### 5.3 Module 供給パイプライン（Source → Materialize → Host → Catalog）
 
-ModuleHost が consume するのは複数 Source を集約した `CompositeModuleSource`。各 Source は取得した Module を `MaterializedModule`（`infrastructure/Statevia.Infrastructure.Modules`・ローカル完全表現＝正本）へ materialize し、`DiscoveredModule`（DTO）へ射影して ModuleHost へ渡す。リモート取得は `MaterializingModuleSourceBase` 派生が acquire→cache→verify→extract→materialize を担い、最初の実装が **`OciModuleSource`**（`IOciArtifactFetcher` / OrasProject.Oras、`Statevia:Modules:Oci`）。集約は明示 `Priority` 昇順（filesystem=100 / OCI 既定=200）、同名 Module は高優先勝ち＋warning、同 Priority は `SourceLabel` で tie-break。
+ModuleHost が consume するのは複数 Source を集約した `CompositeModuleSource`。各 Source は取得した Module を `MaterializedModule`（`infrastructure/Statevia.Infrastructure.Modules`・ローカル完全表現＝正本）へ materialize し、`DiscoveredModule`（DTO）へ射影して ModuleHost へ渡す。リモート取得は `MaterializingModuleSourceBase` 派生が acquire→cache→verify→extract→materialize を担い、最初の実装が **`OciModuleSource`**（`IOciArtifactFetcher` / OrasProject.Oras、`Statevia:Modules:Oci`）。OCI は先に manifest digest を解決し、同一 digest の展開済みキャッシュがあればレイヤ blob 再取得をスキップする（tag 参照は毎回 digest 解決するため、tag 移動時は再取得）。集約は明示 `Priority` 昇順（filesystem=100 / OCI 既定=200）、同名 Module は高優先勝ち＋warning、同 Priority は `SourceLabel` で tie-break。
 
 ### 5.4 version coexist（責務分離・設計のみ）
 

@@ -2,12 +2,30 @@ namespace Statevia.Infrastructure.Modules;
 
 /// <summary>OCI artifact 取得の抽象。具体ライブラリ（ORAS 等）への依存を本契約に封じ込める。</summary>
 /// <remarks>
+/// <para>
 /// 返却は「Module 配布 zip のレイヤ bytes ＋ manifest digest」のみとし、materialize（展開・entry 解決・
 /// 署名検証）は呼び出し側（<see cref="OciModuleSource"/>）が担う。これにより取得ライブラリの破壊的変更の
 /// 影響をアダプタ実装 1 箇所に限定する。
+/// </para>
+/// <para>
+/// <see cref="ResolveManifestDigestAsync"/> はレイヤ blob を取得せず digest のみ返す。呼び出し側が
+/// digest 単位キャッシュの命中判定に使い、命中時は <see cref="FetchModuleAsync"/> を省略できる。
+/// </para>
 /// </remarks>
 internal interface IOciArtifactFetcher
 {
+    /// <summary>
+    /// 指定 reference の manifest のみを解決し、digest を返す（レイヤ blob は取得しない）。
+    /// </summary>
+    /// <remarks>
+    /// digest 単位キャッシュの命中判定に用いる。tag 参照でもネットワークは manifest 取得に限定し、
+    /// 同一 digest が既に materialize 済みなら呼び出し側が <see cref="FetchModuleAsync"/> を省略できる。
+    /// </remarks>
+    /// <param name="reference">取得対象の参照（registry / repository / tag or digest / 認証）。</param>
+    /// <param name="cancellationToken">キャンセル。</param>
+    /// <returns>manifest digest（例: <c>sha256:...</c>）。</returns>
+    Task<string> ResolveManifestDigestAsync(OciModuleReference reference, CancellationToken cancellationToken);
+
     /// <summary>指定 reference の Module artifact を pull し、配布 zip レイヤと manifest digest を返す。</summary>
     /// <param name="reference">取得対象の参照（registry / repository / tag or digest / 認証）。</param>
     /// <param name="cancellationToken">キャンセル。</param>
