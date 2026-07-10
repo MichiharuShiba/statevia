@@ -627,5 +627,54 @@ public sealed class DefinitionServiceTests
         // Act & Assert
         await Assert.ThrowsAsync<StateConflictException>(() => sut.RestoreAsync("DISP-1", CancellationToken.None));
     }
+
+    /// <summary>削除済み定義の restore は詳細を返し、SaveChanges 前の AsNoTracking 再取得に依存しない。</summary>
+    [Fact]
+    public async Task RestoreAsync_ReturnsDefinition_WhenDeleted()
+    {
+        // Arrange
+        var defId = Guid.NewGuid();
+        var display = new StubDisplayIdService();
+        display.ResolveMap["definition|DISP-1"] = defId;
+        display.DisplayMap[("definition", "DISP-1")] = "DISP-1";
+        var deletedAt = DateTime.UtcNow.AddHours(-1);
+        var baseRepo = StubDefinitionRepositoryFactory.ForDefinition(
+            defId,
+            TestTenantIds.DefaultTenantId,
+            "def",
+            deletedAt: deletedAt);
+        var restoredDefinition = new DefinitionRow
+        {
+            DefinitionId = defId,
+            TenantId = TestTenantIds.DefaultTenantId,
+            ProjectId = baseRepo.DeletedCatalogEntry!.ProjectId,
+            Slug = baseRepo.DeletedCatalogEntry.Slug,
+            Name = "def",
+            LatestVersion = 1,
+            CreatedAt = baseRepo.DeletedCatalogEntry.CreatedAt,
+            UpdatedAt = DateTime.UtcNow,
+            DeletedAt = null
+        };
+        var definitionsRepo = new StubDefinitionRepository
+        {
+            LatestDetail = baseRepo.LatestDetail,
+            DeletedCatalogEntry = baseRepo.DeletedCatalogEntry,
+            RestoreDetail = new DefinitionDetail
+            {
+                Definition = restoredDefinition,
+                Version = baseRepo.LatestDetail!.Version
+            }
+        };
+        using var inDb = new InMemoryTestDatabase();
+        var sut = CreateDefinitionService(inDb, display, new StubCompiler("{}"), definitionsRepo, new FixedIdGenerator(Guid.NewGuid()));
+
+        // Act
+        var response = await sut.RestoreAsync("DISP-1", CancellationToken.None);
+
+        // Assert
+        Assert.Equal("DISP-1", response.DisplayId);
+        Assert.Equal("def", response.Name);
+        Assert.Null(response.DeletedAt);
+    }
 }
 

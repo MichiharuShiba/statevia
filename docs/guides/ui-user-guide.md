@@ -3,9 +3,9 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.0 |
-| 更新日 | 2026-07-07 |
-| 関連 | [../specifications/ui/visual.md](../specifications/ui/visual.md) |
+| Version | 1.1 |
+| 更新日 | 2026-07-10 |
+| 関連 | [../specifications/ui/visual.md](../specifications/ui/visual.md)、[../specifications/api-http.md](../specifications/api-http.md) §2.1.2–2.2 |
 
 ---
 
@@ -33,6 +33,18 @@ CORE_API_INTERNAL_BASE="http://localhost:8080" npm run dev
 | 定義一覧 / エディタ | ワークフロー定義の閲覧・編集（nodes 形式） |
 | 実行一覧 | テナント内の実行インスタンス |
 | 実行詳細 / グラフ | 状態・エッジ・進行の可視化 |
+
+### 定義 catalog の論理削除・復元
+
+Studio の定義一覧・詳細から Core-API の catalog ライフサイクルを操作できる。
+
+| 操作 | 画面 | 備考 |
+| --- | --- | --- |
+| 論理削除 | 一覧（active 行）・詳細 | インライン二段階確認のあと `DELETE /v1/definitions/{id}` |
+| 削除済みを含む一覧 | 一覧の「削除済みを含む」 | URL `includeDeleted=true`。行に `deletedAt` と削除バッジ |
+| 復元 | 一覧の削除済み行のみ | 単体 GET は 404（operational invisibility）のため詳細からは復元しない |
+
+HTTP 契約の正本は [api-http.md](../specifications/api-http.md) §2.1.2–2.2。
 
 グラフのマージ規則・ノード表現の Normative 契約は [visual 仕様](../specifications/ui/visual.md)。リアルタイム更新は SSE（[push-api 仕様](../specifications/ui/push-api.md)）。
 

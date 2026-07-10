@@ -238,7 +238,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
     }
 
     /// <inheritdoc />
-    public async Task<bool> RestoreAsync(
+    public async Task<DefinitionDetail?> RestoreAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,
         Guid definitionId,
@@ -248,7 +248,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.DeletedAt != null, ct)
             .ConfigureAwait(false);
         if (definition is null)
-            return false;
+            return null;
 
         await _projectAuth
             .EnsureCanPublishAsync(uow, tenantId, definition.ProjectId, ct)
@@ -257,7 +257,17 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         var now = DateTime.UtcNow;
         definition.DeletedAt = null;
         definition.UpdatedAt = now;
-        return true;
+
+        // SaveChanges 前のため AsNoTracking+activeOnly 再取得は不可。追跡行と版から詳細を返す。
+        var version = await uow.GetDb().DefinitionVersions.AsNoTracking()
+            .FirstOrDefaultAsync(
+                x => x.DefinitionId == definitionId && x.Version == definition.LatestVersion,
+                ct)
+            .ConfigureAwait(false);
+        if (version is null)
+            return null;
+
+        return new DefinitionDetail { Definition = definition, Version = version };
     }
 
     /// <inheritdoc />

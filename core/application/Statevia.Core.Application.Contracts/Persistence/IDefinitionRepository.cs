@@ -78,8 +78,15 @@ public interface IDefinitionRepository
         DateTime deletedAt,
         CancellationToken ct);
 
-    /// <summary>削除済み catalog を復元する。</summary>
-    Task<bool> RestoreAsync(
+    /// <summary>
+    /// 削除済み catalog を復元し、同一 UoW 内で応答用の最新版詳細を返す。
+    /// </summary>
+    /// <remarks>
+    /// SaveChanges 前でも追跡エンティティから詳細を組み立てる。
+    /// AsNoTracking + activeOnly の再取得だと DB 上はまだ削除済みのため null になる。
+    /// </remarks>
+    /// <returns>復元できた場合は詳細。対象が無い場合は null。</returns>
+    Task<DefinitionDetail?> RestoreAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,
         Guid definitionId,

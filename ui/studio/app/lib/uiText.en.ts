@@ -391,6 +391,22 @@ export const uiTextEn: UiText = {
     actions: {
       openDetail: "Open details",
       createNew: "Create new definition",
+      delete: "Delete",
+      restore: "Restore",
+      confirmDelete: "Confirm delete",
+      confirmRestore: "Confirm restore",
+      cancelConfirm: "Cancel",
+      deleting: "Deleting...",
+      restoring: "Restoring...",
+    },
+    includeDeleted: {
+      label: "Include deleted",
+    },
+    deletedBadge: "Deleted",
+    deletedAt: (formattedDateTime: string) => `Deleted: ${formattedDateTime}`,
+    toasts: {
+      deleted: "Definition deleted.",
+      restored: "Definition restored.",
     },
   },
   executionDetailPage: {
@@ -456,6 +472,13 @@ export const uiTextEn: UiText = {
       title: "Edit / Run",
       edit: "Edit definition",
       run: "Start new execution",
+      delete: "Delete definition",
+      confirmDelete: "Confirm delete",
+      cancelConfirm: "Cancel",
+      deleting: "Deleting...",
+    },
+    toasts: {
+      deleted: "Definition deleted.",
     },
     nav: {
       backToDefinitions: "Back to definitions",

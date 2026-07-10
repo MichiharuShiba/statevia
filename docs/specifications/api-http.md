@@ -148,6 +148,10 @@ Core-API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 
 **operational invisibility:** soft delete 後、単体 GET・一覧（既定）・新規 Start・`GET /v1/graphs/{graphId}` は **404**（存在秘匿。410 は不採用）。削除前に開始した execution の GET / events / graph snapshot は **200 維持**。
 
+**Studio UI:** 定義一覧・詳細から論理削除を、一覧（`includeDeleted=true`）から復元を実行できる。操作手順は [guides/ui-user-guide.md](../guides/ui-user-guide.md) を参照。
+
+**実装メモ（restore）:** `POST .../restore` は同一トランザクション内で追跡エンティティから応答を組み立てる。`SaveChanges` 前に `AsNoTracking` + `deleted_at IS NULL` で再取得すると、DB 上はまだ削除済みのため 404 になる。
+
 ### 2.2 定義一覧
 
 **GET /v1/definitions**

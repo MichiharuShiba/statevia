@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { NAVIGATION_BUTTON_CLASS } from "../../components/layout/navigationButtonClass";
 import { Toast } from "../../components/Toast";
-import { apiGet } from "../../lib/api";
+import { apiDelete, apiGet } from "../../lib/api";
 import { useDelayedVisibility } from "../../lib/useDelayedVisibility";
 import { formatDateTimeLocalized } from "../../lib/dateTime";
 import { toToastError, type ToastState } from "../../lib/errors";
@@ -17,7 +17,7 @@ type DefinitionDetailClientProps = {
 };
 
 /**
- * Definition 詳細（API のメタ情報、実行一覧・編集・実行開始への導線）を表示する。
+ * Definition 詳細（API のメタ情報、実行一覧・編集・実行開始・論理削除への導線）を表示する。
  */
 export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDetailClientProps>) {
   const { uiText, locale } = useI18n();
@@ -27,6 +27,8 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
   const [loading, setLoading] = useState(true);
   const showLoading = useDelayedVisibility(loading);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,6 +48,26 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
   useEffect(() => {
     void load();
   }, [load]);
+
+  /**
+   * 論理削除のインライン二段階確認を進める。
+   */
+  const handleDeleteClick = useCallback(async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    setDeleting(true);
+    setConfirmDelete(false);
+    try {
+      await apiDelete(`/definitions/${encodeURIComponent(definitionId)}`);
+      setToast({ tone: "success", message: uiText.definitionDetail.toasts.deleted });
+      router.push("/definitions");
+    } catch (e) {
+      setToast(toToastError(e));
+      setDeleting(false);
+    }
+  }, [confirmDelete, definitionId, router, uiText.definitionDetail.toasts.deleted]);
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5 p-6">
@@ -106,16 +128,48 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
             type="button"
             className={NAVIGATION_BUTTON_CLASS}
             onClick={() => router.push(`/definitions/${encodeURIComponent(definitionId)}/edit`)}
+            disabled={deleting}
           >
             {uiText.definitionDetail.actions.edit}
           </button>
           <button
             type="button"
-            className="rounded border-2 border-[var(--brand-cta-border)] bg-[var(--brand-cta-bg)] px-3 py-1.5 text-sm font-medium text-[var(--brand-cta-fg)] hover:bg-[var(--brand-cta-bg-hover)]"
+            className="rounded border-2 border-[var(--brand-cta-border)] bg-[var(--brand-cta-bg)] px-3 py-1.5 text-sm font-medium text-[var(--brand-cta-fg)] hover:bg-[var(--brand-cta-bg-hover)] disabled:opacity-60"
             onClick={() => router.push(`/definitions/${encodeURIComponent(definitionId)}/run`)}
+            disabled={deleting}
           >
             {uiText.definitionDetail.actions.run}
           </button>
+          {row && !confirmDelete && (
+            <button
+              type="button"
+              className="rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] disabled:opacity-60"
+              onClick={() => void handleDeleteClick()}
+              disabled={deleting || loading}
+            >
+              {uiText.definitionDetail.actions.delete}
+            </button>
+          )}
+          {row && confirmDelete && (
+            <>
+              <button
+                type="button"
+                className="rounded border border-red-700 bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-60"
+                onClick={() => void handleDeleteClick()}
+                disabled={deleting}
+              >
+                {deleting ? uiText.definitionDetail.actions.deleting : uiText.definitionDetail.actions.confirmDelete}
+              </button>
+              <button
+                type="button"
+                className="rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-surface)]"
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+              >
+                {uiText.definitionDetail.actions.cancelConfirm}
+              </button>
+            </>
+          )}
         </div>
       </section>
     </div>

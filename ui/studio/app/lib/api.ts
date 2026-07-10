@@ -107,6 +107,8 @@ export type DefinitionsListQuery = {
   pagination: PaginationQuery;
   sort: SortQuery;
   name?: string;
+  /** `true` のとき削除済み定義を含む（クエリ `includeDeleted=true`）。 */
+  includeDeleted?: boolean;
 };
 
 /** 実行一覧 API のクエリパラメータ。 */
@@ -143,6 +145,7 @@ export function buildDefinitionsListPath(params: DefinitionsListQuery): string {
   if (params.name?.trim()) query.set("name", params.name.trim());
   if (params.sort.sortBy?.trim()) query.set("sortBy", params.sort.sortBy.trim());
   if (params.sort.sortOrder) query.set("sortOrder", params.sort.sortOrder);
+  if (params.includeDeleted === true) query.set("includeDeleted", "true");
   return `/definitions?${query.toString()}`;
 }
 
