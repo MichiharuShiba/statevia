@@ -392,6 +392,22 @@ export type UiText = {
     actions: {
       openDetail: string;
       createNew: string;
+      delete: string;
+      restore: string;
+      confirmDelete: string;
+      confirmRestore: string;
+      cancelConfirm: string;
+      deleting: string;
+      restoring: string;
+    };
+    includeDeleted: {
+      label: string;
+    };
+    deletedBadge: string;
+    deletedAt: (formattedDateTime: string) => string;
+    toasts: {
+      deleted: string;
+      restored: string;
     };
     error: string;
   };
@@ -431,6 +447,13 @@ export type UiText = {
       title: string;
       edit: string;
       run: string;
+      delete: string;
+      confirmDelete: string;
+      cancelConfirm: string;
+      deleting: string;
+    };
+    toasts: {
+      deleted: string;
     };
     nav: {
       backToDefinitions: string;
@@ -975,6 +998,22 @@ export const uiText: UiText = {
     actions: {
       openDetail: "詳細を開く",
       createNew: "新しい定義を作成",
+      delete: "削除",
+      restore: "復元",
+      confirmDelete: "削除する",
+      confirmRestore: "復元する",
+      cancelConfirm: "やめる",
+      deleting: "削除中...",
+      restoring: "復元中...",
+    },
+    includeDeleted: {
+      label: "削除済みを含む",
+    },
+    deletedBadge: "削除済み",
+    deletedAt: (formattedDateTime: string) => `削除: ${formattedDateTime}`,
+    toasts: {
+      deleted: "定義を削除しました。",
+      restored: "定義を復元しました。",
     },
     error: "定義一覧を取得できませんでした。",
   },
@@ -1014,6 +1053,13 @@ export const uiText: UiText = {
       title: "編集・実行",
       edit: "定義の編集",
       run: "新規実行を開始",
+      delete: "定義を削除",
+      confirmDelete: "削除する",
+      cancelConfirm: "やめる",
+      deleting: "削除中...",
+    },
+    toasts: {
+      deleted: "定義を削除しました。",
     },
     nav: {
       backToDefinitions: "定義一覧へ戻る",

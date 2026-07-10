@@ -200,6 +200,13 @@ export type DefinitionDTO = {
   createdAt: string;
   updatedAt: string;
   yaml?: string;
+  /** 最新版番号（API が返す場合）。 */
+  latestVersion?: number;
+  /**
+   * catalog 論理削除日時（UTC）。
+   * `includeDeleted=true` の一覧でのみ truthy になりうる。通常 GET / restore 成功では含めない。
+   */
+  deletedAt?: string | null;
 };
 
 /** ページング付き定義一覧。 */
