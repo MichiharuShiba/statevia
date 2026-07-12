@@ -13,6 +13,10 @@ public sealed class ModuleLoadHostedServiceTests
     private const string OwnerTenantId = "00000000-0000-4000-8000-000000000001";
 
     /// <summary>起動後に新規 module 追加で load される。</summary>
+    /// <remarks>
+    /// watcher は Created 後に 500ms debounce してから load する。
+    /// カバレッジ実行などで DLL コピーが遅いと固定 Delay では不足するため、条件成立までポーリングする。
+    /// </remarks>
     [Fact]
     public async Task StartAsync_WhenNewModuleAdded_LoadsModule()
     {
@@ -39,7 +43,7 @@ public sealed class ModuleLoadHostedServiceTests
         var dependencies = new ModuleLoadHostedServiceDependencies(
             moduleHost,
             new StubModulePathProvider(modulesRoot));
-        var hostedService = new ModuleLoadHostedService(
+        using var hostedService = new ModuleLoadHostedService(
             dependencies,
             provider.GetRequiredService<IServiceScopeFactory>(),
             Options.Create(new ModuleHostOptions { OwnerTenantId = OwnerTenantId }),
@@ -49,10 +53,30 @@ public sealed class ModuleLoadHostedServiceTests
 
         // Act
         CreateModuleLayoutFromBuiltAssembly("test.module", modulesRoot);
-        await Task.Delay(800);
+        var loaded = await WaitUntilAsync(
+            () => catalog.Exists("test.module.echo"),
+            TimeSpan.FromSeconds(10));
 
         // Assert
-        Assert.True(catalog.Exists("test.module.echo"));
+        Assert.True(loaded);
+        await hostedService.StopAsync(CancellationToken.None);
+    }
+
+    /// <summary>条件が満たされるか、タイムアウトまで短間隔でポーリングする。</summary>
+    private static async Task<bool> WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition())
+            {
+                return true;
+            }
+
+            await Task.Delay(100);
+        }
+
+        return condition();
     }
 
     private static void CreateModuleLayoutFromBuiltAssembly(string moduleDirectoryName, string modulesRoot)
