@@ -62,6 +62,7 @@ Sonar / Analyzer: [`docs/development-guidelines.md`](docs/development-guidelines
 | `Statevia:ActionHost:BaseUrl` | OutOfProcess 実行（未設定時は `ActionHostNotConfigured`） |
 | `Statevia:Modules:Signing:*` | Module 署名・TrustLevel |
 | `Statevia:Modules:Oci:*` | OCI Module Source |
+| `Statevia:Modules:S3:*` | S3 Module Source |
 | `Statevia:ExecutionPolicy:*` | 実行モード下限・テナント Policy |
 
 完全な一覧と説明: [`docs/guides/operations-docker.md`](docs/guides/operations-docker.md)、[`docs/specifications/actions/platform.md`](docs/specifications/actions/platform.md)
