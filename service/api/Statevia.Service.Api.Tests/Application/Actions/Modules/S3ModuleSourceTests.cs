@@ -9,28 +9,28 @@ using Statevia.Infrastructure.Modules;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Modules;
 
-/// <summary><see cref="OciModuleSource"/> の materialize・射影・隔離、および取得→load 結合の単体テスト。</summary>
-public sealed class OciModuleSourceTests
+/// <summary><see cref="S3ModuleSource"/> の materialize・射影・隔離、および取得→load 結合の単体テスト。</summary>
+public sealed class S3ModuleSourceTests
 {
     private const string OwnerTenantId = "00000000-0000-4000-8000-000000000001";
 
-    /// <summary>設定された artifact を materialize し、oci ラベル付きで discover する。</summary>
+    /// <summary>設定された artifact を materialize し、s3 ラベル付きで discover する。</summary>
     [Fact]
     public async Task DiscoverAsync_WhenArtifactConfigured_MaterializesAndProjects()
     {
         // Arrange
-        var fetcher = new FakeOciArtifactFetcher();
-        fetcher.SetModule("ghcr.io", "myorg/test.module", "1.0.0", BuildModuleZip("test.module"), "sha256:abc123");
-        var sut = CreateSut(fetcher, new OciModuleSourceOptions
+        var fetcher = new FakeS3ArtifactFetcher();
+        fetcher.SetModule("my-bucket", "modules/test.module.zip", BuildModuleZip("test.module"), "etag:abc123");
+        var sut = CreateSut(fetcher, new S3ModuleSourceOptions
         {
             Enabled = true,
             Artifacts =
             [
-                new OciModuleArtifactOptions
+                new S3ModuleArtifactOptions
                 {
-                    Registry = "ghcr.io",
-                    Repository = "myorg/test.module",
-                    Reference = "1.0.0",
+                    Bucket = "my-bucket",
+                    Key = "modules/test.module.zip",
+                    Region = "ap-northeast-1",
                 },
             ],
         });
@@ -42,7 +42,7 @@ public sealed class OciModuleSourceTests
         var module = Assert.Single(discovered);
         Assert.Equal("test.module", module.ModuleDirectoryName);
         Assert.True(File.Exists(module.EntryAssemblyPath));
-        Assert.Equal("oci:ghcr.io/myorg/test.module:1.0.0", module.SourceLabel);
+        Assert.Equal("s3:my-bucket/modules/test.module.zip", module.SourceLabel);
     }
 
     /// <summary>artifact 未設定なら取得を行わず空を返す。</summary>
@@ -50,7 +50,7 @@ public sealed class OciModuleSourceTests
     public async Task DiscoverAsync_WhenNoArtifacts_ReturnsEmpty()
     {
         // Arrange
-        var sut = CreateSut(new FakeOciArtifactFetcher(), new OciModuleSourceOptions { Enabled = true });
+        var sut = CreateSut(new FakeS3ArtifactFetcher(), new S3ModuleSourceOptions { Enabled = true });
 
         // Act
         var discovered = await sut.DiscoverAsync(CancellationToken.None);
@@ -59,16 +59,16 @@ public sealed class OciModuleSourceTests
         Assert.Empty(discovered);
     }
 
-    /// <summary>registry / repository / reference が欠落した artifact は取得せず skip する。</summary>
+    /// <summary>bucket / key が欠落した artifact は取得せず skip する。</summary>
     [Fact]
     public async Task DiscoverAsync_WhenConfigIncomplete_SkipsArtifact()
     {
         // Arrange
-        var fetcher = new FakeOciArtifactFetcher();
-        var sut = CreateSut(fetcher, new OciModuleSourceOptions
+        var fetcher = new FakeS3ArtifactFetcher();
+        var sut = CreateSut(fetcher, new S3ModuleSourceOptions
         {
             Enabled = true,
-            Artifacts = [new OciModuleArtifactOptions { Registry = "ghcr.io", Reference = "1.0.0" }],
+            Artifacts = [new S3ModuleArtifactOptions { Bucket = "my-bucket" }],
         });
 
         // Act
@@ -77,6 +77,7 @@ public sealed class OciModuleSourceTests
         // Assert
         Assert.Empty(discovered);
         Assert.Equal(0, fetcher.FetchCount);
+        Assert.Equal(0, fetcher.ResolveCount);
     }
 
     /// <summary>1 artifact の取得失敗は他 artifact の materialize を妨げない。</summary>
@@ -84,16 +85,16 @@ public sealed class OciModuleSourceTests
     public async Task DiscoverAsync_WhenOneArtifactFails_IsolatesFailure()
     {
         // Arrange
-        var fetcher = new FakeOciArtifactFetcher();
-        fetcher.SetFailure("ghcr.io", "myorg/broken", "1.0.0");
-        fetcher.SetModule("ghcr.io", "myorg/test.module", "1.0.0", BuildModuleZip("test.module"), "sha256:def456");
-        var sut = CreateSut(fetcher, new OciModuleSourceOptions
+        var fetcher = new FakeS3ArtifactFetcher();
+        fetcher.SetFailure("my-bucket", "modules/broken.zip");
+        fetcher.SetModule("my-bucket", "modules/test.module.zip", BuildModuleZip("test.module"), "etag:def456");
+        var sut = CreateSut(fetcher, new S3ModuleSourceOptions
         {
             Enabled = true,
             Artifacts =
             [
-                new OciModuleArtifactOptions { Registry = "ghcr.io", Repository = "myorg/broken", Reference = "1.0.0" },
-                new OciModuleArtifactOptions { Registry = "ghcr.io", Repository = "myorg/test.module", Reference = "1.0.0" },
+                new S3ModuleArtifactOptions { Bucket = "my-bucket", Key = "modules/broken.zip", Region = "ap-northeast-1" },
+                new S3ModuleArtifactOptions { Bucket = "my-bucket", Key = "modules/test.module.zip", Region = "ap-northeast-1" },
             ],
         });
 
@@ -110,25 +111,25 @@ public sealed class OciModuleSourceTests
     public void Priority_ReturnsConfiguredValue()
     {
         // Arrange
-        var sut = CreateSut(new FakeOciArtifactFetcher(), new OciModuleSourceOptions { Enabled = true, Priority = 42 });
+        var sut = CreateSut(new FakeS3ArtifactFetcher(), new S3ModuleSourceOptions { Enabled = true, Priority = 42 });
 
         // Act / Assert
         Assert.Equal(42, sut.Priority);
     }
 
-    /// <summary>OCI 取得 → materialize → ModuleHost load → Catalog 登録までが通る。</summary>
+    /// <summary>S3 取得 → materialize → ModuleHost load → Catalog 登録までが通る。</summary>
     [Fact]
     public async Task DiscoverAsync_ThenModuleHostLoad_RegistersActions()
     {
         // Arrange
-        var fetcher = new FakeOciArtifactFetcher();
-        fetcher.SetModule("ghcr.io", "myorg/test.module", "1.0.0", BuildModuleZip("test.module"), "sha256:feed01");
-        var sut = CreateSut(fetcher, new OciModuleSourceOptions
+        var fetcher = new FakeS3ArtifactFetcher();
+        fetcher.SetModule("my-bucket", "modules/test.module.zip", BuildModuleZip("test.module"), "etag:feed01");
+        var sut = CreateSut(fetcher, new S3ModuleSourceOptions
         {
             Enabled = true,
             Artifacts =
             [
-                new OciModuleArtifactOptions { Registry = "ghcr.io", Repository = "myorg/test.module", Reference = "1.0.0" },
+                new S3ModuleArtifactOptions { Bucket = "my-bucket", Key = "modules/test.module.zip", Region = "ap-northeast-1" },
             ],
         });
         var catalog = new InMemoryActionCatalog();
@@ -145,21 +146,21 @@ public sealed class OciModuleSourceTests
         Assert.True(catalog.Exists("test.module.echo"));
     }
 
-    /// <summary>同一 digest がキャッシュ済みなら 2 回目の discover でレイヤ blob 取得をスキップする。</summary>
+    /// <summary>同一 content identity がキャッシュ済みなら 2 回目の discover で blob 取得をスキップする。</summary>
     [Fact]
-    public async Task DiscoverAsync_WhenDigestCached_SkipsLayerBlobFetch()
+    public async Task DiscoverAsync_WhenIdentityCached_SkipsBlobFetch()
     {
         // Arrange
-        var fetcher = new FakeOciArtifactFetcher();
-        fetcher.SetModule("ghcr.io", "myorg/test.module", "1.0.0", BuildModuleZip("test.module"), "sha256:cache01");
+        var fetcher = new FakeS3ArtifactFetcher();
+        fetcher.SetModule("my-bucket", "modules/test.module.zip", BuildModuleZip("test.module"), "etag:cache01");
         var cacheRoot = CreateTempDirectory();
-        var options = new OciModuleSourceOptions
+        var options = new S3ModuleSourceOptions
         {
             Enabled = true,
             CacheRoot = cacheRoot,
             Artifacts =
             [
-                new OciModuleArtifactOptions { Registry = "ghcr.io", Repository = "myorg/test.module", Reference = "1.0.0" },
+                new S3ModuleArtifactOptions { Bucket = "my-bucket", Key = "modules/test.module.zip", Region = "ap-northeast-1" },
             ],
         };
         var sut = CreateSut(fetcher, options);
@@ -176,45 +177,24 @@ public sealed class OciModuleSourceTests
         Assert.Equal(first[0].EntryAssemblyPath, second[0].EntryAssemblyPath);
     }
 
-    /// <summary>digest 参照でキャッシュ済みなら Resolve / Fetch とも呼ばず再利用する。</summary>
+    /// <summary>ETag と VersionId から content identity を組み立てる。</summary>
     [Fact]
-    public async Task DiscoverAsync_WhenDigestReferenceCached_SkipsResolveAndFetch()
+    public void BuildContentIdentity_CombinesVersionAndEtag()
     {
-        // Arrange
-        const string digest = "sha256:direct01";
-        var fetcher = new FakeOciArtifactFetcher();
-        fetcher.SetModule("ghcr.io", "myorg/test.module", digest, BuildModuleZip("test.module"), digest);
-        var cacheRoot = CreateTempDirectory();
-        var options = new OciModuleSourceOptions
-        {
-            Enabled = true,
-            CacheRoot = cacheRoot,
-            Artifacts =
-            [
-                new OciModuleArtifactOptions { Registry = "ghcr.io", Repository = "myorg/test.module", Reference = digest },
-            ],
-        };
-        var sut = CreateSut(fetcher, options);
-
-        // Act — 1 回目で materialize、2 回目は digest 参照のため Resolve も Fetch も不要
-        _ = await sut.DiscoverAsync(CancellationToken.None);
-        fetcher.ResetCounts();
-        var second = await sut.DiscoverAsync(CancellationToken.None);
-
-        // Assert
-        Assert.Single(second);
-        Assert.Equal(0, fetcher.ResolveCount);
-        Assert.Equal(0, fetcher.FetchCount);
+        // Act / Assert
+        Assert.Equal("etag:abc", AwsS3ArtifactFetcher.BuildContentIdentity("\"abc\"", null));
+        Assert.Equal("ver:v1+etag:abc", AwsS3ArtifactFetcher.BuildContentIdentity("\"abc\"", "v1"));
+        Assert.Equal("ver:v1", AwsS3ArtifactFetcher.BuildContentIdentity(null, "v1"));
     }
 
-    private static OciModuleSource CreateSut(IOciArtifactFetcher fetcher, OciModuleSourceOptions options)
+    private static S3ModuleSource CreateSut(IS3ArtifactFetcher fetcher, S3ModuleSourceOptions options)
     {
         options.CacheRoot ??= CreateTempDirectory();
-        return new OciModuleSource(
+        return new S3ModuleSource(
             Options.Create(options),
             fetcher,
             new StubHostEnvironment(CreateTempDirectory()),
-            NullLogger<OciModuleSource>.Instance);
+            NullLogger<S3ModuleSource>.Instance);
     }
 
     private static ModuleHost CreateModuleHost(InMemoryActionCatalog catalog)
@@ -249,48 +229,42 @@ public sealed class OciModuleSourceTests
 
     private static string CreateTempDirectory()
     {
-        var path = Path.Combine(Path.GetTempPath(), "statevia-oci-test", Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(Path.GetTempPath(), "statevia-s3-test", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
         return path;
     }
 
-    private sealed class FakeOciArtifactFetcher : IOciArtifactFetcher
+    private sealed class FakeS3ArtifactFetcher : IS3ArtifactFetcher
     {
-        private readonly Dictionary<string, OciFetchedModule> _modules = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, S3FetchedModule> _modules = new(StringComparer.Ordinal);
         private readonly HashSet<string> _failures = new(StringComparer.Ordinal);
 
         public int FetchCount { get; private set; }
 
         public int ResolveCount { get; private set; }
 
-        public void SetModule(string registry, string repository, string reference, byte[] layerZip, string digest) =>
-            _modules[Key(registry, repository, reference)] = new OciFetchedModule(layerZip, digest);
+        public void SetModule(string bucket, string key, byte[] zipBytes, string identity) =>
+            _modules[Key(bucket, key)] = new S3FetchedModule(zipBytes, identity);
 
-        public void SetFailure(string registry, string repository, string reference) =>
-            _failures.Add(Key(registry, repository, reference));
+        public void SetFailure(string bucket, string key) =>
+            _failures.Add(Key(bucket, key));
 
-        public void ResetCounts()
-        {
-            FetchCount = 0;
-            ResolveCount = 0;
-        }
-
-        public Task<string> ResolveManifestDigestAsync(OciModuleReference reference, CancellationToken cancellationToken)
+        public Task<string> ResolveContentIdentityAsync(S3ModuleReference reference, CancellationToken cancellationToken)
         {
             ResolveCount++;
-            var key = Key(reference.Registry, reference.Repository, reference.Reference);
+            var key = Key(reference.Bucket, reference.Key);
             if (_failures.Contains(key))
             {
                 throw new InvalidOperationException($"Simulated resolve failure for '{reference.Label}'.");
             }
 
-            return Task.FromResult(_modules[key].ManifestDigest);
+            return Task.FromResult(_modules[key].ContentIdentity);
         }
 
-        public Task<OciFetchedModule> FetchModuleAsync(OciModuleReference reference, CancellationToken cancellationToken)
+        public Task<S3FetchedModule> FetchModuleAsync(S3ModuleReference reference, CancellationToken cancellationToken)
         {
             FetchCount++;
-            var key = Key(reference.Registry, reference.Repository, reference.Reference);
+            var key = Key(reference.Bucket, reference.Key);
             if (_failures.Contains(key))
             {
                 throw new InvalidOperationException($"Simulated fetch failure for '{reference.Label}'.");
@@ -299,8 +273,7 @@ public sealed class OciModuleSourceTests
             return Task.FromResult(_modules[key]);
         }
 
-        private static string Key(string registry, string repository, string reference) =>
-            $"{registry}/{repository}:{reference}";
+        private static string Key(string bucket, string objectKey) => $"{bucket}/{objectKey}";
     }
 
     private sealed class EmptyModuleSource : IModuleSource

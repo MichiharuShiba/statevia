@@ -36,6 +36,23 @@ public static class ModulesServiceCollectionExtensions
             services.AddSingleton<IModuleSource, OciModuleSource>();
         }
 
+        services.AddOptions<S3ModuleSourceOptions>()
+            .Bind(configuration.GetSection(S3ModuleSourceOptions.SectionName));
+        if (configuration.GetValue<bool>($"{S3ModuleSourceOptions.SectionName}:Enabled"))
+        {
+            services.AddSingleton<IS3ArtifactFetcher, AwsS3ArtifactFetcher>();
+            services.AddSingleton<IModuleSource, S3ModuleSource>();
+        }
+
+        services.AddOptions<GitModuleSourceOptions>()
+            .Bind(configuration.GetSection(GitModuleSourceOptions.SectionName));
+        if (configuration.GetValue<bool>($"{GitModuleSourceOptions.SectionName}:Enabled"))
+        {
+            services.AddHttpClient(HttpGitArtifactFetcher.HttpClientName);
+            services.AddSingleton<IGitArtifactFetcher, HttpGitArtifactFetcher>();
+            services.AddSingleton<IModuleSource, GitModuleSource>();
+        }
+
         services.AddSingleton<CompositeModuleSource>();
         services.AddSingleton<ModuleLoadCatalog>();
         services.AddSingleton<IModuleSignatureVerifier, ModuleSignatureVerifier>();

@@ -17,6 +17,7 @@ namespace Statevia.Infrastructure.Modules;
 /// <para>
 /// 手順: registry へ接続 → manifest を fetch → Module レイヤ（<see cref="ModuleLayerMediaType"/>、無ければ単一レイヤ）
 /// を選択 → blob を取得して bytes を返す。digest 検証は ORAS が担保する。
+/// <see cref="ResolveManifestDigestAsync"/> は manifest のみを解決し、レイヤ blob を取得しない（digest キャッシュ判定用）。
 /// </para>
 /// <para>セキュリティ: 認証情報はログへ出力しない。token キャッシュはプロセス内メモリに保持する。</para>
 /// </remarks>
@@ -33,12 +34,45 @@ internal sealed class OrasOciArtifactFetcher(
     private readonly MemoryCache _tokenCache = new(new MemoryCacheOptions());
 
     /// <inheritdoc />
-    public async Task<OciFetchedModule> FetchModuleAsync(OciModuleReference reference, CancellationToken cancellationToken)
+    public async Task<string> ResolveManifestDigestAsync(
+        OciModuleReference reference,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(reference);
 
         var repository = CreateRepository(reference);
+        var (_, manifestDescriptor) = await FetchManifestAsync(repository, reference, cancellationToken)
+            .ConfigureAwait(false);
+        OrasOciArtifactFetcherLog.ManifestResolved(logger, reference.Label, manifestDescriptor.Digest);
+        return manifestDescriptor.Digest;
+    }
 
+    /// <inheritdoc />
+    public async Task<OciFetchedModule> FetchModuleAsync(OciModuleReference reference, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(reference);
+
+        // manifest 取得とレイヤ取得で同一 Repository（同一 Client 接続）を共有する
+        var repository = CreateRepository(reference);
+        var (manifest, manifestDescriptor) = await FetchManifestAsync(repository, reference, cancellationToken)
+            .ConfigureAwait(false);
+
+        var layer = SelectModuleLayer(manifest, reference.Label);
+        var layerBytes = await repository.FetchAllAsync(layer, cancellationToken).ConfigureAwait(false);
+
+        OrasOciArtifactFetcherLog.ModuleFetched(logger, reference.Label, manifestDescriptor.Digest);
+        return new OciFetchedModule(layerBytes, manifestDescriptor.Digest);
+    }
+
+    /// <summary>manifest を取得・検証し、デシリアライズ結果と descriptor を返す。</summary>
+    /// <param name="repository">呼び出し側が用意した Repository（pull 内で再利用する）。</param>
+    /// <param name="reference">取得対象の参照。</param>
+    /// <param name="cancellationToken">キャンセル。</param>
+    private static async Task<(Manifest Manifest, Descriptor Descriptor)> FetchManifestAsync(
+        Repository repository,
+        OciModuleReference reference,
+        CancellationToken cancellationToken)
+    {
         var (manifestDescriptor, manifestStream) = await repository
             .FetchAsync(reference.Reference, cancellationToken)
             .ConfigureAwait(false);
@@ -58,11 +92,7 @@ internal sealed class OrasOciArtifactFetcher(
         var manifest = JsonSerializer.Deserialize<Manifest>(manifestBytes)
             ?? throw new InvalidOperationException("Failed to deserialize OCI image manifest.");
 
-        var layer = SelectModuleLayer(manifest, reference.Label);
-        var layerBytes = await repository.FetchAllAsync(layer, cancellationToken).ConfigureAwait(false);
-
-        OrasOciArtifactFetcherLog.ModuleFetched(logger, reference.Label, manifestDescriptor.Digest);
-        return new OciFetchedModule(layerBytes, manifestDescriptor.Digest);
+        return (manifest, manifestDescriptor);
     }
 
     private Repository CreateRepository(OciModuleReference reference)
@@ -147,4 +177,10 @@ internal static partial class OrasOciArtifactFetcherLog
         Level = LogLevel.Information,
         Message = "Fetched OCI module '{Reference}' (manifest digest {Digest})")]
     public static partial void ModuleFetched(ILogger logger, string reference, string digest);
+
+    [LoggerMessage(
+        EventId = 2,
+        Level = LogLevel.Debug,
+        Message = "Resolved OCI manifest for '{Reference}' (digest {Digest})")]
+    public static partial void ManifestResolved(ILogger logger, string reference, string digest);
 }
