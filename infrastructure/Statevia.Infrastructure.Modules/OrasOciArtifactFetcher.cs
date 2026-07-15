@@ -40,7 +40,9 @@ internal sealed class OrasOciArtifactFetcher(
     {
         ArgumentNullException.ThrowIfNull(reference);
 
-        var (_, manifestDescriptor) = await FetchManifestAsync(reference, cancellationToken).ConfigureAwait(false);
+        var repository = CreateRepository(reference);
+        var (_, manifestDescriptor) = await FetchManifestAsync(repository, reference, cancellationToken)
+            .ConfigureAwait(false);
         OrasOciArtifactFetcherLog.ManifestResolved(logger, reference.Label, manifestDescriptor.Digest);
         return manifestDescriptor.Digest;
     }
@@ -50,8 +52,10 @@ internal sealed class OrasOciArtifactFetcher(
     {
         ArgumentNullException.ThrowIfNull(reference);
 
+        // manifest 取得とレイヤ取得で同一 Repository（同一 Client 接続）を共有する
         var repository = CreateRepository(reference);
-        var (manifest, manifestDescriptor) = await FetchManifestAsync(reference, cancellationToken).ConfigureAwait(false);
+        var (manifest, manifestDescriptor) = await FetchManifestAsync(repository, reference, cancellationToken)
+            .ConfigureAwait(false);
 
         var layer = SelectModuleLayer(manifest, reference.Label);
         var layerBytes = await repository.FetchAllAsync(layer, cancellationToken).ConfigureAwait(false);
@@ -61,12 +65,14 @@ internal sealed class OrasOciArtifactFetcher(
     }
 
     /// <summary>manifest を取得・検証し、デシリアライズ結果と descriptor を返す。</summary>
-    private async Task<(Manifest Manifest, Descriptor Descriptor)> FetchManifestAsync(
+    /// <param name="repository">呼び出し側が用意した Repository（pull 内で再利用する）。</param>
+    /// <param name="reference">取得対象の参照。</param>
+    /// <param name="cancellationToken">キャンセル。</param>
+    private static async Task<(Manifest Manifest, Descriptor Descriptor)> FetchManifestAsync(
+        Repository repository,
         OciModuleReference reference,
         CancellationToken cancellationToken)
     {
-        var repository = CreateRepository(reference);
-
         var (manifestDescriptor, manifestStream) = await repository
             .FetchAsync(reference.Reference, cancellationToken)
             .ConfigureAwait(false);
