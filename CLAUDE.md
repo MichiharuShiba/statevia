@@ -181,10 +181,11 @@
 - コメント・ドキュメント方針: `.cursor/rules/documentation-standards.mdc`
 - `.workspace-docs` 作業: `.cursor/skills/workspace-docs-ops/SKILL.md`
 - SonarQube MCP 作業: `.cursor/skills/sonarqube-mcp-ops/SKILL.md`
-- Serena MCP（engine / api / ui の有効化切り替え）: `.cursor/skills/serena-mcp-project-switch/SKILL.md`
+- Serena MCP（プロジェクト別 MCP の UI トグル切替）: `.cursor/skills/serena-mcp-project-switch/SKILL.md`
 - Serena MCP（調査・設計前調査・実装でのシンボル活用）: `.cursor/skills/serena-workflow-research-impl/SKILL.md`
+- Serena MCP 運用仕様: `.spec-workflow/archive/specs/serena-mcp-project-toggle/`
 
-明示的に Serena を切り替えるチャットコマンド: `/serena-project-engine`、`/serena-project-api`、`/serena-project-ui`（`.cursor/commands/`）。
+明示的に Serena を切り替えるチャットコマンド: `/serena-project-engine`、`/serena-project-api`、`/serena-project-ui` 等（`.cursor/commands/`）。切替は `activate_project` ではなく Cursor の MCP トグル（対象 `serena-*` を On、他を Off）。
 
 Plan の設計を `.spec-workflow/specs/` に書き起こすチャットコマンド: `/spec-from-plan-design`（`.cursor/commands/spec-from-plan-design.md`）。
 

@@ -23,8 +23,8 @@ internal sealed class GrpcActionHostExecutionClient : IActionHostExecutionClient
             return;
         }
 
+        // ローカル / Compose の Action Host は平文 gRPC（h2c）を使う。
         AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-
         _channel = GrpcChannel.ForAddress(actionHostOptions.BaseUrl.Trim());
         _client = new ActionExecutionService.ActionExecutionServiceClient(_channel);
     }

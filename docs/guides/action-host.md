@@ -39,6 +39,12 @@ dotnet run --project Statevia.Service.ActionHost
 }
 ```
 
+### 平文 gRPC（h2c）
+
+Action Host は **TLS 無し HTTP/2（h2c）** で待受する（Kestrel `HttpProtocols.Http2`）。  
+`Http1AndHttp2` のまま TLS を付けないと HTTP/1.1 のみになり、Core-API / Container サンドボックスからの gRPC が `Unavailable` / handshake 失敗になる。  
+Core-API 側は `System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport` を有効にして接続する。
+
 ## Docker Compose
 
 `docker compose` ではサービス名 `action-host`、Core-API から `http://action-host:5001` を参照する構成が一般的です。
