@@ -23,8 +23,6 @@ internal sealed class GrpcActionHostExecutionClient : IActionHostExecutionClient
             return;
         }
 
-        AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-
         _channel = GrpcChannel.ForAddress(actionHostOptions.BaseUrl.Trim());
         _client = new ActionExecutionService.ActionExecutionServiceClient(_channel);
     }

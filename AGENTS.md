@@ -64,7 +64,7 @@ Sonar / Analyzer: [`docs/development-guidelines.md`](docs/development-guidelines
 | `Statevia:Modules:Oci:*` | OCI Module Source |
 | `Statevia:Modules:S3:*` | S3 Module Source |
 | `Statevia:Modules:Git:*` | Git Module Source（HTTP archive） |
-| `Statevia:ExecutionPolicy:*` | 実行モード下限・テナント Policy |
+| `Statevia:ExecutionPolicy:*` | 実行モード下限・テナント Policy / `Sandbox:Docker:*`（Container） |
 
 完全な一覧と説明: [`docs/guides/operations-docker.md`](docs/guides/operations-docker.md)、[`docs/specifications/actions/platform.md`](docs/specifications/actions/platform.md)
 
@@ -73,6 +73,7 @@ Sonar / Analyzer: [`docs/development-guidelines.md`](docs/development-guidelines
 - **Read-model**: `GET /v1/executions` / graph は DB projection 正本（[`data-integration.md`](docs/specifications/data-integration.md)）
 - **IO-14**: 既定で `input` / `output` を一覧 GET に含めない。ログは `LogRedaction`（[`io-log-masking.md`](docs/specifications/platform/io-log-masking.md)）
 - **Engine 境界**: `ExecutionEngine` は `IStateExecutor` のみ。Catalog / Policy / ModuleHost は Core-API 側
+- **Serena MCP**: プロジェクトごとに `serena-engine` … `serena-ui` の 8 サーバー。切替は UI トグル（同時 On は原則 1）。未起動時は停止して起動を促す。[`serena-mcp-project-toggle`](.spec-workflow/archive/specs/serena-mcp-project-toggle/requirements.md) / [`.cursor/skills/serena-mcp-project-switch/SKILL.md`](.cursor/skills/serena-mcp-project-switch/SKILL.md)
 
 ## .NET SDK
 
