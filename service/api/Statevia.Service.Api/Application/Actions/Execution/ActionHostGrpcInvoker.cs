@@ -42,9 +42,11 @@ internal static class ActionHostGrpcInvoker
         {
             return Failure("ActionHostUnavailable", "Action Host is unavailable.");
         }
-        catch (RpcException)
+        catch (RpcException ex)
         {
-            return Failure("ActionHostRpcFailed", "Action Host execution failed.");
+            return Failure(
+                "ActionHostRpcFailed",
+                $"Action Host execution failed ({ex.StatusCode}): {ex.Status.Detail}");
         }
     }
 

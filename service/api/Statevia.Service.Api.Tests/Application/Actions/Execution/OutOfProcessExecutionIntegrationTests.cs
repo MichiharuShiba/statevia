@@ -28,8 +28,6 @@ public sealed class OutOfProcessExecutionIntegrationTests : IAsyncLifetime
     /// <inheritdoc />
     public Task InitializeAsync()
     {
-        AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-
         _actionHostFactory = new WebApplicationFactory<ActionHost::Program>()
             .WithWebHostBuilder(builder =>
                 builder.UseSetting($"{ActionHostOptions.SectionName}:ModulesPath", _modulesRoot));

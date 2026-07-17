@@ -6,10 +6,11 @@ using Statevia.Service.ActionHost.Modules;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 平文 gRPC（h2c）用。Http1AndHttp2 は TLS 無しだと HTTP/1.1 のみになり gRPC が Unavailable になる。
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ConfigureEndpointDefaults(listenOptions =>
-        listenOptions.Protocols = HttpProtocols.Http1AndHttp2);
+        listenOptions.Protocols = HttpProtocols.Http2);
 });
 
 // Docker では ASPNETCORE_URLS（例: http://+:5001）を優先。未設定時のみ appsettings の ListenUrl を使う。

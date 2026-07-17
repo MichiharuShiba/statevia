@@ -25,6 +25,12 @@ internal sealed class SandboxOptions
     /// <summary>実行タイムアウト（秒）。未指定はランタイム既定。</summary>
     public int? TimeoutSeconds { get; set; }
 
+    /// <summary>
+    /// Docker サンドボックス固有設定。
+    /// セクション <c>Statevia:ExecutionPolicy:Sandbox:Docker</c>。
+    /// </summary>
+    public DockerSandboxOptions Docker { get; set; } = new();
+
     /// <summary>設定値から <see cref="SandboxLimits"/> を生成する。</summary>
     public SandboxLimits ToLimits() =>
         new(CpuLimit, MemoryLimitMiB, TimeoutSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null);
