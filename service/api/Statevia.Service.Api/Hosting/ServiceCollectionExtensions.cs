@@ -109,9 +109,6 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<IActionExecutionBackend, OutOfProcessBackend>();
         services.AddSingleton<IActionExecutionBackend, ContainerActionBackend>();
         services.AddSingleton<IActionExecutionBackend, WasmActionBackend>();
-        services.AddSingleton<IDockerContainerClient, DockerDotNetContainerClient>();
-        services.AddSingleton<IEphemeralActionHostExecutor, GrpcEphemeralActionHostExecutor>();
-        services.AddSingleton<IActionSandboxRuntime, DockerSandboxRuntime>();
         services.AddSingleton<IActionExecutionBackendSelector, ActionExecutionBackendSelector>();
         services.AddSingleton<IActionExecutor, DispatchingActionExecutor>();
         services.AddSingleton<StateWorkflowDefinitionLoader>();
