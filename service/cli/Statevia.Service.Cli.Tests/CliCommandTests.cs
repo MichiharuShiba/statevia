@@ -84,9 +84,36 @@ public sealed class CliCommandTests
         Assert.Equal(1, exitCode);
     }
 
-    /// <summary>module install が zip を modules ルートへ展開する。</summary>
+    /// <summary>module install が zip をテナント配下へ展開する。</summary>
     [Fact]
-    public async Task ModuleInstall_ValidZip_InstallsToModulesRoot()
+    public async Task ModuleInstall_ValidZip_InstallsUnderTenantDirectory()
+    {
+        // Arrange
+        var modulesRoot = CreateTempDirectory();
+        var zipPath = Path.Combine(CreateTempDirectory(), "test.module.zip");
+        CreateZip(zipPath, ("test.module/test.module.dll", "MZ"u8.ToArray()));
+
+        // Act
+        var exitCode = await Program.Main([
+            "module",
+            "install",
+            zipPath,
+            "--modules-path",
+            modulesRoot,
+            "--tenant",
+            "acme-corp",
+            "--skip-reload",
+        ]);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(Path.Combine(modulesRoot, "acme-corp", "test.module", "test.module.dll")));
+        Assert.False(File.Exists(Path.Combine(modulesRoot, "test.module", "test.module.dll")));
+    }
+
+    /// <summary>--tenant 省略時は失敗する。</summary>
+    [Fact]
+    public async Task ModuleInstall_WithoutTenant_ReturnsFailure()
     {
         // Arrange
         var modulesRoot = CreateTempDirectory();
@@ -104,8 +131,33 @@ public sealed class CliCommandTests
         ]);
 
         // Assert
-        Assert.Equal(0, exitCode);
-        Assert.True(File.Exists(Path.Combine(modulesRoot, "test.module", "test.module.dll")));
+        Assert.NotEqual(0, exitCode);
+    }
+
+    /// <summary>不正な --tenant は展開前に失敗する。</summary>
+    [Fact]
+    public async Task ModuleInstall_InvalidTenant_ReturnsFailure()
+    {
+        // Arrange
+        var modulesRoot = CreateTempDirectory();
+        var zipPath = Path.Combine(CreateTempDirectory(), "test.module.zip");
+        CreateZip(zipPath, ("test.module/test.module.dll", "MZ"u8.ToArray()));
+
+        // Act
+        var exitCode = await Program.Main([
+            "module",
+            "install",
+            zipPath,
+            "--modules-path",
+            modulesRoot,
+            "--tenant",
+            "..",
+            "--skip-reload",
+        ]);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(modulesRoot));
     }
 
     /// <summary>module install は存在しない zip で失敗する。</summary>
@@ -117,6 +169,8 @@ public sealed class CliCommandTests
             "module",
             "install",
             Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.zip"),
+            "--tenant",
+            "default",
             "--skip-reload",
         ]);
 
@@ -140,6 +194,8 @@ public sealed class CliCommandTests
             zipPath,
             "--modules-path",
             modulesRoot,
+            "--tenant",
+            "default",
         ]);
 
         // Assert
@@ -162,6 +218,8 @@ public sealed class CliCommandTests
             zipPath,
             "--modules-path",
             modulesRoot,
+            "--tenant",
+            "default",
         ]);
 
         // Assert
@@ -184,6 +242,8 @@ public sealed class CliCommandTests
             zipPath,
             "--modules-path",
             modulesRoot,
+            "--tenant",
+            "default",
             "--api-base",
             "http://localhost:8080",
         ]);
@@ -192,9 +252,9 @@ public sealed class CliCommandTests
         Assert.Equal(1, exitCode);
     }
 
-    /// <summary>reload が成功すると 0 を返す。</summary>
+    /// <summary>reload 成功時、X-Tenant-Id は install の --tenant と一致する。</summary>
     [Fact]
-    public async Task ModuleInstall_ReloadSuccess_ReturnsSuccess()
+    public async Task ModuleInstall_ReloadSuccess_SendsMatchingTenantHeader()
     {
         // Arrange
         var modulesRoot = CreateTempDirectory();
@@ -209,6 +269,7 @@ public sealed class CliCommandTests
             var context = await listener.GetContextAsync().ConfigureAwait(false);
             Assert.Equal("POST", context.Request.HttpMethod);
             Assert.Equal("/internal/modules/reload", context.Request.Url?.AbsolutePath);
+            Assert.Equal("acme-corp", context.Request.Headers["X-Tenant-Id"]);
             context.Response.StatusCode = (int)HttpStatusCode.NoContent;
             context.Response.Close();
         });
@@ -220,6 +281,8 @@ public sealed class CliCommandTests
             zipPath,
             "--modules-path",
             modulesRoot,
+            "--tenant",
+            "acme-corp",
             "--api-base",
             $"http://127.0.0.1:{port}",
             "--token",
@@ -257,6 +320,8 @@ public sealed class CliCommandTests
             zipPath,
             "--modules-path",
             modulesRoot,
+            "--tenant",
+            "default",
             "--api-base",
             $"http://127.0.0.1:{port}",
             "--token",
@@ -284,6 +349,8 @@ public sealed class CliCommandTests
             zipPath,
             "--modules-path",
             modulesRoot,
+            "--tenant",
+            "default",
             "--api-base",
             "not-a-valid-uri",
             "--token",
@@ -339,6 +406,8 @@ public sealed class CliCommandTests
             zipPath,
             "--modules-path",
             modulesPathFile,
+            "--tenant",
+            "default",
             "--skip-reload",
         ]);
 
