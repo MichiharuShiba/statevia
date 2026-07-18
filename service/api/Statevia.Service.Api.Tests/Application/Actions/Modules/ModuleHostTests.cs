@@ -28,7 +28,7 @@ public sealed class ModuleHostTests
         var host = CreateHost(modulesRoot);
 
         // Act
-        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None);
+        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None, filesystemTenantKey: "default");
 
         // Assert
         Assert.True(host.Catalog.Exists("test.module.echo"));
@@ -68,7 +68,7 @@ public sealed class ModuleHostTests
             new ActionCatalogEntry(InProcessFactory: _ => DefaultStateExecutor.Create(new StubState())));
 
         // Act
-        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None);
+        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None, filesystemTenantKey: "default");
 
         // Assert
         Assert.True(host.Catalog.TryGetDescriptor("test.module", "1.0.0", "echo", out var descriptor));
@@ -82,7 +82,7 @@ public sealed class ModuleHostTests
     {
         // Arrange
         var modulesRoot = CreateTempDirectory();
-        var brokenDirectory = Path.Combine(modulesRoot, "broken-module");
+        var brokenDirectory = Path.Combine(modulesRoot, "default", "broken-module");
         Directory.CreateDirectory(brokenDirectory);
         await File.WriteAllTextAsync(Path.Combine(brokenDirectory, "broken-module.dll"), "not-a-dll");
 
@@ -91,7 +91,7 @@ public sealed class ModuleHostTests
         var host = CreateHost(modulesRoot);
 
         // Act
-        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None);
+        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None, filesystemTenantKey: "default");
 
         // Assert
         Assert.True(host.Catalog.Exists("test.module.echo"));
@@ -106,7 +106,7 @@ public sealed class ModuleHostTests
         // Arrange
         var modulesRoot = CreateModuleLayoutFromBuiltAssembly("test.module");
         var host = CreateHost(modulesRoot);
-        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None);
+        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None, filesystemTenantKey: "default");
         DefinitionCompilerService.RegisterBuiltinActions(host.Catalog);
 
         var provider = ActionExecutionTestSupport.CreateProvider(
@@ -146,7 +146,7 @@ public sealed class ModuleHostTests
     {
         // Arrange
         var modulesRoot = CreateModuleLayoutFromBuiltAssembly("test.module");
-        var entryPath = Path.Combine(modulesRoot, "test.module", "test.module.dll");
+        var entryPath = Path.Combine(modulesRoot, "default", "test.module", "test.module.dll");
         using var rsa = ModuleSignatureTestHelper.CreateSigningKey();
         ModuleSignatureTestHelper.WriteSignatureFile(entryPath, rsa, signerName: "Statevia Official");
         var host = CreateHost(modulesRoot, new ModuleSigningOptions
@@ -155,7 +155,7 @@ public sealed class ModuleHostTests
         });
 
         // Act
-        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None);
+        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None, filesystemTenantKey: "default");
 
         // Assert
         Assert.True(host.Catalog.TryGetDescriptor("test.module.echo", out var descriptor));
@@ -170,7 +170,7 @@ public sealed class ModuleHostTests
     {
         // Arrange
         var modulesRoot = CreateModuleLayoutFromBuiltAssembly("test.module");
-        var entryPath = Path.Combine(modulesRoot, "test.module", "test.module.dll");
+        var entryPath = Path.Combine(modulesRoot, "default", "test.module", "test.module.dll");
         using var rsa = ModuleSignatureTestHelper.CreateSigningKey();
         ModuleSignatureTestHelper.WriteSignatureFile(entryPath, rsa);
         var host = CreateHost(modulesRoot, new ModuleSigningOptions
@@ -179,7 +179,7 @@ public sealed class ModuleHostTests
         });
 
         // Act
-        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None);
+        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None, filesystemTenantKey: "default");
 
         // Assert
         Assert.True(host.Catalog.TryGetDescriptor("test.module.echo", out var descriptor));
@@ -196,7 +196,7 @@ public sealed class ModuleHostTests
         var host = CreateHost(modulesRoot, new ModuleSigningOptions { RequireSignature = true });
 
         // Act
-        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None);
+        await host.Host.LoadAsync(OwnerTenantId, CancellationToken.None, filesystemTenantKey: "default");
 
         // Assert
         Assert.False(host.Catalog.Exists("test.module.echo"));
@@ -230,7 +230,7 @@ public sealed class ModuleHostTests
         string? modulesRoot = null)
     {
         modulesRoot ??= CreateTempDirectory();
-        var moduleDirectory = Path.Combine(modulesRoot, moduleDirectoryName);
+        var moduleDirectory = Path.Combine(modulesRoot, "default", moduleDirectoryName);
         Directory.CreateDirectory(moduleDirectory);
 
         var builtAssemblyPath = Path.Combine(AppContext.BaseDirectory, "TestActionModule.dll");

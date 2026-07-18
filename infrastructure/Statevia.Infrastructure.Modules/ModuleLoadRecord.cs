@@ -32,6 +32,12 @@ internal sealed record ModuleLoadRecord
     /// <summary>entry DLL の絶対パス。</summary>
     public required string EntryAssemblyPath { get; init; }
 
+    /// <summary>
+    /// 所有者テナント（<c>tenants.tenant_id</c> UUID 文字列）。
+    /// 一覧 API のテナントフィルタに用いる。
+    /// </summary>
+    public required string OwnerTenantId { get; init; }
+
     /// <summary>load 成功時の Module メタデータ（Trust / Source / 署名枠）。</summary>
     public ModuleDescriptor? ModuleDescriptor { get; init; }
 }

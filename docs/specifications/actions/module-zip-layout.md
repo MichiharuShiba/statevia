@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.0 |
-| 更新日 | 2026-07-07 |
+| Version | 1.1 |
+| 更新日 | 2026-07-18 |
 | 関連 | [platform.md](platform.md), [guides/operations-docker.md](../../guides/operations-docker.md) |
 
 ---
@@ -30,15 +30,18 @@ CLI の `statevia module install` は `ModuleZipInstaller`（`infrastructure/Sta
 
 ## 1. 展開後の正しい構成（modules ルート基準）
 
-展開が成功し **load まで通る**最小構成は次のとおり。
+展開が成功し **load まで通る**最小構成は次のとおり（**正本: テナント別レイアウト**）。
 
 ```text
 {modulesRoot}/
-└─ {moduleDirectoryName}/          # 1 module = 1 ディレクトリ
-   ├─ {moduleDirectoryName}.dll     # 推奨: entry assembly（IActionModule 実装）
-   ├─ *.dll                         # 任意: 私有依存（ホスト未共有分のみ）
-   └─ {moduleDirectoryName}.deps.json  # 任意: 依存解決用（publish 成果物に含まれる場合）
+└─ {tenantKey}/                    # tenants.tenant_key（例: default, acme-corp）
+   └─ {moduleDirectoryName}/       # 1 module = 1 ディレクトリ
+      ├─ {moduleDirectoryName}.dll  # 推奨: entry assembly（IActionModule 実装）
+      ├─ *.dll                      # 任意: 私有依存（ホスト未共有分のみ）
+      └─ {moduleDirectoryName}.deps.json  # 任意: 依存解決用
 ```
+
+ルート直下（`{modulesRoot}/{module}/`）は discover 対象外。filesystem discover は常に `tenantKey` 必須で、必ず `{tenantKey}` 配下へ展開すること。
 
 ### entry assembly の解決規則
 

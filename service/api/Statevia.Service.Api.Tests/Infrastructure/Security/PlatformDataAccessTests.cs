@@ -40,6 +40,23 @@ public sealed class PlatformDataAccessTests
         Assert.Null(tenant);
     }
 
+    /// <summary>Active テナントのみ tenant_key 昇順で列挙する。</summary>
+    [Fact]
+    public async Task ListActiveTenantsAsync_ReturnsActiveTenantsOrderedByKey()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var platform = new PlatformDataAccess(database.Factory);
+
+        // Act
+        var tenants = await platform.ListActiveTenantsAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Contains(tenants, t => t.TenantKey == "default");
+        Assert.Equal(tenants.OrderBy(t => t.TenantKey).Select(t => t.TenantKey), tenants.Select(t => t.TenantKey));
+        Assert.All(tenants, t => Assert.Equal(TenantLifecycle.Active, t.Lifecycle));
+    }
+
     /// <summary>ログイン資格情報を tenant / user / principal で解決できる。</summary>
     [Fact]
     public async Task FindLoginCredentialAsync_ValidUser_ReturnsLookup()

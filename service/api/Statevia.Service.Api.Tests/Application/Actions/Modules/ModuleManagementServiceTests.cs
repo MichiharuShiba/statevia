@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Statevia.Core.Application.Contracts.Security;
 using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Infrastructure.Modules;
 using Statevia.Service.Api.Application.Actions.Modules;
@@ -12,11 +13,12 @@ namespace Statevia.Service.Api.Tests.Application.Actions.Modules;
 /// <summary><see cref="ModuleManagementService"/> の単体テスト。</summary>
 public sealed class ModuleManagementServiceTests
 {
+    private static readonly Guid DefaultTenantGuid = Guid.Parse("00000000-0000-4000-8000-000000000001");
     private const string OwnerTenantId = "00000000-0000-4000-8000-000000000001";
 
-    /// <summary>Catalog レコードが DTO にマッピングされる。</summary>
+    /// <summary>Catalog レコードが自テナントのみ DTO にマッピングされる。</summary>
     [Fact]
-    public void ListModules_MapsCatalogRecordsToDto()
+    public void ListModules_FiltersByCurrentTenantOwner()
     {
         // Arrange
         var loadCatalog = new ModuleLoadCatalog();
@@ -30,9 +32,26 @@ public sealed class ModuleManagementServiceTests
             SourceLabel = "filesystem",
             LoadedAtUtc = DateTimeOffset.Parse("2026-01-01T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
             Message = "ok",
-            EntryAssemblyPath = @"C:\modules\test.module\test.module.dll",
+            EntryAssemblyPath = @"C:\modules\default\test.module\test.module.dll",
+            OwnerTenantId = OwnerTenantId,
         });
-        var service = CreateService(loadCatalog, ownerTenantId: OwnerTenantId);
+        loadCatalog.Upsert(new ModuleLoadRecord
+        {
+            ModuleId = "other.module",
+            Name = "Other",
+            Version = "1.0.0",
+            Status = ModuleLoadStatus.Loaded,
+            Sha256 = "def",
+            SourceLabel = "filesystem",
+            LoadedAtUtc = DateTimeOffset.Parse("2026-01-01T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
+            Message = "ok",
+            EntryAssemblyPath = @"C:\modules\acme\other.module\other.module.dll",
+            OwnerTenantId = Guid.NewGuid().ToString("D"),
+        });
+        var service = CreateService(
+            loadCatalog,
+            ownerTenantId: null,
+            tenantContext: CreateTenantContext(DefaultTenantGuid, "default"));
 
         // Act
         var modules = service.ListModules();
@@ -58,7 +77,25 @@ public sealed class ModuleManagementServiceTests
         Assert.Null(exception);
     }
 
-    /// <summary>OwnerTenantId 未設定時は既定テナントを DB から解決する。</summary>
+    /// <summary>テナント文脈があるとき、その UUID / tenant_key で reload する。</summary>
+    [Fact]
+    public async Task ReloadAsync_WhenTenantContextResolved_UsesCurrentTenant()
+    {
+        // Arrange
+        var tenantId = Guid.Parse("11111111-1111-4111-8111-111111111111");
+        var service = CreateService(
+            new ModuleLoadCatalog(),
+            ownerTenantId: null,
+            tenantContext: CreateTenantContext(tenantId, "acme-corp"));
+
+        // Act
+        var exception = await Record.ExceptionAsync(() => service.ReloadAsync(CancellationToken.None));
+
+        // Assert
+        Assert.Null(exception);
+    }
+
+    /// <summary>OwnerTenantId 未設定かつテナント未解決時は既定テナントを DB から解決する。</summary>
     [Fact]
     public async Task ReloadAsync_WhenOwnerTenantNotConfigured_ResolvesDefaultTenant()
     {
@@ -73,6 +110,7 @@ public sealed class ModuleManagementServiceTests
             CreateModuleHost(),
             new ModuleLoadCatalog(),
             scopeFactory,
+            new FixedTenantContextAccessor(null),
             Options.Create(new ModuleHostOptions()));
 
         // Act
@@ -82,12 +120,19 @@ public sealed class ModuleManagementServiceTests
         Assert.Null(exception);
     }
 
-    private static ModuleManagementService CreateService(ModuleLoadCatalog loadCatalog, string? ownerTenantId) =>
+    private static ModuleManagementService CreateService(
+        ModuleLoadCatalog loadCatalog,
+        string? ownerTenantId,
+        ITenantContextAccessor? tenantContext = null) =>
         new(
             CreateModuleHost(),
             loadCatalog,
             new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            tenantContext ?? CreateTenantContext(DefaultTenantGuid, "default"),
             Options.Create(new ModuleHostOptions { OwnerTenantId = ownerTenantId }));
+
+    private static FixedTenantContextAccessor CreateTenantContext(Guid tenantId, string tenantKey) =>
+        new(new TenantContextState(tenantId, tenantKey, PrincipalId: null, TenantLifecycle.Active));
 
     private static ModuleHost CreateModuleHost()
     {

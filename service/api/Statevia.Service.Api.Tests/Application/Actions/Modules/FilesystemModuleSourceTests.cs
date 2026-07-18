@@ -1,7 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Infrastructure.Modules;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Modules;
@@ -9,16 +6,75 @@ namespace Statevia.Service.Api.Tests.Application.Actions.Modules;
 /// <summary><see cref="FilesystemModuleSource"/> の単体テスト。</summary>
 public sealed class FilesystemModuleSourceTests
 {
-    /// <summary>modules ルート配下の module ディレクトリと entry DLL を discover する。</summary>
+    /// <summary>テナント配下レイアウトを discover する。</summary>
     [Fact]
-    public async Task DiscoverAsync_WhenModulePresent_ReturnsDiscoveredModule()
+    public async Task DiscoverAsync_WhenTenantScopedModule_ReturnsDiscoveredModule()
+    {
+        // Arrange
+        var modulesRoot = CreateTempDirectory();
+        var moduleDirectory = Path.Combine(modulesRoot, "acme-corp", "sample-module");
+        Directory.CreateDirectory(moduleDirectory);
+        var dllPath = Path.Combine(moduleDirectory, "sample-module.dll");
+        await File.WriteAllTextAsync(dllPath, "placeholder");
+
+        var source = CreateSource(modulesRoot);
+        ModuleDiscoveryContext.TenantKey = "acme-corp";
+        try
+        {
+            // Act
+            var discovered = await source.DiscoverAsync(CancellationToken.None);
+
+            // Assert
+            Assert.Single(discovered);
+            Assert.Equal("sample-module", discovered[0].ModuleDirectoryName);
+            Assert.Equal(Path.GetFullPath(dllPath), discovered[0].EntryAssemblyPath);
+            Assert.Equal("filesystem", discovered[0].SourceLabel);
+        }
+        finally
+        {
+            ModuleDiscoveryContext.Clear();
+        }
+    }
+
+    /// <summary>テナントスコープ時、他テナント配下は列挙しない。</summary>
+    [Fact]
+    public async Task DiscoverAsync_WhenTenantScoped_IgnoresOtherTenantModules()
+    {
+        // Arrange
+        var modulesRoot = CreateTempDirectory();
+        var ownDirectory = Path.Combine(modulesRoot, "acme-corp", "own.module");
+        var otherDirectory = Path.Combine(modulesRoot, "other", "other.module");
+        Directory.CreateDirectory(ownDirectory);
+        Directory.CreateDirectory(otherDirectory);
+        await File.WriteAllTextAsync(Path.Combine(ownDirectory, "own.module.dll"), "a");
+        await File.WriteAllTextAsync(Path.Combine(otherDirectory, "other.module.dll"), "b");
+
+        var source = CreateSource(modulesRoot);
+        ModuleDiscoveryContext.TenantKey = "acme-corp";
+        try
+        {
+            // Act
+            var discovered = await source.DiscoverAsync(CancellationToken.None);
+
+            // Assert
+            Assert.Single(discovered);
+            Assert.Equal("own.module", discovered[0].ModuleDirectoryName);
+        }
+        finally
+        {
+            ModuleDiscoveryContext.Clear();
+        }
+    }
+
+    /// <summary>ルート直下の module 相当ディレクトリは discover しない。</summary>
+    [Fact]
+    public async Task DiscoverAsync_WhenModuleAtSharedRoot_Skips()
     {
         // Arrange
         var modulesRoot = CreateTempDirectory();
         var moduleDirectory = Path.Combine(modulesRoot, "sample-module");
         Directory.CreateDirectory(moduleDirectory);
-        var dllPath = Path.Combine(moduleDirectory, "sample-module.dll");
-        await File.WriteAllTextAsync(dllPath, "placeholder");
+        await File.WriteAllTextAsync(Path.Combine(moduleDirectory, "sample-module.dll"), "placeholder");
 
         var source = CreateSource(modulesRoot);
 
@@ -26,10 +82,27 @@ public sealed class FilesystemModuleSourceTests
         var discovered = await source.DiscoverAsync(CancellationToken.None);
 
         // Assert
-        Assert.Single(discovered);
-        Assert.Equal("sample-module", discovered[0].ModuleDirectoryName);
-        Assert.Equal(Path.GetFullPath(dllPath), discovered[0].EntryAssemblyPath);
-        Assert.Equal("filesystem", discovered[0].SourceLabel);
+        Assert.Empty(discovered);
+    }
+
+    /// <summary>TenantKey 未設定時は discover しない。</summary>
+    [Fact]
+    public async Task DiscoverAsync_WhenTenantKeyUnset_ReturnsEmpty()
+    {
+        // Arrange
+        var modulesRoot = CreateTempDirectory();
+        var moduleDirectory = Path.Combine(modulesRoot, "default", "sample-module");
+        Directory.CreateDirectory(moduleDirectory);
+        await File.WriteAllTextAsync(Path.Combine(moduleDirectory, "sample-module.dll"), "placeholder");
+
+        var source = CreateSource(modulesRoot);
+        ModuleDiscoveryContext.Clear();
+
+        // Act
+        var discovered = await source.DiscoverAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Empty(discovered);
     }
 
     /// <summary>modules ルートが存在しない場合は空で返す。</summary>

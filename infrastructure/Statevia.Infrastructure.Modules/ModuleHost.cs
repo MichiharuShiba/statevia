@@ -47,9 +47,34 @@ internal sealed class ModuleHost
     /// <summary>Module Source から discover し未 load の module を登録する。</summary>
     /// <param name="ownerTenantId">Module Action の所有者テナント ID（UUID 文字列）。</param>
     /// <param name="cancellationToken">キャンセル。</param>
-    public async Task LoadAsync(string ownerTenantId, CancellationToken cancellationToken)
+    /// <param name="filesystemTenantKey">
+    /// filesystem discover 対象の <c>tenant_key</c>。
+    /// <paramref name="discoverFilesystem"/> が <see langword="true"/> のときは必須。
+    /// </param>
+    /// <param name="discoverFilesystem">filesystem Source を discover するか。</param>
+    /// <param name="discoverRemote">リモート Source を discover するか。</param>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="discoverFilesystem"/> が true なのに <paramref name="filesystemTenantKey"/> が空のとき。
+    /// </exception>
+    public async Task LoadAsync(
+        string ownerTenantId,
+        CancellationToken cancellationToken,
+        string? filesystemTenantKey = null,
+        bool discoverFilesystem = true,
+        bool discoverRemote = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerTenantId);
+        if (discoverFilesystem)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(filesystemTenantKey);
+        }
+
+        var previousTenantKey = ModuleDiscoveryContext.TenantKey;
+        var previousFilesystem = ModuleDiscoveryContext.DiscoverFilesystem;
+        var previousRemote = ModuleDiscoveryContext.DiscoverRemote;
+        ModuleDiscoveryContext.TenantKey = filesystemTenantKey;
+        ModuleDiscoveryContext.DiscoverFilesystem = discoverFilesystem;
+        ModuleDiscoveryContext.DiscoverRemote = discoverRemote;
 
         IReadOnlyList<DiscoveredModule> discovered;
         try
@@ -60,6 +85,12 @@ internal sealed class ModuleHost
         {
             ModuleHostLog.ModuleDiscoveryFailed(_logger, ex);
             return;
+        }
+        finally
+        {
+            ModuleDiscoveryContext.TenantKey = previousTenantKey;
+            ModuleDiscoveryContext.DiscoverFilesystem = previousFilesystem;
+            ModuleDiscoveryContext.DiscoverRemote = previousRemote;
         }
 
         foreach (var module in discovered)
@@ -96,7 +127,7 @@ internal sealed class ModuleHost
         var signatureResult = _signatureVerifier.Verify(discoveredModule.EntryAssemblyPath);
         if (signatureResult.RejectRegistration)
         {
-            RecordSignatureRejected(discoveredModule, sha256, loadedAt);
+            RecordSignatureRejected(discoveredModule, sha256, loadedAt, ownerTenantId);
             return;
         }
 
@@ -111,9 +142,7 @@ internal sealed class ModuleHost
                     discoveredModule,
                     sha256,
                     loadedAt,
-                    moduleId: discoveredModule.ModuleDirectoryName,
-                    name: discoveredModule.ModuleDirectoryName,
-                    version: UnknownVersion,
+                    ownerTenantId,
                     message: "IActionModule implementation not found");
                 return;
             }
@@ -124,9 +153,7 @@ internal sealed class ModuleHost
                     discoveredModule,
                     sha256,
                     loadedAt,
-                    moduleId: discoveredModule.ModuleDirectoryName,
-                    name: discoveredModule.ModuleDirectoryName,
-                    version: UnknownVersion,
+                    ownerTenantId,
                     message: $"Failed to instantiate IActionModule type '{moduleType.FullName}'");
                 return;
             }
@@ -153,9 +180,7 @@ internal sealed class ModuleHost
                 discoveredModule,
                 sha256,
                 loadedAt,
-                moduleId: discoveredModule.ModuleDirectoryName,
-                name: discoveredModule.ModuleDirectoryName,
-                version: UnknownVersion,
+                ownerTenantId,
                 message: ex.Message);
         }
     }
@@ -226,6 +251,7 @@ internal sealed class ModuleHost
             LoadedAtUtc = loadedAt,
             Message = message,
             EntryAssemblyPath = discoveredModule.EntryAssemblyPath,
+            OwnerTenantId = ownerTenantId,
             ModuleDescriptor = registeredCount > 0 ? moduleDescriptor : null,
         });
 
@@ -241,7 +267,11 @@ internal sealed class ModuleHost
     }
 
     /// <summary>署名が必須だが存在しないため登録を skip した結果を記録する。</summary>
-    private void RecordSignatureRejected(DiscoveredModule discoveredModule, string sha256, DateTimeOffset loadedAt)
+    private void RecordSignatureRejected(
+        DiscoveredModule discoveredModule,
+        string sha256,
+        DateTimeOffset loadedAt,
+        string ownerTenantId)
     {
         ModuleHostLog.ModuleSkippedUnsigned(_logger, discoveredModule.ModuleDirectoryName);
         _loadCatalog.Upsert(new ModuleLoadRecord
@@ -255,6 +285,7 @@ internal sealed class ModuleHost
             LoadedAtUtc = loadedAt,
             Message = "Signature required but missing",
             EntryAssemblyPath = discoveredModule.EntryAssemblyPath,
+            OwnerTenantId = ownerTenantId,
         });
     }
 
@@ -347,22 +378,21 @@ internal sealed class ModuleHost
         DiscoveredModule discoveredModule,
         string sha256,
         DateTimeOffset loadedAt,
-        string moduleId,
-        string name,
-        string version,
+        string ownerTenantId,
         string message)
     {
         _loadCatalog.Upsert(new ModuleLoadRecord
         {
-            ModuleId = moduleId,
-            Name = name,
-            Version = version,
+            ModuleId = discoveredModule.ModuleDirectoryName,
+            Name = discoveredModule.ModuleDirectoryName,
+            Version = UnknownVersion,
             Status = ModuleLoadStatus.Failed,
             Sha256 = sha256,
             SourceLabel = discoveredModule.SourceLabel,
             LoadedAtUtc = loadedAt,
             Message = message,
             EntryAssemblyPath = discoveredModule.EntryAssemblyPath,
+            OwnerTenantId = ownerTenantId,
         });
     }
 

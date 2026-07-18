@@ -47,6 +47,11 @@ internal sealed class CompositeModuleSource : IModuleSource
         foreach (var source in _sources)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!ShouldDiscover(source))
+            {
+                continue;
+            }
+
             var modules = await source.DiscoverAsync(cancellationToken).ConfigureAwait(false);
             discoveredBySource.AddRange(modules.Select(module => (source.Priority, module)));
         }
@@ -76,6 +81,11 @@ internal sealed class CompositeModuleSource : IModuleSource
 
         return result;
     }
+
+    private static bool ShouldDiscover(IModuleSource source) =>
+        source is FilesystemModuleSource
+            ? ModuleDiscoveryContext.DiscoverFilesystem
+            : ModuleDiscoveryContext.DiscoverRemote;
 }
 
 /// <summary><see cref="CompositeModuleSource"/> の構造化ログ。</summary>

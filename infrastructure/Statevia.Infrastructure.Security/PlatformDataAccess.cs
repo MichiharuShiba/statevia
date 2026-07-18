@@ -27,6 +27,9 @@ internal interface IPlatformDataAccess
     /// <summary><paramref name="tenantKey"/> でテナントを検索する（フィルタ無視）。</summary>
     Task<TenantRow?> FindTenantByKeyAsync(string tenantKey, CancellationToken cancellationToken);
 
+    /// <summary>ライフサイクルが Active のテナントを <c>tenant_key</c> 昇順で返す（フィルタ無視）。</summary>
+    Task<IReadOnlyList<TenantRow>> ListActiveTenantsAsync(CancellationToken cancellationToken);
+
     /// <summary>ログイン用の tenant / user / principal を検索する。</summary>
     Task<LoginCredentialLookup?> FindLoginCredentialAsync(
         string tenantKey,
@@ -94,6 +97,19 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
             .IgnoreQueryFilters()
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.TenantKey == tenantKey, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<TenantRow>> ListActiveTenantsAsync(CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        return await db.Tenants
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(t => t.Lifecycle == TenantLifecycle.Active)
+            .OrderBy(t => t.TenantKey)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }
 
