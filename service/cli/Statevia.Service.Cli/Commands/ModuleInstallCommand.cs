@@ -22,14 +22,16 @@ public static class ModuleInstallCommand
             description: "Bearer token for reload API (tenant admin)");
         var tenantKeyOption = new Option<string>(
             aliases: ["--tenant", "-T"],
-            getDefaultValue: () => "default",
-            description: "Tenant key for reload API (X-Tenant-Id)");
+            description: "Tenant key (required). Installs under {modulesRoot}/{tenantKey}/ and sets X-Tenant-Id on reload")
+        {
+            IsRequired = true,
+        };
         var skipReloadOption = new Option<bool>(
             aliases: ["--skip-reload"],
             description: "Skip POST /internal/modules/reload after install");
 
         var command = new Command("module", "Action Module utilities");
-        var install = new Command("install", "Install an Action Module zip into the modules root")
+        var install = new Command("install", "Install an Action Module zip into a tenant modules directory")
         {
             zipArgument,
             modulesPathOption,
@@ -64,16 +66,36 @@ public static class ModuleInstallCommand
             return 1;
         }
 
-        var contentRoot = Directory.GetCurrentDirectory();
-        var modulesRoot = ModulePathResolver.Resolve(
-            contentRoot,
-            Environment.GetEnvironmentVariable(ModulePathResolver.EnvironmentVariable),
-            modulesPath);
+        string normalizedTenantKey;
+        string tenantModulesRoot;
+        try
+        {
+            normalizedTenantKey = TenantModulePath.NormalizeTenantKey(tenantKey);
+            var contentRoot = Directory.GetCurrentDirectory();
+            // CLI の明示 --modules-path を環境変数より優先する。
+            var modulesRoot = string.IsNullOrWhiteSpace(modulesPath)
+                ? ModulePathResolver.Resolve(
+                    contentRoot,
+                    Environment.GetEnvironmentVariable(ModulePathResolver.EnvironmentVariable),
+                    configurationPath: null)
+                : ModulePathResolver.Resolve(
+                    contentRoot,
+                    environmentPath: null,
+                    configurationPath: modulesPath);
+            tenantModulesRoot = TenantModulePath.ResolveTenantModulesRoot(modulesRoot, normalizedTenantKey);
+        }
+        catch (ArgumentException ex)
+        {
+            await Console.Error.WriteLineAsync($"Invalid --tenant: {ex.Message}").ConfigureAwait(false);
+            return 1;
+        }
 
         try
         {
-            var installedDirectory = ModuleZipInstaller.Install(zipFile.FullName, modulesRoot);
-            await Console.Out.WriteLineAsync($"Installed module to: {installedDirectory}").ConfigureAwait(false);
+            var installedDirectory = ModuleZipInstaller.Install(zipFile.FullName, tenantModulesRoot);
+            await Console.Out.WriteLineAsync(
+                    $"Installed module for tenant '{normalizedTenantKey}' to: {installedDirectory}")
+                .ConfigureAwait(false);
 
             if (skipReload)
             {
@@ -88,7 +110,7 @@ public static class ModuleInstallCommand
                 return 0;
             }
 
-            return await ReloadModulesAsync(apiBase, bearerToken, tenantKey).ConfigureAwait(false);
+            return await ReloadModulesAsync(apiBase, bearerToken, normalizedTenantKey).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
@@ -115,19 +137,22 @@ public static class ModuleInstallCommand
         var reloadUri = new Uri(apiBaseUri, "internal/modules/reload");
         using var client = new HttpClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken.Trim());
-        client.DefaultRequestHeaders.Add("X-Tenant-Id", tenantKey.Trim());
+        client.DefaultRequestHeaders.Add("X-Tenant-Id", tenantKey);
 
         using var response = await client.PostAsync(reloadUri, content: null).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
         {
             await Console.Error.WriteLineAsync(
-                    $"Reload failed: HTTP {(int)response.StatusCode} {response.ReasonPhrase}")
+                    $"Reload failed for tenant '{tenantKey}': HTTP {(int)response.StatusCode} {response.ReasonPhrase}. " +
+                    "Module files may already be installed; retry reload or use --skip-reload.")
                 .ConfigureAwait(false);
             return 1;
         }
 
-        await Console.Out.WriteLineAsync("Module reload requested successfully.").ConfigureAwait(false);
+        await Console.Out.WriteLineAsync(
+                $"Module reload requested successfully for tenant '{tenantKey}' (HTTP {(int)response.StatusCode}).")
+            .ConfigureAwait(false);
         return 0;
     }
 }

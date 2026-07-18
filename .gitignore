@@ -54,6 +54,8 @@ coverage/
 # Others
 ~$*
 *~
+# ローカル専用（手動 UAT 用 modules など）
+.local/
 .claude/
 .cursor/
 .cursorrules
