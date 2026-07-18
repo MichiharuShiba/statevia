@@ -3,6 +3,12 @@ using Microsoft.Extensions.Logging;
 namespace Statevia.Infrastructure.Modules;
 
 /// <summary>ローカル filesystem から Action Module を発見する（load は行わない）。</summary>
+/// <remarks>
+/// <para>正本レイアウト: <c>{modulesRoot}/{tenantKey}/{moduleName}/</c>。</para>
+/// <para>
+/// <see cref="ModuleDiscoveryContext.TenantKey"/> は必須。未設定時は空を返し discover しない。
+/// </para>
+/// </remarks>
 internal sealed class FilesystemModuleSource : IModuleSource
 {
     /// <summary>
@@ -33,6 +39,13 @@ internal sealed class FilesystemModuleSource : IModuleSource
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        var tenantKey = ModuleDiscoveryContext.TenantKey;
+        if (string.IsNullOrWhiteSpace(tenantKey))
+        {
+            FilesystemModuleSourceLog.TenantKeyRequired(_logger);
+            return Task.FromResult<IReadOnlyList<DiscoveredModule>>(Array.Empty<DiscoveredModule>());
+        }
+
         var modulesRoot = _pathProvider.ModulesRoot;
         if (!Directory.Exists(modulesRoot))
         {
@@ -41,30 +54,49 @@ internal sealed class FilesystemModuleSource : IModuleSource
         }
 
         var discovered = new List<DiscoveredModule>();
-        foreach (var moduleDirectory in Directory.EnumerateDirectories(modulesRoot))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var moduleDirectoryName = Path.GetFileName(moduleDirectory);
-            if (string.IsNullOrWhiteSpace(moduleDirectoryName))
-            {
-                continue;
-            }
-
-            if (!TryResolveEntryAssemblyPath(moduleDirectory, moduleDirectoryName, out var entryAssemblyPath, out var reason))
-            {
-                FilesystemModuleSourceLog.ModuleDirectorySkipped(_logger, moduleDirectoryName, reason);
-                continue;
-            }
-
-
-            discovered.Add(new DiscoveredModule(
-                moduleDirectoryName,
-                entryAssemblyPath,
-                SourceLabel: "filesystem"));
-        }
+        DiscoverUnderTenantDirectory(
+            discovered,
+            Path.Combine(modulesRoot, tenantKey),
+            cancellationToken);
 
         return Task.FromResult<IReadOnlyList<DiscoveredModule>>(discovered);
+    }
+
+    private void DiscoverUnderTenantDirectory(
+        List<DiscoveredModule> discovered,
+        string tenantDirectory,
+        CancellationToken cancellationToken)
+    {
+        if (!Directory.Exists(tenantDirectory))
+        {
+            return;
+        }
+
+        foreach (var moduleDirectory in Directory.EnumerateDirectories(tenantDirectory))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            TryAddModule(discovered, moduleDirectory);
+        }
+    }
+
+    private void TryAddModule(List<DiscoveredModule> discovered, string moduleDirectory)
+    {
+        var moduleDirectoryName = Path.GetFileName(moduleDirectory);
+        if (string.IsNullOrWhiteSpace(moduleDirectoryName))
+        {
+            return;
+        }
+
+        if (!TryResolveEntryAssemblyPath(moduleDirectory, moduleDirectoryName, out var entryAssemblyPath, out var reason))
+        {
+            FilesystemModuleSourceLog.ModuleDirectorySkipped(_logger, moduleDirectoryName, reason);
+            return;
+        }
+
+        discovered.Add(new DiscoveredModule(
+            moduleDirectoryName,
+            entryAssemblyPath,
+            SourceLabel: "filesystem"));
     }
 
     internal static bool TryResolveEntryAssemblyPath(
@@ -118,4 +150,10 @@ internal static partial class FilesystemModuleSourceLog
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Skipping module directory '{ModuleDirectory}': {Reason}")]
     public static partial void ModuleDirectorySkipped(ILogger logger, string moduleDirectory, string reason);
+
+    [LoggerMessage(
+        EventId = 3,
+        Level = LogLevel.Warning,
+        Message = "Filesystem module discover skipped: ModuleDiscoveryContext.TenantKey is required")]
+    public static partial void TenantKeyRequired(ILogger logger);
 }

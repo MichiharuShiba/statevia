@@ -3,15 +3,15 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Infrastructure.Modules;
+using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Hosting;
+using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Modules;
 
 /// <summary><see cref="ModuleLoadHostedService"/> の add-only watcher テスト。</summary>
 public sealed class ModuleLoadHostedServiceTests
 {
-    private const string OwnerTenantId = "00000000-0000-4000-8000-000000000001";
-
     /// <summary>起動後に新規 module 追加で load される。</summary>
     /// <remarks>
     /// watcher は Created 後に 500ms debounce してから load する。
@@ -21,6 +21,7 @@ public sealed class ModuleLoadHostedServiceTests
     public async Task StartAsync_WhenNewModuleAdded_LoadsModule()
     {
         // Arrange
+        using var database = new SqliteTestDatabase();
         var modulesRoot = CreateTempDirectory();
         var catalog = new InMemoryActionCatalog();
         var loadCatalog = new ModuleLoadCatalog();
@@ -28,6 +29,8 @@ public sealed class ModuleLoadHostedServiceTests
             new StubModulePathProvider(modulesRoot),
             NullLogger<FilesystemModuleSource>.Instance);
         var services = new ServiceCollection();
+        services.AddSingleton(database.Factory);
+        services.AddScoped<IPlatformDataAccess, PlatformDataAccess>();
         using var provider = services.BuildServiceProvider();
         var verifier = new ModuleSignatureVerifier(
             Options.Create(new ModuleSigningOptions()),
@@ -38,7 +41,7 @@ public sealed class ModuleLoadHostedServiceTests
             loadCatalog,
             verifier,
             provider,
-            Options.Create(new ModuleHostOptions { OwnerTenantId = OwnerTenantId }),
+            Options.Create(new ModuleHostOptions()),
             NullLogger<ModuleHost>.Instance);
         var dependencies = new ModuleLoadHostedServiceDependencies(
             moduleHost,
@@ -46,13 +49,13 @@ public sealed class ModuleLoadHostedServiceTests
         using var hostedService = new ModuleLoadHostedService(
             dependencies,
             provider.GetRequiredService<IServiceScopeFactory>(),
-            Options.Create(new ModuleHostOptions { OwnerTenantId = OwnerTenantId }),
+            Options.Create(new ModuleHostOptions()),
             NullLogger<ModuleLoadHostedService>.Instance);
 
         await hostedService.StartAsync(CancellationToken.None);
 
         // Act
-        CreateModuleLayoutFromBuiltAssembly("test.module", modulesRoot);
+        CreateModuleLayoutFromBuiltAssembly("test.module", modulesRoot, tenantKey: "default");
         var loaded = await WaitUntilAsync(
             () => catalog.Exists("test.module.echo"),
             TimeSpan.FromSeconds(10));
@@ -60,6 +63,40 @@ public sealed class ModuleLoadHostedServiceTests
         // Assert
         Assert.True(loaded);
         await hostedService.StopAsync(CancellationToken.None);
+    }
+
+    /// <summary>テナント配下パスから tenant_key を推定する。</summary>
+    [Fact]
+    public void TryResolveTenantKeyFromPath_WhenTenantLayout_ReturnsTenantKey()
+    {
+        // Arrange
+        var modulesRoot = CreateTempDirectory();
+        var tenantDir = Path.Combine(modulesRoot, "acme-corp");
+        Directory.CreateDirectory(tenantDir);
+
+        // Act
+        var key = ModuleLoadHostedService.TryResolveTenantKeyFromPath(
+            modulesRoot,
+            Path.Combine(tenantDir, "sample.module", "sample.module.dll"));
+
+        // Assert
+        Assert.Equal("acme-corp", key);
+    }
+
+    /// <summary>tenantKey 未満の浅いパスは無視する。</summary>
+    [Fact]
+    public void TryResolveTenantKeyFromPath_WhenShallowerThanTenantModule_ReturnsNull()
+    {
+        // Arrange
+        var modulesRoot = CreateTempDirectory();
+        var tenantDir = Path.Combine(modulesRoot, "acme-corp");
+        Directory.CreateDirectory(tenantDir);
+
+        // Act
+        var key = ModuleLoadHostedService.TryResolveTenantKeyFromPath(modulesRoot, tenantDir);
+
+        // Assert
+        Assert.Null(key);
     }
 
     /// <summary>条件が満たされるか、タイムアウトまで短間隔でポーリングする。</summary>
@@ -79,9 +116,12 @@ public sealed class ModuleLoadHostedServiceTests
         return condition();
     }
 
-    private static void CreateModuleLayoutFromBuiltAssembly(string moduleDirectoryName, string modulesRoot)
+    private static void CreateModuleLayoutFromBuiltAssembly(
+        string moduleDirectoryName,
+        string modulesRoot,
+        string tenantKey = "default")
     {
-        var moduleDirectory = Path.Combine(modulesRoot, moduleDirectoryName);
+        var moduleDirectory = Path.Combine(modulesRoot, tenantKey, moduleDirectoryName);
         Directory.CreateDirectory(moduleDirectory);
 
         var builtAssemblyPath = Path.Combine(AppContext.BaseDirectory, "TestActionModule.dll");
