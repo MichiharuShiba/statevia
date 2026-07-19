@@ -48,17 +48,37 @@ internal sealed class DockerSandboxRuntime(
             return Failure(SandboxRuntimeUnavailableCode, "Docker sandbox image is not configured.");
         }
 
-        if (string.Equals(dockerOptions.NetworkMode, "none", StringComparison.OrdinalIgnoreCase))
+        // 起動検証（分類 A）と揃えて Trim 後に判定する（Options.Create 経由の防御）。
+        if (string.Equals(dockerOptions.NetworkMode?.Trim(), "none", StringComparison.OrdinalIgnoreCase))
         {
             return Failure(
                 SandboxRuntimeUnavailableCode,
                 "Docker NetworkMode 'none' is not supported in v1 because host-to-container gRPC requires connectivity.");
         }
 
-        var timeout = limits.Timeout
-            ?? TimeSpan.FromSeconds(Math.Max(1, dockerOptions.DefaultTimeoutSeconds));
+        // DefaultTimeoutSeconds / GrpcPort は分類 A（ValidateOnStart）。範囲外は補正せず fail-safe。
+        if (!IsValidDefaultTimeoutSeconds(dockerOptions.DefaultTimeoutSeconds))
+        {
+            return Failure(
+                SandboxRuntimeUnavailableCode,
+                "Docker DefaultTimeoutSeconds is out of the allowed range.");
+        }
+
+        if (!IsValidGrpcPort(dockerOptions.GrpcPort))
+        {
+            return Failure(
+                SandboxRuntimeUnavailableCode,
+                "Docker GrpcPort is out of the allowed range.");
+        }
+
+        var timeout = limits.Timeout ?? TimeSpan.FromSeconds(dockerOptions.DefaultTimeoutSeconds);
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(timeout);
+
+        // NetworkMode / ModulesContainerPath の空白のみ分類 B（Warning＋既定値）。
+        var networkMode = ResolveNetworkMode(dockerOptions.NetworkMode);
+        var modulesContainerPath = ResolveModulesContainerPath(dockerOptions.ModulesContainerPath);
+        var grpcPort = dockerOptions.GrpcPort;
 
         DockerStartedContainer? started = null;
         try
@@ -66,14 +86,12 @@ internal sealed class DockerSandboxRuntime(
             started = await docker.StartActionHostContainerAsync(
                 new DockerContainerStartRequest(
                     dockerOptions.Image.Trim(),
-                    string.IsNullOrWhiteSpace(dockerOptions.NetworkMode) ? "bridge" : dockerOptions.NetworkMode.Trim(),
+                    networkMode,
                     limits.CpuLimit,
                     limits.MemoryLimitMiB,
                     dockerOptions.ModulesHostPath,
-                    string.IsNullOrWhiteSpace(dockerOptions.ModulesContainerPath)
-                        ? DockerSandboxOptions.DefaultModulesContainerPath
-                        : dockerOptions.ModulesContainerPath.Trim(),
-                    dockerOptions.GrpcPort > 0 ? dockerOptions.GrpcPort : DockerSandboxOptions.DefaultGrpcPort),
+                    modulesContainerPath,
+                    grpcPort),
                 timeoutCts.Token).ConfigureAwait(false);
 
             DockerSandboxRuntimeLog.ContainerStarted(logger, started.ContainerId);
@@ -113,6 +131,35 @@ internal sealed class DockerSandboxRuntime(
                 }
             }
         }
+    }
+
+    private static bool IsValidDefaultTimeoutSeconds(int configuredSeconds) =>
+        configuredSeconds is >= DockerSandboxOptions.MinDefaultTimeoutSeconds
+            and <= DockerSandboxOptions.MaxDefaultTimeoutSeconds;
+
+    private static bool IsValidGrpcPort(int configured) =>
+        configured is >= DockerSandboxOptions.MinGrpcPort and <= DockerSandboxOptions.MaxGrpcPort;
+
+    private string ResolveNetworkMode(string? configured)
+    {
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            return configured.Trim();
+        }
+
+        DockerSandboxRuntimeLog.OptionsFallbackApplied(logger, "NetworkMode");
+        return "bridge";
+    }
+
+    private string ResolveModulesContainerPath(string? configured)
+    {
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            return configured.Trim();
+        }
+
+        DockerSandboxRuntimeLog.OptionsFallbackApplied(logger, "ModulesContainerPath");
+        return DockerSandboxOptions.DefaultModulesContainerPath;
     }
 
     private static bool IsSupportedProfile(string? profile) =>
@@ -199,4 +246,14 @@ internal static partial class DockerSandboxRuntimeLog
         Level = LogLevel.Warning,
         Message = "Failed to clean up Docker sandbox container {ContainerId}")]
     public static partial void ContainerCleanupFailed(ILogger logger, Exception exception, string containerId);
+
+    /// <summary>
+    /// 分類 B: 空白の Docker オプションを既定値へ補正したときの警告。
+    /// 設定値そのものは出力しない（キー名のみ）。範囲外の数値は分類 A のためここでは扱わない。
+    /// </summary>
+    [LoggerMessage(
+        EventId = 5,
+        Level = LogLevel.Warning,
+        Message = "Docker sandbox option {OptionKey} was empty; using configured default")]
+    public static partial void OptionsFallbackApplied(ILogger logger, string optionKey);
 }

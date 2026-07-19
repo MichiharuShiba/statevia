@@ -30,7 +30,14 @@ public static class SecurityServiceCollectionExtensions
         services.AddScoped<TenantAdminBootstrap>();
 
         services.AddOptions<JwtAuthOptions>()
-            .Bind(configuration.GetSection(JwtAuthOptions.SectionName));
+            .Bind(configuration.GetSection(JwtAuthOptions.SectionName))
+            .Validate(
+                o => !string.IsNullOrWhiteSpace(o.SigningKey),
+                "Auth:Jwt:SigningKey must not be empty.")
+            .Validate(
+                o => o.AccessTokenLifetimeMinutes >= 1,
+                "Auth:Jwt:AccessTokenLifetimeMinutes must be >= 1.")
+            .ValidateOnStart();
 
         return services;
     }

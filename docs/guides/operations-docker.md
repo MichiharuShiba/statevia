@@ -43,6 +43,9 @@ docker compose up -d
 - compose のサービス名を変更したあと `port is already allocated` や `Found orphan containers` が出る → 旧コンテナ（例: `statevia-core-api-1`, `statevia-ui-1`）がポートを占有している。`docker compose up -d --remove-orphans` で orphan を削除するか、`docker compose down --remove-orphans` のあと再起動する
 - マイグレーション未適用で API が失敗する → `database update` を実行してから `service-api` を再起動
 - UI から API に届かない → compose では `ui-studio` → `service-api` は内部 DNS 名。ブラウザからは UI のプロキシ（`/api/core/...`）経由でアクセス
+- Core-API が起動直後に落ちる（`OptionsValidationException`）→ `Statevia:ExecutionPolicy:Sandbox:Docker:*` の範囲外値や `Auth:Jwt:*` の不正を確認。キー名と制約はログに出る（値は出ない）。許容範囲は [environment-variables.md](../reference/environment-variables.md)
+- 同上で `EventDelivery:Retry:*` も確認 → とくに `MaxDelayMs < BaseDelayMs` は以前黙認されていた誤設定でも **起動失敗**になる
+- Container 実行だけ失敗し API は起動する → `Docker:Image` 未設定は起動時検証の対象外（実行時 `SandboxRuntimeUnavailable`）。Image を設定する
 
 ## 環境変数（参照）
 

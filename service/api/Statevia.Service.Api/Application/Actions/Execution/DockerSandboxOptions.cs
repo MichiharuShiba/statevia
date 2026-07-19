@@ -22,6 +22,27 @@ internal sealed class DockerSandboxOptions
     /// <summary>コンテナ内 gRPC 待受ポートの既定。</summary>
     public const int DefaultGrpcPort = 5001;
 
+    /// <summary>
+    /// <see cref="DefaultTimeoutSeconds"/> の下限（10 秒）。
+    /// コールドスタート〜 Echo 完了の実測安定床（5 秒）に余裕を載せた運用下限。
+    /// </summary>
+    public const int MinDefaultTimeoutSeconds = 10;
+
+    /// <summary>
+    /// <see cref="DefaultTimeoutSeconds"/> の上限（1 時間）。
+    /// 共有ホストでの長時間占有を抑え、かつ <c>CancelAfter</c> の過大値を起動時に防ぐ。
+    /// </summary>
+    public const int MaxDefaultTimeoutSeconds = 3_600;
+
+    /// <summary>
+    /// <see cref="GrpcPort"/> の下限。
+    /// well-known ポート帯（1〜1023）への誤設定を避け、非特権ポートのみ許可する。
+    /// </summary>
+    public const int MinGrpcPort = 1_024;
+
+    /// <summary><see cref="GrpcPort"/> の上限。</summary>
+    public const int MaxGrpcPort = 65_535;
+
     /// <summary>Docker デーモン Endpoint（未設定時は OS 既定ソケット）。</summary>
     public string? Endpoint { get; set; }
 
