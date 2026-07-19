@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Statevia.Core.Actions.Abstractions.Execution;
@@ -176,9 +177,9 @@ public sealed class DockerSandboxRuntimeTests
         Assert.Equal(1, docker.StopCount);
     }
 
-    /// <summary>空白 NetworkMode / GrpcPort 0 は既定値へフォールバックする。</summary>
+    /// <summary>空白 NetworkMode / ModulesContainerPath は既定値へフォールバックし Warning を出す（分類 B）。</summary>
     [Fact]
-    public async Task RunAsync_WhenOptionalDockerFieldsEmpty_AppliesDefaults()
+    public async Task RunAsync_WhenOptionalDockerFieldsEmpty_AppliesDefaultsAndLogsWarning()
     {
         // Arrange
         var docker = new FakeDockerContainerClient();
@@ -189,9 +190,9 @@ public sealed class DockerSandboxRuntimeTests
         var dockerOptions = CreateDockerOptions();
         dockerOptions.NetworkMode = "   ";
         dockerOptions.ModulesContainerPath = "   ";
-        dockerOptions.GrpcPort = 0;
         dockerOptions.DefaultTimeoutSeconds = 45;
-        var sut = CreateSut(docker, host, dockerOptions);
+        var logger = new ListLogger();
+        var sut = CreateSut(docker, host, dockerOptions, logger);
 
         // Act
         var result = await sut.RunAsync(CreateRequest(), new SandboxLimits(null, null, null), CancellationToken.None);
@@ -202,12 +203,79 @@ public sealed class DockerSandboxRuntimeTests
         Assert.Equal("bridge", docker.LastStartRequest!.NetworkMode);
         Assert.Equal(DockerSandboxOptions.DefaultModulesContainerPath, docker.LastStartRequest.ModulesContainerPath);
         Assert.Equal(DockerSandboxOptions.DefaultGrpcPort, docker.LastStartRequest.ContainerGrpcPort);
+        Assert.Contains(
+            logger.Entries,
+            e => e.Level == LogLevel.Warning && e.Message.Contains("NetworkMode", StringComparison.Ordinal));
+        Assert.Contains(
+            logger.Entries,
+            e => e.Level == LogLevel.Warning && e.Message.Contains("ModulesContainerPath", StringComparison.Ordinal));
+    }
+
+    /// <summary>前後空白付き NetworkMode none も実行時に拒否する。</summary>
+    [Fact]
+    public async Task RunAsync_WhenNetworkModeNoneWithWhitespace_FailsSafe()
+    {
+        // Arrange
+        var docker = new FakeDockerContainerClient();
+        var host = new FakeEphemeralActionHostExecutor();
+        var dockerOptions = CreateDockerOptions();
+        dockerOptions.NetworkMode = " none ";
+        var sut = CreateSut(docker, host, dockerOptions);
+
+        // Act
+        var result = await sut.RunAsync(CreateRequest(), new SandboxLimits(null, null, null), CancellationToken.None);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Equal("SandboxRuntimeUnavailable", result.ErrorCode);
+        Assert.Equal(0, docker.StartCount);
+    }
+
+    /// <summary>分類 A の GrpcPort 範囲外は補正せず fail-safe する。</summary>
+    [Fact]
+    public async Task RunAsync_WhenGrpcPortOutOfRange_FailsSafe()
+    {
+        // Arrange
+        var docker = new FakeDockerContainerClient();
+        var host = new FakeEphemeralActionHostExecutor();
+        var dockerOptions = CreateDockerOptions();
+        dockerOptions.GrpcPort = 80;
+        var sut = CreateSut(docker, host, dockerOptions);
+
+        // Act
+        var result = await sut.RunAsync(CreateRequest(), new SandboxLimits(null, null, null), CancellationToken.None);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Equal("SandboxRuntimeUnavailable", result.ErrorCode);
+        Assert.Equal(0, docker.StartCount);
+    }
+
+    /// <summary>分類 A の DefaultTimeoutSeconds 範囲外は補正せず fail-safe する。</summary>
+    [Fact]
+    public async Task RunAsync_WhenDefaultTimeoutSecondsOutOfRange_FailsSafe()
+    {
+        // Arrange
+        var docker = new FakeDockerContainerClient();
+        var host = new FakeEphemeralActionHostExecutor();
+        var dockerOptions = CreateDockerOptions();
+        dockerOptions.DefaultTimeoutSeconds = 9;
+        var sut = CreateSut(docker, host, dockerOptions);
+
+        // Act
+        var result = await sut.RunAsync(CreateRequest(), new SandboxLimits(null, null, null), CancellationToken.None);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Equal("SandboxRuntimeUnavailable", result.ErrorCode);
+        Assert.Equal(0, docker.StartCount);
     }
 
     private static DockerSandboxRuntime CreateSut(
         IDockerContainerClient docker,
         IEphemeralActionHostExecutor host,
-        DockerSandboxOptions dockerOptions)
+        DockerSandboxOptions dockerOptions,
+        ILogger<DockerSandboxRuntime>? logger = null)
     {
         var options = Options.Create(new ExecutionPolicyOptions
         {
@@ -217,7 +285,37 @@ public sealed class DockerSandboxRuntimeTests
                 Docker = dockerOptions,
             },
         });
-        return new DockerSandboxRuntime(options, docker, host, NullLogger<DockerSandboxRuntime>.Instance);
+        return new DockerSandboxRuntime(
+            options,
+            docker,
+            host,
+            logger ?? NullLogger<DockerSandboxRuntime>.Instance);
+    }
+
+    private sealed class ListLogger : ILogger<DockerSandboxRuntime>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) =>
+            Entries.Add((logLevel, formatter(state, exception)));
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+
+            public void Dispose()
+            {
+            }
+        }
     }
 
     private static DockerSandboxOptions CreateDockerOptions() =>

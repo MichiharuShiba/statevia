@@ -66,6 +66,11 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 - **XML ドキュメント**: `public` / `internal` の型・メンバーに `/// <summary>` 等を付ける。`private` は意図が自明でない箇所のみ。
 - **テスト**: メソッドごとに日本語の `/// <summary>` と **`// Arrange` / `// Act` / `// Assert`** 区切り。1 テスト 1 シナリオ（AAA）。
 - **セキュリティ**: 外部入力の検証、認可・テナント境界、機密情報の非出力（ログ・エラー応答含む）。
+- **Options 検証（Core-API）**: `AddOptions<T>().Bind()` した設定は、次の分類で扱う。キー別の許容範囲・不正時挙動は [`reference/environment-variables.md`](reference/environment-variables.md) を参照する。
+  - **A（起動失敗）**: 範囲外・矛盾など既定では安全に動けない値 → `.Validate()` + `ValidateOnStart()`。メッセージはキー名と制約のみ（値は出さない）。
+  - **B（警告＋既定値）**: 未設定・空で既定値により安全に動ける → Warning ログのうえ既定値で続行。サイレント補正は禁止。
+  - **C（機能無効）**: 機能有効化はあるが必須キー欠落 → 起動は継続し、実行時に明示エラーコードで fail-safe。
+  - 新規 Options 追加時は上記いずれかを明示し、分類 A なら起動時検証を必須とする。
 
 ### 4.2 TypeScript / React（UI）
 

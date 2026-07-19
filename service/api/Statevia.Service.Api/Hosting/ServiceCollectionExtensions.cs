@@ -69,14 +69,7 @@ internal static class ServiceCollectionExtensions
             sp => new DelegateExecutionIdGenerator(() => sp.GetRequiredService<IIdGenerator>().NewGuid().ToString()));
         services.AddStateviaExecutionEngine();
         services.AddScoped<IDefinitionRepository, DefinitionRepository>();
-        services.AddOptions<ExecutionProjectionQueueOptions>()
-            .Bind(configuration.GetSection("ExecutionProjectionQueue"))
-            .Validate(o => o.MaxGlobalQueueSize >= 1, "ExecutionProjectionQueue:MaxGlobalQueueSize must be >= 1.")
-            .Validate(o => o.ProjectionFlushDebounceMs is >= 0 and <= 250, "ExecutionProjectionQueue:ProjectionFlushDebounceMs must be between 0 and 250.")
-            .Validate(o => o.MaxRetryAttempts is >= 1 and <= 100, "ExecutionProjectionQueue:MaxRetryAttempts must be between 1 and 100.")
-            .Validate(o => o.RetryBaseDelayMs is >= 0 and <= 60_000, "ExecutionProjectionQueue:RetryBaseDelayMs must be between 0 and 60000.")
-            .Validate(o => o.RetryMaxDelayMs is >= 0 and <= 600_000, "ExecutionProjectionQueue:RetryMaxDelayMs must be between 0 and 600000.")
-            .Validate(o => o.RetryMaxDelayMs >= o.RetryBaseDelayMs, "ExecutionProjectionQueue:RetryMaxDelayMs must be >= RetryBaseDelayMs.");
+        AddExecutionProjectionQueueOptions(services, configuration);
         services.AddSingleton<ExecutionProjectionUpdateQueueService>();
         services.AddSingleton<IExecutionProjectionUpdateQueue>(sp => sp.GetRequiredService<ExecutionProjectionUpdateQueueService>());
         services.AddHostedService(sp => sp.GetRequiredService<ExecutionProjectionUpdateQueueService>());
@@ -97,10 +90,8 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<ModuleLoadHostedServiceDependencies>();
         services.AddHostedService<ModuleLoadHostedService>();
         services.AddSingleton<IActionVisibilityResolver, DefaultActionVisibilityResolver>();
-        services.AddOptions<ExecutionPolicyOptions>()
-            .Bind(configuration.GetSection(ExecutionPolicyOptions.SectionName));
-        services.AddOptions<ActionHostClientOptions>()
-            .Bind(configuration.GetSection(ActionHostClientOptions.SectionName));
+        AddExecutionPolicyOptions(services, configuration);
+        AddActionHostClientOptions(services, configuration);
         services.AddSingleton<IExecutionPolicyProvider, TenantExecutionPolicyProvider>();
         services.AddSingleton<IActionExecutionPolicy, ConfigurableExecutionPolicy>();
         services.AddSingleton<GrpcActionHostExecutionClient>();
@@ -122,15 +113,7 @@ internal static class ServiceCollectionExtensions
         services.AddOptions<RequestLogOptions>()
             .Configure<IHostEnvironment>(ConfigureRequestLogOptions);
 
-        services.AddOptions<Statevia.Core.Application.Configuration.EventDeliveryRetryOptions>()
-            .Bind(configuration.GetSection("EventDelivery:Retry"))
-            .Validate(o => o.MaxAttempts is >= 1 and <= 50, "EventDelivery:Retry:MaxAttempts must be between 1 and 50.")
-            .Validate(o => o.BaseDelayMs is >= 0 and <= 600_000, "EventDelivery:Retry:BaseDelayMs is out of range.")
-            .Validate(o => o.MaxDelayMs is >= 0 and <= 600_000, "EventDelivery:Retry:MaxDelayMs is out of range.")
-            .Validate(o => o.MaxTotalBackoffMs is >= 0 and <= 600_000, "EventDelivery:Retry:MaxTotalBackoffMs is out of range.")
-            .Validate(
-                o => o.SerializablePersistenceMaxAttempts is >= 1 and <= 50,
-                "EventDelivery:Retry:SerializablePersistenceMaxAttempts must be between 1 and 50.");
+        AddEventDeliveryRetryOptions(services, configuration);
 
         services.AddHttpContextAccessor();
         services.AddScoped<Statevia.Core.Application.Contracts.Services.ICorrelationIdAccessor, Infrastructure.HttpContextCorrelationIdAccessor>();
@@ -147,6 +130,111 @@ internal static class ServiceCollectionExtensions
         services.Configure<ApiBehaviorOptions>(ConfigureApiValidationResponse);
 
         return services;
+    }
+
+    /// <summary>Projection キュー Options のバインドと起動時検証（分類 A）。</summary>
+    private static void AddExecutionProjectionQueueOptions(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<ExecutionProjectionQueueOptions>()
+            .Bind(configuration.GetSection("ExecutionProjectionQueue"))
+            .Validate(o => o.MaxGlobalQueueSize >= 1, "ExecutionProjectionQueue:MaxGlobalQueueSize must be >= 1.")
+            .Validate(o => o.ProjectionFlushDebounceMs is >= 0 and <= 250, "ExecutionProjectionQueue:ProjectionFlushDebounceMs must be between 0 and 250.")
+            .Validate(o => o.MaxRetryAttempts is >= 1 and <= 100, "ExecutionProjectionQueue:MaxRetryAttempts must be between 1 and 100.")
+            .Validate(o => o.RetryBaseDelayMs is >= 0 and <= 60_000, "ExecutionProjectionQueue:RetryBaseDelayMs must be between 0 and 60000.")
+            .Validate(o => o.RetryMaxDelayMs is >= 0 and <= 600_000, "ExecutionProjectionQueue:RetryMaxDelayMs must be between 0 and 600000.")
+            .Validate(o => o.RetryMaxDelayMs >= o.RetryBaseDelayMs, "ExecutionProjectionQueue:RetryMaxDelayMs must be >= RetryBaseDelayMs.")
+            .ValidateOnStart();
+    }
+
+    /// <summary>Execution Policy / Docker サンドボックス Options のバインドと起動時検証（分類 A）。</summary>
+    private static void AddExecutionPolicyOptions(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<ExecutionPolicyOptions>()
+            .Bind(configuration.GetSection(ExecutionPolicyOptions.SectionName))
+            .Validate(
+                IsValidSandboxTimeoutSeconds,
+                $"Statevia:ExecutionPolicy:Sandbox:TimeoutSeconds must be between {SandboxOptions.MinTimeoutSeconds} and {SandboxOptions.MaxTimeoutSeconds} when set.")
+            .Validate(
+                IsValidSandboxMemoryLimitMiB,
+                $"Statevia:ExecutionPolicy:Sandbox:MemoryLimitMiB must be between {SandboxOptions.MinMemoryLimitMiB} and {SandboxOptions.MaxMemoryLimitMiB} when set.")
+            .Validate(
+                IsValidSandboxCpuLimit,
+                $"Statevia:ExecutionPolicy:Sandbox:CpuLimit must be between {SandboxOptions.MinCpuLimit} and {SandboxOptions.MaxCpuLimit} when set.")
+            .Validate(
+                IsValidDockerDefaultTimeoutSeconds,
+                $"Statevia:ExecutionPolicy:Sandbox:Docker:DefaultTimeoutSeconds must be between {DockerSandboxOptions.MinDefaultTimeoutSeconds} and {DockerSandboxOptions.MaxDefaultTimeoutSeconds}.")
+            .Validate(
+                IsValidDockerGrpcPort,
+                $"Statevia:ExecutionPolicy:Sandbox:Docker:GrpcPort must be between {DockerSandboxOptions.MinGrpcPort} and {DockerSandboxOptions.MaxGrpcPort}.")
+            .Validate(
+                IsSupportedDockerNetworkMode,
+                "Statevia:ExecutionPolicy:Sandbox:Docker:NetworkMode 'none' is not supported.")
+            .ValidateOnStart();
+    }
+
+    /// <summary>Action Host クライアント Options のバインドと起動時検証（分類 A / C）。</summary>
+    private static void AddActionHostClientOptions(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<ActionHostClientOptions>()
+            .Bind(configuration.GetSection(ActionHostClientOptions.SectionName))
+            .Validate(
+                IsValidActionHostBaseUrl,
+                "Statevia:ActionHost:BaseUrl must be an absolute http(s) URI when set.")
+            .ValidateOnStart();
+    }
+
+    /// <summary>イベント配送リトライ Options のバインドと起動時検証（分類 A）。</summary>
+    private static void AddEventDeliveryRetryOptions(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<Statevia.Core.Application.Configuration.EventDeliveryRetryOptions>()
+            .Bind(configuration.GetSection("EventDelivery:Retry"))
+            .Validate(o => o.MaxAttempts is >= 1 and <= 50, "EventDelivery:Retry:MaxAttempts must be between 1 and 50.")
+            .Validate(o => o.BaseDelayMs is >= 0 and <= 600_000, "EventDelivery:Retry:BaseDelayMs is out of range.")
+            .Validate(o => o.MaxDelayMs is >= 0 and <= 600_000, "EventDelivery:Retry:MaxDelayMs is out of range.")
+            .Validate(o => o.MaxDelayMs >= o.BaseDelayMs, "EventDelivery:Retry:MaxDelayMs must be >= BaseDelayMs.")
+            .Validate(o => o.MaxTotalBackoffMs is >= 0 and <= 600_000, "EventDelivery:Retry:MaxTotalBackoffMs is out of range.")
+            .Validate(
+                o => o.SerializablePersistenceMaxAttempts is >= 1 and <= 50,
+                "EventDelivery:Retry:SerializablePersistenceMaxAttempts must be between 1 and 50.")
+            .ValidateOnStart();
+    }
+
+    private static bool IsValidSandboxTimeoutSeconds(ExecutionPolicyOptions options) =>
+        options.Sandbox.TimeoutSeconds is null
+        || options.Sandbox.TimeoutSeconds is >= SandboxOptions.MinTimeoutSeconds
+            and <= SandboxOptions.MaxTimeoutSeconds;
+
+    private static bool IsValidSandboxMemoryLimitMiB(ExecutionPolicyOptions options) =>
+        options.Sandbox.MemoryLimitMiB is null
+        || options.Sandbox.MemoryLimitMiB is >= SandboxOptions.MinMemoryLimitMiB
+            and <= SandboxOptions.MaxMemoryLimitMiB;
+
+    private static bool IsValidSandboxCpuLimit(ExecutionPolicyOptions options) =>
+        options.Sandbox.CpuLimit is null
+        || options.Sandbox.CpuLimit is >= SandboxOptions.MinCpuLimit
+            and <= SandboxOptions.MaxCpuLimit;
+
+    private static bool IsValidDockerDefaultTimeoutSeconds(ExecutionPolicyOptions options) =>
+        options.Sandbox.Docker.DefaultTimeoutSeconds is >= DockerSandboxOptions.MinDefaultTimeoutSeconds
+            and <= DockerSandboxOptions.MaxDefaultTimeoutSeconds;
+
+    private static bool IsValidDockerGrpcPort(ExecutionPolicyOptions options) =>
+        options.Sandbox.Docker.GrpcPort is >= DockerSandboxOptions.MinGrpcPort
+            and <= DockerSandboxOptions.MaxGrpcPort;
+
+    private static bool IsSupportedDockerNetworkMode(ExecutionPolicyOptions options) =>
+        string.IsNullOrWhiteSpace(options.Sandbox.Docker.NetworkMode)
+        || !string.Equals(options.Sandbox.Docker.NetworkMode.Trim(), "none", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsValidActionHostBaseUrl(ActionHostClientOptions options)
+    {
+        if (string.IsNullOrWhiteSpace(options.BaseUrl))
+        {
+            return true;
+        }
+
+        return Uri.TryCreate(options.BaseUrl.Trim(), UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
     }
 
     private static void ConfigureRequestLogOptions(RequestLogOptions options, IHostEnvironment environment)

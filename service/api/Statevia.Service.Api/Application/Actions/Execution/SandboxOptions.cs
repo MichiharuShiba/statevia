@@ -10,6 +10,42 @@ namespace Statevia.Service.Api.Application.Actions.Execution;
 /// </remarks>
 internal sealed class SandboxOptions
 {
+    /// <summary>
+    /// <see cref="TimeoutSeconds"/> の下限（設定時）。
+    /// <see cref="DockerSandboxOptions.MinDefaultTimeoutSeconds"/> と揃える。
+    /// </summary>
+    public const int MinTimeoutSeconds = DockerSandboxOptions.MinDefaultTimeoutSeconds;
+
+    /// <summary>
+    /// <see cref="TimeoutSeconds"/> の上限（設定時）。
+    /// <see cref="DockerSandboxOptions.MaxDefaultTimeoutSeconds"/> と揃える。
+    /// </summary>
+    public const int MaxTimeoutSeconds = DockerSandboxOptions.MaxDefaultTimeoutSeconds;
+
+    /// <summary>
+    /// <see cref="MemoryLimitMiB"/> の下限（設定時、64 MiB）。
+    /// Echo Action の実測安定床（32 MiB）に余裕を載せた運用下限。
+    /// </summary>
+    public const int MinMemoryLimitMiB = 64;
+
+    /// <summary>
+    /// <see cref="MemoryLimitMiB"/> の上限（設定時、8 GiB）。
+    /// 共有ホストでの単一コンテナによるメモリ逼迫を抑える。
+    /// </summary>
+    public const int MaxMemoryLimitMiB = 8_192;
+
+    /// <summary>
+    /// <see cref="CpuLimit"/> の下限（設定時）。
+    /// Echo Action は 0.1 でも成功するが、誤設定耐性のため 0.25 を運用下限とする。
+    /// </summary>
+    public const double MinCpuLimit = 0.25;
+
+    /// <summary>
+    /// <see cref="CpuLimit"/> の上限（設定時、コア数換算）。
+    /// 共有ホストでの CPU 占有を抑える。
+    /// </summary>
+    public const double MaxCpuLimit = 8.0;
+
     /// <summary>Container 隔離で使用するランタイムの ProviderKey。</summary>
     public string? ContainerProvider { get; set; }
 
