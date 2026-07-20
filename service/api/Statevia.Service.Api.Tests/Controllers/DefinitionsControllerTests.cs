@@ -91,23 +91,22 @@ public sealed class DefinitionsControllerTests
     }
 
     /// <summary>
-    /// limit 未指定の一覧取得で検証例外を投げる。
+    /// limit 未指定は Data Annotations で検証失敗になる（アクション直呼びではパイプライン未経由）。
     /// </summary>
     [Fact]
-    public async Task List_LimitNull_ThrowsArgumentException()
+    public void DefinitionListQuery_WhenLimitNull_FailsRequiredValidation()
     {
         // Arrange
-        var http = new DefaultHttpContext();
-        http.Request.Headers["X-Tenant-Id"] = "t1";
+        var query = new DefinitionListQuery();
+        var context = new System.ComponentModel.DataAnnotations.ValidationContext(query);
+        var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
 
-        var fake = new FakeDefinitionService();
-        var controller = new DefinitionsController(fake)
-        {
-            ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = http }
-        };
+        // Act
+        var valid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(query, context, results, validateAllProperties: true);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => controller.List(new DefinitionListQuery(), ct: CancellationToken.None));
+        // Assert
+        Assert.False(valid);
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(DefinitionListQuery.Limit)));
     }
 
     /// <summary>
@@ -181,22 +180,22 @@ public sealed class DefinitionsControllerTests
     }
 
     /// <summary>
-    /// 上限を超える件数指定で引数例外を投げる。
+    /// 上限を超える件数指定は Data Annotations で検証失敗になる。
     /// </summary>
     [Fact]
-    public async Task List_InvalidLimit_ThrowsArgumentException()
+    public void DefinitionListQuery_WhenLimitAboveMax_FailsRangeValidation()
     {
-        // Act & Assert
-        var http = new DefaultHttpContext();
-        http.Request.Headers["X-Tenant-Id"] = "t1";
+        // Arrange
+        var query = new DefinitionListQuery { Limit = 501, Offset = 0 };
+        var context = new System.ComponentModel.DataAnnotations.ValidationContext(query);
+        var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
 
-        var fake = new FakeDefinitionService();
-        var controller = new DefinitionsController(fake)
-        {
-            ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = http }
-        };
+        // Act
+        var valid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(query, context, results, validateAllProperties: true);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => controller.List(new DefinitionListQuery { Limit = 501, Offset = 0 }, ct: CancellationToken.None));
+        // Assert
+        Assert.False(valid);
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(DefinitionListQuery.Limit)));
     }
 
     /// <summary>

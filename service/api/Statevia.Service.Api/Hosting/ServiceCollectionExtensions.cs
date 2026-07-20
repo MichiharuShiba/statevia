@@ -262,17 +262,20 @@ internal static class ServiceCollectionExtensions
     {
         options.InvalidModelStateResponseFactory = context =>
         {
-            var errors = context.ModelState
+            var detailItems = context.ModelState
                 .Where(kvp => kvp.Value?.Errors.Count > 0)
-                .SelectMany(kvp => kvp.Value!.Errors.Select(error => error.ErrorMessage))
-                .Where(message => !string.IsNullOrWhiteSpace(message))
+                .SelectMany(kvp => kvp.Value!.Errors.Select(error => new
+                {
+                    field = NormalizeModelStateFieldName(kvp.Key),
+                    message = string.IsNullOrWhiteSpace(error.ErrorMessage)
+                        ? "Validation failed"
+                        : error.ErrorMessage
+                }))
                 .ToArray();
 
-            var message = errors.Length > 0 ? string.Join("; ", errors) : "Validation failed";
-
-            var details = context.ModelState.ToDictionary(
-                kvp => kvp.Key,
-                kvp => kvp.Value?.Errors.Select(error => error.ErrorMessage).ToArray() ?? Array.Empty<string>());
+            var message = detailItems.Length > 0
+                ? string.Join("; ", detailItems.Select(d => d.message))
+                : "Validation failed";
 
             return new UnprocessableEntityObjectResult(
                 new ErrorResponse
@@ -281,9 +284,35 @@ internal static class ServiceCollectionExtensions
                     {
                         Code = "VALIDATION_ERROR",
                         Message = message,
-                        Details = details
+                        Details = detailItems
                     }
                 });
         };
+    }
+
+    /// <summary>
+    /// ModelState キー（例: <c>request.Name</c>）を camelCase のフィールド名へ正規化する。
+    /// </summary>
+    private static string NormalizeModelStateFieldName(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            return key;
+
+        var segment = key;
+        var lastDot = key.LastIndexOf('.');
+        if (lastDot >= 0 && lastDot < key.Length - 1)
+            segment = key[(lastDot + 1)..];
+
+        if (segment.Length == 0)
+            return key;
+
+        if (segment.Length == 1)
+            return char.ToLowerInvariant(segment[0]).ToString();
+
+        return string.Create(segment.Length, segment, static (span, value) =>
+        {
+            span[0] = char.ToLowerInvariant(value[0]);
+            value.AsSpan(1).CopyTo(span[1..]);
+        });
     }
 }

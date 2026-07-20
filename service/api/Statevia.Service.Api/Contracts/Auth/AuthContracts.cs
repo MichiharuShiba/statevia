@@ -1,15 +1,24 @@
+using System.ComponentModel.DataAnnotations;
+using Statevia.Core.Application.Contracts.Validation;
+
 namespace Statevia.Service.Api.Contracts.Auth;
 
 /// <summary>ログイン要求。</summary>
 public sealed class LoginRequest
 {
     /// <summary>外部向けテナントキー。</summary>
+    [Required(ErrorMessage = "tenantKey is required")]
+    [NotWhitespace(ErrorMessage = "tenantKey is required")]
     public string TenantKey { get; set; } = "";
 
     /// <summary>メールアドレス。</summary>
+    [Required(ErrorMessage = "email is required")]
+    [NotWhitespace(ErrorMessage = "email is required")]
     public string Email { get; set; } = "";
 
     /// <summary>平文パスワード。</summary>
+    [Required(ErrorMessage = "password is required")]
+    [NotWhitespace(ErrorMessage = "password is required")]
     public string Password { get; set; } = "";
 }
 

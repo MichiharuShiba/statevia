@@ -1,6 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Statevia.Core.Application.Contracts.Services;
-using Statevia.Service.Api.Contracts;
+using Statevia.Core.Application.Contracts.Validation;
 
 namespace Statevia.Service.Api.Controllers;
 
@@ -26,12 +27,11 @@ public class GraphsController : ControllerBase
     [HttpGet("{graphId}")]
     [ProducesResponseType(typeof(GraphDefinitionResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<GraphDefinitionResponse>> GetByGraphId(
+        [Required(ErrorMessage = "graphId is required")]
+        [NotWhitespace(ErrorMessage = "graphId is required")]
         string graphId,
         CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(graphId))
-            return ApiErrorResult.ValidationError("graphId is required");
-
         var graph = await _graphService.GetByGraphIdAsync(graphId, ct).ConfigureAwait(false);
         return Ok(graph);
     }

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -104,7 +105,14 @@ public sealed class ServiceCollectionExtensionsTests
         var objectResult = Assert.IsType<UnprocessableEntityObjectResult>(result);
         var payload = Assert.IsType<ErrorResponse>(objectResult.Value);
         Assert.Equal("VALIDATION_ERROR", payload.Error.Code);
-        Assert.NotNull(payload.Error.Details);
+        Assert.Equal("required", payload.Error.Message);
+        var details = Assert.IsAssignableFrom<IEnumerable<object>>(payload.Error.Details);
+        var detailJson = System.Text.Json.JsonSerializer.Serialize(details);
+        using var doc = System.Text.Json.JsonDocument.Parse(detailJson);
+        Assert.Equal(JsonValueKind.Array, doc.RootElement.ValueKind);
+        Assert.Equal(1, doc.RootElement.GetArrayLength());
+        Assert.Equal("definitionId", doc.RootElement[0].GetProperty("field").GetString());
+        Assert.Equal("required", doc.RootElement[0].GetProperty("message").GetString());
     }
 
     private static IConfiguration BuildConfiguration() =>

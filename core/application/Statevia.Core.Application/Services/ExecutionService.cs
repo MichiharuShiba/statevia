@@ -634,9 +634,6 @@ internal sealed class ExecutionService : IExecutionService
     {
         await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
 
-        if (atSeq < 1)
-            throw new ArgumentException("atSeq must be >= 1");
-
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
@@ -660,11 +657,6 @@ internal sealed class ExecutionService : IExecutionService
         CancellationToken ct)
     {
         await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
-
-        if (afterSeq < 0)
-            throw new ArgumentException("afterSeq must be >= 0");
-        if (limit is < 1 or > 5000)
-            throw new ArgumentException("limit must be between 1 and 5000");
 
         var tenantId = _tenantContext.GetRequiredTenantId();
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
@@ -736,10 +728,6 @@ internal sealed class ExecutionService : IExecutionService
         CommandRequestContext requestContext,
         CancellationToken ct)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
-        if (string.IsNullOrWhiteSpace(resumeKey))
-            throw new ArgumentException("resumeKey is required");
-
         return PublishEventAsync(idOrUuid, resumeKey!, idempotencyKey, requestContext, ct);
     }
 

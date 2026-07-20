@@ -1,31 +1,27 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Statevia.Service.Api.Abstractions.Services;
-using Statevia.Service.Api.Contracts;
+using Statevia.Core.Application.Contracts.Services;
+using Statevia.Core.Application.Contracts.Validation;
 using Statevia.Service.Api.Controllers;
 
 namespace Statevia.Service.Api.Tests.Controllers;
 
+/// <summary><see cref="GraphsController"/> のユニットテスト。</summary>
 public sealed class GraphsControllerTests
 {
     /// <summary>
-    /// 識別子が空白のみのとき検証失敗応答を返す。
+    /// graphId の空白のみは NotWhitespace で拒否する（アクション直呼びではパイプライン未経由）。
     /// </summary>
     [Fact]
-    public async Task GetByGraphId_WhenGraphIdIsWhitespace_ReturnsValidationError422()
+    public void GraphId_NotWhitespaceAttribute_RejectsWhitespace()
     {
         // Arrange
-        var fakeSvc = new FakeGraphDefinitionService();
+        var attribute = new NotWhitespaceAttribute { ErrorMessage = "graphId is required" };
 
         // Act
-        var controller = new GraphsController(fakeSvc);
-        var result = await controller.GetByGraphId("   ", ct: CancellationToken.None);
+        var valid = attribute.IsValid("   ");
 
         // Assert
-        var obj = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(StatusCodes.Status422UnprocessableEntity, obj.StatusCode);
-        var payload = Assert.IsType<ErrorResponse>(obj.Value);
-        Assert.Equal("VALIDATION_ERROR", payload.Error.Code);
+        Assert.False(valid);
     }
 
     /// <summary>
@@ -35,7 +31,6 @@ public sealed class GraphsControllerTests
     public async Task GetByGraphId_WhenSuccess_ReturnsOkGraph()
     {
         // Arrange
-        // Act
         var expected = new GraphDefinitionResponse
         {
             GraphId = "g1",
@@ -49,6 +44,8 @@ public sealed class GraphsControllerTests
         };
 
         var controller = new GraphsController(fakeSvc);
+
+        // Act
         var result = await controller.GetByGraphId("graph-id", ct: CancellationToken.None);
 
         // Assert
@@ -60,11 +57,11 @@ public sealed class GraphsControllerTests
     private sealed class FakeGraphDefinitionService : IGraphDefinitionService
     {
         public GraphDefinitionResponse? ResolveResult { get; set; }
+
         public async Task<GraphDefinitionResponse> GetByGraphIdAsync(string graphId, CancellationToken ct = default)
         {
-            await Task.Yield(); // async boundary for coverage
+            await Task.Yield();
             return ResolveResult ?? new GraphDefinitionResponse();
         }
     }
 }
-

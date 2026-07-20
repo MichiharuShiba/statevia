@@ -399,29 +399,6 @@ public sealed class DefinitionServiceTests
     }
 
     /// <summary>
-    /// 名前未指定で作成要求したとき、422 用の検証例外を返す。
-    /// </summary>
-    [Fact]
-    public async Task CreateAsync_WhenNameMissing_ThrowsApiValidationExceptionWithNameDetails()
-    {
-        // Arrange
-        using var inDb = new InMemoryTestDatabase();
-        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
-        var display = new StubDisplayIdService();
-        var compiler = new StubCompiler("{}");
-        var idGen = new FixedIdGenerator(Guid.NewGuid());
-        var sut = CreateDefinitionService(inDb, display, compiler, definitionsRepo, idGen);
-        var request = new CreateDefinitionRequest { Name = " ", Yaml = "workflow:\n  name: x" };
-
-        // Act
-        var ex = await Assert.ThrowsAsync<ApiValidationException>(() => sut.CreateAsync(request, CancellationToken.None));
-
-        // Assert
-        Assert.Equal("Definition name is required.", ex.Message);
-        Assert.NotNull(ex.Details);
-    }
-
-    /// <summary>
     /// コンパイル失敗時に、422 用の検証例外へラップして返す。
     /// </summary>
     [Fact]

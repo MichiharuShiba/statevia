@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Statevia.Service.Api.Contracts;
@@ -9,10 +10,13 @@ public sealed class ExecutionListQuery
 {
     /// <summary>ページサイズ（必須。1〜500）。</summary>
     [FromQuery(Name = "limit")]
+    [Required(ErrorMessage = "limit is required")]
+    [Range(1, 500, ErrorMessage = "limit must be at most 500")]
     public int? Limit { get; init; }
 
     /// <summary>オフセット（0 以上）。</summary>
     [FromQuery(Name = "offset")]
+    [Range(0, int.MaxValue, ErrorMessage = "offset must be >= 0")]
     public int? Offset { get; init; }
 
     /// <summary>ステータスフィルタ。</summary>

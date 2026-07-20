@@ -56,17 +56,10 @@ public class DefinitionsController : ControllerBase
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(query);
-        if (query.Limit is null)
-            throw new ArgumentException("limit is required");
 
         var offset = query.Offset ?? 0;
-        ArgumentOutOfRangeException.ThrowIfNegative(offset);
-        ArgumentOutOfRangeException.ThrowIfLessThan(query.Limit.Value, 1);
-        if (query.Limit.Value > 500)
-            throw new ArgumentException("limit must be at most 500");
-
         var pageQuery = new DefinitionListPageQuery(
-            Page: new PageQuery(offset, query.Limit.Value),
+            Page: new PageQuery(offset, query.Limit!.Value),
             Sort: new SortQuery(query.SortBy, query.SortOrder),
             NameContains: query.Name,
             IncludeDeleted: query.IncludeDeleted ?? false);

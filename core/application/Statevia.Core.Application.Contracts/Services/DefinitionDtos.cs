@@ -1,4 +1,6 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Statevia.Core.Application.Contracts.Validation;
 
 namespace Statevia.Core.Application.Contracts.Services;
 
@@ -6,9 +8,13 @@ namespace Statevia.Core.Application.Contracts.Services;
 public sealed class CreateDefinitionRequest
 {
     /// <summary>定義名。</summary>
+    [Required(ErrorMessage = "Definition name is required.")]
+    [NotWhitespace(ErrorMessage = "Definition name is required.")]
     public string Name { get; set; } = "";
 
     /// <summary>定義ソース YAML。</summary>
+    [Required(ErrorMessage = "Definition YAML is required.")]
+    [NotWhitespace(ErrorMessage = "Definition YAML is required.")]
     public string Yaml { get; set; } = "";
 }
 
@@ -16,9 +22,13 @@ public sealed class CreateDefinitionRequest
 public sealed class UpdateDefinitionRequest
 {
     /// <summary>定義名。</summary>
+    [Required(ErrorMessage = "Definition name is required.")]
+    [NotWhitespace(ErrorMessage = "Definition name is required.")]
     public string Name { get; set; } = "";
 
     /// <summary>定義ソース YAML。</summary>
+    [Required(ErrorMessage = "Definition YAML is required.")]
+    [NotWhitespace(ErrorMessage = "Definition YAML is required.")]
     public string Yaml { get; set; } = "";
 }
 
