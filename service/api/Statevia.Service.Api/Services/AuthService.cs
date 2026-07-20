@@ -40,11 +40,6 @@ internal sealed class AuthService : IAuthService
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (string.IsNullOrWhiteSpace(request.TenantKey) ||
-            string.IsNullOrWhiteSpace(request.Email) ||
-            string.IsNullOrWhiteSpace(request.Password))
-            throw new UnauthorizedException("Invalid credentials.", UnauthorizedCode);
-
         var lookup = await _platformDataAccess
             .FindLoginCredentialAsync(request.TenantKey, request.Email, cancellationToken)
             .ConfigureAwait(false);

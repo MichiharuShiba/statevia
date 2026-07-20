@@ -1,7 +1,9 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Statevia.Core.Application.Contracts;
 using Statevia.Core.Application.Contracts.Persistence;
 using Statevia.Core.Application.Contracts.Services;
+using Statevia.Core.Application.Contracts.Validation;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Services;
 
@@ -69,14 +71,8 @@ public class ExecutionsController : ControllerBase
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(query);
-        if (query.Limit is null)
-            throw new ArgumentException("limit is required");
 
         var offset = query.Offset ?? 0;
-        ArgumentOutOfRangeException.ThrowIfNegative(offset);
-        ArgumentOutOfRangeException.ThrowIfLessThan(query.Limit.Value, 1);
-        if (query.Limit.Value > 500)
-            throw new ArgumentException("limit must be at most 500");
 
         Guid? definitionIdFilter = null;
         if (!string.IsNullOrWhiteSpace(query.DefinitionId))
@@ -84,11 +80,11 @@ public class ExecutionsController : ControllerBase
             definitionIdFilter = await _displayIds.ResolveAsync(
                 Statevia.Core.Application.Services.DisplayIdResourceTypes.Definition, query.DefinitionId, ct).ConfigureAwait(false);
             if (definitionIdFilter is null)
-                return Ok(new PagedResult<ExecutionResponse> { Items = [], TotalCount = 0, Offset = offset, Limit = query.Limit.Value, HasMore = false });
+                return Ok(new PagedResult<ExecutionResponse> { Items = [], TotalCount = 0, Offset = offset, Limit = query.Limit!.Value, HasMore = false });
         }
 
         var pageQuery = new ExecutionListPageQuery(
-            Page: new PageQuery(offset, query.Limit.Value),
+            Page: new PageQuery(offset, query.Limit!.Value),
             Sort: new SortQuery(query.SortBy, query.SortOrder),
             StatusFilter: query.Status,
             DefinitionIdFilter: definitionIdFilter,
@@ -126,10 +122,11 @@ public class ExecutionsController : ControllerBase
     [ProducesResponseType(typeof(ExecutionViewDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ExecutionViewDto>> GetState(
         string id,
-        [FromQuery] long atSeq,
+        [FromQuery] ExecutionStateQuery query,
         CancellationToken ct = default)
     {
-        var view = await _executions.GetExecutionViewAtSeqAsync(id, atSeq, ct).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(query);
+        var view = await _executions.GetExecutionViewAtSeqAsync(id, query.AtSeq, ct).ConfigureAwait(false);
         return Ok(view);
     }
 
@@ -138,11 +135,11 @@ public class ExecutionsController : ControllerBase
     [ProducesResponseType(typeof(ExecutionEventsResponseDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ExecutionEventsResponseDto>> GetEvents(
         string id,
-        [FromQuery] long afterSeq = 0,
-        [FromQuery] int limit = 500,
+        [FromQuery] ExecutionEventsQuery query,
         CancellationToken ct = default)
     {
-        var res = await _executions.ListEventsAsync(id, afterSeq, limit, ct).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(query);
+        var res = await _executions.ListEventsAsync(id, query.AfterSeq, query.Limit, ct).ConfigureAwait(false);
         return Ok(res);
     }
 
@@ -181,16 +178,19 @@ public class ExecutionsController : ControllerBase
     [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     public async Task<ActionResult> ResumeNode(
         string id,
+        [Required(ErrorMessage = "nodeId is required")]
+        [NotWhitespace(ErrorMessage = "nodeId is required")]
         string nodeId,
-        [FromBody] ResumeNodeRequest? body,
+        [FromBody] ResumeNodeRequest body,
         [FromHeader(Name = IdempotencyKeyHeaderName)] string? idempotencyKey = null,
         CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(body);
         var resolvedIdempotencyKey = idempotencyKey;
         await _executions.ResumeNodeAsync(
             id,
             nodeId,
-            body?.ResumeKey,
+            body.ResumeKey,
             resolvedIdempotencyKey,
             new CommandRequestContext(Request.Method, Request.Path.Value ?? string.Empty),
             ct).ConfigureAwait(false);

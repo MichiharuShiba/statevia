@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Statevia.Core.Application.Contracts.Validation;
 
 namespace Statevia.Core.Application.Contracts.Services;
 
@@ -15,7 +16,8 @@ public sealed record CommandRequestContext(string Method, string Path);
 public class StartExecutionRequest
 {
     /// <summary>開始に用いる定義 ID（display または UUID）。</summary>
-    [Required]
+    [Required(ErrorMessage = "definitionId is required")]
+    [NotWhitespace(ErrorMessage = "definitionId is required")]
     public string DefinitionId { get; set; } = "";
 
     /// <summary>開始に用いる版番号（省略時は latestVersion）。</summary>
@@ -34,7 +36,8 @@ public class StartExecutionRequest
 public class PublishEventRequest
 {
     /// <summary>発行するイベント名。</summary>
-    [Required]
+    [Required(ErrorMessage = "name is required")]
+    [NotWhitespace(ErrorMessage = "name is required")]
     public string Name { get; set; } = "";
 }
 
@@ -213,7 +216,9 @@ public sealed class GraphPatchNodeDto
 public sealed class ResumeNodeRequest
 {
     /// <summary>Wait を再開するイベント名（Engine.PublishEvent に渡す）。</summary>
-    public string? ResumeKey { get; init; }
+    [Required(ErrorMessage = "resumeKey is required")]
+    [NotWhitespace(ErrorMessage = "resumeKey is required")]
+    public string ResumeKey { get; init; } = "";
 }
 
 /// <summary>Execution Read Model（UI 向け正規形）。</summary>

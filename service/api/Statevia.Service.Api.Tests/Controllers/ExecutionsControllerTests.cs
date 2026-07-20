@@ -213,21 +213,22 @@ public sealed class ExecutionsControllerTests
     }
 
     /// <summary>
-    /// limit 未指定の一覧取得で検証例外を投げる。
+    /// limit 未指定は Data Annotations で検証失敗になる（アクション直呼びではパイプライン未経由）。
     /// </summary>
     [Fact]
-    public async Task List_LimitNull_ThrowsArgumentException()
+    public void ExecutionListQuery_WhenLimitNull_FailsRequiredValidation()
     {
         // Arrange
-        var http = new DefaultHttpContext();
-        http.Request.Headers["X-Tenant-Id"] = "t1";
+        var query = new ExecutionListQuery();
+        var context = new System.ComponentModel.DataAnnotations.ValidationContext(query);
+        var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
 
-        var executions = new FakeExecutionService();
-        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, executions, stream);
+        // Act
+        var valid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(query, context, results, validateAllProperties: true);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => controller.List(new ExecutionListQuery(), ct: CancellationToken.None));
+        // Assert
+        Assert.False(valid);
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(ExecutionListQuery.Limit)));
     }
 
     /// <summary>
@@ -304,54 +305,60 @@ public sealed class ExecutionsControllerTests
     }
 
     /// <summary>
-    /// 上限を超える件数指定で引数例外を投げる。
+    /// 上限を超える件数指定は Data Annotations で検証失敗になる。
     /// </summary>
     [Fact]
-    public async Task List_InvalidLimit_ThrowsArgumentException()
+    public void ExecutionListQuery_WhenLimitAboveMax_FailsRangeValidation()
     {
-        // Act & Assert
-        var http = new DefaultHttpContext();
-        http.Request.Headers["X-Tenant-Id"] = "t1";
+        // Arrange
+        var query = new ExecutionListQuery { Limit = 501, Offset = 0 };
+        var context = new System.ComponentModel.DataAnnotations.ValidationContext(query);
+        var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
 
-        var executions = new FakeExecutionService();
-        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, executions, stream);
+        // Act
+        var valid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(query, context, results, validateAllProperties: true);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => controller.List(new ExecutionListQuery { Limit = 501, Offset = 0 }, ct: CancellationToken.None));
+        // Assert
+        Assert.False(valid);
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(ExecutionListQuery.Limit)));
     }
 
     /// <summary>
-    /// 負の開始位置指定で範囲外引数例外を投げる。
+    /// 負の開始位置指定は Data Annotations で検証失敗になる。
     /// </summary>
     [Fact]
-    public async Task List_InvalidOffset_ThrowsArgumentOutOfRangeException()
+    public void ExecutionListQuery_WhenOffsetNegative_FailsRangeValidation()
     {
-        // Act & Assert
-        var http = new DefaultHttpContext();
-        http.Request.Headers["X-Tenant-Id"] = "t1";
+        // Arrange
+        var query = new ExecutionListQuery { Limit = 1, Offset = -1 };
+        var context = new System.ComponentModel.DataAnnotations.ValidationContext(query);
+        var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
 
-        var executions = new FakeExecutionService();
-        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, executions, stream);
+        // Act
+        var valid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(query, context, results, validateAllProperties: true);
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => controller.List(new ExecutionListQuery { Limit = 1, Offset = -1 }, ct: CancellationToken.None));
+        // Assert
+        Assert.False(valid);
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(ExecutionListQuery.Offset)));
     }
 
     /// <summary>
-    /// 一未満の件数指定で範囲外引数例外を投げる。
+    /// 一未満の件数指定は Data Annotations で検証失敗になる。
     /// </summary>
     [Fact]
-    public async Task List_InvalidLimitLessThan1_ThrowsArgumentOutOfRangeException()
+    public void ExecutionListQuery_WhenLimitLessThan1_FailsRangeValidation()
     {
-        // Act & Assert
-        var http = new DefaultHttpContext();
-        http.Request.Headers["X-Tenant-Id"] = "t1";
+        // Arrange
+        var query = new ExecutionListQuery { Limit = 0, Offset = 0 };
+        var context = new System.ComponentModel.DataAnnotations.ValidationContext(query);
+        var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
 
-        var executions = new FakeExecutionService();
-        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, executions, stream);
+        // Act
+        var valid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(query, context, results, validateAllProperties: true);
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => controller.List(new ExecutionListQuery { Limit = 0, Offset = 0 }, ct: CancellationToken.None));
+        // Assert
+        Assert.False(valid);
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(ExecutionListQuery.Limit)));
     }
 
     /// <summary>
@@ -453,7 +460,7 @@ public sealed class ExecutionsControllerTests
         var controller = CreateController(http, executions, stream);
 
         // Assert
-        var result = await controller.GetState("X", atSeq: 1, ct: CancellationToken.None);
+        var result = await controller.GetState("X", new ExecutionStateQuery { AtSeq = 1 }, ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var model = Assert.IsType<ExecutionViewDto>(ok.Value);
         Assert.Single(model.Nodes);
@@ -491,7 +498,7 @@ public sealed class ExecutionsControllerTests
         var controller = CreateController(http, executions, stream);
 
         // Assert
-        var result = await controller.GetEvents("X", afterSeq: 0, limit: 10, ct: CancellationToken.None);
+        var result = await controller.GetEvents("X", new ExecutionEventsQuery { AfterSeq = 0, Limit = 10 }, ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var model = Assert.IsType<ExecutionEventsResponseDto>(ok.Value);
         Assert.Single(model.Events);
@@ -651,10 +658,10 @@ public sealed class ExecutionsControllerTests
     }
 
     /// <summary>
-    /// 本文が空値のとき再開キーなしで再開する。
+    /// 本文が null のとき引数例外を投げる（HTTP パイプラインでは ModelState 422）。
     /// </summary>
     [Fact]
-    public async Task ResumeNode_WhenBodyNull_ResumesWithNullResumeKey()
+    public async Task ResumeNode_WhenBodyNull_ThrowsArgumentNullException()
     {
         // Arrange
         var http = new DefaultHttpContext();
@@ -663,45 +670,32 @@ public sealed class ExecutionsControllerTests
         http.Request.Method = "POST";
         http.Request.Path = "/v1/executions/X/nodes/node-1/resume";
 
-        // Act
         var executions = new FakeExecutionService();
         var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, executions, stream);
 
-        var result = await controller.ResumeNode("X", "node-1", body: null, idempotencyKey: "idem", ct: CancellationToken.None);
-
-        // Assert
-        Assert.IsType<NoContentResult>(result);
-        Assert.True(executions.ResumeCalled);
-        Assert.Null(executions.ResumeResumeKey);
-        Assert.Equal("idem", executions.ResumeIdempotencyKey);
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            controller.ResumeNode("X", "node-1", body: null!, idempotencyKey: "idem", ct: CancellationToken.None));
     }
 
     /// <summary>
-    /// 本文の再開キーが空値のとき再開キーなしで再開する。
+    /// resumeKey 未指定は Data Annotations で検証失敗になる。
     /// </summary>
     [Fact]
-    public async Task ResumeNode_WhenBodyHasNullResumeKey_ResumesWithNullResumeKey()
+    public void ResumeNodeRequest_WhenResumeKeyWhitespace_FailsValidation()
     {
         // Arrange
-        var http = new DefaultHttpContext();
-        http.Request.Headers["X-Tenant-Id"] = "t1";
-        http.Request.Headers["X-Idempotency-Key"] = "idem";
-        http.Request.Method = "POST";
-        http.Request.Path = "/v1/executions/X/nodes/node-1/resume";
+        var body = new ResumeNodeRequest { ResumeKey = " " };
+        var context = new System.ComponentModel.DataAnnotations.ValidationContext(body);
+        var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
 
         // Act
-        var executions = new FakeExecutionService();
-        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
-        var controller = CreateController(http, executions, stream);
-
-        var result = await controller.ResumeNode("X", "node-1", new ResumeNodeRequest { ResumeKey = null }, idempotencyKey: "idem", ct: CancellationToken.None);
+        var valid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(body, context, results, validateAllProperties: true);
 
         // Assert
-        Assert.IsType<NoContentResult>(result);
-        Assert.True(executions.ResumeCalled);
-        Assert.Null(executions.ResumeResumeKey);
-        Assert.Equal("idem", executions.ResumeIdempotencyKey);
+        Assert.False(valid);
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(ResumeNodeRequest.ResumeKey)));
     }
 
     /// <summary>
@@ -877,7 +871,7 @@ public sealed class ExecutionsControllerTests
         var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, executions, stream);
 
-        await Assert.ThrowsAsync<NotFoundException>(() => controller.GetState("X", atSeq: 1, ct: CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => controller.GetState("X", new ExecutionStateQuery { AtSeq = 1 }, ct: CancellationToken.None));
     }
 
     /// <summary>
@@ -894,7 +888,7 @@ public sealed class ExecutionsControllerTests
         var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
         var controller = CreateController(http, executions, stream);
 
-        await Assert.ThrowsAsync<NotFoundException>(() => controller.GetEvents("X", afterSeq: 0, limit: 10, ct: CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => controller.GetEvents("X", new ExecutionEventsQuery { AfterSeq = 0, Limit = 10 }, ct: CancellationToken.None));
     }
 
     /// <summary>
@@ -1056,7 +1050,7 @@ public sealed class ExecutionsControllerTests
         var controller = CreateController(http, executions, stream);
 
         // Assert
-        var result = await controller.GetState("X", atSeq: 1, ct: CancellationToken.None);
+        var result = await controller.GetState("X", new ExecutionStateQuery { AtSeq = 1 }, ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.IsType<ExecutionViewDto>(ok.Value);
 
@@ -1081,7 +1075,7 @@ public sealed class ExecutionsControllerTests
         var controller = CreateController(http, executions, stream);
 
         // Assert
-        var result = await controller.GetEvents("X", afterSeq: 0, limit: 10, ct: CancellationToken.None);
+        var result = await controller.GetEvents("X", new ExecutionEventsQuery { AfterSeq = 0, Limit = 10 }, ct: CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.IsType<ExecutionEventsResponseDto>(ok.Value);
 

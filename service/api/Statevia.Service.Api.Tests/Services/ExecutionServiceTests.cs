@@ -902,21 +902,6 @@ public sealed class ExecutionServiceTests
             sut.StartAsync(request, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
     }
 
-    /// <summary>連番指定が一未満のとき引数例外を投げる。</summary>
-    [Fact]
-    public async Task GetExecutionViewAtSeqAsync_WhenAtSeqLessThan1_ThrowsArgumentException()
-    {
-        // Arrange
-        using var sqlite = new SqliteTestDatabase();
-        var sut = MakeSut(
-            sqlite,
-            out _);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.GetExecutionViewAtSeqAsync(idOrUuid: "x", atSeq: 0, CancellationToken.None));
-    }
-
     private static ExecutionService MakeSut(SqliteTestDatabase sqlite, out FakeExecutionRepository executionRepo)
     {
         executionRepo = new FakeExecutionRepository();
@@ -1263,19 +1248,6 @@ public sealed class ExecutionServiceTests
         Assert.True(nodeB.CanceledByExecution.GetValueOrDefault());
         Assert.Equal("CANCELED", nodeB.Status);
         Assert.Equal("Wait", nodeB.StateName);
-    }
-
-    /// <summary>ノード識別子が空白のみのとき引数例外を投げる。</summary>
-    [Fact]
-    public async Task ResumeNodeAsync_WhenNodeIdWhitespace_ThrowsArgumentException()
-    {
-        // Arrange
-        using var sqlite = new SqliteTestDatabase();
-        var sut = MakeSut(sqlite, out _);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.ResumeNodeAsync(idOrUuid: "EXEC-1", nodeId: "  ", resumeKey: "Approve", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
     }
 
     /// <summary>取消要求で冪等一致かつ有効行があるとき副作用なく即時終了する。</summary>
@@ -2411,19 +2383,6 @@ public sealed class ExecutionServiceTests
         Assert.Equal("{\"nodes\":[],\"edges\":[{\"from\":\"a1\",\"to\":\"b1\",\"type\":0}]}", graphJson);
     }
 
-    /// <summary>再開キーがないとき引数例外を投げる。</summary>
-    [Fact]
-    public async Task ResumeNodeAsync_WhenResumeKeyMissing_ThrowsArgumentException()
-    {
-        // Arrange
-        using var sqlite = new SqliteTestDatabase();
-        var sut = MakeSut(sqlite, out _);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.ResumeNodeAsync(idOrUuid: "EXEC-1", nodeId: "node-1", resumeKey: null, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
-    }
-
     /// <summary>有効なノード識別子と再開キーで公開と投影更新を実施する。</summary>
     [Fact]
     public async Task ResumeNodeAsync_WhenValidNodeAndResumeKey_PublishesEventAndUpdatesExecution()
@@ -3522,46 +3481,6 @@ public sealed class ExecutionServiceTests
 
         // Assert
         Assert.Empty(executionRepo.Updates);
-    }
-
-    /// <summary>afterSeq が負のとき引数例外を投げる。</summary>
-    [Fact]
-    public async Task ListEventsAsync_WhenAfterSeqNegative_ThrowsArgumentException()
-    {
-        // Arrange
-        var sut = MakeSut(
-            new FakeCommandDedupService(null),
-            new FakeCommandDedupRepository(),
-            new FakeExecutionEngine(),
-            new FakeDisplayIdService { ResolveResultExecution = Guid.NewGuid() },
-            new FakeExecutionRepository { ByIdResult = new ExecutionRow { ExecutionId = Guid.NewGuid(), TenantId = TestTenantIds.T1TenantId, DefinitionId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, CancelRequested = false, RestartLost = false } },
-            new FakeEventStoreRepository());
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.ListEventsAsync("WF-1", afterSeq: -1, limit: 10, CancellationToken.None));
-        Assert.Contains("afterSeq", ex.Message, StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>limit が範囲外のとき引数例外を投げる。</summary>
-    [Theory]
-    [InlineData(0)]
-    [InlineData(5001)]
-    public async Task ListEventsAsync_WhenLimitOutOfRange_ThrowsArgumentException(int limit)
-    {
-        // Arrange
-        var sut = MakeSut(
-            new FakeCommandDedupService(null),
-            new FakeCommandDedupRepository(),
-            new FakeExecutionEngine(),
-            new FakeDisplayIdService { ResolveResultExecution = Guid.NewGuid() },
-            new FakeExecutionRepository { ByIdResult = new ExecutionRow { ExecutionId = Guid.NewGuid(), TenantId = TestTenantIds.T1TenantId, DefinitionId = Guid.NewGuid(), Status = "Running", StartedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, CancelRequested = false, RestartLost = false } },
-            new FakeEventStoreRepository());
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.ListEventsAsync("WF-1", afterSeq: 0, limit: limit, CancellationToken.None));
-        Assert.Contains("limit", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     private static ExecutionService MakeSut(

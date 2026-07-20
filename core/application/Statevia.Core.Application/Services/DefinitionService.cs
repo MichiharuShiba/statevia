@@ -45,20 +45,7 @@ internal sealed class DefinitionService : IDefinitionService
     public async Task<DefinitionResponse> CreateAsync(CreateDefinitionRequest request, CancellationToken ct)
     {
         await EnsureDefinitionsWriteAsync(ct).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            throw new ApiValidationException(DefinitionValidationMessages.NameRequired, new[]
-            {
-                new { message = DefinitionValidationMessages.NameRequired, field = "name" }
-            });
-        }
-        if (string.IsNullOrWhiteSpace(request.Yaml))
-        {
-            throw new ApiValidationException(DefinitionValidationMessages.YamlRequired, new[]
-            {
-                new { message = DefinitionValidationMessages.YamlRequired, field = "yaml" }
-            });
-        }
+        ArgumentNullException.ThrowIfNull(request);
 
         var tenantId = _tenantContext.GetRequiredTenantId();
         string compiledJson;
@@ -194,21 +181,7 @@ internal sealed class DefinitionService : IDefinitionService
         CancellationToken ct)
     {
         await EnsureDefinitionsWriteAsync(ct).ConfigureAwait(false);
-
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            throw new ApiValidationException(DefinitionValidationMessages.NameRequired, new[]
-            {
-                new { message = DefinitionValidationMessages.NameRequired, field = "name" }
-            });
-        }
-        if (string.IsNullOrWhiteSpace(request.Yaml))
-        {
-            throw new ApiValidationException(DefinitionValidationMessages.YamlRequired, new[]
-            {
-                new { message = DefinitionValidationMessages.YamlRequired, field = "yaml" }
-            });
-        }
+        ArgumentNullException.ThrowIfNull(request);
 
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
