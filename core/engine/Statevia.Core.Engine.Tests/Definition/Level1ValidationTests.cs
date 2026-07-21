@@ -254,6 +254,37 @@ public class Level1ValidationTests
         Assert.True(result.IsValid);
     }
 
+
+    /// <summary>input.path が $.vars / $.sys を参照する場合は Level1 検証で失敗することを検証する。</summary>
+    [Theory]
+    [InlineData("$.vars")]
+    [InlineData("$.vars.x")]
+    [InlineData("$.sys")]
+    [InlineData("$.sys.traceId")]
+    public void Validate_ReservedExecutionContextInputPath_Fails(string path)
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "Test",
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Input = new StateInputDefinition { Path = path },
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("reserved Execution Context", StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>input マップ内の path が不正な場合は Level1 検証で失敗することを検証する。</summary>
     [Fact]
     public void Validate_InvalidStateInputMapPath_Fails()

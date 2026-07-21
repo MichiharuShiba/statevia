@@ -552,7 +552,9 @@ export const uiTextEn: UiText = {
       missingTargetNode: (nodeId: string, targetId: string) => `Node '${nodeId}': target '${targetId}' does not exist.`,
       selfReferenceRejected: "Self-referencing edges are not allowed.",
       whenOpPlaceholder: "Select operator",
-      whenPathPlaceholder: "$.payload.amount",
+      whenPathPlaceholder: "$.states.Fetch.output.amount",
+      whenPathHint:
+        "Root is Execution Context. e.g. $.input.x / $.states.A.output.y / $.states['a.b'].output.z",
       whenValuePlaceholder: "e.g. 100 / true / \"100\"",
       whenValueDisabledForExists: "Value is not required for EXISTS.",
       whenValueHintIn: "For IN, enter a JSON array. Example: [\"A\", \"B\"]",
@@ -562,11 +564,15 @@ export const uiTextEn: UiText = {
       parseFailed: "YAML parsing failed. Keeping the previous valid graph.",
       actionErrorLabel: "Error transition (optional)",
       actionInputLabel: "input (optional)",
-      actionInputPlaceholder: 'e.g. $.input.orderId or {"orderId":"$.input.orderId"}',
-      actionInputHint: "Paths use $ / $. only. Enter objects as JSON.",
+      actionInputPlaceholder:
+        'e.g. $.input.orderId / $.states.A.output.x / {"id":"$.states[\'a.b\'].output.id"}',
+      actionInputHint:
+        "Root is Execution Context ($.input / $.states…). Dotted node IDs use $.states['id'].output. Objects as JSON. $.vars / $.sys are not allowed.",
       actionInputInvalidJson: "Invalid JSON.",
       actionIdCandidatesLoading: "Loading actions…",
       actionIdNoResults: "No matching actions",
+      schemaPathPlaceholder: "$.input.x or $.states.A.output.y",
+      schemaLiteralOrPathPlaceholder: "literal or $.input.x",
     },
     saved: {
       completePrefix: "Saved:",

@@ -413,8 +413,7 @@ internal static class ActionInputSchemaValidator
         return typeElement.GetString() ?? "a supported type";
     }
 
-    private static bool IsPathExpression(string value) =>
-        value == "$" || value.StartsWith("$.", StringComparison.Ordinal);
+    private static bool IsPathExpression(string value) => SimpleJsonPath.IsPathExpression(value);
 
     private sealed class ValidationContext
     {

@@ -1,17 +1,47 @@
 import type { JsonSchemaObject } from "./types";
 
 /**
- * outputSchema.properties から when.path 補完候補（`$.` 付き）を生成する。
+ * SimpleJsonPath の識別子セグメントとして有効か（英数字と `_` のみ）。
  */
-export function buildOutputSchemaPathHints(outputSchema: JsonSchemaObject | undefined | null): string[] {
-  const properties = outputSchema?.type === "object" ? (outputSchema.properties ?? {}) : {};
-  return Object.keys(properties)
-    .sort((a, b) => a.localeCompare(b))
-    .map((name) => `$.${name}`);
+export function isSimpleJsonPathIdentifier(segment: string): boolean {
+  return /^\w+$/.test(segment);
 }
 
 /**
- * グラフ上の直前 action ノードの outputSchema から when.path 候補を収集する。
+ * Execution Context 上の `$.states.<Name>.output.<prop>` パスを組み立てる。
+ * ドット等を含む State / Node 名はブラケット＋単一引用にする。
+ */
+export function formatStateOutputPath(stateName: string, propertyName: string): string {
+  const stateSegment = isSimpleJsonPathIdentifier(stateName)
+    ? `.${stateName}`
+    : `['${stateName}']`;
+  const propertySegment = isSimpleJsonPathIdentifier(propertyName)
+    ? `.${propertyName}`
+    : `['${propertyName}']`;
+  return `$.states${stateSegment}.output${propertySegment}`;
+}
+
+/**
+ * outputSchema.properties から when.path 補完候補（Execution Context 根）を生成する。
+ *
+ * @param outputSchema - Action の outputSchema
+ * @param stateName - 完了済み State / Node ID（パスの `states` セグメント）
+ */
+export function buildOutputSchemaPathHints(
+  outputSchema: JsonSchemaObject | undefined | null,
+  stateName: string
+): string[] {
+  if (!stateName) {
+    return [];
+  }
+  const properties = outputSchema?.type === "object" ? (outputSchema.properties ?? {}) : {};
+  return Object.keys(properties)
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => formatStateOutputPath(stateName, name));
+}
+
+/**
+ * グラフ上の上流 action ノードの outputSchema から when.path 候補を収集する。
  */
 export function collectUpstreamOutputPathHints(
   nodes: ReadonlyArray<{ id: string; type: string; action?: string }>,
@@ -19,23 +49,27 @@ export function collectUpstreamOutputPathHints(
   targetNodeId: string,
   outputSchemaByActionId: ReadonlyMap<string, JsonSchemaObject | undefined>
 ): string[] {
-  const upstreamActionIds = findUpstreamActionIds(nodes, edges, targetNodeId);
+  const upstreamActions = findUpstreamActionNodes(nodes, edges, targetNodeId);
   const hints = new Set<string>();
-  for (const actionId of upstreamActionIds) {
-    for (const hint of buildOutputSchemaPathHints(outputSchemaByActionId.get(actionId))) {
+  for (const node of upstreamActions) {
+    const actionId = node.action?.trim();
+    if (!actionId) {
+      continue;
+    }
+    for (const hint of buildOutputSchemaPathHints(outputSchemaByActionId.get(actionId), node.id)) {
       hints.add(hint);
     }
   }
   return [...hints].sort((a, b) => a.localeCompare(b));
 }
 
-function findUpstreamActionIds(
+function findUpstreamActionNodes(
   nodes: ReadonlyArray<{ id: string; type: string; action?: string }>,
   edges: ReadonlyArray<{ sourceId: string; targetId: string }>,
   targetNodeId: string
-): string[] {
+): Array<{ id: string; type: string; action?: string }> {
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
-  const actionIds: string[] = [];
+  const actionNodes: Array<{ id: string; type: string; action?: string }> = [];
   const visited = new Set<string>();
   const queue = edges
     .filter((edge) => edge.targetId === targetNodeId)
@@ -52,10 +86,7 @@ function findUpstreamActionIds(
       continue;
     }
     if (node.type === "action") {
-      const actionId = node.action?.trim();
-      if (actionId) {
-        actionIds.push(actionId);
-      }
+      actionNodes.push(node);
     }
     for (const edge of edges) {
       if (edge.targetId === currentId) {
@@ -64,5 +95,5 @@ function findUpstreamActionIds(
     }
   }
 
-  return actionIds;
+  return actionNodes;
 }

@@ -4,10 +4,14 @@ import type { JsonSchemaObject } from "./types";
 type CoercedScalarValue = string | number | boolean | undefined;
 
 /**
- * JSONPath 式（`$.` 始まり）かどうかを判定する。
+ * JSONPath 式（`$` / `$.…` / `$[…]`）かどうかを判定する。
+ * Engine の `SimpleJsonPath.IsPathExpression` と候補判定を揃える。
  */
 export function isJsonPathExpression(text: string): boolean {
-  return text.trimStart().startsWith("$.");
+  const trimmed = text.trimStart();
+  return (
+    trimmed === "$" || trimmed.startsWith("$.") || trimmed.startsWith("$[")
+  );
 }
 
 /**

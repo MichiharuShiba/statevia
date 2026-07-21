@@ -170,4 +170,30 @@ public class SimpleJsonPathResolverTests
         Assert.False(r.Found);
         Assert.Equal(SimpleJsonPathResolver.PathSegmentMissing, r.WarningReason);
     }
+
+
+    /// <summary>ブラケット引用キーでドット付きプロパティを解決できることを検証する。</summary>
+    [Fact]
+    public void Resolve_BracketQuotedKey_ReturnsLeafValue()
+    {
+        // Arrange
+        var source = new Dictionary<string, object?>
+        {
+            ["states"] = new Dictionary<string, object?>
+            {
+                ["order.notify.customer"] = new Dictionary<string, object?>
+                {
+                    ["output"] = new Dictionary<string, object?> { ["ok"] = true }
+                }
+            }
+        };
+
+        // Act
+        var r = SimpleJsonPathResolver.Resolve(source, "$.states['order.notify.customer'].output.ok");
+
+        // Assert
+        Assert.True(r.IsSupportedPathExpression);
+        Assert.True(r.Found);
+        Assert.Equal(true, r.Value);
+    }
 }

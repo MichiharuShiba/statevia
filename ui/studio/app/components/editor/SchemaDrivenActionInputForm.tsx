@@ -154,7 +154,10 @@ function InputFieldTreeNode({
     : node.propertySchema.description ?? "";
   const placeholder = hints?.placeholderKey
     ? resolveSchemaUiText(uiText, hints.placeholderKey)
-    : undefined;
+    : valueKindPlaceholder(node.propertySchema, {
+        path: uiText.definitionEditor.graph.schemaPathPlaceholder,
+        literalOrPath: uiText.definitionEditor.graph.schemaLiteralOrPathPlaceholder
+      });
   const fieldValue = getNestedInputValue(normalizedValue, node.logicalPath);
   const error = errorsByLogicalPath.get(node.logicalPath);
 
@@ -227,7 +230,7 @@ function renderFieldControl({
       className={inputClassName}
       type={inputType}
       value={stringValue}
-      placeholder={placeholder ?? valueKindPlaceholder(propertySchema)}
+      placeholder={placeholder}
       onChange={(event) => {
         const raw = event.target.value;
         if (!raw.trim()) {
@@ -330,13 +333,16 @@ function inferWidget(propertySchema: JsonSchemaObject): string {
   return "text";
 }
 
-function valueKindPlaceholder(propertySchema: JsonSchemaObject): string | undefined {
+function valueKindPlaceholder(
+  propertySchema: JsonSchemaObject,
+  texts: { path: string; literalOrPath: string }
+): string | undefined {
   const valueKind = propertySchema["x-statevia-valueKind"];
   if (valueKind === "path") {
-    return "$.path.to.value";
+    return texts.path;
   }
   if (valueKind === "literalOrPath") {
-    return "literal or $.path";
+    return texts.literalOrPath;
   }
   return undefined;
 }

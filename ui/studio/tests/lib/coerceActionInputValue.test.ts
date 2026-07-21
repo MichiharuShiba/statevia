@@ -14,7 +14,12 @@ describe("coerceActionInputValue", () => {
   it("JSONPath 式は文字列のまま保持する", () => {
     const schema = { type: "integer", "x-statevia-valueKind": "literalOrPath" };
     expect(isJsonPathExpression("$.config.timeout")).toBe(true);
+    expect(isJsonPathExpression("$['input'].x")).toBe(true);
+    expect(isJsonPathExpression("$")).toBe(true);
     expect(coerceScalarForSchema("$.config.timeout", schema)).toBe("$.config.timeout");
+    expect(coerceScalarForSchema("$.states['a.b'].output.x", schema)).toBe(
+      "$.states['a.b'].output.x"
+    );
   });
 
   it("normalizeActionInputRecord が文字列の timeout を integer に直す", () => {

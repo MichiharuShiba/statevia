@@ -446,8 +446,7 @@ public abstract class WorkflowDefinitionLoaderBase : IDefinitionLoader
     /// <summary>文字列が簡易 JSONPath 式（<c>$</c> または <c>$.</c> 始まり）かどうかを判定する。</summary>
     /// <param name="s">判定対象の文字列。</param>
     /// <returns>パス式として扱うとき true。</returns>
-    private static bool IsPathExpression(string s) =>
-        s == "$" || s.StartsWith("$.", StringComparison.Ordinal);
+    private static bool IsPathExpression(string s) => SimpleJsonPath.IsPathExpression(s);
 
     /// <summary><c>${...}</c> 形式のテンプレート文字列を拒否する（厳格仕様では未サポート）。</summary>
     /// <param name="ownerLabel">エラーメッセージ用のオーナー文脈。省略可。</param>

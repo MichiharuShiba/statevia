@@ -88,4 +88,33 @@ public class SimpleJsonPathTests
         // Assert
         Assert.False(ok);
     }
+
+
+    /// <summary>ブラケット＋引用でドット付きキーを含むパスが有効であることを検証する。</summary>
+    [Theory]
+    [InlineData("$.states['order.notify.customer'].output")]
+    [InlineData("$.states[\"order.notify.customer\"].output")]
+    [InlineData("$['input'].orderId")]
+    public void IsValid_BracketQuotedSegment_ReturnsTrue(string path)
+    {
+        // Act
+        var ok = SimpleJsonPath.IsValid(path);
+
+        // Assert
+        Assert.True(ok);
+    }
+
+    /// <summary>閉じられていないブラケットや空キーは無効であることを検証する。</summary>
+    [Theory]
+    [InlineData("$.states['order.notify.customer")]
+    [InlineData("$.states[''].output")]
+    [InlineData("$.states[order.notify.customer].output")]
+    public void IsValid_InvalidBracket_ReturnsFalse(string path)
+    {
+        // Act
+        var ok = SimpleJsonPath.IsValid(path);
+
+        // Assert
+        Assert.False(ok);
+    }
 }

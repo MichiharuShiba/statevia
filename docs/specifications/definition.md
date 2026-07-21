@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.3 |
-| 更新日 | 2026-06-12 |
+| Version | 1.4.1 |
+| 更新日 | 2026-07-21 |
 | 関連 | [concepts/definition.md](../concepts/definition.md) |
 
 ---
@@ -270,8 +270,20 @@ states:
 
 ### 1.6 例（input を使った States 形式）
 
-`input` は、遷移で入る直前の候補 input に適用される。  
+`input` のパス式（`$` / `$.seg…`）の評価根は **Execution Context 全体**である
+（実装型: `WorkflowExecutionContext`）。
+
+Context のトップレベルは次の固定キーである。
+
+| キー | 意味 |
+| --- | --- |
+| `input` | ワークフロー開始時の input（不変） |
+| `output` | ワークフロー終端 output（実行中は空オブジェクト） |
+| `states` | 完了済み State 名 → `{ output: … }` |
+| `vars` / `sys` | 予約。Phase 1 では参照すると Compiler（Level1）error |
+
 `path` の単一ショートハンドと、複数キーのマップ形式をサポートする。
+`input` 未定義の状態には、従来どおり直前の候補 input（直前 output / Join 辞書など）がそのまま渡る。
 
 ```yaml
 workflow:
@@ -285,7 +297,14 @@ states:
 
   ExtractPayload:
     input:
-      path: $.payload.value
+      path: $.states.Start.output.payload.value
+    on:
+      Completed:
+        next: UseStartInput
+
+  UseStartInput:
+    input:
+      orderId: $.input.orderId
     on:
       Completed:
         next: End
@@ -296,9 +315,11 @@ states:
         end: true
 ```
 
-- `Start` の output が `{ payload: { value: 42 } }` のとき、`ExtractPayload` の input は `42` になる。
-- `$.payload.value` が見つからない場合、`ExtractPayload` の input は `null` になる。
+- 開始 input が `{ orderId: "ORD-1" }` で、`Start` の output が `{ payload: { value: 42 } }` のとき、
+  `ExtractPayload` の input は `42`、`UseStartInput` の input は `{ orderId: "ORD-1" }` になる。
+- パスが見つからない、または未完了 State を参照した場合、値は `null`（警告あり）。
 - `input` 定義がある状態では、定義で構築した値のみが input になる（未指定フィールドの自動マージはしない）。
+- 旧来の「直前候補 input を `$` 根とする」記法（例: `path: $.payload`）は **廃止**（移行ガイドなし）。
 
 ### 1.6.1 input マップ形式（複数/ネスト/リテラル）
 
@@ -306,33 +327,38 @@ states:
 states:
   B:
     input:
-      foo: $.a
-      foo.bar: $.a.b
+      foo: $.states.A.output.a
+      foo.bar: $.states.A.output.a.b
       title: "my song"
       retry: 2
       enabled: true
       note: null
 ```
 
-- `$` または `$.` で始まる文字列はパス式
+- `$` または `$.` で始まる文字列はパス式（評価根は Execution Context）
 - それ以外はリテラル
 - `foo.bar` はネストオブジェクトとして構築される（`StateInputEvaluator.SetByDottedKey` と同等）
 - ネスト map（`ship: { address: "x" }`）とドットキー（`ship.address: "x"`）は実行時・Compiler schema 検証のいずれでも同等の論理ツリーになる（§1.1.2）
 - 同一ブランチでスカラーとドットキー子が競合する正規化は 422
-- パス式は `Level1Validator` と同じ単純 JSONPath 制約（`$` または `$.seg1.seg2`、セグメントは英数字と `_`）に従う。
+- パス式は `Level1Validator` と同じ単純 JSONPath 制約に従う。
+  - 識別子セグメント: `$` または `$.seg1.seg2`（英数字と `_`）
+  - **ドットを含む State / Node 名**はブラケット＋引用: `$.states['order.notify.customer'].output`
+  - 単一引用・二重引用のどちらも可。キーが空、または引用なしブラケットは無効
+- `$.vars` / `$.sys`（およびその配下、`$['vars']` 等）は予約のため Level1 で error。
 - `${...}` 形式のテンプレート文字列は受理しない（states/nodes ともに同一ルール）。
 
 ### 1.6.2 ユーザー定義状態（IState）との関係
 
 - 各状態の output は `IState<TInput, TOutput>.ExecuteAsync(...)` の戻り値。
 - 次状態 input の決定ルール:
-  - `input` 未定義: 直前 output をそのまま渡す
-  - `input` 定義あり: `input` の評価結果のみを渡す
+  - `input` 未定義: 直前の候補 input（直前 output / Join 辞書など）をそのまま渡す
+  - `input` 定義あり: Execution Context 根で評価した値のみを渡す
 - `input` 定義ありの場合、マッピングしない output の値は引き継がれないため、必要な値は明示的に `input` へ記述する。
 
 ### 1.7 例（Fork/Join と input）
 
 Fork の各分岐先・Join 後の次状態でも `input.path` を適用できる。
+Join 後の分岐キー直参照（旧 `path: $.A`）は廃止し、`$.states.<StateName>.output` を使う。
 
 ```yaml
 workflow:
@@ -346,14 +372,14 @@ states:
 
   A:
     input:
-      path: $.shared
+      path: $.states.Start.output.shared
     on:
       Completed:
         next: Join1
 
   B:
     input:
-      path: $.shared
+      path: $.states.Start.output.shared
     on:
       Completed:
         next: Join1
@@ -367,15 +393,15 @@ states:
 
   AfterJoin:
     input:
-      path: $.A
+      path: $.states.A.output
     on:
       Completed:
         end: true
 ```
 
 - `Start` の output が `{ shared: "fork-value" }` の場合、`A` と `B` の input はどちらも `"fork-value"`。
-- `Join1` 後の候補 input は `{ A: <Aのoutput>, B: <Bのoutput> }` の辞書。
-- `AfterJoin` の `path: $.A` により、`A` の output だけを抽出して input に渡す。
+- `input` 未定義の Join 次状態へは、候補として `{ A: <Aのoutput>, B: <Bのoutput> }` の辞書が渡る（パス評価根ではない）。
+- `AfterJoin` の `path: $.states.A.output` により、`A` の output だけを抽出して input に渡す。
 
 ---
 
@@ -484,9 +510,9 @@ nodes:
 
 ### 2.3.1 例（Nodes 形式 + input）
 
-`action` ノードの `input` は **States 形式と同じ規則**とする。パスは **`$` / `$.seg1.seg2`** のみ（`Level1Validator` の単純 JSONPath 制約に準拠）。**`${input.x}` のような `${...}` テンプレは採用しない**（`.workspace-docs/specs/done/v2-definition-spec.md` および `v2-nodes-to-states-conversion-spec.md` に合わせる）。
+`action` ノードの `input` は **States 形式と同じ規則**とする。パスは **`$` / `$.seg1.seg2` / `$.states['dotted.id'].…`**（`Level1Validator` の単純 JSONPath 制約に準拠）。評価根は **Execution Context**。**`${input.x}` のような `${...}` テンプレは採用しない**（`.workspace-docs/specs/done/v2-definition-spec.md` および `v2-nodes-to-states-conversion-spec.md` に合わせる）。
 
-`input.path` ショートハンド、またはキーごとの `$.` 参照で、遷移直前の候補 input を抽出できる。
+`input.path` ショートハンド、またはキーごとの `$.` 参照で Context から値を抽出できる。
 
 ```yaml
 version: 1
@@ -509,14 +535,14 @@ nodes:
     type: action
     action: branch.a
     input:
-      path: $.shared
+      path: $.states['start'].output.shared
     next: join1
 
   - id: b
     type: action
     action: branch.b
     input:
-      path: $.shared
+      path: $.states['start'].output.shared
     next: join1
 
   - id: join1
@@ -528,7 +554,7 @@ nodes:
     type: action
     action: finalize
     input:
-      path: $.a
+      path: $.states['a'].output
     next: end1
 
   - id: end1
@@ -536,8 +562,8 @@ nodes:
 ```
 
 - `start` の output が `{ shared: "fork-value" }` なら `a` / `b` は `"fork-value"` を受け取る。
-- `join1` 後の候補 input は `{ a: <aのoutput>, b: <bのoutput> }`。
-- `afterJoin` は `path: $.a` で join 辞書から `a` の output を抽出する。
+- `input` 未定義の Join 次状態へは候補として `{ a: <aのoutput>, b: <bのoutput> }` が渡る。
+- `afterJoin` は `path: $.states['a'].output` で `a` の output を抽出する（ドット付き Node ID も同様にブラケット引用する。旧 `$.a` は廃止）。
 
 ### 2.3.2 例（Nodes 形式 + error）
 

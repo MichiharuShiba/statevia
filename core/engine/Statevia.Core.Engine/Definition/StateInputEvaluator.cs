@@ -1,4 +1,4 @@
-using System.Collections;
+using Statevia.Core.Engine.Engine;
 
 namespace Statevia.Core.Engine.Definition;
 
@@ -13,18 +13,33 @@ internal sealed class StateInputEvaluationResult
 }
 
 /// <summary>
-/// <c>states.&lt;name&gt;.input</c> の最小評価器。JSONPath 風の path（$, $.a.b）を評価する。
+/// <c>states.&lt;name&gt;.input</c> の評価器。SimpleJsonPath（<c>$</c> / <c>$.a.b</c>）を
+/// Execution Context 根で解決する。
 /// </summary>
+/// <remarks>
+/// <para>
+/// <c>input</c> 未定義時は候補 input（直前 output / Join 辞書など）をそのまま返す。
+/// パス解決にレガシー rawInput フォールバックは持たない（execution-context Phase 1）。
+/// </para>
+/// </remarks>
 internal static class StateInputEvaluator
 {
     /// <summary>
-    /// 評価結果と、注意が必要だった経路の警告を返す（STV-405）。
+    /// Context 根でパスを評価し、結果と警告を返す。
     /// </summary>
-    public static StateInputEvaluationResult ApplyWithDiagnostics(StateInputDefinition? spec, object? rawInput)
+    /// <param name="spec">状態の input 定義。null のとき候補 input をそのまま返す。</param>
+    /// <param name="context">評価根となる Execution Context。</param>
+    /// <param name="candidateInput">input 未定義時に渡す候補（直前 output 等）。</param>
+    public static StateInputEvaluationResult ApplyWithDiagnostics(
+        StateInputDefinition? spec,
+        WorkflowExecutionContext context,
+        object? candidateInput)
     {
+        ArgumentNullException.ThrowIfNull(context);
+
         if (spec == null)
         {
-            return new StateInputEvaluationResult { Value = rawInput };
+            return new StateInputEvaluationResult { Value = candidateInput };
         }
 
         var warningList = new List<StateInputWarning>();
@@ -32,13 +47,13 @@ internal static class StateInputEvaluator
 
         if (!string.IsNullOrWhiteSpace(spec.Path))
         {
-            var value = EvaluatePathWithDiagnostics(spec.Path!, rawInput, spec.Path!, warningList, dedupe);
+            var value = EvaluatePathWithDiagnostics(spec.Path!, context, spec.Path!, warningList, dedupe);
             return new StateInputEvaluationResult { Value = value, Warnings = warningList };
         }
 
         if (spec.Values == null || spec.Values.Count == 0)
         {
-            return new StateInputEvaluationResult { Value = rawInput };
+            return new StateInputEvaluationResult { Value = candidateInput };
         }
 
         var result = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
@@ -46,7 +61,7 @@ internal static class StateInputEvaluator
         {
             if (valueDef.Path != null)
             {
-                var value = EvaluatePathWithDiagnostics(valueDef.Path, rawInput, key, warningList, dedupe);
+                var value = EvaluatePathWithDiagnostics(valueDef.Path, context, key, warningList, dedupe);
                 SetByDottedKey(result, key, value);
             }
             else
@@ -58,12 +73,16 @@ internal static class StateInputEvaluator
         return new StateInputEvaluationResult { Value = result, Warnings = warningList };
     }
 
-    public static object? Apply(StateInputDefinition? spec, object? rawInput) =>
-        ApplyWithDiagnostics(spec, rawInput).Value;
+    /// <summary>診断付き評価の値のみを返す。</summary>
+    public static object? Apply(
+        StateInputDefinition? spec,
+        WorkflowExecutionContext context,
+        object? candidateInput) =>
+        ApplyWithDiagnostics(spec, context, candidateInput).Value;
 
     private static object? EvaluatePathWithDiagnostics(
         string path,
-        object? rawInput,
+        WorkflowExecutionContext context,
         string inputKey,
         List<StateInputWarning> warnings,
         HashSet<(string Key, string Reason)> dedupe)
@@ -76,12 +95,12 @@ internal static class StateInputEvaluator
             }
         }
 
-        if (string.IsNullOrWhiteSpace(path) || path == "$")
+        if (string.IsNullOrWhiteSpace(path))
         {
-            return rawInput;
+            return null;
         }
 
-        var resolve = SimpleJsonPathResolver.Resolve(rawInput, path);
+        var resolve = ExecutionContextPathResolver.Resolve(context, path);
         if (!resolve.IsSupportedPathExpression)
         {
             if (resolve.WarningReason is not null)
@@ -89,7 +108,7 @@ internal static class StateInputEvaluator
                 Warn(resolve.WarningReason);
             }
 
-            return rawInput;
+            return null;
         }
 
         if (resolve.WarningReason is not null)
@@ -117,8 +136,10 @@ internal static class StateInputEvaluator
                 nextDict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
                 current[p] = nextDict;
             }
+
             current = nextDict;
         }
+
         current[parts[^1]] = value;
     }
 }

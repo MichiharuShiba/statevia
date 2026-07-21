@@ -4,12 +4,12 @@ using System.Text.Json;
 namespace Statevia.Core.Engine.Definition;
 
 /// <summary>
-/// SimpleJsonPath（<c>$</c> / <c>$.a.b</c>）の解決器。
+/// SimpleJsonPath（<c>$</c> / <c>$.a.b</c> / ブラケット）の解決器。
 /// 入力マッピング評価と条件遷移評価で共通利用する。
 /// </summary>
 internal static class SimpleJsonPathResolver
 {
-    /// <summary>path が <c>$.</c> で始まらず、フォールバック判断が必要。</summary>
+    /// <summary>path が <c>$.</c> / <c>$[</c> で始まらず、フォールバック判断が必要。</summary>
     public const string IgnoredNonDollarDotPath = "IgnoredNonDollarDotPath";
 
     /// <summary>JSONPath 風セグメントが辞書に存在しない。</summary>
@@ -41,17 +41,19 @@ internal static class SimpleJsonPathResolver
             return new ResolveResult(IsSupportedPathExpression: true, Found: source is not null, Value: source, WarningReason: null);
         }
 
-        if (!path.StartsWith("$.", StringComparison.Ordinal))
+        if (!SimpleJsonPath.TryGetSegments(path, out var segments))
         {
+            var ignored = SimpleJsonPath.IsPathExpression(path)
+                ? null
+                : IgnoredNonDollarDotPath;
             return new ResolveResult(
                 IsSupportedPathExpression: false,
                 Found: false,
                 Value: source,
-                WarningReason: IgnoredNonDollarDotPath);
+                WarningReason: ignored);
         }
 
         object? current = source;
-        var segments = path[2..].Split('.', StringSplitOptions.RemoveEmptyEntries);
         foreach (var segment in segments)
         {
             if (!TryGetSegmentValue(current, segment, out current, out var warningReason))

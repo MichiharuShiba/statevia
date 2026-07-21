@@ -1,5 +1,6 @@
 using System.Collections;
 using Statevia.Core.Engine.Definition;
+using Statevia.Core.Engine.Engine;
 
 namespace Statevia.Core.Engine.Definition.Validation;
 
@@ -495,10 +496,7 @@ public static class Level1Validator
 
         if (m.Path != null)
         {
-            if (!SimpleJsonPath.IsValid(m.Path))
-            {
-                errors.Add($"input.path is invalid for state '{stateName}': {m.Path}");
-            }
+            ValidateInputPath(stateName, m.Path, key: null, errors);
             return;
         }
 
@@ -516,11 +514,38 @@ public static class Level1Validator
                 continue;
             }
 
-            if (valueDef.Path != null && !SimpleJsonPath.IsValid(valueDef.Path))
+            if (valueDef.Path != null)
             {
-                errors.Add($"input.path is invalid for state '{stateName}' key '{key}': {valueDef.Path}");
+                ValidateInputPath(stateName, valueDef.Path, key, errors);
             }
         }
+    }
+
+    /// <summary>
+    /// input の SimpleJsonPath 妥当性と、予約 Context キー（vars / sys）参照の禁止を検証する。
+    /// </summary>
+    private static void ValidateInputPath(
+        string stateName,
+        string path,
+        string? key,
+        List<string> errors)
+    {
+        if (!SimpleJsonPath.IsValid(path))
+        {
+            errors.Add(key is null
+                ? $"input.path is invalid for state '{stateName}': {path}"
+                : $"input.path is invalid for state '{stateName}' key '{key}': {path}");
+            return;
+        }
+
+        if (!ExecutionContextPathResolver.IsReservedContextPath(path))
+        {
+            return;
+        }
+
+        errors.Add(key is null
+            ? $"input.path references reserved Execution Context key ({ExecutionContextKeys.Vars}/{ExecutionContextKeys.Sys}) for state '{stateName}': {path}"
+            : $"input.path references reserved Execution Context key ({ExecutionContextKeys.Vars}/{ExecutionContextKeys.Sys}) for state '{stateName}' key '{key}': {path}");
     }
 
 }
