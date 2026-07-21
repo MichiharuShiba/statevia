@@ -18,6 +18,7 @@ export const definitionGraphEditorTestLabels: ComponentProps<typeof DefinitionGr
   selfReferenceRejected: "Self ref",
   whenOpPlaceholder: "op",
   whenPathPlaceholder: "path",
+  whenPathHint: "path hint",
   whenValuePlaceholder: "value",
   whenValueDisabledForExists: "disabled",
   whenValueHintIn: "in hint",

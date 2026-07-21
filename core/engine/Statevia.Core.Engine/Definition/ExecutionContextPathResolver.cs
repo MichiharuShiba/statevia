@@ -1,0 +1,87 @@
+using Statevia.Core.Engine.Engine;
+
+namespace Statevia.Core.Engine.Definition;
+
+/// <summary>
+/// Execution Context を根とする SimpleJsonPath 解決。
+/// </summary>
+/// <remarks>
+/// 未完了 State への <c>$.states.&lt;Name&gt;…</c> /
+/// <c>$.states['dotted.name']…</c> 参照は null と
+/// <see cref="IncompleteStateOutput"/> 警告を返す（Phase 1）。
+/// </remarks>
+internal static class ExecutionContextPathResolver
+{
+    /// <summary>参照先 State がまだ完了していない。</summary>
+    public const string IncompleteStateOutput = "IncompleteStateOutput";
+
+    /// <summary>
+    /// <paramref name="context"/> を評価根として <paramref name="path"/> を解決する。
+    /// </summary>
+    /// <param name="context">実行中 Context。</param>
+    /// <param name="path">SimpleJsonPath（<c>$</c> または <c>$.…</c> / ブラケット）。</param>
+    /// <returns>解決結果。</returns>
+    public static SimpleJsonPathResolver.ResolveResult Resolve(WorkflowExecutionContext context, string path)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        if (TryGetIncompleteStateReference(context, path, out _))
+        {
+            return new SimpleJsonPathResolver.ResolveResult(
+                IsSupportedPathExpression: true,
+                Found: false,
+                Value: null,
+                WarningReason: IncompleteStateOutput);
+        }
+
+        return SimpleJsonPathResolver.Resolve(context.ToPathRoot(), path);
+    }
+
+    /// <summary>
+    /// パスが予約キー <see cref="ExecutionContextKeys.Vars"/> /
+    /// <see cref="ExecutionContextKeys.Sys"/> を参照しているか（Compiler / Validator 用）。
+    /// </summary>
+    /// <param name="path">検査対象パス。</param>
+    /// <returns>予約参照のとき true。</returns>
+    public static bool IsReservedContextPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !SimpleJsonPath.TryGetSegments(path, out var segments))
+        {
+            return false;
+        }
+
+        if (segments.Count == 0)
+        {
+            return false;
+        }
+
+        var root = segments[0];
+        return root.Equals(ExecutionContextKeys.Vars, StringComparison.OrdinalIgnoreCase)
+            || root.Equals(ExecutionContextKeys.Sys, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool TryGetIncompleteStateReference(
+        WorkflowExecutionContext context,
+        string path,
+        out string stateName)
+    {
+        stateName = string.Empty;
+        if (!SimpleJsonPath.TryGetSegments(path, out var segments) || segments.Count < 2)
+        {
+            return false;
+        }
+
+        if (!segments[0].Equals(ExecutionContextKeys.States, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        stateName = segments[1];
+        if (stateName.Length == 0)
+        {
+            return false;
+        }
+
+        return !context.HasStateOutput(stateName);
+    }
+}

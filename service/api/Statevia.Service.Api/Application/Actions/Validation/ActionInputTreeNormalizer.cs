@@ -320,7 +320,6 @@ internal static class ActionInputTreeNormalizer
     private static string BuildJsonPath(string basePath, string segment) =>
         string.IsNullOrEmpty(segment) ? basePath : $"{basePath}.{segment}";
 
-    /// <summary>Loader と同じ path 式判定（<c>$</c> または <c>$.</c> 始まり）。</summary>
-    private static bool IsPathExpression(string value) =>
-        value == "$" || value.StartsWith("$.", StringComparison.Ordinal);
+    /// <summary>Loader と同じ path 式判定（<see cref="SimpleJsonPath.IsPathExpression"/>）。</summary>
+    private static bool IsPathExpression(string value) => SimpleJsonPath.IsPathExpression(value);
 }

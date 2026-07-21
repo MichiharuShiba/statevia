@@ -523,6 +523,7 @@ export type UiText = {
       selfReferenceRejected: string;
       whenOpPlaceholder: string;
       whenPathPlaceholder: string;
+      whenPathHint: string;
       whenValuePlaceholder: string;
       whenValueDisabledForExists: string;
       whenValueHintIn: string;
@@ -537,6 +538,8 @@ export type UiText = {
       actionInputInvalidJson: string;
       actionIdCandidatesLoading: string;
       actionIdNoResults: string;
+      schemaPathPlaceholder: string;
+      schemaLiteralOrPathPlaceholder: string;
     };
     saved: {
       completePrefix: string;
@@ -1132,7 +1135,9 @@ export const uiText: UiText = {
       missingTargetNode: (nodeId: string, targetId: string) => `Node '${nodeId}': 参照先 '${targetId}' が存在しません。`,
       selfReferenceRejected: "自己参照エッジは作成できません。",
       whenOpPlaceholder: "演算子を選択",
-      whenPathPlaceholder: "$.payload.amount",
+      whenPathPlaceholder: "$.states.Fetch.output.amount",
+      whenPathHint:
+        "評価根は Execution Context。例: $.input.x / $.states.A.output.y / $.states['a.b'].output.z",
       whenValuePlaceholder: "例: 100 / true / \"100\"",
       whenValueDisabledForExists: "EXISTS では value は不要です。",
       whenValueHintIn: "IN は JSON配列で入力します。例: [\"A\", \"B\"]",
@@ -1142,11 +1147,15 @@ export const uiText: UiText = {
       parseFailed: "YAML のパースに失敗したため、直前の有効グラフを表示しています。",
       actionErrorLabel: "error 遷移先（任意）",
       actionInputLabel: "input（任意）",
-      actionInputPlaceholder: '例: $.input.orderId または {"orderId":"$.input.orderId"}',
-      actionInputHint: "パスは $ / $. のみ。オブジェクトは JSON で入力。",
+      actionInputPlaceholder:
+        '例: $.input.orderId / $.states.A.output.x / {"id":"$.states[\'a.b\'].output.id"}',
+      actionInputHint:
+        "評価根は Execution Context（$.input / $.states…）。ドット付き Node ID は $.states['id'].output。オブジェクトは JSON。$.vars / $.sys は参照不可。",
       actionInputInvalidJson: "JSON の形式が正しくありません。",
       actionIdCandidatesLoading: "Action 一覧を読み込み中…",
       actionIdNoResults: "一致する Action がありません",
+      schemaPathPlaceholder: "$.input.x または $.states.A.output.y",
+      schemaLiteralOrPathPlaceholder: "リテラルまたは $.input.x",
     },
     saved: {
       completePrefix: "保存完了:",

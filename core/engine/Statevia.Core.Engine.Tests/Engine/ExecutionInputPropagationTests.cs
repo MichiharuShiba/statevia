@@ -206,7 +206,7 @@ public class ExecutionInputPropagationTests
                 bInput = input;
                 return Task.FromResult<object?>(null);
             })),
-            new StateInputDefinition { Path = "$.payload" });
+            new StateInputDefinition { Path = "$.states.A.output.payload" });
         using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
@@ -215,6 +215,31 @@ public class ExecutionInputPropagationTests
 
         // Assert
         Assert.Equal("mapped-value", bInput);
+    }
+
+
+    /// <summary>開始 input を $.input 経由で後続 State へ渡せることを検証する。</summary>
+    [Fact]
+    public async Task Next_transition_applies_workflow_input_via_context()
+    {
+        // Arrange
+        object? bInput = "unset";
+        var def = CreateTwoStateChainWithStateInput(
+            DefaultStateExecutor.Create(new ImmediateState()),
+            DefaultStateExecutor.Create(new DelegateState((_, input, _) =>
+            {
+                bInput = input;
+                return Task.FromResult<object?>(null);
+            })),
+            new StateInputDefinition { Path = "$.input.orderId" });
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+        var id = engine.Start(def, input: new Dictionary<string, object?> { ["orderId"] = "ORD-42" });
+
+        // Act
+        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+
+        // Assert
+        Assert.Equal("ORD-42", bInput);
     }
 
     /// <summary>Fork 分岐先ごとに input.path が適用されることを検証する。</summary>
@@ -239,8 +264,8 @@ public class ExecutionInputPropagationTests
             })),
             new Dictionary<string, StateInputDefinition>
             {
-                ["A"] = new() { Path = "$.v" },
-                ["B"] = new() { Path = "$.v" }
+                ["A"] = new() { Path = "$.states.Start.output.v" },
+                ["B"] = new() { Path = "$.states.Start.output.v" }
             });
         using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
@@ -267,7 +292,7 @@ public class ExecutionInputPropagationTests
                 afterInput = input;
                 return Task.FromResult<object?>(null);
             })),
-            new StateInputDefinition { Path = "$.A" });
+            new StateInputDefinition { Path = "$.states.A.output" });
         using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
@@ -296,8 +321,8 @@ public class ExecutionInputPropagationTests
             {
                 Values = new Dictionary<string, StateInputValueDefinition>
                 {
-                    ["foo"] = new() { Path = "$.a" },
-                    ["foo.bar"] = new() { Path = "$.a.b" },
+                    ["foo"] = new() { Path = "$.states.A.output.a" },
+                    ["foo.bar"] = new() { Path = "$.states.A.output.a.b" },
                     ["title"] = new() { Literal = "my song" },
                     ["count"] = new() { Literal = 2L },
                     ["enabled"] = new() { Literal = true }

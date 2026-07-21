@@ -232,6 +232,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 
     private async Task RunExecutionAsync(ExecutionInstance instance, EventProvider eventProvider, object? input)
     {
+        instance.InitializeContext(input);
         var initialInput = ApplyStateInput(instance, instance.Definition.InitialState, input);
         try
         {
@@ -371,7 +372,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         }
         else if (transition.End)
         {
-            instance.MarkCompleted();
+            instance.MarkCompleted(joinInputs);
             _executionLog.LogExecutionCompleted(instance.ExecutionId, instance.Definition.Name);
         }
         else
@@ -435,7 +436,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         }
         if (transition.End)
         {
-            instance.MarkCompleted();
+            instance.MarkCompleted(output);
             _executionLog.LogExecutionCompleted(instance.ExecutionId, instance.Definition.Name);
             return;
         }
@@ -462,7 +463,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             return rawInput;
         }
 
-        var evaluated = StateInputEvaluator.ApplyWithDiagnostics(spec, rawInput);
+        var evaluated = StateInputEvaluator.ApplyWithDiagnostics(spec, instance.Context, rawInput);
         foreach (var warning in evaluated.Warnings)
         {
             _executionLog.LogWarningInputEvaluation(

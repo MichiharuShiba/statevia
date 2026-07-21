@@ -217,6 +217,7 @@ type DefinitionGraphEditorProps = {
     selfReferenceRejected: string;
     whenOpPlaceholder: string;
     whenPathPlaceholder: string;
+    whenPathHint: string;
     whenValuePlaceholder: string;
     whenValueDisabledForExists: string;
     whenValueHintIn: string;
@@ -1414,6 +1415,9 @@ function GraphInspector({
                 ))}
               </datalist>
             ) : null}
+            <span className="mt-0.5 block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+              {labels.whenPathHint}
+            </span>
           </label>
           <label className="block text-xs">
             <span className="block">when.op</span>
@@ -1431,7 +1435,7 @@ function GraphInspector({
                         ? {
                             ...edge,
                             when: {
-                              path: edge.when?.path ?? "$.x",
+                              path: edge.when?.path ?? "$.input.x",
                               op,
                               value: op === "EXISTS" ? undefined : (edge.when?.value ?? "")
                             }

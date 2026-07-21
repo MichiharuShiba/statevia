@@ -23,6 +23,9 @@ public sealed class ExecutionInstance
     /// <summary>実行グラフ（観測用）。</summary>
     public required ExecutionGraph Graph { get; init; }
 
+    /// <summary>実行時データの Execution Context（パス評価根）。</summary>
+    public WorkflowExecutionContext Context { get; private set; } = WorkflowExecutionContext.Create(null);
+
     private readonly Dictionary<string, object?> _stateOutputs = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, int> _stateAttempts = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _activeStates = new(StringComparer.OrdinalIgnoreCase);
@@ -37,10 +40,24 @@ public sealed class ExecutionInstance
     /// <summary>失敗で停止したか。</summary>
     public bool IsFailed { get; private set; }
 
-    /// <summary>状態完了時の出力を記録する。</summary>
+    /// <summary>開始 input で Context を初期化する（実行開始時に 1 回）。</summary>
+    /// <param name="input"><see cref="IExecutionEngine.Start"/> に渡された開始 input。</param>
+    public void InitializeContext(object? input)
+    {
+        Context = WorkflowExecutionContext.Create(input);
+    }
+
+    /// <summary>状態完了時の出力を記録し、Context の <c>states</c> も更新する。</summary>
     /// <param name="stateName">状態名。</param>
     /// <param name="output"><see cref="IStateExecutor.ExecuteAsync"/> の戻り値。</param>
-    public void SetOutput(string stateName, object? output) { lock (_lock) { _stateOutputs[stateName] = output; } }
+    public void SetOutput(string stateName, object? output)
+    {
+        lock (_lock)
+        {
+            _stateOutputs[stateName] = output;
+            Context.SetStateOutput(stateName, output);
+        }
+    }
 
     /// <summary>指定状態の出力を取得する。</summary>
     /// <param name="stateName">状態名。</param>
@@ -74,7 +91,12 @@ public sealed class ExecutionInstance
     public IReadOnlyList<string> GetActiveStates() { lock (_lock) { return _activeStates.ToList(); } }
 
     /// <summary>ワークフローを正常終了としてマークする。</summary>
-    public void MarkCompleted() => IsCompleted = true;
+    /// <param name="terminalOutput">終端 State の output（Context.output に設定）。</param>
+    public void MarkCompleted(object? terminalOutput = null)
+    {
+        Context.SetWorkflowOutput(terminalOutput);
+        IsCompleted = true;
+    }
 
     /// <summary>協調的キャンセルにより停止したとマークする。</summary>
     public void MarkCancelled() => IsCancelled = true;
