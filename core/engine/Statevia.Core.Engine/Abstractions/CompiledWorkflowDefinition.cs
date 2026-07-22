@@ -29,6 +29,10 @@ public sealed class CompiledWorkflowDefinition
     public IReadOnlyDictionary<string, Statevia.Core.Engine.Definition.StateInputDefinition> StateInputs { get; init; }
         = new System.Collections.Generic.Dictionary<string, Statevia.Core.Engine.Definition.StateInputDefinition>(System.StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>状態ごとの vars 書き込み先（stateName → <c>$.vars…</c> パス）。未定義状態は vars 非更新。</summary>
+    public IReadOnlyDictionary<string, string> StateOutputs { get; init; }
+        = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>初期状態名。</summary>
     public required string InitialState { get; init; }
 

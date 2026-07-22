@@ -219,6 +219,9 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         public IReadOnlyList<string>? Branches { get; init; }
         public object? InputRaw { get; init; }
 
+        /// <summary>action 完了時に vars へ書き込むパス（YAML <c>output</c>）。</summary>
+        public string? Output { get; init; }
+
         /// <summary>
         /// 生のノード辞書を型付き表現へ変換する。
         /// </summary>
@@ -250,6 +253,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             var error = ResolveNodeTargetId(dict, id, KeyError);
             var branches = GetStrList(dict, KeyBranches);
             dict.TryGetValue(KeyInput, out var inputVal);
+            var output = GetStr(dict, KeyOutput);
             var edges = ParseEdges(id, dict);
 
             return new ParsedNode
@@ -263,7 +267,8 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                 WaitEvent = ev,
                 Error = error,
                 Branches = branches,
-                InputRaw = inputVal
+                InputRaw = inputVal,
+                Output = output
             };
         }
 
@@ -344,7 +349,6 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
                     break;
                 case NodeKind.Action:
-                    ForbidKeys(Id, Raw, KeyOutput);
                     break;
                 case NodeKind.Fork:
                     ForbidKeys(Id, Raw, KeyError);
@@ -612,6 +616,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                     {
                         Action = ActionId,
                         Input = ParseActionInput(Id, InputRaw),
+                        Output = Output,
                         Retry = ParseRetryDefinition(Raw),
                         On = transitions
                     };

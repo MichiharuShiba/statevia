@@ -257,6 +257,39 @@ public class DefinitionCompilerTests
         Assert.Equal("$.payload", compiled.StateInputs["B"].Path);
     }
 
+    /// <summary>output を持つ状態が StateOutputs テーブルに含まれることを検証する。</summary>
+    [Fact]
+    public void Compile_ProducesStateOutputTable()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "Test",
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Output = "$.vars.user",
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "B" } }
+                },
+                ["B"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+        var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
+        var compiler = new DefinitionCompiler(factory);
+
+        // Act
+        var compiled = compiler.Compile(def);
+
+        // Assert
+        Assert.True(compiled.StateOutputs.ContainsKey("A"));
+        Assert.Equal("$.vars.user", compiled.StateOutputs["A"]);
+        Assert.False(compiled.StateOutputs.ContainsKey("B"));
+    }
+
     /// <summary>複数の Join 状態がある場合、すべてが Join テーブルに含まれることを検証する。</summary>
     [Fact]
     public void Compile_MultipleJoinStates_AllIncludedInJoinTable()

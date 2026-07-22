@@ -275,12 +275,62 @@ states:
 
 Context のトップレベルは次の固定キーである。
 
-| キー | 意味 |
+| キー | 意味 | 読み書き |
+| --- | --- | --- |
+| `input` | ワークフロー開始時の input（不変） | 読み取り専用 |
+| `output` | ワークフロー終端 output（実行中は空オブジェクト） | 読み取り専用（Engine のみ更新） |
+| `states` | 完了済み State 名 → `{ output: … }`（履歴・監査） | 読み取り専用（Engine のみ更新） |
+| `vars` | 現在の共有コンテキスト | 読み書き可（`output: $.vars…` で代入） |
+| `sys` | Engine 保証のランタイム情報 | 読み取り専用 |
+
+#### `$.sys` キー（本実装）
+
+| パス | 値 |
 | --- | --- |
-| `input` | ワークフロー開始時の input（不変） |
-| `output` | ワークフロー終端 output（実行中は空オブジェクト） |
-| `states` | 完了済み State 名 → `{ output: … }` |
-| `vars` / `sys` | 予約。Phase 1 では参照すると Compiler（Level1）error |
+| `$.sys.now` | ホスト TZ の現在時刻（ISO-8601） |
+| `$.sys.today` | ホストローカル日付 `yyyy-MM-dd` |
+| `$.sys.utcNow` | UTC 現在時刻（ISO-8601） |
+| `$.sys.execution.id` | 実行インスタンス ID |
+| `$.sys.definition.name` | コンパイル済み定義名 |
+
+備考:
+
+- `$.sys.state` / `$.sys.definition.id` / `version` は未提供
+- 書式引数付き関数呼び出し（例: `$.sys.now("yyyyMMdd")`）は未対応
+- `now` / `today` はホスト TZ 依存（コンテナでは UTC になり得る）
+- 条件遷移の `when.path` は当該 State の **output** が評価根、`when.value` はリテラル。`$.sys…` を `when` で参照する契約は未対応（将来の契約変更候補。別 Spec は設けない）
+
+#### `output` フィールド（States / Nodes）
+
+State / action ノード完了時に、action 戻り値を `$.vars` へ代入する。
+
+- 許可: `$.vars` または `$.vars.<seg>…`（SimpleJsonPath）
+- 禁止: `$.sys…` / `$.states…` / `$.input…` 等（Level1 error）
+- 未指定: `$.states` のみ更新し、`$.vars` は変更しない
+- `output` 指定時も `$.states.<Name>.output` への記録は常に行う
+
+```yaml
+workflow:
+  name: VarsSample
+
+states:
+  GetUser:
+    action: user.get
+    output: $.vars.user
+    input:
+      id: $.input.userId
+    on:
+      Completed:
+        next: Notify
+
+  Notify:
+    input:
+      email: $.vars.user.email
+      when: $.sys.today
+    on:
+      Completed:
+        end: true
+```
 
 `path` の単一ショートハンドと、複数キーのマップ形式をサポートする。
 `input` 未定義の状態には、従来どおり直前の候補 input（直前 output / Join 辞書など）がそのまま渡る。
@@ -344,7 +394,8 @@ states:
   - 識別子セグメント: `$` または `$.seg1.seg2`（英数字と `_`）
   - **ドットを含む State / Node 名**はブラケット＋引用: `$.states['order.notify.customer'].output`
   - 単一引用・二重引用のどちらも可。キーが空、または引用なしブラケットは無効
-- `$.vars` / `$.sys`（およびその配下、`$['vars']` 等）は予約のため Level1 で error。
+- `$.vars` / `$.sys`（およびその配下）は `input` パスとして Level1 で**許可**する。
+- 状態の `output` は `$.vars` 配下のみ Level1 で許可する（上記「`output` フィールド」参照）。
 - `${...}` 形式のテンプレート文字列は受理しない（states/nodes ともに同一ルール）。
 
 ### 1.6.2 ユーザー定義状態（IState）との関係
@@ -510,9 +561,10 @@ nodes:
 
 ### 2.3.1 例（Nodes 形式 + input）
 
-`action` ノードの `input` は **States 形式と同じ規則**とする。パスは **`$` / `$.seg1.seg2` / `$.states['dotted.id'].…`**（`Level1Validator` の単純 JSONPath 制約に準拠）。評価根は **Execution Context**。**`${input.x}` のような `${...}` テンプレは採用しない**（`.workspace-docs/specs/done/v2-definition-spec.md` および `v2-nodes-to-states-conversion-spec.md` に合わせる）。
+`action` ノードの `input` / `output` は **States 形式と同じ規則**とする。パスは **`$` / `$.seg1.seg2` / `$.states['dotted.id'].…`**（`Level1Validator` の単純 JSONPath 制約に準拠）。評価根は **Execution Context**。**`${input.x}` のような `${...}` テンプレは採用しない**。
 
 `input.path` ショートハンド、またはキーごとの `$.` 参照で Context から値を抽出できる。
+`output: $.vars…` で action 戻り値を共有コンテキストへ代入できる（§1.6）。
 
 ```yaml
 version: 1

@@ -31,6 +31,7 @@ public static class Level1Validator
             ValidateTransitions(stateName, stateDef, stateNames, errors, ref terminalTransitionCount);
             ValidateJoin(stateDef, stateNames, errors);
             ValidateStateInput(stateName, stateDef, errors);
+            ValidateStateOutput(stateName, stateDef, errors);
         }
 
         if (terminalTransitionCount == 0)
@@ -535,17 +536,34 @@ public static class Level1Validator
             errors.Add(key is null
                 ? $"input.path is invalid for state '{stateName}': {path}"
                 : $"input.path is invalid for state '{stateName}' key '{key}': {path}");
-            return;
         }
+    }
 
-        if (!ExecutionContextPathResolver.IsReservedContextPath(path))
+    private static void ValidateStateOutput(string stateName, StateDefinition stateDef, List<string> errors)
+    {
+        var output = stateDef.Output;
+        if (output is null)
         {
             return;
         }
 
-        errors.Add(key is null
-            ? $"input.path references reserved Execution Context key ({ExecutionContextKeys.Vars}/{ExecutionContextKeys.Sys}) for state '{stateName}': {path}"
-            : $"input.path references reserved Execution Context key ({ExecutionContextKeys.Vars}/{ExecutionContextKeys.Sys}) for state '{stateName}' key '{key}': {path}");
+        if (string.IsNullOrWhiteSpace(output))
+        {
+            errors.Add($"output cannot be empty for state '{stateName}'");
+            return;
+        }
+
+        if (!SimpleJsonPath.IsValid(output))
+        {
+            errors.Add($"output path is invalid for state '{stateName}': {output}");
+            return;
+        }
+
+        if (!ExecutionContextPathResolver.IsVarsWritePath(output))
+        {
+            errors.Add(
+                $"output must be under $.{ExecutionContextKeys.Vars} for state '{stateName}': {output}");
+        }
     }
 
 }

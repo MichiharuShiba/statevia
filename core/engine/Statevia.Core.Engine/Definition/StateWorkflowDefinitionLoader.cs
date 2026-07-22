@@ -89,6 +89,7 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         }
 
         var action = GetStr(dict, "action");
+        var output = GetStr(dict, "output");
         var retry = ParseRetryDefinition(dict);
 
         return new StateDefinition
@@ -98,6 +99,7 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
             Wait = wait,
             Join = join,
             Input = stateInput,
+            Output = output,
             Retry = retry,
         };
     }

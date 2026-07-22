@@ -1059,6 +1059,9 @@ public sealed class DefinitionCompilerServiceTests
         Assert.True(root.TryGetProperty("stateInputs", out var si));
         Assert.False(root.TryGetProperty("StateInputs", out _));
         Assert.Equal(JsonValueKind.Object, si.ValueKind);
+        Assert.True(root.TryGetProperty("stateOutputs", out var so));
+        Assert.False(root.TryGetProperty("StateOutputs", out _));
+        Assert.Equal(JsonValueKind.Object, so.ValueKind);
     }
 
     /// <summary>

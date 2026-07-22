@@ -256,4 +256,21 @@ public class StateInputEvaluatorTests
         Assert.All(result.Warnings, w =>
             Assert.Equal(SimpleJsonPathResolver.IgnoredNonDollarDotPath, w.Reason));
     }
+
+    /// <summary>$.vars パスから SetVar 済みの値を解決できることを検証する。</summary>
+    [Fact]
+    public void ApplyWithDiagnostics_VarsPath_ResolvesSetVarValue()
+    {
+        // Arrange
+        var context = WorkflowExecutionContext.Create(null);
+        context.SetVar("$.vars.user.email", "a@example.com");
+        var spec = new StateInputDefinition { Path = "$.vars.user.email" };
+
+        // Act
+        var result = StateInputEvaluator.ApplyWithDiagnostics(spec, context, candidateInput: null);
+
+        // Assert
+        Assert.Equal("a@example.com", result.Value);
+        Assert.Empty(result.Warnings);
+    }
 }

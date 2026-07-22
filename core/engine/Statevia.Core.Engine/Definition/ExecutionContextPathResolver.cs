@@ -6,9 +6,9 @@ namespace Statevia.Core.Engine.Definition;
 /// Execution Context を根とする SimpleJsonPath 解決。
 /// </summary>
 /// <remarks>
-/// 未完了 State への <c>$.states.&lt;Name&gt;…</c> /
-/// <c>$.states['dotted.name']…</c> 参照は null と
-/// <see cref="IncompleteStateOutput"/> 警告を返す（Phase 1）。
+/// 未完了 State への <c>$.states.&lt;Name&gt;…</c> 参照は null と
+/// <see cref="IncompleteStateOutput"/> 警告を返す。
+/// <c>output</c> の書き込み先検証は <see cref="IsVarsWritePath"/>。
 /// </remarks>
 internal static class ExecutionContextPathResolver
 {
@@ -38,26 +38,23 @@ internal static class ExecutionContextPathResolver
     }
 
     /// <summary>
-    /// パスが予約キー <see cref="ExecutionContextKeys.Vars"/> /
-    /// <see cref="ExecutionContextKeys.Sys"/> を参照しているか（Compiler / Validator 用）。
+    /// <paramref name="path"/> が <c>$.vars</c> 配下への書き込み先として正当か（Level1 の <c>output</c> 検証用）。
     /// </summary>
     /// <param name="path">検査対象パス。</param>
-    /// <returns>予約参照のとき true。</returns>
-    public static bool IsReservedContextPath(string path)
+    /// <returns><c>$.vars</c> または <c>$.vars.&lt;seg&gt;…</c> のとき true。</returns>
+    public static bool IsVarsWritePath(string path)
     {
-        if (string.IsNullOrWhiteSpace(path) || !SimpleJsonPath.TryGetSegments(path, out var segments))
+        if (string.IsNullOrWhiteSpace(path) || !SimpleJsonPath.IsValid(path))
         {
             return false;
         }
 
-        if (segments.Count == 0)
+        if (!SimpleJsonPath.TryGetSegments(path, out var segments) || segments.Count == 0)
         {
             return false;
         }
 
-        var root = segments[0];
-        return root.Equals(ExecutionContextKeys.Vars, StringComparison.OrdinalIgnoreCase)
-            || root.Equals(ExecutionContextKeys.Sys, StringComparison.OrdinalIgnoreCase);
+        return segments[0].Equals(ExecutionContextKeys.Vars, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool TryGetIncompleteStateReference(

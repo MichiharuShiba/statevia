@@ -218,6 +218,67 @@ public class ExecutionInputPropagationTests
     }
 
 
+    /// <summary>
+    /// State A の <c>output: $.vars…</c> 代入後、後続が <c>$.vars…</c> を参照できることを検証する。
+    /// </summary>
+    [Fact]
+    public async Task Next_transition_applies_vars_output_via_context()
+    {
+        // Arrange
+        object? bInput = "unset";
+        var def = CreateTwoStateChainWithStateInputAndOutput(
+            DefaultStateExecutor.Create(new DelegateState((_, _, _) =>
+                Task.FromResult<object?>(new Dictionary<string, object?> { ["email"] = "a@example.com" }))),
+            DefaultStateExecutor.Create(new DelegateState((_, input, _) =>
+            {
+                bInput = input;
+                return Task.FromResult<object?>(null);
+            })),
+            outputPathForA: "$.vars.user",
+            mappingForB: new StateInputDefinition { Path = "$.vars.user.email" });
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+        var id = engine.Start(def);
+
+        // Act
+        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+
+        // Assert
+        Assert.Equal("a@example.com", bInput);
+    }
+
+    /// <summary>後続 State が <c>$.sys.execution.id</c> / <c>$.sys.definition.name</c> を参照できることを検証する。</summary>
+    [Fact]
+    public async Task Next_transition_applies_sys_paths_via_context()
+    {
+        // Arrange
+        object? bInput = "unset";
+        var def = CreateTwoStateChainWithStateInput(
+            DefaultStateExecutor.Create(new ImmediateState()),
+            DefaultStateExecutor.Create(new DelegateState((_, input, _) =>
+            {
+                bInput = input;
+                return Task.FromResult<object?>(null);
+            })),
+            new StateInputDefinition
+            {
+                Values = new Dictionary<string, StateInputValueDefinition>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["executionId"] = new StateInputValueDefinition { Path = "$.sys.execution.id" },
+                    ["definitionName"] = new StateInputValueDefinition { Path = "$.sys.definition.name" }
+                }
+            });
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+        var id = engine.Start(def);
+
+        // Act
+        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+
+        // Assert
+        var map = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(bInput);
+        Assert.Equal(id, map["executionId"]);
+        Assert.Equal("ChainMapped", map["definitionName"]);
+    }
+
     /// <summary>開始 input を $.input 経由で後続 State へ渡せることを検証する。</summary>
     [Fact]
     public async Task Next_transition_applies_workflow_input_via_context()
@@ -419,6 +480,30 @@ public class ExecutionInputPropagationTests
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
             WaitTable = new Dictionary<string, string>(),
             StateInputs = new Dictionary<string, StateInputDefinition> { ["B"] = mappingForB },
+            InitialState = "A",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["A"] = a, ["B"] = b })
+        };
+    }
+
+    private static CompiledWorkflowDefinition CreateTwoStateChainWithStateInputAndOutput(
+        IStateExecutor a,
+        IStateExecutor b,
+        string outputPathForA,
+        StateInputDefinition mappingForB)
+    {
+        return new CompiledWorkflowDefinition
+        {
+            Name = "ChainVars",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+            {
+                ["A"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { Next = "B" } },
+                ["B"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } }
+            },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
+            JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
+            WaitTable = new Dictionary<string, string>(),
+            StateInputs = new Dictionary<string, StateInputDefinition> { ["B"] = mappingForB },
+            StateOutputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["A"] = outputPathForA },
             InitialState = "A",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["A"] = a, ["B"] = b })
         };
