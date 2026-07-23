@@ -342,18 +342,18 @@ public class DefinitionCompilerTests
                                 new TransitionCaseDefinition
                                 {
                                     Order = 20,
-                                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 30 },
+                                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.score", Op = "gt", Value = 30 },
                                     Transition = new TransitionDefinition { Next = "Manual" }
                                 },
                                 new TransitionCaseDefinition
                                 {
                                     Order = 10,
-                                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "lte", Value = 30 },
+                                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.score", Op = "lte", Value = 30 },
                                     Transition = new TransitionDefinition { Next = "Auto" }
                                 },
                                 new TransitionCaseDefinition
                                 {
-                                    When = new ConditionExpressionDefinition { Path = "$.band", Op = "in", Value = new[] { 1, 2, 3 } },
+                                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.band", Op = "in", Value = new[] { 1, 2, 3 } },
                                     Transition = new TransitionDefinition { Next = "Auto" }
                                 }
                             ],
@@ -379,11 +379,11 @@ public class DefinitionCompilerTests
         Assert.Equal("Manual", factTransition.DefaultTarget!.Next);
         Assert.Equal(3, factTransition.Cases.Count);
         Assert.Equal(10, factTransition.Cases[0].Order);
-        Assert.Equal("$.score", factTransition.Cases[0].When.Path);
+        Assert.Equal("$.states.Route.output.score", factTransition.Cases[0].When.Path);
         Assert.Equal(20, factTransition.Cases[1].Order);
-        Assert.Equal("$.score", factTransition.Cases[1].When.Path);
+        Assert.Equal("$.states.Route.output.score", factTransition.Cases[1].When.Path);
         Assert.Null(factTransition.Cases[2].Order);
-        Assert.Equal("$.band", factTransition.Cases[2].When.Path);
+        Assert.Equal("$.states.Route.output.band", factTransition.Cases[2].When.Path);
     }
 
     /// <summary>states 形式の複数 end: true 遷移がコンパイル後も維持されることを検証する。</summary>

@@ -1137,7 +1137,7 @@ export const uiText: UiText = {
       whenOpPlaceholder: "演算子を選択",
       whenPathPlaceholder: "$.states.Fetch.output.amount",
       whenPathHint:
-        "評価根は Execution Context。例: $.input.x / $.states.A.output.y / $.states['a.b'].output.z",
+        "評価根は Execution Context（input と同じ）。例: $.states.A.output.y / $.states['a.b'].output.z / $.vars.flag / $.sys.today",
       whenValuePlaceholder: "例: 100 / true / \"100\"",
       whenValueDisabledForExists: "EXISTS では value は不要です。",
       whenValueHintIn: "IN は JSON配列で入力します。例: [\"A\", \"B\"]",
@@ -1150,7 +1150,7 @@ export const uiText: UiText = {
       actionInputPlaceholder:
         '例: $.input.orderId / $.states.A.output.x / {"id":"$.states[\'a.b\'].output.id"}',
       actionInputHint:
-        "評価根は Execution Context（$.input / $.states…）。ドット付き Node ID は $.states['id'].output。オブジェクトは JSON。$.vars / $.sys は参照不可。",
+        "評価根は Execution Context（$.input / $.states / $.vars / $.sys）。ドット付き Node ID は $.states['id'].output。オブジェクトは JSON。",
       actionInputInvalidJson: "JSON の形式が正しくありません。",
       actionIdCandidatesLoading: "Action 一覧を読み込み中…",
       actionIdNoResults: "一致する Action がありません",

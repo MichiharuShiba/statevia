@@ -298,7 +298,8 @@ Context のトップレベルは次の固定キーである。
 - `$.sys.state` / `$.sys.definition.id` / `version` は未提供
 - 書式引数付き関数呼び出し（例: `$.sys.now("yyyyMMdd")`）は未対応
 - `now` / `today` はホスト TZ 依存（コンテナでは UTC になり得る）
-- 条件遷移の `when.path` は当該 State の **output** が評価根、`when.value` はリテラル。`$.sys…` を `when` で参照する契約は未対応（将来の契約変更候補。別 Spec は設けない）
+- 条件遷移の `when.path` の評価根は **Execution Context**（`input` と同じ）。例: `$.states.A.output.x` / `$.states['a.b'].output.y` / `$.vars.flag` / `$.sys.today`。`when.value` はリテラル（パス解決しない）
+- State output を根とする旧 `when.path: $.x` は廃止（互換なし）
 
 #### `output` フィールド（States / Nodes）
 

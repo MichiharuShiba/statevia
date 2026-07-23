@@ -6,9 +6,11 @@ using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Engine;
 
-/// <summary><see cref="OutputConditionEvaluator"/> の条件遷移評価。</summary>
+/// <summary><see cref="OutputConditionEvaluator"/> の条件遷移評価（Execution Context 根）。</summary>
 public class OutputConditionEvaluatorTests
 {
+    private const string StateName = "S";
+
     /// <summary>線形ターゲットのみのとき Linear 解決になることを検証する。</summary>
     [Fact]
     public void EvaluateDetailed_LinearTarget_ReturnsLinearResolution()
@@ -21,7 +23,7 @@ public class OutputConditionEvaluatorTests
 
         // Act
         var (transition, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", output: null, onPathWarning: null);
+            compiled, "Completed", EmptyContext(), onPathWarning: null);
 
         // Assert
         Assert.True(transition.HasTransition);
@@ -34,14 +36,14 @@ public class OutputConditionEvaluatorTests
     public void EvaluateDetailed_EqCase_MatchesFirstCase()
     {
         // Arrange
-        var output = new Dictionary<string, object?> { ["status"] = "ok" };
+        var context = ContextWithStateOutput(new Dictionary<string, object?> { ["status"] = "ok" });
         var compiled = Conditional(
-            [Case("$.status", "eq", "ok", "BranchA")],
+            [Case("$.states.S.output.status", "eq", "ok", "BranchA")],
             defaultTarget: new TransitionTarget { Next = "Fallback" });
 
         // Act
         var (transition, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", output, onPathWarning: null);
+            compiled, "Completed", context, onPathWarning: null);
 
         // Assert
         Assert.Equal("BranchA", transition.Next);
@@ -54,14 +56,14 @@ public class OutputConditionEvaluatorTests
     public void EvaluateDetailed_NoCaseMatch_UsesDefaultFallback()
     {
         // Arrange
-        var output = new Dictionary<string, object?> { ["n"] = 1 };
+        var context = ContextWithStateOutput(new Dictionary<string, object?> { ["n"] = 1 });
         var compiled = Conditional(
-            [Case("$.n", "gt", 10, "High")],
+            [Case("$.states.S.output.n", "gt", 10, "High")],
             defaultTarget: new TransitionTarget { Next = "Low" });
 
         // Act
         var (transition, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", output, onPathWarning: null);
+            compiled, "Completed", context, onPathWarning: null);
 
         // Assert
         Assert.Equal("Low", transition.Next);
@@ -75,11 +77,11 @@ public class OutputConditionEvaluatorTests
     public void EvaluateDetailed_NoMatchAndNoDefault_ReturnsNone()
     {
         // Arrange
-        var compiled = Conditional([Case("$.missing", "exists", null, "X")]);
+        var compiled = Conditional([Case("$.states.S.output.missing", "exists", null, "X")]);
 
         // Act
         var (transition, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", new Dictionary<string, object?>(), onPathWarning: null);
+            compiled, "Completed", ContextWithStateOutput(new Dictionary<string, object?>()), onPathWarning: null);
 
         // Assert
         Assert.False(transition.HasTransition);
@@ -102,12 +104,12 @@ public class OutputConditionEvaluatorTests
         bool shouldMatch)
     {
         // Arrange
-        var output = new Dictionary<string, object?> { ["v"] = actualLeaf };
-        var compiled = Conditional([Case("$.v", op, expectedValue, "Hit")]);
+        var context = ContextWithStateOutput(new Dictionary<string, object?> { ["v"] = actualLeaf });
+        var compiled = Conditional([Case("$.states.S.output.v", op, expectedValue, "Hit")]);
 
         // Act
         var (transition, _) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", output, onPathWarning: null);
+            compiled, "Completed", context, onPathWarning: null);
 
         // Assert
         if (shouldMatch)
@@ -125,12 +127,12 @@ public class OutputConditionEvaluatorTests
     public void EvaluateDetailed_Eq_CoercesIntegralOneToTrue()
     {
         // Arrange
-        var output = new Dictionary<string, object?> { ["flag"] = 1L };
-        var compiled = Conditional([Case("$.flag", "eq", true, "Yes")]);
+        var context = ContextWithStateOutput(new Dictionary<string, object?> { ["flag"] = 1L });
+        var compiled = Conditional([Case("$.states.S.output.flag", "eq", true, "Yes")]);
 
         // Act
         var (transition, _) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", output, onPathWarning: null);
+            compiled, "Completed", context, onPathWarning: null);
 
         // Assert
         Assert.Equal("Yes", transition.Next);
@@ -141,11 +143,11 @@ public class OutputConditionEvaluatorTests
     public void EvaluateDetailed_UnsupportedOp_RecordsReason()
     {
         // Arrange
-        var compiled = Conditional([Case("$.x", "unknown-op", 1, "X")]);
+        var compiled = Conditional([Case("$.states.S.output.x", "unknown-op", 1, "X")]);
 
         // Act
         var (_, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", new Dictionary<string, object?> { ["x"] = 1 }, onPathWarning: null);
+            compiled, "Completed", ContextWithStateOutput(new Dictionary<string, object?> { ["x"] = 1 }), onPathWarning: null);
 
         // Assert
         Assert.Equal("unsupported_op", diagnostics.CaseEvaluations[0].ReasonCode);
@@ -156,11 +158,11 @@ public class OutputConditionEvaluatorTests
     public void EvaluateDetailed_InWithScalarOperand_RecordsInOperandNotCollection()
     {
         // Arrange
-        var compiled = Conditional([Case("$.v", "in", "not-a-collection", "X")]);
+        var compiled = Conditional([Case("$.states.S.output.v", "in", "not-a-collection", "X")]);
 
         // Act
         var (_, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", new Dictionary<string, object?> { ["v"] = 1 }, onPathWarning: null);
+            compiled, "Completed", ContextWithStateOutput(new Dictionary<string, object?> { ["v"] = 1 }), onPathWarning: null);
 
         // Assert
         Assert.Equal("in_operand_not_collection", diagnostics.CaseEvaluations[0].ReasonCode);
@@ -177,7 +179,7 @@ public class OutputConditionEvaluatorTests
         };
 
         // Act
-        var transition = OutputConditionEvaluator.Evaluate(compiled, output: null, onPathWarning: null);
+        var transition = OutputConditionEvaluator.Evaluate(compiled, EmptyContext(), onPathWarning: null);
 
         // Assert
         Assert.Equal("Done", transition.Next);
@@ -195,7 +197,7 @@ public class OutputConditionEvaluatorTests
 
         // Act
         var (transition, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", output: null, onPathWarning: null);
+            compiled, "Completed", EmptyContext(), onPathWarning: null);
 
         // Assert
         Assert.True(transition.End);
@@ -214,7 +216,7 @@ public class OutputConditionEvaluatorTests
 
         // Act
         var (transition, _) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", output: null, onPathWarning: null);
+            compiled, "Completed", EmptyContext(), onPathWarning: null);
 
         // Assert
         Assert.Equal(new[] { "A", "B" }, transition.Fork);
@@ -225,12 +227,12 @@ public class OutputConditionEvaluatorTests
     public void EvaluateDetailed_Lte_MatchesWhenLessOrEqual()
     {
         // Arrange
-        var output = new Dictionary<string, object?> { ["n"] = 5 };
-        var compiled = Conditional([Case("$.n", "lte", 5, "Ok")]);
+        var context = ContextWithStateOutput(new Dictionary<string, object?> { ["n"] = 5 });
+        var compiled = Conditional([Case("$.states.S.output.n", "lte", 5, "Ok")]);
 
         // Act
         var (transition, _) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", output, onPathWarning: null);
+            compiled, "Completed", context, onPathWarning: null);
 
         // Assert
         Assert.Equal("Ok", transition.Next);
@@ -241,11 +243,11 @@ public class OutputConditionEvaluatorTests
     public void EvaluateDetailed_EqOnMissingPath_RecordsPathNotFound()
     {
         // Arrange
-        var compiled = Conditional([Case("$.missing", "eq", 1, "X")]);
+        var compiled = Conditional([Case("$.states.S.output.missing", "eq", 1, "X")]);
 
         // Act
         var (_, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", new Dictionary<string, object?>(), onPathWarning: null);
+            compiled, "Completed", ContextWithStateOutput(new Dictionary<string, object?>()), onPathWarning: null);
 
         // Assert
         Assert.Equal("path_not_found", diagnostics.CaseEvaluations[0].ReasonCode);
@@ -256,12 +258,12 @@ public class OutputConditionEvaluatorTests
     public void EvaluateDetailed_CompareWithNullOperand_RecordsCompareOperandNull()
     {
         // Arrange
-        var output = new Dictionary<string, object?> { ["n"] = null };
-        var compiled = Conditional([Case("$.n", "gt", 1, "X")]);
+        var context = ContextWithStateOutput(new Dictionary<string, object?> { ["n"] = null });
+        var compiled = Conditional([Case("$.states.S.output.n", "gt", 1, "X")]);
 
         // Act
         var (_, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", output, onPathWarning: null);
+            compiled, "Completed", context, onPathWarning: null);
 
         // Assert
         Assert.Equal("compare_operand_null", diagnostics.CaseEvaluations[0].ReasonCode);
@@ -272,12 +274,12 @@ public class OutputConditionEvaluatorTests
     public void EvaluateDetailed_BetweenWithInvalidRange_RecordsBetweenOperandInvalid()
     {
         // Arrange
-        var output = new Dictionary<string, object?> { ["n"] = 5 };
-        var compiled = Conditional([Case("$.n", "between", new object[] { 1 }, "X")]);
+        var context = ContextWithStateOutput(new Dictionary<string, object?> { ["n"] = 5 });
+        var compiled = Conditional([Case("$.states.S.output.n", "between", new object[] { 1 }, "X")]);
 
         // Act
         var (_, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", output, onPathWarning: null);
+            compiled, "Completed", context, onPathWarning: null);
 
         // Assert
         Assert.Equal("between_operand_invalid", diagnostics.CaseEvaluations[0].ReasonCode);
@@ -292,7 +294,7 @@ public class OutputConditionEvaluatorTests
 
         // Act
         var (_, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", new Dictionary<string, object?>(), onPathWarning: null);
+            compiled, "Completed", EmptyContext(), onPathWarning: null);
 
         // Assert
         Assert.Equal("path_resolution_failed", diagnostics.CaseEvaluations[0].ReasonCode);
@@ -311,7 +313,7 @@ public class OutputConditionEvaluatorTests
         OutputConditionEvaluator.EvaluateDetailed(
             compiled,
             "Completed",
-            new Dictionary<string, object?>(),
+            EmptyContext(),
             (path, reason) => warnings.Add((path, reason)));
 
         // Assert
@@ -324,15 +326,44 @@ public class OutputConditionEvaluatorTests
     public void EvaluateDetailed_InMiss_RecordsConditionFalse()
     {
         // Arrange
-        var output = new Dictionary<string, object?> { ["v"] = "z" };
-        var compiled = Conditional([Case("$.v", "in", new object[] { "a", "b" }, "Hit")]);
+        var context = ContextWithStateOutput(new Dictionary<string, object?> { ["v"] = "z" });
+        var compiled = Conditional([Case("$.states.S.output.v", "in", new object[] { "a", "b" }, "Hit")]);
 
         // Act
         var (_, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
-            compiled, "Completed", output, onPathWarning: null);
+            compiled, "Completed", context, onPathWarning: null);
 
         // Assert
         Assert.Equal("condition_false", diagnostics.CaseEvaluations[0].ReasonCode);
+    }
+
+    /// <summary>when.path が $.vars を Execution Context 根で解決できることを検証する。</summary>
+    [Fact]
+    public void EvaluateDetailed_VarsPath_MatchesFromContextRoot()
+    {
+        // Arrange
+        var context = WorkflowExecutionContext.Create(null);
+        context.SetVar("$.vars.flag", true);
+        var compiled = Conditional(
+            [Case("$.vars.flag", "eq", true, "Ok")],
+            defaultTarget: new TransitionTarget { Next = "Fallback" });
+
+        // Act
+        var (transition, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
+            compiled, "Completed", context, onPathWarning: null);
+
+        // Assert
+        Assert.Equal("Ok", transition.Next);
+        Assert.Equal(ConditionRoutingResolutions.MatchedCase, diagnostics.Resolution);
+    }
+
+    private static WorkflowExecutionContext EmptyContext() => WorkflowExecutionContext.Create(null);
+
+    private static WorkflowExecutionContext ContextWithStateOutput(object? output)
+    {
+        var context = WorkflowExecutionContext.Create(null);
+        context.SetStateOutput(StateName, output);
+        return context;
     }
 
     private static CompiledFactTransition Conditional(

@@ -1087,7 +1087,7 @@ public sealed class DefinitionCompilerServiceTests
                 edges:
                   - to: order.validate
                     when:
-                      path: $.eligible
+                      path: $.states['order.preflight'].output.eligible
                       op: eq
                       value: true
                     order: 10

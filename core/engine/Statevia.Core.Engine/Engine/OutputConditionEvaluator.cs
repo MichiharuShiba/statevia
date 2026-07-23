@@ -10,6 +10,10 @@ namespace Statevia.Core.Engine.Engine;
 /// <summary>
 /// 条件遷移（cases/default）を評価して次の遷移結果を決定する。
 /// </summary>
+/// <remarks>
+/// <c>when.path</c> の評価根は <see cref="WorkflowExecutionContext"/>（Execution Context）である。
+/// State output 直下を根とする旧記法は採用しない。
+/// </remarks>
 internal static class OutputConditionEvaluator
 {
     private const string ReasonUnsupportedOp = "unsupported_op";
@@ -23,23 +27,33 @@ internal static class OutputConditionEvaluator
     private const string ReasonBetweenOperandInvalid = "between_operand_invalid";
 
     /// <summary>
-    /// コンパイル済みの事実遷移を output で評価し、遷移結果を返す。
+    /// コンパイル済みの事実遷移を Execution Context で評価し、遷移結果を返す。
     /// </summary>
+    /// <param name="compiledTransition">コンパイル済み事実遷移。</param>
+    /// <param name="context">パス評価根（Execution Context）。</param>
+    /// <param name="onPathWarning">パス警告コールバック。</param>
+    /// <returns>遷移結果。</returns>
     public static TransitionResult Evaluate(
         CompiledFactTransition compiledTransition,
-        object? output,
+        WorkflowExecutionContext context,
         Action<string, string>? onPathWarning = null) =>
-        EvaluateDetailed(compiledTransition, string.Empty, output, onPathWarning).Transition;
+        EvaluateDetailed(compiledTransition, string.Empty, context, onPathWarning).Transition;
 
     /// <summary>
     /// コンパイル済みの事実遷移を評価し、遷移結果と観測用診断を返す。
     /// </summary>
+    /// <param name="compiledTransition">コンパイル済み事実遷移。</param>
+    /// <param name="fact">評価対象の事実名。</param>
+    /// <param name="context">パス評価根（Execution Context）。</param>
+    /// <param name="onPathWarning">パス警告コールバック。</param>
+    /// <returns>遷移結果と診断。</returns>
     public static (TransitionResult Transition, ConditionRoutingDiagnostics Diagnostics) EvaluateDetailed(
         CompiledFactTransition compiledTransition,
         string fact,
-        object? output,
+        WorkflowExecutionContext context,
         Action<string, string>? onPathWarning)
     {
+        ArgumentNullException.ThrowIfNull(context);
         var evaluationErrors = new List<string>();
 
         if (compiledTransition.LinearTarget is { } linearTarget)
@@ -61,7 +75,7 @@ internal static class OutputConditionEvaluator
         foreach (var transitionCase in compiledTransition.Cases)
         {
             var (matched, reasonCode, reasonDetail) = EvaluateConditionExpressionDetail(
-                output,
+                context,
                 transitionCase.When,
                 onPathWarning,
                 evaluationErrors);
@@ -144,7 +158,7 @@ internal static class OutputConditionEvaluator
     /// 条件式の真偽と、偽のときの理由コードを返す。
     /// </summary>
     private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateConditionExpressionDetail(
-        object? output,
+        WorkflowExecutionContext context,
         ConditionExpressionDefinition condition,
         Action<string, string>? onPathWarning,
         List<string> evaluationErrors)
@@ -156,7 +170,7 @@ internal static class OutputConditionEvaluator
             return (false, ReasonUnsupportedOp, msg);
         }
 
-        if (!TryResolvePath(output, condition.Path, out var actualValue, out var hasPath, onPathWarning, evaluationErrors))
+        if (!TryResolvePath(context, condition.Path, out var actualValue, out var hasPath, onPathWarning, evaluationErrors))
         {
             return (false, ReasonPathResolutionFailed, condition.Path);
         }
@@ -288,7 +302,7 @@ internal static class OutputConditionEvaluator
     }
 
     private static bool TryResolvePath(
-        object? source,
+        WorkflowExecutionContext context,
         string path,
         out object? value,
         out bool found,
@@ -304,7 +318,7 @@ internal static class OutputConditionEvaluator
             return false;
         }
 
-        var resolve = SimpleJsonPathResolver.Resolve(source, path);
+        var resolve = ExecutionContextPathResolver.Resolve(context, path);
         if (!resolve.IsSupportedPathExpression)
         {
             if (resolve.WarningReason is not null)
