@@ -1,6 +1,16 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
+const studioRoot = path.dirname(fileURLToPath(import.meta.url));
+
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@/features": path.join(studioRoot, "features"),
+      "@/shared": path.join(studioRoot, "shared"),
+    },
+  },
   test: {
     globals: true,
     environment: "jsdom",
@@ -9,7 +19,12 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],
-      include: ["app/**/*.{ts,tsx}", "middleware.ts"],
+      include: [
+        "app/**/*.{ts,tsx}",
+        "features/**/*.{ts,tsx}",
+        "shared/**/*.{ts,tsx}",
+        "middleware.ts",
+      ],
       exclude: [
         "node_modules/",
         ".next/",
@@ -28,8 +43,10 @@ export default defineConfig({
         "app/components/execution/ExecutionDashboard.tsx",
         "app/definitions/DefinitionEditorPageClient.tsx",
         "app/components/nodes/NodeGraphView.tsx",
-        "tests/**"
-      ]
-    }
-  }
+        "features/scaffold.ts",
+        "shared/scaffold.ts",
+        "tests/**",
+      ],
+    },
+  },
 });

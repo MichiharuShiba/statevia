@@ -49,6 +49,7 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 ### 3.3 UI（`ui/studio/`）
 
 - Core-API へは Next.js の route handler 経由でプロキシ（CORS 回避）。環境変数は `AGENTS.md` の表を参照。
+- 内部構成は feature-first（薄い `app/` + `features/` + `shared/`）。正本: [`architecture/ui-studio-structure.md`](architecture/ui-studio-structure.md)。
 - 静的解析: `npm run lint`（ESLint 9 strict）。型チェック: `npm run typecheck`（`tsc --noEmit`）。テスト: `npm run test:run`（Vitest）。Sonar は **§5.2**。
 
 ---

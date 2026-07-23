@@ -17,6 +17,14 @@
     "jsx": "react-jsx",
     "incremental": true,
     "esModuleInterop": true,
+    "paths": {
+      "@/features/*": [
+        "./features/*"
+      ],
+      "@/shared/*": [
+        "./shared/*"
+      ]
+    },
     "plugins": [
       {
         "name": "next"

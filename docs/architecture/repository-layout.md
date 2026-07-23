@@ -93,5 +93,5 @@ statevia/
 - **core/**: ドメインと契約。Engine は HTTP/DB に非依存。Application がユースケースを実装し、Contracts が DDD ポートを定義。
 - **infrastructure/**: core の契約の技術実装。DB、認証、通知、Module ホスト等。
 - **service/**: HTTP / gRPC / CLI のアダプタ。Composition Root として DI を組み立てる。
-- **ui/studio/**: Next.js（`@statevia/studio`）。`/api/core/*` で Core-API にプロキシ。
+- **ui/studio/**: Next.js（`@statevia/studio`）。`/api/core/*` で Core-API にプロキシ。内部構成（`app` / `features` / `shared`）の正本は [ui-studio-structure.md](ui-studio-structure.md)。
 - **tests/**: ソリューション横断のアーキテクチャテスト。
