@@ -33,6 +33,11 @@ public sealed class StateDefinition
     /// <summary>遷移でこの状態に入る直前に候補 input へ適用する指定（YAML キーは <c>input</c>）。</summary>
     public StateInputDefinition? Input { get; init; }
 
+    /// <summary>
+    /// 状態完了時に action 戻り値を書き込む vars パス（YAML キーは <c>output</c>。例: <c>$.vars.user</c>）。
+    /// </summary>
+    public string? Output { get; init; }
+
     /// <summary>action ノード直下の retry 宣言（syntax parse のみ。MVP では実行時リトライ未適用）。</summary>
     public RetryDefinition? Retry { get; init; }
 

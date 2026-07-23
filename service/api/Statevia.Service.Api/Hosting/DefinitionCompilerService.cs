@@ -98,6 +98,7 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
             joinTable = compiled.JoinTable,
             waitTable = compiled.WaitTable,
             stateInputs = compiled.StateInputs,
+            stateOutputs = compiled.StateOutputs,
             resolvedModules = compiled.ResolvedModules,
             stateActionBindings = compiled.StateActionBindings,
         }, s_compiledJsonOptions);

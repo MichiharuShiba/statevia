@@ -554,7 +554,7 @@ export const uiTextEn: UiText = {
       whenOpPlaceholder: "Select operator",
       whenPathPlaceholder: "$.states.Fetch.output.amount",
       whenPathHint:
-        "Root is Execution Context. e.g. $.input.x / $.states.A.output.y / $.states['a.b'].output.z",
+        "Root is Execution Context (same as input). e.g. $.states.A.output.y / $.states['a.b'].output.z / $.vars.flag / $.sys.today",
       whenValuePlaceholder: "e.g. 100 / true / \"100\"",
       whenValueDisabledForExists: "Value is not required for EXISTS.",
       whenValueHintIn: "For IN, enter a JSON array. Example: [\"A\", \"B\"]",
@@ -567,7 +567,7 @@ export const uiTextEn: UiText = {
       actionInputPlaceholder:
         'e.g. $.input.orderId / $.states.A.output.x / {"id":"$.states[\'a.b\'].output.id"}',
       actionInputHint:
-        "Root is Execution Context ($.input / $.states…). Dotted node IDs use $.states['id'].output. Objects as JSON. $.vars / $.sys are not allowed.",
+        "Root is Execution Context ($.input / $.states / $.vars / $.sys). Dotted node IDs use $.states['id'].output. Objects as JSON.",
       actionInputInvalidJson: "Invalid JSON.",
       actionIdCandidatesLoading: "Loading actions…",
       actionIdNoResults: "No matching actions",

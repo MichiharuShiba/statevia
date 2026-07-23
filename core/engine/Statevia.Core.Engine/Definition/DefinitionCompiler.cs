@@ -35,6 +35,7 @@ public sealed class DefinitionCompiler
             JoinTable = BuildJoinTable(definition),
             WaitTable = BuildWaitTable(definition),
             StateInputs = BuildStateInputTable(definition),
+            StateOutputs = BuildStateOutputTable(definition),
             InitialState = DetermineInitialState(definition),
             StateExecutorFactory = _executorFactory,
             ResolvedModules = resolvedModules ?? EmptyResolvedModules,
@@ -58,6 +59,20 @@ public sealed class DefinitionCompiler
                 result[stateName] = stateDef.Input;
             }
         }
+        return result;
+    }
+
+    private static Dictionary<string, string> BuildStateOutputTable(WorkflowDefinition definition)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (stateName, stateDef) in definition.States)
+        {
+            if (!string.IsNullOrWhiteSpace(stateDef.Output))
+            {
+                result[stateName] = stateDef.Output;
+            }
+        }
+
         return result;
     }
 

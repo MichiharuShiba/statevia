@@ -57,6 +57,7 @@ internal static class CompiledDefinitionJsonReader
             JoinTable = MapStringListTable(dto.JoinTable),
             WaitTable = dto.WaitTable ?? [],
             StateInputs = dto.StateInputs ?? [],
+            StateOutputs = dto.StateOutputs ?? [],
             ResolvedModules = modules,
             StateActionBindings = bindings,
             StateExecutorFactory = factory
@@ -188,6 +189,7 @@ internal static class CompiledDefinitionJsonReader
         public Dictionary<string, List<string>?>? JoinTable { get; set; } = [];
         public Dictionary<string, string>? WaitTable { get; set; } = [];
         public Dictionary<string, StateInputDefinition>? StateInputs { get; set; } = [];
+        public Dictionary<string, string>? StateOutputs { get; set; } = [];
         public Dictionary<string, ResolvedModuleBindingDto>? ResolvedModules { get; set; } = [];
         public Dictionary<string, StateActionBindingDto>? StateActionBindings { get; set; } = [];
     }

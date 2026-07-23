@@ -113,6 +113,35 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.Equal("failedHandler", definition.States["a"].On![Fact.Failed].Next);
     }
 
+    /// <summary>action ノードの output が StateDefinition.Output に載ることを検証する。</summary>
+    [Fact]
+    public void Load_ActionOutput_SetsStateDefinitionOutput()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: VarsOutput
+            nodes:
+              - id: start
+                type: start
+                next: getUser
+              - id: getUser
+                type: action
+                action: noop
+                output: $.vars.user
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        Assert.Equal("$.vars.user", definition.States["getUser"].Output);
+    }
+
     /// <summary>action.error の object 形式（id）を受理する。</summary>
     [Fact]
     public void Load_ActionErrorObject_NormalizesTarget()

@@ -359,7 +359,12 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 
         _executionLog.LogJoinStateCompleted(instance.ExecutionId, joinStateName, nodeId, Fact.Joined);
 
-        var (transition, routingDiag) = EvaluateTransition(instance, joinStateName, Fact.Joined, joinInputs);
+        // Join の集約 input を当該 State の output として Context へ記録する。
+        // これにより when.path の $.states.<Join>.output… 参照と output: $.vars… 代入が
+        // 通常 State と同じ規則で機能する（未記録だと条件が常に path_not_found になる）。
+        instance.SetOutput(joinStateName, joinInputs);
+
+        var (transition, routingDiag) = EvaluateTransition(instance, joinStateName, Fact.Joined);
         if (routingDiag is not null)
         {
             instance.Graph.SetNodeConditionRouting(nodeId, routingDiag);
@@ -420,7 +425,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             return;
         }
 
-        var (transition, routingDiag) = EvaluateTransition(instance, stateName, fact, output);
+        var (transition, routingDiag) = EvaluateTransition(instance, stateName, fact);
         if (routingDiag is not null)
         {
             instance.Graph.SetNodeConditionRouting(nodeId, routingDiag);
@@ -479,8 +484,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
     private (TransitionResult Transition, ConditionRoutingDiagnostics? RoutingDiagnostics) EvaluateTransition(
         ExecutionInstance instance,
         string stateName,
-        string fact,
-        object? output)
+        string fact)
     {
         if (instance.Definition.ConditionalTransitions.TryGetValue(stateName, out var stateTransitions)
             && stateTransitions.TryGetValue(fact, out var compiledTransition))
@@ -488,7 +492,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             var (transition, diagnostics) = OutputConditionEvaluator.EvaluateDetailed(
                 compiledTransition,
                 fact,
-                output,
+                instance.Context,
                 onPathWarning: (path, reason) =>
                     _executionLog.LogWarningConditionPathResolution(instance.ExecutionId, stateName, fact, path, reason));
             return (transition, diagnostics);

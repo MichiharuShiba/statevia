@@ -46,7 +46,7 @@ nodes:
     edges:
       - to: order.validate
         when:
-          path: $.eligible
+          path: $.states['order.preflight'].output.eligible
           op: eq
           value: true
         order: 10

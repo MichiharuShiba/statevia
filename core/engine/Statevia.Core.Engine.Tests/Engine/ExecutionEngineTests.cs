@@ -311,14 +311,14 @@ public class ExecutionEngineTests
                 {
                     Order = 20,
                     DeclarationIndex = 0,
-                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 30 },
+                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.score", Op = "gt", Value = 30 },
                     Target = new TransitionTarget { Next = "Manual" }
                 },
                 new CompiledTransitionCase
                 {
                     Order = 10,
                     DeclarationIndex = 1,
-                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "exists" },
+                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.score", Op = "exists" },
                     Target = new TransitionTarget { Next = "Auto" }
                 }
             ],
@@ -351,7 +351,7 @@ public class ExecutionEngineTests
                 {
                     Order = 1,
                     DeclarationIndex = 0,
-                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 10 },
+                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.score", Op = "gt", Value = 10 },
                     Target = new TransitionTarget { Next = "Manual" }
                 }
             ],
@@ -383,7 +383,7 @@ public class ExecutionEngineTests
                 {
                     Order = 1,
                     DeclarationIndex = 0,
-                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 10 },
+                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.score", Op = "gt", Value = 10 },
                     Target = new TransitionTarget { Next = "Manual" }
                 }
             ],
@@ -431,7 +431,7 @@ public class ExecutionEngineTests
                 {
                     Order = 1,
                     DeclarationIndex = 0,
-                    When = new ConditionExpressionDefinition { Path = "$.band", Op = "in", Value = new[] { 1, 2, 3 } },
+                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.band", Op = "in", Value = new[] { 1, 2, 3 } },
                     Target = new TransitionTarget { Next = "Auto" }
                 }
             ],
@@ -445,7 +445,7 @@ public class ExecutionEngineTests
                 {
                     Order = 1,
                     DeclarationIndex = 0,
-                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "between", Value = new[] { 10, 20 } },
+                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.score", Op = "between", Value = new[] { 10, 20 } },
                     Target = new TransitionTarget { Next = "Manual" }
                 }
             ],
@@ -485,7 +485,7 @@ public class ExecutionEngineTests
                 {
                     Order = 10,
                     DeclarationIndex = 0,
-                    When = new ConditionExpressionDefinition { Path = "$.eligible", Op = "eq", Value = true },
+                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.eligible", Op = "eq", Value = true },
                     Target = new TransitionTarget { Next = "Manual" }
                 }
             ],
@@ -520,7 +520,7 @@ public class ExecutionEngineTests
                 {
                     Order = 10,
                     DeclarationIndex = 0,
-                    When = new ConditionExpressionDefinition { Path = "$.eligible", Op = "eq", Value = "true" },
+                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.eligible", Op = "eq", Value = "true" },
                     Target = new TransitionTarget { Next = "Manual" }
                 }
             ],
@@ -561,7 +561,7 @@ public class ExecutionEngineTests
                 {
                     Order = 1,
                     DeclarationIndex = 0,
-                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 10 },
+                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.score", Op = "gt", Value = 10 },
                     Target = new TransitionTarget { Next = "Manual" }
                 }
             ],
@@ -603,7 +603,7 @@ public class ExecutionEngineTests
                 {
                     Order = 1,
                     DeclarationIndex = 0,
-                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 10 },
+                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.score", Op = "gt", Value = 10 },
                     Target = new TransitionTarget { Next = "Manual" }
                 }
             ],
@@ -621,6 +621,117 @@ public class ExecutionEngineTests
         Assert.True(snapshot.IsCompleted);
         Assert.Same(input, observedRouteInput);
         Assert.Equal("Fallback", selectedState);
+    }
+
+    /// <summary>
+    /// State 完了後に Context へ載った自 State の output を、同一 State の <c>when.path</c>
+    ///（<c>$.states.&lt;Self&gt;.output…</c>）で評価して条件遷移できることを検証する。
+    /// </summary>
+    /// <remarks>
+    /// Start input と Route output で同名キーに異なる値を置き、input 由来の誤評価では
+    /// 一致しないことを明示する。
+    /// </remarks>
+    [Fact]
+    public async Task Start_OwnStateOutput_IsEvaluatedByWhenPathOnSameState()
+    {
+        // Arrange
+        string? selectedState = null;
+        const string outputToken = "from-route-output";
+        var startInput = new Dictionary<string, object?> { ["token"] = "from-start-input" };
+        var routeOutput = new Dictionary<string, object?> { ["token"] = outputToken };
+        var def = CreateDefinitionWithConditionalRouteFromStartInput(
+            routeOutputFromInput: _ => routeOutput,
+            cases:
+            [
+                new CompiledTransitionCase
+                {
+                    Order = 1,
+                    DeclarationIndex = 0,
+                    When = new ConditionExpressionDefinition
+                    {
+                        Path = "$.states.Route.output.token",
+                        Op = "eq",
+                        Value = outputToken
+                    },
+                    Target = new TransitionTarget { Next = "Manual" }
+                }
+            ],
+            defaultTarget: new TransitionTarget { Next = "Fallback" },
+            onTerminalStateExecuted: stateName => selectedState = stateName);
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+
+        // Act
+        var id = engine.Start(def, null, startInput);
+        await Task.Delay(300).ConfigureAwait(false);
+        var snapshot = engine.GetSnapshot(id);
+        var graphJson = engine.ExportExecutionGraph(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+        Assert.Equal("Manual", selectedState);
+
+        using var doc = JsonDocument.Parse(graphJson);
+        var routeNode = doc.RootElement.GetProperty("nodes").EnumerateArray()
+            .First(node =>
+                string.Equals(node.GetProperty("stateName").GetString(), "Route", StringComparison.Ordinal));
+        Assert.Equal(outputToken, routeNode.GetProperty("output").GetProperty("token").GetString());
+
+        var routing = routeNode.GetProperty("conditionRouting");
+        Assert.Equal(ConditionRoutingResolutions.MatchedCase, routing.GetProperty("resolution").GetString());
+        Assert.Equal(0, routing.GetProperty("matchedCaseIndex").GetInt32());
+        Assert.True(routing.GetProperty("caseEvaluations")[0].GetProperty("matched").GetBoolean());
+    }
+
+    /// <summary>
+    /// <c>output: $.vars…</c> で代入された値を、同一 State の <c>when.path: $.vars…</c> で評価して条件遷移できることを検証する。
+    /// </summary>
+    [Fact]
+    public async Task Start_VarsAssignedByOutput_IsEvaluatedByWhenPathOnSameState()
+    {
+        // Arrange
+        string? selectedState = null;
+        var def = CreateDefinitionWithConditionalRoute(
+            routeOutput: new Dictionary<string, object?> { ["eligible"] = true },
+            cases:
+            [
+                new CompiledTransitionCase
+                {
+                    Order = 1,
+                    DeclarationIndex = 0,
+                    When = new ConditionExpressionDefinition
+                    {
+                        Path = "$.vars.route.eligible",
+                        Op = "eq",
+                        Value = true
+                    },
+                    Target = new TransitionTarget { Next = "Manual" }
+                }
+            ],
+            defaultTarget: new TransitionTarget { Next = "Fallback" },
+            onTerminalStateExecuted: stateName => selectedState = stateName,
+            routeVarsOutputPath: "$.vars.route");
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+
+        // Act
+        var id = engine.Start(def);
+        await Task.Delay(300).ConfigureAwait(false);
+        var snapshot = engine.GetSnapshot(id);
+        var graphJson = engine.ExportExecutionGraph(id);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+        Assert.Equal("Manual", selectedState);
+
+        using var doc = JsonDocument.Parse(graphJson);
+        var routeNode = doc.RootElement.GetProperty("nodes").EnumerateArray()
+            .First(node =>
+                string.Equals(node.GetProperty("stateName").GetString(), "Route", StringComparison.Ordinal));
+        var routing = routeNode.GetProperty("conditionRouting");
+        Assert.Equal(ConditionRoutingResolutions.MatchedCase, routing.GetProperty("resolution").GetString());
+        Assert.Equal(0, routing.GetProperty("matchedCaseIndex").GetInt32());
+        Assert.True(routing.GetProperty("caseEvaluations")[0].GetProperty("matched").GetBoolean());
     }
 
     /// <summary>同一 stateName が再訪されたとき execution graph の attempt が増加することを検証する。</summary>
@@ -803,13 +914,21 @@ public class ExecutionEngineTests
         object? routeOutput,
         IReadOnlyList<CompiledTransitionCase> cases,
         TransitionTarget defaultTarget,
-        Action<string> onTerminalStateExecuted)
+        Action<string> onTerminalStateExecuted,
+        string? routeVarsOutputPath = null)
     {
         var orderedCases = cases
             .OrderBy(transitionCase => transitionCase.Order.HasValue ? 0 : 1)
             .ThenBy(transitionCase => transitionCase.Order ?? int.MaxValue)
             .ThenBy(transitionCase => transitionCase.DeclarationIndex)
             .ToList();
+
+        var stateOutputs = string.IsNullOrWhiteSpace(routeVarsOutputPath)
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Route"] = routeVarsOutputPath
+            };
 
         return new CompiledWorkflowDefinition
         {
@@ -834,6 +953,7 @@ public class ExecutionEngineTests
             ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
             WaitTable = new Dictionary<string, string>(),
+            StateOutputs = stateOutputs,
             InitialState = "Route",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
             {
@@ -1004,7 +1124,7 @@ public class ExecutionEngineTests
                             {
                                 Order = 1,
                                 DeclarationIndex = 0,
-                                When = new ConditionExpressionDefinition { Path = "$.round", Op = "eq", Value = 1 },
+                                When = new ConditionExpressionDefinition { Path = "$.states.A.output.round", Op = "eq", Value = 1 },
                                 Target = new TransitionTarget { Next = "B" }
                             }
                         ],

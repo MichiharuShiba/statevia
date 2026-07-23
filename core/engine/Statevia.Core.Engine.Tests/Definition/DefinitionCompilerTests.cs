@@ -257,6 +257,39 @@ public class DefinitionCompilerTests
         Assert.Equal("$.payload", compiled.StateInputs["B"].Path);
     }
 
+    /// <summary>output を持つ状態が StateOutputs テーブルに含まれることを検証する。</summary>
+    [Fact]
+    public void Compile_ProducesStateOutputTable()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "Test",
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Output = "$.vars.user",
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "B" } }
+                },
+                ["B"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+        var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
+        var compiler = new DefinitionCompiler(factory);
+
+        // Act
+        var compiled = compiler.Compile(def);
+
+        // Assert
+        Assert.True(compiled.StateOutputs.ContainsKey("A"));
+        Assert.Equal("$.vars.user", compiled.StateOutputs["A"]);
+        Assert.False(compiled.StateOutputs.ContainsKey("B"));
+    }
+
     /// <summary>複数の Join 状態がある場合、すべてが Join テーブルに含まれることを検証する。</summary>
     [Fact]
     public void Compile_MultipleJoinStates_AllIncludedInJoinTable()
@@ -289,6 +322,14 @@ public class DefinitionCompilerTests
     }
 
     /// <summary>cases/default を含む遷移が ConditionalTransitions に保持されることを検証する。</summary>
+    /// <summary>
+    /// cases/default を含む遷移が ConditionalTransitions に保持され、order 昇順で安定ソートされることを検証する。
+    /// </summary>
+    /// <remarks>
+    /// <see cref="DefinitionCompiler"/> は <c>when.path</c> を書き換えず verbatim で保持するだけである。
+    /// そのため本テストの path は短いフィクスチャ（<c>$.score</c> 等）でよく、
+    /// Execution Context 根での評価契約は runtime テスト（OutputConditionEvaluator / ExecutionEngine）側の責務とする。
+    /// </remarks>
     [Fact]
     public void Compile_ProducesConditionalTransitionTable_WithStableOrder()
     {
@@ -339,7 +380,7 @@ public class DefinitionCompilerTests
         var compiled = compiler.Compile(def);
         var factTransition = compiled.ConditionalTransitions["Route"]["Completed"];
 
-        // Assert
+        // Assert — order 安定ソートと when.path の verbatim 保持
         Assert.NotNull(factTransition);
         Assert.Null(factTransition.LinearTarget);
         Assert.NotNull(factTransition.DefaultTarget);

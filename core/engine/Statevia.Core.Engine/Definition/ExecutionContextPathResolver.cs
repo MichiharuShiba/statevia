@@ -6,9 +6,9 @@ namespace Statevia.Core.Engine.Definition;
 /// Execution Context を根とする SimpleJsonPath 解決。
 /// </summary>
 /// <remarks>
-/// 未完了 State への <c>$.states.&lt;Name&gt;…</c> /
-/// <c>$.states['dotted.name']…</c> 参照は null と
-/// <see cref="IncompleteStateOutput"/> 警告を返す（Phase 1）。
+/// 未完了 State への <c>$.states.&lt;Name&gt;…</c> 参照は null と
+/// <see cref="IncompleteStateOutput"/> 警告を返す。
+/// <c>output</c> の書き込み先検証は <see cref="IsVarsWritePath"/>。
 /// </remarks>
 internal static class ExecutionContextPathResolver
 {
@@ -24,8 +24,27 @@ internal static class ExecutionContextPathResolver
     public static SimpleJsonPathResolver.ResolveResult Resolve(WorkflowExecutionContext context, string path)
     {
         ArgumentNullException.ThrowIfNull(context);
+        return ResolveWithRoot(context.ToPathRoot(), path);
+    }
 
-        if (TryGetIncompleteStateReference(context, path, out _))
+    /// <summary>
+    /// 事前取得した Context スナップショット <paramref name="root"/> を評価根として解決する。
+    /// </summary>
+    /// <remarks>
+    /// 同一評価内で複数パスを解決する際、<see cref="WorkflowExecutionContext.ToPathRoot"/> を
+    /// 1 度だけ取得して使い回すためのオーバーロード。解決ごとの再スナップショットによる
+    /// <c>$.sys.now</c> 等の非一貫性と無駄な再確保を避ける。
+    /// </remarks>
+    /// <param name="root">Context スナップショット（<see cref="WorkflowExecutionContext.ToPathRoot"/> の戻り値）。</param>
+    /// <param name="path">SimpleJsonPath（<c>$</c> または <c>$.…</c> / ブラケット）。</param>
+    /// <returns>解決結果。</returns>
+    public static SimpleJsonPathResolver.ResolveResult ResolveWithRoot(
+        IReadOnlyDictionary<string, object?> root,
+        string path)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        if (TryGetIncompleteStateReference(root, path, out _))
         {
             return new SimpleJsonPathResolver.ResolveResult(
                 IsSupportedPathExpression: true,
@@ -34,34 +53,31 @@ internal static class ExecutionContextPathResolver
                 WarningReason: IncompleteStateOutput);
         }
 
-        return SimpleJsonPathResolver.Resolve(context.ToPathRoot(), path);
+        return SimpleJsonPathResolver.Resolve(root, path);
     }
 
     /// <summary>
-    /// パスが予約キー <see cref="ExecutionContextKeys.Vars"/> /
-    /// <see cref="ExecutionContextKeys.Sys"/> を参照しているか（Compiler / Validator 用）。
+    /// <paramref name="path"/> が <c>$.vars</c> 配下への書き込み先として正当か（Level1 の <c>output</c> 検証用）。
     /// </summary>
     /// <param name="path">検査対象パス。</param>
-    /// <returns>予約参照のとき true。</returns>
-    public static bool IsReservedContextPath(string path)
+    /// <returns><c>$.vars</c> または <c>$.vars.&lt;seg&gt;…</c> のとき true。</returns>
+    public static bool IsVarsWritePath(string path)
     {
-        if (string.IsNullOrWhiteSpace(path) || !SimpleJsonPath.TryGetSegments(path, out var segments))
+        if (string.IsNullOrWhiteSpace(path) || !SimpleJsonPath.IsValid(path))
         {
             return false;
         }
 
-        if (segments.Count == 0)
+        if (!SimpleJsonPath.TryGetSegments(path, out var segments) || segments.Count == 0)
         {
             return false;
         }
 
-        var root = segments[0];
-        return root.Equals(ExecutionContextKeys.Vars, StringComparison.OrdinalIgnoreCase)
-            || root.Equals(ExecutionContextKeys.Sys, StringComparison.OrdinalIgnoreCase);
+        return segments[0].Equals(ExecutionContextKeys.Vars, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool TryGetIncompleteStateReference(
-        WorkflowExecutionContext context,
+        IReadOnlyDictionary<string, object?> root,
         string path,
         out string stateName)
     {
@@ -82,6 +98,9 @@ internal static class ExecutionContextPathResolver
             return false;
         }
 
-        return !context.HasStateOutput(stateName);
+        // states スナップショットに当該 State キーが無ければ未完了（output 未記録）。
+        return root.TryGetValue(ExecutionContextKeys.States, out var statesObj)
+            && statesObj is IReadOnlyDictionary<string, object?> states
+            && !states.ContainsKey(stateName);
     }
 }

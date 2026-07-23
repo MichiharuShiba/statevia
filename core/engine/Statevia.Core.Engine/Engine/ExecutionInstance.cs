@@ -40,14 +40,17 @@ public sealed class ExecutionInstance
     /// <summary>失敗で停止したか。</summary>
     public bool IsFailed { get; private set; }
 
-    /// <summary>開始 input で Context を初期化する（実行開始時に 1 回）。</summary>
+    /// <summary>開始 input と実行メタデータで Context を初期化する（実行開始時に 1 回）。</summary>
     /// <param name="input"><see cref="IExecutionEngine.Start"/> に渡された開始 input。</param>
     public void InitializeContext(object? input)
     {
-        Context = WorkflowExecutionContext.Create(input);
+        Context = WorkflowExecutionContext.Create(input, ExecutionId, Definition.Name);
     }
 
-    /// <summary>状態完了時の出力を記録し、Context の <c>states</c> も更新する。</summary>
+    /// <summary>
+    /// 状態完了時の出力を記録し、Context の <c>states</c> を更新する。
+    /// <see cref="CompiledWorkflowDefinition.StateOutputs"/> があれば <c>vars</c> にも代入する。
+    /// </summary>
     /// <param name="stateName">状態名。</param>
     /// <param name="output"><see cref="IStateExecutor.ExecuteAsync"/> の戻り値。</param>
     public void SetOutput(string stateName, object? output)
@@ -56,6 +59,10 @@ public sealed class ExecutionInstance
         {
             _stateOutputs[stateName] = output;
             Context.SetStateOutput(stateName, output);
+            if (Definition.StateOutputs.TryGetValue(stateName, out var varsPath))
+            {
+                Context.SetVar(varsPath, output);
+            }
         }
     }
 

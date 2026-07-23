@@ -255,13 +255,15 @@ public class Level1ValidationTests
     }
 
 
-    /// <summary>input.path が $.vars / $.sys を参照する場合は Level1 検証で失敗することを検証する。</summary>
+    /// <summary>input.path が $.vars / $.sys を参照しても Level1 で許可されることを検証する。</summary>
     [Theory]
     [InlineData("$.vars")]
     [InlineData("$.vars.x")]
     [InlineData("$.sys")]
-    [InlineData("$.sys.traceId")]
-    public void Validate_ReservedExecutionContextInputPath_Fails(string path)
+    [InlineData("$.sys.now")]
+    [InlineData("$.sys.execution.id")]
+    [InlineData("$.sys.definition.name")]
+    public void Validate_VarsAndSysExecutionContextInputPath_Succeeds(string path)
     {
         // Arrange
         var def = new WorkflowDefinition
@@ -281,8 +283,65 @@ public class Level1ValidationTests
         var result = Level1Validator.Validate(def);
 
         // Assert
+        Assert.True(result.IsValid);
+    }
+
+    /// <summary>output が $.vars 配下なら Level1 で許可されることを検証する。</summary>
+    [Theory]
+    [InlineData("$.vars")]
+    [InlineData("$.vars.user")]
+    [InlineData("$.vars.user.email")]
+    public void Validate_VarsOutputPath_Succeeds(string path)
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "Test",
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Output = path,
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.True(result.IsValid);
+    }
+
+    /// <summary>output が $.vars 以外なら Level1 で失敗することを検証する。</summary>
+    [Theory]
+    [InlineData("$.sys.now")]
+    [InlineData("$.states.A.output")]
+    [InlineData("$.input")]
+    [InlineData("$")]
+    public void Validate_NonVarsOutputPath_Fails(string path)
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "Test",
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Output = path,
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.Contains("reserved Execution Context", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Errors, e => e.Contains("output must be under", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>input マップ内の path が不正な場合は Level1 検証で失敗することを検証する。</summary>

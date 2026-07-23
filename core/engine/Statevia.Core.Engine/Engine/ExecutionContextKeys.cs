@@ -25,9 +25,9 @@ public static class ExecutionContextKeys
     /// <summary>完了済み State のマップ（<c>$.states</c>）。</summary>
     public const string States = "states";
 
-    /// <summary>実行変数（Phase 1 は空オブジェクト・input.path 参照不可）。</summary>
+    /// <summary>実行変数（<c>$.vars</c>。読み書き可）。</summary>
     public const string Vars = "vars";
 
-    /// <summary>システム情報（Phase 1 は空オブジェクト・input.path 参照不可）。</summary>
+    /// <summary>システム情報（<c>$.sys</c>。読み取り専用ランタイム情報）。</summary>
     public const string Sys = "sys";
 }

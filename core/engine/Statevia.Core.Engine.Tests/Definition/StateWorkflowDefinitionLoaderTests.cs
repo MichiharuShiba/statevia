@@ -159,6 +159,31 @@ public class StateWorkflowDefinitionLoaderTests
         Assert.Equal("$.payload.value", def.States["B"].Input?.Path);
     }
 
+    /// <summary>状態直下の output をパースできることを検証する。</summary>
+    [Fact]
+    public void Load_ParsesStateOutputPath()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              A:
+                action: user.get
+                output: $.vars.user
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+
+        // Assert
+        Assert.Equal("$.vars.user", def.States["A"].Output);
+    }
+
     /// <summary>states.&lt;name&gt;.action をパースできることを検証する。</summary>
     [Fact]
     public void Load_ParsesStateAction()
