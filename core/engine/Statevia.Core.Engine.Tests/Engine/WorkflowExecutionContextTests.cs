@@ -26,6 +26,32 @@ public class WorkflowExecutionContextTests
         Assert.Equal("a@example.com", resolved.Value);
     }
 
+    /// <summary>
+    /// SetVar でネスト代入しても、先に SetStateOutput した同一オブジェクト参照の states 記録が壊れないことを検証する。
+    /// </summary>
+    [Fact]
+    public void SetVar_NestedWrite_DoesNotMutatePreviouslyRecordedStateOutput()
+    {
+        // Arrange
+        var context = WorkflowExecutionContext.Create(null);
+        var shared = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["name"] = "Alice"
+        };
+        context.SetStateOutput("A", shared);
+        context.SetVar("$.vars.user", shared);
+
+        // Act
+        context.SetVar("$.vars.user.email", "a@example.com");
+        var root = context.ToPathRoot();
+
+        // Assert
+        Assert.Equal("a@example.com", SimpleJsonPathResolver.Resolve(root, "$.vars.user.email").Value);
+        Assert.Equal("Alice", SimpleJsonPathResolver.Resolve(root, "$.states.A.output.name").Value);
+        Assert.False(SimpleJsonPathResolver.Resolve(root, "$.states.A.output.email").Found);
+        Assert.False(shared.ContainsKey("email"));
+    }
+
     /// <summary>同じ vars パスへの再代入が上書きになることを検証する。</summary>
     [Fact]
     public void SetVar_SamePath_OverwritesPreviousValue()

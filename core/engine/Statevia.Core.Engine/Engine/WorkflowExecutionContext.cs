@@ -70,6 +70,10 @@ public sealed class WorkflowExecutionContext
     /// <summary>
     /// 状態完了時の output を <c>states.&lt;StateName&gt;.output</c> として記録する。
     /// </summary>
+    /// <remarks>
+    /// 辞書ツリーは隔離コピーする。同一参照を <see cref="SetVar"/> した場合でも、
+    /// 後続のネスト代入で履歴が壊れない。
+    /// </remarks>
     /// <param name="stateName">定義上の状態名。</param>
     /// <param name="output">状態の成功 output（失敗時は呼ばない想定）。</param>
     public void SetStateOutput(string stateName, object? output)
@@ -77,9 +81,10 @@ public sealed class WorkflowExecutionContext
         ArgumentException.ThrowIfNullOrWhiteSpace(stateName);
         lock (_lock)
         {
+            // vars への後続ネスト代入や呼び出し元の破壊的更新から履歴を守るため、辞書ツリーは隔離コピーする。
             _states[stateName] = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
             {
-                ["output"] = output
+                ["output"] = CloneForIsolation(output)
             };
         }
     }
@@ -87,6 +92,9 @@ public sealed class WorkflowExecutionContext
     /// <summary>
     /// <c>$.vars</c> 配下へ値を代入する。中間オブジェクトは自動生成し、既存キーは上書きする。
     /// </summary>
+    /// <remarks>
+    /// 代入値の辞書ツリーは隔離コピーする。<see cref="SetStateOutput"/> と参照を共有しない。
+    /// </remarks>
     /// <param name="varsPath"><c>$.vars</c> または <c>$.vars.&lt;seg&gt;…</c>（SimpleJsonPath）。</param>
     /// <param name="value">代入する値。</param>
     /// <exception cref="ArgumentException"><paramref name="varsPath"/> が <c>$.vars</c> 配下でない、または不正なとき。</exception>
@@ -104,14 +112,16 @@ public sealed class WorkflowExecutionContext
 
         lock (_lock)
         {
+            // states 記録や呼び出し元オブジェクトと参照を共有しないよう、代入値は隔離コピーする。
+            var isolated = CloneForIsolation(value);
             if (segments.Count == 1)
             {
-                _vars = value ?? EmptyObject;
+                _vars = isolated ?? EmptyObject;
                 return;
             }
 
             var root = EnsureVarsDictionary();
-            SetNestedValue(root, segments, startIndex: 1, value);
+            SetNestedValue(root, segments, startIndex: 1, isolated);
         }
     }
 
@@ -199,19 +209,42 @@ public sealed class WorkflowExecutionContext
         current[segments[^1]] = value;
     }
 
-    private static object? SnapshotObject(object? value)
+    private static object? SnapshotObject(object? value) =>
+        CloneForIsolation(value) ?? EmptyObject;
+
+    /// <summary>
+    /// 辞書ツリーを再帰コピーし、スカラー等はそのまま返す。Context 内の states / vars 間の参照共有を防ぐ。
+    /// </summary>
+    private static object? CloneForIsolation(object? value)
     {
+        if (value is null || ReferenceEquals(value, EmptyObject))
+        {
+            return value;
+        }
+
         if (value is Dictionary<string, object?> dict)
         {
-            return new Dictionary<string, object?>(dict, StringComparer.OrdinalIgnoreCase);
+            var clone = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (key, entry) in dict)
+            {
+                clone[key] = CloneForIsolation(entry);
+            }
+
+            return clone;
         }
 
         if (value is IReadOnlyDictionary<string, object?> readOnly)
         {
-            return new Dictionary<string, object?>(readOnly, StringComparer.OrdinalIgnoreCase);
+            var clone = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (key, entry) in readOnly)
+            {
+                clone[key] = CloneForIsolation(entry);
+            }
+
+            return clone;
         }
 
-        return value ?? EmptyObject;
+        return value;
     }
 
     private Dictionary<string, object?> BuildSysSnapshot()
