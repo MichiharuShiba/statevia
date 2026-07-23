@@ -56,6 +56,10 @@ internal static class OutputConditionEvaluator
         ArgumentNullException.ThrowIfNull(context);
         var evaluationErrors = new List<string>();
 
+        // Context スナップショットは評価単位で 1 回だけ取得して全 case で使い回す。
+        // これにより sys（now/today など）が case 間で一貫し、全 case 分の再確保も避ける。
+        var root = context.ToPathRoot();
+
         if (compiledTransition.LinearTarget is { } linearTarget)
         {
             return (
@@ -75,7 +79,7 @@ internal static class OutputConditionEvaluator
         foreach (var transitionCase in compiledTransition.Cases)
         {
             var (matched, reasonCode, reasonDetail) = EvaluateConditionExpressionDetail(
-                context,
+                root,
                 transitionCase.When,
                 onPathWarning,
                 evaluationErrors);
@@ -158,7 +162,7 @@ internal static class OutputConditionEvaluator
     /// 条件式の真偽と、偽のときの理由コードを返す。
     /// </summary>
     private static (bool Matched, string? ReasonCode, string? ReasonDetail) EvaluateConditionExpressionDetail(
-        WorkflowExecutionContext context,
+        IReadOnlyDictionary<string, object?> root,
         ConditionExpressionDefinition condition,
         Action<string, string>? onPathWarning,
         List<string> evaluationErrors)
@@ -170,7 +174,7 @@ internal static class OutputConditionEvaluator
             return (false, ReasonUnsupportedOp, msg);
         }
 
-        if (!TryResolvePath(context, condition.Path, out var actualValue, out var hasPath, onPathWarning, evaluationErrors))
+        if (!TryResolvePath(root, condition.Path, out var actualValue, out var hasPath, onPathWarning, evaluationErrors))
         {
             return (false, ReasonPathResolutionFailed, condition.Path);
         }
@@ -302,7 +306,7 @@ internal static class OutputConditionEvaluator
     }
 
     private static bool TryResolvePath(
-        WorkflowExecutionContext context,
+        IReadOnlyDictionary<string, object?> root,
         string path,
         out object? value,
         out bool found,
@@ -318,7 +322,7 @@ internal static class OutputConditionEvaluator
             return false;
         }
 
-        var resolve = ExecutionContextPathResolver.Resolve(context, path);
+        var resolve = ExecutionContextPathResolver.ResolveWithRoot(root, path);
         if (!resolve.IsSupportedPathExpression)
         {
             if (resolve.WarningReason is not null)

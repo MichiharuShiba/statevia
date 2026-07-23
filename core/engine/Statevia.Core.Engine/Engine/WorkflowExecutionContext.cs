@@ -101,9 +101,9 @@ public sealed class WorkflowExecutionContext
     public void SetVar(string varsPath, object? value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(varsPath);
-        if (!SimpleJsonPath.TryGetSegments(varsPath, out var segments)
-            || segments.Count == 0
-            || !segments[0].Equals(ExecutionContextKeys.Vars, StringComparison.OrdinalIgnoreCase))
+        // 「$.vars 配下か」の判定は Level1 検証（output）と同一の実装を共有する。
+        if (!ExecutionContextPathResolver.IsVarsWritePath(varsPath)
+            || !SimpleJsonPath.TryGetSegments(varsPath, out var segments))
         {
             throw new ArgumentException(
                 $"vars path must be under $.{ExecutionContextKeys.Vars}: {varsPath}",
@@ -193,16 +193,18 @@ public sealed class WorkflowExecutionContext
         int startIndex,
         object? value)
     {
+        // 直前に返した ToPathRoot スナップショットは入れ子辞書の参照を共有するため、
+        // 書き込み経路の中間辞書を都度クローンして既存参照を破壊しない（copy-on-write）。
+        // これにより fork 並列時に「別分岐がスナップショットを読みつつ vars を書き込む」競合を防ぐ。
         var current = root;
         for (var i = startIndex; i < segments.Count - 1; i++)
         {
             var segment = segments[i];
-            if (!current.TryGetValue(segment, out var next) || next is not Dictionary<string, object?> nextDict)
-            {
-                nextDict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-                current[segment] = nextDict;
-            }
-
+            var nextDict = current.TryGetValue(segment, out var next)
+                    && next is IReadOnlyDictionary<string, object?> existingDict
+                ? new Dictionary<string, object?>(existingDict, StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            current[segment] = nextDict;
             current = nextDict;
         }
 

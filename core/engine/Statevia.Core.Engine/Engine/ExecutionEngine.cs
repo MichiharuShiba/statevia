@@ -359,6 +359,11 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 
         _executionLog.LogJoinStateCompleted(instance.ExecutionId, joinStateName, nodeId, Fact.Joined);
 
+        // Join の集約 input を当該 State の output として Context へ記録する。
+        // これにより when.path の $.states.<Join>.output… 参照と output: $.vars… 代入が
+        // 通常 State と同じ規則で機能する（未記録だと条件が常に path_not_found になる）。
+        instance.SetOutput(joinStateName, joinInputs);
+
         var (transition, routingDiag) = EvaluateTransition(instance, joinStateName, Fact.Joined);
         if (routingDiag is not null)
         {

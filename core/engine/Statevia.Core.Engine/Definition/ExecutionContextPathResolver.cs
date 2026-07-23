@@ -24,8 +24,27 @@ internal static class ExecutionContextPathResolver
     public static SimpleJsonPathResolver.ResolveResult Resolve(WorkflowExecutionContext context, string path)
     {
         ArgumentNullException.ThrowIfNull(context);
+        return ResolveWithRoot(context.ToPathRoot(), path);
+    }
 
-        if (TryGetIncompleteStateReference(context, path, out _))
+    /// <summary>
+    /// 事前取得した Context スナップショット <paramref name="root"/> を評価根として解決する。
+    /// </summary>
+    /// <remarks>
+    /// 同一評価内で複数パスを解決する際、<see cref="WorkflowExecutionContext.ToPathRoot"/> を
+    /// 1 度だけ取得して使い回すためのオーバーロード。解決ごとの再スナップショットによる
+    /// <c>$.sys.now</c> 等の非一貫性と無駄な再確保を避ける。
+    /// </remarks>
+    /// <param name="root">Context スナップショット（<see cref="WorkflowExecutionContext.ToPathRoot"/> の戻り値）。</param>
+    /// <param name="path">SimpleJsonPath（<c>$</c> または <c>$.…</c> / ブラケット）。</param>
+    /// <returns>解決結果。</returns>
+    public static SimpleJsonPathResolver.ResolveResult ResolveWithRoot(
+        IReadOnlyDictionary<string, object?> root,
+        string path)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        if (TryGetIncompleteStateReference(root, path, out _))
         {
             return new SimpleJsonPathResolver.ResolveResult(
                 IsSupportedPathExpression: true,
@@ -34,7 +53,7 @@ internal static class ExecutionContextPathResolver
                 WarningReason: IncompleteStateOutput);
         }
 
-        return SimpleJsonPathResolver.Resolve(context.ToPathRoot(), path);
+        return SimpleJsonPathResolver.Resolve(root, path);
     }
 
     /// <summary>
@@ -58,7 +77,7 @@ internal static class ExecutionContextPathResolver
     }
 
     private static bool TryGetIncompleteStateReference(
-        WorkflowExecutionContext context,
+        IReadOnlyDictionary<string, object?> root,
         string path,
         out string stateName)
     {
@@ -79,6 +98,9 @@ internal static class ExecutionContextPathResolver
             return false;
         }
 
-        return !context.HasStateOutput(stateName);
+        // states スナップショットに当該 State キーが無ければ未完了（output 未記録）。
+        return root.TryGetValue(ExecutionContextKeys.States, out var statesObj)
+            && statesObj is IReadOnlyDictionary<string, object?> states
+            && !states.ContainsKey(stateName);
     }
 }
