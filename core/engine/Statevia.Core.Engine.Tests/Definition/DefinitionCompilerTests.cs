@@ -322,6 +322,14 @@ public class DefinitionCompilerTests
     }
 
     /// <summary>cases/default を含む遷移が ConditionalTransitions に保持されることを検証する。</summary>
+    /// <summary>
+    /// cases/default を含む遷移が ConditionalTransitions に保持され、order 昇順で安定ソートされることを検証する。
+    /// </summary>
+    /// <remarks>
+    /// <see cref="DefinitionCompiler"/> は <c>when.path</c> を書き換えず verbatim で保持するだけである。
+    /// そのため本テストの path は短いフィクスチャ（<c>$.score</c> 等）でよく、
+    /// Execution Context 根での評価契約は runtime テスト（OutputConditionEvaluator / ExecutionEngine）側の責務とする。
+    /// </remarks>
     [Fact]
     public void Compile_ProducesConditionalTransitionTable_WithStableOrder()
     {
@@ -342,18 +350,18 @@ public class DefinitionCompilerTests
                                 new TransitionCaseDefinition
                                 {
                                     Order = 20,
-                                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.score", Op = "gt", Value = 30 },
+                                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "gt", Value = 30 },
                                     Transition = new TransitionDefinition { Next = "Manual" }
                                 },
                                 new TransitionCaseDefinition
                                 {
                                     Order = 10,
-                                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.score", Op = "lte", Value = 30 },
+                                    When = new ConditionExpressionDefinition { Path = "$.score", Op = "lte", Value = 30 },
                                     Transition = new TransitionDefinition { Next = "Auto" }
                                 },
                                 new TransitionCaseDefinition
                                 {
-                                    When = new ConditionExpressionDefinition { Path = "$.states.Route.output.band", Op = "in", Value = new[] { 1, 2, 3 } },
+                                    When = new ConditionExpressionDefinition { Path = "$.band", Op = "in", Value = new[] { 1, 2, 3 } },
                                     Transition = new TransitionDefinition { Next = "Auto" }
                                 }
                             ],
@@ -372,18 +380,18 @@ public class DefinitionCompilerTests
         var compiled = compiler.Compile(def);
         var factTransition = compiled.ConditionalTransitions["Route"]["Completed"];
 
-        // Assert
+        // Assert — order 安定ソートと when.path の verbatim 保持
         Assert.NotNull(factTransition);
         Assert.Null(factTransition.LinearTarget);
         Assert.NotNull(factTransition.DefaultTarget);
         Assert.Equal("Manual", factTransition.DefaultTarget!.Next);
         Assert.Equal(3, factTransition.Cases.Count);
         Assert.Equal(10, factTransition.Cases[0].Order);
-        Assert.Equal("$.states.Route.output.score", factTransition.Cases[0].When.Path);
+        Assert.Equal("$.score", factTransition.Cases[0].When.Path);
         Assert.Equal(20, factTransition.Cases[1].Order);
-        Assert.Equal("$.states.Route.output.score", factTransition.Cases[1].When.Path);
+        Assert.Equal("$.score", factTransition.Cases[1].When.Path);
         Assert.Null(factTransition.Cases[2].Order);
-        Assert.Equal("$.states.Route.output.band", factTransition.Cases[2].When.Path);
+        Assert.Equal("$.band", factTransition.Cases[2].When.Path);
     }
 
     /// <summary>states 形式の複数 end: true 遷移がコンパイル後も維持されることを検証する。</summary>
