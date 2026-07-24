@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "../../../lib/authSession";
+import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "@/shared/auth/authSession";
 
 /** セッション Cookie を削除する。 */
 function clearAuthCookies(res: NextResponse): void {

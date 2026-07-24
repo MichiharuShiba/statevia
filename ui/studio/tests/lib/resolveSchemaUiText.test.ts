@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { actionCatalogUiTextJa, actionCatalogUiTextEnOverrides } from "../../app/lib/actionCatalogUiText";
+import { actionCatalogUiTextJa, actionCatalogUiTextEnOverrides } from "@/shared/i18n/actionCatalogUiText";
 import {
   listRootInputFieldNames,
   resolveLabelKeyFromActionCatalog,
   resolveSchemaUiText
 } from "../../app/lib/actionSchema/resolveSchemaUiText";
-import { getUiText } from "../../app/lib/uiTextLocale";
+import { getUiText } from "@/shared/i18n/uiTextLocale";
 
 const restActionId = "statevia.action.builtin.rest";
 const restUrlLabelKey = `${restActionId}.ui.fields.url.label`;

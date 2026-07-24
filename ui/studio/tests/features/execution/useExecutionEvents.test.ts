@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useExecutionEvents } from "../../../app/features/execution/useExecutionEvents";
-import * as api from "../../../app/lib/api";
+import * as api from "@/shared/api";
 import type { ExecutionEventsResponse } from "../../../app/lib/types";
 
 describe("useExecutionEvents", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toToastError } from "../../app/lib/errors";
+import { toToastError } from "@/shared/lib/errors";
 
 describe("toToastError", () => {
   it("status 409 のとき 409 用メッセージを返す", () => {

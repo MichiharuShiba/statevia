@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "../../app/lib/authSession";
-import { fetchAuthMeServer } from "../../app/lib/serverAuthMe";
+import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "@/shared/auth/authSession";
+import { fetchAuthMeServer } from "@/shared/auth/serverAuthMe";
 import { testJwt } from "../helpers/testJwt";
 
 const cookiesMock = vi.fn();

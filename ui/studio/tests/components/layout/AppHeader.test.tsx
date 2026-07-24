@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { AppHeader } from "../../../app/components/layout/AppHeader";
-import { uiText } from "../../../app/lib/uiText";
-import { UiTextProvider } from "../../../app/lib/uiTextContext";
+import { uiText } from "@/shared/i18n/uiText";
+import { UiTextProvider } from "@/shared/i18n/uiTextContext";
 
 const usePathname = vi.fn();
 

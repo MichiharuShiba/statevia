@@ -1,5 +1,5 @@
-import type { ActionCatalogUiText } from "../actionCatalogUiText";
-import type { UiText } from "../uiText";
+import type { ActionCatalogUiText } from "@/shared/i18n/actionCatalogUiText";
+import type { UiText } from "@/shared/i18n/uiText";
 import type { JsonSchemaObject } from "./types";
 
 /** {@link resolveSchemaUiText} のフォールバック解決に用いるオプション。 */

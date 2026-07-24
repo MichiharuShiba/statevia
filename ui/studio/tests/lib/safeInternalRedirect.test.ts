@@ -3,7 +3,7 @@ import {
   DEFAULT_POST_LOGIN_PATH,
   normalizeInternalRedirectPath,
   resolveSafeInternalRedirectPath
-} from "../../app/lib/safeInternalRedirect";
+} from "@/shared/auth/safeInternalRedirect";
 
 describe("normalizeInternalRedirectPath", () => {
   it("内部パスとクエリ・ハッシュを正規化して返す", () => {

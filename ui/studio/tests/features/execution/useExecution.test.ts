@@ -3,7 +3,7 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { useExecution } from "../../../app/features/execution/useExecution";
 import { getReconnectDelayMs } from "../../../app/features/execution/executionStreamLifecycle";
 import type { ExecutionDTO, ExecutionGraphDTO } from "../../../app/lib/types";
-import * as api from "../../../app/lib/api";
+import * as api from "@/shared/api";
 
 function executionDto(overrides: Partial<ExecutionDTO> = {}): ExecutionDTO {
   return {

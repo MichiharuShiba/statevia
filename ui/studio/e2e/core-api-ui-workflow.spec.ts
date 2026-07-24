@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { ExecutionPage } from "./pages/ExecutionPage";
 import { e2eWaitWorkflowYaml } from "./fixtures/e2eWaitWorkflowYaml";
-import { uiText } from "../app/lib/uiText";
+import { uiText } from "@/shared/i18n/uiText";
 
 /**
  * Core-API 実体 + Next プロキシ経由の UI E2E（STV-401/402 の UI 側）。
@@ -17,6 +17,7 @@ const tenantHeaders = { "X-Tenant-Id": "default", "Content-Type": "application/j
 
 test.describe("Core API + UI (real)", () => {
   test.describe.configure({ mode: "serial", timeout: 120_000 });
+  // Reason: CORE_API_E2E_URL 未設定時は実体 Core-API が無いため、環境ゲートでスイートをスキップする。
   test.skip(!apiBase, "CORE_API_E2E_URL が未設定のためスキップ");
 
   test("STV-401: Load → Cancel で Cancelled かつ成功トースト", async ({ page, request }) => {

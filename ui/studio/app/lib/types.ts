@@ -1,8 +1,7 @@
-/** v2: C# API の実行状態（ExecutionStatus）。 */
-export type ExecutionStatus = "Running" | "Completed" | "Cancelled" | "Failed";
+import type { ExecutionStatus, NodeStatus } from "@/shared/lib/statusStyle";
 
-/** 実行ノードの状態（Engine / Core-API 準拠）。 */
-export type NodeStatus = "IDLE" | "READY" | "RUNNING" | "WAITING" | "SUCCEEDED" | "FAILED" | "CANCELED";
+/** v2: C# API の実行状態（ExecutionStatus）とノード状態。 */
+export type { ExecutionStatus, NodeStatus } from "@/shared/lib/statusStyle";
 
 /** v2: GET /v1/executions/:id のレスポンス（C# ExecutionResponse）。 */
 export type ExecutionDTO = {
@@ -94,14 +93,7 @@ export type CommandAccepted = {
 };
 
 /** Core-API エラー応答のクライアント側表現。 */
-export type ApiError = {
-  status?: number;
-  error: {
-    code: string;
-    message: string;
-    details?: Record<string, unknown>;
-  };
-};
+export type { ApiError } from "@/shared/api/apiError";
 
 /** GraphUpdated 等のパッチ。`executionNodeId` は UI／REST 向け名（永続グラフ JSON の `nodeId` と同値）。 */
 export type GraphPatchNode = {

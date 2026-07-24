@@ -16,7 +16,7 @@ import type {
   ActionSchemaDetailResponse,
   JsonSchemaObject
 } from "../../lib/actionSchema/types";
-import { useUiText } from "../../lib/uiTextContext";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 /** Schema 駆動 action input フォームの props。 */
 export type SchemaDrivenActionInputFormProps = {

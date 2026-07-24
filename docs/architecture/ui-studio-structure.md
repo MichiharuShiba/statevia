@@ -3,9 +3,11 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Architecture |
-| Version | 0.1 |
-| 更新日 | 2026-07-23 |
+| Version | 0.2 |
+| 更新日 | 2026-07-24 |
 | 関連 | [repository-layout.md](repository-layout.md), [development-guidelines.md](../development-guidelines.md) |
+
+**Version 0.2（2026-07-24）**: Phase 1 完了。`shared/{api,ui,i18n,auth,lib}` へ横断モジュールを移動。
 
 **Version 0.1（2026-07-23）**: Studio 内部を `app/` + `features/` + `shared/` へ段階移行する正本を追加。
 
@@ -28,14 +30,14 @@ ui/studio/
 │  ├─ auth/
 │  └─ dashboard/
 └─ shared/
-   ├─ api/                   # transport + 共通 query 型
-   ├─ ui/                    # PageShell, Toast 等
-   ├─ i18n/                  # Context・locale・共通キー合成
-   ├─ auth/                  # session / jwt ヘルパ
-   └─ lib/                   # dateTime, errors, validation primitives
+   ├─ api/                   # transport + 共通 query 型（Phase 1 済み）
+   ├─ ui/                    # PageShell, Toast 等（Phase 1 済み）
+   ├─ i18n/                  # Context・locale・辞書（切片分割は後続）
+   ├─ auth/                  # session / jwt ヘルパ（Phase 1 済み）
+   └─ lib/                   # dateTime, errors, validation, statusStyle（Phase 1 済み）
 ```
 
-移行中は旧 `app/lib` / `app/components` / `app/features` が併存してよい。長期の互換 re-export は残さない。
+Phase 1 時点では横断モジュールは `shared/` に移済み。旧 `app/lib` にはドメイン固有（types / definition-editor / execution* 等）が残る。`app/features` は Phase 3 で再配置する。長期の互換 re-export は残さない。
 
 ## 2. パスエイリアス
 
@@ -85,8 +87,8 @@ flowchart LR
 
 | Phase | 内容 | 完了条件 |
 | --- | --- | --- |
-| 0 | 本正本・paths・骨格・依存方向チェック | lint / typecheck / test:run |
-| 1 | transport / UI primitive / i18n・auth・汎用 lib を `shared` へ | 同上。長期 re-export なし |
+| 0 | 本正本・paths・骨格・依存方向チェック | lint / typecheck / test:run（完了） |
+| 1 | transport / UI primitive / i18n・auth・汎用 lib を `shared` へ | 同上。長期 re-export なし（完了） |
 | 2 | `features/definitions` パイロット（api / hooks / ui / i18n） | 定義一覧・詳細の既存テスト通過 |
 | 3 | `features/executions`（必要なら graph） | 実行画面・関連テスト |
 | 4 | `features/definition-editor`（移動と境界のみ） | 編集画面の挙動非変更 |

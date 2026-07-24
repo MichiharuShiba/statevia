@@ -1,6 +1,6 @@
 "use client";
 
-import { useUiText } from "../lib/uiTextContext";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 /** 実行画面の表示モード（一覧 / グラフ）。 */
 export type ViewMode = "list" | "graph";

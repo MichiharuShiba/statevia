@@ -4,7 +4,7 @@ import {
   AUTH_COOKIE_TENANT_KEY,
   hasServerDevAuthBypass,
   isAccessTokenSessionValid
-} from "../../../lib/authSession";
+} from "@/shared/auth/authSession";
 
 /**
  * クライアント向けセッション概要（トークン本体は返さない）。

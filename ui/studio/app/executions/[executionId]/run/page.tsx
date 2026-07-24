@@ -4,9 +4,9 @@ import { useParams } from "next/navigation";
 import { useMemo } from "react";
 import { ExecutionDashboard } from "../../../components/execution/ExecutionDashboard";
 import { ActionLinkGroup } from "../../../components/layout/ActionLinkGroup";
-import { PageShell } from "../../../components/layout/PageShell";
-import { PageState } from "../../../components/layout/PageState";
-import { useUiText } from "../../../lib/uiTextContext";
+import { PageShell } from "@/shared/ui/PageShell";
+import { PageState } from "@/shared/ui/PageState";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 /**
  * Run 専用ページ。実行操作（Cancel / Resume / Event 送信）をここに集約する。

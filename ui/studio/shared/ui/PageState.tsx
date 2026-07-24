@@ -1,7 +1,7 @@
 "use client";
 
-import { useDelayedVisibility } from "../../lib/useDelayedVisibility";
-import { useUiText } from "../../lib/uiTextContext";
+import { useDelayedVisibility } from "@/shared/lib/useDelayedVisibility";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 type PageStateKind = "loading" | "empty" | "error";
 

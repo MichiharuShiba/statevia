@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PageShell } from "../../../components/layout/PageShell";
-import { PageState } from "../../../components/layout/PageState";
-import { Toast } from "../../../components/Toast";
-import { apiGet, apiPut } from "../../../lib/api";
+import { PageShell } from "@/shared/ui/PageShell";
+import { PageState } from "@/shared/ui/PageState";
+import { Toast } from "@/shared/ui/Toast";
+import { apiGet, apiPut } from "@/shared/api";
 import type { AdminGroupDetail, AdminUserListItem, PermissionDefinitionDto } from "../../../lib/adminTypes";
-import { toToastError, type ToastState } from "../../../lib/errors";
-import { useUiText } from "../../../lib/uiTextContext";
+import { toToastError, type ToastState } from "@/shared/lib/errors";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 type AdminGroupDetailPageClientProps = Readonly<{
   groupId: string;

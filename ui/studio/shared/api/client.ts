@@ -1,5 +1,5 @@
-import { clearSessionAndRedirectToLogin } from "./authRedirect";
-import type { ApiError } from "./types";
+import { clearSessionAndRedirectToLogin } from "@/shared/auth/authRedirect";
+import type { ApiError } from "@/shared/api/apiError";
 
 /** クライアント側の API 用設定（認証・テナント）。NEXT_PUBLIC_* または runtime で注入。 */
 export function getApiConfig(): { tenantId: string; authToken: string } {

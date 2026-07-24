@@ -2,11 +2,11 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ListPagination } from "../components/layout/ListPagination";
+import { ListPagination } from "@/shared/ui/ListPagination";
 import { NAVIGATION_BUTTON_CLASS } from "../components/layout/navigationButtonClass";
-import { PageShell } from "../components/layout/PageShell";
-import { PageState } from "../components/layout/PageState";
-import { Toast } from "../components/Toast";
+import { PageShell } from "@/shared/ui/PageShell";
+import { PageState } from "@/shared/ui/PageState";
+import { Toast } from "@/shared/ui/Toast";
 import {
   apiDelete,
   apiGet,
@@ -14,14 +14,14 @@ import {
   buildDefinitionsListPath,
   type DefinitionsListQuery,
   type SortOrder
-} from "../lib/api";
-import { formatDateTimeLocalized } from "../lib/dateTime";
-import { toToastError, type ToastState } from "../lib/errors";
-import { getDateTimeLocale } from "../lib/i18n";
+} from "@/shared/api";
+import { formatDateTimeLocalized } from "@/shared/lib/dateTime";
+import { toToastError, type ToastState } from "@/shared/lib/errors";
+import { getDateTimeLocale } from "@/shared/i18n/i18n";
 import type { DefinitionDTO, PagedDefinitions } from "../lib/types";
-import { useI18n } from "../lib/uiTextContext";
-import { matchesPattern } from "../lib/validation/primitives";
-import { SEARCH_NAME_PATTERN } from "../lib/validation/searchRules";
+import { useI18n } from "@/shared/i18n/uiTextContext";
+import { matchesPattern } from "@/shared/lib/validation/primitives";
+import { SEARCH_NAME_PATTERN } from "@/shared/lib/validation/searchRules";
 
 const PAGE_SIZE = 20;
 type DefinitionsSortBy = "createdAt" | "name";

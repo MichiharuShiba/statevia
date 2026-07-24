@@ -1,4 +1,4 @@
-import type { AuthMeResponse } from "./adminTypes";
+import type { AuthMeResponse } from "@/shared/auth/authMe";
 
 /**
  * 現在セッションの Principal 情報を取得する（未認証時は null）。

@@ -40,8 +40,8 @@ vi.mock("../../app/features/nodes/useNodeCommands", () => ({
   getResumeDisabledReason: () => null
 }));
 
-vi.mock("../../app/lib/api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../app/lib/api")>();
+vi.mock("@/shared/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/shared/api")>();
   return { ...actual, apiGet: vi.fn() };
 });
 

@@ -1,4 +1,20 @@
-import type { NodeStatus, ExecutionStatus } from "./types";
+/**
+ * Execution / Node の状態表示スタイル（横断 UI 用）。
+ * ドメイン DTO の状態文字列と一致させる。
+ */
+
+/** 実行全体の状態（Core-API 準拠）。 */
+export type ExecutionStatus = "Running" | "Completed" | "Cancelled" | "Failed";
+
+/** 実行ノードの状態（Engine / Core-API 準拠）。 */
+export type NodeStatus =
+  | "IDLE"
+  | "READY"
+  | "RUNNING"
+  | "WAITING"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "CANCELED";
 
 /**
  * ライトはトークンどおり、ダークでは *-container のベタ塗りが濃く見えるため混色で弱める。
@@ -11,9 +27,10 @@ const darkSoftContainerBgClass = {
   info: "bg-[var(--md-sys-color-info-container)] dark:bg-[color-mix(in_srgb,var(--md-sys-color-info-container)_30%,transparent)]",
   success:
     "bg-[var(--md-sys-color-success-container)] dark:bg-[color-mix(in_srgb,var(--md-sys-color-success-container)_30%,transparent)]",
-  error: "bg-[var(--md-sys-color-error-container)] dark:bg-[color-mix(in_srgb,var(--md-sys-color-error-container)_30%,transparent)]",
+  error:
+    "bg-[var(--md-sys-color-error-container)] dark:bg-[color-mix(in_srgb,var(--md-sys-color-error-container)_30%,transparent)]",
   warning:
-    "bg-[var(--md-sys-color-warning-container)] dark:bg-[color-mix(in_srgb,var(--md-sys-color-warning-container)_30%,transparent)]"
+    "bg-[var(--md-sys-color-warning-container)] dark:bg-[color-mix(in_srgb,var(--md-sys-color-warning-container)_30%,transparent)]",
 } as const;
 
 type DarkSoftContainerSemantic = keyof typeof darkSoftContainerBgClass;
@@ -43,7 +60,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
     bgClass: softDarkContainerBackground("info"),
     textClass: "text-[var(--md-sys-color-on-info-container)]",
     icon: "•",
-    emphasisRank: 20
+    emphasisRank: 20,
   },
   Completed: {
     badgeClass: "bg-[var(--md-sys-color-success)] text-[var(--md-sys-color-on-success)]",
@@ -51,7 +68,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
     bgClass: softDarkContainerBackground("success"),
     textClass: "text-[var(--md-sys-color-on-success-container)]",
     icon: "✓",
-    emphasisRank: 40
+    emphasisRank: 40,
   },
   Failed: {
     badgeClass: "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)]",
@@ -59,7 +76,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
     bgClass: softDarkContainerBackground("error"),
     textClass: "text-[var(--md-sys-color-on-error-container)]",
     icon: "⚠",
-    emphasisRank: 80
+    emphasisRank: 80,
   },
   Cancelled: {
     badgeClass: "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)]",
@@ -67,7 +84,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
     bgClass: softDarkContainerBackground("error"),
     textClass: "text-[var(--md-sys-color-on-error-container)]",
     icon: "✕",
-    emphasisRank: 100
+    emphasisRank: 100,
   },
   IDLE: {
     badgeClass: "bg-[var(--md-sys-color-neutral)] text-[var(--md-sys-color-on-neutral)]",
@@ -75,7 +92,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
     bgClass: "bg-[var(--md-sys-color-neutral-container)]",
     textClass: "text-[var(--md-sys-color-on-neutral-container)]",
     icon: "○",
-    emphasisRank: 10
+    emphasisRank: 10,
   },
   READY: {
     badgeClass: "bg-[var(--md-sys-color-info)] text-[var(--md-sys-color-on-info)]",
@@ -83,7 +100,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
     bgClass: softDarkContainerBackground("info"),
     textClass: "text-[var(--md-sys-color-on-info-container)]",
     icon: "•",
-    emphasisRank: 20
+    emphasisRank: 20,
   },
   RUNNING: {
     badgeClass: "bg-[var(--md-sys-color-neutral)] text-[var(--md-sys-color-on-neutral)]",
@@ -91,7 +108,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
     bgClass: "bg-[var(--md-sys-color-neutral-container)]",
     textClass: "text-[var(--md-sys-color-on-neutral-container)]",
     icon: "▶",
-    emphasisRank: 30
+    emphasisRank: 30,
   },
   WAITING: {
     badgeClass: "bg-[var(--md-sys-color-warning)] text-[var(--md-sys-color-on-warning)]",
@@ -99,7 +116,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
     bgClass: softDarkContainerBackground("warning"),
     textClass: "text-[var(--md-sys-color-on-warning-container)]",
     icon: "⏸",
-    emphasisRank: 70
+    emphasisRank: 70,
   },
   SUCCEEDED: {
     badgeClass: "bg-[var(--md-sys-color-success)] text-[var(--md-sys-color-on-success)]",
@@ -107,7 +124,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
     bgClass: softDarkContainerBackground("success"),
     textClass: "text-[var(--md-sys-color-on-success-container)]",
     icon: "✓",
-    emphasisRank: 40
+    emphasisRank: 40,
   },
   FAILED: {
     badgeClass: "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)]",
@@ -115,7 +132,7 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
     bgClass: softDarkContainerBackground("error"),
     textClass: "text-[var(--md-sys-color-on-error-container)]",
     icon: "⚠",
-    emphasisRank: 80
+    emphasisRank: 80,
   },
   CANCELED: {
     badgeClass: "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)]",
@@ -123,22 +140,13 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
     bgClass: softDarkContainerBackground("error"),
     textClass: "text-[var(--md-sys-color-on-error-container)]",
     icon: "✕",
-    emphasisRank: 100
-  }
-};
-
-const DEFAULT_STYLE: StatusStyle = {
-  badgeClass: "bg-[var(--md-sys-color-neutral)] text-[var(--md-sys-color-on-neutral)]",
-  borderClass: "border-[var(--md-sys-color-outline-variant)]",
-  bgClass: "bg-[var(--md-sys-color-neutral-container)]",
-  textClass: "text-[var(--md-sys-color-on-neutral-container)]",
-  icon: "○",
-  emphasisRank: 0
+    emphasisRank: 100,
+  },
 };
 
 /** 状態から表示スタイルを返す。 */
 export function getStatusStyle(status: StatusLike): StatusStyle {
-  return STATUS_STYLE[status] ?? DEFAULT_STYLE;
+  return STATUS_STYLE[status];
 }
 
 /** 一覧ソート用のノード状態ウェイト。 */
@@ -150,8 +158,7 @@ export function getNodeSortWeight(status: NodeStatus): number {
     RUNNING: 4,
     READY: 5,
     SUCCEEDED: 6,
-    IDLE: 7
+    IDLE: 7,
   };
   return order[status];
 }
-

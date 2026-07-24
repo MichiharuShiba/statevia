@@ -4,13 +4,13 @@ import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ActionInputCodeEditor } from "../../../components/editor/ActionInputCodeEditor";
 import { NAVIGATION_BUTTON_CLASS } from "../../../components/layout/navigationButtonClass";
-import { Toast } from "../../../components/Toast";
-import { apiPost } from "../../../lib/api";
-import { toToastError, type ToastState } from "../../../lib/errors";
+import { Toast } from "@/shared/ui/Toast";
+import { apiPost } from "@/shared/api";
+import { toToastError, type ToastState } from "@/shared/lib/errors";
 import type { ExecutionDTO } from "../../../lib/types";
-import { useUiText } from "../../../lib/uiTextContext";
-import { getUtf8ByteLength } from "../../../lib/validation/primitives";
-import { START_INPUT_MAX_BYTES } from "../../../lib/validation/formRules";
+import { useUiText } from "@/shared/i18n/uiTextContext";
+import { getUtf8ByteLength } from "@/shared/lib/validation/primitives";
+import { START_INPUT_MAX_BYTES } from "@/shared/lib/validation/formRules";
 
 /**
  * Definition 起点で新規実行を開始する。

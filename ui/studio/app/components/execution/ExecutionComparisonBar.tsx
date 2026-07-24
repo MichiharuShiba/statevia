@@ -2,8 +2,8 @@
 
 import type { ExecutionView } from "../../lib/types";
 import type { ExecutionDiffResult, NodeDiffItem } from "../../lib/executionDiff";
-import { getStatusStyle } from "../../lib/statusStyle";
-import { useUiText } from "../../lib/uiTextContext";
+import { getStatusStyle } from "@/shared/lib/statusStyle";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 type ExecutionComparisonBarProps = {
   executionLeft: ExecutionView | null;

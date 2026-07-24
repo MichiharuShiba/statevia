@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { apiPost } from "../../lib/api";
-import { DEFAULT_LOCALE, type Locale } from "../../lib/i18n";
+import { apiPost } from "@/shared/api";
+import { DEFAULT_LOCALE, type Locale } from "@/shared/i18n/i18n";
 import type { CommandAccepted, ExecutionNodeDTO, ExecutionView } from "../../lib/types";
-import { getUiText } from "../../lib/uiTextLocale";
+import { getUiText } from "@/shared/i18n/uiTextLocale";
 
 const TERMINAL_STATUSES = new Set<string>(["Completed", "Cancelled", "Failed"]);
 

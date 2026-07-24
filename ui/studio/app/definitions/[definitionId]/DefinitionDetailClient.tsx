@@ -3,14 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { NAVIGATION_BUTTON_CLASS } from "../../components/layout/navigationButtonClass";
-import { Toast } from "../../components/Toast";
-import { apiDelete, apiGet } from "../../lib/api";
-import { useDelayedVisibility } from "../../lib/useDelayedVisibility";
-import { formatDateTimeLocalized } from "../../lib/dateTime";
-import { toToastError, type ToastState } from "../../lib/errors";
-import { getDateTimeLocale } from "../../lib/i18n";
+import { Toast } from "@/shared/ui/Toast";
+import { apiDelete, apiGet } from "@/shared/api";
+import { useDelayedVisibility } from "@/shared/lib/useDelayedVisibility";
+import { formatDateTimeLocalized } from "@/shared/lib/dateTime";
+import { toToastError, type ToastState } from "@/shared/lib/errors";
+import { getDateTimeLocale } from "@/shared/i18n/i18n";
 import type { DefinitionDTO } from "../../lib/types";
-import { useI18n } from "../../lib/uiTextContext";
+import { useI18n } from "@/shared/i18n/uiTextContext";
 
 type DefinitionDetailClientProps = {
   definitionId: string;

@@ -9,11 +9,11 @@ vi.mock("next/link", () => ({
   )
 }));
 
-vi.mock("../../app/lib/fetchAuthMe", () => ({
+vi.mock("@/shared/auth/fetchAuthMe", () => ({
   fetchAuthMe: vi.fn()
 }));
 
-import { fetchAuthMe } from "../../app/lib/fetchAuthMe";
+import { fetchAuthMe } from "@/shared/auth/fetchAuthMe";
 
 describe("AdminNavLinks", () => {
   beforeEach(() => {

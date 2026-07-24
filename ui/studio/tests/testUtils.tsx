@@ -1,7 +1,7 @@
 import { render, type RenderOptions } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { UiTextProvider } from "../app/lib/uiTextContext";
-import type { Locale } from "../app/lib/i18n";
+import { UiTextProvider } from "@/shared/i18n/uiTextContext";
+import type { Locale } from "@/shared/i18n/i18n";
 
 type RenderWithUiTextOptions = RenderOptions & {
   locale?: Locale;

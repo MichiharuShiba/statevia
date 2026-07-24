@@ -1,9 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import AdminLayout from "../../app/admin/layout";
-import { fetchAuthMeServer } from "../../app/lib/serverAuthMe";
+import { fetchAuthMeServer } from "@/shared/auth/serverAuthMe";
 import { redirect } from "next/navigation";
 
-vi.mock("../../app/lib/serverAuthMe", () => ({
+vi.mock("@/shared/auth/serverAuthMe", () => ({
   fetchAuthMeServer: vi.fn()
 }));
 

@@ -1,5 +1,5 @@
-import type { Locale } from "./i18n";
-import { getDateTimeLocale } from "./i18n";
+import type { Locale } from "@/shared/i18n/i18n";
+import { getDateTimeLocale } from "@/shared/i18n/i18n";
 
 /**
  * ロケールに応じて日時文字列を整形する共通ユーティリティ。

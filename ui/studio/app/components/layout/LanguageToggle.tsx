@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import type { Locale } from "../../lib/i18n";
+import type { Locale } from "@/shared/i18n/i18n";
 
 type LanguageToggleProps = Readonly<{
   locale: Locale;

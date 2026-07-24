@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getGraphDefinition } from "../../graphs/registry";
 import type { GraphDefinition } from "../../graphs/types";
-import { apiGet } from "../../lib/api";
+import { apiGet } from "@/shared/api";
 import { mapGraphDefinitionResponse } from "./mapGraphDefinitionResponse";
 
 /** GraphDefinitionSource の型定義。 */

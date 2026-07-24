@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { AdminGroupsPageClient } from "../../app/admin/AdminGroupsPageClient";
 import { renderWithUiText } from "../testUtils";
-import { uiText } from "../../app/lib/uiText";
+import { uiText } from "@/shared/i18n/uiText";
 
 vi.mock("next/link", () => ({
   default: ({ href, children }: { href: string; children: React.ReactNode }) => (
@@ -10,8 +10,8 @@ vi.mock("next/link", () => ({
   )
 }));
 
-vi.mock("../../app/lib/api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../app/lib/api")>();
+vi.mock("@/shared/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/shared/api")>();
   return {
     ...actual,
     apiGet: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock("../../app/lib/api", async (importOriginal) => {
   };
 });
 
-import { apiGet, apiPost } from "../../app/lib/api";
+import { apiGet, apiPost } from "@/shared/api";
 
 const sampleGroup = {
   groupId: "group-1",

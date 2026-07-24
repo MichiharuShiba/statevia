@@ -58,7 +58,11 @@ export default defineConfig({
     },
     plugins: {
         react,
-        "react-hooks": reactHooks,
+        // eslint-plugin-react-hooks の flat configs 型と ESLint Plugin 型が不一致のため窄める
+        "react-hooks": /** @type {import("eslint").ESLint.Plugin} */ (
+            /** @type {unknown} */
+            (reactHooks)
+        ),
         "jsx-a11y": jsxA11y,
         jsdoc,
     },
@@ -123,7 +127,7 @@ export default defineConfig({
         ],
     },
 }, {
-    files: ["app/lib/uiText.ts", "app/lib/uiText.en.ts"],
+    files: ["shared/i18n/uiText.ts", "shared/i18n/uiText.en.ts"],
     rules: {
         "jsdoc/require-jsdoc": "off",
     },

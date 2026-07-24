@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { PageShell } from "../components/layout/PageShell";
-import { PageState } from "../components/layout/PageState";
-import { Toast } from "../components/Toast";
-import { apiGet, apiPost } from "../lib/api";
+import { PageShell } from "@/shared/ui/PageShell";
+import { PageState } from "@/shared/ui/PageState";
+import { Toast } from "@/shared/ui/Toast";
+import { apiGet, apiPost } from "@/shared/api";
 import type { AdminGroupListItem } from "../lib/adminTypes";
-import { toToastError, type ToastState } from "../lib/errors";
-import { useAdminGroupsUiText } from "../lib/uiTextContext";
+import { toToastError, type ToastState } from "@/shared/lib/errors";
+import { useAdminGroupsUiText } from "@/shared/i18n/uiTextContext";
 
 /**
  * グループ一覧・作成。

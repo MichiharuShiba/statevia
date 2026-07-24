@@ -12,8 +12,8 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParams
 }));
 
-vi.mock("../../app/lib/api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../app/lib/api")>();
+vi.mock("@/shared/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/shared/api")>();
   return {
     ...actual,
     apiGet: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock("../../app/lib/api", async (importOriginal) => {
   };
 });
 
-import { apiDelete, apiGet, apiPost, buildDefinitionsListPath } from "../../app/lib/api";
+import { apiDelete, apiGet, apiPost, buildDefinitionsListPath } from "@/shared/api";
 
 describe("DefinitionsPageClient", () => {
   beforeEach(() => {

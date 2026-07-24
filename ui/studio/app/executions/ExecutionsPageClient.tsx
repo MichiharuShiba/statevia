@@ -2,20 +2,20 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
-import { StatusBadge } from "../components/common/StatusBadge";
-import { ListPagination } from "../components/layout/ListPagination";
+import { StatusBadge } from "@/shared/ui/StatusBadge";
+import { ListPagination } from "@/shared/ui/ListPagination";
 import { NAVIGATION_BUTTON_CLASS, OPERATION_TEXT_BUTTON_CLASS } from "../components/layout/navigationButtonClass";
-import { Toast } from "../components/Toast";
-import { PageShell } from "../components/layout/PageShell";
-import { PageState } from "../components/layout/PageState";
-import { apiGet, buildExecutionsListPath, type SortOrder, type ExecutionsListQuery } from "../lib/api";
-import { formatDateTimeLocalized } from "../lib/dateTime";
-import { toToastError, type ToastState } from "../lib/errors";
-import { getDateTimeLocale } from "../lib/i18n";
+import { Toast } from "@/shared/ui/Toast";
+import { PageShell } from "@/shared/ui/PageShell";
+import { PageState } from "@/shared/ui/PageState";
+import { apiGet, buildExecutionsListPath, type SortOrder, type ExecutionsListQuery } from "@/shared/api";
+import { formatDateTimeLocalized } from "@/shared/lib/dateTime";
+import { toToastError, type ToastState } from "@/shared/lib/errors";
+import { getDateTimeLocale } from "@/shared/i18n/i18n";
 import type { PagedExecutions, ExecutionDTO } from "../lib/types";
-import { useI18n, useUiText } from "../lib/uiTextContext";
-import { matchesPattern } from "../lib/validation/primitives";
-import { DEFINITION_ID_PATTERN, SEARCH_NAME_PATTERN } from "../lib/validation/searchRules";
+import { useI18n, useUiText } from "@/shared/i18n/uiTextContext";
+import { matchesPattern } from "@/shared/lib/validation/primitives";
+import { DEFINITION_ID_PATTERN, SEARCH_NAME_PATTERN } from "@/shared/lib/validation/searchRules";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 500;

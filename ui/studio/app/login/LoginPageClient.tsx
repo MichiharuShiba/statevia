@@ -2,11 +2,11 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { toToastError } from "../lib/errors";
-import type { LoginRequestBody } from "../lib/authSession";
+import { toToastError } from "@/shared/lib/errors";
+import type { LoginRequestBody } from "@/shared/auth/authSession";
 import type { ApiError } from "../lib/types";
-import { resolveSafeInternalRedirectPath } from "../lib/safeInternalRedirect";
-import { useUiText } from "../lib/uiTextContext";
+import { resolveSafeInternalRedirectPath } from "@/shared/auth/safeInternalRedirect";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 type LoginOk = { ok: true };
 

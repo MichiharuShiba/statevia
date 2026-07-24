@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { useGraphDefinition } from "../../../app/features/graph/useGraphDefinition";
-import * as api from "../../../app/lib/api";
+import * as api from "@/shared/api";
 
 describe("useGraphDefinition", () => {
   beforeEach(() => {

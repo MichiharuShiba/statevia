@@ -1,6 +1,6 @@
 "use client";
 
-import { useUiText } from "../../lib/uiTextContext";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 type ExecutionStatusBannerProps = {
   cancelRequested?: boolean;

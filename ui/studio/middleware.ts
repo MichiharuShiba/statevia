@@ -3,9 +3,9 @@ import type { NextRequest } from "next/server";
 import {
   AUTH_COOKIE_ACCESS,
   AUTH_COOKIE_TENANT_KEY,
-  hasServerDevAuthBypass
-} from "./app/lib/authSession";
-import { isAccessTokenSessionValid } from "./app/lib/authTokenValidation";
+  hasServerDevAuthBypass,
+  isAccessTokenSessionValid
+} from "./shared/auth/authSession";
 
 const PUBLIC_PATHS = ["/login", "/api/auth"];
 

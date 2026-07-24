@@ -2,8 +2,8 @@
 
 import type { ExecutionNodeDTO, ExecutionView } from "../../lib/types";
 import { formatTracePayload } from "../../lib/formatExecutionTrace";
-import { getStatusStyle } from "../../lib/statusStyle";
-import { useUiText } from "../../lib/uiTextContext";
+import { getStatusStyle } from "@/shared/lib/statusStyle";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 import { NodeDetailStatusPanels, NodeDetailTraceSection } from "./nodeDetailSections";
 
 type NodeDetailProps = {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
-import { ListPagination } from "../../../app/components/layout/ListPagination";
+import { ListPagination } from "@/shared/ui/ListPagination";
 import { renderWithUiText } from "../../testUtils";
 
 describe("ListPagination", () => {

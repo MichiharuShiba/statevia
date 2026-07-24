@@ -3,7 +3,7 @@ import {
   cookieMaxAgeSeconds,
   isAccessTokenSessionValid,
   readJwtExpiryUnixSeconds
-} from "../../app/lib/authSession";
+} from "@/shared/auth/authSession";
 import { testJwt } from "../helpers/testJwt";
 
 describe("cookieMaxAgeSeconds", () => {

@@ -4,9 +4,9 @@ import { useParams } from "next/navigation";
 import { useMemo } from "react";
 import { ExecutionDashboard } from "../../../components/execution/ExecutionDashboard";
 import { ActionLinkGroup } from "../../../components/layout/ActionLinkGroup";
-import { PageShell } from "../../../components/layout/PageShell";
-import { PageState } from "../../../components/layout/PageState";
-import { useUiText } from "../../../lib/uiTextContext";
+import { PageShell } from "@/shared/ui/PageShell";
+import { PageState } from "@/shared/ui/PageState";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 /**
  * Graph 専用ページ。可視化体験を中心に表示し、詳細/実行画面と往復できる。

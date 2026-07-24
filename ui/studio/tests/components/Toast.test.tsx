@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { Toast } from "../../app/components/Toast";
-import { uiText } from "../../app/lib/uiText";
+import { Toast } from "@/shared/ui/Toast";
+import { uiText } from "@/shared/i18n/uiText";
 
 describe("Toast", () => {
   it("toast が null のとき null を返す", () => {

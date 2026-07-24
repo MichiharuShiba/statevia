@@ -1,5 +1,5 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { getApiConfig } from "../../lib/api";
+import { getApiConfig } from "@/shared/api";
 import { applyExecutionStreamEvent, parseExecutionStreamEvent } from "../../lib/executionStream";
 import type { ExecutionView } from "../../lib/types";
 

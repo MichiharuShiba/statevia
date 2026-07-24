@@ -1,6 +1,6 @@
-import type { ApiError } from "./types";
-import { DEFAULT_LOCALE, type Locale } from "./i18n";
-import { getUiText } from "./uiTextLocale";
+import type { ApiError } from "@/shared/api/apiError";
+import { DEFAULT_LOCALE, type Locale } from "@/shared/i18n/i18n";
+import { getUiText } from "@/shared/i18n/uiTextLocale";
 
 /** トースト通知の表示状態。 */
 export type ToastState = {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as authRedirect from "../../app/lib/authRedirect";
+import * as authRedirect from "@/shared/auth/authRedirect";
 import {
   apiGet,
   apiPost,
@@ -8,7 +8,7 @@ import {
   buildExecutionsListPath,
   getApiConfig,
   getApiHeaders
-} from "../../app/lib/api";
+} from "@/shared/api";
 
 describe("apiGet", () => {
   beforeEach(() => {

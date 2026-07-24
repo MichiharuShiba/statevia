@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { formatDateTimeLocalized } from "../../lib/dateTime";
-import { useDelayedVisibility } from "../../lib/useDelayedVisibility";
-import { getDateTimeLocale } from "../../lib/i18n";
+import { formatDateTimeLocalized } from "@/shared/lib/dateTime";
+import { useDelayedVisibility } from "@/shared/lib/useDelayedVisibility";
+import { getDateTimeLocale } from "@/shared/i18n/i18n";
 import type { ExecutionEventWithSeq } from "../../lib/types";
-import { useI18n } from "../../lib/uiTextContext";
+import { useI18n } from "@/shared/i18n/uiTextContext";
 
 function eventLabel(event: ExecutionEventWithSeq): string {
   switch (event.type) {

@@ -1,4 +1,4 @@
-import { getStatusStyle, type StatusLike } from "../../lib/statusStyle";
+import { getStatusStyle, type StatusLike } from "@/shared/lib/statusStyle";
 
 type StatusBadgeProps = {
   status: StatusLike;

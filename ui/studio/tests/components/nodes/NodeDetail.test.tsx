@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { NodeDetail } from "../../../app/components/nodes/NodeDetail";
-import { uiText } from "../../../app/lib/uiText";
+import { uiText } from "@/shared/i18n/uiText";
 import type { ExecutionNodeDTO, ExecutionView } from "../../../app/lib/types";
 
 const baseExecution: ExecutionView = {

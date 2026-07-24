@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { apiGet } from "../../lib/api";
+import { apiGet } from "@/shared/api";
 import type { ExecutionEventWithSeq, ExecutionEventsResponse } from "../../lib/types";
 
 const DEFAULT_LIMIT = 500;

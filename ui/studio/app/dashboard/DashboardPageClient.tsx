@@ -2,18 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { StatusBadge } from "../components/common/StatusBadge";
+import { StatusBadge } from "@/shared/ui/StatusBadge";
 import { TenantMissingBanner } from "../components/execution/TenantMissingBanner";
 import { NAVIGATION_BUTTON_CLASS, OPERATION_TEXT_BUTTON_CLASS } from "../components/layout/navigationButtonClass";
-import { PageShell } from "../components/layout/PageShell";
-import { PageState } from "../components/layout/PageState";
-import { Toast } from "../components/Toast";
-import { apiGet } from "../lib/api";
-import { formatDateTimeLocalized } from "../lib/dateTime";
-import { toToastError, type ToastState } from "../lib/errors";
-import { getDateTimeLocale } from "../lib/i18n";
+import { PageShell } from "@/shared/ui/PageShell";
+import { PageState } from "@/shared/ui/PageState";
+import { Toast } from "@/shared/ui/Toast";
+import { apiGet } from "@/shared/api";
+import { formatDateTimeLocalized } from "@/shared/lib/dateTime";
+import { toToastError, type ToastState } from "@/shared/lib/errors";
+import { getDateTimeLocale } from "@/shared/i18n/i18n";
 import type { PagedExecutions, ExecutionDTO } from "../lib/types";
-import { useI18n } from "../lib/uiTextContext";
+import { useI18n } from "@/shared/i18n/uiTextContext";
 
 /**
  * 直近実行 10 件のダッシュボード（一覧取得・空状態・詳細への導線）。

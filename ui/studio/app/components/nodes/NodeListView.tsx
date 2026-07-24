@@ -1,9 +1,9 @@
 "use client";
 
 import type { ExecutionNodeDTO } from "../../lib/types";
-import { formatExecutionDuration } from "../../lib/dateTime";
-import { getNodeSortWeight, getStatusStyle } from "../../lib/statusStyle";
-import { useUiText } from "../../lib/uiTextContext";
+import { formatExecutionDuration } from "@/shared/lib/dateTime";
+import { getNodeSortWeight, getStatusStyle } from "@/shared/lib/statusStyle";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 type NodeListViewProps = {
   nodes: ExecutionNodeDTO[];

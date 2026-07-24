@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { fetchAuthMe } from "../../lib/fetchAuthMe";
-import { useUiText } from "../../lib/uiTextContext";
+import { fetchAuthMe } from "@/shared/auth/fetchAuthMe";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 /**
  * テナント管理者向けナビリンク（非管理者には何も表示しない）。

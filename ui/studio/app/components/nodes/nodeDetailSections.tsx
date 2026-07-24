@@ -1,8 +1,8 @@
 "use client";
 
 import type { ExecutionNodeDTO } from "../../lib/types";
-import { formatExecutionDuration, formatExecutionInstant } from "../../lib/dateTime";
-import { useLocale, useUiText } from "../../lib/uiTextContext";
+import { formatExecutionDuration, formatExecutionInstant } from "@/shared/lib/dateTime";
+import { useLocale, useUiText } from "@/shared/i18n/uiTextContext";
 
 type TracePayloadDisclosureProps = {
   heading: string;

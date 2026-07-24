@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { UiTextProvider, useI18n, useLocale, useUiText } from "../../app/lib/uiTextContext";
-import { getUiText } from "../../app/lib/uiTextLocale";
+import { UiTextProvider, useI18n, useLocale, useUiText } from "@/shared/i18n/uiTextContext";
+import { getUiText } from "@/shared/i18n/uiTextLocale";
 
 function wrapper(locale: "ja" | "en") {
   return function Wrapper({ children }: { children: ReactNode }) {

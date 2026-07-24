@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { PageShell } from "../../../app/components/layout/PageShell";
+import { PageShell } from "@/shared/ui/PageShell";
 
 describe("PageShell", () => {
   it("title と description を表示する", () => {

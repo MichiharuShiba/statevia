@@ -22,9 +22,9 @@ import type { GroupBounds } from "../../lib/grouping";
 import type { LayoutEdgeInput, PositionedNode } from "../../lib/graphLayout";
 import type { MergedGraphNode } from "../../lib/mergeGraph";
 import { getNodeAppearance } from "../../lib/nodeAppearance";
-import { getStatusStyle } from "../../lib/statusStyle";
+import { getStatusStyle } from "@/shared/lib/statusStyle";
 import type { NodeStatus } from "../../lib/types";
-import { useUiText } from "../../lib/uiTextContext";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 import { GraphLegend } from "./GraphLegend";
 import { GraphNodeShell } from "./GraphNodeShell";
 

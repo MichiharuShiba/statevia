@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isAccessTokenSessionValid,
   readJwtExpiryUnixSeconds
-} from "../../app/lib/authTokenValidation";
+} from "@/shared/auth/authTokenValidation";
 import { testJwt } from "../helpers/testJwt";
 
 describe("authTokenValidation", () => {

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { apiGet, apiPost } from "../../lib/api";
+import { apiGet, apiPost } from "@/shared/api";
 import { startExecutionStreamLifecycle } from "./executionStreamLifecycle";
-import { isWithinMaxLength, matchesPattern } from "../../lib/validation/primitives";
-import { EVENT_NAME_MAX_LENGTH, EVENT_NAME_PATTERN } from "../../lib/validation/formRules";
+import { isWithinMaxLength, matchesPattern } from "@/shared/lib/validation/primitives";
+import { EVENT_NAME_MAX_LENGTH, EVENT_NAME_PATTERN } from "@/shared/lib/validation/formRules";
 import { buildExecutionView } from "../../lib/executionView";
 import type { CommandAccepted, ExecutionDTO, ExecutionGraphDTO, ExecutionView } from "../../lib/types";
 

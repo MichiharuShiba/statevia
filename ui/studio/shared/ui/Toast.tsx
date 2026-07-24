@@ -1,7 +1,7 @@
 "use client";
 
-import type { ToastState } from "../lib/errors";
-import { useUiText } from "../lib/uiTextContext";
+import type { ToastState } from "@/shared/lib/errors";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 type ToastProps = {
   toast: ToastState | null;

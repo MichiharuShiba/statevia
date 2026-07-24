@@ -5,7 +5,7 @@ import {
   cookieMaxAgeSeconds,
   type LoginRequestBody,
   type LoginResponseBody
-} from "../../../lib/authSession";
+} from "@/shared/auth/authSession";
 
 function coreApiBase(): string {
   const base = process.env.CORE_API_INTERNAL_BASE;

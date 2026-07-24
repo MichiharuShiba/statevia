@@ -62,10 +62,4 @@ export type CreatedAdminApiKey = {
 };
 
 /** 認証済み Principal（`/api/auth/me`）。 */
-export type AuthMeResponse = {
-  tenantId: string;
-  tenantKey: string;
-  principalId: string;
-  email: string;
-  isTenantAdmin: boolean;
-};
+export type { AuthMeResponse } from "@/shared/auth/authMe";

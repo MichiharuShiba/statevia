@@ -6,20 +6,20 @@ import { DefinitionGraphEditor } from "../components/editor/DefinitionGraphEdito
 import { YamlCodeEditor } from "../components/editor/YamlCodeEditor";
 import { ActionLinkGroup } from "../components/layout/ActionLinkGroup";
 import { NAVIGATION_BUTTON_CLASS } from "../components/layout/navigationButtonClass";
-import { PageShell } from "../components/layout/PageShell";
-import { PageState } from "../components/layout/PageState";
-import { Toast } from "../components/Toast";
-import { apiGet, apiPost, apiPut } from "../lib/api";
+import { PageShell } from "@/shared/ui/PageShell";
+import { PageState } from "@/shared/ui/PageState";
+import { Toast } from "@/shared/ui/Toast";
+import { apiGet, apiPost, apiPut } from "@/shared/api";
 import { parseDefinitionYaml, type ParseDefinitionYamlMessageOptions } from "../lib/definition-editor/parseDefinitionYaml";
 import { serializeDefinitionYaml } from "../lib/definition-editor/serializeDefinitionYaml";
 import type { DefinitionGraphDocument } from "../lib/definition-editor/types";
 import { validateGraphDocument, type ValidateGraphDocumentMessageOptions } from "../lib/definition-editor/validateGraphDocument";
 import { defaultDefinitionYaml } from "../lib/defaultDefinitionYaml";
-import { toToastError, type ToastState } from "../lib/errors";
+import { toToastError, type ToastState } from "@/shared/lib/errors";
 import type { DefinitionDTO, DefinitionSchemaResponse } from "../lib/types";
-import { useUiText } from "../lib/uiTextContext";
-import { getUtf8ByteLength, matchesPattern } from "../lib/validation/primitives";
-import { DEFINITION_NAME_PATTERN, DEFINITION_YAML_MAX_BYTES } from "../lib/validation/formRules";
+import { useUiText } from "@/shared/i18n/uiTextContext";
+import { getUtf8ByteLength, matchesPattern } from "@/shared/lib/validation/primitives";
+import { DEFINITION_NAME_PATTERN, DEFINITION_YAML_MAX_BYTES } from "@/shared/lib/validation/formRules";
 
 /** GET /definitions/schema/nodes の応答からルート・workflow・ノード項目の補完キーを収集する */
 function extractCompletionKeywordsFromNodesSchema(schema: unknown): string[] {

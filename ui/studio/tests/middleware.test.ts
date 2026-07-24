@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
-import { AUTH_COOKIE_ACCESS } from "../app/lib/authSession";
+import { AUTH_COOKIE_ACCESS } from "@/shared/auth/authSession";
 import { middleware } from "../middleware";
 import { testJwt } from "./helpers/testJwt";
 

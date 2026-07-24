@@ -1,8 +1,8 @@
 "use client";
 
 import type { ExecutionView } from "../../lib/types";
-import { useUiText } from "../../lib/uiTextContext";
-import { StatusBadge } from "../common/StatusBadge";
+import { useUiText } from "@/shared/i18n/uiTextContext";
+import { StatusBadge } from "@/shared/ui/StatusBadge";
 import type { ViewMode } from "../ViewToggle";
 import { ViewToggle } from "../ViewToggle";
 

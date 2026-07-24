@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "./authSession";
-import type { AuthMeResponse } from "./adminTypes";
+import type { AuthMeResponse } from "@/shared/auth/authMe";
 
 function coreApiBase(): string {
   const base = process.env.CORE_API_INTERNAL_BASE;

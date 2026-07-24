@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Script from "next/script";
 import { AppHeader } from "./components/layout/AppHeader";
-import { resolveLocale } from "./lib/i18n";
+import { resolveLocale } from "@/shared/i18n/i18n";
 import { DEFAULT_THEME, resolveTheme } from "./lib/theme";
-import { UiTextProvider } from "./lib/uiTextContext";
+import { UiTextProvider } from "@/shared/i18n/uiTextContext";
 
 /** Next.js のルートメタデータ（ファビコン等）。 */
 export const metadata: Metadata = {

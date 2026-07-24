@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { NAVIGATION_BUTTON_CLASS } from "./navigationButtonClass";
-import { useUiText } from "../../lib/uiTextContext";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 type ActionLinkPriority = "primary" | "secondary";
 

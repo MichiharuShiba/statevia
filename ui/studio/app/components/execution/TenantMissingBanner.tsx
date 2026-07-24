@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getApiConfig } from "../../lib/api";
-import { useUiText } from "../../lib/uiTextContext";
+import { getApiConfig } from "@/shared/api";
+import { useUiText } from "@/shared/i18n/uiTextContext";
 
 type SessionSummary = {
   authenticated: boolean;
