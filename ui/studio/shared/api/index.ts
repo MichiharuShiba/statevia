@@ -8,12 +8,10 @@ export {
   apiPatch,
   apiDelete,
   buildExecutionsListPath,
-  buildDefinitionsListPath,
 } from "./client";
 export type {
   PaginationQuery,
   SortOrder,
   SortQuery,
-  DefinitionsListQuery,
   ExecutionsListQuery,
 } from "./client";

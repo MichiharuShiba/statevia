@@ -4,11 +4,11 @@ import {
   apiGet,
   apiPost,
   apiPut,
-  buildDefinitionsListPath,
   buildExecutionsListPath,
   getApiConfig,
   getApiHeaders
 } from "@/shared/api";
+import { buildDefinitionsListPath } from "@/features/definitions/api";
 
 describe("apiGet", () => {
   beforeEach(() => {
@@ -291,7 +291,7 @@ describe("apiPut", () => {
   });
 });
 
-describe("buildDefinitionsListPath", () => {
+describe("buildDefinitionsListPath (features/definitions)", () => {
   it("空の値は除き、limit/offset 必須、name / sort を含める", () => {
     const path = buildDefinitionsListPath({
       pagination: { limit: 10, offset: 0 },

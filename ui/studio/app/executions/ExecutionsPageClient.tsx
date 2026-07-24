@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { StatusBadge } from "@/shared/ui/StatusBadge";
 import { ListPagination } from "@/shared/ui/ListPagination";
-import { NAVIGATION_BUTTON_CLASS, OPERATION_TEXT_BUTTON_CLASS } from "../components/layout/navigationButtonClass";
+import { NAVIGATION_BUTTON_CLASS, OPERATION_TEXT_BUTTON_CLASS } from "@/shared/ui/navigationButtonClass";
 import { Toast } from "@/shared/ui/Toast";
 import { PageShell } from "@/shared/ui/PageShell";
 import { PageState } from "@/shared/ui/PageState";

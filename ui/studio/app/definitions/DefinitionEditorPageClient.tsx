@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DefinitionGraphEditor } from "../components/editor/DefinitionGraphEditor";
 import { YamlCodeEditor } from "../components/editor/YamlCodeEditor";
 import { ActionLinkGroup } from "../components/layout/ActionLinkGroup";
-import { NAVIGATION_BUTTON_CLASS } from "../components/layout/navigationButtonClass";
+import { NAVIGATION_BUTTON_CLASS } from "@/shared/ui/navigationButtonClass";
 import { PageShell } from "@/shared/ui/PageShell";
 import { PageState } from "@/shared/ui/PageState";
 import { Toast } from "@/shared/ui/Toast";

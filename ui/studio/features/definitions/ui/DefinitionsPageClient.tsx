@@ -1,68 +1,22 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import type { SortOrder } from "@/features/definitions/api";
+import { useDefinitionCatalogActions } from "@/features/definitions/hooks/useDefinitionCatalogActions";
+import { useDefinitionsList } from "@/features/definitions/hooks/useDefinitionsList";
+import { useDefinitionsListQuery } from "@/features/definitions/hooks/useDefinitionsListQuery";
+import { isDeletedDefinition } from "@/features/definitions/types";
+import { getDateTimeLocale } from "@/shared/i18n/i18n";
+import { useI18n } from "@/shared/i18n/uiTextContext";
+import { formatDateTimeLocalized } from "@/shared/lib/dateTime";
+import { matchesPattern } from "@/shared/lib/validation/primitives";
+import { SEARCH_NAME_PATTERN } from "@/shared/lib/validation/searchRules";
 import { ListPagination } from "@/shared/ui/ListPagination";
-import { NAVIGATION_BUTTON_CLASS } from "../components/layout/navigationButtonClass";
+import { NAVIGATION_BUTTON_CLASS } from "@/shared/ui/navigationButtonClass";
 import { PageShell } from "@/shared/ui/PageShell";
 import { PageState } from "@/shared/ui/PageState";
 import { Toast } from "@/shared/ui/Toast";
-import {
-  apiDelete,
-  apiGet,
-  apiPost,
-  buildDefinitionsListPath,
-  type DefinitionsListQuery,
-  type SortOrder
-} from "@/shared/api";
-import { formatDateTimeLocalized } from "@/shared/lib/dateTime";
-import { toToastError, type ToastState } from "@/shared/lib/errors";
-import { getDateTimeLocale } from "@/shared/i18n/i18n";
-import type { DefinitionDTO, PagedDefinitions } from "../lib/types";
-import { useI18n } from "@/shared/i18n/uiTextContext";
-import { matchesPattern } from "@/shared/lib/validation/primitives";
-import { SEARCH_NAME_PATTERN } from "@/shared/lib/validation/searchRules";
-
-const PAGE_SIZE = 20;
-type DefinitionsSortBy = "createdAt" | "name";
-
-/** 行単位のインライン確認対象。 */
-type PendingConfirm =
-  | { kind: "delete"; displayId: string }
-  | { kind: "restore"; displayId: string };
-
-/**
- * 定義が catalog 上削除済みかどうかを判定する。
- * @param definition 一覧要素
- * @returns `deletedAt` が truthy のとき true
- */
-function isDeletedDefinition(definition: DefinitionDTO): boolean {
-  return Boolean(definition.deletedAt);
-}
-
-/**
- * URL searchParams から定義一覧クエリを読む。
- * @param searchParams Next.js searchParams
- * @returns DefinitionsListQuery
- */
-function readListQuery(searchParams: { get: (name: string) => string | null }): DefinitionsListQuery {
-  const limitRaw = Number.parseInt(searchParams.get("limit") ?? "", 10);
-  const limit = Number.isFinite(limitRaw) ? Math.max(1, limitRaw) : PAGE_SIZE;
-  const offsetRaw = Number.parseInt(searchParams.get("offset") ?? "0", 10);
-  const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
-  const name = searchParams.get("name")?.trim() ?? "";
-  const sortByRaw = searchParams.get("sortBy")?.trim() ?? "";
-  const sortOrderRaw = searchParams.get("sortOrder")?.trim() ?? "";
-  const sortBy: DefinitionsSortBy = sortByRaw === "name" ? "name" : "createdAt";
-  const sortOrder: SortOrder = sortOrderRaw === "asc" ? "asc" : "desc";
-  const includeDeleted = searchParams.get("includeDeleted") === "true";
-  return {
-    pagination: { limit, offset },
-    sort: { sortBy, sortOrder },
-    name: name || undefined,
-    includeDeleted: includeDeleted || undefined
-  };
-}
 
 /**
  * Definition 一覧（検索・ページング・catalog 論理削除/復元）を表示する。
@@ -70,65 +24,44 @@ function readListQuery(searchParams: { get: (name: string) => string | null }): 
 export function DefinitionsPageClient() {
   const { uiText, locale } = useI18n();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const dateTimeLocale = getDateTimeLocale(locale);
   const [searchInput, setSearchInput] = useState("");
-  const [items, setItems] = useState<DefinitionDTO[] | null>(null);
-  const [totalCount, setTotalCount] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState<ToastState | null>(null);
-  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [restoringId, setRestoringId] = useState<string | null>(null);
-
-  const listQuery = useMemo(() => readListQuery(searchParams), [searchParams]);
-  const currentPage = useMemo(
-    () => Math.floor(listQuery.pagination.offset / listQuery.pagination.limit) + 1,
-    [listQuery.pagination.limit, listQuery.pagination.offset]
-  );
-  const hasPrev = listQuery.pagination.offset > 0;
-  const hasNext = totalCount !== null && listQuery.pagination.offset + (items?.length ?? 0) < totalCount;
-  const effectiveSortBy: DefinitionsSortBy = listQuery.sort.sortBy === "name" ? "name" : "createdAt";
-  const effectiveSortOrder: SortOrder = listQuery.sort.sortOrder ?? "desc";
-  const includeDeleted = listQuery.includeDeleted === true;
+  const {
+    listQuery,
+    currentPage,
+    effectiveSortBy,
+    effectiveSortOrder,
+    includeDeleted,
+    goTo,
+  } = useDefinitionsListQuery();
+  const {
+    items,
+    totalCount,
+    loading,
+    toast,
+    setToast,
+    loadDefinitions,
+    hasPrev,
+    hasNext,
+    empty,
+  } = useDefinitionsList(listQuery);
+  const {
+    pendingConfirm,
+    setPendingConfirm,
+    deletingId,
+    restoringId,
+    handleDeleteClick,
+    handleRestoreClick,
+  } = useDefinitionCatalogActions({
+    reload: loadDefinitions,
+    setToast,
+    deletedMessage: uiText.definitionsPage.toasts.deleted,
+    restoredMessage: uiText.definitionsPage.toasts.restored,
+  });
 
   useEffect(() => {
     setSearchInput(listQuery.name ?? "");
   }, [listQuery.name]);
-
-  /**
-   * 定義一覧を再取得する。
-   * @param options.clearToast 取得開始時にトーストを消すか（既定 true）
-   */
-  const loadDefinitions = useCallback(async (options?: { clearToast?: boolean }) => {
-    setLoading(true);
-    if (options?.clearToast !== false) {
-      setToast(null);
-    }
-    try {
-      const path = buildDefinitionsListPath(listQuery);
-      const page = await apiGet<PagedDefinitions>(path);
-      setItems(page.items);
-      setTotalCount(page.totalCount);
-    } catch (error) {
-      setToast(toToastError(error));
-      setItems(null);
-      setTotalCount(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [listQuery]);
-
-  useEffect(() => {
-    void loadDefinitions({ clearToast: true });
-  }, [loadDefinitions]);
-
-  const goTo = useCallback(
-    (query: DefinitionsListQuery) => {
-      router.replace(buildDefinitionsListPath(query), { scroll: false });
-    },
-    [router]
-  );
 
   const handleSubmitSearch = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -137,7 +70,7 @@ export function DefinitionsPageClient() {
       if (!matchesPattern(trimmedKeyword, SEARCH_NAME_PATTERN)) {
         setToast({
           tone: "error",
-          message: uiText.definitionsPage.search.invalidName
+          message: uiText.definitionsPage.search.invalidName,
         });
         return;
       }
@@ -145,77 +78,12 @@ export function DefinitionsPageClient() {
         pagination: { ...listQuery.pagination, offset: 0 },
         sort: listQuery.sort,
         name: trimmedKeyword || undefined,
-        includeDeleted: listQuery.includeDeleted
+        includeDeleted: listQuery.includeDeleted,
       });
     },
-    [goTo, listQuery, searchInput, uiText.definitionsPage.search.invalidName]
+    [goTo, listQuery, searchInput, setToast, uiText.definitionsPage.search.invalidName],
   );
 
-  const runDelete = useCallback(
-    async (displayId: string) => {
-      setDeletingId(displayId);
-      setPendingConfirm(null);
-      try {
-        await apiDelete(`/definitions/${encodeURIComponent(displayId)}`);
-        setToast({ tone: "success", message: uiText.definitionsPage.toasts.deleted });
-        await loadDefinitions({ clearToast: false });
-      } catch (error) {
-        setToast(toToastError(error));
-      } finally {
-        setDeletingId(null);
-      }
-    },
-    [loadDefinitions, uiText.definitionsPage.toasts.deleted]
-  );
-
-  const runRestore = useCallback(
-    async (displayId: string) => {
-      setRestoringId(displayId);
-      setPendingConfirm(null);
-      try {
-        await apiPost(`/definitions/${encodeURIComponent(displayId)}/restore`, {});
-        setToast({ tone: "success", message: uiText.definitionsPage.toasts.restored });
-        await loadDefinitions({ clearToast: false });
-      } catch (error) {
-        setToast(toToastError(error));
-      } finally {
-        setRestoringId(null);
-      }
-    },
-    [loadDefinitions, uiText.definitionsPage.toasts.restored]
-  );
-
-  /**
-   * 削除のインライン二段階確認を進める。
-   * @param displayId 対象定義の displayId
-   */
-  const handleDeleteClick = useCallback(
-    (displayId: string) => {
-      if (pendingConfirm?.kind === "delete" && pendingConfirm.displayId === displayId) {
-        void runDelete(displayId);
-        return;
-      }
-      setPendingConfirm({ kind: "delete", displayId });
-    },
-    [pendingConfirm, runDelete]
-  );
-
-  /**
-   * 復元のインライン二段階確認を進める。
-   * @param displayId 対象定義の displayId
-   */
-  const handleRestoreClick = useCallback(
-    (displayId: string) => {
-      if (pendingConfirm?.kind === "restore" && pendingConfirm.displayId === displayId) {
-        void runRestore(displayId);
-        return;
-      }
-      setPendingConfirm({ kind: "restore", displayId });
-    },
-    [pendingConfirm, runRestore]
-  );
-
-  const empty = !loading && items !== null && items.length === 0;
   const paginationNav = (
     <ListPagination
       ariaLabel={uiText.definitionsPage.pagination.ariaLabel}
@@ -227,8 +95,8 @@ export function DefinitionsPageClient() {
           ...listQuery,
           pagination: {
             ...listQuery.pagination,
-            offset: Math.max(0, listQuery.pagination.offset - listQuery.pagination.limit)
-          }
+            offset: Math.max(0, listQuery.pagination.offset - listQuery.pagination.limit),
+          },
         })
       }
       onNext={() =>
@@ -236,24 +104,25 @@ export function DefinitionsPageClient() {
           ...listQuery,
           pagination: {
             ...listQuery.pagination,
-            offset: listQuery.pagination.offset + listQuery.pagination.limit
-          }
+            offset: listQuery.pagination.offset + listQuery.pagination.limit,
+          },
         })
       }
     />
   );
 
   return (
-    <PageShell
-      title={uiText.lists.definitions}
-      description={uiText.definitionsPage.description}
-    >
-
+    <PageShell title={uiText.lists.definitions} description={uiText.definitionsPage.description}>
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <form className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4" onSubmit={handleSubmitSearch}>
+      <form
+        className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4"
+        onSubmit={handleSubmitSearch}
+      >
         <label className="min-w-[260px] flex-1 text-sm">
-          <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionsPage.search.label}</span>
+          <span className="text-[var(--md-sys-color-on-surface-variant)]">
+            {uiText.definitionsPage.search.label}
+          </span>
           <input
             className="mt-1 w-full rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-2 text-sm text-[var(--md-sys-color-on-surface)]"
             value={searchInput}
@@ -276,7 +145,7 @@ export function DefinitionsPageClient() {
             goTo({
               pagination: { ...listQuery.pagination, offset: 0 },
               sort: listQuery.sort,
-              includeDeleted: listQuery.includeDeleted
+              includeDeleted: listQuery.includeDeleted,
             });
           }}
           disabled={loading && !listQuery.name}
@@ -284,7 +153,9 @@ export function DefinitionsPageClient() {
           {uiText.definitionsPage.search.clear}
         </button>
         <label className="text-sm">
-          <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionsPage.sortByLabel}</span>
+          <span className="text-[var(--md-sys-color-on-surface-variant)]">
+            {uiText.definitionsPage.sortByLabel}
+          </span>
           <select
             className="mt-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-2 text-sm text-[var(--md-sys-color-on-surface)]"
             value={effectiveSortBy}
@@ -292,7 +163,7 @@ export function DefinitionsPageClient() {
               goTo({
                 ...listQuery,
                 pagination: { ...listQuery.pagination, offset: 0 },
-                sort: { ...listQuery.sort, sortBy: event.target.value }
+                sort: { ...listQuery.sort, sortBy: event.target.value },
               })
             }
           >
@@ -301,7 +172,9 @@ export function DefinitionsPageClient() {
           </select>
         </label>
         <label className="text-sm">
-          <span className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionsPage.sortOrderLabel}</span>
+          <span className="text-[var(--md-sys-color-on-surface-variant)]">
+            {uiText.definitionsPage.sortOrderLabel}
+          </span>
           <select
             className="mt-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-2 text-sm text-[var(--md-sys-color-on-surface)]"
             value={effectiveSortOrder}
@@ -309,7 +182,7 @@ export function DefinitionsPageClient() {
               goTo({
                 ...listQuery,
                 pagination: { ...listQuery.pagination, offset: 0 },
-                sort: { ...listQuery.sort, sortOrder: event.target.value as SortOrder }
+                sort: { ...listQuery.sort, sortOrder: event.target.value as SortOrder },
               })
             }
           >
@@ -325,7 +198,7 @@ export function DefinitionsPageClient() {
               goTo({
                 ...listQuery,
                 pagination: { ...listQuery.pagination, offset: 0 },
-                includeDeleted: event.target.checked || undefined
+                includeDeleted: event.target.checked || undefined,
               })
             }
             disabled={loading}
@@ -341,16 +214,9 @@ export function DefinitionsPageClient() {
         </button>
       </form>
 
-      {loading && (
-        <PageState state="loading" message={uiText.definitionsPage.loading} />
-      )}
+      {loading && <PageState state="loading" message={uiText.definitionsPage.loading} />}
 
-      {empty && (
-        <PageState
-          state="empty"
-          message={uiText.definitionsPage.emptyNoMatch}
-        />
-      )}
+      {empty && <PageState state="empty" message={uiText.definitionsPage.emptyNoMatch} />}
 
       {!loading && items !== null && items.length > 0 && (
         <section aria-label={uiText.lists.definitions}>
@@ -371,9 +237,15 @@ export function DefinitionsPageClient() {
               const isDeleting = deletingId === definition.displayId;
               const isRestoring = restoringId === definition.displayId;
               return (
-                <li key={definition.displayId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <li
+                  key={definition.displayId}
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                >
                   <div className="min-w-0 flex-1">
-                    <p className="flex flex-wrap items-center gap-2 truncate font-medium text-[var(--md-sys-color-on-surface)]" title={definition.name}>
+                    <p
+                      className="flex flex-wrap items-center gap-2 truncate font-medium text-[var(--md-sys-color-on-surface)]"
+                      title={definition.name}
+                    >
                       <span className="truncate">{definition.name}</span>
                       {deleted && (
                         <span className="shrink-0 rounded border border-[var(--md-sys-color-outline-variant)] px-1.5 py-0.5 text-xs font-normal text-[var(--md-sys-color-on-surface-variant)]">
@@ -385,7 +257,9 @@ export function DefinitionsPageClient() {
                       {uiText.definitionsPage.displayIdAndCreatedAt(
                         uiText.labels.displayId,
                         definition.displayId,
-                        uiText.definitionsPage.createdAt(formatDateTimeLocalized(definition.createdAt, dateTimeLocale))
+                        uiText.definitionsPage.createdAt(
+                          formatDateTimeLocalized(definition.createdAt, dateTimeLocale),
+                        ),
                       )}
                       {deleted && definition.deletedAt
                         ? ` / ${uiText.definitionsPage.deletedAt(formatDateTimeLocalized(definition.deletedAt, dateTimeLocale))}`
@@ -398,7 +272,9 @@ export function DefinitionsPageClient() {
                         <button
                           type="button"
                           className={NAVIGATION_BUTTON_CLASS}
-                          onClick={() => router.push(`/definitions/${encodeURIComponent(definition.displayId)}`)}
+                          onClick={() =>
+                            router.push(`/definitions/${encodeURIComponent(definition.displayId)}`)
+                          }
                         >
                           {uiText.definitionsPage.actions.openDetail}
                         </button>
@@ -475,16 +351,17 @@ export function DefinitionsPageClient() {
               );
             })}
           </ul>
-          <div className="mt-2 flex justify-end">
-            {paginationNav}
-          </div>
+          <div className="mt-2 flex justify-end">{paginationNav}</div>
         </section>
       )}
 
       {!loading && items === null && !toast && (
-        <PageState state="error" message={uiText.definitionsPage.error} onRetry={() => void loadDefinitions()} />
+        <PageState
+          state="error"
+          message={uiText.definitionsPage.error}
+          onRetry={() => void loadDefinitions()}
+        />
       )}
-
     </PageShell>
   );
 }

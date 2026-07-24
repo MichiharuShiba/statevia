@@ -22,7 +22,7 @@ import { getStatusStyle } from "@/shared/lib/statusStyle";
 import { renameNodeIdInDocument } from "../../lib/definition-editor/renameNodeIdInDocument";
 import type { DefinitionGraphDocument, DefinitionGraphNode, NodeType } from "../../lib/definition-editor/types";
 import { buildDocumentAdjacency } from "../../lib/definition-editor/definitionGraphAdjacency";
-import { ActionInputCodeEditor } from "./ActionInputCodeEditor";
+import { ActionInputCodeEditor } from "@/shared/ui/ActionInputCodeEditor";
 import { ActionIdCombobox } from "./ActionIdCombobox";
 import { SchemaDrivenActionInputForm } from "./SchemaDrivenActionInputForm";
 import { GraphNodeShell } from "../nodes/GraphNodeShell";

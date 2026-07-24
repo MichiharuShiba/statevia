@@ -16,7 +16,6 @@ vi.mock("@/shared/api", async (importOriginal) => {
   return {
     ...actual,
     apiGet: vi.fn(() => Promise.resolve({ items: [], totalCount: 0 })),
-    buildDefinitionsListPath: vi.fn(() => "/definitions?limit=20&offset=0"),
     buildExecutionsListPath: vi.fn(() => "/executions?limit=20&offset=0")
   };
 });

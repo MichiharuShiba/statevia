@@ -102,15 +102,6 @@ export type SortQuery = {
   sortOrder?: SortOrder;
 };
 
-/** 定義一覧 API のクエリパラメータ。 */
-export type DefinitionsListQuery = {
-  pagination: PaginationQuery;
-  sort: SortQuery;
-  name?: string;
-  /** `true` のとき削除済み定義を含む（クエリ `includeDeleted=true`）。 */
-  includeDeleted?: boolean;
-};
-
 /** 実行一覧 API のクエリパラメータ。 */
 export type ExecutionsListQuery = {
   pagination: PaginationQuery;
@@ -133,20 +124,6 @@ export function buildExecutionsListPath(params: ExecutionsListQuery): string {
   if (params.sort.sortBy?.trim()) query.set("sortBy", params.sort.sortBy.trim());
   if (params.sort.sortOrder) query.set("sortOrder", params.sort.sortOrder);
   return `/executions?${query.toString()}`;
-}
-
-/**
- * 定義一覧用の相対 API パス `...?...` を組み立てる。空のフィルタは含めない。
- */
-export function buildDefinitionsListPath(params: DefinitionsListQuery): string {
-  const query = new URLSearchParams();
-  query.set("limit", String(params.pagination.limit));
-  query.set("offset", String(params.pagination.offset));
-  if (params.name?.trim()) query.set("name", params.name.trim());
-  if (params.sort.sortBy?.trim()) query.set("sortBy", params.sort.sortBy.trim());
-  if (params.sort.sortOrder) query.set("sortOrder", params.sort.sortOrder);
-  if (params.includeDeleted === true) query.set("includeDeleted", "true");
-  return `/definitions?${query.toString()}`;
 }
 
 /** Core-API へ GET し JSON をパースして返す。 */

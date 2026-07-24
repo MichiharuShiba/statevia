@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { NAVIGATION_BUTTON_CLASS } from "./navigationButtonClass";
+import { NAVIGATION_BUTTON_CLASS } from "@/shared/ui/navigationButtonClass";
 import { useUiText } from "@/shared/i18n/uiTextContext";
 
 type ActionLinkPriority = "primary" | "secondary";

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { StatusBadge } from "@/shared/ui/StatusBadge";
 import { TenantMissingBanner } from "../components/execution/TenantMissingBanner";
-import { NAVIGATION_BUTTON_CLASS, OPERATION_TEXT_BUTTON_CLASS } from "../components/layout/navigationButtonClass";
+import { NAVIGATION_BUTTON_CLASS, OPERATION_TEXT_BUTTON_CLASS } from "@/shared/ui/navigationButtonClass";
 import { PageShell } from "@/shared/ui/PageShell";
 import { PageState } from "@/shared/ui/PageState";
 import { Toast } from "@/shared/ui/Toast";

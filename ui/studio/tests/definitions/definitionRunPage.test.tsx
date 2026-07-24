@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import DefinitionRunStartPage from "../../app/definitions/[definitionId]/run/page";
+import { DefinitionRunStartPage } from "../../features/definitions/ui/DefinitionRunStartPage";
 import { renderWithUiText } from "../testUtils";
 
 vi.mock("next/navigation", () => ({

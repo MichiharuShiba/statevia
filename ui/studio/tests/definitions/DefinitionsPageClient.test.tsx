@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { DefinitionsPageClient } from "../../app/definitions/DefinitionsPageClient";
+import { DefinitionsPageClient } from "../../features/definitions/ui/DefinitionsPageClient";
 import { renderWithUiText } from "../testUtils";
 
 const replaceMock = vi.fn();
@@ -22,7 +22,8 @@ vi.mock("@/shared/api", async (importOriginal) => {
   };
 });
 
-import { apiDelete, apiGet, apiPost, buildDefinitionsListPath } from "@/shared/api";
+import { apiDelete, apiGet, apiPost } from "@/shared/api";
+import { buildDefinitionsListPath } from "@/features/definitions/api";
 
 describe("DefinitionsPageClient", () => {
   beforeEach(() => {

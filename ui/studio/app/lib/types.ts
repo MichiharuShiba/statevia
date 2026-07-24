@@ -184,25 +184,8 @@ export type PagedResult<T> = {
 /** ページング付き実行一覧。 */
 export type PagedExecutions = PagedResult<ExecutionDTO>;
 
-/** GET /v1/definitions の要素（Core-API `DefinitionResponse`）。 */
-export type DefinitionDTO = {
-  displayId: string;
-  resourceId: string;
-  name: string;
-  createdAt: string;
-  updatedAt: string;
-  yaml?: string;
-  /** 最新版番号（API が返す場合）。 */
-  latestVersion?: number;
-  /**
-   * catalog 論理削除日時（UTC）。
-   * `includeDeleted=true` の一覧でのみ truthy になりうる。通常 GET / restore 成功では含めない。
-   */
-  deletedAt?: string | null;
-};
-
-/** ページング付き定義一覧。 */
-export type PagedDefinitions = PagedResult<DefinitionDTO>;
+/** GET /v1/definitions の要素（正本: `features/definitions/types`）。 */
+export type { DefinitionDTO, PagedDefinitions } from "@/features/definitions/types";
 
 /** 定義スキーマ取得 API のレスポンス。 */
 export type DefinitionSchemaResponse = {

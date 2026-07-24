@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { DefinitionDetailClient } from "../../app/definitions/[definitionId]/DefinitionDetailClient";
+import { DefinitionDetailClient } from "../../features/definitions/ui/DefinitionDetailClient";
 import { renderWithUiText } from "../testUtils";
 
 const pushMock = vi.fn();

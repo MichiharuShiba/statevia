@@ -130,20 +130,23 @@ export default defineConfig({
     files: ["shared/i18n/uiText.ts", "shared/i18n/uiText.en.ts"],
     rules: {
         "jsdoc/require-jsdoc": "off",
+        // 辞書合成のため shared/i18n のルート辞書のみ feature i18n 切片の import を許可する
+        "no-restricted-imports": "off",
     },
 }, {
     files: ["shared/**/*.{ts,tsx}"],
+    ignores: ["shared/i18n/uiText.ts", "shared/i18n/uiText.en.ts"],
     rules: {
         "no-restricted-imports": [
             "error",
             {
                 patterns: [{
                         group: ["@/features", "@/features/*"],
-                        message: "shared は features を import してはいけません（依存方向: app → features → shared）。",
+                        message: "shared は features を import してはいけません（依存方向: app → features → shared）。辞書合成は shared/i18n/uiText*.ts のみ例外。",
                     },
                     {
                         group: ["**/features/**", "features/**", "*/features/*"],
-                        message: "shared は features を import してはいけません（依存方向: app → features → shared）。",
+                        message: "shared は features を import してはいけません（依存方向: app → features → shared）。辞書合成は shared/i18n/uiText*.ts のみ例外。",
                     },
                 ],
             },

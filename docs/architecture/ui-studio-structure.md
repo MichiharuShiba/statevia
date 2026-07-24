@@ -3,9 +3,11 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Architecture |
-| Version | 0.2 |
+| Version | 0.3 |
 | 更新日 | 2026-07-24 |
 | 関連 | [repository-layout.md](repository-layout.md), [development-guidelines.md](../development-guidelines.md) |
+
+**Version 0.3（2026-07-24）**: Phase 2（definitions パイロット）完了。`features/definitions/{api,hooks,ui,types,i18n}`。`new`/`edit` は Phase 4。
 
 **Version 0.2（2026-07-24）**: Phase 1 完了。`shared/{api,ui,i18n,auth,lib}` へ横断モジュールを移動。
 
@@ -37,7 +39,7 @@ ui/studio/
    └─ lib/                   # dateTime, errors, validation, statusStyle（Phase 1 済み）
 ```
 
-Phase 1 時点では横断モジュールは `shared/` に移済み。旧 `app/lib` にはドメイン固有（types / definition-editor / execution* 等）が残る。`app/features` は Phase 3 で再配置する。長期の互換 re-export は残さない。
+Phase 2 時点では `features/definitions/{api,hooks,ui,types,i18n}` がパイロットとして存在し、一覧・詳細・run の route は薄い wrapper。横断モジュールは `shared/` に移済み。旧 `app/lib` にはドメイン固有（types / definition-editor / execution* 等）が残る。`DefinitionEditorPageClient` と `app/features` はそれぞれ Phase 4 / 3 で再配置する。長期の互換 re-export は残さない。
 
 ## 2. パスエイリアス
 
@@ -62,10 +64,10 @@ flowchart LR
 | --- | --- |
 | `app` → `features` | 許可 |
 | `features` → `shared` | 許可 |
-| `shared` → `features` | **禁止** |
+| `shared` → `features` | **禁止**（例外: `shared/i18n/uiText*.ts` が feature の i18n 切片を合成 import する） |
 | feature → 他 feature の内部 | **禁止**（共有が必要なら `shared` へ上げるか公開エントリを明示） |
 
-機械チェック: `ui/studio/eslint.config.js` で `shared/**` からの `@/features` / `features` 参照を `no-restricted-imports` で error にする。feature 間内部参照はレビュー必須（下記チェックリスト）。
+機械チェック: `ui/studio/eslint.config.js` で `shared/**` からの `@/features` / `features` 参照を `no-restricted-imports` で error にする（`shared/i18n/uiText.ts` / `uiText.en.ts` のみ辞書合成のため除外）。feature 間内部参照はレビュー必須（下記チェックリスト）。
 
 ## 4. feature 内の標準レイヤ
 
@@ -89,7 +91,7 @@ flowchart LR
 | --- | --- | --- |
 | 0 | 本正本・paths・骨格・依存方向チェック | lint / typecheck / test:run（完了） |
 | 1 | transport / UI primitive / i18n・auth・汎用 lib を `shared` へ | 同上。長期 re-export なし（完了） |
-| 2 | `features/definitions` パイロット（api / hooks / ui / i18n） | 定義一覧・詳細の既存テスト通過 |
+| 2 | `features/definitions` パイロット（api / hooks / ui / i18n） | 定義一覧・詳細の既存テスト通過（完了） |
 | 3 | `features/executions`（必要なら graph） | 実行画面・関連テスト |
 | 4 | `features/definition-editor`（移動と境界のみ） | 編集画面の挙動非変更 |
 | 5 | admin / auth / dashboard、旧ディレクトリ削除、docs 最終反映 | 旧 `app/lib` 等が無いこと |

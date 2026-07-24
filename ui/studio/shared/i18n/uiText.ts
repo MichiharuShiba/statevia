@@ -1,6 +1,10 @@
+import {
+  definitionsUiTextJa,
+  type DefinitionsFeatureUiText,
+} from "@/features/definitions/i18n";
 import { actionCatalogUiTextJa, type ActionCatalogUiText } from "./actionCatalogUiText";
 
-export type UiText = {
+export type UiText = DefinitionsFeatureUiText & {
   actionCatalog: ActionCatalogUiText;
   actionLinks: {
     aria: {
@@ -290,30 +294,7 @@ export type UiText = {
     error: {
       fetchFailed: string;
     };
-  };
-  definitionRunPage: {
-    title: string;
-    unspecifiedDefinitionId: string;
-    definitionIdLine: (definitionIdLabel: string, definitionId: string) => string;
-    inputLabelWithHint: (inputLabel: string) => string;
-    inputJsonPlaceholder: string;
-    toasts: {
-      definitionIdRequired: (definitionIdLabel: string) => string;
-      invalidInputJson: (inputLabel: string) => string;
-      inputTooLarge: string;
-      executionStarted: (executionDisplayId: string) => string;
-    };
-    nav: {
-      backToDefinitionDetail: string;
-    };
-    actions: {
-      starting: string;
-      startExecution: string;
-    };
-    help: {
-      redirectAfterStart: (runPath: string) => string;
-    };
-  };
+  };
   executionHeader: {
     placeholderExecutionId: string;
     executionIdLabel: (executionLabel: string) => string;
@@ -363,54 +344,7 @@ export type UiText = {
     };
     empty: string;
     error: string;
-  };
-  definitionsPage: {
-    description: string;
-    pagination: {
-      ariaLabel: string;
-      currentPage: (page: number) => string;
-    };
-    search: {
-      label: string;
-      placeholder: string;
-      submit: string;
-      clear: string;
-      invalidName: string;
-    };
-    sortByLabel: string;
-    sortOrderLabel: string;
-    sortByCreatedAt: string;
-    sortByName: string;
-    sortOrderDesc: string;
-    sortOrderAsc: string;
-    loading: string;
-    emptyNoMatch: string;
-    searchSummaryPrefix: (keyword: string) => string;
-    listSummary: (totalCount: number, page: number) => string;
-    createdAt: (formattedDateTime: string) => string;
-    displayIdAndCreatedAt: (displayIdLabel: string, displayId: string, createdAtLabel: string) => string;
-    actions: {
-      openDetail: string;
-      createNew: string;
-      delete: string;
-      restore: string;
-      confirmDelete: string;
-      confirmRestore: string;
-      cancelConfirm: string;
-      deleting: string;
-      restoring: string;
-    };
-    includeDeleted: {
-      label: string;
-    };
-    deletedBadge: string;
-    deletedAt: (formattedDateTime: string) => string;
-    toasts: {
-      deleted: string;
-      restored: string;
-    };
-    error: string;
-  };
+  };
   executionDetailPage: {
     title: string;
     missingExecutionId: string;
@@ -428,37 +362,7 @@ export type UiText = {
     missingExecutionId: string;
     navDetail: string;
     navGraph: string;
-  };
-  definitionDetail: {
-    title: string;
-    urlPrefix: string;
-    errorFetchFailed: string;
-    ariaMeta: string;
-    meta: {
-      name: string;
-      createdAt: string;
-    };
-    relatedExecutions: {
-      title: string;
-      description: string;
-      openList: string;
-    };
-    actions: {
-      title: string;
-      edit: string;
-      run: string;
-      delete: string;
-      confirmDelete: string;
-      cancelConfirm: string;
-      deleting: string;
-    };
-    toasts: {
-      deleted: string;
-    };
-    nav: {
-      backToDefinitions: string;
-    };
-  };
+  };
   definitionEditor: {
     backToDetail: string;
     descriptionCreating: string;
@@ -604,6 +508,7 @@ export type UiText = {
 };
 
 export const uiText: UiText = {
+  ...definitionsUiTextJa,
   actionCatalog: actionCatalogUiTextJa,
   actionLinks: {
     aria: {
@@ -896,30 +801,7 @@ export const uiText: UiText = {
     error: {
       fetchFailed: "データを取得できませんでした。",
     },
-  },
-  definitionRunPage: {
-    title: "定義を実行",
-    unspecifiedDefinitionId: "（未指定）",
-    definitionIdLine: (definitionIdLabel: string, definitionId: string) => `${definitionIdLabel}: ${definitionId}`,
-    inputLabelWithHint: (inputLabel: string) => `${inputLabel}（任意・JSON）`,
-    inputJsonPlaceholder: '例: {"orderId":"123"}',
-    toasts: {
-      definitionIdRequired: (definitionIdLabel: string) => `${definitionIdLabel} が指定されていません。`,
-      invalidInputJson: (inputLabel: string) => `${inputLabel} の JSON が不正です。`,
-      inputTooLarge: "入力データは65536バイト（64KiB）以内で指定してください。",
-      executionStarted: (executionDisplayId: string) => `実行を開始しました: ${executionDisplayId}`,
-    },
-    nav: {
-      backToDefinitionDetail: "定義の詳細へ戻る",
-    },
-    actions: {
-      starting: "開始中...",
-      startExecution: "実行開始",
-    },
-    help: {
-      redirectAfterStart: (runPath: string) => `開始後は実行画面（${runPath}）へ自動遷移します。`,
-    },
-  },
+  },
   executionHeader: {
     placeholderExecutionId: "ex-1",
     executionIdLabel: (executionLabel: string) => `${executionLabel} ID`,
@@ -971,55 +853,7 @@ export const uiText: UiText = {
     },
     empty: "条件に合う実行はありません。",
     error: "取得に失敗しました。時間をおいて再試行してください。",
-  },
-  definitionsPage: {
-    description: "定義の検索とページングを行い、詳細画面へ遷移します。",
-    pagination: {
-      ariaLabel: "定義一覧ページネーション",
-      currentPage: (page: number) => `${page} ページ目`,
-    },
-    search: {
-      label: "名前検索（部分一致）",
-      placeholder: "例: order",
-      submit: "検索",
-      clear: "クリア",
-      invalidName: "検索キーワードは半角英数字と . - _ のみ、100文字以内で入力してください。",
-    },
-    sortByLabel: "ソート項目",
-    sortOrderLabel: "順序",
-    sortByCreatedAt: "作成日時",
-    sortByName: "名前",
-    sortOrderDesc: "降順",
-    sortOrderAsc: "昇順",
-    loading: "定義一覧を読み込み中です。",
-    emptyNoMatch: "該当する定義はありません。検索条件を変更するか、条件をクリアして再検索してください。",
-    searchSummaryPrefix: (keyword: string) => `検索: "${keyword}" / `,
-    listSummary: (totalCount: number, page: number) => `合計 ${totalCount} 件（${page} ページ目）`,
-    createdAt: (formattedDateTime: string) => `作成: ${formattedDateTime}`,
-    displayIdAndCreatedAt: (displayIdLabel: string, displayId: string, createdAtLabel: string) =>
-      `${displayIdLabel}: ${displayId} / ${createdAtLabel}`,
-    actions: {
-      openDetail: "詳細を開く",
-      createNew: "新しい定義を作成",
-      delete: "削除",
-      restore: "復元",
-      confirmDelete: "削除する",
-      confirmRestore: "復元する",
-      cancelConfirm: "やめる",
-      deleting: "削除中...",
-      restoring: "復元中...",
-    },
-    includeDeleted: {
-      label: "削除済みを含む",
-    },
-    deletedBadge: "削除済み",
-    deletedAt: (formattedDateTime: string) => `削除: ${formattedDateTime}`,
-    toasts: {
-      deleted: "定義を削除しました。",
-      restored: "定義を復元しました。",
-    },
-    error: "定義一覧を取得できませんでした。",
-  },
+  },
   executionDetailPage: {
     title: "実行詳細",
     missingExecutionId: "実行 ID が指定されていません。",
@@ -1037,37 +871,7 @@ export const uiText: UiText = {
     missingExecutionId: "実行 ID が指定されていません。",
     navDetail: "詳細",
     navGraph: "グラフ",
-  },
-  definitionDetail: {
-    title: "定義 詳細",
-    urlPrefix: "URL:",
-    errorFetchFailed: "定義を取得できませんでした。",
-    ariaMeta: "定義メタ情報",
-    meta: {
-      name: "名前",
-      createdAt: "登録日時",
-    },
-    relatedExecutions: {
-      title: "関連実行",
-      description: "この定義に紐づく実行の一覧へ進みます。",
-      openList: "実行一覧を開く",
-    },
-    actions: {
-      title: "編集・実行",
-      edit: "定義の編集",
-      run: "新規実行を開始",
-      delete: "定義を削除",
-      confirmDelete: "削除する",
-      cancelConfirm: "やめる",
-      deleting: "削除中...",
-    },
-    toasts: {
-      deleted: "定義を削除しました。",
-    },
-    nav: {
-      backToDefinitions: "定義一覧へ戻る",
-    },
-  },
+  },
   definitionEditor: {
     backToDetail: "定義の詳細へ戻る",
     descriptionCreating: "新しい定義を作成します。",

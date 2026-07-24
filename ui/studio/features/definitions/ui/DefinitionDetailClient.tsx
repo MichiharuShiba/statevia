@@ -1,16 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { NAVIGATION_BUTTON_CLASS } from "../../components/layout/navigationButtonClass";
-import { Toast } from "@/shared/ui/Toast";
-import { apiDelete, apiGet } from "@/shared/api";
-import { useDelayedVisibility } from "@/shared/lib/useDelayedVisibility";
-import { formatDateTimeLocalized } from "@/shared/lib/dateTime";
-import { toToastError, type ToastState } from "@/shared/lib/errors";
+import { useDefinitionDetail } from "@/features/definitions/hooks/useDefinitionDetail";
 import { getDateTimeLocale } from "@/shared/i18n/i18n";
-import type { DefinitionDTO } from "../../lib/types";
 import { useI18n } from "@/shared/i18n/uiTextContext";
+import { formatDateTimeLocalized } from "@/shared/lib/dateTime";
+import { NAVIGATION_BUTTON_CLASS } from "@/shared/ui/navigationButtonClass";
+import { Toast } from "@/shared/ui/Toast";
 
 type DefinitionDetailClientProps = {
   definitionId: string;
@@ -23,56 +19,31 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
   const { uiText, locale } = useI18n();
   const router = useRouter();
   const dateTimeLocale = getDateTimeLocale(locale);
-  const [row, setRow] = useState<DefinitionDTO | null>(null);
-  const [loading, setLoading] = useState(true);
-  const showLoading = useDelayedVisibility(loading);
-  const [toast, setToast] = useState<ToastState | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const {
+    row,
+    loading,
+    showLoading,
+    toast,
+    setToast,
+    confirmDelete,
+    setConfirmDelete,
+    deleting,
+    handleDeleteClick,
+  } = useDefinitionDetail(definitionId, {
+    deletedMessage: uiText.definitionDetail.toasts.deleted,
+  });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setToast(null);
-    try {
-      const path = `/definitions/${encodeURIComponent(definitionId)}`;
-      const d = await apiGet<DefinitionDTO>(path);
-      setRow(d);
-    } catch (e) {
-      setToast(toToastError(e));
-      setRow(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [definitionId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  /**
-   * 論理削除のインライン二段階確認を進める。
-   */
-  const handleDeleteClick = useCallback(async () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
-    setDeleting(true);
-    setConfirmDelete(false);
-    try {
-      await apiDelete(`/definitions/${encodeURIComponent(definitionId)}`);
-      setToast({ tone: "success", message: uiText.definitionDetail.toasts.deleted });
-      router.push("/definitions");
-    } catch (e) {
-      setToast(toToastError(e));
-      setDeleting(false);
-    }
-  }, [confirmDelete, definitionId, router, uiText.definitionDetail.toasts.deleted]);
+  /** 削除ボタン用。Promise はここで吸収し、表示は hook 内トーストに任せる。 */
+  const onDeleteClick = () => {
+    handleDeleteClick().catch(() => undefined);
+  };
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5 p-6">
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold text-[var(--md-sys-color-on-surface)]">{uiText.definitionDetail.title}</h1>
+        <h1 className="text-xl font-semibold text-[var(--md-sys-color-on-surface)]">
+          {uiText.definitionDetail.title}
+        </h1>
         <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
           {uiText.definitionDetail.urlPrefix} <span className="font-mono">{definitionId}</span>
         </p>
@@ -86,7 +57,11 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
         </output>
       )}
 
-      {!loading && !row && toast && <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionDetail.errorFetchFailed}</p>}
+      {!loading && !row && toast && (
+        <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
+          {uiText.definitionDetail.errorFetchFailed}
+        </p>
+      )}
 
       {!loading && row && (
         <section
@@ -94,13 +69,17 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
           aria-label={uiText.definitionDetail.ariaMeta}
         >
           <dl className="grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-3 gap-y-2">
-            <dt className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionDetail.meta.name}</dt>
+            <dt className="text-[var(--md-sys-color-on-surface-variant)]">
+              {uiText.definitionDetail.meta.name}
+            </dt>
             <dd className="font-medium">{row.name}</dd>
             <dt className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.labels.displayId}</dt>
             <dd className="font-mono break-all">{row.displayId}</dd>
             <dt className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.labels.resourceId}</dt>
             <dd className="font-mono break-all">{row.resourceId}</dd>
-            <dt className="text-[var(--md-sys-color-on-surface-variant)]">{uiText.definitionDetail.meta.createdAt}</dt>
+            <dt className="text-[var(--md-sys-color-on-surface-variant)]">
+              {uiText.definitionDetail.meta.createdAt}
+            </dt>
             <dd>{formatDateTimeLocalized(row.createdAt, dateTimeLocale)}</dd>
           </dl>
         </section>
@@ -108,14 +87,14 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
 
       <section className="rounded-lg border border-amber-100 bg-amber-50/80 p-4 text-sm text-amber-950">
         <h2 className="font-medium text-amber-950">{uiText.definitionDetail.relatedExecutions.title}</h2>
-        <p className="mt-1 text-amber-900/90">
-          {uiText.definitionDetail.relatedExecutions.description}
-        </p>
+        <p className="mt-1 text-amber-900/90">{uiText.definitionDetail.relatedExecutions.description}</p>
         <p className="mt-2">
           <button
             type="button"
             className={NAVIGATION_BUTTON_CLASS}
-            onClick={() => router.push(`/executions?definitionId=${encodeURIComponent(definitionId)}`)}
+            onClick={() =>
+              router.push(`/executions?definitionId=${encodeURIComponent(definitionId)}`)
+            }
           >
             {uiText.definitionDetail.relatedExecutions.openList}
           </button>
@@ -144,7 +123,7 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
             <button
               type="button"
               className="rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] disabled:opacity-60"
-              onClick={() => void handleDeleteClick()}
+              onClick={onDeleteClick}
               disabled={deleting || loading}
             >
               {uiText.definitionDetail.actions.delete}
@@ -155,10 +134,12 @@ export function DefinitionDetailClient({ definitionId }: Readonly<DefinitionDeta
               <button
                 type="button"
                 className="rounded border border-red-700 bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-60"
-                onClick={() => void handleDeleteClick()}
+                onClick={onDeleteClick}
                 disabled={deleting}
               >
-                {deleting ? uiText.definitionDetail.actions.deleting : uiText.definitionDetail.actions.confirmDelete}
+                {deleting
+                  ? uiText.definitionDetail.actions.deleting
+                  : uiText.definitionDetail.actions.confirmDelete}
               </button>
               <button
                 type="button"
