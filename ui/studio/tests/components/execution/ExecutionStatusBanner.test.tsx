@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { ExecutionStatusBanner } from "../../../app/components/execution/ExecutionStatusBanner";
+import { ExecutionStatusBanner } from "../../../features/executions/ui/ExecutionStatusBanner";
 import { uiText } from "@/shared/i18n/uiText";
 
 describe("ExecutionStatusBanner", () => {

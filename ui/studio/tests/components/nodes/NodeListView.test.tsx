@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
-import { NodeListView } from "../../../app/components/nodes/NodeListView";
+import { NodeListView } from "../../../features/executions/ui/NodeListView";
 import { renderWithUiText } from "../../testUtils";
 import type { ExecutionNodeDTO } from "../../../app/lib/types";
 

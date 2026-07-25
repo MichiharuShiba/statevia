@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeExecutionDiff } from "../../app/lib/executionDiff";
+import { computeExecutionDiff } from "../../features/executions/lib/executionDiff";
 import type { ExecutionNodeDTO, ExecutionStatus, ExecutionView } from "../../app/lib/types";
 
 function node(

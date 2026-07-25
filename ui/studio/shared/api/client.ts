@@ -102,30 +102,6 @@ export type SortQuery = {
   sortOrder?: SortOrder;
 };
 
-/** 実行一覧 API のクエリパラメータ。 */
-export type ExecutionsListQuery = {
-  pagination: PaginationQuery;
-  sort: SortQuery;
-  status?: string;
-  name?: string;
-  definitionId?: string;
-};
-
-/**
- * 実行一覧用の相対 API パス `...?...` を組み立てる。空のフィルタは含めない。
- */
-export function buildExecutionsListPath(params: ExecutionsListQuery): string {
-  const query = new URLSearchParams();
-  query.set("limit", String(params.pagination.limit));
-  query.set("offset", String(params.pagination.offset));
-  if (params.status?.trim()) query.set("status", params.status.trim());
-  if (params.name?.trim()) query.set("name", params.name.trim());
-  if (params.definitionId?.trim()) query.set("definitionId", params.definitionId.trim());
-  if (params.sort.sortBy?.trim()) query.set("sortBy", params.sort.sortBy.trim());
-  if (params.sort.sortOrder) query.set("sortOrder", params.sort.sortOrder);
-  return `/executions?${query.toString()}`;
-}
-
 /** Core-API へ GET し JSON をパースして返す。 */
 export async function apiGet<T>(path: string): Promise<T> {
   return fetchAndParse<T>(path);

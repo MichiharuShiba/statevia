@@ -15,7 +15,14 @@ vi.mock("@/shared/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/shared/api")>();
   return {
     ...actual,
-    apiGet: vi.fn(() => Promise.resolve({ items: [], totalCount: 0 })),
+    apiGet: vi.fn(() => Promise.resolve({ items: [], totalCount: 0 }))
+  };
+});
+
+vi.mock("@/features/executions/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/executions/api")>();
+  return {
+    ...actual,
     buildExecutionsListPath: vi.fn(() => "/executions?limit=20&offset=0")
   };
 });

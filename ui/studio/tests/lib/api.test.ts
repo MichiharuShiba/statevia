@@ -4,11 +4,11 @@ import {
   apiGet,
   apiPost,
   apiPut,
-  buildExecutionsListPath,
   getApiConfig,
   getApiHeaders
 } from "@/shared/api";
 import { buildDefinitionsListPath } from "@/features/definitions/api";
+import { buildExecutionsListPath } from "@/features/executions/api";
 
 describe("apiGet", () => {
   beforeEach(() => {

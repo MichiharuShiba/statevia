@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { useExecution } from "../../../app/features/execution/useExecution";
-import { getReconnectDelayMs } from "../../../app/features/execution/executionStreamLifecycle";
+import { useExecution } from "../../../features/executions/hooks/useExecution";
+import { getReconnectDelayMs } from "../../../features/executions/hooks/executionStreamLifecycle";
 import type { ExecutionDTO, ExecutionGraphDTO } from "../../../app/lib/types";
 import * as api from "@/shared/api";
 

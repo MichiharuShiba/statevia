@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useGraphData } from "../../../app/features/graph/useGraphData";
+import { useGraphData } from "../../../features/executions/hooks/useGraphData";
 import type { ExecutionNodeDTO, ExecutionView } from "../../../app/lib/types";
 import { getGraphDefinition } from "../../../app/graphs/registry";
 

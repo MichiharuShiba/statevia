@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useNodeCommands } from "../../../app/features/nodes/useNodeCommands";
+import { useNodeCommands } from "../../../features/executions/hooks/useNodeCommands";
 import type { ExecutionNodeDTO, ExecutionView } from "../../../app/lib/types";
 import * as api from "@/shared/api";
 

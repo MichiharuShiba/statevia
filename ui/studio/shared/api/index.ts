@@ -7,11 +7,9 @@ export {
   apiPut,
   apiPatch,
   apiDelete,
-  buildExecutionsListPath,
 } from "./client";
 export type {
   PaginationQuery,
   SortOrder,
   SortQuery,
-  ExecutionsListQuery,
 } from "./client";

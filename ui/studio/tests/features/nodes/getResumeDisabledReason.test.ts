@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getResumeDisabledReason } from "../../../app/features/nodes/useNodeCommands";
+import { getResumeDisabledReason } from "../../../features/executions/hooks/useNodeCommands";
 import type { ExecutionNodeDTO, ExecutionView } from "../../../app/lib/types";
 import { uiText } from "@/shared/i18n/uiText";
 

@@ -7,8 +7,7 @@ import {
 } from "@/shared/api";
 import type { DefinitionDTO, PagedDefinitions } from "./types";
 
-export type { SortOrder } from "@/shared/api";
-export type { PaginationQuery, SortQuery };
+export type { PaginationQuery, SortOrder, SortQuery } from "@/shared/api";
 
 /** 定義一覧 API / 画面 URL のクエリパラメータ。 */
 export type DefinitionsListQuery = {

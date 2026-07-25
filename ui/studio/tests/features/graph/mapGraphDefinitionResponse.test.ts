@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapGraphDefinitionResponse } from "../../../app/features/graph/mapGraphDefinitionResponse";
+import { mapGraphDefinitionResponse } from "../../../features/executions/hooks/mapGraphDefinitionResponse";
 
 describe("mapGraphDefinitionResponse", () => {
   it("camelCase の GraphDefinitionResponse を変換する", () => {

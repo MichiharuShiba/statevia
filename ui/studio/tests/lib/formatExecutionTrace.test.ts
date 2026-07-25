@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatTracePayload } from "../../app/lib/formatExecutionTrace";
+import { formatTracePayload } from "../../features/executions/lib/formatExecutionTrace";
 
 describe("formatTracePayload", () => {
   it("undefined は空文字、null は null 文字列", () => {

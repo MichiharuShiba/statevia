@@ -15,9 +15,9 @@ import ReactFlow, {
 } from "reactflow";
 import type { Connection, Edge, Node, NodeProps, NodeTypes, OnConnect } from "reactflow";
 import "reactflow/dist/style.css";
-import { layoutGraph } from "../../lib/graphLayout";
-import type { LayoutEdgeInput, LayoutNodeInput } from "../../lib/graphLayout";
-import { getNodeAppearance } from "../../lib/nodeAppearance";
+import { layoutGraph } from "@/shared/lib/graphLayout";
+import type { LayoutEdgeInput, LayoutNodeInput } from "@/shared/lib/graphLayout";
+import { getNodeAppearance } from "@/shared/lib/nodeAppearance";
 import { getStatusStyle } from "@/shared/lib/statusStyle";
 import { renameNodeIdInDocument } from "../../lib/definition-editor/renameNodeIdInDocument";
 import type { DefinitionGraphDocument, DefinitionGraphNode, NodeType } from "../../lib/definition-editor/types";
@@ -25,7 +25,7 @@ import { buildDocumentAdjacency } from "../../lib/definition-editor/definitionGr
 import { ActionInputCodeEditor } from "@/shared/ui/ActionInputCodeEditor";
 import { ActionIdCombobox } from "./ActionIdCombobox";
 import { SchemaDrivenActionInputForm } from "./SchemaDrivenActionInputForm";
-import { GraphNodeShell } from "../nodes/GraphNodeShell";
+import { GraphNodeShell } from "@/shared/ui/GraphNodeShell";
 import { apiGet } from "@/shared/api";
 import { collectUpstreamOutputPathHints } from "../../lib/actionSchema/outputSchemaHints";
 import {

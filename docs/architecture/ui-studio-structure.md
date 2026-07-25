@@ -3,9 +3,11 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Architecture |
-| Version | 0.3 |
-| 更新日 | 2026-07-24 |
+| Version | 0.4 |
+| 更新日 | 2026-07-25 |
 | 関連 | [repository-layout.md](repository-layout.md), [development-guidelines.md](../development-guidelines.md) |
+
+**Version 0.4（2026-07-25）**: Phase 3 完了。`features/executions/{api,hooks,lib,ui,types}`。実行一覧・詳細・run・graph の route は薄い wrapper。グラフ描画横断（`graphLayout` / `nodeAppearance` / `GraphNodeShell`）と `ActionLinkGroup` / `TenantMissingBanner` は `shared` へ。
 
 **Version 0.3（2026-07-24）**: Phase 2（definitions パイロット）完了。`features/definitions/{api,hooks,ui,types,i18n}`。`new`/`edit` は Phase 4。
 
@@ -33,13 +35,13 @@ ui/studio/
 │  └─ dashboard/
 └─ shared/
    ├─ api/                   # transport + 共通 query 型（Phase 1 済み）
-   ├─ ui/                    # PageShell, Toast 等（Phase 1 済み）
+   ├─ ui/                    # PageShell, Toast, GraphNodeShell, ActionLinkGroup 等
    ├─ i18n/                  # Context・locale・辞書（切片分割は後続）
    ├─ auth/                  # session / jwt ヘルパ（Phase 1 済み）
-   └─ lib/                   # dateTime, errors, validation, statusStyle（Phase 1 済み）
+   └─ lib/                   # dateTime, errors, validation, statusStyle, graphLayout
 ```
 
-Phase 2 時点では `features/definitions/{api,hooks,ui,types,i18n}` がパイロットとして存在し、一覧・詳細・run の route は薄い wrapper。横断モジュールは `shared/` に移済み。旧 `app/lib` にはドメイン固有（types / definition-editor / execution* 等）が残る。`DefinitionEditorPageClient` と `app/features` はそれぞれ Phase 4 / 3 で再配置する。長期の互換 re-export は残さない。
+Phase 3 時点では `features/definitions` と `features/executions` が存在し、各 route は薄い wrapper。横断モジュールは `shared/` に移済み。旧 `app/lib` には definition-editor / actionSchema / graphs 等が残る（Phase 4–5 で再配置）。長期の互換 re-export は残さない。
 
 ## 2. パスエイリアス
 
@@ -92,7 +94,7 @@ flowchart LR
 | 0 | 本正本・paths・骨格・依存方向チェック | lint / typecheck / test:run（完了） |
 | 1 | transport / UI primitive / i18n・auth・汎用 lib を `shared` へ | 同上。長期 re-export なし（完了） |
 | 2 | `features/definitions` パイロット（api / hooks / ui / i18n） | 定義一覧・詳細の既存テスト通過（完了） |
-| 3 | `features/executions`（必要なら graph） | 実行画面・関連テスト |
+| 3 | `features/executions`（必要なら graph） | 実行画面・関連テスト（完了） |
 | 4 | `features/definition-editor`（移動と境界のみ） | 編集画面の挙動非変更 |
 | 5 | admin / auth / dashboard、旧ディレクトリ削除、docs 最終反映 | 旧 `app/lib` 等が無いこと |
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildGraphEdges } from "../../app/lib/buildGraphEdges";
-import type { LayoutEdgeInput } from "../../app/lib/graphLayout";
+import { buildGraphEdges } from "../../features/executions/lib/buildGraphEdges";
+import type { LayoutEdgeInput } from "@/shared/lib/graphLayout";
 
 function edge(overrides: Partial<LayoutEdgeInput> & { id: string; from: string; to: string }): LayoutEdgeInput {
   const { id, from, to, ...rest } = overrides;

@@ -8,15 +8,15 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() })
 }));
 
-vi.mock("../../app/features/execution/useExecution", () => ({
+vi.mock("../../features/executions/hooks/useExecution", () => ({
   useExecution: vi.fn()
 }));
 
-vi.mock("../../app/features/execution/useExecutionEvents", () => ({
+vi.mock("../../features/executions/hooks/useExecutionEvents", () => ({
   useExecutionEvents: () => ({ events: [], loading: false, error: null, loadMore: vi.fn(), hasMore: false })
 }));
 
-vi.mock("../../app/features/execution/useExecutionStateAtSeq", () => ({
+vi.mock("../../features/executions/hooks/useExecutionStateAtSeq", () => ({
   useExecutionStateAtSeq: () => ({
     replayExecution: null,
     replayLoading: false,
@@ -26,16 +26,16 @@ vi.mock("../../app/features/execution/useExecutionStateAtSeq", () => ({
   })
 }));
 
-vi.mock("../../app/features/graph/useGraphDefinition", () => ({
+vi.mock("../../features/executions/hooks/useGraphDefinition", () => ({
   useGraphDefinition: () => ({ definition: null, loading: false, error: null })
 }));
 
-vi.mock("../../app/features/graph/useGraphData", () => ({
+vi.mock("../../features/executions/hooks/useGraphData", () => ({
   useGraphData: () => ({ nodes: [], edges: [] }),
   getNodeWithFallback: vi.fn()
 }));
 
-vi.mock("../../app/features/nodes/useNodeCommands", () => ({
+vi.mock("../../features/executions/hooks/useNodeCommands", () => ({
   useNodeCommands: () => ({ resumeNode: vi.fn(), cancelNode: vi.fn(), publishEvent: vi.fn() }),
   getResumeDisabledReason: () => null
 }));
@@ -45,7 +45,7 @@ vi.mock("@/shared/api", async (importOriginal) => {
   return { ...actual, apiGet: vi.fn() };
 });
 
-import { useExecution } from "../../app/features/execution/useExecution";
+import { useExecution } from "../../features/executions/hooks/useExecution";
 
 describe("ExecutionDetailPage", () => {
   beforeEach(() => {

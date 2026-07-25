@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { layoutGraph, buildFallbackEdges } from "../../app/lib/graphLayout";
-import type { LayoutNodeInput } from "../../app/lib/graphLayout";
+import { layoutGraph, buildFallbackEdges } from "@/shared/lib/graphLayout";
+import type { LayoutNodeInput } from "@/shared/lib/graphLayout";
 
 const node = (nodeId: string, nodeType: string, branch?: string): LayoutNodeInput => ({
   nodeId,

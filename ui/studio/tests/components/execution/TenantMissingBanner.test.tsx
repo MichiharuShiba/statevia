@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { TenantMissingBanner } from "../../../app/components/execution/TenantMissingBanner";
+import { TenantMissingBanner } from "@/shared/ui/TenantMissingBanner";
 import * as api from "@/shared/api";
 import { uiText } from "@/shared/i18n/uiText";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
-import { ExecutionHeader } from "../../../app/components/execution/ExecutionHeader";
+import { ExecutionHeader } from "../../../features/executions/ui/ExecutionHeader";
 import { renderWithUiText } from "../../testUtils";
 import type { ExecutionView } from "../../../app/lib/types";
 

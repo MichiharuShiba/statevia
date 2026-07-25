@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildGroups, resolveGroupBounds } from "../../app/lib/grouping";
+import { buildGroups, resolveGroupBounds } from "../../features/executions/lib/grouping";
 import type { ExecutionNodeDTO } from "../../app/lib/types";
-import type { LayoutEdgeInput, PositionedNode } from "../../app/lib/graphLayout";
+import type { LayoutEdgeInput, PositionedNode } from "@/shared/lib/graphLayout";
 import type { GraphGroupDef } from "../../app/graphs/types";
 
 function execNodes(ids: string[]): ExecutionNodeDTO[] {

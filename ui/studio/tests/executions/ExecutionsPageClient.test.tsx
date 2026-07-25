@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { ExecutionsPageClient } from "../../app/executions/ExecutionsPageClient";
+import { ExecutionsPageClient } from "../../features/executions/ui/ExecutionsPageClient";
 import { renderWithUiText } from "../testUtils";
 
 const replace = vi.fn();
@@ -14,7 +14,14 @@ vi.mock("@/shared/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/shared/api")>();
   return {
     ...actual,
-    apiGet: vi.fn(),
+    apiGet: vi.fn()
+  };
+});
+
+vi.mock("@/features/executions/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/executions/api")>();
+  return {
+    ...actual,
     buildExecutionsListPath: vi.fn(() => "/executions?limit=20&offset=0")
   };
 });
