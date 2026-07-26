@@ -7,8 +7,11 @@ FROM node:20-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json /app/package-lock.json ./
-COPY next.config.mjs tailwind.config.ts postcss.config.js tsconfig.json next-env.d.ts ./
+COPY next.config.mjs tailwind.config.ts postcss.config.js tsconfig.json next-env.d.ts css.d.ts ./
+COPY middleware.ts ./
 COPY app ./app
+COPY features ./features
+COPY shared ./shared
 COPY public ./public
 RUN npm run build
 
