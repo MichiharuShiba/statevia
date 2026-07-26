@@ -1,8 +1,13 @@
 # ディレクトリ構成
 
-Version: 2.0
-Project: Statevia — 実行型ステートマシン
-更新日: 2026-07-04
+| 項目 | 値 |
+| --- | --- |
+| 種別 | Architecture |
+| Version | 2.1 |
+| 更新日 | 2026-07-26 |
+| 関連 | [ui-studio-structure.md](ui-studio-structure.md), [overview.md](overview.md) |
+
+**Version 2.1（2026-07-26）**: `ui/studio` を feature-first（`app` / `features` / `shared`）に合わせてツリーを更新。
 
 ---
 
@@ -77,11 +82,10 @@ statevia/
 ├─ ui/
 │  └─ studio/                    # UI（Next.js / React / ReactFlow — @statevia/studio）
 │     ├─ package.json
-│     ├─ app/
-│     │  ├─ api/core/[...path]/  # Core-API プロキシ（/v1 へ転送）
-│     │  ├─ components/
-│     │  ├─ features/
-│     │  └─ lib/
+│     ├─ app/                    # 薄い App Router（page / layout / BFF）
+│     │  └─ api/core/[...path]/ # Core-API プロキシ（/v1 へ転送）
+│     ├─ features/               # 画面・ドメイン別（definitions, executions 等）
+│     ├─ shared/                 # 横断 api / ui / i18n / auth / lib
 │     └─ Dockerfile
 │
 ├─ tests/                        # 横断テスト

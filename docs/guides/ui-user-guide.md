@@ -3,9 +3,11 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.1 |
-| 更新日 | 2026-07-10 |
-| 関連 | [../specifications/ui/visual.md](../specifications/ui/visual.md)、[../specifications/api-http.md](../specifications/api-http.md) §2.1.2–2.2 |
+| Version | 1.2 |
+| 更新日 | 2026-07-26 |
+| 関連 | [../specifications/ui/visual.md](../specifications/ui/visual.md)、[../specifications/api-http.md](../specifications/api-http.md) §2.1.2–2.2、[../architecture/ui-studio-structure.md](../architecture/ui-studio-structure.md) |
+
+**Version 1.2（2026-07-26）**: Studio 内部の feature-first 構成へのリンクを追加。利用者向け操作と HTTP 契約は変更なし。
 
 ---
 
@@ -56,7 +58,10 @@ npm run typecheck
 npm run test:run
 ```
 
+Studio の内部モジュール境界（薄い `app/` + `features/` + `shared/`）は [ui-studio-structure.md](../architecture/ui-studio-structure.md) を正本とする。画面追加や import 規約はそちらを参照する（本ガイドの利用者向け操作・HTTP 契約は変えない）。
+
 ## 次に読むもの
 
 - HTTP 例: [http-request-examples.md](http-request-examples.md)
 - UI 可視化仕様: [../specifications/ui/visual.md](../specifications/ui/visual.md)
+- Studio 内部構成: [../architecture/ui-studio-structure.md](../architecture/ui-studio-structure.md)

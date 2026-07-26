@@ -3,51 +3,56 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Architecture |
-| Version | 0.7 |
+| Version | 0.8 |
 | 更新日 | 2026-07-26 |
-| 関連 | [repository-layout.md](repository-layout.md), [development-guidelines.md](../development-guidelines.md) |
+| 関連 | [repository-layout.md](repository-layout.md), [development-guidelines.md](../development-guidelines.md), [ui-user-guide.md](../guides/ui-user-guide.md) |
 
-**Version 0.7（2026-07-26）**: Phase 5 task 14。旧 `app/lib` / `app/components` / `app/graphs` を削除。shell（`AppHeader` 等）と `theme` を `shared` へ、グラフ定義を `features/executions/graphs` へ。i18n を各 feature 切片（auth / admin / dashboard / definition-editor / executions）へ分割し、`shared/i18n/uiText*.ts` で合成。
+**Version 0.8（2026-07-26）**: Phase 5 完了（task 15）。最終ツリー・画面追加手順・Tailwind `content`・Docker ビルド注意を実装結果に合わせて確定。本移行は **Core-API の HTTP 契約および利用者向け画面の振る舞いを変更しない**。
 
-**Version 0.6（2026-07-26）**: Phase 5 task 13。`features/admin` / `features/auth` / `features/dashboard` へ PageClient と型を移動。各 route は薄い wrapper。
+**Version 0.7（2026-07-26）**: Phase 5 task 14。旧 `app/lib` / `app/components` / `app/graphs` を削除。shell と `theme` を `shared` へ、グラフ定義を `features/executions/graphs` へ。i18n を feature 切片化し `shared/i18n/uiText*.ts` で合成。
 
-**Version 0.5（2026-07-25）**: Phase 4 完了。`features/definition-editor/{ui,lib,actionSchema,types}`。`new`/`edit` route は薄い wrapper。内部アルゴリズムの書き換えなし（配置と import 境界のみ）。
+**Version 0.6（2026-07-26）**: Phase 5 task 13。`features/admin` / `auth` / `dashboard` へ PageClient を移動。各 route は薄い wrapper。
 
-**Version 0.4（2026-07-25）**: Phase 3 完了。`features/executions/{api,hooks,lib,ui,types}`。実行一覧・詳細・run・graph の route は薄い wrapper。グラフ描画横断（`graphLayout` / `nodeAppearance` / `GraphNodeShell`）と `ActionLinkGroup` / `TenantMissingBanner` は `shared` へ。
+**Version 0.5（2026-07-25）**: Phase 4 完了。`features/definition-editor`。内部アルゴリズムの書き換えなし。
 
-**Version 0.3（2026-07-24）**: Phase 2（definitions パイロット）完了。`features/definitions/{api,hooks,ui,types,i18n}`。`new`/`edit` は Phase 4。
-
-**Version 0.2（2026-07-24）**: Phase 1 完了。`shared/{api,ui,i18n,auth,lib}` へ横断モジュールを移動。
-
-**Version 0.1（2026-07-23）**: Studio 内部を `app/` + `features/` + `shared/` へ段階移行する正本を追加。
+**Version 0.4（2026-07-25）**: Phase 3 完了。`features/executions`。グラフ描画横断は `shared` へ。
 
 ---
 
-Statevia Studio（`ui/studio/`）の**内部モジュール境界**の正本である。利用者向け画面の振る舞い・Core-API の HTTP 契約は変更しない。目的は所有権の明確化と、ページ増加時の変更影響の見通しである。
+Statevia Studio（`ui/studio/`）の**内部モジュール境界**の正本である。目的は所有権の明確化と、ページ増加時の変更影響の見通しである。
 
-## 1. ターゲットツリー
+**契約・UX の非変更（必須）**: 本構成は配置と import 境界のみを対象とする。Core-API の HTTP 契約（パス・クエリ・レスポンス形）および利用者向け画面の操作体験は変えない。契約の正本は [`../specifications/api-http.md`](../specifications/api-http.md) および各 UI 仕様である。
+
+## 1. 最終ツリー
 
 ```text
 ui/studio/
 ├─ app/                      # App Router のみ（薄い page / layout / route handlers）
-│  ├─ api/                   # BFF（`/api/core/*`）。移動しない
-│  └─ definitions/page.tsx   # feature の画面を import するだけ
+│  ├─ api/                   # BFF（`/api/core/*`・auth）。移動しない
+│  ├─ admin|dashboard|definitions|executions|login/
+│  │  └─ **/page.tsx         # feature の画面を import するだけ
+│  ├─ layout.tsx
+│  └─ globals.css
 ├─ features/
 │  ├─ definitions/           # api, hooks, ui, types, i18n
-│  ├─ executions/            # 実行 UI・hooks・lib・graphs・i18n
-│  ├─ definition-editor/     # グラフ編集器（巨大のため独立）+ i18n
-│  ├─ admin/                 # + i18n
-│  ├─ auth/                  # + i18n
-│  └─ dashboard/             # + i18n
-└─ shared/
-   ├─ api/                   # transport + 共通 query 型
-   ├─ ui/                    # PageShell, Toast, AppHeader, GraphNodeShell 等
-   ├─ i18n/                  # Context・locale・横断辞書 + feature 切片の合成
-   ├─ auth/                  # session / jwt ヘルパ
-   └─ lib/                   # dateTime, errors, validation, theme, graphLayout
+│  ├─ executions/            # api, hooks, lib, ui, types, graphs, i18n
+│  ├─ definition-editor/     # ui, lib, actionSchema, types, i18n（巨大のため独立）
+│  ├─ admin/                 # ui, types, i18n
+│  ├─ auth/                  # ui, i18n
+│  └─ dashboard/             # ui, i18n
+├─ shared/
+│  ├─ api/                   # transport + 共通 query 型
+│  ├─ ui/                    # PageShell, Toast, AppHeader, GraphNodeShell 等
+│  ├─ i18n/                  # Context・locale・横断辞書 + feature 切片の合成
+│  ├─ auth/                  # session / jwt ヘルパ
+│  └─ lib/                   # dateTime, errors, validation, theme, graphLayout
+├─ public/
+├─ Dockerfile                # build 時に app / features / shared を COPY
+├─ .dockerignore
+└─ tailwind.config.ts        # content に app / features / shared を含める
 ```
 
-Phase 5 task 14 時点で旧 `app/lib` / `app/components` / `app/graphs` / `app/features` は削除済み。主要 feature が揃い、各 route は薄い wrapper。長期の互換 re-export は残さない。docs の画面追加手順・ガイド最終反映は task 15。
+旧 `app/lib` / `app/components` / `app/graphs` / `app/features` は削除済み。長期の互換 re-export は残さない。小規模 feature（admin / auth / dashboard）は必ずしも `api` / `hooks` 層を分けない。
 
 ## 2. パスエイリアス
 
@@ -83,15 +88,19 @@ flowchart LR
 | --- | --- | --- |
 | API client | `features/*/api.ts` | `listDefinitions`, `softDeleteDefinition` |
 | hooks | `features/*/hooks/` | URL 同期、一覧取得、delete/restore |
-| UI | `features/*/ui/` | 一覧行、確認ボタン群 |
-| route | `app/**/page.tsx` | feature の Page を返すだけ |
+| UI | `features/*/ui/` | 一覧行、確認ボタン群、PageClient |
+| i18n | `features/*/i18n/` | 画面文言切片（`shared/i18n` で合成） |
+| route | `app/**/page.tsx` | feature の Page を返すだけ（`"use client"` は feature 側） |
 
-## 5. 画面追加の手順（概要）
+## 5. 画面追加の手順
 
-1. `features/<name>/` に `api` / `hooks` / `ui` を置く。
-2. `app/**/page.tsx` は薄い wrapper のみにする。
+1. `features/<name>/` に必要な層（`api` / `hooks` / `ui` / `types` / `i18n`）を置く。
+2. `app/**/page.tsx` は薄い wrapper のみにする（表示・ロジックは feature 側）。
 3. 横断関心のみ `shared/` に置く（ドメイン知識を `shared` に落とさない）。
-4. `npm run lint` / `typecheck` / `test:run` を通す。
+4. 文言を追加する場合は feature の i18n 切片を更新し、`shared/i18n/uiText*.ts` の合成を維持する。
+5. Tailwind クラスを `features` / `shared` に書く場合、`tailwind.config.ts` の `content` に当該 glob が含まれていることを確認する（含まれないと本番 CSS から落ちる）。
+6. `npm run lint` / `typecheck` / `test:run` を通す。
+7. Docker イメージを使う場合は `ui/studio/Dockerfile` が `features` / `shared` を COPY していること、および再ビルドを前提にする。
 
 ## 6. 段階移行チェックリスト
 
@@ -102,14 +111,15 @@ flowchart LR
 | 2 | `features/definitions` パイロット（api / hooks / ui / i18n） | 定義一覧・詳細の既存テスト通過（完了） |
 | 3 | `features/executions`（必要なら graph） | 実行画面・関連テスト（完了） |
 | 4 | `features/definition-editor`（移動と境界のみ） | 編集画面の挙動非変更（完了） |
-| 5 | admin / auth / dashboard、旧ディレクトリ削除、docs 最終反映 | PageClient・i18n・旧 dir 削除（task 13–14 完了）。docs 最終反映は task 15 |
+| 5 | admin / auth / dashboard、旧ディレクトリ削除、docs 最終反映 | **完了**（task 13–15） |
 
 ### PR レビュー必須項目（依存方向）
 
-- [ ] `shared` から `features` への import が無い（ESLint で検知）
+- [ ] `shared` から `features` への import が無い（ESLint で検知。i18n 合成の除外ファイル以外）
 - [ ] feature が他 feature の内部パスを import していない
 - [ ] `app/**/page.tsx` が肥大化していない（表示・ロジックは feature 側）
 - [ ] 一時 re-export を残す場合は同一 Phase 内で解消する方針が PR に書かれている
+- [ ] HTTP 契約・利用者向け振る舞いを意図せず変えていない
 
 ## 7. 非目標
 
