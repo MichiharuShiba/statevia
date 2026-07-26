@@ -273,4 +273,49 @@ public class StateInputEvaluatorTests
         Assert.Equal("a@example.com", result.Value);
         Assert.Empty(result.Warnings);
     }
+
+    /// <summary>$.vars 上の配列インデックス path を解決できることを検証する。</summary>
+    [Fact]
+    public void ApplyWithDiagnostics_VarsArrayIndexPath_ResolvesElementProperty()
+    {
+        // Arrange
+        var context = WorkflowExecutionContext.Create(null);
+        context.SetVar(
+            "$.vars.users",
+            new List<object?>
+            {
+                new Dictionary<string, object?> { ["email"] = "a@example.com" },
+            });
+        var spec = new StateInputDefinition { Path = "$.vars.users[0].email" };
+
+        // Act
+        var result = StateInputEvaluator.ApplyWithDiagnostics(spec, context, candidateInput: null);
+
+        // Assert
+        Assert.Equal("a@example.com", result.Value);
+        Assert.Empty(result.Warnings);
+    }
+
+    /// <summary>input 内配列のインデックス path を解決できることを検証する。</summary>
+    [Fact]
+    public void ApplyWithDiagnostics_InputArrayIndexPath_ResolvesElement()
+    {
+        // Arrange
+        var context = WorkflowExecutionContext.Create(
+            new Dictionary<string, object?>
+            {
+                ["order"] = new Dictionary<string, object?>
+                {
+                    ["items"] = new List<object?> { "sku-1", "sku-2" },
+                },
+            });
+        var spec = new StateInputDefinition { Path = "$.input.order.items[0]" };
+
+        // Act
+        var result = StateInputEvaluator.ApplyWithDiagnostics(spec, context, candidateInput: null);
+
+        // Assert
+        Assert.Equal("sku-1", result.Value);
+        Assert.Empty(result.Warnings);
+    }
 }

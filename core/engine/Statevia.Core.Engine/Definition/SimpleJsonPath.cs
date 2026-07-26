@@ -1,19 +1,22 @@
 namespace Statevia.Core.Engine.Definition;
 
 /// <summary>
-/// Engine が受理する簡易 JSONPath の妥当性判定とセグメント分解。
+/// 定義・実行で共有する簡易 JSONPath の構文検証とセグメント分解。
 /// </summary>
 /// <remarks>
-/// <para>受理形:</para>
-/// <list type="bullet">
-/// <item><c>$</c></item>
-/// <item><c>$.seg1.seg2</c>（セグメントは英数字と <c>_</c>）</item>
-/// <item><c>$.states['order.notify.customer'].output</c>（ブラケット＋単一/二重引用。キーにドット等を含められる）</item>
-/// <item><c>$['input'].x</c>（ルート直後のブラケット）</item>
-/// </list>
+/// <para>サポート: ドット識別子、<c>['key']</c>/<c>["key"]</c>、非負整数インデックス <c>[0]</c>。</para>
+/// <para>未サポート（IsValid=false）: ワイルドカード・負数・スライス・フィルタ・空白付きブラケット等。</para>
 /// </remarks>
 public static class SimpleJsonPath
 {
+    /// <summary>
+    /// 配列インデックスの最大桁数。
+    /// </summary>
+    /// <remarks>
+    /// <c>int</c> 範囲内に収まる桁と、異常に長い数字リテラルによるパース負荷を抑えるため 10 桁とする。
+    /// </remarks>
+    internal const int MaxIndexDigits = 10;
+
     /// <summary>
     /// 文字列がパス式として解釈候補か（<c>$</c> / <c>$.…</c> / <c>$[…]</c>）を返す。
     /// 妥当性までは見ない（リテラルとの区別用）。
@@ -45,10 +48,10 @@ public static class SimpleJsonPath
     /// <param name="path">パス文字列。</param>
     /// <param name="segments">分解結果。失敗時は空。</param>
     /// <returns>分解に成功したとき true。</returns>
-    internal static bool TryGetSegments(string path, out IReadOnlyList<string> segments)
+    internal static bool TryGetSegments(string path, out IReadOnlyList<PathSegment> segments)
     {
         ArgumentNullException.ThrowIfNull(path);
-        segments = Array.Empty<string>();
+        segments = Array.Empty<PathSegment>();
 
         if (path == "$")
         {
@@ -60,7 +63,7 @@ public static class SimpleJsonPath
             return false;
         }
 
-        var list = new List<string>();
+        var list = new List<PathSegment>();
         var pos = 1; // after '$'
         while (pos < path.Length)
         {
@@ -82,7 +85,7 @@ public static class SimpleJsonPath
     /// <summary>
     /// <c>.</c> 区切りまたはブラケット区切りの次セグメントを読み進める。
     /// </summary>
-    private static bool TryConsumeNextSegment(string path, ref int pos, List<string> list)
+    private static bool TryConsumeNextSegment(string path, ref int pos, List<PathSegment> list)
     {
         var ch = path[pos];
         if (ch == '.')
@@ -99,7 +102,7 @@ public static class SimpleJsonPath
         return false;
     }
 
-    private static bool TryReadSegment(string path, ref int pos, List<string> list)
+    private static bool TryReadSegment(string path, ref int pos, List<PathSegment> list)
     {
         if (pos >= path.Length)
         {
@@ -114,7 +117,7 @@ public static class SimpleJsonPath
         return TryReadIdentifierSegment(path, ref pos, list);
     }
 
-    private static bool TryReadIdentifierSegment(string path, ref int pos, List<string> list)
+    private static bool TryReadIdentifierSegment(string path, ref int pos, List<PathSegment> list)
     {
         var start = pos;
         while (pos < path.Length)
@@ -133,11 +136,11 @@ public static class SimpleJsonPath
             return false;
         }
 
-        list.Add(path[start..pos]);
+        list.Add(PathSegment.ForIdentifier(path[start..pos]));
         return true;
     }
 
-    private static bool TryReadBracketSegment(string path, ref int pos, List<string> list)
+    private static bool TryReadBracketSegment(string path, ref int pos, List<PathSegment> list)
     {
         if (pos >= path.Length || path[pos] != '[')
         {
@@ -151,11 +154,16 @@ public static class SimpleJsonPath
         }
 
         var quote = path[pos];
-        if (quote is not ('\'' or '"'))
+        if (quote is '\'' or '"')
         {
-            return false;
+            return TryReadQuotedKeyBracket(path, ref pos, list, quote);
         }
 
+        return TryReadArrayIndexBracket(path, ref pos, list);
+    }
+
+    private static bool TryReadQuotedKeyBracket(string path, ref int pos, List<PathSegment> list, char quote)
+    {
         pos++; // skip opening quote
         var start = pos;
         while (pos < path.Length && path[pos] != quote)
@@ -181,7 +189,49 @@ public static class SimpleJsonPath
         }
 
         pos++; // skip ]
-        list.Add(key);
+        list.Add(PathSegment.ForQuotedKey(key));
+        return true;
+    }
+
+    /// <summary>
+    /// 引用なしブラケットを配列インデックスとして読む。
+    /// </summary>
+    /// <remarks>
+    /// 先頭ゼロは <c>0</c> のみ許可（<c>01</c> は不正）。桁数は <see cref="MaxIndexDigits"/> 以下で <c>int</c> に収まること。
+    /// </remarks>
+    private static bool TryReadArrayIndexBracket(string path, ref int pos, List<PathSegment> list)
+    {
+        var start = pos;
+        while (pos < path.Length && char.IsAsciiDigit(path[pos]))
+        {
+            pos++;
+        }
+
+        var digitCount = pos - start;
+        if (digitCount is 0 or > MaxIndexDigits)
+        {
+            return false;
+        }
+
+        if (pos >= path.Length || path[pos] != ']')
+        {
+            return false;
+        }
+
+        var digits = path[start..pos];
+        if (digits.Length > 1 && digits[0] == '0')
+        {
+            return false;
+        }
+
+        if (!int.TryParse(digits, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var index)
+            || index < 0)
+        {
+            return false;
+        }
+
+        pos++; // skip ]
+        list.Add(PathSegment.ForArrayIndex(index));
         return true;
     }
 }

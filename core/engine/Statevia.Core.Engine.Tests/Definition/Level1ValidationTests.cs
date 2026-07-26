@@ -265,6 +265,8 @@ public class Level1ValidationTests
     [InlineData("$.sys.definition.name")]
     [InlineData("$.sys.now(\"yyyyMMdd\")")]
     [InlineData("$.sys.utcNow(\"yyyy-MM-dd\")")]
+    [InlineData("$.vars.users[0].email")]
+    [InlineData("$.input.order.items[0]")]
     public void Validate_VarsAndSysExecutionContextInputPath_Succeeds(string path)
     {
         // Arrange
@@ -377,6 +379,61 @@ public class Level1ValidationTests
         // Assert
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, e => e.Contains("output must be under", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>未サポートの配列インデックス構文は input で Level1 失敗することを検証する。</summary>
+    [Theory]
+    [InlineData("$.vars.users[*]")]
+    [InlineData("$.vars.users[-1]")]
+    [InlineData("$.vars.users[01]")]
+    public void Validate_UnsupportedArrayIndexInputPath_Fails(string path)
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "Test",
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Input = new StateInputDefinition { Path = path },
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("input.path is invalid", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>output に配列インデックスが含まれると Level1 で拒否されることを検証する。</summary>
+    [Fact]
+    public void Validate_ArrayIndexOutputPath_Fails()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "Test",
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Output = "$.vars.users[0]",
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("array index", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>output への sys CallPath は Level1 で拒否されることを検証する。</summary>

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Engine;
 
@@ -584,6 +585,16 @@ public static class Level1Validator
 
         if (!ExecutionContextPathResolver.IsVarsWritePath(output))
         {
+            // ArrayIndex を含む path は構文上 IsValid でも書き込み未対応。
+            if (SimpleJsonPath.TryGetSegments(output, out var segments)
+                && segments.Any(static s => s.Kind == PathSegmentKind.ArrayIndex))
+            {
+                errors.Add(
+                    $"output path cannot contain array index for state '{stateName}': {output} " +
+                    "(array index write is not supported)");
+                return;
+            }
+
             errors.Add(
                 $"output must be under $.{ExecutionContextKeys.Vars} for state '{stateName}': {output}");
         }
