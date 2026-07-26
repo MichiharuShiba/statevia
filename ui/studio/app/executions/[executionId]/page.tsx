@@ -1,5 +1,3 @@
-"use client";
-
 import { ExecutionDetailPage } from "@/features/executions/ui/ExecutionDetailPage";
 
 /**

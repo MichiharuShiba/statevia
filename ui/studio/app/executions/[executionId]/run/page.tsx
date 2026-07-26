@@ -1,5 +1,3 @@
-"use client";
-
 import { ExecutionRunPage } from "@/features/executions/ui/ExecutionRunPage";
 
 /**

@@ -1,5 +1,3 @@
-"use client";
-
 import { DefinitionRunStartPage } from "@/features/definitions/ui/DefinitionRunStartPage";
 
 /**
