@@ -263,6 +263,8 @@ public class Level1ValidationTests
     [InlineData("$.sys.now")]
     [InlineData("$.sys.execution.id")]
     [InlineData("$.sys.definition.name")]
+    [InlineData("$.sys.now(\"yyyyMMdd\")")]
+    [InlineData("$.sys.utcNow(\"yyyy-MM-dd\")")]
     public void Validate_VarsAndSysExecutionContextInputPath_Succeeds(string path)
     {
         // Arrange
@@ -284,6 +286,39 @@ public class Level1ValidationTests
 
         // Assert
         Assert.True(result.IsValid);
+    }
+
+    /// <summary>不正・未許可の sys 関数呼び出し path は Level1 で失敗することを検証する。</summary>
+    [Theory]
+    [InlineData("$.sys.today(\"yyyy\")")]
+    [InlineData("$.sys.foo(\"x\")")]
+    [InlineData("$.sys.now()")]
+    [InlineData("$.sys.now('yyyy')")]
+    [InlineData("$.sys.now(\"yyyyMMdd\").extra")]
+    [InlineData("$.sys.now(\"\")")]
+    public void Validate_InvalidSysCallPath_Fails(string path)
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "Test",
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Input = new StateInputDefinition { Path = path },
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("input.path is invalid", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Errors, e => e.Contains("allowed call paths", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>output が $.vars 配下なら Level1 で許可されることを検証する。</summary>
@@ -342,6 +377,33 @@ public class Level1ValidationTests
         // Assert
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, e => e.Contains("output must be under", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>output への sys CallPath は Level1 で拒否されることを検証する。</summary>
+    [Fact]
+    public void Validate_SysCallPathOutput_Fails()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "Test",
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Output = "$.sys.now(\"yyyyMMdd\")",
+                    On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { End = true } }
+                }
+            }
+        };
+
+        // Act
+        var result = Level1Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("output must be under", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Errors, e => e.Contains("read-only", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>input マップ内の path が不正な場合は Level1 検証で失敗することを検証する。</summary>

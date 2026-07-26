@@ -279,6 +279,38 @@ public class ExecutionInputPropagationTests
         Assert.Equal("ChainMapped", map["definitionName"]);
     }
 
+    /// <summary>後続 State の input に <c>$.sys.now("yyyyMMdd")</c> を指定すると書式付き文字列が渡ることを検証する。</summary>
+    [Fact]
+    public async Task Next_transition_applies_sys_now_call_path_via_context()
+    {
+        // Arrange
+        object? bInput = "unset";
+        var def = CreateTwoStateChainWithStateInput(
+            DefaultStateExecutor.Create(new ImmediateState()),
+            DefaultStateExecutor.Create(new DelegateState((_, input, _) =>
+            {
+                bInput = input;
+                return Task.FromResult<object?>(null);
+            })),
+            new StateInputDefinition
+            {
+                Values = new Dictionary<string, StateInputValueDefinition>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["stamp"] = new StateInputValueDefinition { Path = "$.sys.now(\"yyyyMMdd\")" }
+                }
+            });
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+        var id = engine.Start(def);
+
+        // Act
+        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+
+        // Assert
+        var map = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(bInput);
+        var stamp = Assert.IsType<string>(map["stamp"]);
+        Assert.Matches(@"^\d{8}$", stamp);
+    }
+
     /// <summary>開始 input を $.input 経由で後続 State へ渡せることを検証する。</summary>
     [Fact]
     public async Task Next_transition_applies_workflow_input_via_context()

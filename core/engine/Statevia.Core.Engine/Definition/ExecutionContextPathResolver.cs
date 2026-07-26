@@ -8,12 +8,16 @@ namespace Statevia.Core.Engine.Definition;
 /// <remarks>
 /// 未完了 State への <c>$.states.&lt;Name&gt;…</c> 参照は null と
 /// <see cref="IncompleteStateOutput"/> 警告を返す。
+/// <c>$.sys.now("…")</c> 等の CallPath は <see cref="SysPathCall"/> で評価する。
 /// <c>output</c> の書き込み先検証は <see cref="IsVarsWritePath"/>。
 /// </remarks>
 internal static class ExecutionContextPathResolver
 {
     /// <summary>参照先 State がまだ完了していない。</summary>
     public const string IncompleteStateOutput = "IncompleteStateOutput";
+
+    /// <summary>CallPath の評価が実行時に失敗した。</summary>
+    public const string SysPathCallEvaluationFailed = SysPathCall.EvaluationFailedWarning;
 
     /// <summary>
     /// <paramref name="context"/> を評価根として <paramref name="path"/> を解決する。
@@ -43,6 +47,24 @@ internal static class ExecutionContextPathResolver
         string path)
     {
         ArgumentNullException.ThrowIfNull(root);
+
+        if (SysPathCall.TryParse(path, out var call))
+        {
+            if (SysPathCall.TryEvaluate(call, out var value))
+            {
+                return new SimpleJsonPathResolver.ResolveResult(
+                    IsSupportedPathExpression: true,
+                    Found: true,
+                    Value: value,
+                    WarningReason: null);
+            }
+
+            return new SimpleJsonPathResolver.ResolveResult(
+                IsSupportedPathExpression: true,
+                Found: false,
+                Value: null,
+                WarningReason: SysPathCallEvaluationFailed);
+        }
 
         if (TryGetIncompleteStateReference(root, path, out _))
         {
