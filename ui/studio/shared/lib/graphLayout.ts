@@ -2,7 +2,7 @@ import dagre from "dagre";
 
 /**
  * レイアウト計算に使うメタ情報。
- * `app/graphs` の `GraphDefinitionMeta` と構造互換（shared が app に依存しない）。
+ * `features/executions/graphs` の `GraphDefinitionMeta` と構造互換（shared が feature に依存しない）。
  */
 export type GraphLayoutHints = {
   layout?: Record<string, { x: number; y: number }>;

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Locale } from "@/shared/i18n/i18n";
-import type { Theme } from "../../lib/theme";
+import type { Theme } from "@/shared/lib/theme";
 import { useUiText } from "@/shared/i18n/uiTextContext";
 import { AdminNavLinks } from "./AdminNavLinks";
 import { LanguageToggle } from "./LanguageToggle";

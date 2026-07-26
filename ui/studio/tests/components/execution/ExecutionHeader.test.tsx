@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 import { ExecutionHeader } from "../../../features/executions/ui/ExecutionHeader";
 import { renderWithUiText } from "../../testUtils";
-import type { ExecutionView } from "../../../app/lib/types";
+import type { ExecutionView } from "@/features/executions/types";
 
 function executionViewFixture(overrides: Partial<ExecutionView> = {}): ExecutionView {
   return {

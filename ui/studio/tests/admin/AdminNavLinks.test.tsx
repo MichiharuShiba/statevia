@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
-import { AdminNavLinks } from "../../app/components/layout/AdminNavLinks";
+import { AdminNavLinks } from "@/shared/ui/AdminNavLinks";
 import { renderWithUiText } from "../testUtils";
 
 vi.mock("next/link", () => ({

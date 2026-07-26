@@ -7,7 +7,7 @@ import { mergeGraph, type MergedGraphEdge, type MergedGraphNode } from "../lib/m
 import type { ExecutionNodeDTO, ExecutionView } from "../types";
 import type { GroupBounds } from "../lib/grouping";
 import type { LayoutEdgeInput, PositionedNode } from "@/shared/lib/graphLayout";
-import type { GraphDefinition } from "../../../app/graphs/types";
+import type { GraphDefinition } from "@/features/executions/graphs/types";
 
 /** GraphData の型定義。 */
 export type GraphData = {

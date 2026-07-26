@@ -2,9 +2,9 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Script from "next/script";
-import { AppHeader } from "./components/layout/AppHeader";
+import { AppHeader } from "@/shared/ui/AppHeader";
 import { resolveLocale } from "@/shared/i18n/i18n";
-import { DEFAULT_THEME, resolveTheme } from "./lib/theme";
+import { DEFAULT_THEME, resolveTheme } from "@/shared/lib/theme";
 import { UiTextProvider } from "@/shared/i18n/uiTextContext";
 
 /** Next.js のルートメタデータ（ファビコン等）。 */

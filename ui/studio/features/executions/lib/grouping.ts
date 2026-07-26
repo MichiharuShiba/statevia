@@ -1,4 +1,4 @@
-import type { GraphDefinitionMeta, GraphGroupDef } from "../../../app/graphs/types";
+import type { GraphDefinitionMeta, GraphGroupDef } from "@/features/executions/graphs/types";
 import type { LayoutEdgeInput, PositionedNode } from "@/shared/lib/graphLayout";
 import type { ExecutionView } from "../types";
 

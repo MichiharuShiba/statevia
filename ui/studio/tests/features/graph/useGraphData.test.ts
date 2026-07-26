@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useGraphData } from "../../../features/executions/hooks/useGraphData";
-import type { ExecutionNodeDTO, ExecutionView } from "../../../app/lib/types";
-import { getGraphDefinition } from "../../../app/graphs/registry";
+import type { ExecutionNodeDTO, ExecutionView } from "@/features/executions/types";
+import { getGraphDefinition } from "@/features/executions/graphs/registry";
 
 function execution(nodes: ExecutionNodeDTO[], graphId = "hello"): ExecutionView {
   return {

@@ -1,4 +1,9 @@
 import { definitionsUiTextEn } from "@/features/definitions/i18n";
+import { authUiTextEn } from "@/features/auth/i18n";
+import { adminUiTextEn } from "@/features/admin/i18n";
+import { dashboardUiTextEn } from "@/features/dashboard/i18n";
+import { definitionEditorUiTextEn } from "@/features/definition-editor/i18n";
+import { executionsUiTextEn } from "@/features/executions/i18n";
 import type { UiText } from "./uiText";
 import { actionCatalogUiTextEnOverrides, actionCatalogUiTextJa } from "./actionCatalogUiText";
 import { uiTextJa } from "./uiText";
@@ -9,6 +14,11 @@ import { uiTextJa } from "./uiText";
 export const uiTextEn: UiText = {
   ...uiTextJa,
   ...definitionsUiTextEn,
+  ...authUiTextEn,
+  ...adminUiTextEn,
+  ...dashboardUiTextEn,
+  ...definitionEditorUiTextEn,
+  ...executionsUiTextEn,
   actionCatalog: {
     ...actionCatalogUiTextJa,
     ...actionCatalogUiTextEnOverrides,
@@ -17,6 +27,7 @@ export const uiTextEn: UiText = {
     aria: {
       navigation: "Navigation links",
     },
+
   },
   navigation: {
     dashboard: "Dashboard",
@@ -26,17 +37,20 @@ export const uiTextEn: UiText = {
     adminUsers: "Users",
     adminGroups: "Groups",
     adminApiKeys: "API keys",
+
   },
   entities: {
     definition: "Definition",
     execution: "Execution",
     node: "Node",
+
   },
   lists: {
     ...uiTextJa.lists,
     executions: "Executions",
     definitions: "Definitions",
     nodeCount: (count: number) => `${count} items`,
+
   },
   actions: {
     ...uiTextJa.actions,
@@ -52,98 +66,12 @@ export const uiTextEn: UiText = {
     closeToast: "Close notification",
     viewList: "List",
     viewGraph: "Graph",
+
   },
   pagination: {
     prev: "Prev",
     next: "Next",
-  },
-  auth: {
-    login: {
-      title: "Sign in",
-      description: "Sign in with your tenant key and account credentials.",
-      tenantKeyLabel: "Tenant key",
-      emailLabel: "Email",
-      passwordLabel: "Password",
-      showPassword: "Show password",
-      hidePassword: "Hide password",
-      submit: "Sign in",
-      submitting: "Signing in…",
-      sessionHint: "Or sign in at /login.",
-    },
-    errors: {
-      network: "A network error occurred. Check your connection and try again.",
-      unexpectedResponse: "The sign-in response was invalid. Contact your administrator.",
-    },
-  },
-  admin: {
-    users: {
-      title: "User management",
-      description: "List, create, and enable or disable users in this tenant.",
-      createTitle: "Create user",
-      emailLabel: "Email",
-      passwordLabel: "Initial password",
-      displayNameLabel: "Display name (optional)",
-      isTenantAdminLabel: "Tenant administrator",
-      createSubmit: "Create",
-      creating: "Creating…",
-      active: "Active",
-      inactive: "Inactive",
-      disable: "Disable",
-      enable: "Enable",
-      adminBadge: "Admin",
-      groupCount: (count: number) => `${count} group(s)`,
-      forbidden: "Tenant administrators only.",
-    },
-    groupManagement: {
-      title: "Group management",
-      description: "Create groups and assign members and permissions.",
-      createTitle: "Create group",
-      nameLabel: "Group name",
-      createSubmit: "Create",
-      creating: "Creating…",
-      membersTitle: "Members",
-      permissionsTitle: "Permissions",
-      saveMembers: "Save members",
-      savePermissions: "Save permissions",
-      saving: "Saving…",
-      systemBadge: "System",
-      memberCount: (count: number) => `${count} member(s)`,
-      permissionCount: (count: number) => `${count} permission(s)`,
-      openDetail: "Edit",
-      backToList: "Back to groups",
-      forbidden: "Tenant administrators only.",
-    },
-    permissions: {
-      label: (displayKey: string | null | undefined, displayLabel: string) => displayKey ?? displayLabel,
-    },
-    apiKeys: {
-      title: "API key management",
-      description: "Issue and revoke API keys for server-to-server and CI use. Plain keys are shown only once at issuance.",
-      createTitle: "Issue API key",
-      nameLabel: "Display name",
-      scopesTitle: "Allowed scopes",
-      expiresAtLabel: "Expires at (optional)",
-      expiresAtHint: "Leave empty for no expiry.",
-      createSubmit: "Issue",
-      creating: "Issuing…",
-      active: "Active",
-      inactive: "Revoked",
-      revoke: "Revoke",
-      revoking: "Revoking…",
-      prefixLabel: (prefix: string) => `Prefix: ${prefix}`,
-      lastUsedLabel: (value: string) => `Last used: ${value}`,
-      neverUsed: "Never used",
-      createdLabel: (value: string) => `Created: ${value}`,
-      expiresLabel: (value: string) => `Expires: ${value}`,
-      noExpiry: "No expiry",
-      issuedTitle: "API key issued",
-      issuedWarning: "This plain key cannot be shown again. Store it in a secure place.",
-      plainKeyLabel: "Plain key",
-      copyKey: "Copy",
-      copiedKey: "Copied",
-      dismissIssued: "Dismiss",
-      forbidden: "Tenant administrators only.",
-    },
+
   },
   labels: {
     ...uiTextJa.labels,
@@ -155,6 +83,13 @@ export const uiTextEn: UiText = {
     graphId: "Graph ID",
     input: "Input",
     definitionEditor: "Definition Editor",
+
+  },
+  pageState: {
+    loading: "Loading...",
+    empty: "No data to display.",
+    error: "Failed to load data.",
+
   },
   errorPrefixes: {
     unauthorized401: "401 Authentication required",
@@ -162,331 +97,7 @@ export const uiTextEn: UiText = {
     conflict409: "409 State conflict",
     unprocessable422: "422 Invalid input",
     server500: "500 Server error",
-  },
-  executionDashboard: {
-    ...uiTextJa.executionDashboard,
-    header: {
-      titleDefault: "Execution detail",
-    },
-    actions: {
-      sectionTitle: "Execution actions",
-      eventNameLabel: "Event name",
-      eventNamePlaceholder: "event-name",
-    },
-    validation: {
-      eventNameTooLong: "Event name must be within 64 characters.",
-      eventNameInvalidFormat: "Event name must start with an ASCII letter and use only ASCII alphanumerics plus . - _.",
-    },
-    graph: {
-      fullscreenEnter: "Fullscreen",
-      fullscreenExit: "Exit fullscreen (Esc)",
-      definitionMissingFallback: (graphId: string) =>
-        `No registered graph definition for graph ID ${graphId}. Showing temporary edges.`,
-    },
-    errors: {
-      executionNotFound: "The specified execution was not found. Please check the ID.",
-    },
-    toasts: {
-      cancelAccepted: "CancelExecution accepted",
-      publishAccepted: "PublishEvent accepted",
-      resumeAccepted: "ResumeNode accepted",
-    },
-    replayDisabledReason: "Actions are disabled while replaying.",
-    operationsAggregatedInRun: (cancelLabel: string, resumeLabel: string, sendEventLabel: string) =>
-      `${cancelLabel} / ${resumeLabel} / ${sendEventLabel} are grouped in the Run screen.`,
-  },
-  executionTimeline: {
-    ...uiTextJa.executionTimeline,
-    title: "Event timeline",
-    backToCurrent: "Back to current",
-    replayingPastStateMessage: 'Showing a past state. Click "Back to current" to return to the latest state.',
-    empty: "No events",
-    loadMore: "Load more",
-    errorUnknown: "An unknown error occurred.",
-  },
-  executionComparison: {
-    ...uiTextJa.executionComparison,
-    title: "Compare two executions",
-    executionIdPlaceholder: "ex-2",
-    executionABaselineLabel: (executionLabel: string) => `${executionLabel} A (baseline)`,
-    executionBLabel: (executionLabel: string) => `${executionLabel} B`,
-    kind: {
-      onlyLeft: "A only",
-      onlyRight: "B only",
-      diff: "Diff",
-    },
-    state: {
-      notLoaded: "Not loaded",
-    },
-    summary: {
-      title: "Diff summary",
-      failedOrCancelled: "Failed / Cancelled",
-      others: "Others",
-      noDiff: "No node differences",
-      loadBothToShow: "Load A and B to show differences.",
-    },
-  },
-  nodeDetail: {
-    ...uiTextJa.nodeDetail,
-    prompts: {
-      loadExecution: (executionLabel: string) => `Please load ${executionLabel}.`,
-      selectNode: (nodeLabel: string) => `Please select ${nodeLabel}.`,
-    },
-    title: (nodeLabel: string) => `${nodeLabel} detail`,
-    meta: {
-      type: (nodeType: string) => `Type: ${nodeType}`,
-      stateName: (stateName: string) => `Node name: ${stateName}`,
-      executionNodeId: (id: string) => `Execution node ID: ${id}`,
-      workerId: (workerId: string) => `Worker ID: ${workerId}`,
-      attempt: (attempt: number) => `Attempts: ${attempt}`,
-      waitKey: (waitKey: string) => `Wait key: ${waitKey}`,
-      canceledByExecution: (canceledByExecution: boolean) => `Canceled: ${String(canceledByExecution)}`,
-    },
-    waiting: {
-      title: "Waiting",
-      reasonWaitByWaitKeyAndResumeWait: "Reason: waiting for resume event by wait key",
-      resumeEventName: (eventName: string) => `Resume event name: ${eventName}`,
-    },
-    cancel: {
-      detailTitle: (cancelLabel: string) => `${cancelLabel} detail`,
-      convergedByExecutionCancel: "Converged by execution cancellation",
-    },
-    failure: {
-      title: "Failure",
-      noMessage: "(No message)",
-    },
-    trace: {
-      startedAt: (formattedInstant: string) => `Started: ${formattedInstant}`,
-      completedAt: (formattedInstant: string) => `Completed: ${formattedInstant}`,
-      duration: (durationText: string) => `Duration: ${durationText}`,
-      durationUnavailable: "Duration: —",
-      outputHeading: "Output",
-      outputEmpty: "(None)",
-      inputHeading: "Input",
-      inputEmpty: "(None)",
-      conditionRoutingHeading: "Condition routing",
-      conditionRoutingEmpty: "(None)",
-    },
-  },
-  graphLegend: {
-    ...uiTextJa.graphLegend,
-    heading: {
-      nodeStatus: "Node status",
-      edgeType: "Edge type",
-    },
-    aria: {
-      root: "Graph legend",
-      nodeStatus: "Node status legend",
-      edgeType: "Edge type legend",
-    },
-    edgeKind: {
-      nextTraversed: "Next (executed path)",
-      nextNotTraversed: "Next (not traversed)",
-    },
-  },
-  executionHeader: {
-    ...uiTextJa.executionHeader,
-    placeholderExecutionId: "ex-1",
-    executionIdLabel: (executionLabel: string) => `${executionLabel} ID`,
-    compareLabel: "Compare",
-    realtimeSseLabel: "Realtime updates",
-    cancelRequestedLabel: "Cancel requested",
-    graphIdLine: (graphIdLabel: string, graphId: string) => `${graphIdLabel}: ${graphId}`,
-    cancelRequestedLine: (cancelRequestedLabel: string, cancelRequested: boolean) =>
-      `${cancelRequestedLabel}: ${cancelRequested ? "Yes" : "No"}`,
-  },
-  pageState: {
-    loading: "Loading...",
-    empty: "No data to display.",
-    error: "Failed to load data.",
-  },
-  dashboard: {
-    ...uiTextJa.dashboard,
-    title: "Dashboard",
-    descriptionRecent: "Recent executions (up to 10).",
-    loadingRecent: "Loading recent executions.",
-    emptyStartFromDefinitionsOrExecutions: "Start from Definitions or Executions.",
-    totalCount: (count: number | null) => (count == null ? "Total: --" : `Total: ${count}`),
-    updatedAt: (formattedDateTime: string) => `Updated: ${formattedDateTime}`,
-    aria: {
-      recentExecutionsList: "Recent executions",
-    },
-    actions: {
-      openDetail: "Open details",
-    },
-    error: {
-      fetchFailed: "Failed to fetch data.",
-    },
-  },
-  executionsPage: {
-    ...uiTextJa.executionsPage,
-    loading: "Loading executions.",
-    listSummary: (totalCount: number, page: number) => `Total ${totalCount} (page ${page})`,
-    updatedAt: (formattedDateTime: string) => `Updated: ${formattedDateTime}`,
-    empty: "No executions found.",
-    error: "Failed to load executions. Please try again later.",
-    pagination: {
-      ...uiTextJa.executionsPage.pagination,
-      ariaLabel: "Executions pagination",
-      currentPage: (page: number) => `Page ${page}`,
-      prev: "Prev",
-      next: "Next",
-    },
-    filter: {
-      ...uiTextJa.executionsPage.filter,
-      contextActivePrefix: "Definition filter:",
-      clearDefinition: "Clear definition filter",
-      title: "Filters",
-      all: "(All)",
-      statusRunning: "Running",
-      statusCompleted: "Completed",
-      statusCancelled: "Cancelled",
-      statusFailed: "Failed",
-      definitionInputHint: "Definition display ID / UUID",
-      definitionLabelWithHint: (definitionLabel: string) => `${definitionLabel} (display ID / UUID)`,
-      definitionPlaceholder: "e.g. def-...",
-      nameInputHint: "name (execution display ID partial match, or execution UUID exact match)",
-      search: "Search",
-      clear: "Clear",
-      sortByLabel: "Sort by",
-      sortOrderLabel: "Order",
-      sortByUpdatedAt: "Updated at",
-      sortByDisplayId: "Display ID",
-      sortOrderDesc: "Descending",
-      sortOrderAsc: "Ascending",
-      invalidName: "Name allows only ASCII alphanumerics plus . - _ within 100 characters.",
-      invalidDefinitionId: "Definition ID allows only ASCII alphanumerics plus - _ within 80 characters.",
-      pageInfo: (limit: number, offset: number, page: number) =>
-        `Items per page: ${limit}. Offset: ${offset} (approx. page ${page})`,
-    },
-    actions: {
-      openDetail: "Details",
-    },
-  },
-  executionDetailPage: {
-    ...uiTextJa.executionDetailPage,
-    title: "Execution detail",
-    missingExecutionId: "Execution ID is missing.",
-    navRun: "Run",
-    navGraph: "Graph",
-  },
-  executionGraphPage: {
-    ...uiTextJa.executionGraphPage,
-    title: "Execution graph",
-    missingExecutionId: "Execution ID is missing.",
-    navDetail: "Detail",
-    navRun: "Run",
-  },
-  executionRunPage: {
-    ...uiTextJa.executionRunPage,
-    title: "Execution run",
-    missingExecutionId: "Execution ID is missing.",
-    navDetail: "Detail",
-    navGraph: "Graph",
-  },
-  definitionEditor: {
-    ...uiTextJa.definitionEditor,
-    backToDetail: "Back to definition detail",
-    descriptionCreating: "Create a new definition.",
-    descriptionEditingTarget: (definitionId: string) => `Editing target: ${definitionId}`,
-    loadingMeta: "Loading definition metadata...",
-    validation: {
-      nameRequired: "Please enter a definition name.",
-      yamlRequired: "Please enter YAML.",
-      yamlLintInvalid: "Please fix YAML syntax errors.",
-      nameInvalidFormat: "Definition name must start with an ASCII letter and use only ASCII alphanumerics plus . - _ within 100 characters.",
-      yamlTooLarge: "YAML must be within 256KB (262144 bytes).",
-    },
-    labels: {
-      name: "Definition name (name)",
-      yaml: "YAML",
-    },
-    actions: {
-      saving: "Saving...",
-      saveWithApiHint: "Save",
-      resetTemplate: "Reset to initial",
-      switchToYaml: "YAML",
-      switchToGraph: "Graph",
-    },
-    graph: {
-      title: "Graph editor",
-      empty: "Graph cannot be shown because YAML parsing failed. Please fix YAML first.",
-      addNode: "Add node",
-      addNodeDialogTitle: "Add node",
-      addNodeDisabledReasonStart: "Only one start node is allowed.",
-      addNodeDisabledReasonEnd: "Only one end node is allowed.",
-      nodeInspectorTitle: "Node inspector",
-      edgeInspectorTitle: "Edge inspector",
-      deleteNode: "Delete node",
-      deleteEdge: "Delete edge",
-      apply: "Apply",
-      closeDialog: "Close",
-      rootObjectRequired: () => "YAML root must be an object.",
-      nodesArrayRequired: () => "nodes must be an array.",
-      nodesRequired: () => "nodes requires at least one item.",
-      nodeIdRequired: () => "node.id is required.",
-      duplicateNodeId: (nodeId: string) => `Duplicate node.id: '${nodeId}'`,
-      startCountInvalid: (count: number) => `Exactly one start node is required (current: ${count}).`,
-      endCountInvalid: (count: number) => `Exactly one end node is required (current: ${count}).`,
-      startRequiresTransition: (nodeId: string) => `Node '${nodeId}': start requires next or edges.`,
-      actionRequired: (nodeId: string) => `Node '${nodeId}': action node requires action.`,
-      actionRequiresTransition: (nodeId: string) => `Node '${nodeId}': action requires next or edges.`,
-      waitEventRequired: (nodeId: string) => `Node '${nodeId}': wait node requires event.`,
-      waitRequiresTransition: (nodeId: string) => `Node '${nodeId}': wait requires next or edges.`,
-      forkBranchesRequired: (nodeId: string) => `Node '${nodeId}': fork requires at least two branches.`,
-      joinRequiresTransition: (nodeId: string) => `Node '${nodeId}': join requires next or edges.`,
-      joinModeInvalid: (nodeId: string) => `Node '${nodeId}': join.mode must be 'all'.`,
-      endCannotHaveTransition: (nodeId: string) => `Node '${nodeId}': end cannot have next/edges.`,
-      edgeToRequired: (nodeId: string) => `Node '${nodeId}': edge.to is required.`,
-      edgeWhenPathRequired: (nodeId: string) => `Node '${nodeId}': edge.when.path is required.`,
-      edgeWhenOpRequired: (nodeId: string) => `Node '${nodeId}': edge.when.op is required.`,
-      edgeWhenValueRequired: (nodeId: string) =>
-        `Node '${nodeId}': edge.when.value is required for this operator (not EXISTS).`,
-      edgeWhenValueInInvalid: (nodeId: string) =>
-        `Node '${nodeId}': IN requires a non-empty array (or JSON array string) for edge.when.value.`,
-      edgeWhenValueBetweenInvalid: (nodeId: string) =>
-        `Node '${nodeId}': BETWEEN requires an array of at least two values (or JSON array string) for edge.when.value.`,
-      edgeDefaultMultiple: (nodeId: string) =>
-        `Node '${nodeId}': only one edge can have default=true.`,
-      selfReferenceEdge: (nodeId: string) => `Node '${nodeId}': self-referencing edge is not allowed.`,
-      missingTargetNode: (nodeId: string, targetId: string) => `Node '${nodeId}': target '${targetId}' does not exist.`,
-      selfReferenceRejected: "Self-referencing edges are not allowed.",
-      whenOpPlaceholder: "Select operator",
-      whenPathPlaceholder: "$.states.Fetch.output.amount",
-      whenPathHint:
-        "Root is Execution Context (same as input). e.g. $.states.A.output.y / $.states['a.b'].output.z / $.vars.flag / $.sys.today",
-      whenValuePlaceholder: "e.g. 100 / true / \"100\"",
-      whenValueDisabledForExists: "Value is not required for EXISTS.",
-      whenValueHintIn: "For IN, enter a JSON array. Example: [\"A\", \"B\"]",
-      whenValueHintBetween: "For BETWEEN, enter [min, max] as a JSON array. Example: [1, 10]",
-      fullscreenEnter: "Fullscreen",
-      fullscreenExit: "Exit fullscreen",
-      parseFailed: "YAML parsing failed. Keeping the previous valid graph.",
-      actionErrorLabel: "Error transition (optional)",
-      actionInputLabel: "input (optional)",
-      actionInputPlaceholder:
-        'e.g. $.input.orderId / $.states.A.output.x / {"id":"$.states[\'a.b\'].output.id"}',
-      actionInputHint:
-        "Root is Execution Context ($.input / $.states / $.vars / $.sys). Dotted node IDs use $.states['id'].output. Objects as JSON.",
-      actionInputInvalidJson: "Invalid JSON.",
-      actionIdCandidatesLoading: "Loading actions…",
-      actionIdNoResults: "No matching actions",
-      schemaPathPlaceholder: "$.input.x or $.states.A.output.y",
-      schemaLiteralOrPathPlaceholder: "literal or $.input.x",
-    },
-    saved: {
-      completePrefix: "Saved:",
-      complete: (displayId: string) => `Saved: ${displayId}`,
-      openNewDetail: "Open new definition detail",
-      runWithThisDefinition: "Run with this definition",
-    },
-    toasts: {
-      savedWithDisplayId: (displayIdLabel: string, displayId: string) =>
-        `Definition saved (${displayIdLabel}: ${displayId})`,
-    },
-    hints: {
-      title: "Fix hints",
-    },
+
   },
   tenantMissingBanner: {
     noticeParts: (loadLabel: string, cancelLabel: string, resumeLabel: string) => ({
@@ -494,43 +105,6 @@ export const uiTextEn: UiText = {
       betweenEnvs: " or configure ",
       afterSecondaryEnv: " in the server environment.",
     }),
-  },
-  executionStatusBanner: {
-    cancelRequestedNotice: (cancelLabel: string, resumeLabel: string) =>
-      `${cancelLabel} already requested, so progress actions like ${resumeLabel} are disabled.`,
-    terminalNotice: (executionLabel: string) => `${executionLabel} is already finished.`,
-  },
-  nodeList: {
-    ...uiTextJa.nodeList,
-    title: "Node list",
-    nodeCount: (count: number) => `${count} items`,
-    columns: {
-      status: "Status",
-      type: "Type",
-      nodeName: "Node name",
-      executionNodeId: "Execution node ID",
-      duration: "Duration",
-    },
-  },
-  nodeGraph: {
-    meta: {
-      type: (nodeType: string) => `Type: ${nodeType}`,
-      attempt: (attempt: number) => `Attempts: ${attempt}`,
-      waitKey: (waitKey: string) => `Wait key: ${waitKey}`,
-    },
-    aria: {
-      selectNode: (displayLabel: string) => `Select node: ${displayLabel}`,
-    },
-  },
-  nodeCommands: {
-    resumeDisabledReason: {
-      runOnly: "Resume is available only on the Run screen.",
-      executionNotLoaded: "Execution is not loaded.",
-      nodeNotSelected: "Please select a node.",
-      executionTerminal: "Execution is already finished.",
-      cancelRequested: "Cancel was requested, so progress actions like Resume are disabled.",
-      waitingOnly: "Resume is available only for WAITING nodes.",
-    },
+
   },
 };
-

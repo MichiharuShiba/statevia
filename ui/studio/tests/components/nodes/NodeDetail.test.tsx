@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { NodeDetail } from "../../../features/executions/ui/NodeDetail";
 import { uiText } from "@/shared/i18n/uiText";
-import type { ExecutionNodeDTO, ExecutionView } from "../../../app/lib/types";
+import type { ExecutionNodeDTO, ExecutionView } from "@/features/executions/types";
 
 const baseExecution: ExecutionView = {
   displayId: "ex-1",

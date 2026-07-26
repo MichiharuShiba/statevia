@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { AppHeader } from "../../../app/components/layout/AppHeader";
+import { AppHeader } from "@/shared/ui/AppHeader";
 import { uiText } from "@/shared/i18n/uiText";
 import { UiTextProvider } from "@/shared/i18n/uiTextContext";
 
@@ -14,15 +14,15 @@ vi.mock("next/image", () => ({
   default: ({ alt }: { alt: string }) => <img alt={alt} />
 }));
 
-vi.mock("../../../app/components/layout/AdminNavLinks", () => ({
+vi.mock("@/shared/ui/AdminNavLinks", () => ({
   AdminNavLinks: () => <span data-testid="admin-nav">admin</span>
 }));
 
-vi.mock("../../../app/components/layout/ThemeToggle", () => ({
+vi.mock("@/shared/ui/ThemeToggle", () => ({
   ThemeToggle: () => <span data-testid="theme-toggle">theme</span>
 }));
 
-vi.mock("../../../app/components/layout/LanguageToggle", () => ({
+vi.mock("@/shared/ui/LanguageToggle", () => ({
   LanguageToggle: () => <span data-testid="language-toggle">lang</span>
 }));
 

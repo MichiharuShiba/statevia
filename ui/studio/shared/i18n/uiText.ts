@@ -2,15 +2,41 @@ import {
   definitionsUiTextJa,
   type DefinitionsFeatureUiText,
 } from "@/features/definitions/i18n";
+import {
+  authUiTextJa,
+  type AuthFeatureUiText,
+} from "@/features/auth/i18n";
+import {
+  adminUiTextJa,
+  type AdminFeatureUiText,
+} from "@/features/admin/i18n";
+import {
+  dashboardUiTextJa,
+  type DashboardFeatureUiText,
+} from "@/features/dashboard/i18n";
+import {
+  definitionEditorUiTextJa,
+  type DefinitionEditorFeatureUiText,
+} from "@/features/definition-editor/i18n";
+import {
+  executionsUiTextJa,
+  type ExecutionsFeatureUiText,
+} from "@/features/executions/i18n";
 import { actionCatalogUiTextJa, type ActionCatalogUiText } from "./actionCatalogUiText";
 
-export type UiText = DefinitionsFeatureUiText & {
+export type UiText = DefinitionsFeatureUiText &
+  AuthFeatureUiText &
+  AdminFeatureUiText &
+  DashboardFeatureUiText &
+  DefinitionEditorFeatureUiText &
+  ExecutionsFeatureUiText & {
   actionCatalog: ActionCatalogUiText;
   actionLinks: {
     aria: {
       navigation: string;
     };
-  };
+
+  },
   navigation: {
     dashboard: string;
     definitions: string;
@@ -19,17 +45,20 @@ export type UiText = DefinitionsFeatureUiText & {
     adminUsers: string;
     adminGroups: string;
     adminApiKeys: string;
-  };
+
+  },
   entities: {
     definition: string;
     execution: string;
     node: string;
-  };
+
+  },
   lists: {
     executions: string;
     definitions: string;
     nodeCount: (count: number) => string;
-  };
+
+  },
   actions: {
     load: string;
     loading: string;
@@ -43,11 +72,13 @@ export type UiText = DefinitionsFeatureUiText & {
     closeToast: string;
     viewList: string;
     viewGraph: string;
-  };
+
+  },
   pagination: {
     prev: string;
     next: string;
-  };
+
+  },
   labels: {
     status: string;
     nodeId: string;
@@ -57,407 +88,29 @@ export type UiText = DefinitionsFeatureUiText & {
     graphId: string;
     input: string;
     definitionEditor: string;
-  };
+
+  },
   status: {
     cancelledDisplay: string;
     edgeTypeNext: string;
     edgeTypeResume: string;
     edgeTypeCancel: string;
-  };
+
+  },
   pageState: {
     loading: string;
     empty: string;
     error: string;
-  };
+
+  },
   errorPrefixes: {
     unauthorized401: string;
     forbidden403: string;
     conflict409: string;
     unprocessable422: string;
     server500: string;
-  };
-  auth: {
-    login: {
-      title: string;
-      description: string;
-      tenantKeyLabel: string;
-      emailLabel: string;
-      passwordLabel: string;
-      showPassword: string;
-      hidePassword: string;
-      submit: string;
-      submitting: string;
-      sessionHint: string;
-    };
-    errors: {
-      network: string;
-      unexpectedResponse: string;
-    };
-  };
-  admin: {
-    users: {
-      title: string;
-      description: string;
-      createTitle: string;
-      emailLabel: string;
-      passwordLabel: string;
-      displayNameLabel: string;
-      isTenantAdminLabel: string;
-      createSubmit: string;
-      creating: string;
-      active: string;
-      inactive: string;
-      disable: string;
-      enable: string;
-      adminBadge: string;
-      groupCount: (count: number) => string;
-      forbidden: string;
-    };
-    groupManagement: {
-      title: string;
-      description: string;
-      createTitle: string;
-      nameLabel: string;
-      createSubmit: string;
-      creating: string;
-      membersTitle: string;
-      permissionsTitle: string;
-      saveMembers: string;
-      savePermissions: string;
-      saving: string;
-      systemBadge: string;
-      memberCount: (count: number) => string;
-      permissionCount: (count: number) => string;
-      openDetail: string;
-      backToList: string;
-      forbidden: string;
-    };
-    permissions: {
-      label: (displayKey: string | null | undefined, displayLabel: string) => string;
-    };
-    apiKeys: {
-      title: string;
-      description: string;
-      createTitle: string;
-      nameLabel: string;
-      scopesTitle: string;
-      expiresAtLabel: string;
-      expiresAtHint: string;
-      createSubmit: string;
-      creating: string;
-      active: string;
-      inactive: string;
-      revoke: string;
-      revoking: string;
-      prefixLabel: (prefix: string) => string;
-      lastUsedLabel: (value: string) => string;
-      neverUsed: string;
-      createdLabel: (value: string) => string;
-      expiresLabel: (value: string) => string;
-      noExpiry: string;
-      issuedTitle: string;
-      issuedWarning: string;
-      plainKeyLabel: string;
-      copyKey: string;
-      copiedKey: string;
-      dismissIssued: string;
-      forbidden: string;
-    };
-  };
-  executionDashboard: {
-    header: {
-      titleDefault: string;
-    };
-    actions: {
-      sectionTitle: string;
-      eventNameLabel: string;
-      eventNamePlaceholder: string;
-    };
-    validation: {
-      eventNameTooLong: string;
-      eventNameInvalidFormat: string;
-    };
-    graph: {
-      fullscreenEnter: string;
-      fullscreenExit: string;
-      definitionMissingFallback: (graphId: string) => string;
-    };
-    errors: {
-      executionNotFound: string;
-    };
-    toasts: {
-      cancelAccepted: string;
-      publishAccepted: string;
-      resumeAccepted: string;
-    };
-    replayDisabledReason: string;
-    operationsAggregatedInRun: (cancelLabel: string, resumeLabel: string, sendEventLabel: string) => string;
-  };
-  executionTimeline: {
-    title: string;
-    backToCurrent: string;
-    replayingPastStateMessage: string;
-    empty: string;
-    loadMore: string;
-    errorUnknown: string;
-  };
-  executionComparison: {
-    title: string;
-    executionIdPlaceholder: string;
-    executionABaselineLabel: (executionLabel: string) => string;
-    executionBLabel: (executionLabel: string) => string;
-    kind: {
-      onlyLeft: string;
-      onlyRight: string;
-      diff: string;
-    };
-    state: {
-      notLoaded: string;
-    };
-    summary: {
-      title: string;
-      failedOrCancelled: string;
-      others: string;
-      noDiff: string;
-      loadBothToShow: string;
-    };
-  };
-  nodeDetail: {
-    prompts: {
-      loadExecution: (executionLabel: string) => string;
-      selectNode: (nodeLabel: string) => string;
-    };
-    title: (nodeLabel: string) => string;
-    meta: {
-      type: (nodeType: string) => string;
-      stateName: (stateName: string) => string;
-      executionNodeId: (id: string) => string;
-      workerId: (workerId: string) => string;
-      attempt: (attempt: number) => string;
-      waitKey: (waitKey: string) => string;
-      canceledByExecution: (canceledByExecution: boolean) => string;
-    };
-    waiting: {
-      title: string;
-      reasonWaitByWaitKeyAndResumeWait: string;
-      resumeEventName: (eventName: string) => string;
-    };
-    cancel: {
-      detailTitle: (cancelLabel: string) => string;
-      convergedByExecutionCancel: string;
-    };
-    failure: {
-      title: string;
-      noMessage: string;
-    };
-    trace: {
-      startedAt: (formattedInstant: string) => string;
-      completedAt: (formattedInstant: string) => string;
-      duration: (durationText: string) => string;
-      durationUnavailable: string;
-      outputHeading: string;
-      outputEmpty: string;
-      inputHeading: string;
-      inputEmpty: string;
-      conditionRoutingHeading: string;
-      conditionRoutingEmpty: string;
-    };
-  };
-  graphLegend: {
-    heading: {
-      nodeStatus: string;
-      edgeType: string;
-    };
-    aria: {
-      root: string;
-      nodeStatus: string;
-      edgeType: string;
-    };
-    edgeKind: {
-      nextTraversed: string;
-      nextNotTraversed: string;
-    };
-  };
-  dashboard: {
-    title: string;
-    descriptionRecent: string;
-    loadingRecent: string;
-    emptyStartFromDefinitionsOrExecutions: string;
-    totalCount: (count: number | null) => string;
-    updatedAt: (formattedDateTime: string) => string;
-    aria: {
-      recentExecutionsList: string;
-    };
-    actions: {
-      openDetail: string;
-    };
-    error: {
-      fetchFailed: string;
-    };
-  };
-  executionHeader: {
-    placeholderExecutionId: string;
-    executionIdLabel: (executionLabel: string) => string;
-    compareLabel: string;
-    realtimeSseLabel: string;
-    cancelRequestedLabel: string;
-    graphIdLine: (graphIdLabel: string, graphId: string) => string;
-    cancelRequestedLine: (cancelRequestedLabel: string, cancelRequested: boolean) => string;
-  };
-  executionsPage: {
-    pagination: {
-      ariaLabel: string;
-      currentPage: (page: number) => string;
-      prev: string;
-      next: string;
-    };
-    filter: {
-      contextActivePrefix: string;
-      clearDefinition: string;
-      title: string;
-      all: string;
-      statusRunning: string;
-      statusCompleted: string;
-      statusCancelled: string;
-      statusFailed: string;
-      definitionInputHint: string;
-      definitionLabelWithHint: (definitionLabel: string) => string;
-      definitionPlaceholder: string;
-      nameInputHint: string;
-      search: string;
-      clear: string;
-      sortByLabel: string;
-      sortOrderLabel: string;
-      sortByUpdatedAt: string;
-      sortByDisplayId: string;
-      sortOrderDesc: string;
-      sortOrderAsc: string;
-      invalidName: string;
-      invalidDefinitionId: string;
-      pageInfo: (limit: number, offset: number, page: number) => string;
-    };
-    loading: string;
-    listSummary: (totalCount: number, page: number) => string;
-    updatedAt: (formattedDateTime: string) => string;
-    actions: {
-      openDetail: string;
-    };
-    empty: string;
-    error: string;
-  };
-  executionDetailPage: {
-    title: string;
-    missingExecutionId: string;
-    navRun: string;
-    navGraph: string;
-  };
-  executionGraphPage: {
-    title: string;
-    missingExecutionId: string;
-    navDetail: string;
-    navRun: string;
-  };
-  executionRunPage: {
-    title: string;
-    missingExecutionId: string;
-    navDetail: string;
-    navGraph: string;
-  };
-  definitionEditor: {
-    backToDetail: string;
-    descriptionCreating: string;
-    descriptionEditingTarget: (definitionId: string) => string;
-    loadingMeta: string;
-    validation: {
-      nameRequired: string;
-      yamlRequired: string;
-      yamlLintInvalid: string;
-      nameInvalidFormat: string;
-      yamlTooLarge: string;
-    };
-    labels: {
-      name: string;
-      yaml: string;
-    };
-    actions: {
-      saving: string;
-      saveWithApiHint: string;
-      resetTemplate: string;
-      switchToYaml: string;
-      switchToGraph: string;
-    };
-    graph: {
-      title: string;
-      empty: string;
-      addNode: string;
-      addNodeDialogTitle: string;
-      addNodeDisabledReasonStart: string;
-      addNodeDisabledReasonEnd: string;
-      nodeInspectorTitle: string;
-      edgeInspectorTitle: string;
-      deleteNode: string;
-      deleteEdge: string;
-      apply: string;
-      closeDialog: string;
-      rootObjectRequired: () => string;
-      nodesArrayRequired: () => string;
-      nodesRequired: () => string;
-      nodeIdRequired: () => string;
-      duplicateNodeId: (nodeId: string) => string;
-      startCountInvalid: (count: number) => string;
-      endCountInvalid: (count: number) => string;
-      startRequiresTransition: (nodeId: string) => string;
-      actionRequired: (nodeId: string) => string;
-      actionRequiresTransition: (nodeId: string) => string;
-      waitEventRequired: (nodeId: string) => string;
-      waitRequiresTransition: (nodeId: string) => string;
-      forkBranchesRequired: (nodeId: string) => string;
-      joinRequiresTransition: (nodeId: string) => string;
-      joinModeInvalid: (nodeId: string) => string;
-      endCannotHaveTransition: (nodeId: string) => string;
-      edgeToRequired: (nodeId: string) => string;
-      edgeWhenPathRequired: (nodeId: string) => string;
-      edgeWhenOpRequired: (nodeId: string) => string;
-      edgeWhenValueRequired: (nodeId: string) => string;
-      edgeWhenValueInInvalid: (nodeId: string) => string;
-      edgeWhenValueBetweenInvalid: (nodeId: string) => string;
-      edgeDefaultMultiple: (nodeId: string) => string;
-      selfReferenceEdge: (nodeId: string) => string;
-      missingTargetNode: (nodeId: string, targetId: string) => string;
-      selfReferenceRejected: string;
-      whenOpPlaceholder: string;
-      whenPathPlaceholder: string;
-      whenPathHint: string;
-      whenValuePlaceholder: string;
-      whenValueDisabledForExists: string;
-      whenValueHintIn: string;
-      whenValueHintBetween: string;
-      fullscreenEnter: string;
-      fullscreenExit: string;
-      parseFailed: string;
-      actionErrorLabel: string;
-      actionInputLabel: string;
-      actionInputPlaceholder: string;
-      actionInputHint: string;
-      actionInputInvalidJson: string;
-      actionIdCandidatesLoading: string;
-      actionIdNoResults: string;
-      schemaPathPlaceholder: string;
-      schemaLiteralOrPathPlaceholder: string;
-    };
-    saved: {
-      completePrefix: string;
-      complete: (displayId: string) => string;
-      openNewDetail: string;
-      runWithThisDefinition: string;
-    };
-    toasts: {
-      savedWithDisplayId: (displayIdLabel: string, displayId: string) => string;
-    };
-    hints: {
-      title: string;
-    };
-  };
+
+  },
   tenantMissingBanner: {
     noticeParts: (
       loadLabel: string,
@@ -468,52 +121,23 @@ export type UiText = DefinitionsFeatureUiText & {
       betweenEnvs: string;
       afterSecondaryEnv: string;
     };
-  };
-  executionStatusBanner: {
-    cancelRequestedNotice: (cancelLabel: string, resumeLabel: string) => string;
-    terminalNotice: (executionLabel: string) => string;
-  };
-  nodeList: {
-    title: string;
-    nodeCount: (count: number) => string;
-    columns: {
-      status: string;
-      type: string;
-      nodeName: string;
-      executionNodeId: string;
-      duration: string;
-    };
-  };
-  nodeGraph: {
-    meta: {
-      type: (nodeType: string) => string;
-      attempt: (attempt: number) => string;
-      waitKey: (waitKey: string) => string;
-    };
-    aria: {
-      /** グラフノードを選択（ドラッグ可能なブロック用。内側に実 button があるため外側は div） */
-      selectNode: (displayLabel: string) => string;
-    };
-  };
-  nodeCommands: {
-    resumeDisabledReason: {
-      runOnly: string;
-      executionNotLoaded: string;
-      nodeNotSelected: string;
-      executionTerminal: string;
-      cancelRequested: string;
-      waitingOnly: string;
-    };
+
   };
 };
 
 export const uiText: UiText = {
   ...definitionsUiTextJa,
+  ...authUiTextJa,
+  ...adminUiTextJa,
+  ...dashboardUiTextJa,
+  ...definitionEditorUiTextJa,
+  ...executionsUiTextJa,
   actionCatalog: actionCatalogUiTextJa,
   actionLinks: {
     aria: {
       navigation: "画面導線",
     },
+
   },
   navigation: {
     dashboard: "ダッシュボード",
@@ -523,16 +147,19 @@ export const uiText: UiText = {
     adminUsers: "ユーザー管理",
     adminGroups: "グループ管理",
     adminApiKeys: "API キー",
+
   },
   entities: {
     definition: "定義",
     execution: "実行",
     node: "ノード",
+
   },
   lists: {
     executions: "実行一覧",
     definitions: "定義一覧",
     nodeCount: (count: number) => `${count} 件`,
+
   },
   actions: {
     load: "ロード",
@@ -547,10 +174,12 @@ export const uiText: UiText = {
     closeToast: "通知を閉じる",
     viewList: "リスト",
     viewGraph: "グラフ",
+
   },
   pagination: {
     prev: "前へ",
     next: "次へ",
+
   },
   labels: {
     status: "ステータス",
@@ -561,6 +190,7 @@ export const uiText: UiText = {
     graphId: "グラフID",
     input: "入力データ",
     definitionEditor: "定義エディタ",
+
   },
   status: {
     // 表示上は Cancelled に統一。内部状態値は既存仕様のまま扱う。
@@ -568,11 +198,13 @@ export const uiText: UiText = {
     edgeTypeNext: "Next",
     edgeTypeResume: "Resume",
     edgeTypeCancel: "Cancel",
+
   },
   pageState: {
     loading: "ローディング...",
     empty: "表示できるデータがありません。",
     error: "データの取得に失敗しました。",
+
   },
   errorPrefixes: {
     unauthorized401: "401 認証が必要です",
@@ -580,400 +212,7 @@ export const uiText: UiText = {
     conflict409: "409 状態競合",
     unprocessable422: "422 入力不正",
     server500: "500 サーバーエラー",
-  },
-  auth: {
-    login: {
-      title: "ログイン",
-      description: "テナントキーとアカウントでサインインしてください。",
-      tenantKeyLabel: "テナントキー",
-      emailLabel: "メールアドレス",
-      passwordLabel: "パスワード",
-      showPassword: "パスワードを表示",
-      hidePassword: "パスワードを非表示",
-      submit: "ログイン",
-      submitting: "ログイン中…",
-      sessionHint: "または /login からサインインしてください。",
-    },
-    errors: {
-      network: "ネットワークエラーが発生しました。接続を確認して再試行してください。",
-      unexpectedResponse: "ログイン応答が不正です。管理者に連絡してください。",
-    },
-  },
-  admin: {
-    users: {
-      title: "ユーザー管理",
-      description: "テナント内のユーザーを一覧・作成・有効化/無効化します。",
-      createTitle: "ユーザーを作成",
-      emailLabel: "メールアドレス",
-      passwordLabel: "初期パスワード",
-      displayNameLabel: "表示名（任意）",
-      isTenantAdminLabel: "テナント管理者",
-      createSubmit: "作成",
-      creating: "作成中…",
-      active: "有効",
-      inactive: "無効",
-      disable: "無効化",
-      enable: "有効化",
-      adminBadge: "管理者",
-      groupCount: (count: number) => `グループ ${count} 件`,
-      forbidden: "テナント管理者のみ利用できます。",
-    },
-    groupManagement: {
-      title: "グループ管理",
-      description: "グループの作成と、メンバー・権限の割当を行います。",
-      createTitle: "グループを作成",
-      nameLabel: "グループ名",
-      createSubmit: "作成",
-      creating: "作成中…",
-      membersTitle: "メンバー",
-      permissionsTitle: "権限",
-      saveMembers: "メンバーを保存",
-      savePermissions: "権限を保存",
-      saving: "保存中…",
-      systemBadge: "システム",
-      memberCount: (count: number) => `メンバー ${count}`,
-      permissionCount: (count: number) => `権限 ${count}`,
-      openDetail: "編集",
-      backToList: "グループ一覧へ",
-      forbidden: "テナント管理者のみ利用できます。",
-    },
-    permissions: {
-      label: (displayKey: string | null | undefined, displayLabel: string) => displayKey ?? displayLabel,
-    },
-    apiKeys: {
-      title: "API キー管理",
-      description: "サーバー間・CI 向けの API キーを発行・失効します。平文キーは発行時のみ表示されます。",
-      createTitle: "API キーを発行",
-      nameLabel: "表示名",
-      scopesTitle: "許可スコープ",
-      expiresAtLabel: "有効期限（任意）",
-      expiresAtHint: "未指定の場合は無期限です。",
-      createSubmit: "発行",
-      creating: "発行中…",
-      active: "有効",
-      inactive: "失効済み",
-      revoke: "失効",
-      revoking: "失効中…",
-      prefixLabel: (prefix: string) => `プレフィックス: ${prefix}`,
-      lastUsedLabel: (value: string) => `最終利用: ${value}`,
-      neverUsed: "未使用",
-      createdLabel: (value: string) => `作成: ${value}`,
-      expiresLabel: (value: string) => `有効期限: ${value}`,
-      noExpiry: "無期限",
-      issuedTitle: "API キーを発行しました",
-      issuedWarning: "この平文キーは再表示できません。安全な場所に保存してください。",
-      plainKeyLabel: "平文キー",
-      copyKey: "コピー",
-      copiedKey: "コピーしました",
-      dismissIssued: "閉じる",
-      forbidden: "テナント管理者のみ利用できます。",
-    },
-  },
-  executionDashboard: {
-    header: {
-      titleDefault: "実行の詳細",
-    },
-    actions: {
-      sectionTitle: "実行操作",
-      eventNameLabel: "イベント名",
-      eventNamePlaceholder: "event-name",
-    },
-    validation: {
-      eventNameTooLong: "イベント名は64文字以内で入力してください。",
-      eventNameInvalidFormat: "イベント名は半角英字開始で、半角英数字と . - _ のみ利用できます。",
-    },
-    graph: {
-      fullscreenEnter: "全画面表示",
-      fullscreenExit: "全画面終了 (Esc)",
-      definitionMissingFallback: (graphId: string) =>
-        `グラフID: ${graphId} の定義が未登録のため、仮エッジ表示です。`,
-    },
-    errors: {
-      executionNotFound: "指定された実行が見つかりませんでした。ID を確認してください。",
-    },
-    toasts: {
-      cancelAccepted: "CancelExecution accepted",
-      publishAccepted: "PublishEvent accepted",
-      resumeAccepted: "ResumeNode accepted",
-    },
-    replayDisabledReason: "リプレイ表示中は実行できません",
-    operationsAggregatedInRun: (cancelLabel: string, resumeLabel: string, sendEventLabel: string) =>
-      `${cancelLabel} / ${resumeLabel} / ${sendEventLabel} は Run 画面に集約しています。`,
-  },
-  executionTimeline: {
-    title: "イベントタイムライン",
-    backToCurrent: "現在に戻る",
-    replayingPastStateMessage: "過去の時点を表示中です。「現在に戻る」で最新の状態に戻せます。",
-    empty: "イベントがありません",
-    loadMore: "続きを読み込む",
-    errorUnknown: "不明なエラーが発生しました。",
-  },
-  executionComparison: {
-    title: "2実行の比較",
-    executionIdPlaceholder: "ex-2",
-    executionABaselineLabel: (executionLabel: string) => `${executionLabel} A（基準）`,
-    executionBLabel: (executionLabel: string) => `${executionLabel} B`,
-    kind: {
-      onlyLeft: "A のみ",
-      onlyRight: "B のみ",
-      diff: "差分",
-    },
-    state: {
-      notLoaded: "未読み込み",
-    },
-    summary: {
-      title: "差分サマリ",
-      failedOrCancelled: "失敗 / キャンセル",
-      others: "その他",
-      noDiff: "ノード差分なし",
-      loadBothToShow: "A と B を読み込むと表示されます",
-    },
-  },
-  nodeDetail: {
-    prompts: {
-      loadExecution: (executionLabel: string) => `${executionLabel} を読み込んでください。`,
-      selectNode: (nodeLabel: string) => `${nodeLabel} を選択してください。`,
-    },
-    title: (_nodeLabel: string) => "ノード詳細",
-    meta: {
-      type: (nodeType: string) => `タイプ: ${nodeType}`,
-      stateName: (stateName: string) => `ノード名: ${stateName}`,
-      executionNodeId: (id: string) => `実行ノードID: ${id}`,
-      workerId: (workerId: string) => `ワーカーID: ${workerId}`,
-      attempt: (attempt: number) => `試行回数: ${attempt}`,
-      waitKey: (waitKey: string) => `Wait キー: ${waitKey}`,
-      canceledByExecution: (canceledByExecution: boolean) => `キャンセル: ${String(canceledByExecution)}`,
-    },
-    waiting: {
-      title: "待機中 (Wait)",
-      reasonWaitByWaitKeyAndResumeWait: "理由: Wait キー により 再開 待ち",
-      resumeEventName: (eventName: string) => `再開 イベント名: ${eventName}`,
-    },
-    cancel: {
-      detailTitle: (cancelLabel: string) => `${cancelLabel} 詳細`,
-      convergedByExecutionCancel: "実行 キャンセル により収束",
-    },
-    failure: {
-      title: "失敗情報",
-      noMessage: "（メッセージなし）",
-    },
-    trace: {
-      startedAt: (formattedInstant: string) => `開始: ${formattedInstant}`,
-      completedAt: (formattedInstant: string) => `終了: ${formattedInstant}`,
-      duration: (durationText: string) => `実行時間: ${durationText}`,
-      durationUnavailable: "実行時間: —",
-      outputHeading: "出力",
-      outputEmpty: "（なし）",
-      inputHeading: "入力",
-      inputEmpty: "（なし）",
-      conditionRoutingHeading: "条件ルーティング",
-      conditionRoutingEmpty: "（なし）",
-    },
-  },
-  graphLegend: {
-    heading: {
-      nodeStatus: "ノードステータス",
-      edgeType: "エッジ種別",
-    },
-    aria: {
-      root: "グラフ凡例",
-      nodeStatus: "ノードステータス凡例",
-      edgeType: "エッジ種別凡例",
-    },
-    edgeKind: {
-      nextTraversed: "Next（実行経路）",
-      nextNotTraversed: "Next（未通過）",
-    },
-  },
-  dashboard: {
-    title: "ダッシュボード",
-    descriptionRecent: "直近の実行（最大 10 件）です。",
-    loadingRecent: "直近の実行を取得しています。",
-    emptyStartFromDefinitionsOrExecutions: "定義一覧または実行一覧から操作を開始できます。",
-    totalCount: (count: number | null) => (count == null ? "合計件数: --" : `合計件数: ${count}`),
-    updatedAt: (formattedDateTime: string) => `更新: ${formattedDateTime}`,
-    aria: {
-      recentExecutionsList: "直近実行一覧",
-    },
-    actions: {
-      openDetail: "詳細を開く",
-    },
-    error: {
-      fetchFailed: "データを取得できませんでした。",
-    },
-  },
-  executionHeader: {
-    placeholderExecutionId: "ex-1",
-    executionIdLabel: (executionLabel: string) => `${executionLabel} ID`,
-    compareLabel: "比較",
-    realtimeSseLabel: "リアルタイム更新",
-    cancelRequestedLabel: "キャンセル要求",
-    graphIdLine: (graphIdLabel: string, graphId: string) => `${graphIdLabel}: ${graphId}`,
-    cancelRequestedLine: (cancelRequestedLabel: string, cancelRequested: boolean) =>
-      `${cancelRequestedLabel}: ${cancelRequested ? "あり" : "なし"}`,
-  },
-  executionsPage: {
-    pagination: {
-      ariaLabel: "実行一覧ページネーション",
-      currentPage: (page: number) => `${page} ページ目`,
-      prev: "前へ",
-      next: "次へ",
-    },
-    filter: {
-      contextActivePrefix: "定義文脈（フィルタ中）:",
-      clearDefinition: "定義条件を外す",
-      title: "フィルタ",
-      all: "（すべて）",
-      statusRunning: "Running",
-      statusCompleted: "Completed",
-      statusCancelled: "Cancelled",
-      statusFailed: "Failed",
-      definitionInputHint: "定義 表示ID / UUID",
-      definitionLabelWithHint: (definitionLabel: string) => `${definitionLabel}（定義 表示ID / UUID）`,
-      definitionPlaceholder: "例: def-…",
-      nameInputHint: "name（execution 表示ID 部分一致、または execution UUID 完全一致）",
-      search: "検索",
-      clear: "クリア",
-      sortByLabel: "ソート項目",
-      sortOrderLabel: "順序",
-      sortByUpdatedAt: "更新日時",
-      sortByDisplayId: "表示ID",
-      sortOrderDesc: "降順",
-      sortOrderAsc: "昇順",
-      invalidName: "name は半角英数字と . - _ のみ、100文字以内で入力してください。",
-      invalidDefinitionId: "定義IDは半角英数字と - _ のみ、80文字以内で入力してください。",
-      pageInfo: (limit: number, offset: number, page: number) =>
-        `1 ページあたり: ${limit} 件。 offset: ${offset}（page ≈ ${page}）`,
-    },
-    loading: "実行一覧を読み込み中です。",
-    listSummary: (totalCount: number, page: number) => `合計 ${totalCount} 件（${page} ページ目）`,
-    updatedAt: (formattedDateTime: string) => `更新: ${formattedDateTime}`,
-    actions: {
-      openDetail: "詳細",
-    },
-    empty: "条件に合う実行はありません。",
-    error: "取得に失敗しました。時間をおいて再試行してください。",
-  },
-  executionDetailPage: {
-    title: "実行詳細",
-    missingExecutionId: "実行 ID が指定されていません。",
-    navRun: "実行",
-    navGraph: "グラフ",
-  },
-  executionGraphPage: {
-    title: "実行グラフ",
-    missingExecutionId: "実行 ID が指定されていません。",
-    navDetail: "詳細",
-    navRun: "実行",
-  },
-  executionRunPage: {
-    title: "実行",
-    missingExecutionId: "実行 ID が指定されていません。",
-    navDetail: "詳細",
-    navGraph: "グラフ",
-  },
-  definitionEditor: {
-    backToDetail: "定義の詳細へ戻る",
-    descriptionCreating: "新しい定義を作成します。",
-    descriptionEditingTarget: (definitionId: string) => `編集対象: ${definitionId}`,
-    loadingMeta: "定義メタ情報を読み込み中...",
-    validation: {
-      nameRequired: "定義名を入力してください。",
-      yamlRequired: "YAML を入力してください。",
-      yamlLintInvalid: "YAML の構文エラーを修正してください。",
-      nameInvalidFormat: "定義名は半角英字で開始し、半角英数字と . - _ のみ100文字以内で入力してください。",
-      yamlTooLarge: "YAMLは256KB（262144バイト）以内で入力してください。",
-    },
-    labels: {
-      name: "定義名（name）",
-      yaml: "YAML",
-    },
-    actions: {
-      saving: "保存中...",
-      saveWithApiHint: "保存",
-      resetTemplate: "編集前に戻す",
-      switchToYaml: "YAML",
-      switchToGraph: "Graph",
-    },
-    graph: {
-      title: "グラフ編集",
-      empty: "YAML のパースに失敗したためグラフを表示できません。YAML を修正してください。",
-      addNode: "ノード追加",
-      addNodeDialogTitle: "ノードを追加",
-      addNodeDisabledReasonStart: "start は1つまで追加できます。",
-      addNodeDisabledReasonEnd: "end は1つまで追加できます。",
-      nodeInspectorTitle: "ノード編集",
-      edgeInspectorTitle: "エッジ編集",
-      deleteNode: "ノード削除",
-      deleteEdge: "エッジ削除",
-      apply: "反映",
-      closeDialog: "閉じる",
-      rootObjectRequired: () => "YAML ルートはオブジェクトである必要があります。",
-      nodesArrayRequired: () => "nodes は配列で指定してください。",
-      nodesRequired: () => "nodes は1件以上必要です。",
-      nodeIdRequired: () => "node.id は必須です。",
-      duplicateNodeId: (nodeId: string) => `重複 node.id: '${nodeId}'`,
-      startCountInvalid: (count: number) => `start ノードは1件のみ許可されます（現在 ${count} 件）。`,
-      endCountInvalid: (count: number) => `end ノードは1件のみ許可されます（現在 ${count} 件）。`,
-      startRequiresTransition: (nodeId: string) => `Node '${nodeId}': start は next または edges が必要です。`,
-      actionRequired: (nodeId: string) => `Node '${nodeId}': action ノードは action が必須です。`,
-      actionRequiresTransition: (nodeId: string) => `Node '${nodeId}': action は next または edges が必要です。`,
-      waitEventRequired: (nodeId: string) => `Node '${nodeId}': wait ノードは event が必須です。`,
-      waitRequiresTransition: (nodeId: string) => `Node '${nodeId}': wait は next または edges が必要です。`,
-      forkBranchesRequired: (nodeId: string) => `Node '${nodeId}': fork は branches を2件以上指定してください。`,
-      joinRequiresTransition: (nodeId: string) => `Node '${nodeId}': join は next または edges が必要です。`,
-      joinModeInvalid: (nodeId: string) => `Node '${nodeId}': join.mode は 'all' のみ許可されます。`,
-      endCannotHaveTransition: (nodeId: string) => `Node '${nodeId}': end は next/edges を持てません。`,
-      edgeToRequired: (nodeId: string) => `Node '${nodeId}': edge.to は必須です。`,
-      edgeWhenPathRequired: (nodeId: string) => `Node '${nodeId}': edge.when.path は必須です。`,
-      edgeWhenOpRequired: (nodeId: string) => `Node '${nodeId}': edge.when.op は必須です。`,
-      edgeWhenValueRequired: (nodeId: string) =>
-        `Node '${nodeId}': この演算子では edge.when.value が必須です（EXISTS 以外）。`,
-      edgeWhenValueInInvalid: (nodeId: string) =>
-        `Node '${nodeId}': IN では edge.when.value は空でない配列（または JSON 配列文字列）が必要です。`,
-      edgeWhenValueBetweenInvalid: (nodeId: string) =>
-        `Node '${nodeId}': BETWEEN では edge.when.value は要素2件以上の配列（または JSON 配列文字列）が必要です。`,
-      edgeDefaultMultiple: (nodeId: string) =>
-        `Node '${nodeId}': default=true の edge は 1 つまでです。`,
-      selfReferenceEdge: (nodeId: string) => `Node '${nodeId}': 自己参照エッジは許可されません。`,
-      missingTargetNode: (nodeId: string, targetId: string) => `Node '${nodeId}': 参照先 '${targetId}' が存在しません。`,
-      selfReferenceRejected: "自己参照エッジは作成できません。",
-      whenOpPlaceholder: "演算子を選択",
-      whenPathPlaceholder: "$.states.Fetch.output.amount",
-      whenPathHint:
-        "評価根は Execution Context（input と同じ）。例: $.states.A.output.y / $.states['a.b'].output.z / $.vars.flag / $.sys.today",
-      whenValuePlaceholder: "例: 100 / true / \"100\"",
-      whenValueDisabledForExists: "EXISTS では value は不要です。",
-      whenValueHintIn: "IN は JSON配列で入力します。例: [\"A\", \"B\"]",
-      whenValueHintBetween: "BETWEEN は [最小, 最大] の JSON配列で入力します。例: [1, 10]",
-      fullscreenEnter: "全画面表示",
-      fullscreenExit: "全画面終了",
-      parseFailed: "YAML のパースに失敗したため、直前の有効グラフを表示しています。",
-      actionErrorLabel: "error 遷移先（任意）",
-      actionInputLabel: "input（任意）",
-      actionInputPlaceholder:
-        '例: $.input.orderId / $.states.A.output.x / {"id":"$.states[\'a.b\'].output.id"}',
-      actionInputHint:
-        "評価根は Execution Context（$.input / $.states / $.vars / $.sys）。ドット付き Node ID は $.states['id'].output。オブジェクトは JSON。",
-      actionInputInvalidJson: "JSON の形式が正しくありません。",
-      actionIdCandidatesLoading: "Action 一覧を読み込み中…",
-      actionIdNoResults: "一致する Action がありません",
-      schemaPathPlaceholder: "$.input.x または $.states.A.output.y",
-      schemaLiteralOrPathPlaceholder: "リテラルまたは $.input.x",
-    },
-    saved: {
-      completePrefix: "保存完了:",
-      complete: (displayId: string) => `保存完了: ${displayId}`,
-      openNewDetail: "新しい定義の詳細へ",
-      runWithThisDefinition: "この定義で実行開始",
-    },
-    toasts: {
-      savedWithDisplayId: (displayIdLabel: string, displayId: string) =>
-        `定義を保存しました（${displayIdLabel}: ${displayId}）`,
-    },
-    hints: {
-      title: "修正ヒント",
-    },
+
   },
   tenantMissingBanner: {
     noticeParts: (loadLabel: string, cancelLabel: string, resumeLabel: string) => ({
@@ -981,44 +220,10 @@ export const uiText: UiText = {
       betweenEnvs: " を設定するか、サーバーで ",
       afterSecondaryEnv: " を設定してください。",
     }),
-  },
-  executionStatusBanner: {
-    cancelRequestedNotice: (cancelLabel: string, resumeLabel: string) =>
-      `${cancelLabel}要求済みのため、${resumeLabel}など進行系操作はできません`,
-    terminalNotice: (executionLabel: string) => `${executionLabel}は終了しています`,
-  },
-  nodeList: {
-    title: "ノード一覧",
-    nodeCount: (count: number) => `${count} 件`,
-    columns: {
-      status: "ステータス",
-      type: "タイプ",
-      nodeName: "ノード名",
-      executionNodeId: "実行ノードID",
-      duration: "実行時間",
-    },
-  },
-  nodeGraph: {
-    meta: {
-      type: (nodeType: string) => `タイプ: ${nodeType}`,
-      attempt: (attempt: number) => `試行回数: ${attempt}`,
-      waitKey: (waitKey: string) => `Wait キー: ${waitKey}`,
-    },
-    aria: {
-      selectNode: (displayLabel: string) => `ノードを選択: ${displayLabel}`,
-    },
-  },
-  nodeCommands: {
-    resumeDisabledReason: {
-      runOnly: "Run 画面でのみ Resume できます",
-      executionNotLoaded: "Execution が未読込です",
-      nodeNotSelected: "Node を選択してください",
-      executionTerminal: "Executionは終了しています",
-      cancelRequested: "Cancel要求済みのため、Resumeなど進行系操作はできません",
-      waitingOnly: "WAITING 状態のノードのみ Resume できます",
-    },
+
   },
 };
+;
 
 export const uiTextJa: UiText = uiText;
 

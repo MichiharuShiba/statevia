@@ -3,7 +3,7 @@ import {
   parseExecutionStreamEvent,
   applyExecutionStreamEvent
 } from "../../features/executions/lib/executionStream";
-import type { ExecutionView } from "../../app/lib/types";
+import type { ExecutionView } from "@/features/executions/types";
 
 const baseExecution: ExecutionView = {
   displayId: "ex-1",

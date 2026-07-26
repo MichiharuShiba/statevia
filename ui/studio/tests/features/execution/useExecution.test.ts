@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useExecution } from "../../../features/executions/hooks/useExecution";
 import { getReconnectDelayMs } from "../../../features/executions/hooks/executionStreamLifecycle";
-import type { ExecutionDTO, ExecutionGraphDTO } from "../../../app/lib/types";
+import type { ExecutionDTO, ExecutionGraphDTO } from "@/features/executions/types";
 import * as api from "@/shared/api";
 
 function executionDto(overrides: Partial<ExecutionDTO> = {}): ExecutionDTO {

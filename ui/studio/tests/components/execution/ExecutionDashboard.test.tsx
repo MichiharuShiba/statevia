@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { ExecutionDashboard } from "../../../features/executions/ui/ExecutionDashboard";
 import { renderWithUiText } from "../../testUtils";
-import type { ExecutionView } from "../../../app/lib/types";
+import type { ExecutionView } from "@/features/executions/types";
 
 const executionViewFixture = (): ExecutionView => ({
   displayId: "ex-1",

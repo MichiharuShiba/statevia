@@ -1,4 +1,4 @@
-import type { GraphDefinition, GraphEdgeDef, GraphGroupDef, GraphDefinitionMeta } from "../../../app/graphs/types";
+import type { GraphDefinition, GraphEdgeDef, GraphGroupDef, GraphDefinitionMeta } from "@/features/executions/graphs/types";
 import type { ExecutionNodeDTO, NodeStatus, ExecutionView } from "../types";
 
 /** 実行＋定義をマージしたグラフノード。 */

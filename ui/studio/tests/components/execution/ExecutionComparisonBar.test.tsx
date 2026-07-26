@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ExecutionComparisonBar } from "../../../features/executions/ui/ExecutionComparisonBar";
-import type { ExecutionView } from "../../../app/lib/types";
+import type { ExecutionView } from "@/features/executions/types";
 import { computeExecutionDiff } from "../../../features/executions/lib/executionDiff";
 import { uiText } from "@/shared/i18n/uiText";
 

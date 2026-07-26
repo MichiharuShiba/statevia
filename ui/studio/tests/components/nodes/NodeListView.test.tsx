@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 import { NodeListView } from "../../../features/executions/ui/NodeListView";
 import { renderWithUiText } from "../../testUtils";
-import type { ExecutionNodeDTO } from "../../../app/lib/types";
+import type { ExecutionNodeDTO } from "@/features/executions/types";
 
 const node = (id: string, status: ExecutionNodeDTO["status"]): ExecutionNodeDTO => ({
   executionNodeId: id,

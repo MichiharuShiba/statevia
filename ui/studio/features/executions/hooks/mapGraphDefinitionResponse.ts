@@ -5,7 +5,7 @@ import type {
   GraphEdgeDef,
   GraphGroupDef,
   GraphNodeDef,
-} from "../../../app/graphs/types";
+} from "@/features/executions/graphs/types";
 
 /** GET /v1/graphs/{graphId}（GraphDefinitionResponse）の緩い形。Core-API の camelCase JSON を前提。 */
 type ApiGraphNode = {

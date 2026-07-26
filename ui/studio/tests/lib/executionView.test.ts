@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildExecutionView } from "../../features/executions/lib/executionView";
-import type { ExecutionDTO, ExecutionGraphDTO } from "../../app/lib/types";
+import type { ExecutionDTO, ExecutionGraphDTO } from "@/features/executions/types";
 
 describe("buildExecutionView", () => {
   it("graph の conditionRouting を再評価せずそのまま保持する", () => {

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getGraphDefinition } from "../../../app/graphs/registry";
-import type { GraphDefinition } from "../../../app/graphs/types";
+import { getGraphDefinition } from "@/features/executions/graphs/registry";
+import type { GraphDefinition } from "@/features/executions/graphs/types";
 import { apiGet } from "@/shared/api";
 import { mapGraphDefinitionResponse } from "./mapGraphDefinitionResponse";
 

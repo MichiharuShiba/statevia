@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { ThemeToggle } from "../../../app/components/layout/ThemeToggle";
+import { ThemeToggle } from "@/shared/ui/ThemeToggle";
 
 describe("ThemeToggle", () => {
   it("テーマ切替で data-theme と cookie を更新する", () => {

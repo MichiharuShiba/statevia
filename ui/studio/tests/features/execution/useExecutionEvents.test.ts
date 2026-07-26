@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useExecutionEvents } from "../../../features/executions/hooks/useExecutionEvents";
 import * as api from "@/shared/api";
-import type { ExecutionEventsResponse } from "../../../app/lib/types";
+import type { ExecutionEventsResponse } from "@/features/executions/types";
 
 describe("useExecutionEvents", () => {
   beforeEach(() => {

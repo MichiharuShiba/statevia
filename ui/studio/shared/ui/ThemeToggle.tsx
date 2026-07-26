@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Theme } from "../../lib/theme";
+import type { Theme } from "@/shared/lib/theme";
 
 type ThemeToggleProps = Readonly<{
   theme: Theme;
