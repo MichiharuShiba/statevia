@@ -1,21 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { coerceScalarForSchema } from "../../lib/actionSchema/coerceActionInputValue";
+import { coerceScalarForSchema } from "../actionSchema/coerceActionInputValue";
 import {
   buildInputFieldTree,
   getNestedInputValue,
   jsonPathToLogicalPath,
   setNestedInputValue,
   type InputFieldNode
-} from "../../lib/actionSchema/nestedInputPaths";
-import { resolveSchemaUiText } from "../../lib/actionSchema/resolveSchemaUiText";
+} from "../actionSchema/nestedInputPaths";
+import { resolveSchemaUiText } from "../actionSchema/resolveSchemaUiText";
 import type {
   ActionFieldUiHints,
   ActionInputValidationDetail,
   ActionSchemaDetailResponse,
   JsonSchemaObject
-} from "../../lib/actionSchema/types";
+} from "../actionSchema/types";
 import { useUiText } from "@/shared/i18n/uiTextContext";
 
 /** Schema 駆動 action input フォームの props。 */

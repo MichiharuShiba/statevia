@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseDefinitionYaml } from "../../../app/lib/definition-editor/parseDefinitionYaml";
-import { serializeDefinitionYaml } from "../../../app/lib/definition-editor/serializeDefinitionYaml";
+import { parseDefinitionYaml } from "@/features/definition-editor/lib/parseDefinitionYaml";
+import { serializeDefinitionYaml } from "@/features/definition-editor/lib/serializeDefinitionYaml";
 
 const parseOpts = {
   rootObjectRequired: () => "root",

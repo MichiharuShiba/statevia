@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import type { DefinitionGraphEditor } from "../../../app/components/editor/DefinitionGraphEditor";
+import type { DefinitionGraphEditor } from "@/features/definition-editor/ui/DefinitionGraphEditor";
 
 /** DefinitionGraphEditor テスト用の最小ラベルセット。 */
 export const definitionGraphEditorTestLabels: ComponentProps<typeof DefinitionGraphEditor>["labels"] = {

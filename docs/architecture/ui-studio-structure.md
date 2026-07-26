@@ -3,9 +3,11 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Architecture |
-| Version | 0.4 |
+| Version | 0.5 |
 | 更新日 | 2026-07-25 |
 | 関連 | [repository-layout.md](repository-layout.md), [development-guidelines.md](../development-guidelines.md) |
+
+**Version 0.5（2026-07-25）**: Phase 4 完了。`features/definition-editor/{ui,lib,actionSchema,types}`。`new`/`edit` route は薄い wrapper。内部アルゴリズムの書き換えなし（配置と import 境界のみ）。
 
 **Version 0.4（2026-07-25）**: Phase 3 完了。`features/executions/{api,hooks,lib,ui,types}`。実行一覧・詳細・run・graph の route は薄い wrapper。グラフ描画横断（`graphLayout` / `nodeAppearance` / `GraphNodeShell`）と `ActionLinkGroup` / `TenantMissingBanner` は `shared` へ。
 
@@ -41,7 +43,7 @@ ui/studio/
    └─ lib/                   # dateTime, errors, validation, statusStyle, graphLayout
 ```
 
-Phase 3 時点では `features/definitions` と `features/executions` が存在し、各 route は薄い wrapper。横断モジュールは `shared/` に移済み。旧 `app/lib` には definition-editor / actionSchema / graphs 等が残る（Phase 4–5 で再配置）。長期の互換 re-export は残さない。
+Phase 4 時点では `features/definitions` / `features/executions` / `features/definition-editor` が存在し、各 route は薄い wrapper。横断モジュールは `shared/` に移済み。旧 `app/lib` には graphs / adminTypes / theme 等が残る（Phase 5 で再配置）。長期の互換 re-export は残さない。
 
 ## 2. パスエイリアス
 
@@ -95,7 +97,7 @@ flowchart LR
 | 1 | transport / UI primitive / i18n・auth・汎用 lib を `shared` へ | 同上。長期 re-export なし（完了） |
 | 2 | `features/definitions` パイロット（api / hooks / ui / i18n） | 定義一覧・詳細の既存テスト通過（完了） |
 | 3 | `features/executions`（必要なら graph） | 実行画面・関連テスト（完了） |
-| 4 | `features/definition-editor`（移動と境界のみ） | 編集画面の挙動非変更 |
+| 4 | `features/definition-editor`（移動と境界のみ） | 編集画面の挙動非変更（完了） |
 | 5 | admin / auth / dashboard、旧ディレクトリ削除、docs 最終反映 | 旧 `app/lib` 等が無いこと |
 
 ### PR レビュー必須項目（依存方向）

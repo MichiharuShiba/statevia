@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { filterActionSchemaCandidates } from "../../app/lib/actionSchema/filterActionSchemaCandidates";
-import type { ActionSchemaIndexItem } from "../../app/lib/actionSchema/types";
+import { filterActionSchemaCandidates } from "@/features/definition-editor/actionSchema/filterActionSchemaCandidates";
+import type { ActionSchemaIndexItem } from "@/features/definition-editor/actionSchema/types";
 
 const candidates: ActionSchemaIndexItem[] = [
   {

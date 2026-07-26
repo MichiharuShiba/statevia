@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { validateGraphDocument, type ValidateGraphDocumentMessageOptions } from "../../../app/lib/definition-editor/validateGraphDocument";
-import type { DefinitionGraphDocument } from "../../../app/lib/definition-editor/types";
+import { validateGraphDocument, type ValidateGraphDocumentMessageOptions } from "@/features/definition-editor/lib/validateGraphDocument";
+import type { DefinitionGraphDocument } from "@/features/definition-editor/lib/types";
 
 function opts(): ValidateGraphDocumentMessageOptions {
   const m = (prefix: string) => (nodeId: string) => `${prefix}:${nodeId}`;

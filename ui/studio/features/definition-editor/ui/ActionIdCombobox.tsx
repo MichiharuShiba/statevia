@@ -1,8 +1,8 @@
 "use client";
 
 import { useId, useMemo, type FocusEvent } from "react";
-import { filterActionSchemaCandidates } from "../../lib/actionSchema/filterActionSchemaCandidates";
-import type { ActionSchemaIndexItem } from "../../lib/actionSchema/types";
+import { filterActionSchemaCandidates } from "../actionSchema/filterActionSchemaCandidates";
+import type { ActionSchemaIndexItem } from "../actionSchema/types";
 
 /** ActionId 入力 combobox の props。 */
 export type ActionIdComboboxProps = {

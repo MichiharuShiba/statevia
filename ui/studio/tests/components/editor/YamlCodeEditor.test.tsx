@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, waitFor } from "@testing-library/react";
-import { YamlCodeEditor } from "../../../app/components/editor/YamlCodeEditor";
+import { YamlCodeEditor } from "@/features/definition-editor/ui/YamlCodeEditor";
 
 describe("YamlCodeEditor", () => {
   it("YAML 文字列を編集できる", async () => {

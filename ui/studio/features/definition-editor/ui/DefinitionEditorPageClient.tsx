@@ -2,21 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DefinitionGraphEditor } from "../components/editor/DefinitionGraphEditor";
-import { YamlCodeEditor } from "../components/editor/YamlCodeEditor";
+import { DefinitionGraphEditor } from "./DefinitionGraphEditor";
+import { YamlCodeEditor } from "./YamlCodeEditor";
 import { ActionLinkGroup } from "@/shared/ui/ActionLinkGroup";
 import { NAVIGATION_BUTTON_CLASS } from "@/shared/ui/navigationButtonClass";
 import { PageShell } from "@/shared/ui/PageShell";
 import { PageState } from "@/shared/ui/PageState";
 import { Toast } from "@/shared/ui/Toast";
 import { apiGet, apiPost, apiPut } from "@/shared/api";
-import { parseDefinitionYaml, type ParseDefinitionYamlMessageOptions } from "../lib/definition-editor/parseDefinitionYaml";
-import { serializeDefinitionYaml } from "../lib/definition-editor/serializeDefinitionYaml";
-import type { DefinitionGraphDocument } from "../lib/definition-editor/types";
-import { validateGraphDocument, type ValidateGraphDocumentMessageOptions } from "../lib/definition-editor/validateGraphDocument";
+import { parseDefinitionYaml, type ParseDefinitionYamlMessageOptions } from "../lib/parseDefinitionYaml";
+import { serializeDefinitionYaml } from "../lib/serializeDefinitionYaml";
+import type { DefinitionGraphDocument } from "../lib/types";
+import { validateGraphDocument, type ValidateGraphDocumentMessageOptions } from "../lib/validateGraphDocument";
 import { defaultDefinitionYaml } from "../lib/defaultDefinitionYaml";
 import { toToastError, type ToastState } from "@/shared/lib/errors";
-import type { DefinitionDTO, DefinitionSchemaResponse } from "../lib/types";
+import type { DefinitionDTO, DefinitionSchemaResponse } from "../types";
 import { useUiText } from "@/shared/i18n/uiTextContext";
 import { getUtf8ByteLength, matchesPattern } from "@/shared/lib/validation/primitives";
 import { DEFINITION_NAME_PATTERN, DEFINITION_YAML_MAX_BYTES } from "@/shared/lib/validation/formRules";

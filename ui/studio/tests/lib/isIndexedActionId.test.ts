@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildIndexedActionIdSet,
   isIndexedActionId
-} from "../../app/lib/actionSchema/isIndexedActionId";
-import type { ActionSchemaIndexItem } from "../../app/lib/actionSchema/types";
+} from "@/features/definition-editor/actionSchema/isIndexedActionId";
+import type { ActionSchemaIndexItem } from "@/features/definition-editor/actionSchema/types";
 
 const candidates: ActionSchemaIndexItem[] = [
   {

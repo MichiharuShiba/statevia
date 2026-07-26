@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { DefinitionEditorPageClient } from "../../app/definitions/DefinitionEditorPageClient";
-import { defaultDefinitionYaml } from "../../app/lib/defaultDefinitionYaml";
+import { DefinitionEditorPageClient } from "@/features/definition-editor/ui/DefinitionEditorPageClient";
+import { defaultDefinitionYaml } from "@/features/definition-editor/lib/defaultDefinitionYaml";
 import { UiTextProvider } from "@/shared/i18n/uiTextContext";
 import { renderWithUiText } from "../testUtils";
 

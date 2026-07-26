@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import DefinitionEditPage from "../../app/definitions/[definitionId]/edit/page";
-import { defaultDefinitionYaml } from "../../app/lib/defaultDefinitionYaml";
+import { defaultDefinitionYaml } from "@/features/definition-editor/lib/defaultDefinitionYaml";
 import { renderWithUiText } from "../testUtils";
 
 vi.mock("next/navigation", () => ({

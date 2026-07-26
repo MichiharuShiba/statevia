@@ -4,7 +4,7 @@ import {
   listRootInputFieldNames,
   resolveLabelKeyFromActionCatalog,
   resolveSchemaUiText
-} from "../../app/lib/actionSchema/resolveSchemaUiText";
+} from "@/features/definition-editor/actionSchema/resolveSchemaUiText";
 import { getUiText } from "@/shared/i18n/uiTextLocale";
 
 const restActionId = "statevia.action.builtin.rest";

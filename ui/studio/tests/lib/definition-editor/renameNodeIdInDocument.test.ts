@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { renameNodeIdInDocument } from "../../../app/lib/definition-editor/renameNodeIdInDocument";
-import type { DefinitionGraphDocument } from "../../../app/lib/definition-editor/types";
+import { renameNodeIdInDocument } from "@/features/definition-editor/lib/renameNodeIdInDocument";
+import type { DefinitionGraphDocument } from "@/features/definition-editor/lib/types";
 
 function doc(overrides: Partial<DefinitionGraphDocument> = {}): DefinitionGraphDocument {
   return {

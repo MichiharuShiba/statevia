@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { serializeDefinitionYaml } from "../../../app/lib/definition-editor/serializeDefinitionYaml";
-import type { DefinitionGraphDocument } from "../../../app/lib/definition-editor/types";
+import { serializeDefinitionYaml } from "@/features/definition-editor/lib/serializeDefinitionYaml";
+import type { DefinitionGraphDocument } from "@/features/definition-editor/lib/types";
 
 describe("serializeDefinitionYaml", () => {
   it("単一無条件 edge は next に正規化する", () => {

@@ -19,27 +19,27 @@ import { layoutGraph } from "@/shared/lib/graphLayout";
 import type { LayoutEdgeInput, LayoutNodeInput } from "@/shared/lib/graphLayout";
 import { getNodeAppearance } from "@/shared/lib/nodeAppearance";
 import { getStatusStyle } from "@/shared/lib/statusStyle";
-import { renameNodeIdInDocument } from "../../lib/definition-editor/renameNodeIdInDocument";
-import type { DefinitionGraphDocument, DefinitionGraphNode, NodeType } from "../../lib/definition-editor/types";
-import { buildDocumentAdjacency } from "../../lib/definition-editor/definitionGraphAdjacency";
+import { renameNodeIdInDocument } from "../lib/renameNodeIdInDocument";
+import type { DefinitionGraphDocument, DefinitionGraphNode, NodeType } from "../lib/types";
+import { buildDocumentAdjacency } from "../lib/definitionGraphAdjacency";
 import { ActionInputCodeEditor } from "@/shared/ui/ActionInputCodeEditor";
 import { ActionIdCombobox } from "./ActionIdCombobox";
 import { SchemaDrivenActionInputForm } from "./SchemaDrivenActionInputForm";
 import { GraphNodeShell } from "@/shared/ui/GraphNodeShell";
 import { apiGet } from "@/shared/api";
-import { collectUpstreamOutputPathHints } from "../../lib/actionSchema/outputSchemaHints";
+import { collectUpstreamOutputPathHints } from "../actionSchema/outputSchemaHints";
 import {
   getCachedActionSchemaDetail,
   setCachedActionSchemaDetail
-} from "../../lib/actionSchema/actionSchemaSessionCache";
-import { loadActionSchemaIndex } from "../../lib/actionSchema/actionSchemaIndexSessionCache";
-import { isIndexedActionId, buildIndexedActionIdSet } from "../../lib/actionSchema/isIndexedActionId";
+} from "../actionSchema/actionSchemaSessionCache";
+import { loadActionSchemaIndex } from "../actionSchema/actionSchemaIndexSessionCache";
+import { isIndexedActionId, buildIndexedActionIdSet } from "../actionSchema/isIndexedActionId";
 import type {
   ActionInputValidationDetail,
   ActionSchemaDetailResponse,
   ActionSchemaIndexItem,
   JsonSchemaObject
-} from "../../lib/actionSchema/types";
+} from "../actionSchema/types";
 
 function formatActionInputForEditor(input: DefinitionGraphNode["input"]): string {
   if (input === undefined) {
@@ -1181,6 +1181,7 @@ function GraphInspector({
     return () => {
       cancelled = true;
     };
+    
   }, []);
 
   const loadActionSchema = useCallback(async (actionId: string) => {
@@ -1193,7 +1194,7 @@ function GraphInspector({
       return cached;
     }
     const inflight = inflightSchemaLoadsRef.current.get(trimmed);
-    if (inflight) {
+    if (inflight !== undefined) {
       return inflight;
     }
     const request = (async () => {

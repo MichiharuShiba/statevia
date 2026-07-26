@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultDefinitionYaml } from "../../app/lib/defaultDefinitionYaml";
+import { defaultDefinitionYaml } from "@/features/definition-editor/lib/defaultDefinitionYaml";
 
 describe("defaultDefinitionYaml", () => {
   it("最小定義 YAML テンプレートを含む", () => {
