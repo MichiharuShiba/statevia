@@ -1,3 +1,4 @@
+using System.Linq;
 using Statevia.Core.Engine.Engine;
 
 namespace Statevia.Core.Engine.Definition;
@@ -95,7 +96,12 @@ internal static class ExecutionContextPathResolver
             return false;
         }
 
-        return segments[0].Equals(ExecutionContextKeys.Vars, StringComparison.OrdinalIgnoreCase);
+        if (segments.Any(static s => s.Kind == PathSegmentKind.ArrayIndex))
+        {
+            return false;
+        }
+
+        return segments[0].Name?.Equals(ExecutionContextKeys.Vars, StringComparison.OrdinalIgnoreCase) == true;
     }
 
     private static bool TryGetIncompleteStateReference(
@@ -109,12 +115,12 @@ internal static class ExecutionContextPathResolver
             return false;
         }
 
-        if (!segments[0].Equals(ExecutionContextKeys.States, StringComparison.OrdinalIgnoreCase))
+        if (segments[0].Name?.Equals(ExecutionContextKeys.States, StringComparison.OrdinalIgnoreCase) != true)
         {
             return false;
         }
 
-        stateName = segments[1];
+        stateName = segments[1].Name ?? string.Empty;
         if (stateName.Length == 0)
         {
             return false;

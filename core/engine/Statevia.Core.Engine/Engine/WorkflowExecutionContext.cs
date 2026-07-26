@@ -189,7 +189,7 @@ public sealed class WorkflowExecutionContext
 
     private static void SetNestedValue(
         Dictionary<string, object?> root,
-        IReadOnlyList<string> segments,
+        IReadOnlyList<PathSegment> segments,
         int startIndex,
         object? value)
     {
@@ -199,16 +199,19 @@ public sealed class WorkflowExecutionContext
         var current = root;
         for (var i = startIndex; i < segments.Count - 1; i++)
         {
-            var segment = segments[i];
-            var nextDict = current.TryGetValue(segment, out var next)
+            var key = segments[i].Name
+                ?? throw new ArgumentException("vars write path cannot contain array index segments.");
+            var nextDict = current.TryGetValue(key, out var next)
                     && next is IReadOnlyDictionary<string, object?> existingDict
                 ? new Dictionary<string, object?>(existingDict, StringComparer.OrdinalIgnoreCase)
                 : new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-            current[segment] = nextDict;
+            current[key] = nextDict;
             current = nextDict;
         }
 
-        current[segments[^1]] = value;
+        var leafKey = segments[^1].Name
+            ?? throw new ArgumentException("vars write path cannot contain array index segments.");
+        current[leafKey] = value;
     }
 
     private static object? SnapshotObject(object? value) =>

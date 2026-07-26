@@ -326,8 +326,8 @@ SimpleJsonPath のプロパティ参照に加え、次の**完全一致**の関�
 
 State / action ノード完了時に、action 戻り値を `$.vars` へ代入する。
 
-- 許可: `$.vars` または `$.vars.<seg>…`（SimpleJsonPath）
-- 禁止: `$.sys…` / `$.sys.now("…")` 等の CallPath / `$.states…` / `$.input…` 等（Level1 error）
+- 許可: `$.vars` または `$.vars.<seg>…`（SimpleJsonPath の識別子／引用キー）
+- 禁止: `$.sys…` / `$.sys.now("…")` 等の CallPath / `$.states…` / `$.input…` / 配列インデックス付き（例: `$.vars.users[0]`）等（Level1 error）
 - 未指定: `$.states` のみ更新し、`$.vars` は変更しない
 - `output` 指定時も `$.states.<Name>.output` への記録は常に行う
 
@@ -412,13 +412,24 @@ states:
 - `foo.bar` はネストオブジェクトとして構築される（`StateInputEvaluator.SetByDottedKey` と同等）
 - ネスト map（`ship: { address: "x" }`）とドットキー（`ship.address: "x"`）は実行時・Compiler schema 検証のいずれでも同等の論理ツリーになる（§1.1.2）
 - 同一ブランチでスカラーとドットキー子が競合する正規化は 422
-- パス式は `Level1Validator` と同じ単純 JSONPath 制約に従う。
-  - 識別子セグメント: `$` または `$.seg1.seg2`（英数字と `_`）
-  - **ドットを含む State / Node 名**はブラケット＋引用: `$.states['order.notify.customer'].output`
-  - 単一引用・二重引用のどちらも可。キーが空、または引用なしブラケットは無効
-- `$.vars` / `$.sys`（およびその配下）は `input` パスとして Level1 で**許可**する。
-- 状態の `output` は `$.vars` 配下のみ Level1 で許可する（上記「`output` フィールド」参照）。
-- `${...}` 形式のテンプレート文字列は受理しない（states/nodes ともに同一ルール）。
+- パス式は `Level1Validator` と同じ単純 JSONPath（SimpleJsonPath）制約に従う。
+
+| 構文 | 意味 | 例 |
+| --- | --- | --- |
+| `$.seg1.seg2` | オブジェクトの識別子プロパティ（英数字と `_`） | `$.vars.user.email` |
+| `$.obj['key']` / `$.obj["key"]` | オブジェクトの文字列キー（ドット可） | `$.states['order.notify.customer'].output` |
+| `$.arr[0]` | 配列の 0 始まりインデックス（読み取り） | `$.vars.users[0].email` |
+
+制約・区別:
+
+- 単一引用・二重引用のどちらも可。キーが空は無効
+- **`[0]`（引用なし）≠ `['0']`（キー `"0"`）**。前者は配列インデックス、後者はオブジェクトキー
+- 先頭ゼロは `0` のみ許可（`[01]` は Level1 error）。桁上限 10、`int` 範囲内
+- **未サポート**（Level1 error）: `[*]` / `[-1]` / `[1:3]` / `[?()]` / `[ 0 ]`（空白あり）等
+- **`output` への配列インデックスは未対応**（Level1 error。書き込みは別検討）
+- `$.vars` / `$.sys`（およびその配下）は `input` パスとして Level1 で**許可**する
+- 状態の `output` は `$.vars` 配下の識別子／引用キーのみ Level1 で許可する（上記「`output` フィールド」参照）
+- `${...}` 形式のテンプレート文字列は受理しない（states/nodes ともに同一ルール）
 
 ### 1.6.2 ユーザー定義状態（IState）との関係
 

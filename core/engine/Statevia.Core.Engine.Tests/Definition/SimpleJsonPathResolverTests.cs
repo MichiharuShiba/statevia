@@ -196,4 +196,121 @@ public class SimpleJsonPathResolverTests
         Assert.True(r.Found);
         Assert.Equal(true, r.Value);
     }
+
+    /// <summary>リストの配列インデックスで要素とプロパティを解決できることを検証する。</summary>
+    [Fact]
+    public void Resolve_ListArrayIndex_ReturnsElementProperty()
+    {
+        // Arrange
+        var source = new Dictionary<string, object?>
+        {
+            ["users"] = new List<object?>
+            {
+                new Dictionary<string, object?> { ["email"] = "a@example.com" },
+                new Dictionary<string, object?> { ["email"] = "b@example.com" },
+            },
+        };
+
+        // Act
+        var r = SimpleJsonPathResolver.Resolve(source, "$.users[0].email");
+
+        // Assert
+        Assert.True(r.Found);
+        Assert.Equal("a@example.com", r.Value);
+    }
+
+    /// <summary>オブジェクト内配列のインデックス参照を解決できることを検証する。</summary>
+    [Fact]
+    public void Resolve_NestedArrayIndex_ReturnsElement()
+    {
+        // Arrange
+        var source = new Dictionary<string, object?>
+        {
+            ["order"] = new Dictionary<string, object?>
+            {
+                ["items"] = new object[] { "sku-1", "sku-2" },
+            },
+        };
+
+        // Act
+        var r = SimpleJsonPathResolver.Resolve(source, "$.order.items[1]");
+
+        // Assert
+        Assert.True(r.Found);
+        Assert.Equal("sku-2", r.Value);
+    }
+
+    /// <summary>JsonElement 配列のインデックス参照を解決できることを検証する。</summary>
+    [Fact]
+    public void Resolve_JsonElementArrayIndex_ReturnsElement()
+    {
+        // Arrange
+        using var doc = JsonDocument.Parse("""{"items":["a","b"]}""");
+        var root = doc.RootElement;
+
+        // Act
+        var r = SimpleJsonPathResolver.Resolve(root, "$.items[0]");
+
+        // Assert
+        Assert.True(r.Found);
+        var value = Assert.IsType<JsonElement>(r.Value);
+        Assert.Equal("a", value.GetString());
+    }
+
+    /// <summary>[0] は配列インデックス、['0'] はキーであることを検証する。</summary>
+    [Fact]
+    public void Resolve_IndexVersusQuotedZeroKey_AreDistinct()
+    {
+        // Arrange
+        var source = new Dictionary<string, object?>
+        {
+            ["items"] = new List<object?> { "from-index" },
+            ["map"] = new Dictionary<string, object?> { ["0"] = "from-key" },
+        };
+
+        // Act
+        var indexResult = SimpleJsonPathResolver.Resolve(source, "$.items[0]");
+        var keyResult = SimpleJsonPathResolver.Resolve(source, "$.map['0']");
+
+        // Assert
+        Assert.Equal("from-index", indexResult.Value);
+        Assert.Equal("from-key", keyResult.Value);
+    }
+
+    /// <summary>範囲外インデックスは PathIndexOutOfRange になることを検証する。</summary>
+    [Fact]
+    public void Resolve_IndexOutOfRange_ReturnsPathIndexOutOfRange()
+    {
+        // Arrange
+        var source = new Dictionary<string, object?>
+        {
+            ["items"] = new List<object?> { "only" },
+        };
+
+        // Act
+        var r = SimpleJsonPathResolver.Resolve(source, "$.items[3]");
+
+        // Assert
+        Assert.False(r.Found);
+        Assert.Null(r.Value);
+        Assert.Equal(SimpleJsonPathResolver.PathIndexOutOfRange, r.WarningReason);
+    }
+
+    /// <summary>非配列へのインデックスは PathTraversalNotMapping になることを検証する。</summary>
+    [Fact]
+    public void Resolve_IndexOnNonArray_ReturnsPathTraversalNotMapping()
+    {
+        // Arrange
+        var source = new Dictionary<string, object?>
+        {
+            ["user"] = new Dictionary<string, object?> { ["name"] = "Alice" },
+        };
+
+        // Act
+        var r = SimpleJsonPathResolver.Resolve(source, "$.user[0]");
+
+        // Assert
+        Assert.False(r.Found);
+        Assert.Equal(SimpleJsonPathResolver.PathTraversalNotMapping, r.WarningReason);
+    }
 }
