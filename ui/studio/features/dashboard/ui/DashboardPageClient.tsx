@@ -12,7 +12,7 @@ import { apiGet } from "@/shared/api";
 import { formatDateTimeLocalized } from "@/shared/lib/dateTime";
 import { toToastError, type ToastState } from "@/shared/lib/errors";
 import { getDateTimeLocale } from "@/shared/i18n/i18n";
-import type { PagedExecutions, ExecutionDTO } from "../lib/types";
+import type { DashboardExecutionItem, DashboardExecutionsPage } from "../types";
 import { useI18n } from "@/shared/i18n/uiTextContext";
 
 /**
@@ -22,7 +22,7 @@ export function DashboardPageClient() {
   const { uiText, locale } = useI18n();
   const router = useRouter();
   const dateTimeLocale = getDateTimeLocale(locale);
-  const [items, setItems] = useState<ExecutionDTO[] | null>(null);
+  const [items, setItems] = useState<DashboardExecutionItem[] | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -31,7 +31,7 @@ export function DashboardPageClient() {
     setLoading(true);
     setToast(null);
     try {
-      const page = await apiGet<PagedExecutions>("/executions?limit=10&offset=0");
+      const page = await apiGet<DashboardExecutionsPage>("/executions?limit=10&offset=0");
       setItems(page.items);
       setTotalCount(page.totalCount);
     } catch (error) {

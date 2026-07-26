@@ -6,7 +6,7 @@ import { PageShell } from "@/shared/ui/PageShell";
 import { PageState } from "@/shared/ui/PageState";
 import { Toast } from "@/shared/ui/Toast";
 import { apiGet, apiPut } from "@/shared/api";
-import type { AdminGroupDetail, AdminUserListItem, PermissionDefinitionDto } from "../../../lib/adminTypes";
+import type { AdminGroupDetail, AdminUserListItem, PermissionDefinitionDto } from "../types";
 import { toToastError, type ToastState } from "@/shared/lib/errors";
 import { useUiText } from "@/shared/i18n/uiTextContext";
 

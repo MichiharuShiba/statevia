@@ -1,3 +1,7 @@
+/**
+ * Admin feature のドメイン型（テナント管理者向け API 応答）。
+ */
+
 /** 権限カタログ 1 件。 */
 export type PermissionDefinitionDto = {
   permissionKey: string;
@@ -60,6 +64,3 @@ export type CreatedAdminApiKey = {
   expiresAt: string | null;
   createdAt: string;
 };
-
-/** 認証済み Principal（`/api/auth/me`）。 */
-export type { AuthMeResponse } from "@/shared/auth/authMe";

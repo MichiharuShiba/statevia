@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { AdminApiKeysPageClient } from "../../app/admin/api-keys/AdminApiKeysPageClient";
+import { AdminApiKeysPageClient } from "@/features/admin/ui/AdminApiKeysPageClient";
 import * as api from "@/shared/api";
 
 vi.mock("@/shared/api", () => ({

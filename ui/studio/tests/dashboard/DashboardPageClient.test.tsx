@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
-import { DashboardPageClient } from "../../app/dashboard/DashboardPageClient";
+import { DashboardPageClient } from "@/features/dashboard/ui/DashboardPageClient";
 import { renderWithUiText } from "../testUtils";
 
 vi.mock("next/navigation", () => ({

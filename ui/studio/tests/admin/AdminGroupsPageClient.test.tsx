@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { AdminGroupsPageClient } from "../../app/admin/AdminGroupsPageClient";
+import { AdminGroupsPageClient } from "@/features/admin/ui/AdminGroupsPageClient";
 import { renderWithUiText } from "../testUtils";
 import { uiText } from "@/shared/i18n/uiText";
 

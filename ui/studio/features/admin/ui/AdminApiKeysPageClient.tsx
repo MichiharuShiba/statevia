@@ -9,7 +9,7 @@ import type {
   AdminApiKeyListItem,
   CreatedAdminApiKey,
   PermissionDefinitionDto
-} from "../../lib/adminTypes";
+} from "../types";
 import { toToastError, type ToastState } from "@/shared/lib/errors";
 import { useUiText } from "@/shared/i18n/uiTextContext";
 

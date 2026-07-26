@@ -3,9 +3,11 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Architecture |
-| Version | 0.5 |
-| 更新日 | 2026-07-25 |
+| Version | 0.6 |
+| 更新日 | 2026-07-26 |
 | 関連 | [repository-layout.md](repository-layout.md), [development-guidelines.md](../development-guidelines.md) |
+
+**Version 0.6（2026-07-26）**: Phase 5 task 13。`features/admin` / `features/auth` / `features/dashboard` へ PageClient と型を移動。各 route は薄い wrapper。旧 `app/lib`・shell コンポーネント削除と i18n 完了分割は task 14。
 
 **Version 0.5（2026-07-25）**: Phase 4 完了。`features/definition-editor/{ui,lib,actionSchema,types}`。`new`/`edit` route は薄い wrapper。内部アルゴリズムの書き換えなし（配置と import 境界のみ）。
 
@@ -43,7 +45,7 @@ ui/studio/
    └─ lib/                   # dateTime, errors, validation, statusStyle, graphLayout
 ```
 
-Phase 4 時点では `features/definitions` / `features/executions` / `features/definition-editor` が存在し、各 route は薄い wrapper。横断モジュールは `shared/` に移済み。旧 `app/lib` には graphs / adminTypes / theme 等が残る（Phase 5 で再配置）。長期の互換 re-export は残さない。
+Phase 5 task 13 時点では主要 feature（definitions / executions / definition-editor / admin / auth / dashboard）が存在し、各 route は薄い wrapper。横断モジュールは `shared/` に移済み。旧 `app/lib` には `types` / `theme` 等が残る。`app/components/layout`（AppHeader 等）と i18n 切片完了・旧ディレクトリ削除は task 14。長期の互換 re-export は残さない。
 
 ## 2. パスエイリアス
 
@@ -98,7 +100,7 @@ flowchart LR
 | 2 | `features/definitions` パイロット（api / hooks / ui / i18n） | 定義一覧・詳細の既存テスト通過（完了） |
 | 3 | `features/executions`（必要なら graph） | 実行画面・関連テスト（完了） |
 | 4 | `features/definition-editor`（移動と境界のみ） | 編集画面の挙動非変更（完了） |
-| 5 | admin / auth / dashboard、旧ディレクトリ削除、docs 最終反映 | 旧 `app/lib` 等が無いこと |
+| 5 | admin / auth / dashboard、旧ディレクトリ削除、docs 最終反映 | PageClient 移動（task 13 完了）。旧 `app/lib` 削除・i18n・docs は task 14–15 |
 
 ### PR レビュー必須項目（依存方向）
 
