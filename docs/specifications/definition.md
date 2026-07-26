@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.4.1 |
-| 更新日 | 2026-07-21 |
+| Version | 1.4.2 |
+| 更新日 | 2026-07-26 |
 | 関連 | [concepts/definition.md](../concepts/definition.md) |
 
 ---
@@ -293,12 +293,33 @@ Context のトップレベルは次の固定キーである。
 | `$.sys.execution.id` | 実行インスタンス ID |
 | `$.sys.definition.name` | コンパイル済み定義名 |
 
+#### `$.sys` 関数呼び出し（許可リスト）
+
+SimpleJsonPath のプロパティ参照に加え、次の**完全一致**の関数呼び出しを `input` パス（および同じ評価根の読み取りパス）で許可する。
+
+| 式 | 意味 |
+| --- | --- |
+| `$.sys.now("format")` | ホストローカル時刻を .NET カスタム日時書式で整形 |
+| `$.sys.utcNow("format")` | UTC 時刻を同書式で整形 |
+
+対比:
+
+- `$.sys.now` → ISO-8601（引数なしプロパティ）
+- `$.sys.now("yyyyMMdd")` → 例: `20260726`（8 桁）
+
+制約:
+
+- `format` は二重引用符で囲む（1〜64 文字）。単引用符のみ・空呼び出し・複数引数は Level1 error
+- `IFormatProvider` は `CultureInfo.InvariantCulture` 固定
+- 書式の意味妥当性は実行時（無効なら値 `null` + 警告）。Level1 は構文・許可リスト・長さのみ
+- **未対応**: `$.sys.today("…")`、未登録関数、呼び出し後のドット連結（例: `$.sys.now("yyyy").length`）
+- **`output` には使用不可**（`output` は `$.vars…` のみ）
+
 備考:
 
 - `$.sys.state` / `$.sys.definition.id` / `version` は未提供
-- 書式引数付き関数呼び出し（例: `$.sys.now("yyyyMMdd")`）は未対応
 - `now` / `today` はホスト TZ 依存（コンテナでは UTC になり得る）
-- 条件遷移の `when.path` の評価根は **Execution Context**（`input` と同じ）。例: `$.states.A.output.x` / `$.states['a.b'].output.y` / `$.vars.flag` / `$.sys.today`。`when.value` はリテラル（パス解決しない）
+- 条件遷移の `when.path` の評価根は **Execution Context**（`input` と同じ）。例: `$.states.A.output.x` / `$.states['a.b'].output.y` / `$.vars.flag` / `$.sys.today` / `$.sys.now("yyyyMMdd")`。`when.value` はリテラル（パス解決しない）
 - State output を根とする旧 `when.path: $.x` は廃止（互換なし）
 
 #### `output` フィールド（States / Nodes）
@@ -306,7 +327,7 @@ Context のトップレベルは次の固定キーである。
 State / action ノード完了時に、action 戻り値を `$.vars` へ代入する。
 
 - 許可: `$.vars` または `$.vars.<seg>…`（SimpleJsonPath）
-- 禁止: `$.sys…` / `$.states…` / `$.input…` 等（Level1 error）
+- 禁止: `$.sys…` / `$.sys.now("…")` 等の CallPath / `$.states…` / `$.input…` 等（Level1 error）
 - 未指定: `$.states` のみ更新し、`$.vars` は変更しない
 - `output` 指定時も `$.states.<Name>.output` への記録は常に行う
 

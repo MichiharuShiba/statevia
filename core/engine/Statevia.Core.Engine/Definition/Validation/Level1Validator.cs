@@ -523,7 +523,7 @@ public static class Level1Validator
     }
 
     /// <summary>
-    /// input の SimpleJsonPath 妥当性と、予約 Context キー（vars / sys）参照の禁止を検証する。
+    /// input の CallPath / SimpleJsonPath 妥当性を検証する。
     /// </summary>
     private static void ValidateInputPath(
         string stateName,
@@ -531,6 +531,20 @@ public static class Level1Validator
         string? key,
         List<string> errors)
     {
+        if (SysPathCall.IsValidCallPath(path))
+        {
+            return;
+        }
+
+        if (SysPathCall.IsCallPathCandidate(path))
+        {
+            var detail = SysPathCall.FormatAllowedCallPathsHint();
+            errors.Add(key is null
+                ? $"input.path is invalid for state '{stateName}': {path} ({detail})"
+                : $"input.path is invalid for state '{stateName}' key '{key}': {path} ({detail})");
+            return;
+        }
+
         if (!SimpleJsonPath.IsValid(path))
         {
             errors.Add(key is null
@@ -550,6 +564,15 @@ public static class Level1Validator
         if (string.IsNullOrWhiteSpace(output))
         {
             errors.Add($"output cannot be empty for state '{stateName}'");
+            return;
+        }
+
+        // CallPath は SimpleJsonPath 外のため、書き込み先としては明示拒否する。
+        if (SysPathCall.IsValidCallPath(output) || SysPathCall.IsCallPathCandidate(output))
+        {
+            errors.Add(
+                $"output must be under $.{ExecutionContextKeys.Vars} for state '{stateName}': {output} " +
+                "(sys call paths are read-only)");
             return;
         }
 
