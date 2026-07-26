@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { StatusBadge } from "../../../app/components/common/StatusBadge";
+import { StatusBadge } from "@/shared/ui/StatusBadge";
 
 describe("StatusBadge", () => {
   it("Execution ステータスを表示する", () => {

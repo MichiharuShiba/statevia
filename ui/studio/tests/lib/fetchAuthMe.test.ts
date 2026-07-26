@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fetchAuthMe } from "../../app/lib/fetchAuthMe";
+import { fetchAuthMe } from "@/shared/auth/fetchAuthMe";
 
 describe("fetchAuthMe", () => {
   beforeEach(() => {

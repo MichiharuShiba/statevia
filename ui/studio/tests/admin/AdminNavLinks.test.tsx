@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
-import { AdminNavLinks } from "../../app/components/layout/AdminNavLinks";
+import { AdminNavLinks } from "@/shared/ui/AdminNavLinks";
 import { renderWithUiText } from "../testUtils";
 
 vi.mock("next/link", () => ({
@@ -9,11 +9,11 @@ vi.mock("next/link", () => ({
   )
 }));
 
-vi.mock("../../app/lib/fetchAuthMe", () => ({
+vi.mock("@/shared/auth/fetchAuthMe", () => ({
   fetchAuthMe: vi.fn()
 }));
 
-import { fetchAuthMe } from "../../app/lib/fetchAuthMe";
+import { fetchAuthMe } from "@/shared/auth/fetchAuthMe";
 
 describe("AdminNavLinks", () => {
   beforeEach(() => {

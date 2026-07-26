@@ -9,15 +9,15 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() })
 }));
 
-vi.mock("../../app/features/execution/useExecution", () => ({
+vi.mock("../../features/executions/hooks/useExecution", () => ({
   useExecution: vi.fn()
 }));
 
-vi.mock("../../app/features/execution/useExecutionEvents", () => ({
+vi.mock("../../features/executions/hooks/useExecutionEvents", () => ({
   useExecutionEvents: () => ({ events: [], loading: false, error: null, loadMore: vi.fn(), hasMore: false })
 }));
 
-vi.mock("../../app/features/execution/useExecutionStateAtSeq", () => ({
+vi.mock("../../features/executions/hooks/useExecutionStateAtSeq", () => ({
   useExecutionStateAtSeq: () => ({
     replayExecution: null,
     replayLoading: false,
@@ -27,26 +27,26 @@ vi.mock("../../app/features/execution/useExecutionStateAtSeq", () => ({
   })
 }));
 
-vi.mock("../../app/features/graph/useGraphDefinition", () => ({
+vi.mock("../../features/executions/hooks/useGraphDefinition", () => ({
   useGraphDefinition: () => ({ definition: null, loading: false, error: null })
 }));
 
-vi.mock("../../app/features/graph/useGraphData", () => ({
+vi.mock("../../features/executions/hooks/useGraphData", () => ({
   useGraphData: () => ({ nodes: [], edges: [], groups: [], mergedNodes: [], graphId: "g-1", definitionBased: false }),
   getNodeWithFallback: vi.fn()
 }));
 
-vi.mock("../../app/features/nodes/useNodeCommands", () => ({
+vi.mock("../../features/executions/hooks/useNodeCommands", () => ({
   useNodeCommands: () => ({ resumeNode: vi.fn(), cancelNode: vi.fn(), publishEvent: vi.fn() }),
   getResumeDisabledReason: () => null
 }));
 
-vi.mock("../../app/lib/api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../app/lib/api")>();
+vi.mock("@/shared/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/shared/api")>();
   return { ...actual, apiGet: vi.fn() };
 });
 
-import { useExecution } from "../../app/features/execution/useExecution";
+import { useExecution } from "../../features/executions/hooks/useExecution";
 
 describe("ExecutionRunPage", () => {
   beforeEach(() => {

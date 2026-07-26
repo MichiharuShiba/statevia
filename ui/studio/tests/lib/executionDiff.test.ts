@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computeExecutionDiff } from "../../app/lib/executionDiff";
-import type { ExecutionNodeDTO, ExecutionStatus, ExecutionView } from "../../app/lib/types";
+import { computeExecutionDiff } from "../../features/executions/lib/executionDiff";
+import type { ExecutionNodeDTO, ExecutionStatus, ExecutionView } from "@/features/executions/types";
 
 function node(
   executionNodeId: string,

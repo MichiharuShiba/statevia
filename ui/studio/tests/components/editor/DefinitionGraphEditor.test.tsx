@@ -1,19 +1,19 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 import { useState } from "react";
-import { DefinitionGraphEditor } from "../../../app/components/editor/DefinitionGraphEditor";
-import { defaultDefinitionYaml } from "../../../app/lib/defaultDefinitionYaml";
-import { parseDefinitionYaml } from "../../../app/lib/definition-editor/parseDefinitionYaml";
-import type { DefinitionGraphDocument } from "../../../app/lib/definition-editor/types";
+import { DefinitionGraphEditor } from "@/features/definition-editor/ui/DefinitionGraphEditor";
+import { defaultDefinitionYaml } from "@/features/definition-editor/lib/defaultDefinitionYaml";
+import { parseDefinitionYaml } from "@/features/definition-editor/lib/parseDefinitionYaml";
+import type { DefinitionGraphDocument } from "@/features/definition-editor/lib/types";
 import { renderWithUiText } from "../../testUtils";
 import { definitionGraphEditorTestLabels } from "./definitionGraphEditorLabels";
 
-vi.mock("../../../app/lib/api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../app/lib/api")>();
+vi.mock("@/shared/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/shared/api")>();
   return { ...actual, apiGet: vi.fn() };
 });
 
-import { apiGet } from "../../../app/lib/api";
+import { apiGet } from "@/shared/api";
 
 const parseOpts = {
   rootObjectRequired: () => "root",

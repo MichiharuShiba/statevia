@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getStatusStyle, getNodeSortWeight } from "../../app/lib/statusStyle";
+import { getStatusStyle, getNodeSortWeight } from "@/shared/lib/statusStyle";
 
 describe("getStatusStyle", () => {
   it("Execution status Running のスタイルを返す", () => {

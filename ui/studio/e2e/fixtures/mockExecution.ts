@@ -1,4 +1,4 @@
-import type { ExecutionView } from "../../app/lib/types";
+import type { ExecutionView } from "@/features/executions/types";
 
 export const mockExecution: ExecutionView = {
   displayId: "ex-1",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { ActionLinkGroup } from "../../../app/components/layout/ActionLinkGroup";
+import { ActionLinkGroup } from "@/shared/ui/ActionLinkGroup";
 
 describe("ActionLinkGroup", () => {
   it("links が空のときは何も描画しない", () => {

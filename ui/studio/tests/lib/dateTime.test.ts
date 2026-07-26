@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDateTimeLocalized, formatExecutionDuration, formatExecutionInstant } from "../../app/lib/dateTime";
+import { formatDateTimeLocalized, formatExecutionDuration, formatExecutionInstant } from "@/shared/lib/dateTime";
 
 describe("dateTime", () => {
   it("formatDateTimeLocalized は null/undefined で fallback、不正 ISO はそのまま返す", () => {

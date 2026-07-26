@@ -1,4 +1,4 @@
-import { DefinitionsPageClient } from "./DefinitionsPageClient";
+import { DefinitionsPageClient } from "@/features/definitions/ui/DefinitionsPageClient";
 
 /**
  * Definition 一覧ページ。

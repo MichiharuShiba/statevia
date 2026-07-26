@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { getNodeWithFallback, type GraphData } from "../../../app/features/graph/useGraphData";
-import type { ExecutionNodeDTO, ExecutionView } from "../../../app/lib/types";
+import { getNodeWithFallback, type GraphData } from "../../../features/executions/hooks/useGraphData";
+import type { ExecutionNodeDTO, ExecutionView } from "@/features/executions/types";
 
 function execution(nodes: ExecutionNodeDTO[]): ExecutionView {
   return {

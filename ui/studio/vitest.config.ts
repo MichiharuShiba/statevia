@@ -1,6 +1,16 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
+const studioRoot = path.dirname(fileURLToPath(import.meta.url));
+
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@/features": path.join(studioRoot, "features"),
+      "@/shared": path.join(studioRoot, "shared"),
+    },
+  },
   test: {
     globals: true,
     environment: "jsdom",
@@ -9,27 +19,33 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],
-      include: ["app/**/*.{ts,tsx}", "middleware.ts"],
+      include: [
+        "app/**/*.{ts,tsx}",
+        "features/**/*.{ts,tsx}",
+        "shared/**/*.{ts,tsx}",
+        "middleware.ts",
+      ],
       exclude: [
         "node_modules/",
         ".next/",
         "**/*.test.ts",
         "**/*.test.tsx",
         "**/*.config.ts",
-        "app/lib/uiText.ts",
-        "app/lib/uiText.en.ts",
-        "app/lib/types.ts",
-        "app/graphs/types.ts",
+        "shared/i18n/uiText.ts",
+        "shared/i18n/uiText.en.ts",
+        "shared/api/apiError.ts",
+        "shared/auth/authMe.ts",
+        "shared/ui/ActionInputCodeEditor.tsx",
+        "features/**/i18n/**",
         "app/layout.tsx",
         "app/**/page.tsx",
-        "app/components/editor/DefinitionGraphEditor.tsx",
-        "app/components/editor/YamlCodeEditor.tsx",
-        "app/components/editor/ActionInputCodeEditor.tsx",
-        "app/components/execution/ExecutionDashboard.tsx",
-        "app/definitions/DefinitionEditorPageClient.tsx",
-        "app/components/nodes/NodeGraphView.tsx",
-        "tests/**"
-      ]
-    }
-  }
+        "features/definition-editor/ui/DefinitionGraphEditor.tsx",
+        "features/definition-editor/ui/YamlCodeEditor.tsx",
+        "features/executions/ui/ExecutionDashboard.tsx",
+        "features/definition-editor/ui/DefinitionEditorPageClient.tsx",
+        "features/executions/ui/NodeGraphView.tsx",
+        "tests/**",
+      ],
+    },
+  },
 });

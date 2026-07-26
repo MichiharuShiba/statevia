@@ -1,8 +1,8 @@
 import { Suspense } from "react";
-import { LoginPageClient } from "./LoginPageClient";
+import { LoginPageClient } from "@/features/auth/ui/LoginPageClient";
 
 /**
- * ログイン画面（E3 task 9 · 画面 1）。
+ * ログイン画面（薄い route wrapper）。
  */
 export default function LoginPage() {
   return (

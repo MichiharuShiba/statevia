@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { DefinitionsPageClient } from "../../app/definitions/DefinitionsPageClient";
+import { DefinitionsPageClient } from "../../features/definitions/ui/DefinitionsPageClient";
 import { renderWithUiText } from "../testUtils";
 
 const replaceMock = vi.fn();
@@ -12,8 +12,8 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParams
 }));
 
-vi.mock("../../app/lib/api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../app/lib/api")>();
+vi.mock("@/shared/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/shared/api")>();
   return {
     ...actual,
     apiGet: vi.fn(),
@@ -22,7 +22,8 @@ vi.mock("../../app/lib/api", async (importOriginal) => {
   };
 });
 
-import { apiDelete, apiGet, apiPost, buildDefinitionsListPath } from "../../app/lib/api";
+import { apiDelete, apiGet, apiPost } from "@/shared/api";
+import { buildDefinitionsListPath } from "@/features/definitions/api";
 
 describe("DefinitionsPageClient", () => {
   beforeEach(() => {

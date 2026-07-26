@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { DefinitionDetailClient } from "../../app/definitions/[definitionId]/DefinitionDetailClient";
+import { DefinitionDetailClient } from "../../features/definitions/ui/DefinitionDetailClient";
 import { renderWithUiText } from "../testUtils";
 
 const pushMock = vi.fn();
@@ -9,12 +9,12 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock })
 }));
 
-vi.mock("../../app/lib/api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../app/lib/api")>();
+vi.mock("@/shared/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/shared/api")>();
   return { ...actual, apiGet: vi.fn(), apiDelete: vi.fn() };
 });
 
-import { apiDelete, apiGet } from "../../app/lib/api";
+import { apiDelete, apiGet } from "@/shared/api";
 
 describe("DefinitionDetailClient", () => {
   beforeEach(() => {

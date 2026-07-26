@@ -1,11 +1,11 @@
-import { AdminGroupDetailPageClient } from "./AdminGroupDetailPageClient";
+import { AdminGroupDetailPageClient } from "@/features/admin/ui/AdminGroupDetailPageClient";
 
 type PageProps = Readonly<{
   params: Promise<{ groupId: string }>;
 }>;
 
 /**
- * グループ詳細（メンバー・権限編集）。
+ * グループ詳細（薄い route wrapper）。
  */
 export default async function AdminGroupDetailPage({ params }: PageProps) {
   const { groupId } = await params;

@@ -3,9 +3,9 @@ import {
   actionCatalogUiTextEnOverrides,
   actionCatalogUiTextJa,
   resolveActionCatalogLabel,
-} from "../../app/lib/actionCatalogUiText";
-import { uiTextEn } from "../../app/lib/uiText.en";
-import { uiTextJa } from "../../app/lib/uiText";
+} from "@/shared/i18n/actionCatalogUiText";
+import { uiTextEn } from "@/shared/i18n/uiText.en";
+import { uiTextJa } from "@/shared/i18n/uiText";
 
 describe("actionCatalogUiText", () => {
   it("主要 builtin action の labelKey を ja ロケールで解決する", () => {

@@ -3,7 +3,7 @@ import {
   coerceScalarForSchema,
   isJsonPathExpression,
   normalizeActionInputRecord
-} from "../../app/lib/actionSchema/coerceActionInputValue";
+} from "@/features/definition-editor/actionSchema/coerceActionInputValue";
 
 describe("coerceActionInputValue", () => {
   it("integer schema では数値文字列を integer に変換する", () => {

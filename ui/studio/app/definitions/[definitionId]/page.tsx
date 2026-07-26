@@ -1,4 +1,4 @@
-import { DefinitionDetailClient } from "./DefinitionDetailClient";
+import { DefinitionDetailClient } from "@/features/definitions/ui/DefinitionDetailClient";
 
 type DefinitionDetailPageProps = {
   params: Promise<{

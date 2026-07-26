@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   parseExecutionStreamEvent,
   applyExecutionStreamEvent
-} from "../../app/lib/executionStream";
-import type { ExecutionView } from "../../app/lib/types";
+} from "../../features/executions/lib/executionStream";
+import type { ExecutionView } from "@/features/executions/types";
 
 const baseExecution: ExecutionView = {
   displayId: "ex-1",

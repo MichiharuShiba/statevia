@@ -1,7 +1,7 @@
 import { describe, expect, it, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 import { GET } from "../../app/api/auth/session/route";
-import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "../../app/lib/authSession";
+import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "@/shared/auth/authSession";
 import { testJwt } from "../helpers/testJwt";
 
 describe("GET /api/auth/session", () => {

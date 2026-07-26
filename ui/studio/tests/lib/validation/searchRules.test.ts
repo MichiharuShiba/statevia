@@ -4,7 +4,7 @@ import {
   DEFINITION_ID_PATTERN,
   SEARCH_NAME_MAX_LENGTH,
   SEARCH_NAME_PATTERN
-} from "../../../app/lib/validation/searchRules";
+} from "@/shared/lib/validation/searchRules";
 
 describe("searchRules", () => {
   it("SEARCH_NAME_PATTERN は許可文字のみ受け入れる", () => {

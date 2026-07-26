@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildLoginRedirectUrl, clearSessionAndRedirectToLogin } from "../../app/lib/authRedirect";
+import { buildLoginRedirectUrl, clearSessionAndRedirectToLogin } from "@/shared/auth/authRedirect";
 
 describe("buildLoginRedirectUrl", () => {
   it("from を付与する", () => {

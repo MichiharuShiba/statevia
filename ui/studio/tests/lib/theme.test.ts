@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_THEME, isTheme, resolveTheme } from "../../app/lib/theme";
+import { DEFAULT_THEME, isTheme, resolveTheme } from "@/shared/lib/theme";
 
 describe("theme", () => {
   it("isTheme は light / dark のみ true", () => {

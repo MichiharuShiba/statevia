@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { JwtAccessToken, JwtSegment } from "../../app/lib/jwtAccessToken";
+import { JwtAccessToken, JwtSegment } from "@/shared/auth/jwtAccessToken";
 import { testJwt } from "../helpers/testJwt";
 
 function encodeJsonSegment(value: unknown): string {

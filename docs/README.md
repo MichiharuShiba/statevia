@@ -95,6 +95,7 @@ Guide のあと、なぜそうなっているかを理解する。
 | [overview.md](architecture/overview.md) | レイヤー・全体図 |
 | [domain-model-boundaries.md](architecture/domain-model-boundaries.md) | 境界・正本の所在 |
 | [repository-layout.md](architecture/repository-layout.md) | リポジトリ構成 |
+| [ui-studio-structure.md](architecture/ui-studio-structure.md) | Studio 内部構成（feature-first） |
 
 一覧: [architecture/README.md](architecture/README.md)
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { LanguageToggle } from "../../../app/components/layout/LanguageToggle";
+import { LanguageToggle } from "@/shared/ui/LanguageToggle";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() })

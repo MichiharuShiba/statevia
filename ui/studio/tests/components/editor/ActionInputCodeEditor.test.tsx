@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, waitFor } from "@testing-library/react";
-import { ActionInputCodeEditor } from "../../../app/components/editor/ActionInputCodeEditor";
+import { ActionInputCodeEditor } from "../../../shared/ui/ActionInputCodeEditor";
 
 describe("ActionInputCodeEditor", () => {
   it("JSON モードで編集できる", async () => {

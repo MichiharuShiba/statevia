@@ -1,10 +1,10 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { TenantMissingBanner } from "../../../app/components/execution/TenantMissingBanner";
-import * as api from "../../../app/lib/api";
-import { uiText } from "../../../app/lib/uiText";
+import { TenantMissingBanner } from "@/shared/ui/TenantMissingBanner";
+import * as api from "@/shared/api";
+import { uiText } from "@/shared/i18n/uiText";
 
-vi.mock("../../../app/lib/api", () => ({
+vi.mock("@/shared/api", () => ({
   getApiConfig: vi.fn()
 }));
 

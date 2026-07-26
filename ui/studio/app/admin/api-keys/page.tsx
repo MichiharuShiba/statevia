@@ -1,7 +1,7 @@
-import { AdminApiKeysPageClient } from "./AdminApiKeysPageClient";
+import { AdminApiKeysPageClient } from "@/features/admin/ui/AdminApiKeysPageClient";
 
 /**
- * API キー管理画面（テナント管理者のみ）。
+ * API キー管理画面（薄い route wrapper）。
  */
 export default function AdminApiKeysPage() {
   return <AdminApiKeysPageClient />;

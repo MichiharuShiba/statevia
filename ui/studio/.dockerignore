@@ -1,0 +1,27 @@
+# Dependencies / build outputs
+node_modules
+.next
+dist
+**/dist
+coverage
+*.tsbuildinfo
+
+# Tests and tooling (not needed for production image)
+tests
+e2e
+test-results
+playwright-report
+playwright.config.ts
+vitest.config.ts
+eslint.config.js
+sonar-project.properties
+.serena
+docs
+scripts
+
+# Local / IDE
+.git
+.gitignore
+.env
+.env.*
+*.md

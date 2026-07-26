@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { ActionIdCombobox } from "../../../app/components/editor/ActionIdCombobox";
-import type { ActionSchemaIndexItem } from "../../../app/lib/actionSchema/types";
+import { ActionIdCombobox } from "@/features/definition-editor/ui/ActionIdCombobox";
+import type { ActionSchemaIndexItem } from "@/features/definition-editor/actionSchema/types";
 
 const candidates: ActionSchemaIndexItem[] = [
   {

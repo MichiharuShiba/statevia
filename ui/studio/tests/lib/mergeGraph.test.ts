@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { mergeGraph } from "../../app/lib/mergeGraph";
-import type { ExecutionNodeDTO, ExecutionView } from "../../app/lib/types";
-import { getGraphDefinition } from "../../app/graphs/registry";
-import type { GraphDefinition } from "../../app/graphs/types";
+import { mergeGraph } from "../../features/executions/lib/mergeGraph";
+import type { ExecutionNodeDTO, ExecutionView } from "@/features/executions/types";
+import { getGraphDefinition } from "@/features/executions/graphs/registry";
+import type { GraphDefinition } from "@/features/executions/graphs/types";
 
 function execution(nodes: ExecutionNodeDTO[], graphId = "g-1"): ExecutionView {
   return {

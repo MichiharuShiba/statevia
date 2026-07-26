@@ -1,7 +1,7 @@
-import { DashboardPageClient } from "./DashboardPageClient";
+import { DashboardPageClient } from "@/features/dashboard/ui/DashboardPageClient";
 
 /**
- * TOP ダッシュボード。直近実行 10 件を表示する。
+ * TOP ダッシュボード（薄い route wrapper）。
  */
 export default function DashboardPage() {
   return <DashboardPageClient />;

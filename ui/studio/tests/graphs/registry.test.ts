@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getGraphDefinition } from "../../app/graphs/registry";
+import { getGraphDefinition } from "@/features/executions/graphs/registry";
 
 describe("getGraphDefinition", () => {
   it("登録済み graphId hello の定義を返す", () => {

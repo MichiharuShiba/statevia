@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { POST } from "../../app/api/auth/logout/route";
-import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "../../app/lib/authSession";
+import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "@/shared/auth/authSession";
 
 describe("auth logout route", () => {
   it("POST でセッション Cookie を削除する", () => {

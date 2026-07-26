@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getNodeAppearance } from "../../app/lib/nodeAppearance";
+import { getNodeAppearance } from "@/shared/lib/nodeAppearance";
 
 describe("getNodeAppearance", () => {
   it("START / END / WAIT / FORK / JOIN を正規化して返す", () => {

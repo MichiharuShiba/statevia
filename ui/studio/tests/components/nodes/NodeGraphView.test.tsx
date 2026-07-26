@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { NodeGraphView } from "../../../app/components/nodes/NodeGraphView";
-import type { PositionedNode } from "../../../app/lib/graphLayout";
-import type { MergedGraphNode } from "../../../app/lib/mergeGraph";
+import { NodeGraphView } from "../../../features/executions/ui/NodeGraphView";
+import type { PositionedNode } from "@/shared/lib/graphLayout";
+import type { MergedGraphNode } from "../../../features/executions/lib/mergeGraph";
 import { renderWithUiText } from "../../testUtils";
 
 const positionedNode = (overrides: Partial<MergedGraphNode> = {}): PositionedNode<MergedGraphNode> => ({

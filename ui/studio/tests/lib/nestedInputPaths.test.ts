@@ -4,7 +4,7 @@ import {
   getNestedInputValue,
   jsonPathToLogicalPath,
   setNestedInputValue
-} from "../../app/lib/actionSchema/nestedInputPaths";
+} from "@/features/definition-editor/actionSchema/nestedInputPaths";
 
 describe("nestedInputPaths", () => {
   it("object property をネストグループとして列挙する", () => {

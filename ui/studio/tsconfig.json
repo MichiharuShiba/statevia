@@ -17,6 +17,14 @@
     "jsx": "react-jsx",
     "incremental": true,
     "esModuleInterop": true,
+    "paths": {
+      "@/features/*": [
+        "./features/*"
+      ],
+      "@/shared/*": [
+        "./shared/*"
+      ]
+    },
     "plugins": [
       {
         "name": "next"
@@ -25,6 +33,7 @@
   },
   "include": [
     "next-env.d.ts",
+    "css.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getUtf8ByteLength, isWithinMaxLength, matchesPattern } from "../../../app/lib/validation/primitives";
+import { getUtf8ByteLength, isWithinMaxLength, matchesPattern } from "@/shared/lib/validation/primitives";
 
 describe("validation/primitives", () => {
   it("isWithinMaxLength は文字数上限以内なら true", () => {

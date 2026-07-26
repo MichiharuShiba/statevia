@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { fetchAuthMeServer } from "../lib/serverAuthMe";
+import { fetchAuthMeServer } from "@/shared/auth/serverAuthMe";
 
 /**
  * 管理者画面レイアウト。テナント管理者以外はダッシュボードへ戻す。

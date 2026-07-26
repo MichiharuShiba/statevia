@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildGroups, resolveGroupBounds } from "../../app/lib/grouping";
-import type { ExecutionNodeDTO } from "../../app/lib/types";
-import type { LayoutEdgeInput, PositionedNode } from "../../app/lib/graphLayout";
-import type { GraphGroupDef } from "../../app/graphs/types";
+import { buildGroups, resolveGroupBounds } from "../../features/executions/lib/grouping";
+import type { ExecutionNodeDTO } from "@/features/executions/types";
+import type { LayoutEdgeInput, PositionedNode } from "@/shared/lib/graphLayout";
+import type { GraphGroupDef } from "@/features/executions/graphs/types";
 
 function execNodes(ids: string[]): ExecutionNodeDTO[] {
   return ids.map((executionNodeId) => ({

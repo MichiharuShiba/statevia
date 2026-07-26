@@ -1,7 +1,7 @@
 /**
  * イベントタイムライン・リプレイ機能の e2e 用テストデータ
  */
-import type { ExecutionEventWithSeq, ExecutionView } from "../../app/lib/types";
+import type { ExecutionEventWithSeq, ExecutionView } from "@/features/executions/types";
 import { mockExecution } from "./mockExecution";
 
 const EXECUTION_ID = "ex-1";

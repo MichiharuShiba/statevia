@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import type { ExecutionView } from "../../app/lib/types";
+import type { ExecutionView } from "@/features/executions/types";
 
 /**
  * `useExecution` モックの戻り値を組み立てる。

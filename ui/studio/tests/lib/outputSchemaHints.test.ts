@@ -3,7 +3,7 @@ import {
   buildOutputSchemaPathHints,
   collectUpstreamOutputPathHints,
   formatStateOutputPath
-} from "../../app/lib/actionSchema/outputSchemaHints";
+} from "@/features/definition-editor/actionSchema/outputSchemaHints";
 
 describe("outputSchemaHints", () => {
   it("outputSchema が未定義のときは空配列を返す", () => {

@@ -34,6 +34,7 @@ async function waitForExecutionStatus(
 
 test.describe("Core API (direct)", () => {
   test.describe.configure({ mode: "serial" });
+  // Reason: CORE_API_E2E_URL 未設定時は実体 Core-API が無いため、環境ゲートでスイートをスキップする。
   test.skip(!apiBase, "CORE_API_E2E_URL が未設定のためスキップ（例: http://localhost:8080）");
 
   test("GET /v1/health は ok を返す", async ({ request }) => {

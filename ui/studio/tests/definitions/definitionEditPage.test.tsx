@@ -1,19 +1,19 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import DefinitionEditPage from "../../app/definitions/[definitionId]/edit/page";
-import { defaultDefinitionYaml } from "../../app/lib/defaultDefinitionYaml";
+import { defaultDefinitionYaml } from "@/features/definition-editor/lib/defaultDefinitionYaml";
 import { renderWithUiText } from "../testUtils";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() })
 }));
 
-vi.mock("../../app/lib/api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../app/lib/api")>();
+vi.mock("@/shared/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/shared/api")>();
   return { ...actual, apiGet: vi.fn() };
 });
 
-import { apiGet } from "../../app/lib/api";
+import { apiGet } from "@/shared/api";
 
 describe("DefinitionEditPage", () => {
   beforeEach(() => {

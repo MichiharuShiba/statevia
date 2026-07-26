@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildDocumentAdjacency } from "../../app/lib/definition-editor/definitionGraphAdjacency";
-import type { DefinitionGraphDocument } from "../../app/lib/definition-editor/types";
+import { buildDocumentAdjacency } from "@/features/definition-editor/lib/definitionGraphAdjacency";
+import type { DefinitionGraphDocument } from "@/features/definition-editor/lib/types";
 
 describe("buildDocumentAdjacency", () => {
   it("next / error / edges / fork branches から有向辺を構築する", () => {

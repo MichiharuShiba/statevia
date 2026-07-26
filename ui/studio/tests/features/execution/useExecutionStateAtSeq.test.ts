@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { useExecutionStateAtSeq } from "../../../app/features/execution/useExecutionStateAtSeq";
-import * as api from "../../../app/lib/api";
-import type { ExecutionView } from "../../../app/lib/types";
+import { useExecutionStateAtSeq } from "../../../features/executions/hooks/useExecutionStateAtSeq";
+import * as api from "@/shared/api";
+import type { ExecutionView } from "@/features/executions/types";
 
 describe("useExecutionStateAtSeq", () => {
   beforeEach(() => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { PageState } from "../../../app/components/layout/PageState";
-import { uiText } from "../../../app/lib/uiText";
+import { PageState } from "@/shared/ui/PageState";
+import { uiText } from "@/shared/i18n/uiText";
 
 describe("PageState", () => {
   it("loading 状態では output 要素として表示する", () => {

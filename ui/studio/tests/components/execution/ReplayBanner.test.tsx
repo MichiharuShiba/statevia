@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
-import { ReplayBanner } from "../../../app/components/execution/ReplayBanner";
+import { ReplayBanner } from "../../../features/executions/ui/ReplayBanner";
 import { renderWithUiText } from "../../testUtils";
 
 describe("ReplayBanner", () => {

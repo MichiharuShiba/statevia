@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_LOCALE, getDateTimeLocale, resolveLocale } from "../../app/lib/i18n";
+import { DEFAULT_LOCALE, getDateTimeLocale, resolveLocale } from "@/shared/i18n/i18n";
 
 describe("i18n", () => {
   it("resolveLocale は en 以外を ja に正規化する", () => {

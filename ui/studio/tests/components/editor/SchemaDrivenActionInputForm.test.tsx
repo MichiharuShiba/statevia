@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { SchemaDrivenActionInputForm } from "../../../app/components/editor/SchemaDrivenActionInputForm";
-import type { ActionSchemaDetailResponse } from "../../../app/lib/actionSchema/types";
-import { UiTextProvider } from "../../../app/lib/uiTextContext";
+import { SchemaDrivenActionInputForm } from "@/features/definition-editor/ui/SchemaDrivenActionInputForm";
+import type { ActionSchemaDetailResponse } from "@/features/definition-editor/actionSchema/types";
+import { UiTextProvider } from "@/shared/i18n/uiTextContext";
 
 const restSchemaDetail: ActionSchemaDetailResponse = {
   descriptor: {
