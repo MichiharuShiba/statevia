@@ -5,6 +5,7 @@ using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Persistence.Repositories;
 
+/// <summary><see cref="ExecutionWaitRepository"/> の永続化シナリオ。</summary>
 public sealed class ExecutionWaitRepositoryTests
 {
     /// <summary>ReplaceWaitsAsync は不在 wait を削除し、指定 wait を upsert する。</summary>
@@ -37,7 +38,7 @@ public sealed class ExecutionWaitRepositoryTests
                 ExecutionId = executionId,
                 NodeId = "stale",
                 WaitKind = ExecutionWaitKind.EventWait,
-                ResumeToken = "old",
+                AllowedEvents = ["old"],
                 CreatedAt = now
             });
             await ctx.SaveChangesAsync();
@@ -50,7 +51,7 @@ public sealed class ExecutionWaitRepositoryTests
                 ExecutionId = executionId,
                 NodeId = "wait-node",
                 WaitKind = ExecutionWaitKind.EventWait,
-                ResumeToken = "Approve",
+                AllowedEvents = ["approve", "reject"],
                 CreatedAt = now
             }
         };
@@ -65,12 +66,12 @@ public sealed class ExecutionWaitRepositoryTests
         var rows = await verify.ExecutionWaits.Where(x => x.ExecutionId == executionId).ToListAsync();
         Assert.Single(rows);
         Assert.Equal("wait-node", rows[0].NodeId);
-        Assert.Equal("Approve", rows[0].ResumeToken);
+        Assert.Equal(["approve", "reject"], rows[0].AllowedEvents);
     }
 
-    /// <summary>DeleteByResumeTokenAsync は resume_token 一致行のみ削除する。</summary>
+    /// <summary>DeleteByNodeIdAsync は node_id 一致行のみ削除する。</summary>
     [Fact]
-    public async Task DeleteByResumeTokenAsync_RemovesMatchingRows()
+    public async Task DeleteByNodeIdAsync_RemovesMatchingRows()
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
@@ -99,7 +100,7 @@ public sealed class ExecutionWaitRepositoryTests
                     ExecutionId = executionId,
                     NodeId = "n1",
                     WaitKind = ExecutionWaitKind.EventWait,
-                    ResumeToken = "Approve",
+                    AllowedEvents = ["approve"],
                     CreatedAt = now
                 },
                 new ExecutionWaitRow
@@ -107,7 +108,7 @@ public sealed class ExecutionWaitRepositoryTests
                     ExecutionId = executionId,
                     NodeId = "n2",
                     WaitKind = ExecutionWaitKind.EventWait,
-                    ResumeToken = "Other",
+                    AllowedEvents = ["other"],
                     CreatedAt = now
                 });
             await ctx.SaveChangesAsync();
@@ -115,17 +116,17 @@ public sealed class ExecutionWaitRepositoryTests
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        await repo.DeleteByResumeTokenAsync(uow, executionId, "Approve", CancellationToken.None);
+        await repo.DeleteByNodeIdAsync(uow, executionId, "n1", CancellationToken.None);
         await uow.SaveChangesAsync(CancellationToken.None);
 
         // Assert
         await using var verify = new CoreDbContext(db.Options);
-        var tokens = await verify.ExecutionWaits
+        var nodeIds = await verify.ExecutionWaits
             .Where(x => x.ExecutionId == executionId)
-            .Select(x => x.ResumeToken)
+            .Select(x => x.NodeId)
             .ToListAsync();
-        Assert.Single(tokens);
-        Assert.Equal("Other", tokens[0]);
+        Assert.Single(nodeIds);
+        Assert.Equal("n2", nodeIds[0]);
     }
 
     /// <summary>ListByExecutionIdAsync は created_at 順で wait 行を返す。</summary>
@@ -160,7 +161,7 @@ public sealed class ExecutionWaitRepositoryTests
                     ExecutionId = executionId,
                     NodeId = "n2",
                     WaitKind = ExecutionWaitKind.EventWait,
-                    ResumeToken = "Second",
+                    AllowedEvents = ["second"],
                     CreatedAt = t2
                 },
                 new ExecutionWaitRow
@@ -168,7 +169,7 @@ public sealed class ExecutionWaitRepositoryTests
                     ExecutionId = executionId,
                     NodeId = "n1",
                     WaitKind = ExecutionWaitKind.EventWait,
-                    ResumeToken = "First",
+                    AllowedEvents = ["first"],
                     CreatedAt = t1
                 });
             await ctx.SaveChangesAsync();
@@ -180,7 +181,7 @@ public sealed class ExecutionWaitRepositoryTests
 
         // Assert
         Assert.Equal(2, rows.Count);
-        Assert.Equal("First", rows[0].ResumeToken);
-        Assert.Equal("Second", rows[1].ResumeToken);
+        Assert.Equal(["first"], rows[0].AllowedEvents);
+        Assert.Equal(["second"], rows[1].AllowedEvents);
     }
 }

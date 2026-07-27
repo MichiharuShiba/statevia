@@ -457,10 +457,10 @@ public sealed class ExecutionServiceTests
             IReadOnlyList<ExecutionWaitRow> waits,
             CancellationToken ct) => Task.CompletedTask;
 
-        public Task DeleteByResumeTokenAsync(
+        public Task DeleteByNodeIdAsync(
             ICoreUnitOfWork uow,
             Guid executionId,
-            string resumeToken,
+            string nodeId,
             CancellationToken ct) => Task.CompletedTask;
 
         public Task<IReadOnlyList<ExecutionWaitRow>> ListByExecutionIdAsync(

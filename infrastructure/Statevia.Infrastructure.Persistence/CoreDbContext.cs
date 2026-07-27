@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Statevia.Core.Application.Contracts.Persistence;
 
 namespace Statevia.Infrastructure.Persistence;
@@ -90,7 +92,7 @@ internal class CoreDbContext : DbContext, ICoreDatabase
         public const string State = "state";
         public const string NodeId = "node_id";
         public const string WaitKind = "wait_kind";
-        public const string ResumeToken = "resume_token";
+        public const string AllowedEvents = "allowed_events";
         public const string SecuritySnapshotJson = "security_snapshot_json";
     }
 
@@ -301,7 +303,7 @@ internal class CoreDbContext : DbContext, ICoreDatabase
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // execution_waits（durable wait のみ）
+        // execution_waits（durable wait のみ。1 Wait = 1 行 + allowed_events jsonb）
         modelBuilder.Entity<ExecutionWaitRow>(e =>
         {
             e.ToTable("execution_waits");
@@ -309,11 +311,22 @@ internal class CoreDbContext : DbContext, ICoreDatabase
             e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
             e.Property(x => x.NodeId).HasMaxLength(64).HasColumnName(Columns.NodeId);
             e.Property(x => x.WaitKind).HasConversion<string>().HasMaxLength(32).HasColumnName(Columns.WaitKind);
-            e.Property(x => x.ResumeToken).HasMaxLength(256).HasColumnName(Columns.ResumeToken);
+            e.Property(x => x.AllowedEvents)
+                .HasColumnName(Columns.AllowedEvents)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null)
+                         ?? (IReadOnlyList<string>)Array.Empty<string>(),
+                    new ValueComparer<IReadOnlyList<string>>(
+                        (left, right) =>
+                            (left ?? Array.Empty<string>()).SequenceEqual(right ?? Array.Empty<string>(), StringComparer.Ordinal),
+                        list => list.Aggregate(
+                            0,
+                            (hash, item) => HashCode.Combine(hash, StringComparer.Ordinal.GetHashCode(item))),
+                        list => list.ToList()));
             e.Property(x => x.ExpiresAt).HasColumnName(Columns.ExpiresAt);
             e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
-
-            e.HasIndex(x => new { x.ExecutionId, x.ResumeToken });
 
             e.HasOne<ExecutionRow>()
                 .WithMany()

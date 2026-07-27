@@ -240,7 +240,7 @@ internal sealed class ExecutionService : IExecutionService
                         tenantId,
                         status,
                         graphJson,
-                        resumeTokenToClear: null,
+                        nodeIdToClear: null,
                         innerCt)
                     .ConfigureAwait(false);
                 await _eventStore
@@ -442,7 +442,7 @@ internal sealed class ExecutionService : IExecutionService
                         tenantId,
                         projStatus,
                         projGraphJson,
-                        resumeTokenToClear: null,
+                        nodeIdToClear: null,
                         ctInner)
                     .ConfigureAwait(false);
                 if (!skipCancelEventAppend)
@@ -564,7 +564,7 @@ internal sealed class ExecutionService : IExecutionService
                         tenantId,
                         pubStatus,
                         pubGraphJson,
-                        resumeTokenToClear: eventName,
+                        nodeIdToClear: null,
                         ctInner)
                     .ConfigureAwait(false);
                 if (!skipEventAppend)
@@ -1002,7 +1002,7 @@ internal sealed class ExecutionService : IExecutionService
                         execution.TenantId,
                         status,
                         graphJson,
-                        resumeTokenToClear: null,
+                        nodeIdToClear: null,
                         innerCt)
                     .ConfigureAwait(false);
             },
@@ -1018,7 +1018,7 @@ internal sealed class ExecutionService : IExecutionService
         Guid tenantId,
         string status,
         string graphJson,
-        string? resumeTokenToClear,
+        string? nodeIdToClear,
         CancellationToken ct)
     {
         var snapshot = _engine.GetSnapshot(executionId.ToString());
@@ -1028,7 +1028,7 @@ internal sealed class ExecutionService : IExecutionService
             status,
             snapshot,
             graphJson,
-            resumeTokenToClear);
+            nodeIdToClear);
         await ExecutionOperationalProjectionSync.SyncAsync(
             uow,
             _executionCursors,

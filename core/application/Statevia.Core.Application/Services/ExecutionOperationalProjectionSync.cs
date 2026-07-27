@@ -19,7 +19,7 @@ internal static class ExecutionOperationalProjectionSync
 
     /// <summary>
     /// 投影フラッシュと同一トランザクション内で cursor / durable wait を同期する。
-    /// Publish / Resume 時は <see cref="ExecutionOperationalProjectionSyncRequest.ResumeTokenToClear"/> で該当 wait を先行削除する。
+    /// Publish / Resume 時は <see cref="ExecutionOperationalProjectionSyncRequest.NodeIdToClear"/> で該当 wait を先行削除する。
     /// </summary>
     public static async Task SyncAsync(
         ICoreUnitOfWork uow,
@@ -28,9 +28,9 @@ internal static class ExecutionOperationalProjectionSync
         ExecutionOperationalProjectionSyncRequest request,
         CancellationToken ct)
     {
-        if (!string.IsNullOrWhiteSpace(request.ResumeTokenToClear))
+        if (!string.IsNullOrWhiteSpace(request.NodeIdToClear))
         {
-            await waits.DeleteByResumeTokenAsync(uow, request.ExecutionId, request.ResumeTokenToClear, ct)
+            await waits.DeleteByNodeIdAsync(uow, request.ExecutionId, request.NodeIdToClear, ct)
                 .ConfigureAwait(false);
         }
 
@@ -123,7 +123,8 @@ internal static class ExecutionOperationalProjectionSync
                 ExecutionId = executionId,
                 NodeId = n.NodeId!,
                 WaitKind = ExecutionWaitKind.EventWait,
-                ResumeToken = n.WaitKey!,
+                // task 9 で route table から複数イベントを埋める。単一 WaitKey 互換の暫定値。
+                AllowedEvents = [n.WaitKey!],
                 ExpiresAt = null,
                 CreatedAt = nowUtc
             })
