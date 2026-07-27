@@ -22,6 +22,9 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         public string Start(CompiledWorkflowDefinition definition, string? executionId = null, object? input = null) =>
             throw new NotSupportedException();
 
+        public void ResumeWaitNode(string executionId, string nodeId, string eventName) =>
+            throw new NotSupportedException();
+
         public void PublishEvent(string executionId, string eventName) =>
             throw new NotSupportedException();
 

@@ -111,9 +111,9 @@ public class ExecutionEngineTests
         Assert.True(snapshot.IsCompleted);
     }
 
-    /// <summary>PublishEvent を呼んでも例外が発生しないことを検証する。</summary>
+    /// <summary>アクティブ Wait が無いとき PublishEvent は拒否する。</summary>
     [Fact]
-    public void PublishEvent_DoesNotThrow()
+    public void PublishEvent_Throws_WhenNoActiveWait()
     {
         // Arrange
         var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
@@ -123,12 +123,13 @@ public class ExecutionEngineTests
         var ex = Record.Exception(() => engine.PublishEvent("SomeEvent"));
 
         // Assert
-        Assert.Null(ex);
+        Assert.IsType<InvalidOperationException>(ex);
+        Assert.Contains("exactly one active Wait", ex!.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>単一 execution ID 指定の PublishEvent が例外を投げないことを検証する。</summary>
+    /// <summary>単一 execution ID 指定でもアクティブ Wait が無いと PublishEvent は拒否する。</summary>
     [Fact]
-    public void PublishEvent_ToExecutionId_DoesNotThrow()
+    public void PublishEvent_ToExecutionId_Throws_WhenNoActiveWait()
     {
         // Arrange
         var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
@@ -138,12 +139,13 @@ public class ExecutionEngineTests
         var ex = Record.Exception(() => engine.PublishEvent(executionId, "SomeEvent"));
 
         // Assert
-        Assert.Null(ex);
+        Assert.IsType<InvalidOperationException>(ex);
+        Assert.Contains("exactly one active Wait", ex!.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>複数実行が存在するとき、イベント名のみのブロードキャストが例外で終了しないこと。</summary>
+    /// <summary>複数実行で Wait が無いときブロードキャストは AggregateException になる。</summary>
     [Fact]
-    public void PublishEvent_BroadcastByEventName_DoesNotThrow_WhenMultipleExecutions()
+    public void PublishEvent_BroadcastByEventName_Throws_WhenNoActiveWait()
     {
         // Arrange
         var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2);
@@ -154,28 +156,26 @@ public class ExecutionEngineTests
         var ex = Record.Exception(() => engine.PublishEvent("SomeEvent"));
 
         // Assert
-        Assert.Null(ex);
+        Assert.IsType<AggregateException>(ex);
     }
 
-    /// <summary>clientEventId 付き PublishEvent オーバーロードも従来と同様に例外を投げないことを検証する。</summary>
+    /// <summary>clientEventId 付き PublishEvent もアクティブ Wait が無いと例外になる。</summary>
     [Fact]
-    public void PublishEvent_WithClientEventId_DoesNotThrow()
+    public void PublishEvent_WithClientEventId_Throws_WhenNoActiveWait()
     {
         // Arrange
         var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var executionId = engine.Start(CreateMinimalDefinition());
         var clientEventId = Guid.Parse("a1b2c3d4-e5f6-4789-a012-3456789abcde");
 
-        // Act
-        var result = engine.PublishEvent(executionId, "SomeEvent", clientEventId);
-
-        // Assert
-        Assert.True(result.IsApplied);
+        // Act / Assert
+        Assert.Throws<InvalidOperationException>(() =>
+            engine.PublishEvent(executionId, "SomeEvent", clientEventId));
     }
 
-    /// <summary>複数実行が存在するとき、clientEventId 付きブロードキャストが全インスタンスに届き、2 回目は冪等になる。</summary>
+    /// <summary>複数実行で Wait が無いとき clientEventId 付きブロードキャストは AggregateException になる。</summary>
     [Fact]
-    public void PublishEvent_WithClientEventId_Broadcast_AppliesThenAlreadyApplied_ForMultipleExecutions()
+    public void PublishEvent_WithClientEventId_Broadcast_Throws_WhenNoActiveWait()
     {
         // Arrange
         var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2);
@@ -183,13 +183,8 @@ public class ExecutionEngineTests
         engine.Start(CreateMinimalDefinition());
         var clientEventId = Guid.Parse("b2c3d4e5-f6a7-4890-b123-456789abcdef");
 
-        // Act
-        var firstBroadcast = engine.PublishEvent("SomeEvent", clientEventId);
-        var secondBroadcast = engine.PublishEvent("SomeEvent", clientEventId);
-
-        // Assert
-        Assert.True(firstBroadcast.IsApplied);
-        Assert.True(secondBroadcast.IsAlreadyApplied);
+        // Act / Assert
+        Assert.Throws<AggregateException>(() => engine.PublishEvent("SomeEvent", clientEventId));
     }
 
     /// <summary>Dispose を呼んでも例外が発生しないことを検証する。</summary>

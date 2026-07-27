@@ -122,6 +122,11 @@ public sealed class ExecutionServiceTests
             return executionId ?? "generated";
         }
 
+        public void ResumeWaitNode(string executionId, string nodeId, string eventName)
+        {
+            // no-op for tests that do not exercise Resume
+        }
+
         public void PublishEvent(string executionId, string eventName)
         {
             PublishEventLastExecutionId = executionId;

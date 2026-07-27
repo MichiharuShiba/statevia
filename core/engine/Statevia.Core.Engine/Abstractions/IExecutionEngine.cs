@@ -12,7 +12,19 @@ public interface IExecutionEngine
     /// <param name="input">初期状態の <see cref="IStateExecutor.ExecuteAsync"/> に渡す入力（省略時は <c>null</c>）。</param>
     string Start(CompiledWorkflowDefinition definition, string? executionId = null, object? input = null);
 
-    /// <summary>指定した実行インスタンスにのみイベントを発行し、待機中の状態を再開します（Wait / Resume 仕様）。</summary>
+    /// <summary>
+    /// 待機中 Wait ノードを指定イベントで再開する（ランタイム正本）。
+    /// </summary>
+    /// <param name="executionId">実行インスタンス ID。</param>
+    /// <param name="nodeId">待機中 Wait ノード ID。</param>
+    /// <param name="eventName">発生させるイベント名（WaitEventRouteTable のキー）。</param>
+    /// <exception cref="InvalidOperationException">実行・ノード・イベントが不正なとき。</exception>
+    void ResumeWaitNode(string executionId, string nodeId, string eventName);
+
+    /// <summary>
+    /// 非推奨シム。アクティブな Wait がちょうど 1 ノードかつそのイベントが 1 件のときのみ
+    /// <see cref="ResumeWaitNode"/> に委譲する。
+    /// </summary>
     void PublishEvent(string executionId, string eventName);
 
     /// <summary>
