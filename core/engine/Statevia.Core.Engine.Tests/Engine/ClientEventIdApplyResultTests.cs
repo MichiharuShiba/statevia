@@ -41,7 +41,7 @@ public class ClientEventIdApplyResultTests
         },
         ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
         JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-        WaitTable = new Dictionary<string, string>(),
+        WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
         InitialState = "Start",
         StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
         {

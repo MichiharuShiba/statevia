@@ -203,7 +203,13 @@ public sealed class ModuleActionCompileBinderTests
             },
             ("W", new StateDefinition
             {
-                Wait = new WaitDefinition { Event = "resume" },
+                Wait = new WaitDefinition
+                {
+                    Events = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["resume"] = "Next"
+                    }
+                },
                 On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["Completed"] = new TransitionDefinition { End = true },

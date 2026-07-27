@@ -310,4 +310,7 @@ public sealed class GraphEdgeDefinition
 
     /// <summary>終点ノード ID。</summary>
     public string To { get; init; } = string.Empty;
+
+    /// <summary>表示ラベル（Wait のイベント名など。未設定時は空）。</summary>
+    public string Label { get; init; } = string.Empty;
 }

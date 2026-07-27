@@ -264,8 +264,8 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 
         var attempt = instance.NextAttempt(stateName);
         var nodeType = ResolveNodeType(def, stateName);
-        var waitKey = def.WaitTable.TryGetValue(stateName, out var configuredWaitKey)
-            ? configuredWaitKey
+        var waitKey = def.WaitEventRouteTable.TryGetValue(stateName, out var routes) && routes.Count == 1
+            ? routes.Keys.First()
             : null;
         var nodeId = instance.Graph.AddNode(
             stateName,
@@ -510,7 +510,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             return "Start";
         if (def.JoinTable.ContainsKey(stateName))
             return "Join";
-        if (def.WaitTable.ContainsKey(stateName))
+        if (def.WaitEventRouteTable.ContainsKey(stateName))
             return "Wait";
         if (def.ForkTable.ContainsKey(stateName))
             return "Fork";

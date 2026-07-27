@@ -540,7 +540,7 @@ public sealed class ExecutionServiceTests
             Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>(),
             ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-            WaitTable = new Dictionary<string, string>(),
+            WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
             InitialState = "Initial",
             StateExecutorFactory = new DummyExecutorFactory()
         };

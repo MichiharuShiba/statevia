@@ -18,7 +18,11 @@ public sealed class CompiledDefinitionJsonReaderTests
           "conditionalTransitions": {},
           "forkTable": { "F": ["B", "C"] },
           "joinTable": { "J": ["B", "C"] },
-          "waitTable": { "W1": "signal" },
+          "waitEventRouteTable": {
+            "W1": {
+              "signal": { "next": "B" }
+            }
+          },
           "stateInputs": {},
           "stateOutputs": { "A": "$.vars.user" }
         }
@@ -40,7 +44,7 @@ public sealed class CompiledDefinitionJsonReaderTests
         Assert.True(compiled.Transitions.ContainsKey("A"));
         Assert.Equal("B", compiled.Transitions["A"]["Ok"].Next);
         Assert.Equal(["B", "C"], compiled.ForkTable["F"]);
-        Assert.Equal("signal", compiled.WaitTable["W1"]);
+        Assert.Equal("B", compiled.WaitEventRouteTable["W1"]["signal"].Next);
         Assert.Equal("$.vars.user", compiled.StateOutputs["A"]);
         Assert.Same(factory, compiled.StateExecutorFactory);
     }

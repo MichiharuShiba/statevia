@@ -90,7 +90,7 @@ public sealed partial class ExecutionEngineLoggingTests
             },
             ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-            WaitTable = new Dictionary<string, string>(),
+            WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
             StateInputs = new Dictionary<string, StateInputDefinition>(StringComparer.OrdinalIgnoreCase)
             {
                 ["B"] = new StateInputDefinition { Path = "$.missing" }
@@ -134,7 +134,7 @@ public sealed partial class ExecutionEngineLoggingTests
             },
             ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-            WaitTable = new Dictionary<string, string>(),
+            WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
             InitialState = "Start",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
             {
@@ -192,7 +192,7 @@ public sealed partial class ExecutionEngineLoggingTests
             },
             ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-            WaitTable = new Dictionary<string, string>(),
+            WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
             InitialState = "Start",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
             {
@@ -293,7 +293,7 @@ public sealed partial class ExecutionEngineLoggingTests
         },
         ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
         JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-        WaitTable = new Dictionary<string, string>(),
+        WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
         InitialState = "Start",
         StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
         {
@@ -310,7 +310,7 @@ public sealed partial class ExecutionEngineLoggingTests
         },
         ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
         JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-        WaitTable = new Dictionary<string, string>(),
+        WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
         InitialState = "Bad",
         StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
         {
@@ -330,7 +330,7 @@ public sealed partial class ExecutionEngineLoggingTests
         },
         ForkTable = new Dictionary<string, IReadOnlyList<string>> { ["Start"] = new[] { "A", "B" } },
         JoinTable = new Dictionary<string, IReadOnlyList<string>> { ["Join1"] = new[] { "A", "B" } },
-        WaitTable = new Dictionary<string, string>(),
+        WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
         InitialState = "Start",
         StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
         {

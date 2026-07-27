@@ -207,6 +207,10 @@ public sealed class DefinitionCompilerServiceTests
                   event: E
                 on:
                   Completed:
+                    next: End
+              End:
+                on:
+                  Completed:
                     end: true
             """;
 
@@ -217,6 +221,7 @@ public sealed class DefinitionCompilerServiceTests
         Assert.NotNull(compiled);
         var exec = compiled.StateExecutorFactory.GetExecutor("A");
         Assert.NotNull(exec);
+        Assert.Equal("End", compiled.WaitEventRouteTable["A"]["E"].Next);
     }
 
     /// <summary>

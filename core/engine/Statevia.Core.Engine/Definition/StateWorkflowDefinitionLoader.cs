@@ -63,12 +63,7 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
         }
         if (dict.TryGetValue("wait", out var waitVal) && waitVal != null)
         {
-            var waitDict = ToStringDict(waitVal);
-            var ev = GetStr(waitDict, "event");
-            if (ev != null)
-            {
-                wait = new WaitDefinition { Event = ev };
-            }
+            wait = ParseWaitDefinition(ToStringDict(waitVal), on);
         }
         if (dict.TryGetValue("join", out var joinVal) && joinVal != null)
         {
@@ -102,6 +97,108 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
             Output = output,
             Retry = retry,
         };
+    }
+
+    /// <summary>
+    /// <c>wait</c> ブロックを <see cref="WaitDefinition"/> へ変換する。
+    /// </summary>
+    /// <param name="waitDict"><c>wait</c> 辞書。</param>
+    /// <param name="on">同一状態の <c>on</c>（旧形式正規化で <c>Completed</c> 遷移先を参照）。</param>
+    /// <returns>イベント表を持つ Wait 定義。空の wait は null。</returns>
+    /// <exception cref="ArgumentException"><c>exits</c> 指定、または <c>events</c> と <c>event</c> の併用。</exception>
+    private static WaitDefinition? ParseWaitDefinition(
+        Dictionary<string, object?> waitDict,
+        IReadOnlyDictionary<string, TransitionDefinition>? on)
+    {
+        if (HasKeyIgnoreCase(waitDict, "exits"))
+        {
+            throw new ArgumentException("wait.exits is not supported; use wait.events.");
+        }
+
+        var hasEvents = HasKeyIgnoreCase(waitDict, "events");
+        var legacyEvent = GetStr(waitDict, "event");
+        if (hasEvents && !string.IsNullOrWhiteSpace(legacyEvent))
+        {
+            throw new ArgumentException("wait.events and wait.event cannot be used together.");
+        }
+
+        var assignees = GetStrList(waitDict, "assignees");
+
+        if (hasEvents)
+        {
+            var eventsKey = waitDict.Keys.First(k => string.Equals(k, "events", StringComparison.OrdinalIgnoreCase));
+            var events = ParseWaitEventsMap(waitDict[eventsKey]);
+            if (events.Count == 0 && (assignees == null || assignees.Count == 0))
+            {
+                return null;
+            }
+
+            return new WaitDefinition { Events = events, Assignees = assignees };
+        }
+
+        if (string.IsNullOrWhiteSpace(legacyEvent))
+        {
+            if (assignees is { Count: > 0 })
+            {
+                return new WaitDefinition
+                {
+                    Events = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                    Assignees = assignees
+                };
+            }
+
+            return null;
+        }
+
+        // 旧形式: wait.event + on.Completed.next → events
+        var next = string.Empty;
+        if (on != null && on.TryGetValue("Completed", out var completed))
+        {
+            next = completed.Next ?? string.Empty;
+        }
+
+        return new WaitDefinition
+        {
+            Events = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [legacyEvent.Trim()] = next
+            },
+            Assignees = assignees
+        };
+    }
+
+    /// <summary>
+    /// <c>wait.events</c> マップ（イベント名 → 遷移先）を読み取る。
+    /// </summary>
+    private static Dictionary<string, string> ParseWaitEventsMap(object? eventsVal)
+    {
+        if (eventsVal == null)
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var eventsDict = ToStringDict(eventsVal);
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (eventName, rawNext) in eventsDict)
+        {
+            if (string.IsNullOrWhiteSpace(eventName))
+            {
+                throw new ArgumentException("wait.events keys must be non-empty event names.");
+            }
+
+            var next = rawNext?.ToString()?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(next))
+            {
+                throw new ArgumentException($"wait.events['{eventName}'] must specify a next state name.");
+            }
+
+            if (!result.TryAdd(eventName.Trim(), next))
+            {
+                throw new ArgumentException($"wait.events contains duplicate event name '{eventName}'.");
+            }
+        }
+
+        return result;
     }
 
     private static Dictionary<string, TransitionDefinition> ParseOn(Dictionary<string, object?> dict)

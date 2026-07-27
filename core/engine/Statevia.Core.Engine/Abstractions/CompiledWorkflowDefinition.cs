@@ -22,8 +22,11 @@ public sealed class CompiledWorkflowDefinition
     /// <summary>Join テーブル。Join 状態名 → all で待つ状態の一覧。</summary>
     public required IReadOnlyDictionary<string, IReadOnlyList<string>> JoinTable { get; init; }
 
-    /// <summary>Wait テーブル。状態名 → 待機するイベント名。</summary>
-    public required IReadOnlyDictionary<string, string> WaitTable { get; init; }
+    /// <summary>
+    /// Wait イベントルート表。状態名 →（イベント名 → ルート）。
+    /// compiled JSON キーは <c>waitEventRouteTable</c>。
+    /// </summary>
+    public required IReadOnlyDictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>> WaitEventRouteTable { get; init; }
 
     /// <summary>状態ごとの入力指定（stateName → <see cref="Statevia.Core.Engine.Definition.StateInputDefinition"/>）。未定義状態は raw 通過。</summary>
     public IReadOnlyDictionary<string, Statevia.Core.Engine.Definition.StateInputDefinition> StateInputs { get; init; }

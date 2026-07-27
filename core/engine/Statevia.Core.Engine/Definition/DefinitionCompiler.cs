@@ -33,7 +33,7 @@ public sealed class DefinitionCompiler
             ConditionalTransitions = BuildConditionalTransitionTable(definition),
             ForkTable = BuildForkTable(definition),
             JoinTable = BuildJoinTable(definition),
-            WaitTable = BuildWaitTable(definition),
+            WaitEventRouteTable = BuildWaitEventRouteTable(definition),
             StateInputs = BuildStateInputTable(definition),
             StateOutputs = BuildStateOutputTable(definition),
             InitialState = DetermineInitialState(definition),
@@ -206,16 +206,30 @@ public sealed class DefinitionCompiler
         return result;
     }
 
-    private static Dictionary<string, string> BuildWaitTable(WorkflowDefinition definition)
+    /// <summary>
+    /// Wait.events から状態名 →（イベント名 → ルート）の表を構築する。
+    /// </summary>
+    private static Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>> BuildWaitEventRouteTable(
+        WorkflowDefinition definition)
     {
-        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(
+            StringComparer.OrdinalIgnoreCase);
         foreach (var (stateName, stateDef) in definition.States)
         {
-            if (stateDef.Wait != null)
+            if (stateDef.Wait == null || stateDef.Wait.Events.Count == 0)
             {
-                result[stateName] = stateDef.Wait.Event;
+                continue;
             }
+
+            var routes = new Dictionary<string, WaitEventRouteDefinition>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (eventName, next) in stateDef.Wait.Events)
+            {
+                routes[eventName] = new WaitEventRouteDefinition { Next = next };
+            }
+
+            result[stateName] = routes;
         }
+
         return result;
     }
 

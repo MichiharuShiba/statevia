@@ -176,9 +176,9 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.Equal("failedHandler", definition.States["a"].On![Fact.Failed].Next);
     }
 
-    /// <summary>wait ノードに Wait.Event が設定される。</summary>
+    /// <summary>旧形式 wait（event+next）を Events へ正規化することを検証する。</summary>
     [Fact]
-    public void Load_WaitNode_SetsWaitEvent()
+    public void Load_WaitNode_NormalizesLegacyEventAndNext()
     {
         // Arrange
         var yaml = """
@@ -199,9 +199,85 @@ public sealed class NodesWorkflowDefinitionLoaderTests
 
         // Act
         var definition = _loader.Load(yaml);
+        var wait = definition.States["wait1"].Wait;
 
         // Assert
-        Assert.Equal("resume", definition.States["wait1"].Wait!.Event);
+        Assert.NotNull(wait);
+        Assert.Single(wait!.Events);
+        Assert.Equal("endNode", wait.Events["resume"]);
+        Assert.Equal("endNode", definition.States["wait1"].On![Fact.Completed].Next);
+    }
+
+    /// <summary>nodes 形式の wait.events を WaitDefinition.Events に載せることを検証する。</summary>
+    [Fact]
+    public void Load_WaitNode_ParsesEventsMap()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: MultiWait
+            nodes:
+              - id: start
+                type: start
+                next: approve
+              - id: approve
+                type: wait
+                events:
+                  approve: approved
+                  reject: rejected
+              - id: approved
+                type: action
+                action: statevia.action.builtin.noop
+                next: endNode
+              - id: rejected
+                type: action
+                action: statevia.action.builtin.noop
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+        var wait = definition.States["approve"].Wait;
+
+        // Assert
+        Assert.NotNull(wait);
+        Assert.Equal(2, wait!.Events.Count);
+        Assert.Equal("approved", wait.Events["approve"]);
+        Assert.Equal("rejected", wait.Events["reject"]);
+    }
+
+    /// <summary>新形式 wait.events と edges の併用は拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenWaitEventsHasEdges()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: WaitEventsEdges
+            nodes:
+              - id: start
+                type: start
+                next: approve
+              - id: approve
+                type: wait
+                events:
+                  approve: endNode
+                edges:
+                  - to: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("edges", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("events", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>条件付き edges は Completed 遷移の cases/default に正規化される。</summary>
@@ -990,7 +1066,7 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.Contains("must have 'next' or 'edges'", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>wait に event が無いとき拒否する。</summary>
+    /// <summary>wait に events / event が無いとき拒否する。</summary>
     [Fact]
     public void Load_Throws_WhenWaitMissingEvent()
     {
@@ -1014,7 +1090,7 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
 
         // Assert
-        Assert.Contains("must have 'event'", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("must have 'events' or 'event'", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>fork の branches が 1 件のとき拒否する。</summary>

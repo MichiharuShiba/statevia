@@ -55,7 +55,7 @@ internal static class CompiledDefinitionJsonReader
             ConditionalTransitions = MapConditionalTransitions(dto.ConditionalTransitions),
             ForkTable = MapStringListTable(dto.ForkTable),
             JoinTable = MapStringListTable(dto.JoinTable),
-            WaitTable = dto.WaitTable ?? [],
+            WaitEventRouteTable = MapWaitEventRouteTable(dto.WaitEventRouteTable),
             StateInputs = dto.StateInputs ?? [],
             StateOutputs = dto.StateOutputs ?? [],
             ResolvedModules = modules,
@@ -171,6 +171,31 @@ internal static class CompiledDefinitionJsonReader
             StringComparer.OrdinalIgnoreCase);
     }
 
+    private static Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>> MapWaitEventRouteTable(
+        Dictionary<string, Dictionary<string, WaitEventRouteDto>?>? table)
+    {
+        if (table is null)
+        {
+            return new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(
+                StringComparer.OrdinalIgnoreCase);
+        }
+
+        return table.ToDictionary(
+            pair => pair.Key,
+            pair => (IReadOnlyDictionary<string, WaitEventRouteDefinition>)(
+                pair.Value ?? [])
+                .ToDictionary(
+                    inner => inner.Key,
+                    inner => new WaitEventRouteDefinition
+                    {
+                        Next = inner.Value?.Next
+                            ?? throw new ArgumentException(
+                                $"waitEventRouteTable['{pair.Key}']['{inner.Key}'] is missing next.")
+                    },
+                    StringComparer.OrdinalIgnoreCase),
+            StringComparer.OrdinalIgnoreCase);
+    }
+
     private static TransitionTarget MapTarget(TransitionTargetDto dto) =>
         new()
         {
@@ -187,11 +212,16 @@ internal static class CompiledDefinitionJsonReader
         public Dictionary<string, Dictionary<string, CompiledFactTransitionDto>?>? ConditionalTransitions { get; set; } = [];
         public Dictionary<string, List<string>?>? ForkTable { get; set; } = [];
         public Dictionary<string, List<string>?>? JoinTable { get; set; } = [];
-        public Dictionary<string, string>? WaitTable { get; set; } = [];
+        public Dictionary<string, Dictionary<string, WaitEventRouteDto>?>? WaitEventRouteTable { get; set; } = [];
         public Dictionary<string, StateInputDefinition>? StateInputs { get; set; } = [];
         public Dictionary<string, string>? StateOutputs { get; set; } = [];
         public Dictionary<string, ResolvedModuleBindingDto>? ResolvedModules { get; set; } = [];
         public Dictionary<string, StateActionBindingDto>? StateActionBindings { get; set; } = [];
+    }
+
+    private sealed class WaitEventRouteDto
+    {
+        public string Next { get; set; } = string.Empty;
     }
 
     private sealed class ResolvedModuleBindingDto

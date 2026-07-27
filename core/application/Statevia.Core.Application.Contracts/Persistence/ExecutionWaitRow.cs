@@ -5,7 +5,7 @@ namespace Statevia.Core.Application.Contracts.Persistence;
 /// </summary>
 public enum ExecutionWaitKind
 {
-    /// <summary>名前付きイベント待ち（Engine Wait ノード: WaitTable + WaitAsync + Publish）。</summary>
+    /// <summary>名前付きイベント待ち（Engine Wait ノード: WaitEventRouteTable + WaitAsync / Resume）。</summary>
     EventWait,
 
     /// <summary>外部コールバック待ち（将来拡張）。</summary>
