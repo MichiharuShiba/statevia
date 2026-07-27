@@ -142,7 +142,15 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
                 $"PublishEvent requires the active Wait state '{waitNode.StateName}' to have exactly one event.");
         }
 
-        ResumeWaitNode(executionId, waitNode.NodeId, eventName);
+        // シムは「唯一の許可イベント」と呼び出し eventName が一致するときだけ委譲する。
+        var soleAllowedEvent = routes.Keys.First();
+        if (!string.Equals(soleAllowedEvent, eventName, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"PublishEvent event '{eventName}' does not match the sole allowed event '{soleAllowedEvent}' for Wait state '{waitNode.StateName}'.");
+        }
+
+        ResumeWaitNode(executionId, waitNode.NodeId, soleAllowedEvent);
     }
 
     /// <inheritdoc />

@@ -107,6 +107,36 @@ public sealed class ResumeWaitNodeTests
         Assert.True(engine.GetSnapshot(executionId)!.IsCompleted);
     }
 
+    /// <summary>単一イベント Wait でも呼び出し eventName が許可イベントと一致しないとき PublishEvent は拒否する。</summary>
+    [Fact]
+    public async Task PublishEvent_Throws_WhenEventNameDoesNotMatchSoleAllowedEvent()
+    {
+        // Arrange
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+        var executionId = engine.Start(CreateSingleWaitDefinition());
+        await WaitUntilAsync(() => CountActiveWaits(engine, executionId) == 1);
+
+        // Act / Assert
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            engine.PublishEvent(executionId, "not-the-allowed-event"));
+        Assert.Contains("does not match the sole allowed event", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(1, CountActiveWaits(engine, executionId));
+    }
+
+    /// <summary>複数イベント Wait では PublishEvent シムを拒否する。</summary>
+    [Fact]
+    public async Task PublishEvent_Throws_WhenWaitHasMultipleEvents()
+    {
+        // Arrange
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+        var executionId = engine.Start(CreateMultiEventWaitDefinition());
+        await WaitUntilAsync(() => CountActiveWaits(engine, executionId) == 1);
+
+        // Act / Assert
+        var ex = Assert.Throws<InvalidOperationException>(() => engine.PublishEvent(executionId, "approve"));
+        Assert.Contains("exactly one event", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>アクティブ Wait が複数あるとき PublishEvent は拒否する。</summary>
     [Fact]
     public async Task PublishEvent_Throws_WhenMultipleActiveWaits()
