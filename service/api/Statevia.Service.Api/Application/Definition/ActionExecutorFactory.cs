@@ -49,10 +49,13 @@ internal sealed class ActionExecutorFactory : IStateExecutorFactory
 
         if (state.Wait is not null)
         {
-            // WaitEventRouteTable / 複数イベント待機（task 5〜6）までの単一イベント互換。
-            var eventName = state.Wait.Events.Keys.FirstOrDefault()
-                ?? throw new InvalidOperationException($"Wait state '{stateName}' has no events.");
-            return DefaultStateExecutor.Create(new WaitOnlyState(eventName));
+            var eventNames = state.Wait.Events.Keys.ToArray();
+            if (eventNames.Length == 0)
+            {
+                throw new InvalidOperationException($"Wait state '{stateName}' has no events.");
+            }
+
+            return DefaultStateExecutor.Create(new WaitOnlyState(eventNames));
         }
 
         if (!_stateActionBindings.TryGetValue(stateName, out var binding))

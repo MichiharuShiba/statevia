@@ -17,8 +17,14 @@ public sealed class BuiltinActionStatesTests
             return Task.CompletedTask;
         }
 
+        public string? LastNodeId { get; private set; }
+
+        public IReadOnlyList<string>? LastEventNames { get; private set; }
+
         public Task<string> WaitForEventAsync(string nodeId, IReadOnlyList<string> eventNames, CancellationToken ct)
         {
+            LastNodeId = nodeId;
+            LastEventNames = eventNames;
             LastEventName = eventNames[0];
             return Task.FromResult(eventNames[0]);
         }
@@ -88,13 +94,39 @@ public sealed class BuiltinActionStatesTests
     }
 
     /// <summary>
-    /// WaitOnlyStateは指定イベントを待機してUnit値を返す。
+    /// WaitOnlyState はノードスコープでイベントを待機し、監査用 output.event を返す。
     /// </summary>
     [Fact]
-    public async Task WaitOnlyState_ExecuteAsync_WaitsForEventAndReturnsUnit()
+    public async Task WaitOnlyState_ExecuteAsync_WaitsForEventAndReturnsEventOutput()
     {
         // Arrange
-        var state = new WaitOnlyState("MyEvent");
+        var state = new WaitOnlyState(["approve", "reject"]);
+        var events = new FakeEventProvider();
+        var store = new FakeStore();
+        var ctx = new StateContext
+        {
+            Events = events,
+            Store = store,
+            ExecutionId = Guid.NewGuid().ToString("D"),
+            StateName = "ApproveTask",
+            NodeId = "node-approve-1",
+        };
+
+        // Act
+        var result = await state.ExecuteAsync(ctx, Unit.Value, CancellationToken.None);
+
+        // Assert
+        Assert.Equal("approve", result["event"]);
+        Assert.Equal("node-approve-1", events.LastNodeId);
+        Assert.Equal(new[] { "approve", "reject" }, events.LastEventNames);
+    }
+
+    /// <summary>NodeId 未設定時は StateName を待機キーに使う。</summary>
+    [Fact]
+    public async Task WaitOnlyState_ExecuteAsync_FallsBackToStateName_WhenNodeIdMissing()
+    {
+        // Arrange
+        var state = new WaitOnlyState(["MyEvent"]);
         var events = new FakeEventProvider();
         var store = new FakeStore();
 
@@ -102,8 +134,8 @@ public sealed class BuiltinActionStatesTests
         var result = await state.ExecuteAsync(MakeContext(events, store), Unit.Value, CancellationToken.None);
 
         // Assert
-        Assert.Equal(Unit.Value, result);
-        Assert.Equal("MyEvent", events.LastEventName);
+        Assert.Equal("MyEvent", result["event"]);
+        Assert.Equal("S1", events.LastNodeId);
     }
 
     /// <summary>

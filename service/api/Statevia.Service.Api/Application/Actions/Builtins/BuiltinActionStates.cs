@@ -32,16 +32,38 @@ internal sealed class DelayCompleteState : IState<Unit, Unit>
     }
 }
 
-/// <summary>wait ブロック用。イベント名は状態ごとに <see cref="Statevia.Service.Api.Application.Definition.ActionExecutorFactory"/> が束ねる。</summary>
-internal sealed class WaitOnlyState : IState<Unit, Unit>
+/// <summary>
+/// wait ブロック用。複数イベントをノードスコープで待機し、受信イベント名を出力する。
+/// </summary>
+/// <remarks>
+/// <para>イベント名一覧は <see cref="Statevia.Service.Api.Application.Definition.ActionExecutorFactory"/> が束ねる。</para>
+/// <para>出力は監査用の <c>{ "event": "&lt;eventName&gt;" }</c>。遷移先の route 解決は Engine（task 7）が eventName で行う。</para>
+/// </remarks>
+internal sealed class WaitOnlyState : IState<Unit, IReadOnlyDictionary<string, string>>
 {
-    private readonly string _eventName;
+    private readonly IReadOnlyList<string> _eventNames;
 
-    public WaitOnlyState(string eventName) => _eventName = eventName;
-
-    public async Task<Unit> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
+    /// <summary>受付イベント名一覧で Wait 状態を構築する。</summary>
+    /// <param name="eventNames">非空のイベント名。</param>
+    public WaitOnlyState(IReadOnlyList<string> eventNames)
     {
-        await ctx.Events.WaitAsync(_eventName, ct).ConfigureAwait(false);
-        return Unit.Value;
+        ArgumentNullException.ThrowIfNull(eventNames);
+        if (eventNames.Count == 0)
+        {
+            throw new ArgumentException("eventNames must not be empty.", nameof(eventNames));
+        }
+
+        _eventNames = eventNames;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, string>> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
+    {
+        var nodeId = string.IsNullOrWhiteSpace(ctx.NodeId) ? ctx.StateName : ctx.NodeId;
+        var eventName = await ctx.Events.WaitForEventAsync(nodeId, _eventNames, ct).ConfigureAwait(false);
+        return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["event"] = eventName,
+        };
     }
 }

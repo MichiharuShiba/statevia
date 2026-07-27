@@ -288,6 +288,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             Store = new ExecutionStateStore(instance),
             ExecutionId = instance.ExecutionId,
             StateName = stateName,
+            NodeId = nodeId,
             Logger = _executionLog.CreateStateContextLogger(instance.ExecutionId, stateName)
         };
 
