@@ -80,6 +80,37 @@ internal static class ActionExecutionTestSupport
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 
+    /// <summary>
+    /// API テストから Action Host の WebApplicationFactory 用 content root を解決する。
+    /// </summary>
+    /// <remarks>
+    /// 既定の content root 推定は <c>service/api/Statevia.Service.ActionHost</c> を探し、
+    /// sonar スキャン等で DirectoryNotFoundException になるため明示する。
+    /// </remarks>
+    /// <returns>Action Host プロジェクトディレクトリの絶対パス。</returns>
+    internal static string ResolveActionHostContentRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(
+                directory.FullName,
+                "service",
+                "action-host",
+                "Statevia.Service.ActionHost");
+            var projectFile = Path.Combine(candidate, "Statevia.Service.ActionHost.csproj");
+            if (File.Exists(projectFile))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException(
+            "Could not locate service/action-host/Statevia.Service.ActionHost from AppContext.BaseDirectory.");
+    }
+
     /// <summary>OutOfProcess 経路の単体テスト用スタブ。</summary>
     internal sealed class UnconfiguredActionHostExecutionClient : IActionHostExecutionClient
     {

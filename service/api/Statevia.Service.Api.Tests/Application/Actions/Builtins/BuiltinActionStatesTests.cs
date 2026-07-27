@@ -17,7 +17,15 @@ public sealed class BuiltinActionStatesTests
             return Task.CompletedTask;
         }
 
+        public Task<string> WaitForEventAsync(string nodeId, IReadOnlyList<string> eventNames, CancellationToken ct)
+        {
+            LastEventName = eventNames[0];
+            return Task.FromResult(eventNames[0]);
+        }
+
         public void Signal(string signalName) => LastSignalName = signalName;
+
+        public void Resume(string nodeId, string eventName) { }
 
         public void PublishTopic(string topic, object? payloadSummary) => LastTopic = topic;
     }

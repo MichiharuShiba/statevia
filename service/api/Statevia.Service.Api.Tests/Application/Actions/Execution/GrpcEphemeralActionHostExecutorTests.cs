@@ -1,5 +1,6 @@
 extern alias ActionHost;
 
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Hosting;
 using Statevia.Core.Actions.Abstractions.Execution;
@@ -21,7 +22,10 @@ public sealed class GrpcEphemeralActionHostExecutorTests : IAsyncLifetime
     {
         _actionHostFactory = new WebApplicationFactory<ActionHost::Program>()
             .WithWebHostBuilder(builder =>
-                builder.UseSetting($"{ActionHostOptions.SectionName}:ModulesPath", _modulesRoot));
+            {
+                builder.UseContentRoot(ActionExecutionTestSupport.ResolveActionHostContentRoot());
+                builder.UseSetting($"{ActionHostOptions.SectionName}:ModulesPath", _modulesRoot);
+            });
 
         _httpClient = _actionHostFactory.CreateClient(new WebApplicationFactoryClientOptions
         {
