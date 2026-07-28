@@ -56,9 +56,10 @@ var id = engine.Start(compiled);
 
 Console.WriteLine($"Execution started: {id}");
 
-// 待機状態の再開（README 参照: engine.PublishEvent("UserApproved")）
+// 単一アクティブ Wait・単一イベントなので PublishEvent シムで再開できる
+// （正本は ResumeWaitNode(executionId, nodeId, eventName)）
 await Task.Delay(100).ConfigureAwait(false);
-engine.PublishEvent("UserApproved");
+engine.PublishEvent(id, "UserApproved");
 
 await Task.Delay(1500).ConfigureAwait(false);
 var snapshot = engine.GetSnapshot(id);
@@ -86,7 +87,8 @@ sealed class AskUserState : IState<Unit, bool>
 {
     public async Task<bool> ExecuteAsync(StateContext ctx, Unit _, CancellationToken ct)
     {
-        await ctx.Events.WaitAsync("UserApproved", ct).ConfigureAwait(false);
+        var nodeId = string.IsNullOrWhiteSpace(ctx.NodeId) ? ctx.StateName : ctx.NodeId;
+        await ctx.Events.WaitForEventAsync(nodeId, ["UserApproved"], ct).ConfigureAwait(false);
         return true;
     }
 }

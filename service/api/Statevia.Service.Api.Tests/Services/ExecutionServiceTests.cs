@@ -1890,6 +1890,71 @@ public sealed class ExecutionServiceTests
         Assert.IsType<InvalidOperationException>(ex.InnerException);
     }
 
+    /// <summary>ResumeWaitNode の InvalidOperationException は 422（ApiValidationException）に写像する。</summary>
+    [Fact]
+    public async Task ResumeNodeAsync_WhenEngineRejects_ThrowsApiValidationException()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+        const string engineMessage = "Event 'reject' is not allowed for Wait state 'flow.approve.wait'.";
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["flow.approve.wait"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn =
+                """
+                {"nodes":[
+                  {"nodeId":"wait-1","stateName":"flow.approve.wait","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","allowedEvents":["approve"]}
+                ]}
+                """,
+            ResumeWaitNodeExceptionToThrow = new InvalidOperationException(engineMessage)
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository { NextFindValid = null },
+            engine: engine,
+            display: new FakeDisplayIdService { ResolveResultExecution = executionId },
+            executionRepo: new FakeExecutionRepository
+            {
+                ByIdResult = new ExecutionRow
+                {
+                    ExecutionId = executionId,
+                    TenantId = TestTenantIds.T1TenantId,
+                    DefinitionId = defId,
+                    Status = "Running",
+                    StartedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CancelRequested = false,
+                    RestartLost = false
+                }
+            },
+            eventStore: new FakeEventStoreRepository(),
+            waitRepo: new FakeExecutionWaitRepository());
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() =>
+            sut.ResumeNodeAsync(
+                idOrUuid: "X",
+                nodeId: "wait-1",
+                resumeKey: "reject",
+                idempotencyKey: null,
+                new CommandRequestContext("POST", "/v1/executions/X/nodes/wait-1/resume"),
+                CancellationToken.None));
+
+        // Assert
+        Assert.Equal(engineMessage, ex.Message);
+        Assert.IsType<InvalidOperationException>(ex.InnerException);
+    }
+
     /// <summary>PublishEvent 成功時、発行前の唯一アクティブ Wait nodeId で wait 行を先行削除する。</summary>
     [Fact]
     public async Task PublishEventAsync_WhenProceeding_ClearsSoleActiveWaitNodeId()

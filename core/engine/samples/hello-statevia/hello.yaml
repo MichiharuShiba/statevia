@@ -14,10 +14,8 @@ states:
 
   AskUser:
     wait:
-      event: UserApproved
-    on:
-      Completed:
-        next: Join1
+      events:
+        UserApproved: Join1
 
   Join1:
     join:
