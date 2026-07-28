@@ -53,8 +53,16 @@ export const definitionEditorUiTextEn: DefinitionEditorFeatureUiText = {
       startRequiresTransition: (nodeId: string) => `Node '${nodeId}': start requires next or edges.`,
       actionRequired: (nodeId: string) => `Node '${nodeId}': action node requires action.`,
       actionRequiresTransition: (nodeId: string) => `Node '${nodeId}': action requires next or edges.`,
-      waitEventRequired: (nodeId: string) => `Node '${nodeId}': wait node requires event.`,
-      waitRequiresTransition: (nodeId: string) => `Node '${nodeId}': wait requires next or edges.`,
+      waitEventRequired: (nodeId: string) =>
+        `Node '${nodeId}': wait node requires events or event.`,
+      waitRequiresTransition: (nodeId: string) =>
+        `Node '${nodeId}': legacy wait (event) requires next or edges.`,
+      waitEventsAndEventTogether: (nodeId: string) =>
+        `Node '${nodeId}': wait cannot use both events and event.`,
+      waitEventsCannotHaveEdges: (nodeId: string) =>
+        `Node '${nodeId}': wait cannot use edges with events; put targets in events.`,
+      waitEventTargetRequired: (nodeId: string, eventName: string) =>
+        `Node '${nodeId}': events['${eventName}'] requires a next node id.`,
       forkBranchesRequired: (nodeId: string) => `Node '${nodeId}': fork requires at least two branches.`,
       joinRequiresTransition: (nodeId: string) => `Node '${nodeId}': join requires next or edges.`,
       joinModeInvalid: (nodeId: string) => `Node '${nodeId}': join.mode must be 'all'.`,
@@ -109,6 +117,5 @@ export const definitionEditorUiTextEn: DefinitionEditorFeatureUiText = {
     hints: {
       title: "Fix hints",
     },
-
   },
 };

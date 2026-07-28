@@ -86,19 +86,51 @@ function parseVersion(value: unknown): number {
   return 1;
 }
 
+/** action ノードの error 遷移先を設定する。 */
+function applyActionErrorField(node: DefinitionGraphNode, value: Record<string, unknown>): void {
+  if (node.type !== "action") {
+    return;
+  }
+  const errorTarget = resolveEdgeToId(value.error);
+  if (errorTarget.trim().length > 0) {
+    node.error = errorTarget;
+  }
+}
+
+/** wait.events マップを文字列値のみ残して設定する。 */
+function applyWaitEventsField(node: DefinitionGraphNode, value: Record<string, unknown>): void {
+  if (!isRecord(value.events)) {
+    return;
+  }
+  const events: Record<string, string> = {};
+  for (const [eventName, rawTarget] of Object.entries(value.events)) {
+    if (typeof rawTarget === "string") {
+      events[eventName] = rawTarget;
+    }
+  }
+  node.events = events;
+}
+
+/** join.mode が all のときのみ設定する。 */
+function applyJoinModeField(node: DefinitionGraphNode, value: Record<string, unknown>): void {
+  if (node.type !== "join") {
+    return;
+  }
+  const modeRaw = value.mode;
+  if (typeof modeRaw === "string" && modeRaw.trim().toLowerCase() === "all") {
+    node.mode = "all";
+  }
+}
+
 function applyOptionalNodeFields(node: DefinitionGraphNode, value: Record<string, unknown>): void {
   if (typeof value.action === "string") {
     node.action = value.action;
   }
-  if (node.type === "action") {
-    const errorTarget = resolveEdgeToId(value.error);
-    if (errorTarget.trim().length > 0) {
-      node.error = errorTarget;
-    }
-  }
+  applyActionErrorField(node, value);
   if (typeof value.event === "string") {
     node.event = value.event;
   }
+  applyWaitEventsField(node, value);
   if (typeof value.next === "string") {
     node.next = value.next;
   }
@@ -113,12 +145,7 @@ function applyOptionalNodeFields(node: DefinitionGraphNode, value: Record<string
   if (typeof value.input === "string" || isRecord(value.input)) {
     node.input = value.input;
   }
-  if (node.type === "join") {
-    const modeRaw = value.mode;
-    if (typeof modeRaw === "string" && modeRaw.trim().toLowerCase() === "all") {
-      node.mode = "all";
-    }
-  }
+  applyJoinModeField(node, value);
 }
 
 function parseNode(value: unknown): DefinitionGraphNode | null {

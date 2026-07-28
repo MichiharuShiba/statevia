@@ -16,6 +16,9 @@ function opts(): ValidateGraphDocumentMessageOptions {
     actionRequiresTransition: m("actionTrans"),
     waitEventRequired: m("waitEvt"),
     waitRequiresTransition: m("waitTrans"),
+    waitEventsAndEventTogether: m("waitBoth"),
+    waitEventsCannotHaveEdges: m("waitEdges"),
+    waitEventTargetRequired: (nodeId, eventName) => `waitTarget:${nodeId}:${eventName}`,
     forkBranchesRequired: m("fork"),
     joinRequiresTransition: m("joinTrans"),
     joinModeInvalid: m("joinMode"),
@@ -182,5 +185,115 @@ describe("validateGraphDocument / edge.when.value", () => {
     const r = validateGraphDocument(doc, opts());
     expect(r.isValid).toBe(false);
     expect(r.messages).toContain("selfRef:a");
+  });
+});
+
+describe("validateGraphDocument / wait.events", () => {
+  it("events マップがあれば next/edges なしでも有効", () => {
+    // Arrange
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "w" },
+      nodes: [
+        { id: "s", type: "start", next: "w1" },
+        {
+          id: "w1",
+          type: "wait",
+          events: { approve: "ok", reject: "ng" }
+        },
+        { id: "ok", type: "action", action: "noop", next: "e" },
+        { id: "ng", type: "action", action: "noop", next: "e" },
+        { id: "e", type: "end" }
+      ]
+    };
+
+    // Act
+    const r = validateGraphDocument(doc, opts());
+
+    // Assert
+    expect(r.isValid).toBe(true);
+  });
+
+  it("旧形式 event+next は引き続き有効", () => {
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "w" },
+      nodes: [
+        { id: "s", type: "start", next: "w1" },
+        { id: "w1", type: "wait", event: "resume", next: "e" },
+        { id: "e", type: "end" }
+      ]
+    };
+    expect(validateGraphDocument(doc, opts()).isValid).toBe(true);
+  });
+
+  it("events と event の併用は拒否", () => {
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "w" },
+      nodes: [
+        { id: "s", type: "start", next: "w1" },
+        {
+          id: "w1",
+          type: "wait",
+          event: "resume",
+          events: { approve: "e" }
+        },
+        { id: "e", type: "end" }
+      ]
+    };
+    const r = validateGraphDocument(doc, opts());
+    expect(r.isValid).toBe(false);
+    expect(r.messages.some((x) => x.startsWith("waitBoth:"))).toBe(true);
+  });
+
+  it("events と edges の併用は拒否", () => {
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "w" },
+      nodes: [
+        { id: "s", type: "start", next: "w1" },
+        {
+          id: "w1",
+          type: "wait",
+          events: { approve: "e" },
+          edges: [{ to: "e" }]
+        },
+        { id: "e", type: "end" }
+      ]
+    };
+    const r = validateGraphDocument(doc, opts());
+    expect(r.isValid).toBe(false);
+    expect(r.messages.some((x) => x.startsWith("waitEdges:"))).toBe(true);
+  });
+
+  it("events の遷移先が空なら waitTarget", () => {
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "w" },
+      nodes: [
+        { id: "s", type: "start", next: "w1" },
+        { id: "w1", type: "wait", events: { approve: "  " } },
+        { id: "e", type: "end" }
+      ]
+    };
+    const r = validateGraphDocument(doc, opts());
+    expect(r.isValid).toBe(false);
+    expect(r.messages).toContain("waitTarget:w1:approve");
+  });
+
+  it("events の遷移先が未定義ノードなら missing", () => {
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "w" },
+      nodes: [
+        { id: "s", type: "start", next: "w1" },
+        { id: "w1", type: "wait", events: { approve: "unknown" } },
+        { id: "e", type: "end" }
+      ]
+    };
+    const r = validateGraphDocument(doc, opts());
+    expect(r.isValid).toBe(false);
+    expect(r.messages).toContain("missing:w1:unknown");
   });
 });

@@ -30,6 +30,8 @@ export type DefinitionGraphNode = {
   /** action: 失敗時の遷移先（on.Failed.next） */
   error?: string;
   event?: string;
+  /** wait: イベント名 → 遷移先ノード ID（新形式。event+next より優先） */
+  events?: Record<string, string>;
   next?: string;
   branches?: string[];
   edges?: DefinitionGraphEdge[];

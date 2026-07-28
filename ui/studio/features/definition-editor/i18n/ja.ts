@@ -50,8 +50,16 @@ export const definitionEditorUiTextJa: DefinitionEditorFeatureUiText = {
       startRequiresTransition: (nodeId: string) => `Node '${nodeId}': start は next または edges が必要です。`,
       actionRequired: (nodeId: string) => `Node '${nodeId}': action ノードは action が必須です。`,
       actionRequiresTransition: (nodeId: string) => `Node '${nodeId}': action は next または edges が必要です。`,
-      waitEventRequired: (nodeId: string) => `Node '${nodeId}': wait ノードは event が必須です。`,
-      waitRequiresTransition: (nodeId: string) => `Node '${nodeId}': wait は next または edges が必要です。`,
+      waitEventRequired: (nodeId: string) =>
+        `Node '${nodeId}': wait ノードは events または event が必須です。`,
+      waitRequiresTransition: (nodeId: string) =>
+        `Node '${nodeId}': wait の旧形式（event）は next または edges が必要です。`,
+      waitEventsAndEventTogether: (nodeId: string) =>
+        `Node '${nodeId}': wait の events と event は併用できません。`,
+      waitEventsCannotHaveEdges: (nodeId: string) =>
+        `Node '${nodeId}': wait の events と edges は併用できません。遷移先は events に書いてください。`,
+      waitEventTargetRequired: (nodeId: string, eventName: string) =>
+        `Node '${nodeId}': events['${eventName}'] の遷移先が必須です。`,
       forkBranchesRequired: (nodeId: string) => `Node '${nodeId}': fork は branches を2件以上指定してください。`,
       joinRequiresTransition: (nodeId: string) => `Node '${nodeId}': join は next または edges が必要です。`,
       joinModeInvalid: (nodeId: string) => `Node '${nodeId}': join.mode は 'all' のみ許可されます。`,
@@ -106,6 +114,5 @@ export const definitionEditorUiTextJa: DefinitionEditorFeatureUiText = {
     hints: {
       title: "修正ヒント",
     },
-
   },
 };
