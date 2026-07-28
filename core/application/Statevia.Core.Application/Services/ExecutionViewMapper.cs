@@ -99,10 +99,18 @@ internal static class ExecutionViewMapper
         return normalized.Count == 0 ? null : normalized;
     }
 
+    /// <summary>
+    /// グラフノードの UI 向け status を解決する。
+    /// 未完了 Wait は WAITING（Resume 可否と仕様の NodeStatus に合わせる）。
+    /// </summary>
     private static string MapNodeStatus(ExecutionNodeDto node)
     {
         if (node.CompletedAt is null)
-            return "RUNNING";
+        {
+            return string.Equals(node.NodeType, "Wait", StringComparison.OrdinalIgnoreCase)
+                ? "WAITING"
+                : "RUNNING";
+        }
 
         return node.Fact switch
         {
