@@ -89,4 +89,37 @@ describe("buildExecutionView", () => {
     expect(view.nodes[0]?.allowedEvents).toEqual(["approve", "reject"]);
     expect(view.nodes[0]?.canceledByExecution).toBe(true);
   });
+
+  it("未完了の Wait ノードは WAITING にする", () => {
+    // Arrange
+    const execution: ExecutionDTO = {
+      displayId: "ex-1",
+      resourceId: "r-1",
+      graphId: "def-1",
+      status: "Running",
+      startedAt: "2026-01-01T00:00:00Z",
+      cancelRequested: false,
+      restartLost: false
+    };
+    const graph: ExecutionGraphDTO = {
+      nodes: [
+        {
+          nodeId: "wait-1",
+          stateName: "flow.approve.wait",
+          nodeType: "Wait",
+          startedAt: "2026-01-01T00:00:00Z",
+          completedAt: null,
+          allowedEvents: ["approve", "reject"]
+        }
+      ],
+      edges: []
+    };
+
+    // Act
+    const view = buildExecutionView(execution, graph);
+
+    // Assert
+    expect(view.nodes[0]?.status).toBe("WAITING");
+    expect(view.nodes[0]?.allowedEvents).toEqual(["approve", "reject"]);
+  });
 });

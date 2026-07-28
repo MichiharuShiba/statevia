@@ -25,7 +25,7 @@ function graphNodeToExecutionNode(n: ExecutionGraphDTO["nodes"][0]): ExecutionNo
   const canceledByExecution = parseCanceledByExecution(n.canceledByExecution, factText);
   const conditionRouting = n.conditionRouting;
 
-  const status = resolveNodeStatus(completedAt, factText);
+  const status = resolveNodeStatus(completedAt, factText, nodeType);
 
   return {
     executionNodeId,
@@ -71,8 +71,18 @@ function parseCanceledByExecution(value: unknown, factText: string): boolean {
   return typeof value === "boolean" ? value : factText.includes("cancel");
 }
 
-function resolveNodeStatus(completedAt: string | null, factText: string): ExecutionNodeDTO["status"] {
-  if (completedAt == null) return "RUNNING";
+/**
+ * ノードの表示ステータスを解決する。
+ * 未完了の Wait は仕様どおり WAITING（Resume 可否判定と一致させる）。
+ */
+function resolveNodeStatus(
+  completedAt: string | null,
+  factText: string,
+  nodeType: string
+): ExecutionNodeDTO["status"] {
+  if (completedAt == null) {
+    return nodeType.toLowerCase() === "wait" ? "WAITING" : "RUNNING";
+  }
   if (factText.includes("fail")) return "FAILED";
   if (factText.includes("cancel")) return "CANCELED";
   return "SUCCEEDED";
