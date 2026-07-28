@@ -167,6 +167,46 @@ public sealed class ResumeWaitNodeTests
         Assert.Contains("not allowed", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>前後空白付き eventName でも ResumeWaitNode は許可イベントとして受理する。</summary>
+    [Fact]
+    public async Task ResumeWaitNode_AcceptsEventNameWithSurroundingWhitespace()
+    {
+        // Arrange
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+        var executionId = engine.Start(CreateSingleWaitDefinition());
+        await WaitUntilAsync(() => CountActiveWaits(engine, executionId) == 1);
+        var waitNodeId = GetActiveWaitNodeId(engine, executionId);
+
+        // Act
+        engine.ResumeWaitNode(executionId, waitNodeId, "  approve  ");
+        await WaitUntilAsync(() => engine.GetSnapshot(executionId)?.IsCompleted == true);
+
+        // Assert
+        Assert.True(engine.GetSnapshot(executionId)!.IsCompleted);
+    }
+
+    /// <summary>Wait output の event 名に空白があっても route table で遷移できる。</summary>
+    [Fact]
+    public async Task ResumeWaitNode_FollowsRoute_WhenOutputEventHasSurroundingWhitespace()
+    {
+        // Arrange
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+        var executionId = engine.Start(CreateSingleWaitDefinitionWithPaddedOutputEvent());
+        await WaitUntilAsync(() => CountActiveWaits(engine, executionId) == 1);
+        var waitNodeId = GetActiveWaitNodeId(engine, executionId);
+
+        // Act
+        engine.ResumeWaitNode(executionId, waitNodeId, "approve");
+        await WaitUntilAsync(() => engine.GetSnapshot(executionId)?.IsCompleted == true);
+
+        // Assert
+        Assert.True(engine.GetSnapshot(executionId)!.IsCompleted);
+        Assert.Contains(
+            GetGraphNodes(engine, executionId),
+            n => string.Equals(n.StateName, "Approved", StringComparison.OrdinalIgnoreCase)
+                && n.IsCompleted);
+    }
+
     private static CompiledWorkflowDefinition CreateMultiEventWaitDefinition() => new()
     {
         Name = "MultiEventWait",
@@ -225,6 +265,35 @@ public sealed class ResumeWaitNodeTests
         StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>(StringComparer.OrdinalIgnoreCase)
         {
             ["ApproveTask"] = DefaultStateExecutor.Create(new NodeScopedWaitState("approve")),
+            ["Approved"] = DefaultStateExecutor.Create(new ImmediateState()),
+        }),
+    };
+
+    /// <summary>Wait output の event に意図的に空白を付けて route 解決の Trim を検証する定義。</summary>
+    private static CompiledWorkflowDefinition CreateSingleWaitDefinitionWithPaddedOutputEvent() => new()
+    {
+        Name = "SingleWaitPaddedOutput",
+        Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ApproveTask"] = new Dictionary<string, TransitionTarget>(StringComparer.OrdinalIgnoreCase),
+            ["Approved"] = new Dictionary<string, TransitionTarget>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Completed"] = new TransitionTarget { End = true },
+            },
+        },
+        ForkTable = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase),
+        JoinTable = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase),
+        WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ApproveTask"] = new Dictionary<string, WaitEventRouteDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["approve"] = new WaitEventRouteDefinition { Next = "Approved" },
+            },
+        },
+        InitialState = "ApproveTask",
+        StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ApproveTask"] = DefaultStateExecutor.Create(new PaddedOutputWaitState("approve")),
             ["Approved"] = DefaultStateExecutor.Create(new ImmediateState()),
         }),
     };
@@ -348,6 +417,23 @@ public sealed class ResumeWaitNodeTests
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["event"] = eventName,
+            };
+        }
+    }
+
+    /// <summary>受信イベント名を空白付きで output に載せ、route ルックアップの Trim を検証する。</summary>
+    private sealed class PaddedOutputWaitState(params string[] eventNames) : IState<Unit, IReadOnlyDictionary<string, string>>
+    {
+        public async Task<IReadOnlyDictionary<string, string>> ExecuteAsync(
+            StateContext ctx,
+            Unit _,
+            CancellationToken ct)
+        {
+            var nodeId = string.IsNullOrWhiteSpace(ctx.NodeId) ? ctx.StateName : ctx.NodeId;
+            var eventName = await ctx.Events.WaitForEventAsync(nodeId, eventNames, ct).ConfigureAwait(false);
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["event"] = $"  {eventName}  ",
             };
         }
     }

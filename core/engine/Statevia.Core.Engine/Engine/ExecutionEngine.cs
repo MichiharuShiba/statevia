@@ -103,14 +103,16 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
                 $"Node '{nodeId}' is not an active Wait node in execution '{executionId}'.");
         }
 
+        // EventProvider.Resume と route table キー（Load 時 Trim）に合わせて正規化する。
+        var trimmedEventName = eventName.Trim();
         if (!instance.Definition.WaitEventRouteTable.TryGetValue(node.StateName, out var routes)
-            || !routes.ContainsKey(eventName))
+            || !routes.ContainsKey(trimmedEventName))
         {
             throw new InvalidOperationException(
-                $"Event '{eventName}' is not allowed for Wait state '{node.StateName}'.");
+                $"Event '{trimmedEventName}' is not allowed for Wait state '{node.StateName}'.");
         }
 
-        eventProvider.Resume(nodeId, eventName);
+        eventProvider.Resume(nodeId, trimmedEventName);
     }
 
     /// <inheritdoc />
@@ -144,10 +146,11 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 
         // シムは「唯一の許可イベント」と呼び出し eventName が一致するときだけ委譲する。
         var soleAllowedEvent = routes.Keys.First();
-        if (!string.Equals(soleAllowedEvent, eventName, StringComparison.OrdinalIgnoreCase))
+        var trimmedEventName = eventName.Trim();
+        if (!string.Equals(soleAllowedEvent, trimmedEventName, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
-                $"PublishEvent event '{eventName}' does not match the sole allowed event '{soleAllowedEvent}' for Wait state '{waitNode.StateName}'.");
+                $"PublishEvent event '{trimmedEventName}' does not match the sole allowed event '{soleAllowedEvent}' for Wait state '{waitNode.StateName}'.");
         }
 
         ResumeWaitNode(executionId, waitNode.NodeId, soleAllowedEvent);
@@ -635,13 +638,13 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             case IReadOnlyDictionary<string, string> stringMap
                 when stringMap.TryGetValue("event", out var fromString)
                      && !string.IsNullOrWhiteSpace(fromString):
-                eventName = fromString;
+                eventName = fromString.Trim();
                 return true;
             case IReadOnlyDictionary<string, object?> objectMap
                 when objectMap.TryGetValue("event", out var raw)
                      && raw is string fromObject
                      && !string.IsNullOrWhiteSpace(fromObject):
-                eventName = fromObject;
+                eventName = fromObject.Trim();
                 return true;
             default:
                 return false;

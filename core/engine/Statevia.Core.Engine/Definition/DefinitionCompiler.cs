@@ -224,7 +224,11 @@ public sealed class DefinitionCompiler
             var routes = new Dictionary<string, WaitEventRouteDefinition>(StringComparer.OrdinalIgnoreCase);
             foreach (var (eventName, next) in stateDef.Wait.Events)
             {
-                routes[eventName] = new WaitEventRouteDefinition { Next = next };
+                var trimmedEvent = eventName.Trim();
+                routes[trimmedEvent] = new WaitEventRouteDefinition
+                {
+                    Next = (next ?? string.Empty).Trim()
+                };
             }
 
             result[stateName] = routes;
