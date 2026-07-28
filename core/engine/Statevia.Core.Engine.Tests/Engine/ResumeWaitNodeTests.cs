@@ -207,6 +207,30 @@ public sealed class ResumeWaitNodeTests
                 && n.IsCompleted);
     }
 
+    /// <summary>
+    /// Wait ルートの Next が空のとき FSM（on.Completed）へフォールバックして遷移することを検証する。
+    /// </summary>
+    [Fact]
+    public async Task ResumeWaitNode_FallsBackToFsm_WhenRouteNextIsEmpty()
+    {
+        // Arrange
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+        var executionId = engine.Start(CreateSingleWaitDefinitionWithEmptyRouteNext());
+        await WaitUntilAsync(() => CountActiveWaits(engine, executionId) == 1);
+        var waitNodeId = GetActiveWaitNodeId(engine, executionId);
+
+        // Act
+        engine.ResumeWaitNode(executionId, waitNodeId, "approve");
+        await WaitUntilAsync(() => engine.GetSnapshot(executionId)?.IsCompleted == true);
+
+        // Assert
+        Assert.True(engine.GetSnapshot(executionId)!.IsCompleted);
+        Assert.Contains(
+            GetGraphNodes(engine, executionId),
+            n => string.Equals(n.StateName, "Approved", StringComparison.OrdinalIgnoreCase)
+                && n.IsCompleted);
+    }
+
     private static CompiledWorkflowDefinition CreateMultiEventWaitDefinition() => new()
     {
         Name = "MultiEventWait",
@@ -294,6 +318,40 @@ public sealed class ResumeWaitNodeTests
         StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>(StringComparer.OrdinalIgnoreCase)
         {
             ["ApproveTask"] = DefaultStateExecutor.Create(new PaddedOutputWaitState("approve")),
+            ["Approved"] = DefaultStateExecutor.Create(new ImmediateState()),
+        }),
+    };
+
+    /// <summary>
+    /// ルート Next が空で、遷移先は Transitions の Completed にのみある定義（旧 wait.event + on.Completed 相当）。
+    /// </summary>
+    private static CompiledWorkflowDefinition CreateSingleWaitDefinitionWithEmptyRouteNext() => new()
+    {
+        Name = "SingleWaitEmptyRouteNext",
+        Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ApproveTask"] = new Dictionary<string, TransitionTarget>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Completed"] = new TransitionTarget { Next = "Approved" },
+            },
+            ["Approved"] = new Dictionary<string, TransitionTarget>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Completed"] = new TransitionTarget { End = true },
+            },
+        },
+        ForkTable = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase),
+        JoinTable = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase),
+        WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ApproveTask"] = new Dictionary<string, WaitEventRouteDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["approve"] = new WaitEventRouteDefinition { Next = "   " },
+            },
+        },
+        InitialState = "ApproveTask",
+        StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ApproveTask"] = DefaultStateExecutor.Create(new NodeScopedWaitState("approve")),
             ["Approved"] = DefaultStateExecutor.Create(new ImmediateState()),
         }),
     };

@@ -594,7 +594,8 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
     /// Wait 完了時に <see cref="CompiledWorkflowDefinition.WaitEventRouteTable"/> から次状態を解決する。
     /// </summary>
     /// <remarks>
-    /// 次状態は route table が正本。監査用 output の event 名はルックアップキーとしてのみ使う。
+    /// <para>次状態は route table が正本。監査用 output の event 名はルックアップキーとしてのみ使う。</para>
+    /// <para>ルートにイベントはあるが <c>Next</c> が空のときは false を返し、通常の FSM（on.Completed）へフォールバックする。</para>
     /// </remarks>
     private static bool TryResolveWaitEventRoute(
         CompiledWorkflowDefinition definition,
@@ -619,10 +620,16 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             return false;
         }
 
-        if (!routes.TryGetValue(eventName, out var route)
-            || string.IsNullOrWhiteSpace(route.Next))
+        if (!routes.TryGetValue(eventName, out var route))
         {
+            // ルートに無いイベントは Wait ルート解決済みとして FSM へ落とさない。
             return true;
+        }
+
+        // Next 未設定（旧 wait.event + on.Completed など）は通常の FSM 評価に委ねる。
+        if (string.IsNullOrWhiteSpace(route.Next))
+        {
+            return false;
         }
 
         transition = TransitionResult.ToNext(route.Next);
