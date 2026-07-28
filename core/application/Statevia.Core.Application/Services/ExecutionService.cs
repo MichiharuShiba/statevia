@@ -546,7 +546,9 @@ internal sealed class ExecutionService : IExecutionService
         var engineId = uuid.Value.ToString();
         var prePublishGraphJson = _engine.ExportExecutionGraph(engineId);
 
-        var publishApply = _engine.PublishEvent(engineId, eventName, clientEventId);
+        // PublishEvent シム条件外（複数 Wait / 複数 events 等）は設計どおり 422。
+        var publishApply = InvokeEngineWaitMutation(
+            () => _engine.PublishEvent(engineId, eventName, clientEventId));
         var skipEventAppend = publishApply.IsAlreadyApplied;
         var nodeIdToClearFromGraph = publishApply.IsApplied
             ? TryResolveSoleActiveWaitNodeId(prePublishGraphJson)
@@ -786,8 +788,9 @@ internal sealed class ExecutionService : IExecutionService
         EnsureEngineRuntimePresentForMutation(uuid.Value, execution);
 
         // Resume 正本: nodeId + eventName。wait 行は nodeId で先行削除する。
+        // 許可外イベント・非アクティブ Wait などは 422。
         var engineId = uuid.Value.ToString();
-        _engine.ResumeWaitNode(engineId, nodeId, eventName);
+        InvokeEngineWaitMutation(() => _engine.ResumeWaitNode(engineId, nodeId, eventName));
 
         var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var publishedPayload = JsonSerializer.Serialize(
@@ -1179,6 +1182,41 @@ internal sealed class ExecutionService : IExecutionService
         var graphJson = _engine.ExportExecutionGraph(engineId);
         var status = MapStatus(snapshot);
         return (status, snapshot.IsCancelled, graphJson);
+    }
+
+    /// <summary>
+    /// Engine Wait 操作の <see cref="InvalidOperationException"/> を API 422 に写像する。
+    /// </summary>
+    /// <remarks>
+    /// PublishEvent シム条件外・Resume の許可外イベントなどは Engine が
+    /// <see cref="InvalidOperationException"/> を投げる。クライアント向けには
+    /// <see cref="ApiValidationException"/>（422）へ変換する。
+    /// </remarks>
+    private static T InvokeEngineWaitMutation<T>(Func<T> action)
+    {
+        try
+        {
+            return action();
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new ApiValidationException(ex.Message, ex);
+        }
+    }
+
+    /// <summary>
+    /// Engine Wait 操作の <see cref="InvalidOperationException"/> を API 422 に写像する。
+    /// </summary>
+    private static void InvokeEngineWaitMutation(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new ApiValidationException(ex.Message, ex);
+        }
     }
 
     /// <summary>

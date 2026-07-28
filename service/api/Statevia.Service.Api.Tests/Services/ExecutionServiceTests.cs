@@ -126,8 +126,17 @@ public sealed class ExecutionServiceTests
             return executionId ?? "generated";
         }
 
+        /// <summary>設定時、PublishEvent(executionId, name, clientEventId) がこの例外を投げる。</summary>
+        public Exception? PublishEventExceptionToThrow { get; set; }
+
+        /// <summary>設定時、ResumeWaitNode がこの例外を投げる。</summary>
+        public Exception? ResumeWaitNodeExceptionToThrow { get; set; }
+
         public void ResumeWaitNode(string executionId, string nodeId, string eventName)
         {
+            if (ResumeWaitNodeExceptionToThrow is { } resumeEx)
+                throw resumeEx;
+
             ResumeWaitNodeLastExecutionId = executionId;
             ResumeWaitNodeLastNodeId = nodeId;
             ResumeWaitNodeLastEventName = eventName;
@@ -142,6 +151,9 @@ public sealed class ExecutionServiceTests
 
         public ApplyResult PublishEvent(string executionId, string eventName, Guid clientEventId)
         {
+            if (PublishEventExceptionToThrow is { } publishEx)
+                throw publishEx;
+
             PublishEventLastExecutionId = executionId;
             PublishEventLastName = eventName;
             PublishEventLastClientEventId = clientEventId;
@@ -1811,6 +1823,71 @@ public sealed class ExecutionServiceTests
 
         Assert.Null(engine.PublishEventLastExecutionId);
         Assert.Null(engine.PublishEventLastName);
+    }
+
+    /// <summary>PublishEvent シム条件外の InvalidOperationException は 422（ApiValidationException）に写像する。</summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenEngineRejectsShim_ThrowsApiValidationException()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+        const string engineMessage =
+            "PublishEvent requires the active Wait state 'flow.approve.wait' to have exactly one event.";
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["flow.approve.wait"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn =
+                """
+                {"nodes":[
+                  {"nodeId":"wait-1","stateName":"flow.approve.wait","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","allowedEvents":["approve","reject"]}
+                ]}
+                """,
+            PublishEventExceptionToThrow = new InvalidOperationException(engineMessage)
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository { NextFindValid = null },
+            engine: engine,
+            display: new FakeDisplayIdService { ResolveResultExecution = executionId },
+            executionRepo: new FakeExecutionRepository
+            {
+                ByIdResult = new ExecutionRow
+                {
+                    ExecutionId = executionId,
+                    TenantId = TestTenantIds.T1TenantId,
+                    DefinitionId = defId,
+                    Status = "Running",
+                    StartedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CancelRequested = false,
+                    RestartLost = false
+                }
+            },
+            eventStore: new FakeEventStoreRepository(),
+            waitRepo: new FakeExecutionWaitRepository());
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() =>
+            sut.PublishEventAsync(
+                idOrUuid: "X",
+                eventName: "approve",
+                idempotencyKey: null,
+                new CommandRequestContext("POST", "/v1/executions/events"),
+                CancellationToken.None));
+
+        // Assert
+        Assert.Equal(engineMessage, ex.Message);
+        Assert.IsType<InvalidOperationException>(ex.InnerException);
     }
 
     /// <summary>PublishEvent 成功時、発行前の唯一アクティブ Wait nodeId で wait 行を先行削除する。</summary>
