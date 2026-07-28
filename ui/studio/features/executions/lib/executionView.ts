@@ -20,6 +20,7 @@ function graphNodeToExecutionNode(n: ExecutionGraphDTO["nodes"][0]): ExecutionNo
   const attempt = parseAttempt(n);
   const workerId = parseNullableString(n.workerId);
   const waitKey = parseNullableString(n.waitKey);
+  const allowedEvents = parseAllowedEvents(n.allowedEvents);
   const factText = toFactText(fact);
   const canceledByExecution = parseCanceledByExecution(n.canceledByExecution, factText);
   const conditionRouting = n.conditionRouting;
@@ -34,6 +35,7 @@ function graphNodeToExecutionNode(n: ExecutionGraphDTO["nodes"][0]): ExecutionNo
     attempt,
     workerId,
     waitKey,
+    allowedEvents,
     canceledByExecution,
     startedAt,
     completedAt,
@@ -49,6 +51,16 @@ function parseAttempt(node: ExecutionGraphDTO["nodes"][0]): number {
 
 function parseNullableString(value: unknown): string | null {
   return typeof value === "string" ? value : null;
+}
+
+/** API の allowedEvents 配列を UI 向けに正規化する（非文字列・空白は除外）。 */
+function parseAllowedEvents(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  const events = value
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+  return events.length > 0 ? events : null;
 }
 
 function toFactText(fact: unknown): string {

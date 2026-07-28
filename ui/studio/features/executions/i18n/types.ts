@@ -77,12 +77,16 @@ export type ExecutionsFeatureUiText = {
       workerId: (workerId: string) => string;
       attempt: (attempt: number) => string;
       waitKey: (waitKey: string) => string;
+      /** 受付イベント一覧の表示（カンマ区切り文字列）。 */
+      allowedEvents: (events: string) => string;
       canceledByExecution: (canceledByExecution: boolean) => string;
     };
     waiting: {
       title: string;
       reasonWaitByWaitKeyAndResumeWait: string;
       resumeEventName: (eventName: string) => string;
+      /** 複数イベント時の選択ラベル。 */
+      selectResumeEvent: string;
     };
     cancel: {
       detailTitle: (cancelLabel: string) => string;
@@ -232,6 +236,8 @@ export type ExecutionsFeatureUiText = {
       executionTerminal: string;
       cancelRequested: string;
       waitingOnly: string;
+      /** 受付イベントが無いため Resume できない。 */
+      noResumeEvent: string;
     };
 
   };

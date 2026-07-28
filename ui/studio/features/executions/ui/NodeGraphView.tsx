@@ -27,6 +27,7 @@ import type { NodeStatus } from "../types";
 import { useUiText } from "@/shared/i18n/uiTextContext";
 import { GraphLegend } from "./GraphLegend";
 import { GraphNodeShell } from "@/shared/ui/GraphNodeShell";
+import { resolveWaitResumeEvents } from "../lib/waitResumeEvents";
 
 /** NodeDiffHighlight の型定義。 */
 export type NodeDiffHighlight = Record<string, { isFailureOrCancel: boolean }>;
@@ -41,9 +42,11 @@ type ExecutionNodeData = {
   status: NodeStatus;
   attempt: number;
   waitKey: string | null;
+  allowedEvents?: string[] | null;
   selected: boolean;
   onSelect: (nodeId: string) => void;
-  onResume: (executionNodeId: string) => void;
+  /** Resume API 呼び出し（nodeId + イベント名）。 */
+  onResume: (executionNodeId: string, eventName: string) => void;
   resumeDisabledReason: string | null;
   /** 比較モード時の差分ハイライト（該当時のみ ring 表示） */
   diffHighlight?: { isFailureOrCancel: boolean } | null;
@@ -97,20 +100,7 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
 
   const waitingResumeSection =
     data.status === "WAITING" ? (
-      <div className={`shrink-0 ${isGateway ? "mt-2" : "mt-3"}`}>
-        <button
-          type="button"
-          className="nodrag w-full cursor-pointer rounded-lg bg-amber-500 px-2 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
-          onClick={(event) => {
-            event.stopPropagation();
-            data.onResume(data.executionNodeId);
-          }}
-          disabled={!!data.resumeDisabledReason}
-        >
-          {uiText.actions.resume}
-        </button>
-        {data.resumeDisabledReason && <p className="mt-1 text-[10px] text-[var(--md-sys-color-on-surface-variant)]">{data.resumeDisabledReason}</p>}
-      </div>
+      <WaitingResumeControls data={data} isGateway={isGateway} />
     ) : null;
 
   return (
@@ -147,6 +137,59 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
         position={Position.Bottom}
         className="h-2 w-2 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]"
       />
+    </div>
+  );
+}
+
+function WaitingResumeControls({
+  data,
+  isGateway
+}: Readonly<{ data: ExecutionNodeData; isGateway: boolean }>) {
+  const uiText = useUiText();
+  const resumeEvents = resolveWaitResumeEvents(data);
+  const resumeEventsKey = resumeEvents.join("\0");
+  const [selectedEvent, setSelectedEvent] = useState(resumeEvents[0] ?? "");
+  const effectiveEvent =
+    selectedEvent.trim().length > 0 ? selectedEvent.trim() : (resumeEvents[0] ?? "");
+  const disabled = !!data.resumeDisabledReason || effectiveEvent.length === 0;
+
+  useEffect(() => {
+    const nextEvents = resumeEventsKey.length > 0 ? resumeEventsKey.split("\0") : [];
+    setSelectedEvent(nextEvents[0] ?? "");
+  }, [data.executionNodeId, resumeEventsKey]);
+
+  return (
+    <div className={`shrink-0 ${isGateway ? "mt-2" : "mt-3"} space-y-1`}>
+      {resumeEvents.length > 1 && (
+        <select
+          className="nodrag w-full rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] px-1.5 py-1 text-[10px]"
+          value={effectiveEvent}
+          disabled={disabled}
+          onClick={(event) => event.stopPropagation()}
+          onChange={(event) => setSelectedEvent(event.target.value)}
+          aria-label={uiText.nodeDetail.waiting.selectResumeEvent}
+        >
+          {resumeEvents.map((eventName) => (
+            <option key={eventName} value={eventName}>
+              {eventName}
+            </option>
+          ))}
+        </select>
+      )}
+      <button
+        type="button"
+        className="nodrag w-full cursor-pointer rounded-lg bg-amber-500 px-2 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={(event) => {
+          event.stopPropagation();
+          data.onResume(data.executionNodeId, effectiveEvent);
+        }}
+        disabled={disabled}
+      >
+        {uiText.actions.resume}
+      </button>
+      {data.resumeDisabledReason && (
+        <p className="mt-1 text-[10px] text-[var(--md-sys-color-on-surface-variant)]">{data.resumeDisabledReason}</p>
+      )}
     </div>
   );
 }
@@ -194,7 +237,7 @@ type NodeGraphViewProps = {
   groups: GroupBounds[];
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string | null) => void;
-  onResumeNode: (nodeId: string) => void;
+  onResumeNode: (nodeId: string, eventName: string) => void;
   getResumeDisabledReason: (nodeId: string) => string | null;
   heightClassName?: string;
   /** 復元する viewport（指定時は fitView を行わずこの位置・ズームで表示） */
@@ -247,9 +290,10 @@ export function NodeGraphView({
         status: node.status,
         attempt: node.attempt,
         waitKey: node.waitKey,
+        allowedEvents: node.allowedEvents ?? null,
         selected: false,
         onSelect: (id: string) => onSelectNode(id),
-        onResume: (id: string) => onResumeNode(id),
+        onResume: (id: string, eventName: string) => onResumeNode(id, eventName),
         resumeDisabledReason: getResumeDisabledReason(node.nodeId),
         diffHighlight: nodeDiffHighlight?.[node.executionNodeId] ?? null
       },
@@ -283,7 +327,7 @@ export function NodeGraphView({
           selected: selectedNodeId === d.nodeId,
           resumeDisabledReason: getResumeDisabledReason(d.nodeId),
           onSelect: (id: string) => onSelectNode(id),
-          onResume: (id: string) => onResumeNode(id),
+          onResume: (id: string, eventName: string) => onResumeNode(id, eventName),
           diffHighlight: nodeDiffHighlight?.[d.executionNodeId] ?? null
         }
       };

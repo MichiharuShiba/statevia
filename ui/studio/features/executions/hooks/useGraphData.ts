@@ -99,6 +99,7 @@ export function getNodeWithFallback(
     attempt: mergedNode.attempt,
     workerId: mergedNode.workerId,
     waitKey: mergedNode.waitKey,
+    allowedEvents: mergedNode.allowedEvents ?? null,
     canceledByExecution: mergedNode.canceledByExecution
   };
 }

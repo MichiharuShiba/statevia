@@ -1,0 +1,64 @@
+# =============================================================================
+# UI 動作確認用: Wait 複数イベント（approve / reject）
+# -----------------------------------------------------------------------------
+# 配置: docs/samples/ui-wait-multi-event.yaml
+#
+# 確認手順（概要）:
+#   1. Studio で Definition を新規作成し、本 YAML を貼り付けて保存・Publish
+#   2. 実行を開始する（入力は不要。noop のみ）
+#   3. Run 画面で Wait ノード（承認待ち）を選択
+#   4. allowedEvents に approve / reject が出ること、イベント選択 UI が出ることを確認
+#   5. どちらかを選んで Resume → 対応する分岐へ進むこと
+#
+# 注意:
+#   - DefinitionGraphEditor の複数 events 編集 UI は未実装のため、YAML 直編集で投入する
+#   - wait.events と edges の併用は不可
+# =============================================================================
+
+version: 1
+
+workflow:
+  id: sample.wait.multi.event
+  name: WaitMultiEventSample
+  description: >
+    単一 Wait で approve / reject を選択 Resume する最小サンプル。
+    UI のイベント選択と allowedEvents 表示の確認用。
+
+nodes:
+  - id: flow.start
+    type: start
+    label: 開始
+    next: flow.prepare
+
+  - id: flow.prepare
+    type: action
+    label: 準備（noop）
+    action: noop
+    next: flow.approve.wait
+
+  - id: flow.approve.wait
+    type: wait
+    label: 承認待ち
+    events:
+      approve: flow.approved
+      reject: flow.rejected
+
+  - id: flow.approved
+    type: action
+    label: 承認後処理
+    action: noop
+    input:
+      result: approved
+    next: flow.end
+
+  - id: flow.rejected
+    type: action
+    label: 却下後処理
+    action: noop
+    input:
+      result: rejected
+    next: flow.end
+
+  - id: flow.end
+    type: end
+    label: 完了

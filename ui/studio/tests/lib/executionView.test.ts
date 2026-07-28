@@ -71,6 +71,7 @@ describe("buildExecutionView", () => {
           attempt: 2,
           workerId: "wk-1",
           waitKey: "resume-key",
+          allowedEvents: ["approve", "reject"],
           canceledByExecution: true
         }
       ],
@@ -85,6 +86,7 @@ describe("buildExecutionView", () => {
     expect(view.nodes[0]?.attempt).toBe(2);
     expect(view.nodes[0]?.workerId).toBe("wk-1");
     expect(view.nodes[0]?.waitKey).toBe("resume-key");
+    expect(view.nodes[0]?.allowedEvents).toEqual(["approve", "reject"]);
     expect(view.nodes[0]?.canceledByExecution).toBe(true);
   });
 });

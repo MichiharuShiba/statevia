@@ -53,7 +53,7 @@ describe("useNodeCommands", () => {
 
     // Act
     await act(async () => {
-      result.current.resumeNode("n-1");
+      await result.current.resumeNode("n-1", "wk-1");
     });
 
     // Assert
@@ -64,18 +64,46 @@ describe("useNodeCommands", () => {
     expect(onSuccess).toHaveBeenCalled();
   });
 
+  it("複数 allowedEvents 時は引数の resumeKey を送る", async () => {
+    // Arrange
+    const exec = execWithNodes([
+      {
+        executionNodeId: "n-1",
+        nodeType: "Wait",
+        status: "WAITING",
+        attempt: 1,
+        workerId: null,
+        waitKey: null,
+        allowedEvents: ["approve", "reject"],
+        canceledByExecution: false
+      }
+    ]);
+    const { result } = renderHook(() => useNodeCommands(exec));
+
+    // Act
+    await act(async () => {
+      await result.current.resumeNode("n-1", "reject");
+    });
+
+    // Assert
+    expect(api.apiPost).toHaveBeenCalledWith(
+      "/executions/ex-1/nodes/n-1/resume",
+      { resumeKey: "reject" }
+    );
+  });
+
   it("apiPost が throw したとき onError を呼ぶ", async () => {
     // Arrange
     vi.mocked(api.apiPost).mockRejectedValueOnce(new Error("Network error"));
     const exec = execWithNodes([
-      { executionNodeId: "n-1", nodeType: "TASK", status: "WAITING", attempt: 1, workerId: null, waitKey: null, canceledByExecution: false }
+      { executionNodeId: "n-1", nodeType: "TASK", status: "WAITING", attempt: 1, workerId: null, waitKey: "wk-1", canceledByExecution: false }
     ]);
     const onError = vi.fn();
     const { result } = renderHook(() => useNodeCommands(exec, { onError }));
 
     // Act
     await act(async () => {
-      result.current.resumeNode("n-1");
+      await result.current.resumeNode("n-1", "wk-1");
     });
 
     // Assert
@@ -88,7 +116,7 @@ describe("useNodeCommands", () => {
 
     // Act
     await act(async () => {
-      result.current.resumeNode("n-1");
+      await result.current.resumeNode("n-1", "wk-1");
     });
 
     // Assert
@@ -98,13 +126,29 @@ describe("useNodeCommands", () => {
   it("nodeId が execution に無いとき apiPost を呼ばない", async () => {
     // Arrange
     const exec = execWithNodes([
-      { executionNodeId: "n-1", nodeType: "TASK", status: "WAITING", attempt: 1, workerId: null, waitKey: null, canceledByExecution: false }
+      { executionNodeId: "n-1", nodeType: "TASK", status: "WAITING", attempt: 1, workerId: null, waitKey: "wk-1", canceledByExecution: false }
     ]);
     const { result } = renderHook(() => useNodeCommands(exec));
 
     // Act
     await act(async () => {
-      result.current.resumeNode("n-missing");
+      await result.current.resumeNode("n-missing", "wk-1");
+    });
+
+    // Assert
+    expect(api.apiPost).not.toHaveBeenCalled();
+  });
+
+  it("resumeKey が空白のみのとき apiPost を呼ばない", async () => {
+    // Arrange
+    const exec = execWithNodes([
+      { executionNodeId: "n-1", nodeType: "TASK", status: "WAITING", attempt: 1, workerId: null, waitKey: "wk-1", canceledByExecution: false }
+    ]);
+    const { result } = renderHook(() => useNodeCommands(exec));
+
+    // Act
+    await act(async () => {
+      await result.current.resumeNode("n-1", "   ");
     });
 
     // Assert

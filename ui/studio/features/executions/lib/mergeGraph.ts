@@ -16,6 +16,8 @@ export type MergedGraphNode = {
   /** ランタイム行がマージされたときのワーカー ID（定義のみの IDLE 行では null）。 */
   workerId: string | null;
   waitKey: string | null;
+  /** Wait が受付可能なイベント名一覧（任意）。 */
+  allowedEvents?: string[] | null;
   canceledByExecution: boolean;
 };
 
@@ -52,6 +54,7 @@ function asIdleNode(nodeId: string, stateName: string, nodeType: string): Execut
     attempt: 0,
     workerId: null,
     waitKey: null,
+    allowedEvents: null,
     canceledByExecution: false
   };
 }
@@ -105,6 +108,7 @@ export function mergeGraph(execution: ExecutionView, definition: GraphDefinition
         attempt: n.attempt,
         workerId: n.workerId,
         waitKey: n.waitKey,
+        allowedEvents: n.allowedEvents ?? null,
         canceledByExecution: n.canceledByExecution
       })),
       edges: [],
@@ -141,6 +145,7 @@ export function mergeGraph(execution: ExecutionView, definition: GraphDefinition
       attempt: runtimeNode.attempt,
       workerId: runtimeNode.workerId,
       waitKey: runtimeNode.waitKey,
+      allowedEvents: runtimeNode.allowedEvents ?? null,
       canceledByExecution: runtimeNode.canceledByExecution
     };
   });

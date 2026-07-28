@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { ExecutionNodeDTO, ExecutionView } from "../types";
 import { formatTracePayload } from "../lib/formatExecutionTrace";
+import { resolveWaitResumeEvents } from "../lib/waitResumeEvents";
 import { getStatusStyle } from "@/shared/lib/statusStyle";
 import { useUiText } from "@/shared/i18n/uiTextContext";
 import { NodeDetailStatusPanels, NodeDetailTraceSection } from "./nodeDetailSections";
@@ -10,7 +12,8 @@ type NodeDetailProps = {
   execution: ExecutionView | null;
   node: ExecutionNodeDTO | null;
   loading: boolean;
-  onResume: () => void;
+  /** 選択したイベント名で Resume する。 */
+  onResume: (eventName: string) => void;
   resumeDisabledReason: string | null;
   /** WAITING ノードの Resume に必要なイベント名（グラフ定義の Resume エッジから取得） */
   resumeEventName?: string | null;
@@ -33,6 +36,14 @@ export function NodeDetail({
   const uiText = useUiText();
   const baseClassName = "rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm";
   const asideClassName = className ? `${baseClassName} ${className}` : baseClassName;
+  const resumeEvents = node ? resolveWaitResumeEvents(node) : [];
+  const [selectedResumeEvent, setSelectedResumeEvent] = useState(resumeEvents[0] ?? "");
+  const resumeEventsKey = resumeEvents.join("\0");
+
+  useEffect(() => {
+    const nextEvents = resumeEventsKey.length > 0 ? resumeEventsKey.split("\0") : [];
+    setSelectedResumeEvent(nextEvents[0] ?? "");
+  }, [node?.executionNodeId, resumeEventsKey]);
 
   if (!execution) {
     return (
@@ -66,6 +77,10 @@ export function NodeDetail({
     ("input" in node && node.input !== undefined) ||
     ("output" in node && node.output !== undefined) ||
     ("conditionRouting" in node && node.conditionRouting !== undefined);
+  const allowedEventsLabel =
+    resumeEvents.length > 0 ? resumeEvents.join(", ") : "—";
+  const effectiveResumeEvent =
+    selectedResumeEvent.trim().length > 0 ? selectedResumeEvent.trim() : (resumeEvents[0] ?? "");
 
   return (
     <aside className={asideClassName}>
@@ -85,6 +100,7 @@ export function NodeDetail({
           {stateNameText !== "" && <div>{uiText.nodeDetail.meta.stateName(stateNameText)}</div>}
           <div>{uiText.nodeDetail.meta.attempt(node.attempt)}</div>
           <div>{uiText.nodeDetail.meta.waitKey(node.waitKey ?? "—")}</div>
+          <div>{uiText.nodeDetail.meta.allowedEvents(allowedEventsLabel)}</div>
           <div>{uiText.nodeDetail.meta.canceledByExecution(node.canceledByExecution)}</div>
 
           {showTracePanel && (
@@ -107,10 +123,27 @@ export function NodeDetail({
       </div>
       {showResumeAction && (
         <div className="mt-3 space-y-2">
+          {isWaiting && resumeEvents.length > 1 && (
+            <label className="block space-y-1 text-xs text-[var(--md-sys-color-on-surface)]">
+              <span>{uiText.nodeDetail.waiting.selectResumeEvent}</span>
+              <select
+                className="w-full rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] px-3 py-2 text-sm"
+                value={effectiveResumeEvent}
+                disabled={!canResume || loading}
+                onChange={(event) => setSelectedResumeEvent(event.target.value)}
+              >
+                {resumeEvents.map((eventName) => (
+                  <option key={eventName} value={eventName}>
+                    {eventName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             className="w-full rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!canResume || loading}
-            onClick={onResume}
+            disabled={!canResume || loading || effectiveResumeEvent.length === 0}
+            onClick={() => onResume(effectiveResumeEvent)}
           >
             {uiText.actions.resume}
           </button>

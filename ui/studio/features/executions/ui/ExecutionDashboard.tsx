@@ -102,7 +102,7 @@ type ExecutionDashboardViewProps = {
   selectedNodeId: string | null;
   graphData: ReturnType<typeof useGraphData>;
   onToggleGraphFullscreen: () => void;
-  onResumeNode: (nodeId: string) => void;
+  onResumeNode: (nodeId: string, eventName: string) => void;
   getResumeDisabledReasonForNode: (nodeId: string) => string | null;
   savedGraphViewport?: GraphViewport;
   onGraphViewportChange: (viewport: GraphViewport) => void;
@@ -404,8 +404,8 @@ export function ExecutionDashboard({
       selectedNodeId={selectedNodeId}
       graphData={graphData}
       onToggleGraphFullscreen={handleToggleGraphFullscreen}
-      onResumeNode={(nodeId) => {
-        void resumeNode(nodeId);
+      onResumeNode={(nodeId, eventName) => {
+        void resumeNode(nodeId, eventName);
       }}
       getResumeDisabledReasonForNode={getResumeDisabledReasonForNode}
       savedGraphViewport={savedGraphViewport}
@@ -661,7 +661,10 @@ function ExecutionDashboardView({
               execution={displayExecution ?? execution}
               node={selectedNode}
               loading={loading}
-              onResume={() => !isReplaying && selectedNode && onResumeNode(selectedNode.executionNodeId)}
+              onResume={(eventName) => {
+                if (isReplaying || !selectedNode) return;
+                onResumeNode(selectedNode.executionNodeId, eventName);
+              }}
               resumeDisabledReason={selectedResumeDisabledReason}
               resumeEventName={resumeEventName}
               showResumeAction={operationsEnabled}

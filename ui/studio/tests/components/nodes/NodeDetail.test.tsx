@@ -216,12 +216,29 @@ describe("NodeDetail", () => {
       expect(button).toBeDisabled();
     });
 
-    it("再開ボタンクリックで onResume が呼ばれる", () => {
+    it("再開ボタンクリックで onResume がイベント名付きで呼ばれる", () => {
       const onResume = vi.fn();
       const node: ExecutionNodeDTO = { ...baseNode, status: "WAITING", waitKey: "wk-1" };
       render(<NodeDetail {...defaultProps} node={node} onResume={onResume} />);
       fireEvent.click(screen.getByRole("button", { name: uiText.actions.resume }));
       expect(onResume).toHaveBeenCalledTimes(1);
+      expect(onResume).toHaveBeenCalledWith("wk-1");
+    });
+
+    it("複数 allowedEvents 時は選択イベントで onResume が呼ばれる", () => {
+      const onResume = vi.fn();
+      const node: ExecutionNodeDTO = {
+        ...baseNode,
+        status: "WAITING",
+        waitKey: null,
+        allowedEvents: ["approve", "reject"]
+      };
+      render(<NodeDetail {...defaultProps} node={node} onResume={onResume} />);
+      fireEvent.change(screen.getByLabelText(uiText.nodeDetail.waiting.selectResumeEvent), {
+        target: { value: "reject" }
+      });
+      fireEvent.click(screen.getByRole("button", { name: uiText.actions.resume }));
+      expect(onResume).toHaveBeenCalledWith("reject");
     });
   });
 });

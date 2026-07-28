@@ -31,6 +31,8 @@ export type ExecutionGraphNodeDTO = {
   attempt?: number;
   workerId?: string | null;
   waitKey?: string | null;
+  /** Wait が受付可能なイベント名一覧（複数イベント時）。 */
+  allowedEvents?: string[] | null;
   canceledByExecution?: boolean;
   conditionRouting?: unknown;
 };
@@ -65,6 +67,8 @@ export type ExecutionNodeDTO = {
   attempt: number;
   workerId: string | null;
   waitKey: string | null;
+  /** Wait が受付可能なイベント名一覧（任意。複数イベント時）。 */
+  allowedEvents?: string[] | null;
   canceledByExecution: boolean;
   /** GET /graph のノードに含まれる場合のみ（ノード詳細のトレース用）。 */
   startedAt?: string;
@@ -101,6 +105,8 @@ export type GraphPatchNode = {
   attempt?: number;
   workerId?: string | null;
   waitKey?: string | null;
+  /** Wait が受付可能なイベント名一覧（任意）。 */
+  allowedEvents?: string[] | null;
   canceledByExecution?: boolean;
   error?: { message?: string } | null;
   cancelReason?: string | null;
