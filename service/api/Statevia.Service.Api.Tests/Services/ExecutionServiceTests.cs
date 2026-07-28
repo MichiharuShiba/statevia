@@ -451,6 +451,9 @@ public sealed class ExecutionServiceTests
 
     private sealed class FakeExecutionWaitRepository : IExecutionWaitRepository
     {
+        /// <summary><see cref="DeleteByNodeIdAsync"/> に渡された (executionId, nodeId) の履歴。</summary>
+        public List<(Guid ExecutionId, string NodeId)> DeletedByNodeId { get; } = [];
+
         public Task ReplaceWaitsAsync(
             ICoreUnitOfWork uow,
             Guid executionId,
@@ -461,7 +464,11 @@ public sealed class ExecutionServiceTests
             ICoreUnitOfWork uow,
             Guid executionId,
             string nodeId,
-            CancellationToken ct) => Task.CompletedTask;
+            CancellationToken ct)
+        {
+            DeletedByNodeId.Add((executionId, nodeId));
+            return Task.CompletedTask;
+        }
 
         public Task<IReadOnlyList<ExecutionWaitRow>> ListByExecutionIdAsync(
             ICoreUnitOfWork uow,
@@ -1795,6 +1802,69 @@ public sealed class ExecutionServiceTests
 
         Assert.Null(engine.PublishEventLastExecutionId);
         Assert.Null(engine.PublishEventLastName);
+    }
+
+    /// <summary>PublishEvent 成功時、発行前の唯一アクティブ Wait nodeId で wait 行を先行削除する。</summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenProceeding_ClearsSoleActiveWaitNodeId()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+        var waitRepo = new FakeExecutionWaitRepository();
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["Ask"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn =
+                """
+                {"nodes":[
+                  {"nodeId":"wait-1","stateName":"Ask","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","waitKey":"Approve"}
+                ]}
+                """
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository { NextFindValid = null },
+            engine: engine,
+            display: new FakeDisplayIdService { ResolveResultExecution = executionId },
+            executionRepo: new FakeExecutionRepository
+            {
+                ByIdResult = new ExecutionRow
+                {
+                    ExecutionId = executionId,
+                    TenantId = TestTenantIds.T1TenantId,
+                    DefinitionId = defId,
+                    Status = "Running",
+                    StartedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CancelRequested = false,
+                    RestartLost = false
+                }
+            },
+            eventStore: new FakeEventStoreRepository(),
+            waitRepo: waitRepo);
+
+        // Act
+        await sut.PublishEventAsync(
+            idOrUuid: "X",
+            eventName: "Approve",
+            idempotencyKey: null,
+            new CommandRequestContext("POST", "/v1/executions/events"),
+            CancellationToken.None);
+
+        // Assert
+        Assert.Single(waitRepo.DeletedByNodeId);
+        Assert.Equal(executionId, waitRepo.DeletedByNodeId[0].ExecutionId);
+        Assert.Equal("wait-1", waitRepo.DeletedByNodeId[0].NodeId);
     }
 
     /// <summary>イベント公開が通ると通知と投影更新と追記保存まで実施する。</summary>
@@ -3495,7 +3565,8 @@ public sealed class ExecutionServiceTests
         FakeDisplayIdService display,
         FakeExecutionRepository executionRepo,
         FakeEventStoreRepository eventStore,
-        IExecutionProjectionUpdateQueue? projectionQueue = null)
+        IExecutionProjectionUpdateQueue? projectionQueue = null,
+        FakeExecutionWaitRepository? waitRepo = null)
     {
         var sqlite = new SqliteTestDatabase();
         return BuildExecutionService(
@@ -3510,7 +3581,8 @@ public sealed class ExecutionServiceTests
             dedupRepo,
             eventStore,
             new FakeEventDeliveryDedupRepository(),
-            projectionQueue);
+            projectionQueue,
+            waitRepo: waitRepo);
     }
 
     private static ExecutionService BuildExecutionService(
@@ -3528,7 +3600,8 @@ public sealed class ExecutionServiceTests
         IExecutionProjectionUpdateQueue? projectionUpdateQueue = null,
         Microsoft.Extensions.Options.IOptions<EventDeliveryRetryOptions>? eventDeliveryRetryOptions = null,
         IExecutionMutationPersistence? mutationPersistence = null,
-        IProjectAuthorizationService? projectAuthorization = null)
+        IProjectAuthorizationService? projectAuthorization = null,
+        FakeExecutionWaitRepository? waitRepo = null)
     {
         if (displayIds is not IDisplayIdWriteService displayIdWrites)
             throw new InvalidOperationException("Test display id service must implement IDisplayIdWriteService.");
@@ -3556,7 +3629,7 @@ public sealed class ExecutionServiceTests
             dedupService,
             executions,
             new FakeExecutionCursorRepository(),
-            new FakeExecutionWaitRepository(),
+            waitRepo ?? new FakeExecutionWaitRepository(),
             definitions,
             projectAuthorization ?? new AllowAllProjectAuthorizationService(),
             new AllowAllRuntimePermissionAuthorization(),

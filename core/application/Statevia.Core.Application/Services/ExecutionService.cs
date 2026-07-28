@@ -541,7 +541,11 @@ internal sealed class ExecutionService : IExecutionService
 
         EnsureEngineRuntimePresentForMutation(uuid.Value, execution);
 
-        var publishApply = _engine.PublishEvent(uuid.Value.ToString(), eventName, clientEventId);
+        // PublishEvent 復帰時点ではグラフ上の Wait 完了が未反映になり得るため、発行前の nodeId で先行削除する。
+        var engineId = uuid.Value.ToString();
+        var nodeIdToClear = TryResolveSoleActiveWaitNodeId(_engine.ExportExecutionGraph(engineId));
+
+        var publishApply = _engine.PublishEvent(engineId, eventName, clientEventId);
         var skipEventAppend = publishApply.IsAlreadyApplied;
 
         var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
@@ -564,7 +568,7 @@ internal sealed class ExecutionService : IExecutionService
                         tenantId,
                         pubStatus,
                         pubGraphJson,
-                        nodeIdToClear: null,
+                        nodeIdToClear,
                         ctInner)
                     .ConfigureAwait(false);
                 if (!skipEventAppend)
@@ -1059,6 +1063,65 @@ internal sealed class ExecutionService : IExecutionService
         var graphJson = _engine.ExportExecutionGraph(engineId);
         var status = MapStatus(snapshot);
         return (status, snapshot.IsCancelled, graphJson);
+    }
+
+    /// <summary>
+    /// PublishEvent シム用。グラフ上の未完了 Wait がちょうど 1 件ならその nodeId を返す。
+    /// </summary>
+    /// <remarks>
+    /// Engine の <c>PublishEvent</c> は単一アクティブ Wait のみ許可する。投影同期では
+    /// 復帰直後にグラフ完了が遅延し得るため、発行前に取得した nodeId で wait 行を先行削除する。
+    /// </remarks>
+    /// <param name="graphJson"><see cref="IExecutionEngine.ExportExecutionGraph"/> の JSON。</param>
+    /// <returns>唯一のアクティブ Wait の nodeId。0 件または 2 件以上なら null。</returns>
+    private static string? TryResolveSoleActiveWaitNodeId(string graphJson)
+    {
+        if (string.IsNullOrWhiteSpace(graphJson))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(graphJson);
+            if (!doc.RootElement.TryGetProperty("nodes", out var nodes)
+                || nodes.ValueKind != JsonValueKind.Array)
+            {
+                return null;
+            }
+
+            string? soleNodeId = null;
+            foreach (var node in nodes.EnumerateArray())
+            {
+                if (!node.TryGetProperty("nodeType", out var nodeType)
+                    || !string.Equals(nodeType.GetString(), "Wait", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (node.TryGetProperty("completedAt", out var completedAt)
+                    && completedAt.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
+                {
+                    continue;
+                }
+
+                if (!node.TryGetProperty("nodeId", out var nodeIdElement))
+                    continue;
+
+                var nodeId = nodeIdElement.GetString();
+                if (string.IsNullOrWhiteSpace(nodeId))
+                    continue;
+
+                if (soleNodeId is not null)
+                    return null;
+
+                soleNodeId = nodeId;
+            }
+
+            return soleNodeId;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private sealed class NoopExecutionProjectionUpdateQueue : IExecutionProjectionUpdateQueue
