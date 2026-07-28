@@ -37,7 +37,22 @@ public sealed class ExecutionGraph
     }
 
     /// <summary>ノードを追加し、ノード ID を返します。</summary>
-    public string AddNode(string stateName, string nodeType = "Task", object? input = null, int attempt = 1, string? workerId = null, string? waitKey = null)
+    /// <param name="stateName">状態名。</param>
+    /// <param name="nodeType">ノード種別。</param>
+    /// <param name="input">状態入力。</param>
+    /// <param name="attempt">試行回数。</param>
+    /// <param name="workerId">ワーカー識別子。</param>
+    /// <param name="waitKey">単一イベント Wait の互換キー。</param>
+    /// <param name="allowedEvents">Wait の許可イベント名一覧。</param>
+    /// <returns>採番されたノード ID。</returns>
+    public string AddNode(
+        string stateName,
+        string nodeType = "Task",
+        object? input = null,
+        int attempt = 1,
+        string? workerId = null,
+        string? waitKey = null,
+        IReadOnlyList<string>? allowedEvents = null)
     {
         var nodeId = Guid.NewGuid().ToString("N")[..8];
         lock (_lock)
@@ -51,7 +66,8 @@ public sealed class ExecutionGraph
                 Input = input,
                 Attempt = attempt,
                 WorkerId = workerId ?? nodeId,
-                WaitKey = waitKey
+                WaitKey = waitKey,
+                AllowedEvents = allowedEvents
             });
         }
         return nodeId;

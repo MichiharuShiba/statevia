@@ -81,6 +81,7 @@
   "attempt": 1,
   "workerId": "a1b2c3d4",
   "waitKey": null,
+  "allowedEvents": null,
   "canceledByExecution": false,
   "conditionRouting": {
     "fact": "Completed",
@@ -104,7 +105,8 @@
 | `input` | `any \| null` | 任意 | 当該状態実行に渡された入力（説明責任・Join 合成入力の記録に利用） |
 | `attempt` | `number` | 必須 | 試行回数（現行実装では主に `1`） |
 | `workerId` | `string \| null` | 任意 | ワーカー識別子。現行では未指定時に `nodeId` と同値が入ることがある |
-| `waitKey` | `string \| null` | 任意 | Wait 系の待機キー |
+| `waitKey` | `string \| null` | 任意 | 単一イベント Wait の互換キー（`allowedEvents` が 1 件のときそのイベント名。複数イベント時は `null`） |
+| `allowedEvents` | `string[] \| null` | 任意 | Wait ノードの許可イベント名一覧（`WaitEventRouteTable` のキー）。非 Wait では `null` |
 | `canceledByExecution` | `boolean` | 必須 | 実行全体のキャンセルにより当該ノードがキャンセル扱いになったか |
 | `conditionRouting` | `ConditionRoutingDiagnostics \| null` | 任意 | output 条件遷移の診断 |
 

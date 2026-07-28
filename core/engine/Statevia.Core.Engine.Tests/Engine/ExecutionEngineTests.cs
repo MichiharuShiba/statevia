@@ -772,6 +772,57 @@ public class ExecutionEngineTests
         var node = doc.RootElement.GetProperty("nodes").EnumerateArray()
             .First(n => string.Equals(n.GetProperty("stateName").GetString(), "WaitState", StringComparison.Ordinal));
         Assert.Equal("resume", node.GetProperty("waitKey").GetString());
+        var allowed = node.GetProperty("allowedEvents").EnumerateArray().Select(e => e.GetString()).ToList();
+        Assert.Equal(["resume"], allowed);
+    }
+
+    /// <summary>複数イベント Wait では waitKey が null で allowedEvents に全キーが入ることを検証する。</summary>
+    [Fact]
+    public async Task Start_WhenStateHasMultipleWaitEventRoutes_ExecutionGraphIncludesAllowedEvents()
+    {
+        // Arrange
+        var def = new CompiledWorkflowDefinition
+        {
+            Name = "MultiWait",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["ApproveTask"] = new Dictionary<string, TransitionTarget>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Completed"] = new TransitionTarget { End = true },
+                },
+            },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase),
+            JoinTable = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase),
+            WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["ApproveTask"] = new Dictionary<string, WaitEventRouteDefinition>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["approve"] = new WaitEventRouteDefinition { Next = "ApproveTask" },
+                    ["reject"] = new WaitEventRouteDefinition { Next = "ApproveTask" },
+                },
+            },
+            InitialState = "ApproveTask",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["ApproveTask"] = DefaultStateExecutor.Create(new ImmediateState()),
+            }),
+        };
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+
+        // Act
+        var id = engine.Start(def);
+        await Task.Delay(300).ConfigureAwait(false);
+        var graphJson = engine.ExportExecutionGraph(id);
+
+        // Assert
+        using var doc = JsonDocument.Parse(graphJson);
+        var node = doc.RootElement.GetProperty("nodes").EnumerateArray()
+            .First(n => string.Equals(n.GetProperty("stateName").GetString(), "ApproveTask", StringComparison.Ordinal));
+        Assert.Equal(JsonValueKind.Null, node.GetProperty("waitKey").ValueKind);
+        var allowed = node.GetProperty("allowedEvents").EnumerateArray().Select(e => e.GetString()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("approve", allowed);
+        Assert.Contains("reject", allowed);
+        Assert.Equal(2, allowed.Count);
     }
 
     /// <summary>Store.TryGetOutput が状態実行中に利用される経路を検証する。</summary>

@@ -542,11 +542,15 @@ internal sealed class ExecutionService : IExecutionService
         EnsureEngineRuntimePresentForMutation(uuid.Value, execution);
 
         // PublishEvent 復帰時点ではグラフ上の Wait 完了が未反映になり得るため、発行前の nodeId で先行削除する。
+        // グラフ解析失敗時は永続化済み wait 行からフォールバック解決する（Applied 時のみ）。
         var engineId = uuid.Value.ToString();
-        var nodeIdToClear = TryResolveSoleActiveWaitNodeId(_engine.ExportExecutionGraph(engineId));
+        var prePublishGraphJson = _engine.ExportExecutionGraph(engineId);
 
         var publishApply = _engine.PublishEvent(engineId, eventName, clientEventId);
         var skipEventAppend = publishApply.IsAlreadyApplied;
+        var nodeIdToClearFromGraph = publishApply.IsApplied
+            ? TryResolveSoleActiveWaitNodeId(prePublishGraphJson)
+            : null;
 
         var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var publishedPayload = JsonSerializer.Serialize(
@@ -559,6 +563,15 @@ internal sealed class ExecutionService : IExecutionService
             clientEventId,
             async (uow, ctInner) =>
             {
+                var nodeIdToClear = nodeIdToClearFromGraph;
+                if (publishApply.IsApplied && string.IsNullOrWhiteSpace(nodeIdToClear))
+                {
+                    var persistedWaits = await _executionWaits
+                        .ListByExecutionIdAsync(uow, uuid.Value, ctInner)
+                        .ConfigureAwait(false);
+                    nodeIdToClear = TryResolveWaitNodeIdToClearFromPersisted(persistedWaits, eventName);
+                }
+
                 await _executions
                     .UpdateExecutionAndSnapshotAsync(uow, uuid.Value, pubStatus, pubCancel, pubGraphJson, ctInner)
                     .ConfigureAwait(false);
@@ -1088,40 +1101,93 @@ internal sealed class ExecutionService : IExecutionService
                 return null;
             }
 
-            string? soleNodeId = null;
-            foreach (var node in nodes.EnumerateArray())
-            {
-                if (!node.TryGetProperty("nodeType", out var nodeType)
-                    || !string.Equals(nodeType.GetString(), "Wait", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (node.TryGetProperty("completedAt", out var completedAt)
-                    && completedAt.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
-                {
-                    continue;
-                }
-
-                if (!node.TryGetProperty("nodeId", out var nodeIdElement))
-                    continue;
-
-                var nodeId = nodeIdElement.GetString();
-                if (string.IsNullOrWhiteSpace(nodeId))
-                    continue;
-
-                if (soleNodeId is not null)
-                    return null;
-
-                soleNodeId = nodeId;
-            }
-
-            return soleNodeId;
+            return FindSoleActiveWaitNodeId(nodes);
         }
         catch (JsonException)
         {
             return null;
         }
+    }
+
+    /// <summary>nodes 配列から唯一の未完了 Wait nodeId を返す（0 件または複数は null）。</summary>
+    private static string? FindSoleActiveWaitNodeId(JsonElement nodes)
+    {
+        string? soleNodeId = null;
+        foreach (var node in nodes.EnumerateArray())
+        {
+            if (!TryGetActiveWaitNodeId(node, out var nodeId))
+                continue;
+
+            if (soleNodeId is not null)
+                return null;
+
+            soleNodeId = nodeId;
+        }
+
+        return soleNodeId;
+    }
+
+    /// <summary>未完了 Wait ノードなら nodeId を取り出す。</summary>
+    private static bool TryGetActiveWaitNodeId(JsonElement node, out string? nodeId)
+    {
+        nodeId = null;
+        if (!node.TryGetProperty("nodeType", out var nodeType)
+            || !string.Equals(nodeType.GetString(), "Wait", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (node.TryGetProperty("completedAt", out var completedAt)
+            && completedAt.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
+        {
+            return false;
+        }
+
+        if (!node.TryGetProperty("nodeId", out var nodeIdElement))
+            return false;
+
+        var value = nodeIdElement.GetString();
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        nodeId = value;
+        return true;
+    }
+
+    /// <summary>
+    /// グラフから nodeId を解決できないときのフォールバック。永続化済み wait から削除対象を決める。
+    /// </summary>
+    /// <param name="waits">当該 execution の wait 行。</param>
+    /// <param name="eventName">Publish したイベント名。</param>
+    /// <returns>
+    /// wait が 1 件ならその nodeId。複数なら <paramref name="eventName"/> を許可する行がちょうど 1 件のときその nodeId。
+    /// それ以外は null。
+    /// </returns>
+    private static string? TryResolveWaitNodeIdToClearFromPersisted(
+        IReadOnlyList<ExecutionWaitRow> waits,
+        string eventName)
+    {
+        if (waits.Count == 0)
+            return null;
+
+        if (waits.Count == 1)
+            return waits[0].NodeId;
+
+        string? soleMatchingNodeId = null;
+        foreach (var wait in waits)
+        {
+            var allowsEvent = wait.AllowedEvents.Any(e =>
+                string.Equals(e, eventName, StringComparison.OrdinalIgnoreCase));
+            if (!allowsEvent)
+                continue;
+
+            if (soleMatchingNodeId is not null)
+                return null;
+
+            soleMatchingNodeId = wait.NodeId;
+        }
+
+        return soleMatchingNodeId;
     }
 
     private sealed class NoopExecutionProjectionUpdateQueue : IExecutionProjectionUpdateQueue

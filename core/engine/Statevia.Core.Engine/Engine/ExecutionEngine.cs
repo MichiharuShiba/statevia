@@ -332,16 +332,23 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 
         var attempt = instance.NextAttempt(stateName);
         var nodeType = ResolveNodeType(def, stateName);
-        var waitKey = def.WaitEventRouteTable.TryGetValue(stateName, out var routes) && routes.Count == 1
-            ? routes.Keys.First()
-            : null;
+        List<string>? allowedEvents = null;
+        string? waitKey = null;
+        if (def.WaitEventRouteTable.TryGetValue(stateName, out var routes) && routes.Count > 0)
+        {
+            allowedEvents = routes.Keys.ToList();
+            if (allowedEvents.Count == 1)
+                waitKey = allowedEvents[0];
+        }
+
         var nodeId = instance.Graph.AddNode(
             stateName,
             nodeType: nodeType,
             input: input,
             attempt: attempt,
             workerId: _workerId,
-            waitKey: waitKey);
+            waitKey: waitKey,
+            allowedEvents: allowedEvents);
         if (fromNodeId != null && edgeType != null)
         {
             instance.Graph.AddEdge(fromNodeId, nodeId, edgeType.Value);

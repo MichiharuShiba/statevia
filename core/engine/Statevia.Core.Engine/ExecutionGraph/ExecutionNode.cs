@@ -28,8 +28,16 @@ public sealed class ExecutionNode
     public int Attempt { get; set; } = 1;
     /// <summary>ワーカー識別子。現時点では実行ノード ID を格納する。</summary>
     public string? WorkerId { get; set; }
-    /// <summary>待機キー（Wait 系状態で設定される想定。未設定時は null）。</summary>
+    /// <summary>
+    /// 単一イベント Wait の互換キー（<see cref="AllowedEvents"/> が 1 件のときそのイベント名。複数時は null）。
+    /// </summary>
     public string? WaitKey { get; set; }
+
+    /// <summary>
+    /// Wait ノードが受付可能なイベント名一覧（WaitEventRouteTable のキー）。非 Wait では null。
+    /// </summary>
+    public IReadOnlyList<string>? AllowedEvents { get; set; }
+
     /// <summary>実行全体によりキャンセルされたかどうか。</summary>
     public bool CanceledByExecution { get; set; }
 

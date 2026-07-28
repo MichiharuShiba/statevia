@@ -62,6 +62,53 @@ public sealed class ExecutionOperationalProjectionSyncTests
         Assert.Equal(["Approve"], wait.AllowedEvents);
     }
 
+    /// <summary>複数イベント Wait は allowedEvents をそのまま永続化する（waitKey 不要）。</summary>
+    [Fact]
+    public async Task SyncAsync_PersistsMultiEventWait_FromAllowedEvents()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var cursorRepo = new ExecutionCursorRepository();
+        var waitRepo = new ExecutionWaitRepository();
+        var executionId = Guid.NewGuid();
+        var graphJson =
+            """
+            {"nodes":[
+              {"nodeId":"wait-multi","stateName":"ApproveTask","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","waitKey":null,"allowedEvents":["approve","reject"],"workerId":"w1"}
+            ]}
+            """;
+
+        await SeedExecutionAsync(db, executionId);
+
+        var request = new ExecutionOperationalProjectionSyncRequest(
+            executionId,
+            TestTenantIds.T1TenantId,
+            "Running",
+            new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["ApproveTask"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            graphJson,
+            NodeIdToClear: null);
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        await ExecutionOperationalProjectionSync.SyncAsync(uow, cursorRepo, waitRepo, request, CancellationToken.None);
+        await uow.SaveChangesAsync(CancellationToken.None);
+
+        // Assert
+        await using var verify = new CoreDbContext(db.Options);
+        var wait = await verify.ExecutionWaits.SingleAsync(x => x.ExecutionId == executionId);
+        Assert.Equal("wait-multi", wait.NodeId);
+        Assert.Equal(["approve", "reject"], wait.AllowedEvents);
+    }
+
     /// <summary>終了状態では cursor / wait を削除する。</summary>
     [Fact]
     public async Task SyncAsync_ClearsOperationalRows_WhenTerminal()

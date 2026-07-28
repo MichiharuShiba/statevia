@@ -454,6 +454,9 @@ public sealed class ExecutionServiceTests
         /// <summary><see cref="DeleteByNodeIdAsync"/> に渡された (executionId, nodeId) の履歴。</summary>
         public List<(Guid ExecutionId, string NodeId)> DeletedByNodeId { get; } = [];
 
+        /// <summary><see cref="ListByExecutionIdAsync"/> が返す wait 行。</summary>
+        public IReadOnlyList<ExecutionWaitRow> ListByExecutionIdResult { get; set; } = Array.Empty<ExecutionWaitRow>();
+
         public Task ReplaceWaitsAsync(
             ICoreUnitOfWork uow,
             Guid executionId,
@@ -474,7 +477,7 @@ public sealed class ExecutionServiceTests
             ICoreUnitOfWork uow,
             Guid executionId,
             CancellationToken ct) =>
-            Task.FromResult<IReadOnlyList<ExecutionWaitRow>>(Array.Empty<ExecutionWaitRow>());
+            Task.FromResult(ListByExecutionIdResult);
     }
 
     private sealed class FakeEventStoreRepository : IEventStoreRepository
@@ -1865,6 +1868,80 @@ public sealed class ExecutionServiceTests
         Assert.Single(waitRepo.DeletedByNodeId);
         Assert.Equal(executionId, waitRepo.DeletedByNodeId[0].ExecutionId);
         Assert.Equal("wait-1", waitRepo.DeletedByNodeId[0].NodeId);
+    }
+
+    /// <summary>
+    /// 発行前グラフから nodeId を解決できないとき、永続化済みの唯一 wait 行を削除対象にする。
+    /// </summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenGraphResolveFails_ClearsSolePersistedWaitNodeId()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+        var waitRepo = new FakeExecutionWaitRepository
+        {
+            ListByExecutionIdResult =
+            [
+                new ExecutionWaitRow
+                {
+                    ExecutionId = executionId,
+                    NodeId = "persisted-wait",
+                    WaitKind = ExecutionWaitKind.EventWait,
+                    AllowedEvents = ["Approve"],
+                    CreatedAt = DateTime.UtcNow
+                }
+            ]
+        };
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["Ask"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            // nodes 欠落で TryResolveSoleActiveWaitNodeId が null になる
+            GraphJsonToReturn = """{"notNodes":[]}"""
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository { NextFindValid = null },
+            engine: engine,
+            display: new FakeDisplayIdService { ResolveResultExecution = executionId },
+            executionRepo: new FakeExecutionRepository
+            {
+                ByIdResult = new ExecutionRow
+                {
+                    ExecutionId = executionId,
+                    TenantId = TestTenantIds.T1TenantId,
+                    DefinitionId = defId,
+                    Status = "Running",
+                    StartedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CancelRequested = false,
+                    RestartLost = false
+                }
+            },
+            eventStore: new FakeEventStoreRepository(),
+            waitRepo: waitRepo);
+
+        // Act
+        await sut.PublishEventAsync(
+            idOrUuid: "X",
+            eventName: "Approve",
+            idempotencyKey: null,
+            new CommandRequestContext("POST", "/v1/executions/events"),
+            CancellationToken.None);
+
+        // Assert
+        Assert.Single(waitRepo.DeletedByNodeId);
+        Assert.Equal(executionId, waitRepo.DeletedByNodeId[0].ExecutionId);
+        Assert.Equal("persisted-wait", waitRepo.DeletedByNodeId[0].NodeId);
     }
 
     /// <summary>イベント公開が通ると通知と投影更新と追記保存まで実施する。</summary>

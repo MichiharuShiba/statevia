@@ -77,9 +77,7 @@ internal static class ExecutionOperationalProjectionSync
             return null;
 
         var waitCandidates = runningNodes
-            .Where(n =>
-                string.Equals(n.NodeType, "Wait", StringComparison.OrdinalIgnoreCase)
-                && !string.IsNullOrWhiteSpace(n.WaitKey))
+            .Where(n => string.Equals(n.NodeType, "Wait", StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(n => n.StartedAt)
             .ToList();
 
@@ -104,6 +102,15 @@ internal static class ExecutionOperationalProjectionSync
         return new ActiveNodeSelection(fallback.NodeId!, fallback.WorkerId);
     }
 
+    /// <summary>
+    /// 未完了 Wait ノードから durable wait 行を構築する。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 許可イベントはグラフの <c>allowedEvents</c>（WaitEventRouteTable 由来）を正本とする。
+    /// 旧単一イベント互換として <c>waitKey</c> のみのノードも受け入れる。
+    /// </para>
+    /// </remarks>
     private static IReadOnlyList<ExecutionWaitRow> ExtractDurableWaits(
         Guid executionId,
         string graphJson,
@@ -116,19 +123,46 @@ internal static class ExecutionOperationalProjectionSync
             .Where(n =>
                 n.CompletedAt is null
                 && !string.IsNullOrWhiteSpace(n.NodeId)
-                && !string.IsNullOrWhiteSpace(n.WaitKey)
                 && string.Equals(n.NodeType, "Wait", StringComparison.OrdinalIgnoreCase))
-            .Select(n => new ExecutionWaitRow
+            .Select(n =>
             {
-                ExecutionId = executionId,
-                NodeId = n.NodeId!,
-                WaitKind = ExecutionWaitKind.EventWait,
-                // task 9 で route table から複数イベントを埋める。単一 WaitKey 互換の暫定値。
-                AllowedEvents = [n.WaitKey!],
-                ExpiresAt = null,
-                CreatedAt = nowUtc
+                var allowedEvents = ResolveAllowedEvents(n);
+                if (allowedEvents.Count == 0)
+                    return null;
+
+                return new ExecutionWaitRow
+                {
+                    ExecutionId = executionId,
+                    NodeId = n.NodeId!,
+                    WaitKind = ExecutionWaitKind.EventWait,
+                    AllowedEvents = allowedEvents,
+                    ExpiresAt = null,
+                    CreatedAt = nowUtc
+                };
             })
+            .Where(row => row is not null)
+            .Select(row => row!)
             .ToList();
+    }
+
+    /// <summary>
+    /// グラフノードから許可イベント一覧を解決する（allowedEvents 優先、なければ waitKey）。
+    /// </summary>
+    private static List<string> ResolveAllowedEvents(GraphNodeDto node)
+    {
+        if (node.AllowedEvents is { Count: > 0 })
+        {
+            return node.AllowedEvents
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Select(e => e.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        if (!string.IsNullOrWhiteSpace(node.WaitKey))
+            return [node.WaitKey.Trim()];
+
+        return [];
     }
 
     private static bool TryParseGraph(string graphJson, out List<GraphNodeDto> nodes)
@@ -178,5 +212,8 @@ internal static class ExecutionOperationalProjectionSync
 
         [JsonPropertyName("waitKey")]
         public string? WaitKey { get; set; }
+
+        [JsonPropertyName("allowedEvents")]
+        public List<string>? AllowedEvents { get; set; }
     }
 }
