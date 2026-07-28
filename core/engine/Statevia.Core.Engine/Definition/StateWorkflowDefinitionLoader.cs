@@ -170,6 +170,9 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
     /// <summary>
     /// <c>wait.events</c> マップ（イベント名 → 遷移先）を読み取る。
     /// </summary>
+    /// <remarks>
+    /// 遷移先が空／空白のみのエントリは不正とし、読み込み時に例外を投げる（FSM フォールバックはしない）。
+    /// </remarks>
     private static Dictionary<string, string> ParseWaitEventsMap(object? eventsVal)
     {
         if (eventsVal == null)

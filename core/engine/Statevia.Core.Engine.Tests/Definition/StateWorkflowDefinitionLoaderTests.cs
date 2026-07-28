@@ -117,6 +117,34 @@ public class StateWorkflowDefinitionLoaderTests
         Assert.Equal("Rejected", wait.Events["reject"]);
     }
 
+    /// <summary>wait.events の Next が空なら読み込み失敗することを検証する（FSM フォールバックなし）。</summary>
+    [Fact]
+    public void Load_WaitEventsMap_EmptyNext_Throws()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              WaitState:
+                wait:
+                  events:
+                    resume:
+                on:
+                  Completed:
+                    next: Done
+              Done:
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => loader.Load(yaml));
+        Assert.Contains("must specify a next state name", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>旧 wait.event + on.Completed を events へ正規化することを検証する。</summary>
     [Fact]
     public void Load_NormalizesLegacyWaitEventWithOnCompleted()

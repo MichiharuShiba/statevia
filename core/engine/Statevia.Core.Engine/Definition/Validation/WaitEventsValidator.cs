@@ -6,7 +6,8 @@ namespace Statevia.Core.Engine.Definition.Validation;
 /// Wait State の <c>events</c>（イベント名 → 遷移先）を Level1 で検証する。
 /// </summary>
 /// <remarks>
-/// <para>同一 Wait 内のイベント名重複・予約語・遷移先存在・自己遷移を検査する。</para>
+/// <para>同一 Wait 内のイベント名重複・予約語・遷移先必須／存在・自己遷移を検査する。</para>
+/// <para>遷移先（Next）が空のエントリは不正とする（FSM フォールバックはしない）。</para>
 /// <para>同一 execution 内のイベント名重複（Fork 並列 Wait）は検証しない（意図的）。</para>
 /// </remarks>
 public static class WaitEventsValidator

@@ -56,6 +56,35 @@ public sealed class WaitEventsValidatorTests
         Assert.Contains(errors, e => e.Contains("must not be empty", StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>Next が空なら失敗する（FSM フォールバックはしない）。</summary>
+    [Fact]
+    public void Validate_EmptyNext_Fails()
+    {
+        // Arrange
+        var stateNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Wait", "Done" };
+        var state = new StateDefinition
+        {
+            Wait = new WaitDefinition
+            {
+                Events = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["approve"] = "   "
+                }
+            },
+            On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                [Fact.Completed] = new TransitionDefinition { Next = "Done" }
+            }
+        };
+        var errors = new List<string>();
+
+        // Act
+        WaitEventsValidator.Validate("Wait", state, stateNames, errors);
+
+        // Assert
+        Assert.Contains(errors, e => e.Contains("must specify a next state", StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>予約語イベント名は拒否される。</summary>
     [Theory]
     [InlineData(Fact.Completed)]

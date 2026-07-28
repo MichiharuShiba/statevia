@@ -1189,12 +1189,12 @@ internal sealed class ExecutionService : IExecutionService
     /// グラフから nodeId を解決できないときのフォールバック。永続化済み wait から削除対象を決める。
     /// </summary>
     /// <param name="waits">当該 execution の wait 行。</param>
-    /// <param name="eventName">Publish したイベント名。</param>
+    /// <param name="eventName">Publish したイベント名（前後空白は Trim して照合）。</param>
     /// <returns>
     /// wait が 1 件ならその nodeId。複数なら <paramref name="eventName"/> を許可する行がちょうど 1 件のときその nodeId。
     /// それ以外は null。
     /// </returns>
-    private static string? TryResolveWaitNodeIdToClearFromPersisted(
+    internal static string? TryResolveWaitNodeIdToClearFromPersisted(
         IReadOnlyList<ExecutionWaitRow> waits,
         string eventName)
     {
@@ -1204,11 +1204,13 @@ internal sealed class ExecutionService : IExecutionService
         if (waits.Count == 1)
             return waits[0].NodeId;
 
+        // AllowedEvents は投影時に Trim 済み。Publish 側の前後空白とも揃える。
+        var normalizedEventName = eventName.Trim();
         string? soleMatchingNodeId = null;
         foreach (var wait in waits)
         {
             var allowsEvent = wait.AllowedEvents.Any(e =>
-                string.Equals(e, eventName, StringComparison.OrdinalIgnoreCase));
+                string.Equals(e, normalizedEventName, StringComparison.OrdinalIgnoreCase));
             if (!allowsEvent)
                 continue;
 

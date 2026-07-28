@@ -1944,6 +1944,40 @@ public sealed class ExecutionServiceTests
         Assert.Equal("persisted-wait", waitRepo.DeletedByNodeId[0].NodeId);
     }
 
+    /// <summary>
+    /// 複数 wait 行から削除対象を決めるとき、eventName の前後空白を Trim して照合する。
+    /// </summary>
+    [Fact]
+    public void TryResolveWaitNodeIdToClearFromPersisted_MatchesAllowedEvent_WhenEventNameHasWhitespace()
+    {
+        // Arrange
+        var waits = new List<ExecutionWaitRow>
+        {
+            new()
+            {
+                ExecutionId = Guid.NewGuid(),
+                NodeId = "wait-a",
+                WaitKind = ExecutionWaitKind.EventWait,
+                AllowedEvents = ["approve"],
+                CreatedAt = DateTime.UtcNow
+            },
+            new()
+            {
+                ExecutionId = Guid.NewGuid(),
+                NodeId = "wait-b",
+                WaitKind = ExecutionWaitKind.EventWait,
+                AllowedEvents = ["reject"],
+                CreatedAt = DateTime.UtcNow
+            }
+        };
+
+        // Act
+        var nodeId = ExecutionService.TryResolveWaitNodeIdToClearFromPersisted(waits, "  approve  ");
+
+        // Assert
+        Assert.Equal("wait-a", nodeId);
+    }
+
     /// <summary>イベント公開が通ると通知と投影更新と追記保存まで実施する。</summary>
     [Fact]
     public async Task PublishEventAsync_WhenProceeding_UpdatesExecutionAndSnapshot_AppendsEventPublished_AndSavesDedupRow()
