@@ -96,4 +96,41 @@ public sealed class ExecutionViewMapperTests
         Assert.Equal("S1", patch[0].StateName);
         Assert.Equal("w-9", patch[0].WorkerId);
     }
+
+    /// <summary>
+    /// Wait ノードの <c>allowedEvents</c> を Read model に透過し、空白を除去することを検証する。
+    /// </summary>
+    [Fact]
+    public void MapNodes_maps_allowedEvents_from_wait_node()
+    {
+        // Arrange
+        const string json =
+            """
+            {
+              "nodes": [
+                {
+                  "nodeId": "wait-1",
+                  "stateName": "ApproveTask",
+                  "nodeType": "Wait",
+                  "startedAt": "2020-01-01T00:00:00Z",
+                  "completedAt": null,
+                  "fact": null,
+                  "attempt": 1,
+                  "workerId": "w-1",
+                  "waitKey": null,
+                  "allowedEvents": [" approve ", "reject", ""],
+                  "canceledByExecution": false
+                }
+              ]
+            }
+            """;
+
+        // Act
+        var nodes = ExecutionViewMapper.MapNodes(json);
+
+        // Assert
+        Assert.Single(nodes);
+        Assert.Equal(["approve", "reject"], nodes[0].AllowedEvents);
+        Assert.Null(nodes[0].WaitKey);
+    }
 }

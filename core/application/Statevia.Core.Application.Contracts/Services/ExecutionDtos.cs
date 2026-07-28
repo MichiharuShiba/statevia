@@ -129,8 +129,11 @@ public sealed class ExecutionViewNodeDto
     /// <summary>ワーカー識別子（任意）。</summary>
     public string? WorkerId { get; init; }
 
-    /// <summary>Wait 解除キー（任意）。</summary>
+    /// <summary>Wait 解除キー（任意。単一イベント時の互換）。</summary>
     public string? WaitKey { get; init; }
+
+    /// <summary>Wait が受付可能なイベント名一覧（任意。複数イベント時）。</summary>
+    public IReadOnlyList<string>? AllowedEvents { get; init; }
 
     /// <summary>実行キャンセルにより打ち切られたか。</summary>
     public bool CanceledByExecution { get; init; }
@@ -208,6 +211,9 @@ public sealed class GraphPatchNodeDto
     /// <summary>Wait キー（任意）。</summary>
     public string? WaitKey { get; init; }
 
+    /// <summary>Wait が受付可能なイベント名一覧（任意）。</summary>
+    public IReadOnlyList<string>? AllowedEvents { get; init; }
+
     /// <summary>実行キャンセルフラグ（任意）。</summary>
     public bool? CanceledByExecution { get; init; }
 }
@@ -215,7 +221,7 @@ public sealed class GraphPatchNodeDto
 /// <summary>POST …/nodes/…/resume のリクエスト本文。</summary>
 public sealed class ResumeNodeRequest
 {
-    /// <summary>Wait を再開するイベント名（Engine.PublishEvent に渡す）。</summary>
+    /// <summary>Wait を再開するイベント名（Engine.ResumeWaitNode に渡す）。</summary>
     [Required(ErrorMessage = "resumeKey is required")]
     [NotWhitespace(ErrorMessage = "resumeKey is required")]
     public string ResumeKey { get; init; } = "";

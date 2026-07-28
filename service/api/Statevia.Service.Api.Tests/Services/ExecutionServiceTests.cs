@@ -107,6 +107,10 @@ public sealed class ExecutionServiceTests
         public Guid? PublishEventLastClientEventId { get; private set; }
         public Guid? CancelAsyncLastClientEventId { get; private set; }
 
+        public string? ResumeWaitNodeLastExecutionId { get; private set; }
+        public string? ResumeWaitNodeLastNodeId { get; private set; }
+        public string? ResumeWaitNodeLastEventName { get; private set; }
+
         /// <summary>設定時、一致する <c>clientEventId</c> の Publish で <see cref="ApplyResult.AlreadyApplied"/> を返す。</summary>
         public Guid? PublishAlreadyAppliedWhenClientEventIdEquals { get; set; }
 
@@ -124,7 +128,9 @@ public sealed class ExecutionServiceTests
 
         public void ResumeWaitNode(string executionId, string nodeId, string eventName)
         {
-            // no-op for tests that do not exercise Resume
+            ResumeWaitNodeLastExecutionId = executionId;
+            ResumeWaitNodeLastNodeId = nodeId;
+            ResumeWaitNodeLastEventName = eventName;
         }
 
         public void PublishEvent(string executionId, string eventName)
@@ -2569,9 +2575,9 @@ public sealed class ExecutionServiceTests
         Assert.Equal("{\"nodes\":[],\"edges\":[{\"from\":\"a1\",\"to\":\"b1\",\"type\":0}]}", graphJson);
     }
 
-    /// <summary>有効なノード識別子と再開キーで公開と投影更新を実施する。</summary>
+    /// <summary>有効なノード識別子と再開キーで ResumeWaitNode と投影更新を実施する。</summary>
     [Fact]
-    public async Task ResumeNodeAsync_WhenValidNodeAndResumeKey_PublishesEventAndUpdatesExecution()
+    public async Task ResumeNodeAsync_WhenValidNodeAndResumeKey_ResumesWaitNodeAndUpdatesExecution()
     {
         // Arrange
         var executionId = Guid.NewGuid();
@@ -2631,8 +2637,10 @@ public sealed class ExecutionServiceTests
         await sut.ResumeNodeAsync(idOrUuid: "X", nodeId: nodeId, resumeKey: resumeKey, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None);
 
         // Assert
-        Assert.Equal(executionId.ToString(), engine.PublishEventLastExecutionId);
-        Assert.Equal(resumeKey, engine.PublishEventLastName);
+        Assert.Equal(executionId.ToString(), engine.ResumeWaitNodeLastExecutionId);
+        Assert.Equal(nodeId, engine.ResumeWaitNodeLastNodeId);
+        Assert.Equal(resumeKey, engine.ResumeWaitNodeLastEventName);
+        Assert.Null(engine.PublishEventLastExecutionId);
 
         Assert.Single(eventStore.Appended);
         Assert.Equal(EventStoreEventType.EventPublished, eventStore.Appended[0].Type);
@@ -2643,6 +2651,7 @@ public sealed class ExecutionServiceTests
         using var payloadDoc = JsonDocument.Parse(payload);
         Assert.Equal(TestTenantIds.T1TenantId.ToString("D"), payloadDoc.RootElement.GetProperty("tenantId").GetString());
         Assert.Equal(resumeKey, payloadDoc.RootElement.GetProperty("name").GetString());
+        Assert.Equal(nodeId, payloadDoc.RootElement.GetProperty("nodeId").GetString());
 
         Assert.Single(executionRepo.Updates);
         Assert.Equal("Cancelled", executionRepo.Updates[0].Status);

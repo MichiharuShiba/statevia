@@ -737,7 +737,7 @@ internal sealed class ExecutionService : IExecutionService
         return new ExecutionEventsResponseDto { Events = events, HasMore = hasMore };
     }
 
-    public Task ResumeNodeAsync(
+    public async Task ResumeNodeAsync(
         string idOrUuid,
         string nodeId,
         string? resumeKey,
@@ -745,7 +745,110 @@ internal sealed class ExecutionService : IExecutionService
         CommandRequestContext requestContext,
         CancellationToken ct)
     {
-        return PublishEventAsync(idOrUuid, resumeKey!, idempotencyKey, requestContext, ct);
+        ArgumentNullException.ThrowIfNull(requestContext);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(resumeKey);
+
+        var eventName = resumeKey.Trim();
+        var tenantKey = _tenantContext.GetRequiredTenantKey();
+        var tenantId = _tenantContext.GetRequiredTenantId();
+        var dedupKey = _dedupService.Create(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path);
+
+        if (dedupKey is { } key)
+        {
+            var dedupCheckTime = DateTime.UtcNow;
+            var existing = await _executor.ExecuteReadOnlyAsync(
+                (uow, innerCt) => _dedup.FindValidAsync(uow, key.DedupKey, dedupCheckTime, innerCt),
+                ct).ConfigureAwait(false);
+            if (existing is not null)
+                return;
+        }
+
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
+        if (uuid is null)
+            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+
+        var execution = await _executor.ExecuteReadOnlyAsync(
+            (uow, innerCt) => _executions.GetByIdAsync(uow, tenantId, uuid.Value, innerCt),
+            ct).ConfigureAwait(false);
+        if (execution is null)
+            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+
+        await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
+
+        await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
+
+        var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
+
+        if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
+            return;
+
+        EnsureEngineRuntimePresentForMutation(uuid.Value, execution);
+
+        // Resume 正本: nodeId + eventName。wait 行は nodeId で先行削除する。
+        var engineId = uuid.Value.ToString();
+        _engine.ResumeWaitNode(engineId, nodeId, eventName);
+
+        var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
+        var publishedPayload = JsonSerializer.Serialize(
+            new { tenantId, name = eventName, nodeId },
+            CamelCaseJsonSerializerOptions);
+
+        await _mutationPersistence.ExecuteSerializableWithRetryAsync(
+            tenantId,
+            uuid.Value,
+            clientEventId,
+            async (uow, ctInner) =>
+            {
+                await _executions
+                    .UpdateExecutionAndSnapshotAsync(uow, uuid.Value, pubStatus, pubCancel, pubGraphJson, ctInner)
+                    .ConfigureAwait(false);
+                await SyncOperationalProjectionAsync(
+                        uow,
+                        uuid.Value,
+                        tenantId,
+                        pubStatus,
+                        pubGraphJson,
+                        nodeIdToClear: nodeId,
+                        ctInner)
+                    .ConfigureAwait(false);
+                await _eventStore
+                    .AppendAsync(uow, uuid.Value, EventStoreEventType.EventPublished, publishedPayload, ctInner)
+                    .ConfigureAwait(false);
+
+                if (dedupKey is { } saveKey)
+                {
+                    var now = DateTime.UtcNow;
+                    await _dedup.SaveAsync(
+                        uow,
+                        new CommandDedupRow
+                        {
+                            DedupKey = saveKey.DedupKey,
+                            Endpoint = saveKey.Endpoint,
+                            IdempotencyKey = saveKey.IdempotencyKey,
+                            RequestHash = null,
+                            StatusCode = HttpStatus204NoContent,
+                            ResponseBody = null,
+                            CreatedAt = now,
+                            ExpiresAt = now.AddHours(24)
+                        },
+                        ctInner).ConfigureAwait(false);
+                }
+
+                var nowUtc = DateTime.UtcNow;
+                await _eventDeliveryDedup.TryUpdateStatusAsync(
+                    uow,
+                    tenantId,
+                    uuid.Value,
+                    clientEventId,
+                    new EventDeliveryDedupStatusUpdate(
+                        EventDeliveryDedupStatuses.Applied,
+                        nowUtc,
+                        AppliedAt: nowUtc,
+                        ErrorCode: null),
+                    ctInner).ConfigureAwait(false);
+            },
+            ct).ConfigureAwait(false);
     }
 
     private async Task<ExecutionViewDto> BuildExecutionViewInternalAsync(Guid uuid, string idOrUuidForDisplay, CancellationToken ct)
