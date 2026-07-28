@@ -77,7 +77,9 @@ internal static class ExecutionOperationalProjectionSync
             return null;
 
         var waitCandidates = runningNodes
-            .Where(n => string.Equals(n.NodeType, "Wait", StringComparison.OrdinalIgnoreCase))
+            .Where(n =>
+                string.Equals(n.NodeType, "Wait", StringComparison.OrdinalIgnoreCase)
+                && HasConfiguredWaitEvents(n))
             .OrderByDescending(n => n.StartedAt)
             .ToList();
 
@@ -164,6 +166,15 @@ internal static class ExecutionOperationalProjectionSync
 
         return [];
     }
+
+    /// <summary>
+    /// durable wait / cursor 優先候補として扱う Wait か（許可イベントが 1 件以上）。
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ExtractDurableWaits"/> と同じ判定にし、cursor が execution_waits に無いノードを指さないようにする。
+    /// </remarks>
+    private static bool HasConfiguredWaitEvents(GraphNodeDto node) =>
+        ResolveAllowedEvents(node).Count > 0;
 
     private static bool TryParseGraph(string graphJson, out List<GraphNodeDto> nodes)
     {

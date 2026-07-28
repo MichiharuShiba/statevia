@@ -1128,6 +1128,10 @@ internal sealed class ExecutionService : IExecutionService
     }
 
     /// <summary>未完了 Wait ノードなら nodeId を取り出す。</summary>
+    /// <remarks>
+    /// 許可イベント未設定の Wait は durable wait 投影対象外のため除外する
+    ///（<c>allowedEvents</c> または互換の <c>waitKey</c> が必要）。
+    /// </remarks>
     private static bool TryGetActiveWaitNodeId(JsonElement node, out string? nodeId)
     {
         nodeId = null;
@@ -1143,6 +1147,9 @@ internal sealed class ExecutionService : IExecutionService
             return false;
         }
 
+        if (!HasConfiguredWaitEvents(node))
+            return false;
+
         if (!node.TryGetProperty("nodeId", out var nodeIdElement))
             return false;
 
@@ -1152,6 +1159,30 @@ internal sealed class ExecutionService : IExecutionService
 
         nodeId = value;
         return true;
+    }
+
+    /// <summary>
+    /// グラフ JSON の Wait ノードに許可イベント設定があるか
+    ///（<c>allowedEvents</c> 優先、なければ非空の <c>waitKey</c>）。
+    /// </summary>
+    private static bool HasConfiguredWaitEvents(JsonElement node)
+    {
+        if (node.TryGetProperty("allowedEvents", out var allowedEvents)
+            && allowedEvents.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var entry in allowedEvents.EnumerateArray())
+            {
+                if (entry.ValueKind == JsonValueKind.String
+                    && !string.IsNullOrWhiteSpace(entry.GetString()))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return node.TryGetProperty("waitKey", out var waitKey)
+            && waitKey.ValueKind == JsonValueKind.String
+            && !string.IsNullOrWhiteSpace(waitKey.GetString());
     }
 
     /// <summary>

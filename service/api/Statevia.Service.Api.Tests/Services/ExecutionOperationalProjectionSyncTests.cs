@@ -109,6 +109,59 @@ public sealed class ExecutionOperationalProjectionSyncTests
         Assert.Equal(["approve", "reject"], wait.AllowedEvents);
     }
 
+    /// <summary>
+    /// 許可イベント未設定の Wait は cursor 優先候補にせず、他の実行中ノードを選ぶ。
+    /// </summary>
+    [Fact]
+    public async Task SyncAsync_SkipsWaitWithoutEvents_WhenSelectingCursor()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var executionId = Guid.NewGuid();
+        await SeedExecutionAsync(db, executionId);
+
+        var graphJson =
+            """
+            {"nodes":[
+              {"nodeId":"wait-empty","stateName":"BrokenWait","nodeType":"Wait","startedAt":"2026-05-26T00:00:02Z","waitKey":null,"allowedEvents":[],"workerId":"w-wait"},
+              {"nodeId":"task1","stateName":"Prepare","nodeType":"Task","startedAt":"2026-05-26T00:00:01Z","workerId":"worker-prepare"}
+            ]}
+            """;
+        var request = new ExecutionOperationalProjectionSyncRequest(
+            executionId,
+            TestTenantIds.T1TenantId,
+            "Running",
+            new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["Prepare"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            graphJson,
+            NodeIdToClear: null);
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        await ExecutionOperationalProjectionSync.SyncAsync(
+            uow,
+            new ExecutionCursorRepository(),
+            new ExecutionWaitRepository(),
+            request,
+            CancellationToken.None);
+        await uow.SaveChangesAsync(CancellationToken.None);
+
+        // Assert
+        await using var verify = new CoreDbContext(db.Options);
+        var cursor = await verify.ExecutionCursors.SingleAsync(x => x.ExecutionId == executionId);
+        Assert.Equal("task1", cursor.CurrentNodeId);
+        Assert.Equal("worker-prepare", cursor.CurrentWorkerId);
+        Assert.False(await verify.ExecutionWaits.AnyAsync(x => x.ExecutionId == executionId));
+    }
+
     /// <summary>終了状態では cursor / wait を削除する。</summary>
     [Fact]
     public async Task SyncAsync_ClearsOperationalRows_WhenTerminal()
