@@ -169,4 +169,63 @@ public class Level2ValidationTests
         // Assert: Join 状態が到達可能性に含まれる
         Assert.True(result.IsValid);
     }
+
+    /// <summary>wait.events の遷移先は到達可能とみなされることを検証する。</summary>
+    [Fact]
+    public void Validate_WaitEventsTargets_AreReachable()
+    {
+        // Arrange: Start → Wait（approve/reject）→ Approved/Rejected → End
+        var def = new WorkflowDefinition
+        {
+            Name = "WaitMultiEvent",
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["Start"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new TransitionDefinition { Next = "Wait" }
+                    }
+                },
+                ["Wait"] = new StateDefinition
+                {
+                    Wait = new WaitDefinition
+                    {
+                        Events = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                        {
+                            ["approve"] = "Approved",
+                            ["reject"] = "Rejected"
+                        }
+                    }
+                },
+                ["Approved"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new TransitionDefinition { Next = "End" }
+                    }
+                },
+                ["Rejected"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new TransitionDefinition { Next = "End" }
+                    }
+                },
+                ["End"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new TransitionDefinition { End = true }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = Level2Validator.Validate(def);
+
+        // Assert
+        Assert.True(result.IsValid);
+    }
 }
