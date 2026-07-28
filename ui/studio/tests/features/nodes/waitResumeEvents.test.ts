@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveWaitResumeEvents } from "../../../features/executions/lib/waitResumeEvents";
+import { isPublishEventAvailable, resolveWaitResumeEvents } from "../../../features/executions/lib/waitResumeEvents";
 
 describe("resolveWaitResumeEvents", () => {
   it("allowedEvents を優先して返す", () => {
@@ -44,5 +44,55 @@ describe("resolveWaitResumeEvents", () => {
 
     // Assert
     expect(result).toEqual([]);
+  });
+});
+
+describe("isPublishEventAvailable", () => {
+  it("WAITING が 1 件かつ許可イベントが 1 件なら true", () => {
+    // Arrange
+    const execution = {
+      status: "Running",
+      cancelRequested: false,
+      nodes: [{ status: "WAITING", waitKey: "approve", allowedEvents: null }]
+    };
+
+    // Act / Assert
+    expect(isPublishEventAvailable(execution)).toBe(true);
+  });
+
+  it("許可イベントが複数なら false", () => {
+    // Arrange
+    const execution = {
+      status: "Running",
+      nodes: [{ status: "WAITING", allowedEvents: ["approve", "reject"] }]
+    };
+
+    // Act / Assert
+    expect(isPublishEventAvailable(execution)).toBe(false);
+  });
+
+  it("WAITING が複数なら false", () => {
+    // Arrange
+    const execution = {
+      status: "Running",
+      nodes: [
+        { status: "WAITING", waitKey: "a" },
+        { status: "WAITING", waitKey: "b" }
+      ]
+    };
+
+    // Act / Assert
+    expect(isPublishEventAvailable(execution)).toBe(false);
+  });
+
+  it("終端実行なら false", () => {
+    // Arrange
+    const execution = {
+      status: "Completed",
+      nodes: [{ status: "WAITING", waitKey: "approve" }]
+    };
+
+    // Act / Assert
+    expect(isPublishEventAvailable(execution)).toBe(false);
   });
 });

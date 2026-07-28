@@ -20,6 +20,7 @@ import { useGraphDefinition } from "../hooks/useGraphDefinition";
 import { getNodeWithFallback, useGraphData } from "../hooks/useGraphData";
 import { getResumeDisabledReason, useNodeCommands } from "../hooks/useNodeCommands";
 import { computeExecutionDiff } from "../lib/executionDiff";
+import { isPublishEventAvailable } from "../lib/waitResumeEvents";
 import { apiGet } from "@/shared/api";
 import { toToastError, type ToastState } from "@/shared/lib/errors";
 import { useI18n, useUiText } from "@/shared/i18n/uiTextContext";
@@ -532,7 +533,7 @@ function ExecutionDashboardView({
 
           <Toast toast={toast} onClose={onCloseToast} />
 
-          {operationsEnabled && showExecutionPanels && (
+          {operationsEnabled && showExecutionPanels && isPublishEventAvailable(execution) && (
             <section className="rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm">
               <h2 className="text-sm font-semibold text-[var(--md-sys-color-on-surface)]">{uiText.executionDashboard.actions.sectionTitle}</h2>
               <div className="mt-3 flex flex-wrap items-end gap-2">
