@@ -129,8 +129,10 @@ public sealed class GraphDefinitionServiceTests
               "joinTable": {
                 "JoinState": ["WaitState", "ForkState"]
               },
-              "waitTable": {
-                "WaitState": "UserApproved"
+              "waitEventRouteTable": {
+                "WaitState": {
+                  "UserApproved": { "next": "JoinState" }
+                }
               }
             }
             """;

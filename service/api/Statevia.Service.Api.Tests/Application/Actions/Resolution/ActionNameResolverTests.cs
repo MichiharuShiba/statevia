@@ -183,13 +183,15 @@ public sealed class ActionNameResolverTests
             {
                 ["W"] = new StateDefinition
                 {
-                    Wait = new WaitDefinition { Event = "resume" },
-                    On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
+                    Wait = new WaitDefinition
                     {
-                        ["Completed"] = new TransitionDefinition { End = true },
-                    },
-                },
-            },
+                        Events = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                        {
+                            ["resume"] = "Next"
+                        }
+                    }
+                }
+            }
         };
 
         // Act

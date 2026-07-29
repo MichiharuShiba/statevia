@@ -111,9 +111,9 @@ public class ExecutionEngineTests
         Assert.True(snapshot.IsCompleted);
     }
 
-    /// <summary>PublishEvent を呼んでも例外が発生しないことを検証する。</summary>
+    /// <summary>アクティブ Wait が無いとき PublishEvent は拒否する。</summary>
     [Fact]
-    public void PublishEvent_DoesNotThrow()
+    public void PublishEvent_Throws_WhenNoActiveWait()
     {
         // Arrange
         var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
@@ -123,12 +123,13 @@ public class ExecutionEngineTests
         var ex = Record.Exception(() => engine.PublishEvent("SomeEvent"));
 
         // Assert
-        Assert.Null(ex);
+        Assert.IsType<InvalidOperationException>(ex);
+        Assert.Contains("exactly one active Wait", ex!.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>単一 execution ID 指定の PublishEvent が例外を投げないことを検証する。</summary>
+    /// <summary>単一 execution ID 指定でもアクティブ Wait が無いと PublishEvent は拒否する。</summary>
     [Fact]
-    public void PublishEvent_ToExecutionId_DoesNotThrow()
+    public void PublishEvent_ToExecutionId_Throws_WhenNoActiveWait()
     {
         // Arrange
         var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
@@ -138,12 +139,13 @@ public class ExecutionEngineTests
         var ex = Record.Exception(() => engine.PublishEvent(executionId, "SomeEvent"));
 
         // Assert
-        Assert.Null(ex);
+        Assert.IsType<InvalidOperationException>(ex);
+        Assert.Contains("exactly one active Wait", ex!.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>複数実行が存在するとき、イベント名のみのブロードキャストが例外で終了しないこと。</summary>
+    /// <summary>複数実行で Wait が無いときブロードキャストは AggregateException になる。</summary>
     [Fact]
-    public void PublishEvent_BroadcastByEventName_DoesNotThrow_WhenMultipleExecutions()
+    public void PublishEvent_BroadcastByEventName_Throws_WhenNoActiveWait()
     {
         // Arrange
         var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2);
@@ -154,28 +156,26 @@ public class ExecutionEngineTests
         var ex = Record.Exception(() => engine.PublishEvent("SomeEvent"));
 
         // Assert
-        Assert.Null(ex);
+        Assert.IsType<AggregateException>(ex);
     }
 
-    /// <summary>clientEventId 付き PublishEvent オーバーロードも従来と同様に例外を投げないことを検証する。</summary>
+    /// <summary>clientEventId 付き PublishEvent もアクティブ Wait が無いと例外になる。</summary>
     [Fact]
-    public void PublishEvent_WithClientEventId_DoesNotThrow()
+    public void PublishEvent_WithClientEventId_Throws_WhenNoActiveWait()
     {
         // Arrange
         var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var executionId = engine.Start(CreateMinimalDefinition());
         var clientEventId = Guid.Parse("a1b2c3d4-e5f6-4789-a012-3456789abcde");
 
-        // Act
-        var result = engine.PublishEvent(executionId, "SomeEvent", clientEventId);
-
-        // Assert
-        Assert.True(result.IsApplied);
+        // Act / Assert
+        Assert.Throws<InvalidOperationException>(() =>
+            engine.PublishEvent(executionId, "SomeEvent", clientEventId));
     }
 
-    /// <summary>複数実行が存在するとき、clientEventId 付きブロードキャストが全インスタンスに届き、2 回目は冪等になる。</summary>
+    /// <summary>複数実行で Wait が無いとき clientEventId 付きブロードキャストは AggregateException になる。</summary>
     [Fact]
-    public void PublishEvent_WithClientEventId_Broadcast_AppliesThenAlreadyApplied_ForMultipleExecutions()
+    public void PublishEvent_WithClientEventId_Broadcast_Throws_WhenNoActiveWait()
     {
         // Arrange
         var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2);
@@ -183,13 +183,8 @@ public class ExecutionEngineTests
         engine.Start(CreateMinimalDefinition());
         var clientEventId = Guid.Parse("b2c3d4e5-f6a7-4890-b123-456789abcdef");
 
-        // Act
-        var firstBroadcast = engine.PublishEvent("SomeEvent", clientEventId);
-        var secondBroadcast = engine.PublishEvent("SomeEvent", clientEventId);
-
-        // Assert
-        Assert.True(firstBroadcast.IsApplied);
-        Assert.True(secondBroadcast.IsAlreadyApplied);
+        // Act / Assert
+        Assert.Throws<AggregateException>(() => engine.PublishEvent("SomeEvent", clientEventId));
     }
 
     /// <summary>Dispose を呼んでも例外が発生しないことを検証する。</summary>
@@ -759,9 +754,9 @@ public class ExecutionEngineTests
         Assert.Equal([1, 2], attempts);
     }
 
-    /// <summary>WaitTable に定義されたイベントキーが実行グラフの waitKey に記録されることを検証する。</summary>
+    /// <summary>単一イベントの WaitEventRouteTable が実行グラフの waitKey に記録されることを検証する。</summary>
     [Fact]
-    public async Task Start_WhenStateHasWaitTableEntry_ExecutionGraphIncludesWaitKey()
+    public async Task Start_WhenStateHasSingleWaitEventRoute_ExecutionGraphIncludesWaitKey()
     {
         // Arrange
         var def = CreateDefinitionWithWaitKey();
@@ -777,6 +772,57 @@ public class ExecutionEngineTests
         var node = doc.RootElement.GetProperty("nodes").EnumerateArray()
             .First(n => string.Equals(n.GetProperty("stateName").GetString(), "WaitState", StringComparison.Ordinal));
         Assert.Equal("resume", node.GetProperty("waitKey").GetString());
+        var allowed = node.GetProperty("allowedEvents").EnumerateArray().Select(e => e.GetString()).ToList();
+        Assert.Equal(["resume"], allowed);
+    }
+
+    /// <summary>複数イベント Wait では waitKey が null で allowedEvents に全キーが入ることを検証する。</summary>
+    [Fact]
+    public async Task Start_WhenStateHasMultipleWaitEventRoutes_ExecutionGraphIncludesAllowedEvents()
+    {
+        // Arrange
+        var def = new CompiledWorkflowDefinition
+        {
+            Name = "MultiWait",
+            Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["ApproveTask"] = new Dictionary<string, TransitionTarget>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Completed"] = new TransitionTarget { End = true },
+                },
+            },
+            ForkTable = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase),
+            JoinTable = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase),
+            WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["ApproveTask"] = new Dictionary<string, WaitEventRouteDefinition>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["approve"] = new WaitEventRouteDefinition { Next = "ApproveTask" },
+                    ["reject"] = new WaitEventRouteDefinition { Next = "ApproveTask" },
+                },
+            },
+            InitialState = "ApproveTask",
+            StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["ApproveTask"] = DefaultStateExecutor.Create(new ImmediateState()),
+            }),
+        };
+        using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+
+        // Act
+        var id = engine.Start(def);
+        await Task.Delay(300).ConfigureAwait(false);
+        var graphJson = engine.ExportExecutionGraph(id);
+
+        // Assert
+        using var doc = JsonDocument.Parse(graphJson);
+        var node = doc.RootElement.GetProperty("nodes").EnumerateArray()
+            .First(n => string.Equals(n.GetProperty("stateName").GetString(), "ApproveTask", StringComparison.Ordinal));
+        Assert.Equal(JsonValueKind.Null, node.GetProperty("waitKey").ValueKind);
+        var allowed = node.GetProperty("allowedEvents").EnumerateArray().Select(e => e.GetString()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("approve", allowed);
+        Assert.Contains("reject", allowed);
+        Assert.Equal(2, allowed.Count);
     }
 
     /// <summary>Store.TryGetOutput が状態実行中に利用される経路を検証する。</summary>
@@ -808,7 +854,7 @@ public class ExecutionEngineTests
             Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>> { ["Start"] = new Dictionary<string, TransitionTarget>() },
             ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-            WaitTable = new Dictionary<string, string>(),
+            WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
             InitialState = "Start",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["Start"] = DefaultStateExecutor.Create(new ImmediateState()) })
         };
@@ -836,7 +882,7 @@ public class ExecutionEngineTests
             Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>> { ["A"] = new Dictionary<string, TransitionTarget> { ["Completed"] = new TransitionTarget { End = true } } },
             ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-            WaitTable = new Dictionary<string, string>(),
+            WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
             InitialState = "A",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor> { ["A"] = DefaultStateExecutor.Create(new ContextReaderState()) })
         };
@@ -861,7 +907,7 @@ public class ExecutionEngineTests
         },
         ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
         JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-        WaitTable = new Dictionary<string, string>(),
+        WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
         InitialState = "Start",
         StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
         {
@@ -881,7 +927,7 @@ public class ExecutionEngineTests
         },
         ForkTable = new Dictionary<string, IReadOnlyList<string>> { ["Start"] = new[] { "A", "B" } },
         JoinTable = new Dictionary<string, IReadOnlyList<string>> { ["Join1"] = new[] { "A", "B" } },
-        WaitTable = new Dictionary<string, string>(),
+        WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
         InitialState = "Start",
         StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
         {
@@ -901,7 +947,7 @@ public class ExecutionEngineTests
         },
         ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
         JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-        WaitTable = new Dictionary<string, string>(),
+        WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
         InitialState = "A",
         StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
         {
@@ -952,7 +998,7 @@ public class ExecutionEngineTests
             },
             ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-            WaitTable = new Dictionary<string, string>(),
+            WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
             StateOutputs = stateOutputs,
             InitialState = "Route",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
@@ -1015,7 +1061,7 @@ public class ExecutionEngineTests
             },
             ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-            WaitTable = new Dictionary<string, string>(),
+            WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
             InitialState = "Route",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
             {
@@ -1092,7 +1138,7 @@ public class ExecutionEngineTests
         },
         ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
         JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-        WaitTable = new Dictionary<string, string>(),
+        WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
         InitialState = "Start",
         StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
         {
@@ -1134,7 +1180,7 @@ public class ExecutionEngineTests
             },
             ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-            WaitTable = new Dictionary<string, string>(),
+            WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
             InitialState = "A",
             StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
             {
@@ -1158,7 +1204,13 @@ public class ExecutionEngineTests
         },
         ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
         JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-        WaitTable = new Dictionary<string, string> { ["WaitState"] = "resume" },
+        WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["WaitState"] = new Dictionary<string, WaitEventRouteDefinition>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["resume"] = new WaitEventRouteDefinition { Next = "WaitState" }
+            }
+        },
         InitialState = "WaitState",
         StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
         {

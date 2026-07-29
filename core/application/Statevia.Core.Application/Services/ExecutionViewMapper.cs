@@ -57,6 +57,7 @@ internal static class ExecutionViewMapper
                 Attempt = n.Attempt ?? 1,
                 WorkerId = n.WorkerId,
                 WaitKey = n.WaitKey,
+                AllowedEvents = NormalizeAllowedEvents(n.AllowedEvents),
                 CanceledByExecution = canceledByExecution,
                 Input = n.Input,
                 Output = n.Output,
@@ -78,14 +79,38 @@ internal static class ExecutionViewMapper
             Attempt = n.Attempt,
             WorkerId = n.WorkerId,
             WaitKey = n.WaitKey,
+            AllowedEvents = n.AllowedEvents,
             CanceledByExecution = n.CanceledByExecution
         }).ToList();
     }
 
+    /// <summary>空・空白のみを除き、前後空白を Trim した許可イベント一覧を返す（空なら null）。</summary>
+    private static List<string>? NormalizeAllowedEvents(List<string>? allowedEvents)
+    {
+        if (allowedEvents is null || allowedEvents.Count == 0)
+            return null;
+
+        var normalized = allowedEvents
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .Select(e => e.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return normalized.Count == 0 ? null : normalized;
+    }
+
+    /// <summary>
+    /// グラフノードの UI 向け status を解決する。
+    /// 未完了 Wait は WAITING（Resume 可否と仕様の NodeStatus に合わせる）。
+    /// </summary>
     private static string MapNodeStatus(ExecutionNodeDto node)
     {
         if (node.CompletedAt is null)
-            return "RUNNING";
+        {
+            return string.Equals(node.NodeType, "Wait", StringComparison.OrdinalIgnoreCase)
+                ? "WAITING"
+                : "RUNNING";
+        }
 
         return node.Fact switch
         {
@@ -144,6 +169,9 @@ internal static class ExecutionViewMapper
 
         [JsonPropertyName("waitKey")]
         public string? WaitKey { get; set; }
+
+        [JsonPropertyName("allowedEvents")]
+        public List<string>? AllowedEvents { get; set; }
 
         [JsonPropertyName("canceledByExecution")]
         public bool? CanceledByExecution { get; set; }

@@ -84,9 +84,9 @@ public class DefinitionCompilerTests
         Assert.Equal("Start", compiled.InitialState);
     }
 
-    /// <summary>DefinitionCompiler が Wait テーブルを生成し、WaitTable ゲッターが参照されることを検証する。</summary>
+    /// <summary>DefinitionCompiler が WaitEventRouteTable を生成することを検証する。</summary>
     [Fact]
-    public void Compile_ProducesWaitTable_WhenWaitStateExists()
+    public void Compile_ProducesWaitEventRouteTable_WhenWaitStateExists()
     {
         // Arrange
         var def = new WorkflowDefinition
@@ -95,7 +95,24 @@ public class DefinitionCompilerTests
             States = new Dictionary<string, StateDefinition>
             {
                 ["Start"] = new StateDefinition { On = new Dictionary<string, TransitionDefinition> { ["Completed"] = new TransitionDefinition { Next = "WaitState" } } },
-                ["WaitState"] = new StateDefinition { Wait = new WaitDefinition { Event = "resume" }, On = new Dictionary<string, TransitionDefinition> { ["Resumed"] = new TransitionDefinition { End = true } } }
+                ["WaitState"] = new StateDefinition
+                {
+                    Wait = new WaitDefinition
+                    {
+                        Events = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                        {
+                            ["resume"] = "Done",
+                            ["cancel"] = "Done"
+                        }
+                    }
+                },
+                ["Done"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new TransitionDefinition { End = true }
+                    }
+                }
             }
         };
         var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
@@ -103,11 +120,13 @@ public class DefinitionCompilerTests
 
         // Act
         var compiled = compiler.Compile(def);
-        var waitTable = compiled.WaitTable;
+        var routes = compiled.WaitEventRouteTable;
 
         // Assert
-        Assert.Single(waitTable);
-        Assert.Equal("resume", waitTable["WaitState"]);
+        Assert.Single(routes);
+        Assert.Equal(2, routes["WaitState"].Count);
+        Assert.Equal("Done", routes["WaitState"]["resume"].Next);
+        Assert.Equal("Done", routes["WaitState"]["cancel"].Next);
     }
 
     /// <summary>Join で All が空の状態は Join テーブルに含めないことを検証する。</summary>

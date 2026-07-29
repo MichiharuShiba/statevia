@@ -43,7 +43,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
                 IsFailed = false
             },
             graphJson,
-            ResumeTokenToClear: null);
+            NodeIdToClear: null);
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
@@ -59,7 +59,107 @@ public sealed class ExecutionOperationalProjectionSyncTests
 
         var wait = await verify.ExecutionWaits.SingleAsync(x => x.ExecutionId == executionId);
         Assert.Equal(ExecutionWaitKind.EventWait, wait.WaitKind);
-        Assert.Equal("Approve", wait.ResumeToken);
+        Assert.Equal(["Approve"], wait.AllowedEvents);
+    }
+
+    /// <summary>複数イベント Wait は allowedEvents をそのまま永続化する（waitKey 不要）。</summary>
+    [Fact]
+    public async Task SyncAsync_PersistsMultiEventWait_FromAllowedEvents()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var cursorRepo = new ExecutionCursorRepository();
+        var waitRepo = new ExecutionWaitRepository();
+        var executionId = Guid.NewGuid();
+        var graphJson =
+            """
+            {"nodes":[
+              {"nodeId":"wait-multi","stateName":"ApproveTask","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","waitKey":null,"allowedEvents":["approve","reject"],"workerId":"w1"}
+            ]}
+            """;
+
+        await SeedExecutionAsync(db, executionId);
+
+        var request = new ExecutionOperationalProjectionSyncRequest(
+            executionId,
+            TestTenantIds.T1TenantId,
+            "Running",
+            new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["ApproveTask"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            graphJson,
+            NodeIdToClear: null);
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        await ExecutionOperationalProjectionSync.SyncAsync(uow, cursorRepo, waitRepo, request, CancellationToken.None);
+        await uow.SaveChangesAsync(CancellationToken.None);
+
+        // Assert
+        await using var verify = new CoreDbContext(db.Options);
+        var wait = await verify.ExecutionWaits.SingleAsync(x => x.ExecutionId == executionId);
+        Assert.Equal("wait-multi", wait.NodeId);
+        Assert.Equal(["approve", "reject"], wait.AllowedEvents);
+    }
+
+    /// <summary>
+    /// 許可イベント未設定の Wait は cursor 優先候補にせず、他の実行中ノードを選ぶ。
+    /// </summary>
+    [Fact]
+    public async Task SyncAsync_SkipsWaitWithoutEvents_WhenSelectingCursor()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var executionId = Guid.NewGuid();
+        await SeedExecutionAsync(db, executionId);
+
+        var graphJson =
+            """
+            {"nodes":[
+              {"nodeId":"wait-empty","stateName":"BrokenWait","nodeType":"Wait","startedAt":"2026-05-26T00:00:02Z","waitKey":null,"allowedEvents":[],"workerId":"w-wait"},
+              {"nodeId":"task1","stateName":"Prepare","nodeType":"Task","startedAt":"2026-05-26T00:00:01Z","workerId":"worker-prepare"}
+            ]}
+            """;
+        var request = new ExecutionOperationalProjectionSyncRequest(
+            executionId,
+            TestTenantIds.T1TenantId,
+            "Running",
+            new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["Prepare"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            graphJson,
+            NodeIdToClear: null);
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        await ExecutionOperationalProjectionSync.SyncAsync(
+            uow,
+            new ExecutionCursorRepository(),
+            new ExecutionWaitRepository(),
+            request,
+            CancellationToken.None);
+        await uow.SaveChangesAsync(CancellationToken.None);
+
+        // Assert
+        await using var verify = new CoreDbContext(db.Options);
+        var cursor = await verify.ExecutionCursors.SingleAsync(x => x.ExecutionId == executionId);
+        Assert.Equal("task1", cursor.CurrentNodeId);
+        Assert.Equal("worker-prepare", cursor.CurrentWorkerId);
+        Assert.False(await verify.ExecutionWaits.AnyAsync(x => x.ExecutionId == executionId));
     }
 
     /// <summary>終了状態では cursor / wait を削除する。</summary>
@@ -100,7 +200,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
                 ExecutionId = executionId,
                 NodeId = "n1",
                 WaitKind = ExecutionWaitKind.EventWait,
-                ResumeToken = "Approve",
+                AllowedEvents = ["Approve"],
                 CreatedAt = now
             });
             await ctx.SaveChangesAsync();
@@ -112,7 +212,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
             "Completed",
             Snapshot: null,
             GraphJson: "{}",
-            ResumeTokenToClear: null);
+            NodeIdToClear: null);
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
@@ -125,9 +225,9 @@ public sealed class ExecutionOperationalProjectionSyncTests
         Assert.False(await verify.ExecutionWaits.AnyAsync(x => x.ExecutionId == executionId));
     }
 
-    /// <summary>ResumeTokenToClear で一致 wait を先行削除する。</summary>
+    /// <summary>NodeIdToClear で一致 wait を先行削除する。</summary>
     [Fact]
-    public async Task SyncAsync_DeletesMatchingWait_WhenResumeTokenToClearProvided()
+    public async Task SyncAsync_DeletesMatchingWait_WhenNodeIdToClearProvided()
     {
         // Arrange
         using var db = new InMemoryTestDatabase();
@@ -146,7 +246,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
                     ExecutionId = executionId,
                     NodeId = "wait-old",
                     WaitKind = ExecutionWaitKind.EventWait,
-                    ResumeToken = "Approve",
+                    AllowedEvents = ["Approve"],
                     CreatedAt = now
                 },
                 new ExecutionWaitRow
@@ -154,7 +254,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
                     ExecutionId = executionId,
                     NodeId = "wait-other",
                     WaitKind = ExecutionWaitKind.EventWait,
-                    ResumeToken = "Other",
+                    AllowedEvents = ["Other"],
                     CreatedAt = now
                 });
             await ctx.SaveChangesAsync();
@@ -171,7 +271,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
               {"nodeId":"wait-other","stateName":"Other","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","waitKey":"Other","workerId":"w2"}
             ]}
             """,
-            ResumeTokenToClear: "Approve");
+            NodeIdToClear: "wait-old");
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
@@ -180,12 +280,12 @@ public sealed class ExecutionOperationalProjectionSyncTests
 
         // Assert
         await using var verify = new CoreDbContext(db.Options);
-        var tokens = await verify.ExecutionWaits
+        var nodeIds = await verify.ExecutionWaits
             .Where(x => x.ExecutionId == executionId)
-            .Select(x => x.ResumeToken)
+            .Select(x => x.NodeId)
             .ToListAsync();
-        Assert.Single(tokens);
-        Assert.Equal("Other", tokens[0]);
+        Assert.Single(nodeIds);
+        Assert.Equal("wait-other", nodeIds[0]);
     }
 
     /// <summary>Wait 以外の実行中ノードは ActiveStates から cursor 位置を選ぶ。</summary>
@@ -218,7 +318,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
                 IsFailed = false
             },
             graphJson,
-            ResumeTokenToClear: null);
+            NodeIdToClear: null);
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
@@ -269,7 +369,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
                 IsFailed = false
             },
             graphJson,
-            ResumeTokenToClear: null);
+            NodeIdToClear: null);
 
         // Act
         await using var uow = await uowFactory.CreateAsync();

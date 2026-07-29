@@ -34,6 +34,7 @@ function upsertNode(nodes: ExecutionNodeDTO[], incoming: Partial<ExecutionNodeDT
         attempt: incoming.attempt ?? 0,
         workerId: incoming.workerId ?? null,
         waitKey: incoming.waitKey ?? null,
+        allowedEvents: incoming.allowedEvents ?? null,
         canceledByExecution: incoming.canceledByExecution ?? false,
         error: incoming.error ?? undefined,
         cancelReason: incoming.cancelReason ?? undefined
@@ -62,6 +63,7 @@ function applyGraphUpdated(execution: ExecutionView, event: Extract<ExecutionStr
       attempt: patchNode.attempt,
       workerId: patchNode.workerId,
       waitKey: patchNode.waitKey,
+      allowedEvents: patchNode.allowedEvents,
       canceledByExecution: patchNode.canceledByExecution,
       error: patchNode.error,
       cancelReason: patchNode.cancelReason

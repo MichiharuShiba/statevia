@@ -50,6 +50,8 @@ public static class Level2Validator
                     referenced.Add(s);
                 }
             }
+
+            CollectWaitEventTargets(stateDef, referenced);
         }
         return definition.States.Keys.FirstOrDefault(s => !referenced.Contains(s)) ?? definition.States.Keys.First();
     }
@@ -70,6 +72,7 @@ public static class Level2Validator
             }
 
             ProcessTransitions(stateDef, reachable, queue);
+            ProcessWaitEvents(stateDef, reachable, queue);
             ProcessJoin(stateDef, current, reachable, queue);
         }
 
@@ -86,6 +89,38 @@ public static class Level2Validator
         foreach (var (_, trans) in stateDef.On)
         {
             ProcessTransitionTreeCore(trans, reachable, queue);
+        }
+    }
+
+    /// <summary>
+    /// wait.events の遷移先を到達可能性グラフに追加する。
+    /// </summary>
+    private static void ProcessWaitEvents(StateDefinition stateDef, HashSet<string> reachable, Queue<string> queue)
+    {
+        if (stateDef.Wait?.Events is null)
+        {
+            return;
+        }
+
+        foreach (var next in stateDef.Wait.Events.Values)
+        {
+            EnqueueNext(string.IsNullOrWhiteSpace(next) ? null : next.Trim(), reachable, queue);
+        }
+    }
+
+    /// <summary>
+    /// 初期状態推定用に wait.events の遷移先を参照済み集合へ追加する。
+    /// </summary>
+    private static void CollectWaitEventTargets(StateDefinition stateDef, HashSet<string> referenced)
+    {
+        if (stateDef.Wait?.Events is null)
+        {
+            return;
+        }
+
+        foreach (var next in stateDef.Wait.Events.Values)
+        {
+            AddReferencedNext(string.IsNullOrWhiteSpace(next) ? null : next.Trim(), referenced);
         }
     }
 

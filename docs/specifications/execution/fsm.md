@@ -3,9 +3,9 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.0 |
-| 更新日 | 2026-07-07 |
-| 関連 | [concepts/execution-model.md](../../concepts/execution-model.md) |
+| Version | 1.1 |
+| 更新日 | 2026-07-29 |
+| 関連 | [concepts/execution-model.md](../../concepts/execution-model.md), [wait-cancel.md](wait-cancel.md) |
 
 ---
 
@@ -39,11 +39,15 @@ statevia は事実駆動型有限状態機械を使用します。
 
 ### Wait 状態と事実（実装に準拠）
 
-YAML の `wait.event`（例: `payment.completed`）は **外部から `PublishEvent` されたイベント名**と突き合わせ、`IEventProvider.WaitAsync` が再開するために使う識別子である（`EventProvider` / `WaitOnlyState`）。
+YAML の **`wait.events`**（例: `approve` → `Approved`）は、外部から Resume された **イベント名**と突き合わせ、`IEventProvider.WaitForEventAsync` が再開するために使う識別子である。コンパイル後の正本は **`WaitEventRouteTable`**。
 
-待機が解けて状態の `ExecuteAsync` が正常終了したあと、エンジンが FSM に渡す事実は **`Completed` 固定**である。`ExecutionEngine.ScheduleStateAsync` は executor 成功時に `ProcessFact(..., Fact.Completed, ...)` とし、`TransitionTable.Evaluate(stateName, "Completed")` で `on` を引く。
+待機が解けて状態の `ExecuteAsync` が正常終了したあと、エンジンが JoinTracker / 通常の成功経路に渡す事実は **`Completed` 固定**である（Join 互換）。一方、**次状態の解決**は `ResolveWaitEventRoute(state, eventName)` により route table の Next を用いる（単一イベントの旧定義で Next が空のときのみ `on.Completed` へフォールバック）。
 
-したがって Wait 状態の遷移は **`on.Completed`（例: `Completed: { next: ... }`）** で記述する。**`on.<wait.event と同じ文字列>` は現行実装では評価されない**（イベント名と FSM の事実名を混同しないこと）。
+したがって:
+
+- **公開 DSL** では遷移先を `wait.events` に書く（複数イベント可）。
+- **`on.<イベント名>` は評価されない**（イベント名と FSM の事実名を混同しないこと）。
+- 旧 `wait.event` + `on.Completed.next` は Loader が `events` へ正規化する。
 
 ## FSM の特性
 

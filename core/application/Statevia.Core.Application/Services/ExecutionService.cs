@@ -240,7 +240,7 @@ internal sealed class ExecutionService : IExecutionService
                         tenantId,
                         status,
                         graphJson,
-                        resumeTokenToClear: null,
+                        nodeIdToClear: null,
                         innerCt)
                     .ConfigureAwait(false);
                 await _eventStore
@@ -442,7 +442,7 @@ internal sealed class ExecutionService : IExecutionService
                         tenantId,
                         projStatus,
                         projGraphJson,
-                        resumeTokenToClear: null,
+                        nodeIdToClear: null,
                         ctInner)
                     .ConfigureAwait(false);
                 if (!skipCancelEventAppend)
@@ -541,8 +541,18 @@ internal sealed class ExecutionService : IExecutionService
 
         EnsureEngineRuntimePresentForMutation(uuid.Value, execution);
 
-        var publishApply = _engine.PublishEvent(uuid.Value.ToString(), eventName, clientEventId);
+        // PublishEvent 復帰時点ではグラフ上の Wait 完了が未反映になり得るため、発行前の nodeId で先行削除する。
+        // グラフ解析失敗時は永続化済み wait 行からフォールバック解決する（Applied 時のみ）。
+        var engineId = uuid.Value.ToString();
+        var prePublishGraphJson = _engine.ExportExecutionGraph(engineId);
+
+        // PublishEvent シム条件外（複数 Wait / 複数 events 等）は設計どおり 422。
+        var publishApply = InvokeEngineWaitMutation(
+            () => _engine.PublishEvent(engineId, eventName, clientEventId));
         var skipEventAppend = publishApply.IsAlreadyApplied;
+        var nodeIdToClearFromGraph = publishApply.IsApplied
+            ? TryResolveSoleActiveWaitNodeId(prePublishGraphJson)
+            : null;
 
         var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var publishedPayload = JsonSerializer.Serialize(
@@ -555,6 +565,15 @@ internal sealed class ExecutionService : IExecutionService
             clientEventId,
             async (uow, ctInner) =>
             {
+                var nodeIdToClear = nodeIdToClearFromGraph;
+                if (publishApply.IsApplied && string.IsNullOrWhiteSpace(nodeIdToClear))
+                {
+                    var persistedWaits = await _executionWaits
+                        .ListByExecutionIdAsync(uow, uuid.Value, ctInner)
+                        .ConfigureAwait(false);
+                    nodeIdToClear = TryResolveWaitNodeIdToClearFromPersisted(persistedWaits, eventName);
+                }
+
                 await _executions
                     .UpdateExecutionAndSnapshotAsync(uow, uuid.Value, pubStatus, pubCancel, pubGraphJson, ctInner)
                     .ConfigureAwait(false);
@@ -564,7 +583,7 @@ internal sealed class ExecutionService : IExecutionService
                         tenantId,
                         pubStatus,
                         pubGraphJson,
-                        resumeTokenToClear: eventName,
+                        nodeIdToClear,
                         ctInner)
                     .ConfigureAwait(false);
                 if (!skipEventAppend)
@@ -720,7 +739,7 @@ internal sealed class ExecutionService : IExecutionService
         return new ExecutionEventsResponseDto { Events = events, HasMore = hasMore };
     }
 
-    public Task ResumeNodeAsync(
+    public async Task ResumeNodeAsync(
         string idOrUuid,
         string nodeId,
         string? resumeKey,
@@ -728,7 +747,111 @@ internal sealed class ExecutionService : IExecutionService
         CommandRequestContext requestContext,
         CancellationToken ct)
     {
-        return PublishEventAsync(idOrUuid, resumeKey!, idempotencyKey, requestContext, ct);
+        ArgumentNullException.ThrowIfNull(requestContext);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(resumeKey);
+
+        var eventName = resumeKey.Trim();
+        var tenantKey = _tenantContext.GetRequiredTenantKey();
+        var tenantId = _tenantContext.GetRequiredTenantId();
+        var dedupKey = _dedupService.Create(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path);
+
+        if (dedupKey is { } key)
+        {
+            var dedupCheckTime = DateTime.UtcNow;
+            var existing = await _executor.ExecuteReadOnlyAsync(
+                (uow, innerCt) => _dedup.FindValidAsync(uow, key.DedupKey, dedupCheckTime, innerCt),
+                ct).ConfigureAwait(false);
+            if (existing is not null)
+                return;
+        }
+
+        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
+        if (uuid is null)
+            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+
+        var execution = await _executor.ExecuteReadOnlyAsync(
+            (uow, innerCt) => _executions.GetByIdAsync(uow, tenantId, uuid.Value, innerCt),
+            ct).ConfigureAwait(false);
+        if (execution is null)
+            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+
+        await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
+
+        await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
+
+        var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
+
+        if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
+            return;
+
+        EnsureEngineRuntimePresentForMutation(uuid.Value, execution);
+
+        // Resume 正本: nodeId + eventName。wait 行は nodeId で先行削除する。
+        // 許可外イベント・非アクティブ Wait などは 422。
+        var engineId = uuid.Value.ToString();
+        InvokeEngineWaitMutation(() => _engine.ResumeWaitNode(engineId, nodeId, eventName));
+
+        var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
+        var publishedPayload = JsonSerializer.Serialize(
+            new { tenantId, name = eventName, nodeId },
+            CamelCaseJsonSerializerOptions);
+
+        await _mutationPersistence.ExecuteSerializableWithRetryAsync(
+            tenantId,
+            uuid.Value,
+            clientEventId,
+            async (uow, ctInner) =>
+            {
+                await _executions
+                    .UpdateExecutionAndSnapshotAsync(uow, uuid.Value, pubStatus, pubCancel, pubGraphJson, ctInner)
+                    .ConfigureAwait(false);
+                await SyncOperationalProjectionAsync(
+                        uow,
+                        uuid.Value,
+                        tenantId,
+                        pubStatus,
+                        pubGraphJson,
+                        nodeIdToClear: nodeId,
+                        ctInner)
+                    .ConfigureAwait(false);
+                await _eventStore
+                    .AppendAsync(uow, uuid.Value, EventStoreEventType.EventPublished, publishedPayload, ctInner)
+                    .ConfigureAwait(false);
+
+                if (dedupKey is { } saveKey)
+                {
+                    var now = DateTime.UtcNow;
+                    await _dedup.SaveAsync(
+                        uow,
+                        new CommandDedupRow
+                        {
+                            DedupKey = saveKey.DedupKey,
+                            Endpoint = saveKey.Endpoint,
+                            IdempotencyKey = saveKey.IdempotencyKey,
+                            RequestHash = null,
+                            StatusCode = HttpStatus204NoContent,
+                            ResponseBody = null,
+                            CreatedAt = now,
+                            ExpiresAt = now.AddHours(24)
+                        },
+                        ctInner).ConfigureAwait(false);
+                }
+
+                var nowUtc = DateTime.UtcNow;
+                await _eventDeliveryDedup.TryUpdateStatusAsync(
+                    uow,
+                    tenantId,
+                    uuid.Value,
+                    clientEventId,
+                    new EventDeliveryDedupStatusUpdate(
+                        EventDeliveryDedupStatuses.Applied,
+                        nowUtc,
+                        AppliedAt: nowUtc,
+                        ErrorCode: null),
+                    ctInner).ConfigureAwait(false);
+            },
+            ct).ConfigureAwait(false);
     }
 
     private async Task<ExecutionViewDto> BuildExecutionViewInternalAsync(Guid uuid, string idOrUuidForDisplay, CancellationToken ct)
@@ -1002,7 +1125,7 @@ internal sealed class ExecutionService : IExecutionService
                         execution.TenantId,
                         status,
                         graphJson,
-                        resumeTokenToClear: null,
+                        nodeIdToClear: null,
                         innerCt)
                     .ConfigureAwait(false);
             },
@@ -1018,7 +1141,7 @@ internal sealed class ExecutionService : IExecutionService
         Guid tenantId,
         string status,
         string graphJson,
-        string? resumeTokenToClear,
+        string? nodeIdToClear,
         CancellationToken ct)
     {
         var snapshot = _engine.GetSnapshot(executionId.ToString());
@@ -1028,7 +1151,7 @@ internal sealed class ExecutionService : IExecutionService
             status,
             snapshot,
             graphJson,
-            resumeTokenToClear);
+            nodeIdToClear);
         await ExecutionOperationalProjectionSync.SyncAsync(
             uow,
             _executionCursors,
@@ -1059,6 +1182,186 @@ internal sealed class ExecutionService : IExecutionService
         var graphJson = _engine.ExportExecutionGraph(engineId);
         var status = MapStatus(snapshot);
         return (status, snapshot.IsCancelled, graphJson);
+    }
+
+    /// <summary>
+    /// Engine Wait 操作の <see cref="InvalidOperationException"/> を API 422 に写像する。
+    /// </summary>
+    /// <remarks>
+    /// PublishEvent シム条件外・Resume の許可外イベントなどは Engine が
+    /// <see cref="InvalidOperationException"/> を投げる。クライアント向けには
+    /// <see cref="ApiValidationException"/>（422）へ変換する。
+    /// </remarks>
+    private static T InvokeEngineWaitMutation<T>(Func<T> action)
+    {
+        try
+        {
+            return action();
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new ApiValidationException(ex.Message, ex);
+        }
+    }
+
+    /// <summary>
+    /// Engine Wait 操作の <see cref="InvalidOperationException"/> を API 422 に写像する。
+    /// </summary>
+    private static void InvokeEngineWaitMutation(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new ApiValidationException(ex.Message, ex);
+        }
+    }
+
+    /// <summary>
+    /// PublishEvent シム用。グラフ上の未完了 Wait がちょうど 1 件ならその nodeId を返す。
+    /// </summary>
+    /// <remarks>
+    /// Engine の <c>PublishEvent</c> は単一アクティブ Wait のみ許可する。投影同期では
+    /// 復帰直後にグラフ完了が遅延し得るため、発行前に取得した nodeId で wait 行を先行削除する。
+    /// </remarks>
+    /// <param name="graphJson"><see cref="IExecutionEngine.ExportExecutionGraph"/> の JSON。</param>
+    /// <returns>唯一のアクティブ Wait の nodeId。0 件または 2 件以上なら null。</returns>
+    private static string? TryResolveSoleActiveWaitNodeId(string graphJson)
+    {
+        if (string.IsNullOrWhiteSpace(graphJson))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(graphJson);
+            if (!doc.RootElement.TryGetProperty("nodes", out var nodes)
+                || nodes.ValueKind != JsonValueKind.Array)
+            {
+                return null;
+            }
+
+            return FindSoleActiveWaitNodeId(nodes);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>nodes 配列から唯一の未完了 Wait nodeId を返す（0 件または複数は null）。</summary>
+    private static string? FindSoleActiveWaitNodeId(JsonElement nodes)
+    {
+        string? soleNodeId = null;
+        foreach (var node in nodes.EnumerateArray())
+        {
+            if (!TryGetActiveWaitNodeId(node, out var nodeId))
+                continue;
+
+            if (soleNodeId is not null)
+                return null;
+
+            soleNodeId = nodeId;
+        }
+
+        return soleNodeId;
+    }
+
+    /// <summary>未完了 Wait ノードなら nodeId を取り出す。</summary>
+    /// <remarks>
+    /// 許可イベント未設定の Wait は durable wait 投影対象外のため除外する
+    ///（<c>allowedEvents</c> または互換の <c>waitKey</c> が必要）。
+    /// </remarks>
+    private static bool TryGetActiveWaitNodeId(JsonElement node, out string? nodeId)
+    {
+        nodeId = null;
+        if (!node.TryGetProperty("nodeType", out var nodeType)
+            || !string.Equals(nodeType.GetString(), "Wait", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (node.TryGetProperty("completedAt", out var completedAt)
+            && completedAt.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
+        {
+            return false;
+        }
+
+        if (!HasConfiguredWaitEvents(node))
+            return false;
+
+        if (!node.TryGetProperty("nodeId", out var nodeIdElement))
+            return false;
+
+        var value = nodeIdElement.GetString();
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        nodeId = value;
+        return true;
+    }
+
+    /// <summary>
+    /// グラフ JSON の Wait ノードに許可イベント設定があるか
+    ///（<c>allowedEvents</c> 優先、なければ非空の <c>waitKey</c>）。
+    /// </summary>
+    private static bool HasConfiguredWaitEvents(JsonElement node)
+    {
+        if (node.TryGetProperty("allowedEvents", out var allowedEvents)
+            && allowedEvents.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var entry in allowedEvents.EnumerateArray())
+            {
+                if (entry.ValueKind == JsonValueKind.String
+                    && !string.IsNullOrWhiteSpace(entry.GetString()))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return node.TryGetProperty("waitKey", out var waitKey)
+            && waitKey.ValueKind == JsonValueKind.String
+            && !string.IsNullOrWhiteSpace(waitKey.GetString());
+    }
+
+    /// <summary>
+    /// グラフから nodeId を解決できないときのフォールバック。永続化済み wait から削除対象を決める。
+    /// </summary>
+    /// <param name="waits">当該 execution の wait 行。</param>
+    /// <param name="eventName">Publish したイベント名（前後空白は Trim して照合）。</param>
+    /// <returns>
+    /// wait が 1 件ならその nodeId。複数なら <paramref name="eventName"/> を許可する行がちょうど 1 件のときその nodeId。
+    /// それ以外は null。
+    /// </returns>
+    internal static string? TryResolveWaitNodeIdToClearFromPersisted(
+        IReadOnlyList<ExecutionWaitRow> waits,
+        string eventName)
+    {
+        if (waits.Count == 0)
+            return null;
+
+        if (waits.Count == 1)
+            return waits[0].NodeId;
+
+        // AllowedEvents は投影時に Trim 済み。Publish 側の前後空白とも揃える。
+        var normalizedEventName = eventName.Trim();
+        string? soleMatchingNodeId = null;
+        foreach (var wait in waits)
+        {
+            var allowsEvent = wait.AllowedEvents.Any(e =>
+                string.Equals(e, normalizedEventName, StringComparison.OrdinalIgnoreCase));
+            if (!allowsEvent)
+                continue;
+
+            if (soleMatchingNodeId is not null)
+                return null;
+
+            soleMatchingNodeId = wait.NodeId;
+        }
+
+        return soleMatchingNodeId;
     }
 
     private sealed class NoopExecutionProjectionUpdateQueue : IExecutionProjectionUpdateQueue

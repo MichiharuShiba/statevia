@@ -77,18 +77,89 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
     }
 
     /// <inheritdoc />
+    public void ResumeWaitNode(string executionId, string nodeId, string eventName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
+
+        if (!_eventProviders.TryGetValue(executionId, out var eventProvider)
+            || !_instances.TryGetValue(executionId, out var instance))
+        {
+            throw new InvalidOperationException($"Execution '{executionId}' was not found.");
+        }
+
+        var node = instance.Graph.GetNodesSnapshot()
+            .FirstOrDefault(n => string.Equals(n.NodeId, nodeId, StringComparison.OrdinalIgnoreCase));
+        if (node is null)
+        {
+            throw new InvalidOperationException($"Node '{nodeId}' was not found in execution '{executionId}'.");
+        }
+
+        if (!string.Equals(node.NodeType, "Wait", StringComparison.OrdinalIgnoreCase)
+            || node.CompletedAt is not null)
+        {
+            throw new InvalidOperationException(
+                $"Node '{nodeId}' is not an active Wait node in execution '{executionId}'.");
+        }
+
+        // EventProvider.Resume と route table キー（Load 時 Trim）に合わせて正規化する。
+        var trimmedEventName = eventName.Trim();
+        if (!instance.Definition.WaitEventRouteTable.TryGetValue(node.StateName, out var routes)
+            || !routes.ContainsKey(trimmedEventName))
+        {
+            throw new InvalidOperationException(
+                $"Event '{trimmedEventName}' is not allowed for Wait state '{node.StateName}'.");
+        }
+
+        eventProvider.Resume(nodeId, trimmedEventName);
+    }
+
+    /// <inheritdoc />
     public void PublishEvent(string executionId, string eventName)
     {
-        if (_eventProviders.TryGetValue(executionId, out var ep))
+        ArgumentException.ThrowIfNullOrWhiteSpace(executionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
+
+        if (!_instances.TryGetValue(executionId, out var instance))
         {
-            ep.Publish(eventName);
+            return;
         }
+
+        var activeWaits = instance.Graph.GetNodesSnapshot()
+            .Where(n => string.Equals(n.NodeType, "Wait", StringComparison.OrdinalIgnoreCase)
+                && n.CompletedAt is null)
+            .ToList();
+        if (activeWaits.Count != 1)
+        {
+            throw new InvalidOperationException(
+                $"PublishEvent requires exactly one active Wait node (found {activeWaits.Count}).");
+        }
+
+        var waitNode = activeWaits[0];
+        if (!instance.Definition.WaitEventRouteTable.TryGetValue(waitNode.StateName, out var routes)
+            || routes.Count != 1)
+        {
+            throw new InvalidOperationException(
+                $"PublishEvent requires the active Wait state '{waitNode.StateName}' to have exactly one event.");
+        }
+
+        // シムは「唯一の許可イベント」と呼び出し eventName が一致するときだけ委譲する。
+        var soleAllowedEvent = routes.Keys.First();
+        var trimmedEventName = eventName.Trim();
+        if (!string.Equals(soleAllowedEvent, trimmedEventName, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"PublishEvent event '{trimmedEventName}' does not match the sole allowed event '{soleAllowedEvent}' for Wait state '{waitNode.StateName}'.");
+        }
+
+        ResumeWaitNode(executionId, waitNode.NodeId, soleAllowedEvent);
     }
 
     /// <inheritdoc />
     public ApplyResult PublishEvent(string executionId, string eventName, Guid clientEventId)
     {
-        if (!_eventProviders.TryGetValue(executionId, out var ep) || !_instances.TryGetValue(executionId, out var instance))
+        if (!_instances.TryGetValue(executionId, out var instance))
         {
             return ApplyResult.Applied;
         }
@@ -100,7 +171,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 
         try
         {
-            ep.Publish(eventName);
+            PublishEvent(executionId, eventName);
             return ApplyResult.Applied;
         }
         catch
@@ -119,11 +190,11 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         }
 
         List<Exception>? publishFailures = null;
-        foreach (var eventProvider in _eventProviders.Values.ToArray())
+        foreach (var executionId in _eventProviders.Keys.ToArray())
         {
             try
             {
-                eventProvider.Publish(eventName);
+                PublishEvent(executionId, eventName);
             }
 #pragma warning disable CA1031 // 複数実行インスタンスへブロードキャストするため、例外種別に依らず収集して AggregateException にまとめる
             catch (Exception exception)
@@ -264,16 +335,23 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 
         var attempt = instance.NextAttempt(stateName);
         var nodeType = ResolveNodeType(def, stateName);
-        var waitKey = def.WaitTable.TryGetValue(stateName, out var configuredWaitKey)
-            ? configuredWaitKey
-            : null;
+        List<string>? allowedEvents = null;
+        string? waitKey = null;
+        if (def.WaitEventRouteTable.TryGetValue(stateName, out var routes) && routes.Count > 0)
+        {
+            allowedEvents = routes.Keys.ToList();
+            if (allowedEvents.Count == 1)
+                waitKey = allowedEvents[0];
+        }
+
         var nodeId = instance.Graph.AddNode(
             stateName,
             nodeType: nodeType,
             input: input,
             attempt: attempt,
             workerId: _workerId,
-            waitKey: waitKey);
+            waitKey: waitKey,
+            allowedEvents: allowedEvents);
         if (fromNodeId != null && edgeType != null)
         {
             instance.Graph.AddEdge(fromNodeId, nodeId, edgeType.Value);
@@ -288,6 +366,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             Store = new ExecutionStateStore(instance),
             ExecutionId = instance.ExecutionId,
             StateName = stateName,
+            NodeId = nodeId,
             Logger = _executionLog.CreateStateContextLogger(instance.ExecutionId, stateName)
         };
 
@@ -425,7 +504,17 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             return;
         }
 
-        var (transition, routingDiag) = EvaluateTransition(instance, stateName, fact);
+        ConditionRoutingDiagnostics? routingDiag = null;
+        TransitionResult transition;
+        if (TryResolveWaitEventRoute(instance.Definition, stateName, fact, output, out var waitTransition))
+        {
+            transition = waitTransition;
+        }
+        else
+        {
+            (transition, routingDiag) = EvaluateTransition(instance, stateName, fact);
+        }
+
         if (routingDiag is not null)
         {
             instance.Graph.SetNodeConditionRouting(nodeId, routingDiag);
@@ -501,17 +590,86 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         return (instance.Fsm.Evaluate(stateName, fact), null);
     }
 
+    /// <summary>
+    /// Wait 完了時に <see cref="CompiledWorkflowDefinition.WaitEventRouteTable"/> から次状態を解決する。
+    /// </summary>
+    /// <remarks>
+    /// <para>次状態は route table が正本。監査用 output の event 名はルックアップキーとしてのみ使う。</para>
+    /// <para>ルートにイベントはあるが <c>Next</c> が空のときは false を返し、通常の FSM（on.Completed）へフォールバックする。</para>
+    /// </remarks>
+    private static bool TryResolveWaitEventRoute(
+        CompiledWorkflowDefinition definition,
+        string stateName,
+        string fact,
+        object? output,
+        out TransitionResult transition)
+    {
+        transition = TransitionResult.None;
+        if (!string.Equals(fact, Fact.Completed, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!definition.WaitEventRouteTable.TryGetValue(stateName, out var routes))
+        {
+            return false;
+        }
+
+        if (!TryExtractWaitEventName(output, out var eventName))
+        {
+            return false;
+        }
+
+        if (!routes.TryGetValue(eventName, out var route))
+        {
+            // ルートに無いイベントは Wait ルート解決済みとして FSM へ落とさない。
+            return true;
+        }
+
+        // Next 未設定（旧 wait.event + on.Completed など）は通常の FSM 評価に委ねる。
+        if (string.IsNullOrWhiteSpace(route.Next))
+        {
+            return false;
+        }
+
+        transition = TransitionResult.ToNext(route.Next);
+        return true;
+    }
+
+    /// <summary>Wait 監査 output からイベント名を取り出す。</summary>
+    private static bool TryExtractWaitEventName(object? output, out string eventName)
+    {
+        eventName = string.Empty;
+        switch (output)
+        {
+            case IReadOnlyDictionary<string, string> stringMap
+                when stringMap.TryGetValue("event", out var fromString)
+                     && !string.IsNullOrWhiteSpace(fromString):
+                eventName = fromString.Trim();
+                return true;
+            case IReadOnlyDictionary<string, object?> objectMap
+                when objectMap.TryGetValue("event", out var raw)
+                     && raw is string fromObject
+                     && !string.IsNullOrWhiteSpace(fromObject):
+                eventName = fromObject.Trim();
+                return true;
+            default:
+                return false;
+        }
+    }
+
     /// <inheritdoc />
     public void Dispose() => (_scheduler as IDisposable)?.Dispose();
 
     private static string ResolveNodeType(CompiledWorkflowDefinition def, string stateName)
     {
+        // Wait は InitialState でも Resume 対象のため Start より優先する。
+        if (def.WaitEventRouteTable.ContainsKey(stateName))
+            return "Wait";
         if (string.Equals(def.InitialState, stateName, StringComparison.OrdinalIgnoreCase))
             return "Start";
         if (def.JoinTable.ContainsKey(stateName))
             return "Join";
-        if (def.WaitTable.ContainsKey(stateName))
-            return "Wait";
         if (def.ForkTable.ContainsKey(stateName))
             return "Fork";
         if (def.Transitions.TryGetValue(stateName, out var byFact)

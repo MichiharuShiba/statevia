@@ -17,6 +17,9 @@ export type ValidateGraphDocumentMessageOptions = {
   actionRequiresTransition: (nodeId: string) => string;
   waitEventRequired: (nodeId: string) => string;
   waitRequiresTransition: (nodeId: string) => string;
+  waitEventsAndEventTogether: (nodeId: string) => string;
+  waitEventsCannotHaveEdges: (nodeId: string) => string;
+  waitEventTargetRequired: (nodeId: string, eventName: string) => string;
   forkBranchesRequired: (nodeId: string) => string;
   joinRequiresTransition: (nodeId: string) => string;
   joinModeInvalid: (nodeId: string) => string;
@@ -47,6 +50,15 @@ function collectForkBranchTargets(node: DefinitionGraphNode): string[] {
     .filter((branchId): branchId is string => Boolean(branchId));
 }
 
+function collectWaitEventTargets(node: DefinitionGraphNode): string[] {
+  if (node.type !== "wait" || !node.events) {
+    return [];
+  }
+  return Object.values(node.events)
+    .map((targetId) => targetId?.trim())
+    .filter((targetId): targetId is string => Boolean(targetId));
+}
+
 function collectEdgeTargets(node: DefinitionGraphNode): string[] {
   const nextTarget = node.next?.trim();
   const errorTarget = node.type === "action" ? node.error?.trim() : undefined;
@@ -54,8 +66,92 @@ function collectEdgeTargets(node: DefinitionGraphNode): string[] {
     ...(nextTarget ? [nextTarget] : []),
     ...collectConfiguredEdgeTargets(node),
     ...(errorTarget ? [errorTarget] : []),
-    ...collectForkBranchTargets(node)
+    ...collectForkBranchTargets(node),
+    ...collectWaitEventTargets(node)
   ];
+}
+
+type NodeValidationContext = {
+  node: DefinitionGraphNode;
+  nodeId: string;
+  hasNext: boolean;
+  hasEdges: boolean;
+  hasBranches: boolean;
+  messages: string[];
+  options: ValidateGraphDocumentMessageOptions;
+};
+
+/** wait.events がオブジェクトとして存在する（空マップ含む）か。 */
+function hasEventsProperty(node: DefinitionGraphNode): boolean {
+  return node.events !== undefined;
+}
+
+/** wait.events に非空キーが 1 件以上あるか。 */
+function hasConfiguredWaitEvents(node: DefinitionGraphNode): boolean {
+  if (!node.events) {
+    return false;
+  }
+  return Object.keys(node.events).some((eventName) => eventName.trim().length > 0);
+}
+
+/**
+ * 新形式 wait.events の併用禁止と遷移先必須を検証する。
+ */
+function validateWaitEventsMapNode({
+  node,
+  nodeId,
+  hasEdges,
+  messages,
+  options
+}: NodeValidationContext): void {
+  if (node.event?.trim()) {
+    messages.push(options.waitEventsAndEventTogether(nodeId));
+  }
+  if (hasEdges) {
+    messages.push(options.waitEventsCannotHaveEdges(nodeId));
+  }
+  if (!hasConfiguredWaitEvents(node)) {
+    messages.push(options.waitEventRequired(nodeId));
+    return;
+  }
+  validateWaitEventTargets(nodeId, node.events ?? {}, messages, options);
+}
+
+/**
+ * events マップ各エントリの遷移先が非空か検証する。
+ */
+function validateWaitEventTargets(
+  nodeId: string,
+  events: Record<string, string>,
+  messages: string[],
+  options: ValidateGraphDocumentMessageOptions
+): void {
+  for (const [eventName, rawTarget] of Object.entries(events)) {
+    const trimmedName = eventName.trim();
+    if (!trimmedName || rawTarget?.trim()) {
+      continue;
+    }
+    messages.push(options.waitEventTargetRequired(nodeId, trimmedName));
+  }
+}
+
+/**
+ * 旧形式 wait（event + next/edges）を検証する。
+ */
+function validateLegacyWaitNode({
+  node,
+  nodeId,
+  hasNext,
+  hasEdges,
+  messages,
+  options
+}: NodeValidationContext): void {
+  if (!node.event?.trim()) {
+    messages.push(options.waitEventRequired(nodeId));
+  }
+  if (!hasNext && !hasEdges) {
+    messages.push(options.waitRequiresTransition(nodeId));
+  }
 }
 
 /** IN / BETWEEN 用: YAML 配列または JSON 配列文字列を配列として解釈する */
@@ -179,16 +275,6 @@ function validateStartEndCounts(
   }
 }
 
-type NodeValidationContext = {
-  node: DefinitionGraphNode;
-  nodeId: string;
-  hasNext: boolean;
-  hasEdges: boolean;
-  hasBranches: boolean;
-  messages: string[];
-  options: ValidateGraphDocumentMessageOptions;
-};
-
 type NodeTypeValidator = (context: NodeValidationContext) => void;
 
 const nodeTypeValidators: Record<DefinitionGraphNode["type"], NodeTypeValidator> = {
@@ -205,13 +291,12 @@ const nodeTypeValidators: Record<DefinitionGraphNode["type"], NodeTypeValidator>
       messages.push(options.actionRequiresTransition(nodeId));
     }
   },
-  wait: ({ node, nodeId, hasNext, hasEdges, messages, options }) => {
-    if (!node.event?.trim()) {
-      messages.push(options.waitEventRequired(nodeId));
+  wait: (context) => {
+    if (hasEventsProperty(context.node)) {
+      validateWaitEventsMapNode(context);
+      return;
     }
-    if (!hasNext && !hasEdges) {
-      messages.push(options.waitRequiresTransition(nodeId));
-    }
+    validateLegacyWaitNode(context);
   },
   fork: ({ node, nodeId, hasBranches, messages, options }) => {
     if (!hasBranches || (node.branches?.length ?? 0) < 2) {

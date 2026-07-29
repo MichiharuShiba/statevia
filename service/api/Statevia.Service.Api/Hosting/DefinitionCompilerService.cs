@@ -96,7 +96,7 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
             conditionalTransitions = compiled.ConditionalTransitions,
             forkTable = compiled.ForkTable,
             joinTable = compiled.JoinTable,
-            waitTable = compiled.WaitTable,
+            waitEventRouteTable = compiled.WaitEventRouteTable,
             stateInputs = compiled.StateInputs,
             stateOutputs = compiled.StateOutputs,
             resolvedModules = compiled.ResolvedModules,

@@ -20,11 +20,12 @@ function graphNodeToExecutionNode(n: ExecutionGraphDTO["nodes"][0]): ExecutionNo
   const attempt = parseAttempt(n);
   const workerId = parseNullableString(n.workerId);
   const waitKey = parseNullableString(n.waitKey);
+  const allowedEvents = parseAllowedEvents(n.allowedEvents);
   const factText = toFactText(fact);
   const canceledByExecution = parseCanceledByExecution(n.canceledByExecution, factText);
   const conditionRouting = n.conditionRouting;
 
-  const status = resolveNodeStatus(completedAt, factText);
+  const status = resolveNodeStatus(completedAt, factText, nodeType);
 
   return {
     executionNodeId,
@@ -34,6 +35,7 @@ function graphNodeToExecutionNode(n: ExecutionGraphDTO["nodes"][0]): ExecutionNo
     attempt,
     workerId,
     waitKey,
+    allowedEvents,
     canceledByExecution,
     startedAt,
     completedAt,
@@ -51,6 +53,16 @@ function parseNullableString(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
+/** API の allowedEvents 配列を UI 向けに正規化する（非文字列・空白は除外）。 */
+function parseAllowedEvents(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  const events = value
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+  return events.length > 0 ? events : null;
+}
+
 function toFactText(fact: unknown): string {
   return typeof fact === "string" ? fact.toLowerCase() : "";
 }
@@ -59,8 +71,18 @@ function parseCanceledByExecution(value: unknown, factText: string): boolean {
   return typeof value === "boolean" ? value : factText.includes("cancel");
 }
 
-function resolveNodeStatus(completedAt: string | null, factText: string): ExecutionNodeDTO["status"] {
-  if (completedAt == null) return "RUNNING";
+/**
+ * ノードの表示ステータスを解決する。
+ * 未完了の Wait は仕様どおり WAITING（Resume 可否判定と一致させる）。
+ */
+function resolveNodeStatus(
+  completedAt: string | null,
+  factText: string,
+  nodeType: string
+): ExecutionNodeDTO["status"] {
+  if (completedAt == null) {
+    return nodeType.toLowerCase() === "wait" ? "WAITING" : "RUNNING";
+  }
   if (factText.includes("fail")) return "FAILED";
   if (factText.includes("cancel")) return "CANCELED";
   return "SUCCEEDED";

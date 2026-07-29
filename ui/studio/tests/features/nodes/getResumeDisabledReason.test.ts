@@ -175,22 +175,22 @@ describe("getResumeDisabledReason (境界値)", () => {
     expect(result).toBeNull();
   });
 
-  it("waitKey が null で WAITING なら null を返す", () => {
+  it("waitKey も allowedEvents も無い WAITING なら noResumeEvent を返す", () => {
     // Arrange
     const exec = execution();
-    const n = node({ waitKey: null });
+    const n = node({ waitKey: null, allowedEvents: null });
 
     // Act
     const result = getResumeDisabledReason(exec, n);
 
     // Assert
-    expect(result).toBeNull();
+    expect(result).toBe(uiText.nodeCommands.resumeDisabledReason.noResumeEvent);
   });
 
-  it("waitKey が空文字で WAITING なら null を返す", () => {
+  it("waitKey が空でも allowedEvents があれば null を返す", () => {
     // Arrange
     const exec = execution();
-    const n = node({ waitKey: "" });
+    const n = node({ waitKey: "", allowedEvents: ["approve", "reject"] });
 
     // Act
     const result = getResumeDisabledReason(exec, n);

@@ -80,12 +80,14 @@ export const executionsUiTextJa: ExecutionsFeatureUiText = {
       workerId: (workerId: string) => `ワーカーID: ${workerId}`,
       attempt: (attempt: number) => `試行回数: ${attempt}`,
       waitKey: (waitKey: string) => `Wait キー: ${waitKey}`,
+      allowedEvents: (events: string) => `受付イベント: ${events}`,
       canceledByExecution: (canceledByExecution: boolean) => `キャンセル: ${String(canceledByExecution)}`,
     },
     waiting: {
       title: "待機中 (Wait)",
       reasonWaitByWaitKeyAndResumeWait: "理由: Wait キー により 再開 待ち",
       resumeEventName: (eventName: string) => `再開 イベント名: ${eventName}`,
+      selectResumeEvent: "再開するイベント",
     },
     cancel: {
       detailTitle: (cancelLabel: string) => `${cancelLabel} 詳細`,
@@ -237,6 +239,7 @@ export const executionsUiTextJa: ExecutionsFeatureUiText = {
       executionTerminal: "Executionは終了しています",
       cancelRequested: "Cancel要求済みのため、Resumeなど進行系操作はできません",
       waitingOnly: "WAITING 状態のノードのみ Resume できます",
+      noResumeEvent: "受付可能なイベントが無いため Resume できません",
     },
 
   },

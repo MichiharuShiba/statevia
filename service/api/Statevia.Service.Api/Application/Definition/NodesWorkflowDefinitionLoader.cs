@@ -214,7 +214,13 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         public string? Next { get; init; }
         public List<NodeEdgeDefinition>? Edges { get; init; }
         public string? ActionId { get; init; }
-        public string? WaitEvent { get; init; }
+
+        /// <summary>Wait のイベント名 → 遷移先ノード ID（正本）。</summary>
+        public IReadOnlyDictionary<string, string>? WaitEvents { get; init; }
+
+        /// <summary>Wait の担当者枠（Phase 2。構文保持のみ）。</summary>
+        public IReadOnlyList<string>? WaitAssignees { get; init; }
+
         public string? Error { get; init; }
         public IReadOnlyList<string>? Branches { get; init; }
         public object? InputRaw { get; init; }
@@ -249,12 +255,14 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
             var next = GetStr(dict, KeyNext);
             var action = GetStr(dict, KeyAction);
-            var ev = GetStr(dict, KeyEvent);
             var error = ResolveNodeTargetId(dict, id, KeyError);
             var branches = GetStrList(dict, KeyBranches);
             dict.TryGetValue(KeyInput, out var inputVal);
             var output = GetStr(dict, KeyOutput);
             var edges = ParseEdges(id, dict);
+            var (waitEvents, waitAssignees) = kind == NodeKind.Wait
+                ? ParseWaitEvents(id, dict, next)
+                : (null, null);
 
             return new ParsedNode
             {
@@ -264,12 +272,99 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                 Next = next,
                 Edges = edges,
                 ActionId = action,
-                WaitEvent = ev,
+                WaitEvents = waitEvents,
+                WaitAssignees = waitAssignees,
                 Error = error,
                 Branches = branches,
                 InputRaw = inputVal,
                 Output = output
             };
+        }
+
+        /// <summary>
+        /// Wait ノードの <c>events</c> / 旧 <c>event</c>+<c>next</c> を正規化する。
+        /// </summary>
+        private static (IReadOnlyDictionary<string, string> Events, IReadOnlyList<string>? Assignees) ParseWaitEvents(
+            string? nodeId,
+            Dictionary<string, object?> dict,
+            string? next)
+        {
+            if (HasKeyIgnoreCase(dict, KeyExits))
+            {
+                throw new ArgumentException(
+                    $"Wait node '{nodeId ?? "?"}' must not use 'exits'; use 'events'.");
+            }
+
+            var assignees = GetStrList(dict, KeyAssignees);
+            var hasEvents = HasKeyIgnoreCase(dict, KeyEvents);
+            var legacyEvent = GetStr(dict, KeyEvent);
+
+            if (hasEvents && !string.IsNullOrWhiteSpace(legacyEvent))
+            {
+                throw new ArgumentException(
+                    $"Wait node '{nodeId ?? "?"}' cannot use both 'events' and 'event'.");
+            }
+
+            if (hasEvents)
+            {
+                var eventsKey = dict.Keys.First(k => string.Equals(k, KeyEvents, StringComparison.OrdinalIgnoreCase));
+                return (ParseEventsMap(nodeId, dict[eventsKey]), assignees);
+            }
+
+            if (string.IsNullOrWhiteSpace(legacyEvent))
+            {
+                throw new ArgumentException($"Wait node '{nodeId ?? "?"}' must have 'events' or 'event'.");
+            }
+
+            // 旧形式: event + next → events
+            return (
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [legacyEvent.Trim()] = next?.Trim() ?? string.Empty
+                },
+                assignees);
+        }
+
+        /// <summary>
+        /// nodes 形式の <c>events</c> マップを読み取る。
+        /// </summary>
+        private static Dictionary<string, string> ParseEventsMap(string? nodeId, object? eventsVal)
+        {
+            if (eventsVal == null)
+            {
+                throw new ArgumentException($"Wait node '{nodeId ?? "?"}' has empty 'events'.");
+            }
+
+            var eventsDict = ToStringDict(eventsVal);
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (eventName, rawNext) in eventsDict)
+            {
+                if (string.IsNullOrWhiteSpace(eventName))
+                {
+                    throw new ArgumentException(
+                        $"Wait node '{nodeId ?? "?"}' events keys must be non-empty.");
+                }
+
+                var target = rawNext?.ToString()?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(target))
+                {
+                    throw new ArgumentException(
+                        $"Wait node '{nodeId ?? "?"}' events['{eventName}'] must specify a next node id.");
+                }
+
+                if (!result.TryAdd(eventName.Trim(), target))
+                {
+                    throw new ArgumentException(
+                        $"Wait node '{nodeId ?? "?"}' events contains duplicate event '{eventName}'.");
+                }
+            }
+
+            if (result.Count == 0)
+            {
+                throw new ArgumentException($"Wait node '{nodeId ?? "?"}' must have a non-empty 'events' map.");
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -285,7 +380,6 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             {
                 case NodeKind.Start:
                 case NodeKind.Action:
-                case NodeKind.Wait:
                 case NodeKind.Join:
                     if (!string.IsNullOrEmpty(Next))
                     {
@@ -305,6 +399,31 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                     if (Kind == NodeKind.Action && !string.IsNullOrWhiteSpace(Error))
                     {
                         yield return Error;
+                    }
+
+                    break;
+                case NodeKind.Wait:
+                    if (WaitEvents != null)
+                    {
+                        foreach (var targetId in WaitEvents.Values.Where(id => !string.IsNullOrWhiteSpace(id)))
+                        {
+                            yield return targetId;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(Next))
+                    {
+                        yield return Next;
+                    }
+
+                    if (Edges != null)
+                    {
+                        foreach (var toId in Edges
+                                     .Select(edge => edge.ToId)
+                                     .Where(toId => !string.IsNullOrWhiteSpace(toId)))
+                        {
+                            yield return toId;
+                        }
                     }
 
                     break;
@@ -336,43 +455,75 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                     ForbidKeys(Id, Raw, KeyError);
                     break;
                 case NodeKind.End:
-                    ForbidKeys(Id, Raw, KeyError);
-                    if (HasKeyIgnoreCase(Raw, KeyNext))
-                    {
-                        throw new ArgumentException($"Node '{Id}': 'type: end' must not have 'next' (§3.1).");
-                    }
-
-                    if (Edges is { Count: > 0 })
-                    {
-                        throw new ArgumentException($"Node '{Id}': 'type: end' must not have 'edges' (§3.1).");
-                    }
-
+                    ValidateEndForbiddenMvp();
                     break;
                 case NodeKind.Action:
                     break;
                 case NodeKind.Fork:
-                    ForbidKeys(Id, Raw, KeyError);
-                    if (Edges is { Count: > 0 })
-                    {
-                        throw new ArgumentException($"Fork node '{Id}': 'edges' is not supported in MVP.");
-                    }
-
+                    ValidateForkForbiddenMvp();
                     break;
                 case NodeKind.Wait:
-                    ForbidKeys(Id, Raw, KeyError);
+                    ValidateWaitForbiddenMvp();
                     break;
                 case NodeKind.Join:
-                    ForbidKeys(Id, Raw, KeyError);
-                    if (Raw.TryGetValue(KeyMode, out var modeVal) && modeVal != null)
-                    {
-                        var m = modeVal.ToString()?.Trim();
-                        if (!string.Equals(m, JoinModeAll, StringComparison.OrdinalIgnoreCase))
-                        {
-                            throw new ArgumentException($"Join '{Id}': only mode 'all' is supported in MVP (found '{m}').");
-                        }
-                    }
-
+                    ValidateJoinForbiddenMvp();
                     break;
+            }
+        }
+
+        /// <summary>end ノードの MVP 禁止属性を検証する。</summary>
+        private void ValidateEndForbiddenMvp()
+        {
+            ForbidKeys(Id, Raw, KeyError);
+            if (HasKeyIgnoreCase(Raw, KeyNext))
+            {
+                throw new ArgumentException($"Node '{Id}': 'type: end' must not have 'next' (§3.1).");
+            }
+
+            if (Edges is { Count: > 0 })
+            {
+                throw new ArgumentException($"Node '{Id}': 'type: end' must not have 'edges' (§3.1).");
+            }
+        }
+
+        /// <summary>fork ノードの MVP 禁止属性を検証する。</summary>
+        private void ValidateForkForbiddenMvp()
+        {
+            ForbidKeys(Id, Raw, KeyError);
+            if (Edges is { Count: > 0 })
+            {
+                throw new ArgumentException($"Fork node '{Id}': 'edges' is not supported in MVP.");
+            }
+        }
+
+        /// <summary>
+        /// wait ノードの MVP 禁止属性を検証する。
+        /// </summary>
+        /// <remarks>新形式 <c>events</c> の遷移先はマップが正本のため、<c>edges</c> との二重定義を拒否する。</remarks>
+        private void ValidateWaitForbiddenMvp()
+        {
+            ForbidKeys(Id, Raw, KeyError);
+            if (HasKeyIgnoreCase(Raw, KeyEvents)
+                && (HasKeyIgnoreCase(Raw, KeyEdges) || Edges is { Count: > 0 }))
+            {
+                throw new ArgumentException(
+                    $"Wait node '{Id}': 'edges' is not supported with 'events'; put targets in 'events'.");
+            }
+        }
+
+        /// <summary>join ノードの MVP 禁止属性を検証する。</summary>
+        private void ValidateJoinForbiddenMvp()
+        {
+            ForbidKeys(Id, Raw, KeyError);
+            if (!Raw.TryGetValue(KeyMode, out var modeVal) || modeVal == null)
+            {
+                return;
+            }
+
+            var m = modeVal.ToString()?.Trim();
+            if (!string.Equals(m, JoinModeAll, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException($"Join '{Id}': only mode 'all' is supported in MVP (found '{m}').");
             }
         }
 
@@ -455,26 +606,44 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
                     break;
                 case NodeKind.Wait:
-                    if (string.IsNullOrWhiteSpace(WaitEvent))
+                    if (WaitEvents == null || WaitEvents.Count == 0)
                     {
-                        throw new ArgumentException($"Wait node '{Id}' must have 'event'.");
+                        throw new ArgumentException($"Wait node '{Id}' must have 'events' or 'event'.");
                     }
 
-                    if (string.IsNullOrWhiteSpace(Next) && (Edges == null || Edges.Count == 0))
+                    var hasLegacyEvent = HasKeyIgnoreCase(Raw, KeyEvent);
+                    if (hasLegacyEvent
+                        && string.IsNullOrWhiteSpace(Next)
+                        && (Edges == null || Edges.Count == 0))
                     {
                         throw new ArgumentException($"Wait node '{Id}' must have 'next' or 'edges'.");
                     }
 
-                    if (!string.IsNullOrWhiteSpace(Next))
+                    if (!hasLegacyEvent)
                     {
-                        MustExist(Next, KeyNext);
-                    }
-
-                    if (Edges != null)
-                    {
-                        foreach (var e in Edges)
+                        foreach (var (eventName, targetId) in WaitEvents)
                         {
-                            MustExist(e.ToId, KeyEdgesTo);
+                            MustExist(targetId, $"{KeyEvents}.{eventName}");
+                            if (string.Equals(targetId, Id, StringComparison.OrdinalIgnoreCase))
+                            {
+                                throw new ArgumentException(
+                                    $"Wait node '{Id}' must not self-reference via events['{eventName}'].");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (!string.IsNullOrWhiteSpace(Next))
+                        {
+                            MustExist(Next, KeyNext);
+                        }
+
+                        if (Edges != null)
+                        {
+                            foreach (var e in Edges)
+                            {
+                                MustExist(e.ToId, KeyEdgesTo);
+                            }
                         }
                     }
 
@@ -621,14 +790,36 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                         On = transitions
                     };
                 case NodeKind.Wait:
-                    return new StateDefinition
                     {
-                        Wait = new WaitDefinition { Event = WaitEvent! },
-                        On = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
+                        // 旧形式（event+next）は On.Completed を維持（ランタイム移行完了まで）。
+                        // events 正本は WaitDefinition.Events。単一イベント時は Completed 遷移も埋める。
+                        var waitEvents = WaitEvents
+                            ?? throw new InvalidOperationException($"Wait node '{Id}' has no events.");
+                        Dictionary<string, TransitionDefinition>? on = null;
+                        if (HasKeyIgnoreCase(Raw, KeyEvent) || waitEvents.Count == 1)
                         {
-                            [Fact.Completed] = BuildLinearTransitionForFact(Id, Next, Edges)
+                            var fallbackNext = Next;
+                            if (string.IsNullOrWhiteSpace(fallbackNext) && waitEvents.Count == 1)
+                            {
+                                fallbackNext = waitEvents.Values.First();
+                            }
+
+                            on = new Dictionary<string, TransitionDefinition>(StringComparer.OrdinalIgnoreCase)
+                            {
+                                [Fact.Completed] = BuildLinearTransitionForFact(Id, fallbackNext, Edges)
+                            };
                         }
-                    };
+
+                        return new StateDefinition
+                        {
+                            Wait = new WaitDefinition
+                            {
+                                Events = waitEvents,
+                                Assignees = WaitAssignees
+                            },
+                            On = on
+                        };
+                    }
                 case NodeKind.Fork:
                     return new StateDefinition
                     {

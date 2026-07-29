@@ -104,7 +104,7 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
         AddStatesFromConditionalTransitions(stateNames, dto.ConditionalTransitions);
         AddStatesFromStateTable(stateNames, dto.ForkTable);
         AddStatesFromStateTable(stateNames, dto.JoinTable);
-        AddStatesFromWaitTable(stateNames, dto.WaitTable);
+        AddStatesFromWaitEventRouteTable(stateNames, dto.WaitEventRouteTable);
         return stateNames;
     }
 
@@ -127,6 +127,7 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
         var edges = new List<GraphEdgeDefinition>();
         AddEdgesFromTransitions(edges, dto.Transitions);
         AddEdgesFromConditionalTransitions(edges, dto.ConditionalTransitions);
+        AddEdgesFromWaitEventRouteTable(edges, dto.WaitEventRouteTable);
         AddEdgesFromStateTable(edges, dto.ForkTable);
         AddEdgesFromJoinTable(edges, dto.JoinTable);
         return edges;
@@ -136,7 +137,7 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     {
         if (state == dto.InitialState)
             return "Start";
-        if (dto.WaitTable is not null && dto.WaitTable.ContainsKey(state))
+        if (dto.WaitEventRouteTable is not null && dto.WaitEventRouteTable.ContainsKey(state))
             return "Wait";
         if (dto.JoinTable is not null && dto.JoinTable.ContainsKey(state))
             return "Join";
@@ -207,12 +208,23 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     }
 
     /// <summary>
-    /// wait テーブルのキー（待機状態名）を収集する。
+    /// WaitEventRouteTable のキー（待機状態名）と遷移先を収集する。
     /// </summary>
-    private static void AddStatesFromWaitTable(HashSet<string> stateNames, Dictionary<string, string>? waitTable)
+    private static void AddStatesFromWaitEventRouteTable(
+        HashSet<string> stateNames,
+        Dictionary<string, Dictionary<string, WaitEventRouteDto>?>? waitEventRouteTable)
     {
-        if (waitTable is null) return;
-        waitTable.Keys.ToList().ForEach(key => _ = stateNames.Add(key));
+        if (waitEventRouteTable is null) return;
+        foreach (var (stateName, routes) in waitEventRouteTable)
+        {
+            _ = stateNames.Add(stateName);
+            if (routes is null) continue;
+            routes.Values
+                .Select(route => route?.Next)
+                .Where(next => !string.IsNullOrWhiteSpace(next))
+                .ToList()
+                .ForEach(next => _ = stateNames.Add(next!));
+        }
     }
 
     /// <summary>
@@ -286,6 +298,30 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     /// <summary>
     /// stateName → stateName[] 形式テーブル（fork）から描画用エッジを追加する。
     /// </summary>
+    /// <summary>
+    /// WaitEventRouteTable からイベントごとのエッジ（Label = イベント名）を追加する。
+    /// </summary>
+    private static void AddEdgesFromWaitEventRouteTable(
+        List<GraphEdgeDefinition> edges,
+        Dictionary<string, Dictionary<string, WaitEventRouteDto>?>? waitEventRouteTable)
+    {
+        if (waitEventRouteTable is null) return;
+        foreach (var (fromState, routes) in waitEventRouteTable)
+        {
+            if (routes is null) continue;
+            foreach (var (eventName, route) in routes)
+            {
+                if (string.IsNullOrWhiteSpace(route?.Next)) continue;
+                edges.Add(new GraphEdgeDefinition
+                {
+                    From = fromState,
+                    To = route.Next,
+                    Label = eventName
+                });
+            }
+        }
+    }
+
     private static void AddEdgesFromStateTable(List<GraphEdgeDefinition> edges, Dictionary<string, List<string>?>? stateTable)
     {
         if (stateTable is null) return;
@@ -317,7 +353,12 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
         public Dictionary<string, Dictionary<string, CompiledFactTransitionDto>?>? ConditionalTransitions { get; set; } = [];
         public Dictionary<string, List<string>?>? ForkTable { get; set; } = [];
         public Dictionary<string, List<string>?>? JoinTable { get; set; } = [];
-        public Dictionary<string, string>? WaitTable { get; set; } = [];
+        public Dictionary<string, Dictionary<string, WaitEventRouteDto>?>? WaitEventRouteTable { get; set; } = [];
+    }
+
+    private sealed class WaitEventRouteDto
+    {
+        public string Next { get; set; } = string.Empty;
     }
 
     private sealed class CompiledFactTransitionDto

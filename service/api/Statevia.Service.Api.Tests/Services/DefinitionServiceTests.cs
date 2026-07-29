@@ -84,7 +84,7 @@ public sealed class DefinitionServiceTests
                 Transitions = new Dictionary<string, IReadOnlyDictionary<string, Statevia.Core.Engine.Abstractions.TransitionTarget>>(),
                 ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
                 JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-                WaitTable = new Dictionary<string, string>(),
+                WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
                 InitialState = "A",
                 StateExecutorFactory = dummyFactory
             }, _compiledJson);

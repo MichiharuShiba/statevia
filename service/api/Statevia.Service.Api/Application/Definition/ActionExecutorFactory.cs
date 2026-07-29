@@ -49,7 +49,13 @@ internal sealed class ActionExecutorFactory : IStateExecutorFactory
 
         if (state.Wait is not null)
         {
-            return DefaultStateExecutor.Create(new WaitOnlyState(state.Wait.Event));
+            var eventNames = state.Wait.Events.Keys.ToArray();
+            if (eventNames.Length == 0)
+            {
+                throw new InvalidOperationException($"Wait state '{stateName}' has no events.");
+            }
+
+            return DefaultStateExecutor.Create(new WaitOnlyState(eventNames));
         }
 
         if (!_stateActionBindings.TryGetValue(stateName, out var binding))

@@ -20,6 +20,7 @@ import { useGraphDefinition } from "../hooks/useGraphDefinition";
 import { getNodeWithFallback, useGraphData } from "../hooks/useGraphData";
 import { getResumeDisabledReason, useNodeCommands } from "../hooks/useNodeCommands";
 import { computeExecutionDiff } from "../lib/executionDiff";
+import { isPublishEventAvailable } from "../lib/waitResumeEvents";
 import { apiGet } from "@/shared/api";
 import { toToastError, type ToastState } from "@/shared/lib/errors";
 import { useI18n, useUiText } from "@/shared/i18n/uiTextContext";
@@ -102,7 +103,7 @@ type ExecutionDashboardViewProps = {
   selectedNodeId: string | null;
   graphData: ReturnType<typeof useGraphData>;
   onToggleGraphFullscreen: () => void;
-  onResumeNode: (nodeId: string) => void;
+  onResumeNode: (nodeId: string, eventName: string) => void;
   getResumeDisabledReasonForNode: (nodeId: string) => string | null;
   savedGraphViewport?: GraphViewport;
   onGraphViewportChange: (viewport: GraphViewport) => void;
@@ -404,8 +405,8 @@ export function ExecutionDashboard({
       selectedNodeId={selectedNodeId}
       graphData={graphData}
       onToggleGraphFullscreen={handleToggleGraphFullscreen}
-      onResumeNode={(nodeId) => {
-        void resumeNode(nodeId);
+      onResumeNode={(nodeId, eventName) => {
+        void resumeNode(nodeId, eventName);
       }}
       getResumeDisabledReasonForNode={getResumeDisabledReasonForNode}
       savedGraphViewport={savedGraphViewport}
@@ -532,7 +533,7 @@ function ExecutionDashboardView({
 
           <Toast toast={toast} onClose={onCloseToast} />
 
-          {operationsEnabled && showExecutionPanels && (
+          {operationsEnabled && showExecutionPanels && isPublishEventAvailable(execution) && (
             <section className="rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm">
               <h2 className="text-sm font-semibold text-[var(--md-sys-color-on-surface)]">{uiText.executionDashboard.actions.sectionTitle}</h2>
               <div className="mt-3 flex flex-wrap items-end gap-2">
@@ -661,7 +662,10 @@ function ExecutionDashboardView({
               execution={displayExecution ?? execution}
               node={selectedNode}
               loading={loading}
-              onResume={() => !isReplaying && selectedNode && onResumeNode(selectedNode.executionNodeId)}
+              onResume={(eventName) => {
+                if (isReplaying || !selectedNode) return;
+                onResumeNode(selectedNode.executionNodeId, eventName);
+              }}
               resumeDisabledReason={selectedResumeDisabledReason}
               resumeEventName={resumeEventName}
               showResumeAction={operationsEnabled}

@@ -76,7 +76,183 @@ public class StateWorkflowDefinitionLoaderTests
 
         // Assert
         Assert.NotNull(state.Wait);
-        Assert.Equal("resume", state.Wait!.Event);
+        Assert.Single(state.Wait!.Events);
+        Assert.True(state.Wait.Events.ContainsKey("resume"));
+        Assert.Equal(string.Empty, state.Wait.Events["resume"]);
+    }
+
+    /// <summary>wait.events の新形式をパースすることを検証する。</summary>
+    [Fact]
+    public void Load_ParsesWaitEventsMap()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              ApproveTask:
+                wait:
+                  events:
+                    approve: Approved
+                    reject: Rejected
+              Approved:
+                on:
+                  Completed:
+                    end: true
+              Rejected:
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+        var wait = def.States["ApproveTask"].Wait;
+
+        // Assert
+        Assert.NotNull(wait);
+        Assert.Equal(2, wait!.Events.Count);
+        Assert.Equal("Approved", wait.Events["approve"]);
+        Assert.Equal("Rejected", wait.Events["reject"]);
+    }
+
+    /// <summary>wait.events の Next が空なら読み込み失敗することを検証する（FSM フォールバックなし）。</summary>
+    [Fact]
+    public void Load_WaitEventsMap_EmptyNext_Throws()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              WaitState:
+                wait:
+                  events:
+                    resume:
+                on:
+                  Completed:
+                    next: Done
+              Done:
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => loader.Load(yaml));
+        Assert.Contains("must specify a next state name", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>旧 wait.event + on.Completed を events へ正規化することを検証する。</summary>
+    [Fact]
+    public void Load_NormalizesLegacyWaitEventWithOnCompleted()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              WaitState:
+                wait:
+                  event: UserApproved
+                on:
+                  Completed:
+                    next: Done
+              Done:
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+        var wait = def.States["WaitState"].Wait;
+
+        // Assert
+        Assert.NotNull(wait);
+        Assert.Single(wait!.Events);
+        Assert.Equal("Done", wait.Events["UserApproved"]);
+        Assert.NotNull(def.States["WaitState"].On);
+        Assert.Equal("Done", def.States["WaitState"].On!["Completed"].Next);
+    }
+
+    /// <summary>wait.assignees を保持することを検証する（Phase 2 枠）。</summary>
+    [Fact]
+    public void Load_ParsesWaitAssignees()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              WaitState:
+                wait:
+                  events:
+                    approve: Done
+                  assignees: [alice, bob]
+              Done:
+                on:
+                  Completed:
+                    end: true
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act
+        var def = loader.Load(yaml);
+        var wait = def.States["WaitState"].Wait;
+
+        // Assert
+        Assert.NotNull(wait);
+        Assert.NotNull(wait!.Assignees);
+        Assert.Equal(2, wait.Assignees!.Count);
+        Assert.Contains("alice", wait.Assignees);
+        Assert.Contains("bob", wait.Assignees);
+    }
+
+    /// <summary>wait.exits は受理しないことを検証する。</summary>
+    [Fact]
+    public void Load_WaitExits_Throws()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              WaitState:
+                wait:
+                  exits:
+                    approve: Done
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => loader.Load(yaml));
+        Assert.Contains("wait.exits", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>wait.events と wait.event の併用は拒否されることを検証する。</summary>
+    [Fact]
+    public void Load_WaitEventsAndEventTogether_Throws()
+    {
+        // Arrange
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              WaitState:
+                wait:
+                  event: resume
+                  events:
+                    approve: Done
+            """;
+        var loader = new StateWorkflowDefinitionLoader();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => loader.Load(yaml));
+        Assert.Contains("cannot be used together", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>join のみの状態をパースすることを検証する。</summary>

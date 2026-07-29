@@ -26,7 +26,7 @@ public sealed class StateDefinition
 
     /// <summary>事実駆動 FSM の遷移定義（事実名 → 遷移）。</summary>
     public IReadOnlyDictionary<string, TransitionDefinition>? On { get; init; }
-    /// <summary>Wait/Resume 用の待機イベント定義。</summary>
+    /// <summary>Wait/Resume 用の待機イベント定義（<see cref="WaitDefinition.Events"/>）。</summary>
     public WaitDefinition? Wait { get; init; }
     /// <summary>Join の all 依存定義。</summary>
     public JoinDefinition? Join { get; init; }
@@ -99,11 +99,19 @@ public sealed class ConditionExpressionDefinition
     public object? Value { get; init; }
 }
 
-/// <summary>Wait で待機するイベントの定義。</summary>
+/// <summary>Wait State のイベント → 遷移先定義。</summary>
+/// <remarks>
+/// <para>DSL 正本は <c>wait.events</c>（イベント名 → 遷移先状態名）。</para>
+/// <para>旧 <c>wait.event</c> + <c>on.Completed</c> は Loader が <see cref="Events"/> へ正規化する。</para>
+/// <para><see cref="Assignees"/> は Phase 2 の認可枠（構文保持のみ）。</para>
+/// </remarks>
 public sealed class WaitDefinition
 {
-    /// <summary>イベント名。</summary>
-    public required string Event { get; init; }
+    /// <summary>イベント名 → 遷移先状態名。</summary>
+    public required IReadOnlyDictionary<string, string> Events { get; init; }
+
+    /// <summary>担当者枠（Phase 2。Loader は保持のみ）。</summary>
+    public IReadOnlyList<string>? Assignees { get; init; }
 }
 
 /// <summary>Join の all 依存定義。</summary>

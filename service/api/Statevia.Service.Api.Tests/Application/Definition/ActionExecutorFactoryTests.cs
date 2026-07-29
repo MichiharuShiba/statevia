@@ -46,7 +46,13 @@ public sealed class ActionExecutorFactoryTests
             {
                 ["A"] = new StateDefinition
                 {
-                    Wait = new WaitDefinition { Event = "E" },
+                    Wait = new WaitDefinition
+                    {
+                        Events = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                        {
+                            ["E"] = "Next"
+                        }
+                    },
                 },
             },
         };

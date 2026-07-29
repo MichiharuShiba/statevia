@@ -21,7 +21,7 @@ public class ExecutionSnapshotExtensionsTests
                 StringComparer.OrdinalIgnoreCase),
             ForkTable = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase),
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase),
-            WaitTable = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+            WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
             InitialState = "S0",
             StateExecutorFactory = execFactory
         };

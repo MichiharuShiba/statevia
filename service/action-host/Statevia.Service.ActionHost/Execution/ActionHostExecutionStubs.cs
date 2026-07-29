@@ -11,9 +11,19 @@ internal sealed class EmptyEventProvider : IEventProvider
             "Event wait is not supported in Action Host OutOfProcess execution."));
 
     /// <inheritdoc />
+    public Task<string> WaitForEventAsync(string nodeId, IReadOnlyList<string> eventNames, CancellationToken ct) =>
+        Task.FromException<string>(new NotSupportedException(
+            "Event wait is not supported in Action Host OutOfProcess execution."));
+
+    /// <inheritdoc />
     public void Signal(string signalName) =>
         throw new NotSupportedException(
             "Event signal is not supported in Action Host OutOfProcess execution.");
+
+    /// <inheritdoc />
+    public void Resume(string nodeId, string eventName) =>
+        throw new NotSupportedException(
+            "Event resume is not supported in Action Host OutOfProcess execution.");
 
     /// <inheritdoc />
     public void PublishTopic(string topic, object? payloadSummary) =>

@@ -3,9 +3,9 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.4.2 |
-| 更新日 | 2026-07-26 |
-| 関連 | [concepts/definition.md](../concepts/definition.md) |
+| Version | 1.5.0 |
+| 更新日 | 2026-07-29 |
+| 関連 | [concepts/definition.md](../concepts/definition.md), [execution/wait-cancel.md](execution/wait-cancel.md) |
 
 ---
 
@@ -13,9 +13,12 @@
 
 - **MUST**: publish 時に参照する `action` ID は Catalog に存在すること。未登録はエラー。
 - **MUST**: `wait` または `join` を持つ状態に `action` を併記してはならない。
+- **MUST**: Wait の正本は `wait.events`（イベント名 → 遷移先）。`events` は非空で、遷移先が定義内に存在すること。
+- **MUST**: 同一 Wait 内のイベント名重複、予約語（`Completed` / `Failed` / `Cancelled` / `Joined`）、自己遷移を拒否する（422）。
 - **MUST**: module alias は大文字小文字を区別せずテナント内で一意であること。
 - **SHOULD**: 定義は states 形式で記述し、nodes 形式は UI 編集後に正規化する。
 - **禁止**: 実行中に定義版を上書きすること（新版は append のみ）。詳細は [data-integration.md](data-integration.md)。
+- **禁止**: 公開 DSL / HTTP / UI に `exit` / `exits` 語彙を出さない（`events` / `allowedEvents` / `resumeKey` を使う）。
 
 背景・動機は [Concept: 定義](../concepts/definition.md) を参照。
 
@@ -47,7 +50,8 @@ states:
         fork: [<StateName>, ...]  # 並列開始
         end: true                 # ワークフロー終了
     wait:                         # 待機（オプション）
-      event: <EventName>
+      events:                     # 正本: イベント名 → 遷移先
+        <EventName>: <StateName>
     join:                         # 合流（オプション）
       all: [<StateName>, ...]
 ```
@@ -179,7 +183,7 @@ states:
 #### signal（`statevia.action.builtin.signal`）
 
 - **input**: `{ signal, target? }` — `signal` 必須。`target` は MVP で `current` のみ（省略時 `current`）
-- **output**: 意味のない完了（`Unit`）。同一実行内の wait（`wait.event`）再開用に `IEventProvider.Signal` を発行する
+- **output**: 意味のない完了（`Unit`）。同一実行内の wait 再開用に `IEventProvider.Signal` を発行する（許可イベント名と一致させる）
 
 #### publish（`statevia.action.builtin.publish`）
 
@@ -204,9 +208,9 @@ states:
 
 | 概念 | スコープ | Builtin / ノード |
 | --- | --- | --- |
-| signal | execution-scoped | `signal` action → wait の `event` 再開 |
+| signal | execution-scoped | `signal` action → wait の許可イベント再開 |
 | publish | system-scoped | `publish` action（MVP stub） |
-| wait | execution-scoped | wait ノード `event`（従来どおり） |
+| wait | execution-scoped（ノード単位） | `wait.events` / nodes `events`。再開は `ResumeWaitNode`（HTTP Resume） |
 
 Phase 2（未実装）: wait ノード直下に `duration` / `signal` / `event` を排他指定する統合構文。
 
@@ -219,7 +223,12 @@ Phase 2（未実装）: wait ノード直下に `duration` / `signal` / `event` 
 
 ### 1.3 Wait（待機）
 
-- **wait.event**: 再開に使うイベント名。Resume 時にこのイベント名で `PublishEvent` するとその状態が再開する。
+- **wait.events**（正本）: マップ形式。キーが受付イベント名、値が遷移先状態名。
+  - コンパイル後は **`WaitEventRouteTable`**（compiled JSON: `waitEventRouteTable`）になる。
+  - 再開の HTTP 正本は `POST …/nodes/{nodeId}/resume` で **`resumeKey` = イベント名**（Engine: `ResumeWaitNode`）。
+  - Join 互換のため Wait 完了時の FSM 事実は **`Completed`** のまま。次状態の解決は route table（イベント名）が行う。詳細は [execution/wait-cancel.md](execution/wait-cancel.md) / [execution/fsm.md](execution/fsm.md)。
+- **旧形式の正規化**: `wait.event: X` + `on.Completed.next: Y` は Loader が `events: { X: Y }` へ自動変換する。`wait.events` と `wait.event` の併記はエラー。
+- **公開語彙**: `event` / `events` / `allowedEvents` / `resumeKey` のみ。`exit` / `exits` は受理しない。
 
 ### 1.4 Join（合流）
 
@@ -245,10 +254,8 @@ states:
 
   AskUser:
     wait:
-      event: UserApproved
-    on:
-      Completed:
-        next: Join1
+      events:
+        UserApproved: Join1
 
   Join1:
     join:
@@ -536,14 +543,14 @@ Core-API の **`GET /v1/definitions/schema/nodes`** が返すスキーマには�
 | start  | next               | 開始ノード。1 つのみ。 |
 | end    | —                  | 終端ノード。 |
 | action | action, next       | input, error, label 等（`onError` は現行変換では使用しない）。 |
-| wait   | event, next        | timeout, onTimeout は現行変換では使用しない。 |
+| wait   | `events`（1 件以上） | 旧 `event`+`next` は Loader が `events` へ正規化。timeout / onTimeout は現行変換では未使用。 |
 | fork   | branches           | 2 要素以上の配列。 |
 | join   | next               | mode: all 等。 |
 
 - **start**: `next` で次ノード ID。
 - **end**: `next` なし。
 - **action**: `action` はアクション参照（§1.1.1。例: `mail.send`、`statevia.action.builtin.noop`）。`next` で通常遷移先、`error` で失敗時遷移先（action のみ）。`input` で入力マップ（§1.1.2）。
-- **wait**: `event` で待機イベント名。`next` で再開後の次ノード。`timeout`（ISO 8601 duration）でタイムアウト指定可。
+- **wait**: 正本は **`events`**（イベント名 → 次ノード ID）。単一イベントの旧形式 `event` + `next` も受理し、Loader が `events` へ正規化する。`timeout`（ISO 8601 duration）は現行変換では未使用。
 - **fork**: `branches` に並列ブランチのノード ID の配列。
 - **join**: すべてのブランチの完了を待ち、`next` へ進む。
 
@@ -571,8 +578,8 @@ nodes:
   - id: waitPayment
     type: wait
     label: Wait Payment
-    event: payment.completed
-    next: endSuccess
+    events:
+      payment.completed: endSuccess
 
   - id: forkFulfillment
     type: fork

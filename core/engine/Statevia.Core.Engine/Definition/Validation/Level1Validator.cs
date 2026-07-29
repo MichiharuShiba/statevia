@@ -29,6 +29,7 @@ public static class Level1Validator
             ValidateStateName(stateName, errors);
             ValidateActionAndWait(stateName, stateDef, errors);
             ValidateActionAndJoin(stateName, stateDef, errors);
+            WaitEventsValidator.Validate(stateName, stateDef, stateNames, errors);
             ValidateTransitions(stateName, stateDef, stateNames, errors, ref terminalTransitionCount);
             ValidateJoin(stateDef, stateNames, errors);
             ValidateStateInput(stateName, stateDef, errors);

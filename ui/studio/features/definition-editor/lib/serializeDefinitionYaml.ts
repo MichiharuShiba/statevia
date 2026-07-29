@@ -1,15 +1,34 @@
 import { stringify } from "yaml";
-import type { DefinitionGraphDocument, DefinitionGraphEdge } from "./types";
+import type {
+  DefinitionGraphDocument,
+  DefinitionGraphEdge,
+  DefinitionGraphNode
+} from "./types";
 
-function isNonEmptyRecord(value: Record<string, unknown>): boolean {
+function isNonEmptyRecord(value: object): boolean {
   return Object.keys(value).length > 0;
+}
+
+/**
+ * wait.events を YAML 出力用にコピーする（空なら undefined）。
+ *
+ * @param events Wait ノードのイベントマップ（未設定可）
+ * @returns 非空のコピー。空または未設定なら undefined
+ */
+function copyWaitEvents(
+  events: DefinitionGraphNode["events"]
+): Record<string, string> | undefined {
+  if (events === undefined || !isNonEmptyRecord(events)) {
+    return undefined;
+  }
+  return { ...events };
 }
 
 /**
  * DefinitionGraphDocument を既存 nodes スキーマの YAML へ変換する。
  */
 export function serializeDefinitionYaml(document: DefinitionGraphDocument): string {
-  const nodes = document.nodes.map((node) => {
+  const nodes = document.nodes.map((node: DefinitionGraphNode) => {
     const base: Record<string, unknown> = {
       id: node.id,
       type: node.type
@@ -23,6 +42,10 @@ export function serializeDefinitionYaml(document: DefinitionGraphDocument): stri
     }
     if (node.event?.trim()) {
       base.event = node.event.trim();
+    }
+    const waitEvents = copyWaitEvents(node.events);
+    if (waitEvents !== undefined) {
+      base.events = waitEvents;
     }
     if (node.type === "fork") {
       base.branches = [...(node.branches ?? [])];

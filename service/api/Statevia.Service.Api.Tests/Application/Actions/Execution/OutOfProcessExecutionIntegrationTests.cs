@@ -1,6 +1,7 @@
 extern alias ActionHost;
 
 using Grpc.Net.Client;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -30,7 +31,10 @@ public sealed class OutOfProcessExecutionIntegrationTests : IAsyncLifetime
     {
         _actionHostFactory = new WebApplicationFactory<ActionHost::Program>()
             .WithWebHostBuilder(builder =>
-                builder.UseSetting($"{ActionHostOptions.SectionName}:ModulesPath", _modulesRoot));
+            {
+                builder.UseContentRoot(ActionExecutionTestSupport.ResolveActionHostContentRoot());
+                builder.UseSetting($"{ActionHostOptions.SectionName}:ModulesPath", _modulesRoot);
+            });
 
         var httpClient = _actionHostFactory.CreateClient(new WebApplicationFactoryClientOptions
         {

@@ -151,4 +151,45 @@ nodes:
     const r = parseDefinitionYaml(yaml, parseOpts);
     expect(r.document?.nodes.find((n) => n.id === "j")?.mode).toBe("all");
   });
+
+  it("wait.events を保持し往復できる", () => {
+    const yaml = `version: 1
+workflow:
+  name: W
+nodes:
+  - id: s
+    type: start
+    next: w1
+  - id: w1
+    type: wait
+    events:
+      approve: ok
+      reject: ng
+  - id: ok
+    type: action
+    action: noop
+    next: e
+  - id: ng
+    type: action
+    action: noop
+    next: e
+  - id: e
+    type: end
+`;
+    const r = parseDefinitionYaml(yaml, parseOpts);
+    expect(r.document?.nodes.find((n) => n.id === "w1")?.events).toEqual({
+      approve: "ok",
+      reject: "ng"
+    });
+
+    if (!r.document) {
+      throw new Error("document should not be null");
+    }
+    const round = serializeDefinitionYaml(r.document);
+    const again = parseDefinitionYaml(round, parseOpts);
+    expect(again.document?.nodes.find((n) => n.id === "w1")?.events).toEqual({
+      approve: "ok",
+      reject: "ng"
+    });
+  });
 });

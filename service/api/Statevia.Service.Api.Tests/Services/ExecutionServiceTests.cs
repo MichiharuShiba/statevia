@@ -107,6 +107,10 @@ public sealed class ExecutionServiceTests
         public Guid? PublishEventLastClientEventId { get; private set; }
         public Guid? CancelAsyncLastClientEventId { get; private set; }
 
+        public string? ResumeWaitNodeLastExecutionId { get; private set; }
+        public string? ResumeWaitNodeLastNodeId { get; private set; }
+        public string? ResumeWaitNodeLastEventName { get; private set; }
+
         /// <summary>設定時、一致する <c>clientEventId</c> の Publish で <see cref="ApplyResult.AlreadyApplied"/> を返す。</summary>
         public Guid? PublishAlreadyAppliedWhenClientEventIdEquals { get; set; }
 
@@ -122,6 +126,22 @@ public sealed class ExecutionServiceTests
             return executionId ?? "generated";
         }
 
+        /// <summary>設定時、PublishEvent(executionId, name, clientEventId) がこの例外を投げる。</summary>
+        public Exception? PublishEventExceptionToThrow { get; set; }
+
+        /// <summary>設定時、ResumeWaitNode がこの例外を投げる。</summary>
+        public Exception? ResumeWaitNodeExceptionToThrow { get; set; }
+
+        public void ResumeWaitNode(string executionId, string nodeId, string eventName)
+        {
+            if (ResumeWaitNodeExceptionToThrow is { } resumeEx)
+                throw resumeEx;
+
+            ResumeWaitNodeLastExecutionId = executionId;
+            ResumeWaitNodeLastNodeId = nodeId;
+            ResumeWaitNodeLastEventName = eventName;
+        }
+
         public void PublishEvent(string executionId, string eventName)
         {
             PublishEventLastExecutionId = executionId;
@@ -131,6 +151,9 @@ public sealed class ExecutionServiceTests
 
         public ApplyResult PublishEvent(string executionId, string eventName, Guid clientEventId)
         {
+            if (PublishEventExceptionToThrow is { } publishEx)
+                throw publishEx;
+
             PublishEventLastExecutionId = executionId;
             PublishEventLastName = eventName;
             PublishEventLastClientEventId = clientEventId;
@@ -446,23 +469,33 @@ public sealed class ExecutionServiceTests
 
     private sealed class FakeExecutionWaitRepository : IExecutionWaitRepository
     {
+        /// <summary><see cref="DeleteByNodeIdAsync"/> に渡された (executionId, nodeId) の履歴。</summary>
+        public List<(Guid ExecutionId, string NodeId)> DeletedByNodeId { get; } = [];
+
+        /// <summary><see cref="ListByExecutionIdAsync"/> が返す wait 行。</summary>
+        public IReadOnlyList<ExecutionWaitRow> ListByExecutionIdResult { get; set; } = Array.Empty<ExecutionWaitRow>();
+
         public Task ReplaceWaitsAsync(
             ICoreUnitOfWork uow,
             Guid executionId,
             IReadOnlyList<ExecutionWaitRow> waits,
             CancellationToken ct) => Task.CompletedTask;
 
-        public Task DeleteByResumeTokenAsync(
+        public Task DeleteByNodeIdAsync(
             ICoreUnitOfWork uow,
             Guid executionId,
-            string resumeToken,
-            CancellationToken ct) => Task.CompletedTask;
+            string nodeId,
+            CancellationToken ct)
+        {
+            DeletedByNodeId.Add((executionId, nodeId));
+            return Task.CompletedTask;
+        }
 
         public Task<IReadOnlyList<ExecutionWaitRow>> ListByExecutionIdAsync(
             ICoreUnitOfWork uow,
             Guid executionId,
             CancellationToken ct) =>
-            Task.FromResult<IReadOnlyList<ExecutionWaitRow>>(Array.Empty<ExecutionWaitRow>());
+            Task.FromResult(ListByExecutionIdResult);
     }
 
     private sealed class FakeEventStoreRepository : IEventStoreRepository
@@ -540,7 +573,7 @@ public sealed class ExecutionServiceTests
             Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>(),
             ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
             JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
-            WaitTable = new Dictionary<string, string>(),
+            WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(StringComparer.OrdinalIgnoreCase),
             InitialState = "Initial",
             StateExecutorFactory = new DummyExecutorFactory()
         };
@@ -1792,6 +1825,307 @@ public sealed class ExecutionServiceTests
         Assert.Null(engine.PublishEventLastName);
     }
 
+    /// <summary>PublishEvent シム条件外の InvalidOperationException は 422（ApiValidationException）に写像する。</summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenEngineRejectsShim_ThrowsApiValidationException()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+        const string engineMessage =
+            "PublishEvent requires the active Wait state 'flow.approve.wait' to have exactly one event.";
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["flow.approve.wait"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn =
+                """
+                {"nodes":[
+                  {"nodeId":"wait-1","stateName":"flow.approve.wait","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","allowedEvents":["approve","reject"]}
+                ]}
+                """,
+            PublishEventExceptionToThrow = new InvalidOperationException(engineMessage)
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository { NextFindValid = null },
+            engine: engine,
+            display: new FakeDisplayIdService { ResolveResultExecution = executionId },
+            executionRepo: new FakeExecutionRepository
+            {
+                ByIdResult = new ExecutionRow
+                {
+                    ExecutionId = executionId,
+                    TenantId = TestTenantIds.T1TenantId,
+                    DefinitionId = defId,
+                    Status = "Running",
+                    StartedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CancelRequested = false,
+                    RestartLost = false
+                }
+            },
+            eventStore: new FakeEventStoreRepository(),
+            waitRepo: new FakeExecutionWaitRepository());
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() =>
+            sut.PublishEventAsync(
+                idOrUuid: "X",
+                eventName: "approve",
+                idempotencyKey: null,
+                new CommandRequestContext("POST", "/v1/executions/events"),
+                CancellationToken.None));
+
+        // Assert
+        Assert.Equal(engineMessage, ex.Message);
+        Assert.IsType<InvalidOperationException>(ex.InnerException);
+    }
+
+    /// <summary>ResumeWaitNode の InvalidOperationException は 422（ApiValidationException）に写像する。</summary>
+    [Fact]
+    public async Task ResumeNodeAsync_WhenEngineRejects_ThrowsApiValidationException()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+        const string engineMessage = "Event 'reject' is not allowed for Wait state 'flow.approve.wait'.";
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["flow.approve.wait"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn =
+                """
+                {"nodes":[
+                  {"nodeId":"wait-1","stateName":"flow.approve.wait","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","allowedEvents":["approve"]}
+                ]}
+                """,
+            ResumeWaitNodeExceptionToThrow = new InvalidOperationException(engineMessage)
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository { NextFindValid = null },
+            engine: engine,
+            display: new FakeDisplayIdService { ResolveResultExecution = executionId },
+            executionRepo: new FakeExecutionRepository
+            {
+                ByIdResult = new ExecutionRow
+                {
+                    ExecutionId = executionId,
+                    TenantId = TestTenantIds.T1TenantId,
+                    DefinitionId = defId,
+                    Status = "Running",
+                    StartedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CancelRequested = false,
+                    RestartLost = false
+                }
+            },
+            eventStore: new FakeEventStoreRepository(),
+            waitRepo: new FakeExecutionWaitRepository());
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() =>
+            sut.ResumeNodeAsync(
+                idOrUuid: "X",
+                nodeId: "wait-1",
+                resumeKey: "reject",
+                idempotencyKey: null,
+                new CommandRequestContext("POST", "/v1/executions/X/nodes/wait-1/resume"),
+                CancellationToken.None));
+
+        // Assert
+        Assert.Equal(engineMessage, ex.Message);
+        Assert.IsType<InvalidOperationException>(ex.InnerException);
+    }
+
+    /// <summary>PublishEvent 成功時、発行前の唯一アクティブ Wait nodeId で wait 行を先行削除する。</summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenProceeding_ClearsSoleActiveWaitNodeId()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+        var waitRepo = new FakeExecutionWaitRepository();
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["Ask"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn =
+                """
+                {"nodes":[
+                  {"nodeId":"wait-1","stateName":"Ask","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","waitKey":"Approve"}
+                ]}
+                """
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository { NextFindValid = null },
+            engine: engine,
+            display: new FakeDisplayIdService { ResolveResultExecution = executionId },
+            executionRepo: new FakeExecutionRepository
+            {
+                ByIdResult = new ExecutionRow
+                {
+                    ExecutionId = executionId,
+                    TenantId = TestTenantIds.T1TenantId,
+                    DefinitionId = defId,
+                    Status = "Running",
+                    StartedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CancelRequested = false,
+                    RestartLost = false
+                }
+            },
+            eventStore: new FakeEventStoreRepository(),
+            waitRepo: waitRepo);
+
+        // Act
+        await sut.PublishEventAsync(
+            idOrUuid: "X",
+            eventName: "Approve",
+            idempotencyKey: null,
+            new CommandRequestContext("POST", "/v1/executions/events"),
+            CancellationToken.None);
+
+        // Assert
+        Assert.Single(waitRepo.DeletedByNodeId);
+        Assert.Equal(executionId, waitRepo.DeletedByNodeId[0].ExecutionId);
+        Assert.Equal("wait-1", waitRepo.DeletedByNodeId[0].NodeId);
+    }
+
+    /// <summary>
+    /// 発行前グラフから nodeId を解決できないとき、永続化済みの唯一 wait 行を削除対象にする。
+    /// </summary>
+    [Fact]
+    public async Task PublishEventAsync_WhenGraphResolveFails_ClearsSolePersistedWaitNodeId()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        var defId = Guid.NewGuid();
+        var waitRepo = new FakeExecutionWaitRepository
+        {
+            ListByExecutionIdResult =
+            [
+                new ExecutionWaitRow
+                {
+                    ExecutionId = executionId,
+                    NodeId = "persisted-wait",
+                    WaitKind = ExecutionWaitKind.EventWait,
+                    AllowedEvents = ["Approve"],
+                    CreatedAt = DateTime.UtcNow
+                }
+            ]
+        };
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["Ask"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            // nodes 欠落で TryResolveSoleActiveWaitNodeId が null になる
+            GraphJsonToReturn = """{"notNodes":[]}"""
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository { NextFindValid = null },
+            engine: engine,
+            display: new FakeDisplayIdService { ResolveResultExecution = executionId },
+            executionRepo: new FakeExecutionRepository
+            {
+                ByIdResult = new ExecutionRow
+                {
+                    ExecutionId = executionId,
+                    TenantId = TestTenantIds.T1TenantId,
+                    DefinitionId = defId,
+                    Status = "Running",
+                    StartedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CancelRequested = false,
+                    RestartLost = false
+                }
+            },
+            eventStore: new FakeEventStoreRepository(),
+            waitRepo: waitRepo);
+
+        // Act
+        await sut.PublishEventAsync(
+            idOrUuid: "X",
+            eventName: "Approve",
+            idempotencyKey: null,
+            new CommandRequestContext("POST", "/v1/executions/events"),
+            CancellationToken.None);
+
+        // Assert
+        Assert.Single(waitRepo.DeletedByNodeId);
+        Assert.Equal(executionId, waitRepo.DeletedByNodeId[0].ExecutionId);
+        Assert.Equal("persisted-wait", waitRepo.DeletedByNodeId[0].NodeId);
+    }
+
+    /// <summary>
+    /// 複数 wait 行から削除対象を決めるとき、eventName の前後空白を Trim して照合する。
+    /// </summary>
+    [Fact]
+    public void TryResolveWaitNodeIdToClearFromPersisted_MatchesAllowedEvent_WhenEventNameHasWhitespace()
+    {
+        // Arrange
+        var waits = new List<ExecutionWaitRow>
+        {
+            new()
+            {
+                ExecutionId = Guid.NewGuid(),
+                NodeId = "wait-a",
+                WaitKind = ExecutionWaitKind.EventWait,
+                AllowedEvents = ["approve"],
+                CreatedAt = DateTime.UtcNow
+            },
+            new()
+            {
+                ExecutionId = Guid.NewGuid(),
+                NodeId = "wait-b",
+                WaitKind = ExecutionWaitKind.EventWait,
+                AllowedEvents = ["reject"],
+                CreatedAt = DateTime.UtcNow
+            }
+        };
+
+        // Act
+        var nodeId = ExecutionService.TryResolveWaitNodeIdToClearFromPersisted(waits, "  approve  ");
+
+        // Assert
+        Assert.Equal("wait-a", nodeId);
+    }
+
     /// <summary>イベント公開が通ると通知と投影更新と追記保存まで実施する。</summary>
     [Fact]
     public async Task PublishEventAsync_WhenProceeding_UpdatesExecutionAndSnapshot_AppendsEventPublished_AndSavesDedupRow()
@@ -2383,9 +2717,9 @@ public sealed class ExecutionServiceTests
         Assert.Equal("{\"nodes\":[],\"edges\":[{\"from\":\"a1\",\"to\":\"b1\",\"type\":0}]}", graphJson);
     }
 
-    /// <summary>有効なノード識別子と再開キーで公開と投影更新を実施する。</summary>
+    /// <summary>有効なノード識別子と再開キーで ResumeWaitNode と投影更新を実施する。</summary>
     [Fact]
-    public async Task ResumeNodeAsync_WhenValidNodeAndResumeKey_PublishesEventAndUpdatesExecution()
+    public async Task ResumeNodeAsync_WhenValidNodeAndResumeKey_ResumesWaitNodeAndUpdatesExecution()
     {
         // Arrange
         var executionId = Guid.NewGuid();
@@ -2445,8 +2779,10 @@ public sealed class ExecutionServiceTests
         await sut.ResumeNodeAsync(idOrUuid: "X", nodeId: nodeId, resumeKey: resumeKey, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None);
 
         // Assert
-        Assert.Equal(executionId.ToString(), engine.PublishEventLastExecutionId);
-        Assert.Equal(resumeKey, engine.PublishEventLastName);
+        Assert.Equal(executionId.ToString(), engine.ResumeWaitNodeLastExecutionId);
+        Assert.Equal(nodeId, engine.ResumeWaitNodeLastNodeId);
+        Assert.Equal(resumeKey, engine.ResumeWaitNodeLastEventName);
+        Assert.Null(engine.PublishEventLastExecutionId);
 
         Assert.Single(eventStore.Appended);
         Assert.Equal(EventStoreEventType.EventPublished, eventStore.Appended[0].Type);
@@ -2457,6 +2793,7 @@ public sealed class ExecutionServiceTests
         using var payloadDoc = JsonDocument.Parse(payload);
         Assert.Equal(TestTenantIds.T1TenantId.ToString("D"), payloadDoc.RootElement.GetProperty("tenantId").GetString());
         Assert.Equal(resumeKey, payloadDoc.RootElement.GetProperty("name").GetString());
+        Assert.Equal(nodeId, payloadDoc.RootElement.GetProperty("nodeId").GetString());
 
         Assert.Single(executionRepo.Updates);
         Assert.Equal("Cancelled", executionRepo.Updates[0].Status);
@@ -3490,7 +3827,8 @@ public sealed class ExecutionServiceTests
         FakeDisplayIdService display,
         FakeExecutionRepository executionRepo,
         FakeEventStoreRepository eventStore,
-        IExecutionProjectionUpdateQueue? projectionQueue = null)
+        IExecutionProjectionUpdateQueue? projectionQueue = null,
+        FakeExecutionWaitRepository? waitRepo = null)
     {
         var sqlite = new SqliteTestDatabase();
         return BuildExecutionService(
@@ -3505,7 +3843,8 @@ public sealed class ExecutionServiceTests
             dedupRepo,
             eventStore,
             new FakeEventDeliveryDedupRepository(),
-            projectionQueue);
+            projectionQueue,
+            waitRepo: waitRepo);
     }
 
     private static ExecutionService BuildExecutionService(
@@ -3523,7 +3862,8 @@ public sealed class ExecutionServiceTests
         IExecutionProjectionUpdateQueue? projectionUpdateQueue = null,
         Microsoft.Extensions.Options.IOptions<EventDeliveryRetryOptions>? eventDeliveryRetryOptions = null,
         IExecutionMutationPersistence? mutationPersistence = null,
-        IProjectAuthorizationService? projectAuthorization = null)
+        IProjectAuthorizationService? projectAuthorization = null,
+        FakeExecutionWaitRepository? waitRepo = null)
     {
         if (displayIds is not IDisplayIdWriteService displayIdWrites)
             throw new InvalidOperationException("Test display id service must implement IDisplayIdWriteService.");
@@ -3551,7 +3891,7 @@ public sealed class ExecutionServiceTests
             dedupService,
             executions,
             new FakeExecutionCursorRepository(),
-            new FakeExecutionWaitRepository(),
+            waitRepo ?? new FakeExecutionWaitRepository(),
             definitions,
             projectAuthorization ?? new AllowAllProjectAuthorizationService(),
             new AllowAllRuntimePermissionAuthorization(),

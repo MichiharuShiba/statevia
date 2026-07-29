@@ -10,11 +10,11 @@ namespace Statevia.Core.Application.Services;
 /// <param name="Status">投影 status（Running / Completed 等）。</param>
 /// <param name="Snapshot">Engine スナップショット（cursor 位置推定用）。</param>
 /// <param name="GraphJson">execution_graph_snapshots と同一の JSON。</param>
-/// <param name="ResumeTokenToClear">Publish / Resume 時に削除する resume_token（任意）。</param>
+/// <param name="NodeIdToClear">Resume 成功時に削除する Wait ノード ID（任意）。</param>
 internal sealed record ExecutionOperationalProjectionSyncRequest(
     Guid ExecutionId,
     Guid TenantId,
     string Status,
     ExecutionSnapshot? Snapshot,
     string GraphJson,
-    string? ResumeTokenToClear);
+    string? NodeIdToClear);

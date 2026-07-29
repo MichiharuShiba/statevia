@@ -48,6 +48,35 @@ public sealed class ActionHostExecutionStubsTests
         Assert.Contains("Topic publish", exception.Message, StringComparison.Ordinal);
     }
 
+    /// <summary><see cref="EmptyEventProvider"/> はノードスコープ Wait をサポートしない。</summary>
+    [Fact]
+    public async Task EmptyEventProvider_WaitForEventAsync_ThrowsNotSupported()
+    {
+        // Arrange
+        var provider = new EmptyEventProvider();
+
+        // Act
+        var exception = await Assert.ThrowsAsync<NotSupportedException>(
+            () => provider.WaitForEventAsync("n1", ["approve"], CancellationToken.None));
+
+        // Assert
+        Assert.Contains("Event wait", exception.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary><see cref="EmptyEventProvider"/> はノードスコープ Resume をサポートしない。</summary>
+    [Fact]
+    public void EmptyEventProvider_Resume_ThrowsNotSupported()
+    {
+        // Arrange
+        var provider = new EmptyEventProvider();
+
+        // Act
+        var exception = Assert.Throws<NotSupportedException>(() => provider.Resume("n1", "approve"));
+
+        // Assert
+        Assert.Contains("Event resume", exception.Message, StringComparison.Ordinal);
+    }
+
     /// <summary><see cref="EmptyStateStore"/> は常に出力なしを返す。</summary>
     [Fact]
     public void EmptyStateStore_TryGetOutput_ReturnsFalse()

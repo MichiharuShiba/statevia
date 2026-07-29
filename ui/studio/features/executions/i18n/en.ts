@@ -86,12 +86,14 @@ export const executionsUiTextEn: ExecutionsFeatureUiText = {
       workerId: (workerId: string) => `Worker ID: ${workerId}`,
       attempt: (attempt: number) => `Attempts: ${attempt}`,
       waitKey: (waitKey: string) => `Wait key: ${waitKey}`,
+      allowedEvents: (events: string) => `Allowed events: ${events}`,
       canceledByExecution: (canceledByExecution: boolean) => `Canceled: ${String(canceledByExecution)}`,
     },
     waiting: {
       title: "Waiting",
       reasonWaitByWaitKeyAndResumeWait: "Reason: waiting for resume event by wait key",
       resumeEventName: (eventName: string) => `Resume event name: ${eventName}`,
+      selectResumeEvent: "Event to resume with",
     },
     cancel: {
       detailTitle: (cancelLabel: string) => `${cancelLabel} detail`,
@@ -252,6 +254,7 @@ export const executionsUiTextEn: ExecutionsFeatureUiText = {
       executionTerminal: "Execution is already finished.",
       cancelRequested: "Cancel was requested, so progress actions like Resume are disabled.",
       waitingOnly: "Resume is available only for WAITING nodes.",
+      noResumeEvent: "Resume is unavailable because there is no allowed event.",
     },
 
   },

@@ -22,6 +22,12 @@ public sealed class StateContext
     public required string StateName { get; init; }
 
     /// <summary>
+    /// 実行グラフ上のノード ID（ノードスコープ Wait / Resume の相関キー）。
+    /// </summary>
+    /// <remarks>未設定時、Wait 実装は <see cref="StateName"/> をフォールバックに使う。</remarks>
+    public string? NodeId { get; init; }
+
+    /// <summary>
     /// ユーザー定義 State から利用できるロガー。
     /// 出力オブジェクトや Start <c>input</c> の生値を直接記録しないこと（IO-14）。
     /// </summary>
