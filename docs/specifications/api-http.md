@@ -3,9 +3,9 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.9 |
-| 更新日 | 2026-07-20 |
-| 関連 | [reference/api-openapi.md](../reference/api-openapi.md), [concepts/platform.md](../concepts/platform.md) |
+| Version | 1.10 |
+| 更新日 | 2026-07-29 |
+| 関連 | [reference/api-openapi.md](../reference/api-openapi.md), [concepts/platform.md](../concepts/platform.md), [execution/wait-cancel.md](execution/wait-cancel.md) |
 
 ---
 
@@ -23,6 +23,8 @@
 ---
 
 Core-API（C#、`service/api/`）の HTTP 契約。実装に準拠。
+
+**Version 1.10（2026-07-29）**: Wait 複数イベント。`POST …/nodes/{nodeId}/resume` が正本（`resumeKey` = イベント名 → Engine `ResumeWaitNode`）。`POST …/events` は単一 Wait・単一イベント時のみ互換シム（それ以外 422）。Read model に `allowedEvents`。OpenAPI 再エクスポートは follow-up（DTO 変更の機械可読反映）。
 
 **Version 1.9（2026-07-20）**: HTTP 入力の形式検証を Data Annotations + `[ApiController]` 自動検証へ集約。ModelState 由来の 422 `error.details` は `{ field, message }` 配列を標準形状とする。ドメイン検証（YAML コンパイル等）はサービス層の `ApiValidationException` 経路を維持。
 
@@ -106,8 +108,8 @@ Core-API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 | GET      | /v1/executions/{id}/events  | event_store タイムライン（`afterSeq`, `limit`） |
 | GET      | /v1/executions/{id}/stream  | SSE（グラフ変化を `GraphUpdated` で送出） |
 | POST     | /v1/executions/{id}/cancel | キャンセル                    |
-| POST     | /v1/executions/{id}/events | イベント発行（例: Wait 再開） |
-| POST     | /v1/executions/{id}/nodes/{nodeId}/resume | ノード再開（body: `resumeKey`） |
+| POST     | /v1/executions/{id}/events | イベント発行（Wait 再開の互換シム） |
+| POST     | /v1/executions/{id}/nodes/{nodeId}/resume | Wait 再開の正本（body: `resumeKey` = イベント名） |
 
 ---
 
@@ -308,7 +310,9 @@ Response: 200 OK、Content-Type: application/json。`execution_graph_snapshots` 
 - **`ExecutionViewDto.nodes[*]`**（`ExecutionViewNodeDto`）の主なフィールド:
   - **`executionNodeId`**: 実行グラフの **`nodeId`** と一致させる識別子（試行単位の実行ノード）。
   - **`stateName`**: 定義上の状態名（**`executionNodeId` とは別**）。
-  - **`nodeType`**, **`status`**, **`attempt`**, **`workerId`**, **`waitKey`**, **`canceledByExecution`**
+  - **`nodeType`**, **`status`**, **`attempt`**, **`workerId`**, **`waitKey`**, **`allowedEvents`**, **`canceledByExecution`**
+  - **`waitKey`**: 単一イベント Wait の互換表示（任意）。複数イベント時は省略または `null`。
+  - **`allowedEvents`**: Wait が受付可能なイベント名一覧（任意。UI の Resume 選択に利用）。
   - **`input`**, **`output`**: JSON 断片（存在しない場合は省略または `null`。外部ログではマスキングを推奨）。
   - **`conditionRouting`**: 実行グラフの `conditionRouting` を API が透過的に返したもの（UI 側で再評価しない）。
 
@@ -338,7 +342,7 @@ Response: 200 OK、Content-Type: application/json。`execution_graph_snapshots` 
 - Response: 204 No Content。エンジンで Cancel を適用し、projection を更新。
 - Engine に当該実行が無い（例: API 再起動直後）場合は **422**（`ArgumentException`。データ連携契約のセクション7）。
 
-### 3.9 イベント発行（Write）
+### 3.9 イベント発行（Write・互換シム）
 
 **POST /v1/executions/{id}/events**
 
@@ -350,16 +354,17 @@ Request:
 }
 ```
 
-- `name`: イベント名（例: Wait の resume 用）。必須。不正時は 400。
+- `name`: イベント名。必須。不正時は 400。
+- **用途**: Wait 再開の **互換シム**（正本は §3.10）。アクティブ Wait が **1 ノード**かつ許可イベントが **1 件**で、`name` がそのイベントと一致するときのみ成功。それ以外は **422**（[execution/wait-cancel.md](execution/wait-cancel.md)）。
 - **X-Idempotency-Key**: 任意だが推奨。再送・重複排除の扱いはキャンセルと同様（`command_dedup` + `event_delivery_dedup` / `client_event_id`）。
 - Response: 204 No Content。
 - Engine に当該実行が無い場合は **422**（キャンセルと同様）。
 
-### 3.10 ノード再開
+### 3.10 ノード再開（Wait 正本）
 
 **POST /v1/executions/{id}/nodes/{nodeId}/resume**
 
-Request（JSON、省略可）:
+Request（JSON）:
 
 ```json
 {
@@ -367,8 +372,11 @@ Request（JSON、省略可）:
 }
 ```
 
+- **`resumeKey`**: 必須。Wait の **許可イベント名**（`allowedEvents` / `WaitEventRouteTable` のキー）。空白のみは 400/422。
+- **`nodeId`**: パス上の実行グラフノード ID（待機中 Wait）。
+- Engine `ResumeWaitNode` を呼び、許可外・非アクティブ・不明ノードは **422**。
 - **X-Idempotency-Key**: 任意だが推奨（キャンセル・イベント発行と同様の冪等・配送抑止）。
-- Response: 204 No Content。422 / 404 の扱いは実装および `docs/specifications/data-integration.md` §7 に従う。
+- Response: 204 No Content。404 は実行未存在。詳細は `docs/specifications/data-integration.md` §7。
 
 ---
 

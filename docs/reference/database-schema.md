@@ -1,9 +1,11 @@
 # スキーマ定義
 
-Version: 1.9
+Version: 1.10
 Project: 実行型ステートマシン
 
 **Version 1.7（2026-05-27）**: task 8 — `execution_cursors` / `execution_waits` 追加（operational projection / EventWait durable wait）。
+
+**Version 1.10（2026-07-29）**: `execution_waits` — `resume_token` 削除、`allowed_events jsonb` 追加（1 Wait = 1 行。Resume 削除キーは `node_id`）。
 
 **Version 1.9（2026-07-08）**: `definitions.deleted_at`（catalog 論理削除）と `UNIQUE(project_id, slug) WHERE deleted_at IS NULL` を追記。HTTP 契約は [`specifications/api-http.md`](../specifications/api-http.md) §2.1.2〜2.1.3 を参照。
 
@@ -255,13 +257,13 @@ project の **認可 truth**。付与先はテナント単位（Principal 単位
 | カラム | 型 | 制約 | 説明 |
 | --- | --- | --- | --- |
 | execution_id | uuid | PK, FK → executions, NOT NULL | 実行 ID |
-| node_id | varchar(64) | PK, NOT NULL | 実行グラフノード ID |
+| node_id | varchar(64) | PK, NOT NULL | 待機中 Wait ノード ID（Resume 成功時の削除キー） |
 | wait_kind | varchar(32) | NOT NULL | EventWait / CallbackWait / DelayWait |
-| resume_token | varchar(256) | NOT NULL | Publish / Resume で照合 |
+| allowed_events | jsonb | NOT NULL | 許可イベント名配列（WaitEventRouteTable 由来。旧 `resume_token` から移行） |
 | expires_at | timestamptz | NULL | 期限（EventWait は null） |
 | created_at | timestamptz | NOT NULL | 作成日時 |
 
-**インデックス:** `(execution_id, resume_token)`
+**主キー:** `(execution_id, node_id)`（1 Wait ノード = 1 行）。旧 `(execution_id, resume_token)` インデックスは廃止。
 
 ### 2.11 command_dedup
 

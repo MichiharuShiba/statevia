@@ -332,7 +332,8 @@ payload:
 payload:
 
 - nodeId: string
-- waitKey?: string  (外部入力の識別子)
+- waitKey?: string  (単一イベント時の互換キー)
+- allowedEvents?: string[]  (受付可能なイベント名。Resume の resumeKey 候補)
 - prompt?: object    (UI提示用のヒント。コアは解釈しない)
 
 ---
@@ -342,7 +343,7 @@ payload:
 payload:
 
 - nodeId: string
-- resumeKey?: string
+- resumeKey?: string  (イベント名。WaitEventRouteTable のキーと一致させる)
 - requestedBy?: { kind: string, id?: string }
 
 ガード:
@@ -720,7 +721,7 @@ payload:
 
 - node.status == WAITING
 - cancelRequestedAt == null
-- (option) resumeKey が一致すること
+- resumeKey（イベント名）が当該 Wait の allowedEvents / WaitEventRouteTable に含まれること
 
 **Emits**  
 
