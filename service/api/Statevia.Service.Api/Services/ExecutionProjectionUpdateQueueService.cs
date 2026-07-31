@@ -183,13 +183,38 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
         {
             if (!Guid.TryParse(executionId, out var parsedExecutionId))
             {
+                _logger.SkipSuspendCheckpointInvalidExecutionId(executionId);
                 return;
             }
 
             using var scope = _scopeFactory.CreateScope();
+            var platformData = scope.ServiceProvider.GetRequiredService<IPlatformDataAccess>();
+            var tenantLookup = await platformData
+                .FindExecutionTenantAsync(parsedExecutionId, stoppingToken)
+                .ConfigureAwait(false);
+            if (tenantLookup is null)
+            {
+                _logger.SkipSuspendCheckpointTenantNotFound(parsedExecutionId);
+                return;
+            }
+
+            var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
             var executions = scope.ServiceProvider.GetRequiredService<IExecutionService>();
-            await executions
-                .PersistCheckpointAndUnloadAsync(parsedExecutionId, nodeId, stoppingToken)
+            var tenantState = new TenantContextState(
+                tenantLookup.TenantId,
+                tenantLookup.TenantKey,
+                PrincipalId: null,
+                tenantLookup.Lifecycle);
+
+            // Guid 再フォーマットせず Engine 辞書キーをそのまま使う。テナント文脈は FK / filter 用。
+            await TenantExecutionScope
+                .RunAsync(
+                    accessor,
+                    tenantState,
+                    () => executions.PersistCheckpointAndUnloadByEngineIdAsync(
+                        executionId,
+                        nodeId,
+                        stoppingToken))
                 .ConfigureAwait(false);
         });
 

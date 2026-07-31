@@ -169,6 +169,7 @@ public sealed class ExecutionsControllerTests
             throw new NotSupportedException();
 
         public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+        public Task PersistCheckpointAndUnloadByEngineIdAsync(string engineExecutionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
 
     }
 

@@ -30,6 +30,7 @@ Wait は定義の許可イベントのいずれかが発生するまで状態実
 - **定義**: `wait.events`（states）または nodes の `events`。コンパイル結果は **`WaitEventRouteTable`**。
 - **再開正本**: Engine `ResumeWaitNode(executionId, nodeId, eventName)`。`EventProvider` はノード単位の `WaitForEventAsync` / `Resume`。
 - **耐久配送**: `execution_work_items` の Resume / TimerFire 項目は worker が checkpoint を hydrate した上でこの再開正本を呼び出す。HTTP Resume は当面、同じ正本を同期呼び出しする。Worker は claim 1 件ずつ処理し、処理中は lease heartbeat（`RenewLeaseAsync`）で延長する。プロセス死亡時は heartbeat 停止後に `lease_until` 切れで再 claim 可能。
+- **checkpoint**: durable Wait の投影同期直後に `execution_runtime_checkpoints` へ保存し Engine から Unload する（再起動後の Resume / hydrate 前提）。suspend 通知でも同処理を行う。
 - **DelayWait / TimerFire**: 期限到達時の Resume `eventName` は固定の `statevia.delay.completed`（`ExecutionWaitEventNames.DelayCompleted`）。`allowed_events` の先頭要素は使わない。
 - **許可外イベント・非アクティブ Wait・不明 nodeId**: 422（`InvalidOperationException` → API `ApiValidationException`）。
 - **FSM の事実**: 待機解消後に状態実行が正常終了すると、JoinTracker 等へ渡す事実は **`Completed`**。次状態の解決は **イベント名 + route table**（[fsm.md](fsm.md)）。

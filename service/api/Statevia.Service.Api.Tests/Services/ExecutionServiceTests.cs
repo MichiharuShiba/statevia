@@ -475,6 +475,25 @@ public sealed class ExecutionServiceTests
             Task.FromResult<ExecutionCursorRow?>(null);
     }
 
+    private sealed class FakeExecutionCheckpointStore : IExecutionCheckpointStore
+    {
+        public Task UpsertAsync(
+            ICoreUnitOfWork uow,
+            ExecutionCheckpointDocument document,
+            CancellationToken ct) => Task.CompletedTask;
+
+        public Task<ExecutionCheckpointDocument?> GetByExecutionIdAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            CancellationToken ct) =>
+            Task.FromResult<ExecutionCheckpointDocument?>(null);
+
+        public Task DeleteAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            CancellationToken ct) => Task.CompletedTask;
+    }
+
     private sealed class FakeExecutionWaitRepository : IExecutionWaitRepository
     {
         /// <summary><see cref="DeleteByNodeIdAsync"/> に渡された (executionId, nodeId) の履歴。</summary>
@@ -3929,6 +3948,7 @@ public sealed class ExecutionServiceTests
             NullLogger<ExecutionService>.Instance,
             retryOptions,
             new FixedCorrelationIdAccessor(),
+            new FakeExecutionCheckpointStore(),
             projectionUpdateQueue);
     }
 

@@ -111,8 +111,8 @@ internal sealed class ExecutionService : IExecutionService
         ILogger<ExecutionService> logger,
         IOptions<EventDeliveryRetryOptions> eventDeliveryRetryOptions,
         ICorrelationIdAccessor correlationIdAccessor,
-        IExecutionProjectionUpdateQueue? projectionUpdateQueue = null,
-        IExecutionCheckpointStore? checkpointStore = null)
+        IExecutionCheckpointStore checkpointStore,
+        IExecutionProjectionUpdateQueue? projectionUpdateQueue = null)
     {
         _engine = engine;
         _displayIds = displayIds;
@@ -122,7 +122,7 @@ internal sealed class ExecutionService : IExecutionService
         _executions = executions;
         _executionCursors = executionCursors;
         _executionWaits = executionWaits;
-        _checkpointStore = checkpointStore ?? NoopExecutionCheckpointStore.Instance;
+        _checkpointStore = checkpointStore;
         _definitions = definitions;
         _projectAuth = projectAuth;
         _runtimeAuth = runtimeAuth;
@@ -179,10 +179,8 @@ internal sealed class ExecutionService : IExecutionService
 
         var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, defUuid.Value.ToString("D"), ct).ConfigureAwait(false)
             ?? defUuid.Value.ToString("D");
-        var status = MapStatus(_engine.GetSnapshot(engineId));
-        var graphJson = _engine.ExportExecutionGraph(engineId);
 
-        return await _executor.ExecuteReadCommittedAsync(
+        var startResult = await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
             {
                 var createdAt = DateTime.UtcNow;
@@ -190,6 +188,11 @@ internal sealed class ExecutionService : IExecutionService
                     .CaptureForStartAsync(tenantId, defUuid.Value, createdAt, innerCt)
                     .ConfigureAwait(false);
                 var securitySnapshotJson = ExecutionSecuritySnapshotJson.Serialize(securitySnapshot);
+
+                // Start 直後に Wait へ到達している場合がある（高速 noop → Wait）。
+                // 投影用 graph は DB 書き込み直前に取得し、durable Wait があれば同一 tx で checkpoint も確定する。
+                var status = MapStatus(_engine.GetSnapshot(engineId));
+                var graphJson = _engine.ExportExecutionGraph(engineId);
 
                 var startedPayload = JsonSerializer.Serialize(
                     new
@@ -248,6 +251,16 @@ internal sealed class ExecutionService : IExecutionService
                         nodeIdToClear: null,
                         innerCt)
                     .ConfigureAwait(false);
+
+                // Start 中に Wait へ到達した場合、同一 tx で checkpoint を確定する。
+                var checkpointSaved = false;
+                if (string.Equals(status, "Running", StringComparison.Ordinal)
+                    && ExecutionOperationalProjectionSync.HasDurableWaits(graphJson))
+                {
+                    checkpointSaved = await UpsertRuntimeCheckpointAsync(uow, engineId, executionId, innerCt)
+                        .ConfigureAwait(false);
+                }
+
                 await _eventStore
                     .AppendAsync(uow, executionId, EventStoreEventType.WorkflowStarted, startedPayload, innerCt)
                     .ConfigureAwait(false);
@@ -271,9 +284,52 @@ internal sealed class ExecutionService : IExecutionService
                         innerCt).ConfigureAwait(false);
                 }
 
-                return response;
+                return (Response: response, UnloadAfterCommit: checkpointSaved);
             },
             ct).ConfigureAwait(false);
+
+        if (startResult.UnloadAfterCommit)
+        {
+            _engine.Unload(engineId);
+            _logger.LogInformation(
+                "Persisted runtime checkpoint and unloaded execution {ExecutionId} after start-sync.",
+                executionId);
+        }
+
+        return startResult.Response;
+    }
+
+    /// <summary>
+    /// Engine から checkpoint を export し、同一 UoW へ upsert する。
+    /// </summary>
+    /// <returns>export できて upsert したとき <see langword="true"/>。</returns>
+    private async Task<bool> UpsertRuntimeCheckpointAsync(
+        ICoreUnitOfWork uow,
+        string engineExecutionId,
+        Guid executionId,
+        CancellationToken ct)
+    {
+        var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
+        if (checkpoint is null)
+        {
+            _logger.LogWarning(
+                "ExportCheckpoint returned null for execution {ExecutionId} while durable waits were present.",
+                engineExecutionId);
+            return false;
+        }
+
+        var json = JsonSerializer.Serialize(checkpoint, CamelCaseJsonSerializerOptions);
+        await _checkpointStore.UpsertAsync(
+            uow,
+            new ExecutionCheckpointDocument
+            {
+                ExecutionId = executionId,
+                CheckpointJson = json,
+                SchemaVersion = checkpoint.SchemaVersion,
+                UpdatedAt = DateTime.UtcNow
+            },
+            ct).ConfigureAwait(false);
+        return true;
     }
 
     public async Task<PagedResult<ExecutionResponse>> ListPagedAsync(
@@ -1140,12 +1196,52 @@ internal sealed class ExecutionService : IExecutionService
     /// <summary>
     /// Wait 登録直後: チェックポイントを保存して Unload する。
     /// </summary>
-    public async Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct)
+    /// <remarks>
+    /// Engine 辞書キーは <see cref="Guid.ToString()"/>（Start 時と同じ形式）を使う。
+    /// Export できない場合は Warning を出し、Unload しない（インメモリ再開を維持する）。
+    /// </remarks>
+    public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) =>
+        PersistCheckpointAndUnloadCoreAsync(executionId.ToString(), executionId, nodeId, ct);
+
+    /// <summary>
+    /// Engine 実行 ID 文字列を正としてチェックポイントを保存し Unload する。
+    /// </summary>
+    /// <param name="engineExecutionId">Engine に渡した実行 ID（辞書キー）。</param>
+    /// <param name="nodeId">Wait ノード ID（ログ用）。</param>
+    /// <param name="ct">キャンセル。</param>
+    public Task PersistCheckpointAndUnloadByEngineIdAsync(
+        string engineExecutionId,
+        string nodeId,
+        CancellationToken ct)
     {
-        var engineId = executionId.ToString("D");
-        var checkpoint = _engine.ExportCheckpoint(engineId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(engineExecutionId);
+        if (!Guid.TryParse(engineExecutionId, out var executionId))
+        {
+            _logger.LogWarning(
+                "Skip checkpoint persist because engine execution id '{EngineExecutionId}' is not a Guid.",
+                engineExecutionId);
+            return Task.CompletedTask;
+        }
+
+        return PersistCheckpointAndUnloadCoreAsync(engineExecutionId, executionId, nodeId, ct);
+    }
+
+    /// <summary>チェックポイント upsert ののち Engine から Unload する共通実装。</summary>
+    private async Task PersistCheckpointAndUnloadCoreAsync(
+        string engineExecutionId,
+        Guid executionId,
+        string nodeId,
+        CancellationToken ct)
+    {
+        var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
         if (checkpoint is null)
+        {
+            _logger.LogWarning(
+                "ExportCheckpoint returned null for execution {ExecutionId} (node {NodeId}); skip unload.",
+                engineExecutionId,
+                nodeId);
             return;
+        }
 
         var json = JsonSerializer.Serialize(checkpoint, CamelCaseJsonSerializerOptions);
         await _executor.ExecuteReadCommittedAsync(
@@ -1164,8 +1260,8 @@ internal sealed class ExecutionService : IExecutionService
             },
             ct).ConfigureAwait(false);
 
-        _engine.Unload(engineId);
-        _logger.LogDebug(
+        _engine.Unload(engineExecutionId);
+        _logger.LogInformation(
             "Persisted runtime checkpoint and unloaded execution {ExecutionId} after Wait node {NodeId}.",
             executionId,
             nodeId);
@@ -1177,12 +1273,13 @@ internal sealed class ExecutionService : IExecutionService
         if (status is null || graphJson is null)
             return;
 
-        await _executor.ExecuteReadCommittedAsync(
+        var engineExecutionId = executionId.ToString();
+        var shouldUnloadAfterProjection = await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
             {
                 var execution = await _executions.GetByExecutionIdAsync(uow, executionId, innerCt).ConfigureAwait(false);
                 if (execution is null)
-                    return;
+                    return false;
 
                 await _executions
                     .UpdateExecutionAndSnapshotAsync(uow, executionId, status, cancelRequested, graphJson, innerCt)
@@ -1196,8 +1293,26 @@ internal sealed class ExecutionService : IExecutionService
                         nodeIdToClear: null,
                         innerCt)
                     .ConfigureAwait(false);
+
+                // durable Wait と同じ tx で checkpoint を確定する（再起動耐性の正本）。
+                if (!string.Equals(status, "Running", StringComparison.Ordinal)
+                    || !ExecutionOperationalProjectionSync.HasDurableWaits(graphJson))
+                {
+                    return false;
+                }
+
+                return await UpsertRuntimeCheckpointAsync(uow, engineExecutionId, executionId, innerCt)
+                    .ConfigureAwait(false);
             },
             ct).ConfigureAwait(false);
+
+        if (shouldUnloadAfterProjection)
+        {
+            _engine.Unload(engineExecutionId);
+            _logger.LogInformation(
+                "Persisted runtime checkpoint and unloaded execution {ExecutionId} after projection-sync.",
+                executionId);
+        }
     }
 
     /// <summary>
@@ -1439,27 +1554,6 @@ internal sealed class ExecutionService : IExecutionService
         public Task EnqueueAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
 
         public Task DrainAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
-    }
-
-    private sealed class NoopExecutionCheckpointStore : IExecutionCheckpointStore
-    {
-        internal static readonly NoopExecutionCheckpointStore Instance = new();
-
-        public Task UpsertAsync(
-            ICoreUnitOfWork uow,
-            ExecutionCheckpointDocument document,
-            CancellationToken ct) => Task.CompletedTask;
-
-        public Task<ExecutionCheckpointDocument?> GetByExecutionIdAsync(
-            ICoreUnitOfWork uow,
-            Guid executionId,
-            CancellationToken ct) =>
-            Task.FromResult<ExecutionCheckpointDocument?>(null);
-
-        public Task DeleteAsync(
-            ICoreUnitOfWork uow,
-            Guid executionId,
-            CancellationToken ct) => Task.CompletedTask;
     }
 
     /// <summary>

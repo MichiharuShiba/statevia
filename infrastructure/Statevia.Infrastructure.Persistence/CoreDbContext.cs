@@ -101,6 +101,13 @@ internal class CoreDbContext : DbContext, ICoreDatabase
         public const string Attempts = "attempts";
         public const string WorkItemId = "work_item_id";
         public const string SecuritySnapshotJson = "security_snapshot_json";
+        public const string Payload = "payload";
+        public const string CheckpointJson = "checkpoint_json";
+    }
+
+    private static class ColumnTypes
+    {
+        public const string Jsonb = "jsonb";
     }
 
     private readonly ITenantContextAccessor _tenantAccessor;
@@ -322,7 +329,7 @@ internal class CoreDbContext : DbContext, ICoreDatabase
             e.Property(x => x.WaitKind).HasConversion<string>().HasMaxLength(32).HasColumnName(Columns.WaitKind);
             e.Property(x => x.AllowedEvents)
                 .HasColumnName(Columns.AllowedEvents)
-                .HasColumnType("jsonb")
+                .HasColumnType(ColumnTypes.Jsonb)
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
                     v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null)
@@ -352,7 +359,7 @@ internal class CoreDbContext : DbContext, ICoreDatabase
             e.ToTable("execution_runtime_checkpoints");
             e.HasKey(x => x.ExecutionId);
             e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
-            e.Property(x => x.CheckpointJson).HasColumnName("checkpoint_json");
+            e.Property(x => x.CheckpointJson).HasColumnName(Columns.CheckpointJson);
             e.Property(x => x.SchemaVersion).HasColumnName(Columns.SchemaVersion);
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
 
@@ -370,7 +377,7 @@ internal class CoreDbContext : DbContext, ICoreDatabase
             e.Property(x => x.WorkItemId).HasColumnName(Columns.WorkItemId);
             e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
             e.Property(x => x.Kind).HasMaxLength(32).HasColumnName(Columns.Kind);
-            e.Property(x => x.Payload).HasColumnType("jsonb").HasColumnName("payload");
+            e.Property(x => x.Payload).HasColumnType(ColumnTypes.Jsonb).HasColumnName(Columns.Payload);
             e.Property(x => x.AvailableAt).HasColumnName(Columns.AvailableAt);
             e.Property(x => x.LeaseOwner).HasMaxLength(128).HasColumnName(Columns.LeaseOwner);
             e.Property(x => x.LeaseUntil).HasColumnName(Columns.LeaseUntil);

@@ -105,6 +105,14 @@ internal static class ExecutionOperationalProjectionSync
     }
 
     /// <summary>
+    /// グラフ JSON に未完了の durable Wait（許可イベント付き）があるか。
+    /// </summary>
+    /// <param name="graphJson">実行グラフ JSON。</param>
+    /// <returns>durable Wait が 1 件以上あれば <see langword="true"/>。</returns>
+    internal static bool HasDurableWaits(string graphJson) =>
+        ExtractDurableWaits(Guid.Empty, graphJson, DateTime.UtcNow).Count > 0;
+
+    /// <summary>
     /// 未完了 Wait ノードから durable wait 行を構築する。
     /// </summary>
     /// <remarks>

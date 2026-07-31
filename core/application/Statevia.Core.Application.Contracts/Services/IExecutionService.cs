@@ -78,4 +78,15 @@ public interface IExecutionService
     /// <param name="nodeId">登録された Wait ノード ID（ログ用）。</param>
     /// <param name="ct">キャンセル。</param>
     Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct);
+
+    /// <summary>
+    /// Engine 実行 ID 文字列を正としてチェックポイントを保存し Unload する。
+    /// </summary>
+    /// <param name="engineExecutionId">Engine 辞書キー（Start 時に渡した文字列）。</param>
+    /// <param name="nodeId">登録された Wait ノード ID（ログ用）。</param>
+    /// <param name="ct">キャンセル。</param>
+    Task PersistCheckpointAndUnloadByEngineIdAsync(
+        string engineExecutionId,
+        string nodeId,
+        CancellationToken ct);
 }
