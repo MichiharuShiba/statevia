@@ -614,6 +614,13 @@ internal sealed class ExecutionService : IExecutionService
         var nodeIdToClearFromGraph = publishApply.IsApplied
             ? TryResolveSoleActiveWaitNodeId(prePublishGraphJson)
             : null;
+        if (publishApply.IsApplied && !string.IsNullOrWhiteSpace(nodeIdToClearFromGraph))
+        {
+            await WaitForEngineWaitNodeCompletedAsync(engineId, nodeIdToClearFromGraph, ct)
+                .ConfigureAwait(false);
+            // Wait 完了直後の中間グラフ（次 Task RUNNING）を永続化すると完了投影を上書きし固着する。
+            await WaitForEngineQuiescedAfterWaitAsync(engineId, ct).ConfigureAwait(false);
+        }
 
         var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var publishedPayload = JsonSerializer.Serialize(
@@ -697,6 +704,10 @@ internal sealed class ExecutionService : IExecutionService
                     ctInner).ConfigureAwait(false);
             },
             ct).ConfigureAwait(false);
+
+        // 永続化中に進んだ Engine 完了を取りこぼさない（中間 RUNNING 上書きの保険）。
+        if (publishApply.IsApplied)
+            await _projectionUpdateQueue.EnqueueAsync(uuid.Value, ct).ConfigureAwait(false);
     }
 
     public async Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct)
@@ -852,6 +863,10 @@ internal sealed class ExecutionService : IExecutionService
         // 許可外イベント・非アクティブ Wait などは 422。
         var engineId = uuid.Value.ToString();
         InvokeEngineWaitMutation(() => _engine.ResumeWaitNode(engineId, nodeId, eventName));
+        // Resume のグラフ完了は非同期継続のため、投影取得前に Wait 完了を待つ。
+        await WaitForEngineWaitNodeCompletedAsync(engineId, nodeId, ct).ConfigureAwait(false);
+        // 続けて後続 Task が落ち着くまで待つ（Wait 完了直後の RUNNING 中間像の永続化を避ける）。
+        await WaitForEngineQuiescedAfterWaitAsync(engineId, ct).ConfigureAwait(false);
 
         var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var publishedPayload = JsonSerializer.Serialize(
@@ -876,6 +891,14 @@ internal sealed class ExecutionService : IExecutionService
                         nodeIdToClear: nodeId,
                         ctInner)
                     .ConfigureAwait(false);
+
+                // Resume 後に durable Wait が残っていなければ checkpoint を破棄する。
+                if (!string.Equals(pubStatus, "Running", StringComparison.Ordinal)
+                    || !ExecutionOperationalProjectionSync.HasDurableWaits(pubGraphJson))
+                {
+                    await _checkpointStore.DeleteAsync(uow, uuid.Value, ctInner).ConfigureAwait(false);
+                }
+
                 await _eventStore
                     .AppendAsync(uow, uuid.Value, EventStoreEventType.EventPublished, publishedPayload, ctInner)
                     .ConfigureAwait(false);
@@ -913,6 +936,129 @@ internal sealed class ExecutionService : IExecutionService
                     ctInner).ConfigureAwait(false);
             },
             ct).ConfigureAwait(false);
+
+        // 永続化中に進んだ Engine 完了を取りこぼさない（中間 RUNNING 上書きの保険）。
+        await _projectionUpdateQueue.EnqueueAsync(uuid.Value, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Resume 適用後、対象 Wait ノードのグラフ完了が反映されるまで短く待つ。
+    /// </summary>
+    /// <remarks>
+    /// Engine 側の完了処理は <c>RunContinuationsAsynchronously</c> のため、
+    /// <see cref="IExecutionEngine.ResumeWaitNode"/> 復帰直後の投影は古い Wait を含み得る。
+    /// </remarks>
+    private async Task WaitForEngineWaitNodeCompletedAsync(
+        string engineExecutionId,
+        string nodeId,
+        CancellationToken ct)
+    {
+        const int maxAttempts = 200;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (_engine.GetSnapshot(engineExecutionId) is null)
+                return;
+
+            var graphJson = _engine.ExportExecutionGraph(engineExecutionId);
+            if (!TryGetGraphNodeCompletion(graphJson, nodeId, out var completed))
+            {
+                // ノードが無い（テスト用 stub 等）場合は待たない。
+                return;
+            }
+
+            if (completed)
+                return;
+
+            await Task.Delay(10, ct).ConfigureAwait(false);
+        }
+
+        _logger.LogWarning(
+            "Timed out waiting for Wait node {NodeId} to complete on execution {ExecutionId}.",
+            nodeId,
+            engineExecutionId);
+    }
+
+    /// <summary>
+    /// Wait 再開後、後続状態の実行が落ち着くまで短く待つ。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="WaitForEngineWaitNodeCompletedAsync"/> は Wait の <c>completedAt</c> 時点で戻る。
+    /// その直後は <c>ProcessFact</c> → 次 Task の <c>AddNode</c> が走り、グラフは
+    /// 「Wait SUCCEEDED + 次 Task RUNNING」の中間像になり得る。
+    /// </para>
+    /// <para>
+    /// Resume / Publish がこの中間像を serializable トランザクションで永続化すると、
+    /// 後続の完了投影（noop 完了 → Completed）を上書きし、次ノードが RUNNING のまま固着する。
+    /// </para>
+    /// </remarks>
+    private async Task WaitForEngineQuiescedAfterWaitAsync(
+        string engineExecutionId,
+        CancellationToken ct)
+    {
+        const int maxAttempts = 200;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+            var snapshot = _engine.GetSnapshot(engineExecutionId);
+            if (snapshot is null)
+                return;
+
+            if (snapshot.IsCompleted || snapshot.IsCancelled || snapshot.IsFailed)
+                return;
+
+            // ContinueRestoredWait は次 Task を ActiveStates に載せてから Wait を外すため、
+            // 後続実行中は Count > 0。空なら後続未起動または完了済み。
+            if (snapshot.ActiveStates.Count == 0)
+                return;
+
+            await Task.Delay(10, ct).ConfigureAwait(false);
+        }
+
+        _logger.LogWarning(
+            "Timed out waiting for execution {ExecutionId} to quiesce after Wait resume.",
+            engineExecutionId);
+    }
+
+    /// <summary>グラフ JSON 上の指定 nodeId の完了有無を取得する。</summary>
+    /// <returns>ノードが存在するとき <see langword="true"/>。</returns>
+    private static bool TryGetGraphNodeCompletion(string graphJson, string nodeId, out bool completed)
+    {
+        completed = false;
+        if (string.IsNullOrWhiteSpace(graphJson) || string.IsNullOrWhiteSpace(nodeId))
+            return false;
+
+        try
+        {
+            using var document = JsonDocument.Parse(graphJson);
+            if (!document.RootElement.TryGetProperty("nodes", out var nodes)
+                || nodes.ValueKind != JsonValueKind.Array)
+            {
+                return false;
+            }
+
+            foreach (var node in nodes.EnumerateArray())
+            {
+                if (!node.TryGetProperty("nodeId", out var idProp)
+                    || idProp.ValueKind != JsonValueKind.String
+                    || !string.Equals(idProp.GetString(), nodeId, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                completed = node.TryGetProperty("completedAt", out var completedAt)
+                    && completedAt.ValueKind is not JsonValueKind.Null
+                    && completedAt.ValueKind is not JsonValueKind.Undefined;
+                return true;
+            }
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        return false;
     }
 
     private async Task<ExecutionViewDto> BuildExecutionViewInternalAsync(Guid uuid, string idOrUuidForDisplay, CancellationToken ct)
@@ -1190,7 +1336,15 @@ internal sealed class ExecutionService : IExecutionService
             CamelCaseJsonSerializerOptions)
             ?? throw new InvalidOperationException("Stored runtime checkpoint JSON is invalid.");
 
-        _engine.ImportCheckpoint(compiled, checkpoint);
+        try
+        {
+            _engine.ImportCheckpoint(compiled, checkpoint);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // 二重 hydrate 等はクライアント向け 422（ArgumentException）へ写像する。
+            throw new ArgumentException(ex.Message, ex);
+        }
     }
 
     /// <summary>
@@ -1294,10 +1448,11 @@ internal sealed class ExecutionService : IExecutionService
                         innerCt)
                     .ConfigureAwait(false);
 
-                // durable Wait と同じ tx で checkpoint を確定する（再起動耐性の正本）。
+                // durable Wait が無い／終端なら checkpoint を削除（Resume 後の残留や再 hydrate を防ぐ）。
                 if (!string.Equals(status, "Running", StringComparison.Ordinal)
                     || !ExecutionOperationalProjectionSync.HasDurableWaits(graphJson))
                 {
+                    await _checkpointStore.DeleteAsync(uow, executionId, innerCt).ConfigureAwait(false);
                     return false;
                 }
 

@@ -58,7 +58,13 @@ internal static class ExecutionOperationalProjectionSync
             },
             ct).ConfigureAwait(false);
 
-        var durableWaits = ExtractDurableWaits(request.ExecutionId, request.GraphJson, now);
+        // Resume / Publish 直後はグラフ完了反映が遅れることがある。
+        // NodeIdToClear を除外しないと、削除した wait を古いグラフから即再作成してしまう。
+        var durableWaits = ExtractDurableWaits(request.ExecutionId, request.GraphJson, now)
+            .Where(row =>
+                string.IsNullOrWhiteSpace(request.NodeIdToClear)
+                || !string.Equals(row.NodeId, request.NodeIdToClear, StringComparison.OrdinalIgnoreCase))
+            .ToList();
         await waits.ReplaceWaitsAsync(uow, request.ExecutionId, durableWaits, ct).ConfigureAwait(false);
     }
 

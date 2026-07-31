@@ -68,27 +68,30 @@ internal sealed class ExecutionWorkQueue(IDbContextFactory<CoreDbContext> dbFact
         AddParameter(command, "leaseUntil", leaseUntil);
 
         var items = new List<ExecutionWorkItemRow>();
-        await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
-        var leaseOwnerOrdinal = reader.GetOrdinal("lease_owner");
-        var leaseUntilOrdinal = reader.GetOrdinal("lease_until");
-        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        // Npgsql は同一接続で Reader 開放中の Commit を拒否する（OperationInProgress）。
+        await using (var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false))
         {
-            items.Add(new ExecutionWorkItemRow
+            var leaseOwnerOrdinal = reader.GetOrdinal("lease_owner");
+            var leaseUntilOrdinal = reader.GetOrdinal("lease_until");
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
             {
-                WorkItemId = reader.GetGuid(reader.GetOrdinal("work_item_id")),
-                ExecutionId = reader.GetGuid(reader.GetOrdinal("execution_id")),
-                Kind = reader.GetString(reader.GetOrdinal("kind")),
-                Payload = reader.GetString(reader.GetOrdinal("payload")),
-                AvailableAt = reader.GetDateTime(reader.GetOrdinal("available_at")),
-                LeaseOwner = await reader.IsDBNullAsync(leaseOwnerOrdinal, ct).ConfigureAwait(false)
-                    ? null
-                    : reader.GetString(leaseOwnerOrdinal),
-                LeaseUntil = await reader.IsDBNullAsync(leaseUntilOrdinal, ct).ConfigureAwait(false)
-                    ? null
-                    : reader.GetDateTime(leaseUntilOrdinal),
-                Attempts = reader.GetInt32(reader.GetOrdinal("attempts")),
-                CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
-            });
+                items.Add(new ExecutionWorkItemRow
+                {
+                    WorkItemId = reader.GetGuid(reader.GetOrdinal("work_item_id")),
+                    ExecutionId = reader.GetGuid(reader.GetOrdinal("execution_id")),
+                    Kind = reader.GetString(reader.GetOrdinal("kind")),
+                    Payload = reader.GetString(reader.GetOrdinal("payload")),
+                    AvailableAt = reader.GetDateTime(reader.GetOrdinal("available_at")),
+                    LeaseOwner = await reader.IsDBNullAsync(leaseOwnerOrdinal, ct).ConfigureAwait(false)
+                        ? null
+                        : reader.GetString(leaseOwnerOrdinal),
+                    LeaseUntil = await reader.IsDBNullAsync(leaseUntilOrdinal, ct).ConfigureAwait(false)
+                        ? null
+                        : reader.GetDateTime(leaseUntilOrdinal),
+                    Attempts = reader.GetInt32(reader.GetOrdinal("attempts")),
+                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
+                });
+            }
         }
 
         await transaction.CommitAsync(ct).ConfigureAwait(false);

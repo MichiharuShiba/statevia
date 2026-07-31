@@ -82,6 +82,25 @@ public class WaitResumeTests
         Assert.Equal("approve", await securityWait.ConfigureAwait(false));
     }
 
+    /// <summary>Wait 登録前の Resume は保留され、登録時に即完了する。</summary>
+    [Fact]
+    public async Task Resume_BeforeWait_CompletesWhenWaitRegisters()
+    {
+        // Arrange
+        var provider = new EventProvider("wf1");
+
+        // Act: Wait より先に Resume（ImportCheckpoint 直後の競合を模擬）
+        provider.Resume("ApproveTask", "approve");
+        var waitTask = provider.WaitForEventAsync(
+            "ApproveTask",
+            ["approve", "reject"],
+            CancellationToken.None);
+
+        // Assert
+        var eventName = await waitTask.ConfigureAwait(false);
+        Assert.Equal("approve", eventName);
+    }
+
     /// <summary>許可外イベントの Resume は待機を完了させない。</summary>
     [Fact]
     public async Task Resume_IgnoresEvent_WhenNotAllowed()

@@ -29,6 +29,7 @@ public sealed class ExecutionRuntimeCheckpointTests
 
         using var engine2 = ExecutionEngineTestHarness.Create(maxParallelism: 2);
         engine2.ImportCheckpoint(definition, checkpoint);
+        // Wait 登録を待たず即 Resume（pending resume バッファ経路）。
         engine2.ResumeWaitNode(executionId, waitNodeId, "approve");
         await WaitUntilAsync(() => engine2.GetSnapshot(executionId)?.IsCompleted == true);
 

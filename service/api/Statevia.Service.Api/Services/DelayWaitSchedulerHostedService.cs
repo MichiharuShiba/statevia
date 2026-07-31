@@ -23,24 +23,24 @@ internal sealed class DelayWaitSchedulerHostedService(
                 var queue = scope.ServiceProvider.GetRequiredService<IExecutionWorkQueue>();
                 var now = DateTime.UtcNow;
                 var expired = await waits.ListExpiredDelayWaitsAsync(now, limit: 64, stoppingToken).ConfigureAwait(false);
-                if (expired.Count == 0)
-                    continue;
-
-                var items = expired
-                    .Select(wait => new ExecutionWorkItemRow
-                    {
-                        WorkItemId = Guid.NewGuid(),
-                        ExecutionId = wait.ExecutionId,
-                        Kind = ExecutionWorkItemKinds.TimerFire,
-                        Payload = JsonSerializer.Serialize(new ExecutionResumeWorkItemPayload(
-                            wait.NodeId,
-                            ExecutionWaitEventNames.DelayCompleted)),
-                        AvailableAt = now,
-                        Attempts = 0,
-                        CreatedAt = now
-                    })
-                    .ToList();
-                await queue.EnqueueManyAsync(items, stoppingToken).ConfigureAwait(false);
+                if (expired.Count > 0)
+                {
+                    var items = expired
+                        .Select(wait => new ExecutionWorkItemRow
+                        {
+                            WorkItemId = Guid.NewGuid(),
+                            ExecutionId = wait.ExecutionId,
+                            Kind = ExecutionWorkItemKinds.TimerFire,
+                            Payload = JsonSerializer.Serialize(new ExecutionResumeWorkItemPayload(
+                                wait.NodeId,
+                                ExecutionWaitEventNames.DelayCompleted)),
+                            AvailableAt = now,
+                            Attempts = 0,
+                            CreatedAt = now
+                        })
+                        .ToList();
+                    await queue.EnqueueManyAsync(items, stoppingToken).ConfigureAwait(false);
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -53,6 +53,7 @@ internal sealed class DelayWaitSchedulerHostedService(
             }
 #pragma warning restore CA1031
 
+            // 空結果でも必ず待機する（continue すると Delay を飛ばして CPU/ログを食い続ける）。
             await Task.Delay(PollInterval, stoppingToken).ConfigureAwait(false);
         }
     }

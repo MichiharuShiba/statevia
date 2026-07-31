@@ -13,6 +13,8 @@ public sealed partial class EventProvider : IEventProvider
     private readonly string _executionId;
     private readonly Dictionary<string, List<TaskCompletionSource<bool>>> _waiters = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, NodeWaitRegistration> _nodeWaiters = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Wait 登録前に届いた Resume（nodeId → eventName）。ImportCheckpoint 直後の競合を吸収する。</summary>
+    private readonly Dictionary<string, string> _pendingNodeResumes = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
     private readonly ILogger _logger;
 
@@ -97,6 +99,7 @@ public sealed partial class EventProvider : IEventProvider
         }
 
         var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        string? pendingEvent = null;
         lock (_lock)
         {
             if (_nodeWaiters.ContainsKey(nodeId))
@@ -105,7 +108,23 @@ public sealed partial class EventProvider : IEventProvider
                     $"Node '{nodeId}' already has an active wait (1 Wait = 1 resume).");
             }
 
-            _nodeWaiters[nodeId] = new NodeWaitRegistration(allowed, tcs);
+            // Resume が Wait 登録より先に来た場合は即完了（hydrate 直後の競合）。
+            if (_pendingNodeResumes.Remove(nodeId, out var buffered))
+            {
+                if (allowed.Contains(buffered))
+                    pendingEvent = buffered;
+            }
+
+            if (pendingEvent is null)
+            {
+                _nodeWaiters[nodeId] = new NodeWaitRegistration(allowed, tcs);
+            }
+        }
+
+        if (pendingEvent is not null)
+        {
+            tcs.TrySetResult(pendingEvent);
+            return tcs.Task;
         }
 
         if (notifySuspend)
@@ -152,6 +171,8 @@ public sealed partial class EventProvider : IEventProvider
         {
             if (!_nodeWaiters.TryGetValue(nodeId, out var registration))
             {
+                // Wait 未登録なら保留（ContinueRestoredWaitAsync が後から登録する）。
+                _pendingNodeResumes[nodeId] = trimmedEventName;
                 return;
             }
 
@@ -162,6 +183,7 @@ public sealed partial class EventProvider : IEventProvider
 
             // 1 Wait = 1 回再開: 未使用イベント分の waiter もまとめて除去する。
             _nodeWaiters.Remove(nodeId);
+            _pendingNodeResumes.Remove(nodeId);
             completion = registration.Completion;
         }
 
@@ -189,6 +211,7 @@ public sealed partial class EventProvider : IEventProvider
             }
 
             _nodeWaiters.Clear();
+            _pendingNodeResumes.Clear();
         }
 
         var unload = new ExecutionUnloadException();
