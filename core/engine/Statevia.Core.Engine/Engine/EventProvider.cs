@@ -17,6 +17,11 @@ public sealed partial class EventProvider : IEventProvider
     private readonly ILogger _logger;
 
     /// <summary>
+    /// ノード Wait を登録した直後に呼ばれる（nodeId）。ホストの suspend 通知に使う。
+    /// </summary>
+    public Action<string>? OnNodeWaitRegistered { get; set; }
+
+    /// <summary>
     /// 指定ワークフローに紐づくイベントプロバイダを構築する（相関用の識別子を保持する）。
     /// </summary>
     /// <param name="executionId">ワークフローインスタンス ID。</param>
@@ -52,7 +57,21 @@ public sealed partial class EventProvider : IEventProvider
     }
 
     /// <inheritdoc />
-    public Task<string> WaitForEventAsync(string nodeId, IReadOnlyList<string> eventNames, CancellationToken ct)
+    public Task<string> WaitForEventAsync(string nodeId, IReadOnlyList<string> eventNames, CancellationToken ct) =>
+        WaitForEventAsync(nodeId, eventNames, notifySuspend: true, ct);
+
+    /// <summary>
+    /// ノードスコープでイベントを待機する。
+    /// </summary>
+    /// <param name="nodeId">Wait ノード ID。</param>
+    /// <param name="eventNames">許可イベント。</param>
+    /// <param name="notifySuspend">登録後に <see cref="OnNodeWaitRegistered"/> を呼ぶか（復元時は false）。</param>
+    /// <param name="ct">キャンセル。</param>
+    public Task<string> WaitForEventAsync(
+        string nodeId,
+        IReadOnlyList<string> eventNames,
+        bool notifySuspend,
+        CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
         ArgumentNullException.ThrowIfNull(eventNames);
@@ -87,6 +106,11 @@ public sealed partial class EventProvider : IEventProvider
             }
 
             _nodeWaiters[nodeId] = new NodeWaitRegistration(allowed, tcs);
+        }
+
+        if (notifySuspend)
+        {
+            OnNodeWaitRegistered?.Invoke(nodeId);
         }
 
         if (ct.CanBeCanceled)
@@ -142,6 +166,41 @@ public sealed partial class EventProvider : IEventProvider
         }
 
         completion.TrySetResult(trimmedEventName);
+    }
+
+    /// <summary>
+    /// unload 時に全待機を <see cref="ExecutionUnloadException"/> で打ち切る。
+    /// </summary>
+    public void AbortForUnload()
+    {
+        List<TaskCompletionSource<bool>> legacy = [];
+        List<TaskCompletionSource<string>> nodeCompletions = [];
+        lock (_lock)
+        {
+            foreach (var list in _waiters.Values)
+            {
+                legacy.AddRange(list);
+            }
+
+            _waiters.Clear();
+            foreach (var registration in _nodeWaiters.Values)
+            {
+                nodeCompletions.Add(registration.Completion);
+            }
+
+            _nodeWaiters.Clear();
+        }
+
+        var unload = new ExecutionUnloadException();
+        foreach (var tcs in legacy)
+        {
+            tcs.TrySetException(unload);
+        }
+
+        foreach (var tcs in nodeCompletions)
+        {
+            tcs.TrySetException(unload);
+        }
     }
 
     /// <inheritdoc />

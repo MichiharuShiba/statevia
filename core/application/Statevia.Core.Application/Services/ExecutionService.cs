@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Statevia.Core.Application.Configuration;
 using Statevia.Core.Application.Infrastructure;
+using Statevia.Core.Application.Contracts.Persistence;
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Core.Application.Services;
@@ -63,6 +65,7 @@ internal sealed class ExecutionService : IExecutionService
     private readonly IExecutionRepository _executions;
     private readonly IExecutionCursorRepository _executionCursors;
     private readonly IExecutionWaitRepository _executionWaits;
+    private readonly IExecutionCheckpointStore _checkpointStore;
     private readonly IDefinitionRepository _definitions;
     private readonly IProjectAuthorizationService _projectAuth;
     private readonly IRuntimePermissionAuthorization _runtimeAuth;
@@ -108,7 +111,8 @@ internal sealed class ExecutionService : IExecutionService
         ILogger<ExecutionService> logger,
         IOptions<EventDeliveryRetryOptions> eventDeliveryRetryOptions,
         ICorrelationIdAccessor correlationIdAccessor,
-        IExecutionProjectionUpdateQueue? projectionUpdateQueue = null)
+        IExecutionProjectionUpdateQueue? projectionUpdateQueue = null,
+        IExecutionCheckpointStore? checkpointStore = null)
     {
         _engine = engine;
         _displayIds = displayIds;
@@ -118,6 +122,7 @@ internal sealed class ExecutionService : IExecutionService
         _executions = executions;
         _executionCursors = executionCursors;
         _executionWaits = executionWaits;
+        _checkpointStore = checkpointStore ?? NoopExecutionCheckpointStore.Instance;
         _definitions = definitions;
         _projectAuth = projectAuth;
         _runtimeAuth = runtimeAuth;
@@ -417,7 +422,7 @@ internal sealed class ExecutionService : IExecutionService
         if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
-        EnsureEngineRuntimePresentForMutation(uuid.Value, execution);
+        await EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
 
         var cancelApply = await _engine.CancelAsync(uuid.Value.ToString(), clientEventId).ConfigureAwait(false);
         var skipCancelEventAppend = cancelApply.IsAlreadyApplied;
@@ -539,7 +544,7 @@ internal sealed class ExecutionService : IExecutionService
         if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
-        EnsureEngineRuntimePresentForMutation(uuid.Value, execution);
+        await EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
 
         // PublishEvent 復帰時点ではグラフ上の Wait 完了が未反映になり得るため、発行前の nodeId で先行削除する。
         // グラフ解析失敗時は永続化済み wait 行からフォールバック解決する（Applied 時のみ）。
@@ -785,7 +790,7 @@ internal sealed class ExecutionService : IExecutionService
         if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
-        EnsureEngineRuntimePresentForMutation(uuid.Value, execution);
+        await EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
 
         // Resume 正本: nodeId + eventName。wait 行は nodeId で先行削除する。
         // 許可外イベント・非アクティブ Wait などは 422。
@@ -1085,10 +1090,12 @@ internal sealed class ExecutionService : IExecutionService
     }
 
     /// <summary>
-    /// キャンセル／イベント発行の適用直前に、当該ワークフローがこのプロセスのエンジンへ読み込まれていることを検証する。
-    /// API 再起動などでインメモリ実行が失われた場合、DB 投影を壊さないよう <see cref="ArgumentException"/> を投げる（HTTP 422）。
+    /// キャンセル／イベント発行の適用直前に、エンジンへ実行をロードする（未ロードなら checkpoint から hydrate）。
     /// </summary>
-    private void EnsureEngineRuntimePresentForMutation(Guid executionId, ExecutionRow execution)
+    private async Task EnsureEngineRuntimeLoadedForMutationAsync(
+        Guid executionId,
+        ExecutionRow execution,
+        CancellationToken ct)
     {
         if (_engine.GetSnapshot(executionId.ToString()) is not null)
             return;
@@ -1099,8 +1106,69 @@ internal sealed class ExecutionService : IExecutionService
                 "The execution is already in a terminal state in the database projection, but there is no in-memory instance in this API process. Cancel or event delivery cannot be applied.");
         }
 
-        throw new ArgumentException(
-            "The execution state is not loaded in this API process (for example after a restart). Commands cannot be applied while the in-memory runtime is missing.");
+        var checkpointDocument = await _executor.ExecuteReadOnlyAsync(
+            (uow, innerCt) => _checkpointStore.GetByExecutionIdAsync(uow, executionId, innerCt),
+            ct).ConfigureAwait(false);
+        if (checkpointDocument is null)
+        {
+            throw new ArgumentException(
+                "The execution state is not loaded in this API process and no runtime checkpoint was found.");
+        }
+
+        var versionRow = await _executor.ExecuteReadOnlyAsync(
+            (uow, innerCt) => _definitions.GetVersionForExecutionByIdAsync(
+                uow,
+                execution.TenantId,
+                execution.DefinitionVersionId,
+                innerCt),
+            ct).ConfigureAwait(false);
+        if (versionRow is null)
+        {
+            throw new InvalidOperationException(
+                $"Definition version '{execution.DefinitionVersionId}' was not found for execution '{executionId}'.");
+        }
+
+        var compiled = RestoreCompiledDefinitionFromVersion(versionRow);
+        var checkpoint = JsonSerializer.Deserialize<ExecutionRuntimeCheckpoint>(
+            checkpointDocument.CheckpointJson,
+            CamelCaseJsonSerializerOptions)
+            ?? throw new InvalidOperationException("Stored runtime checkpoint JSON is invalid.");
+
+        _engine.ImportCheckpoint(compiled, checkpoint);
+    }
+
+    /// <summary>
+    /// Wait 登録直後: チェックポイントを保存して Unload する。
+    /// </summary>
+    public async Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct)
+    {
+        var engineId = executionId.ToString("D");
+        var checkpoint = _engine.ExportCheckpoint(engineId);
+        if (checkpoint is null)
+            return;
+
+        var json = JsonSerializer.Serialize(checkpoint, CamelCaseJsonSerializerOptions);
+        await _executor.ExecuteReadCommittedAsync(
+            async (uow, innerCt) =>
+            {
+                await _checkpointStore.UpsertAsync(
+                    uow,
+                    new ExecutionCheckpointDocument
+                    {
+                        ExecutionId = executionId,
+                        CheckpointJson = json,
+                        SchemaVersion = checkpoint.SchemaVersion,
+                        UpdatedAt = DateTime.UtcNow
+                    },
+                    innerCt).ConfigureAwait(false);
+            },
+            ct).ConfigureAwait(false);
+
+        _engine.Unload(engineId);
+        _logger.LogDebug(
+            "Persisted runtime checkpoint and unloaded execution {ExecutionId} after Wait node {NodeId}.",
+            executionId,
+            nodeId);
     }
 
     public async Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct)
@@ -1371,6 +1439,27 @@ internal sealed class ExecutionService : IExecutionService
         public Task EnqueueAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
 
         public Task DrainAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
+    }
+
+    private sealed class NoopExecutionCheckpointStore : IExecutionCheckpointStore
+    {
+        internal static readonly NoopExecutionCheckpointStore Instance = new();
+
+        public Task UpsertAsync(
+            ICoreUnitOfWork uow,
+            ExecutionCheckpointDocument document,
+            CancellationToken ct) => Task.CompletedTask;
+
+        public Task<ExecutionCheckpointDocument?> GetByExecutionIdAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            CancellationToken ct) =>
+            Task.FromResult<ExecutionCheckpointDocument?>(null);
+
+        public Task DeleteAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            CancellationToken ct) => Task.CompletedTask;
     }
 
     /// <summary>

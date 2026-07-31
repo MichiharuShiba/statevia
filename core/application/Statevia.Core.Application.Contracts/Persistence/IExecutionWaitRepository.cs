@@ -40,4 +40,30 @@ public interface IExecutionWaitRepository
         ICoreUnitOfWork uow,
         Guid executionId,
         CancellationToken ct);
+
+    /// <summary>期限切れの DelayWait を取得する。</summary>
+    /// <param name="utcNow">現在 UTC 時刻。</param>
+    /// <param name="limit">最大件数。</param>
+    /// <param name="ct">キャンセル トークン。</param>
+    /// <returns>期限切れの wait 行一覧。</returns>
+    Task<IReadOnlyList<ExecutionWaitRow>> ListExpiredDelayWaitsAsync(
+        DateTime utcNow,
+        int limit,
+        CancellationToken ct);
+
+    /// <summary>
+    /// 現在テナント内でイベント配送条件に一致する EventWait を取得する。
+    /// </summary>
+    /// <param name="uow">同一トランザクションの Unit of Work。</param>
+    /// <param name="eventName">イベント名。</param>
+    /// <param name="correlationKey">相関キー。null の場合は相関条件なしの wait のみ一致する。</param>
+    /// <param name="topic">トピック。null の場合はトピック条件なしの wait のみ一致する。</param>
+    /// <param name="ct">キャンセル トークン。</param>
+    /// <returns>配送対象の wait 行一覧。</returns>
+    Task<IReadOnlyList<ExecutionWaitRow>> ListMatchingEventWaitsAsync(
+        ICoreUnitOfWork uow,
+        string eventName,
+        string? correlationKey,
+        string? topic,
+        CancellationToken ct);
 }

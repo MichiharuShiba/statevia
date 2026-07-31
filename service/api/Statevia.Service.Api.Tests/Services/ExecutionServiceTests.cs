@@ -163,12 +163,6 @@ public sealed class ExecutionServiceTests
             return ApplyResult.Applied;
         }
 
-        public void PublishEvent(string eventName)
-            => throw new NotSupportedException();
-
-        public ApplyResult PublishEvent(string eventName, Guid clientEventId)
-            => throw new NotSupportedException();
-
         public Task CancelAsync(string executionId)
         {
             CancelCalled = true;
@@ -194,6 +188,20 @@ public sealed class ExecutionServiceTests
         {
             // no-op for tests
         }
+
+        public void SetSuspendHandler(Func<string, string, Task>? handler)
+        {
+            // no-op for tests
+        }
+
+        public ExecutionRuntimeCheckpoint? ExportCheckpoint(string executionId) => null;
+
+        public void ImportCheckpoint(CompiledWorkflowDefinition definition, ExecutionRuntimeCheckpoint checkpoint)
+        {
+            // no-op for tests
+        }
+
+        public bool Unload(string executionId) => false;
     }
 
     private sealed class FakeProjectionUpdateQueue : IExecutionProjectionUpdateQueue
@@ -496,6 +504,20 @@ public sealed class ExecutionServiceTests
             Guid executionId,
             CancellationToken ct) =>
             Task.FromResult(ListByExecutionIdResult);
+
+        public Task<IReadOnlyList<ExecutionWaitRow>> ListExpiredDelayWaitsAsync(
+            DateTime utcNow,
+            int limit,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<ExecutionWaitRow>>(Array.Empty<ExecutionWaitRow>());
+
+        public Task<IReadOnlyList<ExecutionWaitRow>> ListMatchingEventWaitsAsync(
+            ICoreUnitOfWork uow,
+            string eventName,
+            string? correlationKey,
+            string? topic,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<ExecutionWaitRow>>(Array.Empty<ExecutionWaitRow>());
     }
 
     private sealed class FakeEventStoreRepository : IEventStoreRepository

@@ -4,7 +4,7 @@ using Statevia.Infrastructure.Persistence;
 namespace Statevia.Infrastructure.Persistence.Repositories;
 
 /// <summary>execution_waits 永続化。</summary>
-internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
+internal sealed class ExecutionWaitRepository(IDbContextFactory<CoreDbContext> dbFactory) : IExecutionWaitRepository
 {
     /// <inheritdoc />
     public async Task ReplaceWaitsAsync(
@@ -30,6 +30,8 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
                 existing.WaitKind = wait.WaitKind;
                 existing.AllowedEvents = wait.AllowedEvents;
                 existing.ExpiresAt = wait.ExpiresAt;
+                existing.CorrelationKey = wait.CorrelationKey;
+                existing.Topic = wait.Topic;
                 existing.CreatedAt = wait.CreatedAt;
                 continue;
             }
@@ -41,6 +43,8 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
                 WaitKind = wait.WaitKind,
                 AllowedEvents = wait.AllowedEvents,
                 ExpiresAt = wait.ExpiresAt,
+                CorrelationKey = wait.CorrelationKey,
+                Topic = wait.Topic,
                 CreatedAt = wait.CreatedAt
             });
         }
@@ -64,6 +68,29 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<ExecutionWaitRow>> ListExpiredDelayWaitsAsync(
+        DateTime utcNow,
+        int limit,
+        CancellationToken ct)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(limit, 1);
+
+        await using var db = await dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        return await db.ExecutionWaits
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(wait =>
+                wait.WaitKind == ExecutionWaitKind.DelayWait
+                && wait.ExpiresAt != null
+                && wait.ExpiresAt <= utcNow)
+            .OrderBy(wait => wait.ExpiresAt)
+            .ThenBy(wait => wait.ExecutionId)
+            .Take(limit)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<ExecutionWaitRow>> ListByExecutionIdAsync(
         ICoreUnitOfWork uow,
         Guid executionId,
@@ -74,4 +101,29 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
             .ThenBy(x => x.NodeId)
             .ToListAsync(ct)
             .ConfigureAwait(false);
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ExecutionWaitRow>> ListMatchingEventWaitsAsync(
+        ICoreUnitOfWork uow,
+        string eventName,
+        string? correlationKey,
+        string? topic,
+        CancellationToken ct)
+    {
+        var candidates = await uow.GetDb().ExecutionWaits
+            .Where(wait =>
+                wait.WaitKind == ExecutionWaitKind.EventWait
+                && wait.CorrelationKey == correlationKey
+                && wait.Topic == topic)
+            .OrderBy(wait => wait.CreatedAt)
+            .ThenBy(wait => wait.ExecutionId)
+            .ThenBy(wait => wait.NodeId)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        return candidates
+            .Where(wait => wait.AllowedEvents.Any(allowed =>
+                string.Equals(allowed, eventName, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+    }
 }

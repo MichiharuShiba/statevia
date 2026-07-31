@@ -1,9 +1,15 @@
 # スキーマ定義
 
-Version: 1.10
+Version: 1.13
 Project: 実行型ステートマシン
 
 **Version 1.7（2026-05-27）**: task 8 — `execution_cursors` / `execution_waits` 追加（operational projection / EventWait durable wait）。
+
+**Version 1.13（2026-07-31）**: DelayWait / TimerFire の Resume イベント名を `statevia.delay.completed` に固定（`ExecutionWaitEventNames.DelayCompleted`）。
+
+**Version 1.12（2026-07-30）**: `execution_runtime_checkpoints` を追記（再開可能なランタイム状態の文書ストア。Application 契約は `IExecutionCheckpointStore` / `ExecutionCheckpointDocument`）。
+
+**Version 1.11（2026-07-30）**: `execution_work_items`（lease 付き永続ワークキュー）を追加。`execution_waits` に `correlation_key` / `topic` を追加。
 
 **Version 1.10（2026-07-29）**: `execution_waits` — `resume_token` 削除、`allowed_events jsonb` 追加（1 Wait = 1 行。Resume 削除キーは `node_id`）。
 
@@ -53,6 +59,8 @@ Core-API（C#）の EF Core マイグレーションで管理する PostgreSQL �
 | execution_graph_snapshots | ExecutionSpace | 実行グラフのスナップショット（projection） |
 | execution_cursors | ExecutionSpace | 現在位置の operational projection（read-model 正本外） |
 | execution_waits | ExecutionSpace | durable wait（EventWait / CallbackWait / DelayWait）の永続化 |
+| execution_runtime_checkpoints | ExecutionSpace | 再開可能なランタイム状態の文書ストア（現行 Postgres 物理テーブル。契約は `IExecutionCheckpointStore`） |
+| execution_work_items | ExecutionSpace | Resume / Cancel / TimerFire 等を配送する lease 付き耐久キュー |
 | command_dedup | 信頼性 | コマンド冪等（Start 等の `X-Idempotency-Key`） |
 | event_delivery_dedup | 信頼性 | イベント配送冪等（Publish / Cancel の client event id） |
 | tenants | Platform | テナントの truth（内部 UUID・外部 `tenant_key`・ライフサイクル） |
@@ -259,11 +267,40 @@ project の **認可 truth**。付与先はテナント単位（Principal 単位
 | execution_id | uuid | PK, FK → executions, NOT NULL | 実行 ID |
 | node_id | varchar(64) | PK, NOT NULL | 待機中 Wait ノード ID（Resume 成功時の削除キー） |
 | wait_kind | varchar(32) | NOT NULL | EventWait / CallbackWait / DelayWait |
-| allowed_events | jsonb | NOT NULL | 許可イベント名配列（WaitEventRouteTable 由来。旧 `resume_token` から移行） |
-| expires_at | timestamptz | NULL | 期限（EventWait は null） |
+| allowed_events | jsonb | NOT NULL | 許可イベント名配列（EventWait は WaitEventRouteTable 由来。DelayWait は `statevia.delay.completed` のみ） |
+| expires_at | timestamptz | NULL | 期限（EventWait は null。DelayWait は必須） |
+| correlation_key | varchar(256) | NULL | ingress イベントとの相関キー |
+| topic | varchar(256) | NULL | ingress イベントのトピック |
 | created_at | timestamptz | NOT NULL | 作成日時 |
 
-**主キー:** `(execution_id, node_id)`（1 Wait ノード = 1 行）。旧 `(execution_id, resume_token)` インデックスは廃止。
+**主キー:** `(execution_id, node_id)`（1 Wait ノード = 1 行）。旧 `(execution_id, resume_token)` インデックスは廃止。**インデックス:** `(correlation_key, topic)`。
+
+### 2.10.2b execution_runtime_checkpoints
+
+再開可能なランタイム状態の **文書ストア**（キー = `execution_id`）。Application は `IExecutionCheckpointStore` / `ExecutionCheckpointDocument` 経由でのみ扱い、物理テーブル名や RDB 行モデルに依存しない。現行実装は本テーブルへの Postgres アダプタ。
+
+| カラム | 型 | 制約 | 説明 |
+| --- | --- | --- | --- |
+| execution_id | uuid | PK, FK → executions, NOT NULL | 文書キー（実行 ID） |
+| checkpoint_json | text / jsonb | NOT NULL | Engine `ExecutionRuntimeCheckpoint` の JSON |
+| schema_version | integer | NOT NULL | 文書スキーマ版 |
+| updated_at | timestamptz | NOT NULL | 更新日時 |
+
+### 2.10.3 execution_work_items
+
+| カラム | 型 | 制約 | 説明 |
+| --- | --- | --- | --- |
+| work_item_id | uuid | PK, NOT NULL | ワーク項目 ID |
+| execution_id | uuid | FK → executions, NOT NULL | 対象実行 |
+| kind | varchar(32) | NOT NULL | Start / Resume / Cancel / TimerFire |
+| payload | jsonb | NOT NULL | 種別ごとの入力 |
+| available_at | timestamptz | NOT NULL | 処理可能日時 |
+| lease_owner | varchar(128) | NULL | 処理権を取得した worker |
+| lease_until | timestamptz | NULL | lease 期限 |
+| attempts | integer | NOT NULL | claim 回数 |
+| created_at | timestamptz | NOT NULL | 作成日時 |
+
+**インデックス:** `(available_at, lease_until)`。claim は `FOR UPDATE SKIP LOCKED` で競合を避ける。
 
 ### 2.11 command_dedup
 
@@ -751,6 +788,8 @@ erDiagram
 | `20260526145448_RenameWorkflowEventsToExecutionEvents` | `workflow_events` → `execution_events`、PK 列 `workflow_event_id` → `execution_event_id` |
 | `20260607143608_ExecutionTenantIdUuidFk` | 実行系 `tenant_id` を uuid FK（`tenants.tenant_id`）へ統一 |
 | `20260608093652_AddExecutionSecuritySnapshot` | `executions.security_snapshot_json` 追加（E4） |
+| `20260729152815_AddExecutionRuntimeCheckpoints` | `execution_runtime_checkpoints`（ランタイムチェックポイント文書）を追加 |
+| `20260729153444_AddExecutionWorkItemsAndWaitRouting` | `execution_work_items` と `execution_waits` の topic / correlation routing 列を追加 |
 
 適用: `cd service/api && dotnet ef database update --project Statevia.Service.Api`
 

@@ -179,6 +179,20 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
             return EnqueueAsync(parsedExecutionId, stoppingToken);
         });
 
+        _executionEngine.SetSuspendHandler(async (executionId, nodeId) =>
+        {
+            if (!Guid.TryParse(executionId, out var parsedExecutionId))
+            {
+                return;
+            }
+
+            using var scope = _scopeFactory.CreateScope();
+            var executions = scope.ServiceProvider.GetRequiredService<IExecutionService>();
+            await executions
+                .PersistCheckpointAndUnloadAsync(parsedExecutionId, nodeId, stoppingToken)
+                .ConfigureAwait(false);
+        });
+
         return RunWorkerLoopAsync(stoppingToken);
     }
 
@@ -186,6 +200,7 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _executionEngine.SetNodeCompletedHandler(null);
+        _executionEngine.SetSuspendHandler(null);
         await DrainPendingExecutionsOnShutdownAsync(cancellationToken).ConfigureAwait(false);
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }

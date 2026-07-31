@@ -33,21 +33,6 @@ public interface IExecutionEngine
     /// </summary>
     ApplyResult PublishEvent(string executionId, string eventName, Guid clientEventId);
 
-    /// <summary>
-    /// 全実行インスタンスにイベントをブロードキャストし、待機中の状態を再開する。
-    /// あるインスタンスで例外が発生しても、残りのインスタンスへの発行は継続する。
-    /// すべてのインスタンスを処理したあと、失敗が一つでもあれば例外をスローする（複数件は <see cref="AggregateException"/>、一件のときはその例外をそのままスローする）。
-    /// </summary>
-    void PublishEvent(string eventName);
-
-    /// <summary>
-    /// 各実行インスタンスに対して <see cref="PublishEvent(string, string, Guid)"/> と同様にブロードキャストする。
-    /// あるインスタンスで例外が発生しても、残りのインスタンスへの発行は継続する。
-    /// すべてのインスタンスを処理したあと、失敗が一つでもあれば例外をスローする（複数件は <see cref="AggregateException"/>、一件のときはその例外をそのままスローする）。
-    /// 例外がない場合、いずれか一つでも新規適用があれば <see cref="ApplyResult.Applied"/>、すべて <see cref="ApplyResult.AlreadyApplied"/> ならそれを返す。
-    /// </summary>
-    ApplyResult PublishEvent(string eventName, Guid clientEventId);
-
     /// <summary>実行インスタンスに協調的キャンセルをリクエストします。エンジンは強制終了しません。</summary>
     Task CancelAsync(string executionId);
 
@@ -70,4 +55,30 @@ public interface IExecutionEngine
     /// 直近の登録で上書きされます。<paramref name="handler"/> に <c>null</c> を渡すと解除します。
     /// </remarks>
     void SetNodeCompletedHandler(Func<string, Task>? handler);
+
+    /// <summary>
+    /// Wait 登録直後の suspend 通知ハンドラを登録または解除します。
+    /// 引数は (executionId, nodeId) です。ホストが checkpoint 保存と Unload に使います。
+    /// </summary>
+    /// <remarks>単体 DLL 利用時は未登録のままでよい（メモリ常駐）。</remarks>
+    void SetSuspendHandler(Func<string, string, Task>? handler);
+
+    /// <summary>再開可能なランタイム状態をエクスポートする。</summary>
+    /// <param name="executionId">実行インスタンス ID。</param>
+    /// <returns>チェックポイント。未ロードなら null。</returns>
+    ExecutionRuntimeCheckpoint? ExportCheckpoint(string executionId);
+
+    /// <summary>
+    /// チェックポイントから実行を復元し、未完了 Wait の継続を張り直す。
+    /// </summary>
+    /// <param name="definition">チェックポイントの定義名と一致するコンパイル済み定義。</param>
+    /// <param name="checkpoint">保存済みチェックポイント。</param>
+    void ImportCheckpoint(CompiledWorkflowDefinition definition, ExecutionRuntimeCheckpoint checkpoint);
+
+    /// <summary>
+    /// 実行をメモリから除去する。進行中 Wait は <see cref="ExecutionUnloadException"/> で打ち切る（ノードは未完了のまま）。
+    /// </summary>
+    /// <param name="executionId">実行インスタンス ID。</param>
+    /// <returns>除去できたとき true。</returns>
+    bool Unload(string executionId);
 }

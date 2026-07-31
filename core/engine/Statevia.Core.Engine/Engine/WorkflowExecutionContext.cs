@@ -1,5 +1,6 @@
 using System.Globalization;
 
+using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 
 namespace Statevia.Core.Engine.Engine;
@@ -47,6 +48,52 @@ public sealed class WorkflowExecutionContext
         string executionId = "",
         string definitionName = "") =>
         new(input, executionId, definitionName);
+
+    /// <summary>チェックポイント断面から Context を復元する。</summary>
+    /// <param name="data">Context 断面。</param>
+    /// <param name="executionId">実行 ID。</param>
+    /// <param name="definitionName">定義名。</param>
+    /// <returns>復元済み Context。</returns>
+    public static WorkflowExecutionContext CreateFromCheckpoint(
+        CheckpointContextData data,
+        string executionId,
+        string definitionName)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        var ctx = new WorkflowExecutionContext(
+            CheckpointJson.FromElement(data.Input),
+            executionId,
+            definitionName);
+        lock (ctx._lock)
+        {
+            ctx._workflowOutput = CheckpointJson.FromElement(data.WorkflowOutput) ?? EmptyObject;
+            ctx._vars = CheckpointJson.FromElement(data.Vars) ?? EmptyObject;
+            foreach (var (name, entry) in data.States)
+            {
+                ctx._states[name] = CheckpointJson.FromElement(entry);
+            }
+        }
+
+        return ctx;
+    }
+
+    /// <summary>チェックポイント用に Context 断面をエクスポートする。</summary>
+    public CheckpointContextData ExportCheckpoint()
+    {
+        lock (_lock)
+        {
+            return new CheckpointContextData
+            {
+                Input = CheckpointJson.ToElement(Input),
+                WorkflowOutput = CheckpointJson.ToElement(_workflowOutput),
+                Vars = CheckpointJson.ToElement(_vars),
+                States = _states.ToDictionary(
+                    kv => kv.Key,
+                    kv => CheckpointJson.ToElement(kv.Value),
+                    StringComparer.OrdinalIgnoreCase)
+            };
+        }
+    }
 
     private WorkflowExecutionContext(object? input, string executionId, string definitionName)
     {

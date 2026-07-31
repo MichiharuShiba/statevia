@@ -43,6 +43,9 @@ public sealed class ExecutionStreamServiceTests
         public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
+
+        public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+
     }
 
     private sealed class FlakyThenStableExecutionService : IExecutionService
@@ -80,6 +83,9 @@ public sealed class ExecutionStreamServiceTests
         public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
+
+        public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+
     }
 
     /// <summary>1 回目は例外、2 回目以降は JSON を返し、呼び出し間隔を記録する（SSE の catch 経路の待機時間検証用）。</summary>
@@ -139,6 +145,9 @@ public sealed class ExecutionStreamServiceTests
             throw new NotSupportedException();
 
         public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
+
+        public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+
     }
 
     private sealed class ThrowingExecutionService : IExecutionService
@@ -159,6 +168,9 @@ public sealed class ExecutionStreamServiceTests
         public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
+
+        public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+
     }
 
     /// <summary>開始時の存在確認は成功し、その後 snapshot 取得が null を返すテスト用実装。</summary>
@@ -186,6 +198,9 @@ public sealed class ExecutionStreamServiceTests
         public Task CancelAsync(string idOrUuid, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task PublishEventAsync(string idOrUuid, string eventName, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) => throw new NotSupportedException();
         public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
+
+        public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+
     }
 
     private sealed class FakeDisplayIdService : IDisplayIdService

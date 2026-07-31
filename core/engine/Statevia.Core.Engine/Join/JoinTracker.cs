@@ -1,4 +1,5 @@
 using Statevia.Core.Engine.Abstractions;
+using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.FSM;
 
 namespace Statevia.Core.Engine.Join;
@@ -138,6 +139,75 @@ public sealed class JoinTracker : IJoinTracker
 
             _startedJoins.Add(joinStateName);
             return true;
+        }
+    }
+
+    /// <summary>可変状態をチェックポイントへエクスポートする。</summary>
+    public CheckpointJoinData ExportCheckpoint()
+    {
+        lock (_lock)
+        {
+            var results = new Dictionary<string, IReadOnlyDictionary<string, CheckpointJoinObserved>>(
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var (joinState, sources) in _joinStateResults)
+            {
+                results[joinState] = sources.ToDictionary(
+                    kv => kv.Key,
+                    kv => new CheckpointJoinObserved
+                    {
+                        Fact = kv.Value.Fact,
+                        Output = CheckpointJson.ToElement(kv.Value.Output)
+                    },
+                    StringComparer.OrdinalIgnoreCase);
+            }
+
+            var sourceNodeIds = new Dictionary<string, IReadOnlyDictionary<string, string>>(
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var (joinState, map) in _joinSourceNodeIds)
+            {
+                sourceNodeIds[joinState] = new Dictionary<string, string>(map, StringComparer.OrdinalIgnoreCase);
+            }
+
+            return new CheckpointJoinData
+            {
+                JoinStateResults = results,
+                JoinSourceNodeIds = sourceNodeIds,
+                StartedJoins = _startedJoins.ToList()
+            };
+        }
+    }
+
+    /// <summary>チェックポイントから可変状態を復元する。</summary>
+    /// <param name="data">Join 断面。</param>
+    public void ImportFromCheckpoint(CheckpointJoinData data)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        lock (_lock)
+        {
+            _joinStateResults.Clear();
+            _joinSourceNodeIds.Clear();
+            _startedJoins.Clear();
+
+            foreach (var (joinState, sources) in data.JoinStateResults)
+            {
+                var map = new Dictionary<string, JoinObservedState>(StringComparer.OrdinalIgnoreCase);
+                foreach (var (source, observed) in sources)
+                {
+                    map[source] = new JoinObservedState(observed.Fact, CheckpointJson.FromElement(observed.Output));
+                }
+
+                _joinStateResults[joinState] = map;
+            }
+
+            foreach (var (joinState, map) in data.JoinSourceNodeIds)
+            {
+                _joinSourceNodeIds[joinState] = new Dictionary<string, string>(map, StringComparer.OrdinalIgnoreCase);
+            }
+
+            foreach (var join in data.StartedJoins)
+            {
+                _startedJoins.Add(join);
+            }
         }
     }
 

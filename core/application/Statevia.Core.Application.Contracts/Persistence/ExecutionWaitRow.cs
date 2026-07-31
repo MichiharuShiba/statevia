@@ -11,8 +11,24 @@ public enum ExecutionWaitKind
     /// <summary>外部コールバック待ち（将来拡張）。</summary>
     CallbackWait,
 
-    /// <summary>長時間遅延待ち（将来拡張）。</summary>
+    /// <summary>長時間遅延待ち（期限到達で TimerFire → 固定イベント Resume）。</summary>
     DelayWait
+}
+
+/// <summary>
+/// durable wait / TimerFire 再開で使うプラットフォーム固定イベント名。
+/// </summary>
+/// <remarks>
+/// <para>
+/// 利用者定義の Wait イベント名と衝突しないよう、予約プレフィックス付きにする。
+/// DelayWait の <c>allowed_events</c> と TimerFire の Resume <c>eventName</c> は
+/// <see cref="DelayCompleted"/> のみを用いる（先頭要素の恣意的選択はしない）。
+/// </para>
+/// </remarks>
+public static class ExecutionWaitEventNames
+{
+    /// <summary>DelayWait 期限到達時に Resume へ渡す固定イベント名。</summary>
+    public const string DelayCompleted = "statevia.delay.completed";
 }
 
 /// <summary>execution_waits テーブル。durable wait のみ永続化する（1 Wait ノード = 1 行）。</summary>
@@ -35,6 +51,12 @@ public class ExecutionWaitRow
 
     /// <summary>有効期限（EventWait は null）。</summary>
     public DateTime? ExpiresAt { get; set; }
+
+    /// <summary>イベント相関キー（指定時のみ配送条件に含める）。</summary>
+    public string? CorrelationKey { get; set; }
+
+    /// <summary>イベントトピック（指定時のみ配送条件に含める）。</summary>
+    public string? Topic { get; set; }
 
     /// <summary>行作成時刻（UTC）。</summary>
     public DateTime CreatedAt { get; set; }

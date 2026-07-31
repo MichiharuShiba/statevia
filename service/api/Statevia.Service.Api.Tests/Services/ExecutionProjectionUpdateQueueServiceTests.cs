@@ -31,12 +31,6 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         public ApplyResult PublishEvent(string executionId, string eventName, Guid clientEventId) =>
             throw new NotSupportedException();
 
-        public void PublishEvent(string eventName) =>
-            throw new NotSupportedException();
-
-        public ApplyResult PublishEvent(string eventName, Guid clientEventId) =>
-            throw new NotSupportedException();
-
         public Task CancelAsync(string executionId) =>
             throw new NotSupportedException();
 
@@ -53,6 +47,18 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         {
             _nodeCompletedHandler = handler;
         }
+
+        public void SetSuspendHandler(Func<string, string, Task>? handler)
+        {
+        }
+
+        public ExecutionRuntimeCheckpoint? ExportCheckpoint(string executionId) => null;
+
+        public void ImportCheckpoint(CompiledWorkflowDefinition definition, ExecutionRuntimeCheckpoint checkpoint)
+        {
+        }
+
+        public bool Unload(string executionId) => false;
 
         internal Task EmitNodeCompletedAsync(Guid executionId) =>
             _nodeCompletedHandler?.Invoke(executionId.ToString("D")) ?? Task.CompletedTask;
@@ -85,6 +91,9 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
 
             return Task.CompletedTask;
         }
+
+        public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+
 
         public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
@@ -140,6 +149,9 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
             return Task.CompletedTask;
         }
 
+        public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+
+
         public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
 
@@ -191,6 +203,9 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
             if (callNumber == 1)
                 await _firstUpdateMayProceed.Task.WaitAsync(ct);
         }
+
+        public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+
 
         public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();

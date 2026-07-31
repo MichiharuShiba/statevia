@@ -15,7 +15,7 @@ public sealed class ExecutionWaitRepositoryTests
         // Arrange
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new ExecutionWaitRepository();
+        var repo = new ExecutionWaitRepository(db.Factory);
         var executionId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
@@ -76,7 +76,7 @@ public sealed class ExecutionWaitRepositoryTests
         // Arrange
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new ExecutionWaitRepository();
+        var repo = new ExecutionWaitRepository(db.Factory);
         var executionId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
@@ -136,7 +136,7 @@ public sealed class ExecutionWaitRepositoryTests
         // Arrange
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new ExecutionWaitRepository();
+        var repo = new ExecutionWaitRepository(db.Factory);
         var executionId = Guid.NewGuid();
         var t1 = new DateTime(2026, 5, 26, 0, 0, 0, DateTimeKind.Utc);
         var t2 = new DateTime(2026, 5, 26, 0, 0, 1, DateTimeKind.Utc);

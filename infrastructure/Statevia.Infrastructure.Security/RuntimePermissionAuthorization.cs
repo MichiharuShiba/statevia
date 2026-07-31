@@ -24,15 +24,15 @@ internal sealed class RuntimePermissionAuthorization : IRuntimePermissionAuthori
         if (string.IsNullOrWhiteSpace(permissionKey))
             throw new ArgumentException("permissionKey is required.", nameof(permissionKey));
 
-        if (_tenantContext.PrincipalId is not { } principalId)
-            throw new UnauthorizedException("Authentication required.", "UNAUTHORIZED");
-
         if (_tenantContext.EffectivePermissionKeys is { } fixedKeys)
         {
             if (!fixedKeys.Contains(permissionKey))
                 throw new ForbiddenException("Insufficient permission.", PermissionDeniedCode);
             return;
         }
+
+        if (_tenantContext.PrincipalId is not { } principalId)
+            throw new UnauthorizedException("Authentication required.", "UNAUTHORIZED");
 
         var expandedKeys = await _platformDataAccess
             .ExpandPrincipalPermissionKeysAsync(principalId, cancellationToken)

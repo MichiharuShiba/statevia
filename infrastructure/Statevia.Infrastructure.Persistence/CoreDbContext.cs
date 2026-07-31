@@ -93,6 +93,13 @@ internal class CoreDbContext : DbContext, ICoreDatabase
         public const string NodeId = "node_id";
         public const string WaitKind = "wait_kind";
         public const string AllowedEvents = "allowed_events";
+        public const string CorrelationKey = "correlation_key";
+        public const string Topic = "topic";
+        public const string AvailableAt = "available_at";
+        public const string LeaseOwner = "lease_owner";
+        public const string LeaseUntil = "lease_until";
+        public const string Attempts = "attempts";
+        public const string WorkItemId = "work_item_id";
         public const string SecuritySnapshotJson = "security_snapshot_json";
     }
 
@@ -119,6 +126,8 @@ internal class CoreDbContext : DbContext, ICoreDatabase
     public DbSet<ExecutionGraphSnapshotRow> ExecutionGraphSnapshots => Set<ExecutionGraphSnapshotRow>();
     public DbSet<ExecutionCursorRow> ExecutionCursors => Set<ExecutionCursorRow>();
     public DbSet<ExecutionWaitRow> ExecutionWaits => Set<ExecutionWaitRow>();
+    public DbSet<ExecutionCheckpointDocument> ExecutionCheckpoints => Set<ExecutionCheckpointDocument>();
+    public DbSet<ExecutionWorkItemRow> ExecutionWorkItems => Set<ExecutionWorkItemRow>();
     public DbSet<CommandDedupRow> CommandDedup => Set<CommandDedupRow>();
     public DbSet<EventDeliveryDedupRow> EventDeliveryDedup => Set<EventDeliveryDedupRow>();
     public DbSet<TenantRow> Tenants => Set<TenantRow>();
@@ -326,8 +335,48 @@ internal class CoreDbContext : DbContext, ICoreDatabase
                             (hash, item) => HashCode.Combine(hash, StringComparer.Ordinal.GetHashCode(item))),
                         list => list.ToList()));
             e.Property(x => x.ExpiresAt).HasColumnName(Columns.ExpiresAt);
+            e.Property(x => x.CorrelationKey).HasMaxLength(256).HasColumnName(Columns.CorrelationKey);
+            e.Property(x => x.Topic).HasMaxLength(256).HasColumnName(Columns.Topic);
             e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.HasIndex(x => new { x.CorrelationKey, x.Topic });
 
+            e.HasOne<ExecutionRow>()
+                .WithMany()
+                .HasForeignKey(x => x.ExecutionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // execution_runtime_checkpoints（チェックポイント文書ストアの Postgres 物理テーブル）
+        modelBuilder.Entity<ExecutionCheckpointDocument>(e =>
+        {
+            e.ToTable("execution_runtime_checkpoints");
+            e.HasKey(x => x.ExecutionId);
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
+            e.Property(x => x.CheckpointJson).HasColumnName("checkpoint_json");
+            e.Property(x => x.SchemaVersion).HasColumnName(Columns.SchemaVersion);
+            e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
+
+            e.HasOne<ExecutionRow>()
+                .WithMany()
+                .HasForeignKey(x => x.ExecutionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // execution_work_items（stateless worker 用の耐久キュー）
+        modelBuilder.Entity<ExecutionWorkItemRow>(e =>
+        {
+            e.ToTable("execution_work_items");
+            e.HasKey(x => x.WorkItemId);
+            e.Property(x => x.WorkItemId).HasColumnName(Columns.WorkItemId);
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
+            e.Property(x => x.Kind).HasMaxLength(32).HasColumnName(Columns.Kind);
+            e.Property(x => x.Payload).HasColumnType("jsonb").HasColumnName("payload");
+            e.Property(x => x.AvailableAt).HasColumnName(Columns.AvailableAt);
+            e.Property(x => x.LeaseOwner).HasMaxLength(128).HasColumnName(Columns.LeaseOwner);
+            e.Property(x => x.LeaseUntil).HasColumnName(Columns.LeaseUntil);
+            e.Property(x => x.Attempts).HasColumnName(Columns.Attempts);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.HasIndex(x => new { x.AvailableAt, x.LeaseUntil });
             e.HasOne<ExecutionRow>()
                 .WithMany()
                 .HasForeignKey(x => x.ExecutionId)

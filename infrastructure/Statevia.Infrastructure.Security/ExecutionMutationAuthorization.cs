@@ -30,7 +30,12 @@ internal sealed class ExecutionMutationAuthorization : IExecutionMutationAuthori
             throw new ArgumentException("permissionKey is required.", nameof(permissionKey));
 
         if (_tenantContext.PrincipalId is not { } callerPrincipalId)
+        {
+            if (_tenantContext.EffectivePermissionKeys?.Contains(permissionKey) == true)
+                return;
+
             throw new UnauthorizedException("Authentication required.", "UNAUTHORIZED");
+        }
 
         var principal = await _platformDataAccess
             .FindPrincipalAsync(callerPrincipalId, cancellationToken)

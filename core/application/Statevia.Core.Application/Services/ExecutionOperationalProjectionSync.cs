@@ -139,6 +139,8 @@ internal static class ExecutionOperationalProjectionSync
                     WaitKind = ExecutionWaitKind.EventWait,
                     AllowedEvents = allowedEvents,
                     ExpiresAt = null,
+                    CorrelationKey = NormalizeOptional(n.CorrelationKey),
+                    Topic = NormalizeOptional(n.Topic),
                     CreatedAt = nowUtc
                 };
             })
@@ -175,6 +177,10 @@ internal static class ExecutionOperationalProjectionSync
     /// </remarks>
     private static bool HasConfiguredWaitEvents(GraphNodeDto node) =>
         ResolveAllowedEvents(node).Count > 0;
+
+    /// <summary>グラフの任意文字列を DB の nullable routing 条件へ正規化する。</summary>
+    private static string? NormalizeOptional(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static bool TryParseGraph(string graphJson, out List<GraphNodeDto> nodes)
     {
@@ -226,5 +232,11 @@ internal static class ExecutionOperationalProjectionSync
 
         [JsonPropertyName("allowedEvents")]
         public List<string>? AllowedEvents { get; set; }
+
+        [JsonPropertyName("correlationKey")]
+        public string? CorrelationKey { get; set; }
+
+        [JsonPropertyName("topic")]
+        public string? Topic { get; set; }
     }
 }

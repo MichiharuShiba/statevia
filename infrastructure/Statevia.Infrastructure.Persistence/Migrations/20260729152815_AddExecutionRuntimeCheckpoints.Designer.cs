@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Statevia.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Statevia.Infrastructure.Persistence;
 namespace Statevia.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CoreDbContext))]
-    partial class CoreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260729152815_AddExecutionRuntimeCheckpoints")]
+    partial class AddExecutionRuntimeCheckpoints
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -451,11 +454,6 @@ namespace Statevia.Infrastructure.Persistence.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("allowed_events");
 
-                    b.Property<string>("CorrelationKey")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("correlation_key");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -463,11 +461,6 @@ namespace Statevia.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
-
-                    b.Property<string>("Topic")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("topic");
 
                     b.Property<string>("WaitKind")
                         .IsRequired()
@@ -477,61 +470,7 @@ namespace Statevia.Infrastructure.Persistence.Migrations
 
                     b.HasKey("ExecutionId", "NodeId");
 
-                    b.HasIndex("CorrelationKey", "Topic");
-
                     b.ToTable("execution_waits", (string)null);
-                });
-
-            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionWorkItemRow", b =>
-                {
-                    b.Property<Guid>("WorkItemId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("work_item_id");
-
-                    b.Property<int>("Attempts")
-                        .HasColumnType("integer")
-                        .HasColumnName("attempts");
-
-                    b.Property<DateTime>("AvailableAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("available_at");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid>("ExecutionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("execution_id");
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("kind");
-
-                    b.Property<string>("LeaseOwner")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("lease_owner");
-
-                    b.Property<DateTime?>("LeaseUntil")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("lease_until");
-
-                    b.Property<string>("Payload")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("payload");
-
-                    b.HasKey("WorkItemId");
-
-                    b.HasIndex("ExecutionId");
-
-                    b.HasIndex("AvailableAt", "LeaseUntil");
-
-                    b.ToTable("execution_work_items", (string)null);
                 });
 
             modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ProjectAccessRow", b =>
@@ -1142,15 +1081,6 @@ namespace Statevia.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionWaitRow", b =>
-                {
-                    b.HasOne("Statevia.Core.Application.Contracts.Persistence.ExecutionRow", null)
-                        .WithMany()
-                        .HasForeignKey("ExecutionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionWorkItemRow", b =>
                 {
                     b.HasOne("Statevia.Core.Application.Contracts.Persistence.ExecutionRow", null)
                         .WithMany()

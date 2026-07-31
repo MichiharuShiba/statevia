@@ -68,6 +68,40 @@ public sealed class RequestDtoValidationTests
         Assert.Contains(results, r => r.MemberNames.Contains(nameof(ExecutionEventsQuery.Limit)));
     }
 
+    /// <summary>event ingress で correlationKey / topic とも未指定なら検証失敗する。</summary>
+    [Fact]
+    public void EventIngressRequest_WhenRoutingKeysMissing_FailsValidation()
+    {
+        // Arrange
+        var request = new EventIngressRequest { Event = "approve" };
+
+        // Act
+        var results = Validate(request);
+
+        // Assert
+        Assert.Contains(results, r =>
+            r.MemberNames.Contains(nameof(EventIngressRequest.CorrelationKey))
+            && r.MemberNames.Contains(nameof(EventIngressRequest.Topic)));
+    }
+
+    /// <summary>event ingress で correlationKey のみあれば検証成功する。</summary>
+    [Fact]
+    public void EventIngressRequest_WhenCorrelationKeyPresent_PassesValidation()
+    {
+        // Arrange
+        var request = new EventIngressRequest
+        {
+            Event = "approve",
+            CorrelationKey = "sku-1"
+        };
+
+        // Act
+        var results = Validate(request);
+
+        // Assert
+        Assert.Empty(results);
+    }
+
     private static List<ValidationResult> Validate(object instance)
     {
         var context = new ValidationContext(instance);

@@ -111,22 +111,6 @@ public class ExecutionEngineTests
         Assert.True(snapshot.IsCompleted);
     }
 
-    /// <summary>アクティブ Wait が無いとき PublishEvent は拒否する。</summary>
-    [Fact]
-    public void PublishEvent_Throws_WhenNoActiveWait()
-    {
-        // Arrange
-        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
-        engine.Start(CreateMinimalDefinition());
-
-        // Act
-        var ex = Record.Exception(() => engine.PublishEvent("SomeEvent"));
-
-        // Assert
-        Assert.IsType<InvalidOperationException>(ex);
-        Assert.Contains("exactly one active Wait", ex!.Message, StringComparison.OrdinalIgnoreCase);
-    }
-
     /// <summary>単一 execution ID 指定でもアクティブ Wait が無いと PublishEvent は拒否する。</summary>
     [Fact]
     public void PublishEvent_ToExecutionId_Throws_WhenNoActiveWait()
@@ -143,22 +127,6 @@ public class ExecutionEngineTests
         Assert.Contains("exactly one active Wait", ex!.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>複数実行で Wait が無いときブロードキャストは AggregateException になる。</summary>
-    [Fact]
-    public void PublishEvent_BroadcastByEventName_Throws_WhenNoActiveWait()
-    {
-        // Arrange
-        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2);
-        engine.Start(CreateMinimalDefinition());
-        engine.Start(CreateMinimalDefinition());
-
-        // Act
-        var ex = Record.Exception(() => engine.PublishEvent("SomeEvent"));
-
-        // Assert
-        Assert.IsType<AggregateException>(ex);
-    }
-
     /// <summary>clientEventId 付き PublishEvent もアクティブ Wait が無いと例外になる。</summary>
     [Fact]
     public void PublishEvent_WithClientEventId_Throws_WhenNoActiveWait()
@@ -171,20 +139,6 @@ public class ExecutionEngineTests
         // Act / Assert
         Assert.Throws<InvalidOperationException>(() =>
             engine.PublishEvent(executionId, "SomeEvent", clientEventId));
-    }
-
-    /// <summary>複数実行で Wait が無いとき clientEventId 付きブロードキャストは AggregateException になる。</summary>
-    [Fact]
-    public void PublishEvent_WithClientEventId_Broadcast_Throws_WhenNoActiveWait()
-    {
-        // Arrange
-        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2);
-        engine.Start(CreateMinimalDefinition());
-        engine.Start(CreateMinimalDefinition());
-        var clientEventId = Guid.Parse("b2c3d4e5-f6a7-4890-b123-456789abcdef");
-
-        // Act / Assert
-        Assert.Throws<AggregateException>(() => engine.PublishEvent("SomeEvent", clientEventId));
     }
 
     /// <summary>Dispose を呼んでも例外が発生しないことを検証する。</summary>
