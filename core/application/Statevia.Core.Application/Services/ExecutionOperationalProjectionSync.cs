@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Statevia.Core.Application.Contracts.Persistence;
 using Statevia.Core.Application.Infrastructure;
 using Statevia.Core.Engine.Abstractions;
 
@@ -69,7 +70,7 @@ internal static class ExecutionOperationalProjectionSync
     }
 
     private static bool IsTerminalStatus(string status) =>
-        status is "Completed" or "Cancelled" or "Failed";
+        ExecutionProjectionStatuses.IsTerminal(status);
 
     private static ActiveNodeSelection? SelectActiveNode(string graphJson, ExecutionSnapshot? snapshot)
     {

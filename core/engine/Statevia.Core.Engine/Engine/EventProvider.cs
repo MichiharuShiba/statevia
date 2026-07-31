@@ -76,27 +76,7 @@ public sealed partial class EventProvider : IEventProvider
         CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
-        ArgumentNullException.ThrowIfNull(eventNames);
-        if (eventNames.Count == 0)
-        {
-            throw new ArgumentException("eventNames must not be empty.", nameof(eventNames));
-        }
-
-        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var name in eventNames)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                throw new ArgumentException("eventNames must not contain null or whitespace.", nameof(eventNames));
-            }
-
-            allowed.Add(name.Trim());
-        }
-
-        if (allowed.Count == 0)
-        {
-            throw new ArgumentException("eventNames must not be empty.", nameof(eventNames));
-        }
+        var allowed = CreateAllowedEventSet(eventNames);
 
         var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         string? pendingEvent = null;
@@ -109,16 +89,11 @@ public sealed partial class EventProvider : IEventProvider
             }
 
             // Resume が Wait 登録より先に来た場合は即完了（hydrate 直後の競合）。
-            if (_pendingNodeResumes.Remove(nodeId, out var buffered))
-            {
-                if (allowed.Contains(buffered))
-                    pendingEvent = buffered;
-            }
+            if (_pendingNodeResumes.Remove(nodeId, out var buffered) && allowed.Contains(buffered))
+                pendingEvent = buffered;
 
             if (pendingEvent is null)
-            {
                 _nodeWaiters[nodeId] = new NodeWaitRegistration(allowed, tcs);
-            }
         }
 
         if (pendingEvent is not null)
@@ -128,28 +103,56 @@ public sealed partial class EventProvider : IEventProvider
         }
 
         if (notifySuspend)
-        {
             OnNodeWaitRegistered?.Invoke(nodeId);
-        }
 
-        if (ct.CanBeCanceled)
-        {
-            ct.Register(() =>
-            {
-                lock (_lock)
-                {
-                    if (_nodeWaiters.TryGetValue(nodeId, out var registration)
-                        && ReferenceEquals(registration.Completion, tcs))
-                    {
-                        _nodeWaiters.Remove(nodeId);
-                    }
-                }
-
-                tcs.TrySetCanceled(ct);
-            });
-        }
-
+        RegisterWaitCancellation(nodeId, tcs, ct);
         return tcs.Task;
+    }
+
+    /// <summary>許可イベント名集合を構築する（空白要素は拒否）。</summary>
+    private static HashSet<string> CreateAllowedEventSet(IReadOnlyList<string> eventNames)
+    {
+        ArgumentNullException.ThrowIfNull(eventNames);
+        if (eventNames.Count == 0)
+            throw new ArgumentException("eventNames must not be empty.", nameof(eventNames));
+
+        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in eventNames)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("eventNames must not contain null or whitespace.", nameof(eventNames));
+
+            allowed.Add(name.Trim());
+        }
+
+        if (allowed.Count == 0)
+            throw new ArgumentException("eventNames must not be empty.", nameof(eventNames));
+
+        return allowed;
+    }
+
+    /// <summary>キャンセル時に当該ノード Wait 登録を外す。</summary>
+    private void RegisterWaitCancellation(
+        string nodeId,
+        TaskCompletionSource<string> tcs,
+        CancellationToken ct)
+    {
+        if (!ct.CanBeCanceled)
+            return;
+
+        ct.Register(() =>
+        {
+            lock (_lock)
+            {
+                if (_nodeWaiters.TryGetValue(nodeId, out var registration)
+                    && ReferenceEquals(registration.Completion, tcs))
+                {
+                    _nodeWaiters.Remove(nodeId);
+                }
+            }
+
+            tcs.TrySetCanceled(ct);
+        });
     }
 
     /// <inheritdoc />
