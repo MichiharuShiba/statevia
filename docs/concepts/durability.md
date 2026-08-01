@@ -3,13 +3,15 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Concept |
-| Version | 1.0 |
-| 更新日 | 2026-07-07 |
+| Version | 1.1 |
+| 更新日 | 2026-07-30 |
 | 関連 | [../specifications/data-integration.md](../specifications/data-integration.md) |
 
 ---
 
-Statevia は実行の進行を **PostgreSQL** 上の projection と **event_store** で支えます。Engine 自体はインメモリで動きますが、Core-API がトランザクション境界を持ち、開始・キャンセル・publish 等のミューテーションを durable に記録します。
+Statevia は実行の進行を **PostgreSQL** 上の projection と **event_store** で支えます。Engine 自体はインメモリで動きますが、Core-API がトランザクション境界を持ち、開始・キャンセル・publish 等のミューテーションを durable に記録します。Wait で停止した実行はランタイムチェックポイントから hydrate でき、非同期の再開要求は耐久ワークキューで配送します。
+
+チェックポイント本体は Application の **`IExecutionCheckpointStore`**（文書キー = `executionId`）経由でのみ扱います。現行実装は Postgres テーブル `execution_runtime_checkpoints` ですが、契約は RDB 行ではなく文書ストアとして定義しており、将来 MongoDB / DynamoDB 等へ差し替え可能な境界にしています。
 
 ## 何が正本か
 
@@ -28,6 +30,8 @@ in-process の `GetSnapshot` はデバッグやコールバック経路向けで
 ## Wait と cursor
 
 `execution_cursors` と `execution_waits`（EventWait の durable wait）は、executions 更新と**同一トランザクション**で同期します。read-model の GET は cursor に依存せず、グラフスナップショットを正とします。
+
+`execution_work_items` は Resume / Cancel / TimerFire 等の実行操作を lease 付きで配送します。複数の API プロセスは PostgreSQL の `FOR UPDATE SKIP LOCKED` により同一項目を同時処理しません。lease が期限切れになった項目は再取得可能です。
 
 ## 次に読むもの
 

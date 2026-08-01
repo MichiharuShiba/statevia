@@ -68,6 +68,38 @@ public sealed class RequestDtoValidationTests
         Assert.Contains(results, r => r.MemberNames.Contains(nameof(ExecutionEventsQuery.Limit)));
     }
 
+    /// <summary>event ingress で topic 未指定なら検証失敗する。</summary>
+    [Fact]
+    public void EventIngressRequest_WhenTopicMissing_FailsValidation()
+    {
+        // Arrange
+        var request = new EventIngressRequest { Topic = "" };
+
+        // Act
+        var results = Validate(request);
+
+        // Assert
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(EventIngressRequest.Topic)));
+    }
+
+    /// <summary>event ingress で topic があれば key 省略でも検証成功する。</summary>
+    [Fact]
+    public void EventIngressRequest_WhenTopicPresent_PassesValidation()
+    {
+        // Arrange
+        var request = new EventIngressRequest
+        {
+            Topic = "inventory.received",
+            Key = "sku-1"
+        };
+
+        // Act
+        var results = Validate(request);
+
+        // Assert
+        Assert.Empty(results);
+    }
+
     private static List<ValidationResult> Validate(object instance)
     {
         var context = new ValidationContext(instance);

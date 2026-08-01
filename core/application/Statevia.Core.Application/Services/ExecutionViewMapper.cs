@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Statevia.Core.Application.Infrastructure;
+using Statevia.Core.Engine.FSM;
 
 namespace Statevia.Core.Application.Services;
 
@@ -45,7 +46,7 @@ internal static class ExecutionViewMapper
         {
             var nodeStatus = MapNodeStatus(n);
             var canceledByExecution = n.CanceledByExecution
-                ?? string.Equals(n.Fact, "Cancelled", StringComparison.OrdinalIgnoreCase);
+                ?? string.Equals(n.Fact, Fact.Cancelled, StringComparison.OrdinalIgnoreCase);
             var nodeType = ResolveNodeType(n);
 
             list.Add(new ExecutionViewNodeDto
@@ -114,10 +115,10 @@ internal static class ExecutionViewMapper
 
         return node.Fact switch
         {
-            "Completed" => "SUCCEEDED",
-            "Failed" => "FAILED",
-            "Cancelled" => "CANCELED",
-            "Joined" => "SUCCEEDED",
+            Fact.Completed => "SUCCEEDED",
+            Fact.Failed => "FAILED",
+            Fact.Cancelled => "CANCELED",
+            Fact.Joined => "SUCCEEDED",
             _ => "SUCCEEDED"
         };
     }

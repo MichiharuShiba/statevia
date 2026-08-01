@@ -167,6 +167,10 @@ public sealed class ExecutionsControllerTests
 
         public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) =>
             throw new NotSupportedException();
+
+        public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+        public Task PersistCheckpointAndUnloadByEngineIdAsync(string engineExecutionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+
     }
 
     private static ExecutionsController CreateController(DefaultHttpContext http, FakeExecutionService executions, ExecutionStreamService stream)

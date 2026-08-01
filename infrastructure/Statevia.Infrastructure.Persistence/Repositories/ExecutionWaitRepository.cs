@@ -3,8 +3,8 @@ using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Infrastructure.Persistence.Repositories;
 
-/// <summary>execution_waits 永続化。</summary>
-internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
+/// <summary>execution_waits / execution_wait_subscriptions 永続化。</summary>
+internal sealed class ExecutionWaitRepository(IDbContextFactory<CoreDbContext> dbFactory) : IExecutionWaitRepository
 {
     /// <inheritdoc />
     public async Task ReplaceWaitsAsync(
@@ -13,14 +13,16 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
         IReadOnlyList<ExecutionWaitRow> waits,
         CancellationToken ct)
     {
-        var existingRows = await uow.GetDb().ExecutionWaits
+        var db = uow.GetDb();
+        var existingRows = await db.ExecutionWaits
             .Where(x => x.ExecutionId == executionId)
             .ToListAsync(ct)
             .ConfigureAwait(false);
 
         var desiredNodeIds = waits.Select(x => x.NodeId).ToHashSet(StringComparer.Ordinal);
-        foreach (var stale in existingRows.Where(x => !desiredNodeIds.Contains(x.NodeId)))
-            uow.GetDb().ExecutionWaits.Remove(stale);
+        var staleRows = existingRows.Where(x => !desiredNodeIds.Contains(x.NodeId)).ToList();
+        if (staleRows.Count > 0)
+            db.ExecutionWaits.RemoveRange(staleRows);
 
         var existingByNodeId = existingRows.ToDictionary(x => x.NodeId, StringComparer.Ordinal);
         foreach (var wait in waits)
@@ -34,7 +36,7 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
                 continue;
             }
 
-            uow.GetDb().ExecutionWaits.Add(new ExecutionWaitRow
+            db.ExecutionWaits.Add(new ExecutionWaitRow
             {
                 ExecutionId = executionId,
                 NodeId = wait.NodeId,
@@ -44,6 +46,29 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
                 CreatedAt = wait.CreatedAt
             });
         }
+
+        var existingSubscriptions = await db.ExecutionWaitSubscriptions
+            .Where(x => x.ExecutionId == executionId)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+        db.ExecutionWaitSubscriptions.RemoveRange(existingSubscriptions);
+
+        var subscriptionRows = waits
+            .SelectMany(wait => wait.Subscriptions.Select(subscription => new ExecutionWaitSubscriptionRow
+            {
+                SubscriptionId = subscription.SubscriptionId == Guid.Empty
+                    ? Guid.NewGuid()
+                    : subscription.SubscriptionId,
+                ExecutionId = executionId,
+                NodeId = wait.NodeId,
+                Topic = subscription.Topic,
+                CorrelationKey = subscription.CorrelationKey,
+                ResumeEventName = subscription.ResumeEventName,
+                CreatedAt = subscription.CreatedAt == default ? wait.CreatedAt : subscription.CreatedAt
+            }))
+            .ToList();
+        if (subscriptionRows.Count > 0)
+            db.ExecutionWaitSubscriptions.AddRange(subscriptionRows);
     }
 
     /// <inheritdoc />
@@ -60,7 +85,31 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
         if (rows.Count == 0)
             return;
 
+        // 子購読は FK CASCADE で削除される。
         uow.GetDb().ExecutionWaits.RemoveRange(rows);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ExecutionWaitRow>> ListExpiredDelayWaitsAsync(
+        DateTime utcNow,
+        int limit,
+        CancellationToken ct)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(limit, 1);
+
+        await using var db = await dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        return await db.ExecutionWaits
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(wait =>
+                wait.WaitKind == ExecutionWaitKind.DelayWait
+                && wait.ExpiresAt != null
+                && wait.ExpiresAt <= utcNow)
+            .OrderBy(wait => wait.ExpiresAt)
+            .ThenBy(wait => wait.ExecutionId)
+            .Take(limit)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -74,4 +123,30 @@ internal sealed class ExecutionWaitRepository : IExecutionWaitRepository
             .ThenBy(x => x.NodeId)
             .ToListAsync(ct)
             .ConfigureAwait(false);
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<MatchingWaitSubscription>> ListMatchingSubscriptionsAsync(
+        ICoreUnitOfWork uow,
+        string topic,
+        string correlationKey,
+        CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+        ArgumentNullException.ThrowIfNull(correlationKey);
+
+        return await uow.GetDb().ExecutionWaitSubscriptions
+            .AsNoTracking()
+            .Where(subscription =>
+                subscription.Topic == topic
+                && subscription.CorrelationKey == correlationKey)
+            .OrderBy(subscription => subscription.CreatedAt)
+            .ThenBy(subscription => subscription.ExecutionId)
+            .ThenBy(subscription => subscription.NodeId)
+            .Select(subscription => new MatchingWaitSubscription(
+                subscription.ExecutionId,
+                subscription.NodeId,
+                subscription.ResumeEventName))
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
 }

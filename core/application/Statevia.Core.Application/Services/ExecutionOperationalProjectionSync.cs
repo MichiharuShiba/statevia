@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Statevia.Core.Application.Contracts.Persistence;
 using Statevia.Core.Application.Infrastructure;
 using Statevia.Core.Engine.Abstractions;
 
@@ -58,12 +59,18 @@ internal static class ExecutionOperationalProjectionSync
             },
             ct).ConfigureAwait(false);
 
-        var durableWaits = ExtractDurableWaits(request.ExecutionId, request.GraphJson, now);
+        // Resume / Publish 直後はグラフ完了反映が遅れることがある。
+        // NodeIdToClear を除外しないと、削除した wait を古いグラフから即再作成してしまう。
+        var durableWaits = ExtractDurableWaits(request.ExecutionId, request.GraphJson, now)
+            .Where(row =>
+                string.IsNullOrWhiteSpace(request.NodeIdToClear)
+                || !string.Equals(row.NodeId, request.NodeIdToClear, StringComparison.OrdinalIgnoreCase))
+            .ToList();
         await waits.ReplaceWaitsAsync(uow, request.ExecutionId, durableWaits, ct).ConfigureAwait(false);
     }
 
     private static bool IsTerminalStatus(string status) =>
-        status is "Completed" or "Cancelled" or "Failed";
+        ExecutionProjectionStatuses.IsTerminal(status);
 
     private static ActiveNodeSelection? SelectActiveNode(string graphJson, ExecutionSnapshot? snapshot)
     {
@@ -105,6 +112,14 @@ internal static class ExecutionOperationalProjectionSync
     }
 
     /// <summary>
+    /// グラフ JSON に未完了の durable Wait（許可イベント付き）があるか。
+    /// </summary>
+    /// <param name="graphJson">実行グラフ JSON。</param>
+    /// <returns>durable Wait が 1 件以上あれば <see langword="true"/>。</returns>
+    internal static bool HasDurableWaits(string graphJson) =>
+        ExtractDurableWaits(Guid.Empty, graphJson, DateTime.UtcNow).Count > 0;
+
+    /// <summary>
     /// 未完了 Wait ノードから durable wait 行を構築する。
     /// </summary>
     /// <remarks>
@@ -139,11 +154,37 @@ internal static class ExecutionOperationalProjectionSync
                     WaitKind = ExecutionWaitKind.EventWait,
                     AllowedEvents = allowedEvents,
                     ExpiresAt = null,
-                    CreatedAt = nowUtc
+                    CreatedAt = nowUtc,
+                    Subscriptions = ExtractSubscriptions(executionId, n.NodeId!, n.Subscriptions, nowUtc)
                 };
             })
             .Where(row => row is not null)
             .Select(row => row!)
+            .ToList();
+    }
+
+    /// <summary>グラフの subscriptions を子テーブル行へ写像する。</summary>
+    private static IReadOnlyList<ExecutionWaitSubscriptionRow> ExtractSubscriptions(
+        Guid executionId,
+        string nodeId,
+        List<GraphSubscriptionDto>? subscriptions,
+        DateTime nowUtc)
+    {
+        if (subscriptions is null || subscriptions.Count == 0)
+            return Array.Empty<ExecutionWaitSubscriptionRow>();
+
+        return subscriptions
+            .Where(s => !string.IsNullOrWhiteSpace(s.Topic) && !string.IsNullOrWhiteSpace(s.ResumeEventName))
+            .Select(s => new ExecutionWaitSubscriptionRow
+            {
+                SubscriptionId = Guid.NewGuid(),
+                ExecutionId = executionId,
+                NodeId = nodeId,
+                Topic = s.Topic!.Trim(),
+                CorrelationKey = NormalizeKey(s.Key),
+                ResumeEventName = s.ResumeEventName!.Trim(),
+                CreatedAt = nowUtc
+            })
             .ToList();
     }
 
@@ -175,6 +216,10 @@ internal static class ExecutionOperationalProjectionSync
     /// </remarks>
     private static bool HasConfiguredWaitEvents(GraphNodeDto node) =>
         ResolveAllowedEvents(node).Count > 0;
+
+    /// <summary>key 未指定・空白を空文字へ正規化する。</summary>
+    private static string NormalizeKey(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
 
     private static bool TryParseGraph(string graphJson, out List<GraphNodeDto> nodes)
     {
@@ -226,5 +271,20 @@ internal static class ExecutionOperationalProjectionSync
 
         [JsonPropertyName("allowedEvents")]
         public List<string>? AllowedEvents { get; set; }
+
+        [JsonPropertyName("subscriptions")]
+        public List<GraphSubscriptionDto>? Subscriptions { get; set; }
+    }
+
+    private sealed class GraphSubscriptionDto
+    {
+        [JsonPropertyName("topic")]
+        public string? Topic { get; set; }
+
+        [JsonPropertyName("key")]
+        public string? Key { get; set; }
+
+        [JsonPropertyName("resumeEventName")]
+        public string? ResumeEventName { get; set; }
     }
 }

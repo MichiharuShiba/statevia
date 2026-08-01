@@ -24,6 +24,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IActionSchemaService, ActionSchemaService>();
         services.AddSingleton<IDefinitionSchemaService, DefinitionSchemaService>();
         services.AddScoped<IExecutionService, ExecutionService>();
+        services.AddScoped<IEventIngressService, EventIngressService>();
 
         return services;
     }

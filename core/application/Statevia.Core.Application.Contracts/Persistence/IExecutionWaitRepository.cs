@@ -40,4 +40,28 @@ public interface IExecutionWaitRepository
         ICoreUnitOfWork uow,
         Guid executionId,
         CancellationToken ct);
+
+    /// <summary>期限切れの DelayWait を取得する。</summary>
+    /// <param name="utcNow">現在 UTC 時刻。</param>
+    /// <param name="limit">最大件数。</param>
+    /// <param name="ct">キャンセル トークン。</param>
+    /// <returns>期限切れの wait 行一覧。</returns>
+    Task<IReadOnlyList<ExecutionWaitRow>> ListExpiredDelayWaitsAsync(
+        DateTime utcNow,
+        int limit,
+        CancellationToken ct);
+
+    /// <summary>
+    /// 現在テナント内で topic / key に厳密一致する購読を取得する。
+    /// </summary>
+    /// <param name="uow">同一トランザクションの Unit of Work。</param>
+    /// <param name="topic">正規化済みトピック。</param>
+    /// <param name="correlationKey">正規化済み key（未指定は空文字）。</param>
+    /// <param name="ct">キャンセル トークン。</param>
+    /// <returns>配送対象の購読一致結果。</returns>
+    Task<IReadOnlyList<MatchingWaitSubscription>> ListMatchingSubscriptionsAsync(
+        ICoreUnitOfWork uow,
+        string topic,
+        string correlationKey,
+        CancellationToken ct);
 }

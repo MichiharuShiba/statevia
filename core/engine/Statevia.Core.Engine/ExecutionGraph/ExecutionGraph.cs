@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Statevia.Core.Engine.Abstractions;
+using Statevia.Core.Engine.Engine;
 
 namespace Statevia.Core.Engine.ExecutionGraphs;
 
@@ -42,8 +43,7 @@ public sealed class ExecutionGraph
     /// <param name="input">状態入力。</param>
     /// <param name="attempt">試行回数。</param>
     /// <param name="workerId">ワーカー識別子。</param>
-    /// <param name="waitKey">単一イベント Wait の互換キー。</param>
-    /// <param name="allowedEvents">Wait の許可イベント名一覧。</param>
+    /// <param name="wait">Wait ノード用の観測メタデータ（任意）。</param>
     /// <returns>採番されたノード ID。</returns>
     public string AddNode(
         string stateName,
@@ -51,8 +51,7 @@ public sealed class ExecutionGraph
         object? input = null,
         int attempt = 1,
         string? workerId = null,
-        string? waitKey = null,
-        IReadOnlyList<string>? allowedEvents = null)
+        WaitNodeGraphMetadata? wait = null)
     {
         var nodeId = Guid.NewGuid().ToString("N")[..8];
         lock (_lock)
@@ -66,8 +65,9 @@ public sealed class ExecutionGraph
                 Input = input,
                 Attempt = attempt,
                 WorkerId = workerId ?? nodeId,
-                WaitKey = waitKey,
-                AllowedEvents = allowedEvents
+                WaitKey = wait?.WaitKey,
+                AllowedEvents = wait?.AllowedEvents,
+                Subscriptions = wait?.Subscriptions
             });
         }
         return nodeId;
@@ -113,6 +113,84 @@ public sealed class ExecutionGraph
         lock (_lock) { _edges.Add(new ExecutionEdge { From = fromNodeId, To = toNodeId, Type = type }); }
     }
 
+    /// <summary>
+    /// チェックポイントからグラフを復元する（既存内容は破棄し、ノード ID を維持する）。
+    /// </summary>
+    /// <param name="data">グラフ断面。</param>
+    public void ImportFromCheckpoint(CheckpointGraphData data)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        lock (_lock)
+        {
+            _nodes.Clear();
+            _edges.Clear();
+            foreach (var node in data.Nodes)
+            {
+                _nodes.Add(new ExecutionNode
+                {
+                    NodeId = node.NodeId,
+                    StateName = node.StateName,
+                    NodeType = node.NodeType,
+                    StartedAt = node.StartedAt,
+                    CompletedAt = node.CompletedAt,
+                    Fact = node.Fact,
+                    Output = CheckpointJson.FromElement(node.Output),
+                    Input = CheckpointJson.FromElement(node.Input),
+                    Attempt = node.Attempt,
+                    WorkerId = node.WorkerId,
+                    WaitKey = node.WaitKey,
+                    AllowedEvents = node.AllowedEvents,
+                    Subscriptions = MapSubscriptions(node.Subscriptions),
+                    CanceledByExecution = node.CanceledByExecution
+                });
+            }
+
+            foreach (var edge in data.Edges)
+            {
+                if (!Enum.TryParse<EdgeType>(edge.Type, ignoreCase: true, out var edgeType))
+                {
+                    edgeType = EdgeType.Next;
+                }
+
+                _edges.Add(new ExecutionEdge { From = edge.From, To = edge.To, Type = edgeType });
+            }
+        }
+    }
+
+    /// <summary>チェックポイント用にグラフ断面をエクスポートする。</summary>
+    public CheckpointGraphData ExportCheckpoint()
+    {
+        lock (_lock)
+        {
+            return new CheckpointGraphData
+            {
+                Nodes = _nodes.Select(n => new CheckpointGraphNode
+                {
+                    NodeId = n.NodeId,
+                    StateName = n.StateName,
+                    NodeType = n.NodeType,
+                    StartedAt = n.StartedAt,
+                    CompletedAt = n.CompletedAt,
+                    Fact = n.Fact,
+                    Output = CheckpointJson.ToElement(n.Output),
+                    Input = CheckpointJson.ToElement(n.Input),
+                    Attempt = n.Attempt,
+                    WorkerId = n.WorkerId,
+                    WaitKey = n.WaitKey,
+                    AllowedEvents = n.AllowedEvents,
+                    Subscriptions = MapCheckpointSubscriptions(n.Subscriptions),
+                    CanceledByExecution = n.CanceledByExecution
+                }).ToList(),
+                Edges = _edges.Select(e => new CheckpointGraphEdge
+                {
+                    From = e.From,
+                    To = e.To,
+                    Type = e.Type.ToString()
+                }).ToList()
+            };
+        }
+    }
+
     /// <summary>実行グラフを JSON としてエクスポートします。</summary>
     public string ExportJson()
     {
@@ -121,4 +199,35 @@ public sealed class ExecutionGraph
             return JsonSerializer.Serialize(new { nodes = _nodes, edges = _edges }, s_jsonOptions);
         }
     }
+
+    private static List<WaitSubscriptionSnapshot>? MapSubscriptions(
+        IReadOnlyList<CheckpointWaitSubscription>? subscriptions) =>
+        subscriptions?
+            .Select(s => new WaitSubscriptionSnapshot
+            {
+                Topic = s.Topic,
+                Key = s.Key,
+                ResumeEventName = s.ResumeEventName
+            })
+            .ToList();
+
+    private static List<CheckpointWaitSubscription>? MapCheckpointSubscriptions(
+        IReadOnlyList<WaitSubscriptionSnapshot>? subscriptions) =>
+        subscriptions?
+            .Select(s => new CheckpointWaitSubscription
+            {
+                Topic = s.Topic,
+                Key = s.Key,
+                ResumeEventName = s.ResumeEventName
+            })
+            .ToList();
 }
+
+/// <summary>グラフノードへ載せる Wait 観測メタデータ。</summary>
+/// <param name="WaitKey">単一イベント Wait の互換キー。</param>
+/// <param name="AllowedEvents">Wait の許可イベント名一覧。</param>
+/// <param name="Subscriptions">集合配送購読スナップショット。</param>
+public sealed record WaitNodeGraphMetadata(
+    string? WaitKey = null,
+    IReadOnlyList<string>? AllowedEvents = null,
+    IReadOnlyList<WaitSubscriptionSnapshot>? Subscriptions = null);

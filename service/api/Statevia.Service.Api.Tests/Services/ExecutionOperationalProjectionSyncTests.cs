@@ -17,7 +17,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var cursorRepo = new ExecutionCursorRepository();
-        var waitRepo = new ExecutionWaitRepository();
+        var waitRepo = new ExecutionWaitRepository(db.Factory);
         var executionId = Guid.NewGuid();
         var graphJson =
             """
@@ -70,7 +70,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var cursorRepo = new ExecutionCursorRepository();
-        var waitRepo = new ExecutionWaitRepository();
+        var waitRepo = new ExecutionWaitRepository(db.Factory);
         var executionId = Guid.NewGuid();
         var graphJson =
             """
@@ -149,7 +149,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         await ExecutionOperationalProjectionSync.SyncAsync(
             uow,
             new ExecutionCursorRepository(),
-            new ExecutionWaitRepository(),
+            new ExecutionWaitRepository(db.Factory),
             request,
             CancellationToken.None);
         await uow.SaveChangesAsync(CancellationToken.None);
@@ -170,7 +170,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var cursorRepo = new ExecutionCursorRepository();
-        var waitRepo = new ExecutionWaitRepository();
+        var waitRepo = new ExecutionWaitRepository(db.Factory);
         var executionId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
@@ -233,7 +233,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var cursorRepo = new ExecutionCursorRepository();
-        var waitRepo = new ExecutionWaitRepository();
+        var waitRepo = new ExecutionWaitRepository(db.Factory);
         var executionId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
@@ -325,7 +325,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         await ExecutionOperationalProjectionSync.SyncAsync(
             uow,
             new ExecutionCursorRepository(),
-            new ExecutionWaitRepository(),
+            new ExecutionWaitRepository(db.Factory),
             request,
             CancellationToken.None);
         await uow.SaveChangesAsync(CancellationToken.None);
@@ -376,7 +376,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         await ExecutionOperationalProjectionSync.SyncAsync(
             uow,
             new ExecutionCursorRepository(),
-            new ExecutionWaitRepository(),
+            new ExecutionWaitRepository(db.Factory),
             request,
             CancellationToken.None);
         await uow.SaveChangesAsync(CancellationToken.None);

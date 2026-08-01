@@ -129,6 +129,63 @@ public class DefinitionCompilerTests
         Assert.Equal("Done", routes["WaitState"]["cancel"].Next);
     }
 
+
+    /// <summary>Wait.subscribe が WaitSubscriptions と内部イベント route にコンパイルされる。</summary>
+    [Fact]
+    public void Compile_ProducesWaitSubscriptions_WhenSubscribeSpecified()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "Test",
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["WaitState"] = new StateDefinition
+                {
+                    Wait = new WaitDefinition
+                    {
+                        Subscribe =
+                        [
+                            new WaitSubscribeEntry
+                            {
+                                Topic = " inventory.received ",
+                                Key = " SKU-1 ",
+                                Next = "Done"
+                            },
+                            new WaitSubscribeEntry
+                            {
+                                Topic = "inventory.returned",
+                                Next = "Done"
+                            }
+                        ]
+                    }
+                },
+                ["Done"] = new StateDefinition
+                {
+                    On = new Dictionary<string, TransitionDefinition>
+                    {
+                        ["Completed"] = new TransitionDefinition { End = true }
+                    }
+                }
+            }
+        };
+        var factory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>());
+        var compiler = new DefinitionCompiler(factory);
+
+        // Act
+        var compiled = compiler.Compile(def);
+
+        // Assert
+        Assert.True(compiled.WaitSubscriptions.TryGetValue("WaitState", out var subscriptions));
+        Assert.Equal(2, subscriptions!.Count);
+        Assert.Equal("inventory.received", subscriptions[0].Topic);
+        Assert.Equal("SKU-1", subscriptions[0].Key);
+        Assert.Equal(WaitSubscribeEventNames.ForIndex(0), subscriptions[0].ResumeEventName);
+        Assert.Equal(string.Empty, subscriptions[1].Key);
+        Assert.Equal("Done", compiled.WaitEventRouteTable["WaitState"][WaitSubscribeEventNames.ForIndex(0)].Next);
+        Assert.Equal("Done", compiled.WaitEventRouteTable["WaitState"][WaitSubscribeEventNames.ForIndex(1)].Next);
+    }
+
     /// <summary>Join で All が空の状態は Join テーブルに含めないことを検証する。</summary>
     [Fact]
     public void Compile_JoinWithEmptyAll_NotInJoinTable()

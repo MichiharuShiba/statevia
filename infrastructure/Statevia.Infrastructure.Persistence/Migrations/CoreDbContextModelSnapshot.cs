@@ -294,6 +294,30 @@ namespace Statevia.Infrastructure.Persistence.Migrations
                     b.ToTable("event_store", (string)null);
                 });
 
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionCheckpointDocument", b =>
+                {
+                    b.Property<Guid>("ExecutionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("execution_id");
+
+                    b.Property<string>("CheckpointJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("checkpoint_json");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("ExecutionId");
+
+                    b.ToTable("execution_runtime_checkpoints", (string)null);
+                });
+
             modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionCursorRow", b =>
                 {
                     b.Property<Guid>("ExecutionId")
@@ -444,6 +468,106 @@ namespace Statevia.Infrastructure.Persistence.Migrations
                     b.HasKey("ExecutionId", "NodeId");
 
                     b.ToTable("execution_waits", (string)null);
+                });
+
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionWaitSubscriptionRow", b =>
+                {
+                    b.Property<Guid>("SubscriptionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.Property<string>("CorrelationKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("correlation_key");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("ExecutionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("execution_id");
+
+                    b.Property<string>("NodeId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("node_id");
+
+                    b.Property<string>("ResumeEventName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("resume_event_name");
+
+                    b.Property<string>("Topic")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("topic");
+
+                    b.HasKey("SubscriptionId");
+
+                    b.HasIndex("ExecutionId", "NodeId");
+
+                    b.HasIndex("Topic", "CorrelationKey");
+
+                    b.ToTable("execution_wait_subscriptions", (string)null);
+                });
+
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionWorkItemRow", b =>
+                {
+                    b.Property<Guid>("WorkItemId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("work_item_id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<DateTime>("AvailableAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("available_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("ExecutionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("execution_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("LeaseOwner")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("lease_owner");
+
+                    b.Property<DateTime?>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lease_until");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.HasKey("WorkItemId");
+
+                    b.HasIndex("ExecutionId");
+
+                    b.HasIndex("AvailableAt", "LeaseUntil");
+
+                    b.ToTable("execution_work_items", (string)null);
                 });
 
             modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ProjectAccessRow", b =>
@@ -1014,6 +1138,15 @@ namespace Statevia.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionCheckpointDocument", b =>
+                {
+                    b.HasOne("Statevia.Core.Application.Contracts.Persistence.ExecutionRow", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionCursorRow", b =>
                 {
                     b.HasOne("Statevia.Core.Application.Contracts.Persistence.ExecutionRow", null)
@@ -1045,6 +1178,24 @@ namespace Statevia.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionWaitRow", b =>
+                {
+                    b.HasOne("Statevia.Core.Application.Contracts.Persistence.ExecutionRow", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionWaitSubscriptionRow", b =>
+                {
+                    b.HasOne("Statevia.Core.Application.Contracts.Persistence.ExecutionWaitRow", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionId", "NodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionWorkItemRow", b =>
                 {
                     b.HasOne("Statevia.Core.Application.Contracts.Persistence.ExecutionRow", null)
                         .WithMany()

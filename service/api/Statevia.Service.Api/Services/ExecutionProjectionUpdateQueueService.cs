@@ -179,6 +179,45 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
             return EnqueueAsync(parsedExecutionId, stoppingToken);
         });
 
+        _executionEngine.SetSuspendHandler(async (executionId, nodeId) =>
+        {
+            if (!Guid.TryParse(executionId, out var parsedExecutionId))
+            {
+                _logger.SkipSuspendCheckpointInvalidExecutionId(executionId);
+                return;
+            }
+
+            using var scope = _scopeFactory.CreateScope();
+            var platformData = scope.ServiceProvider.GetRequiredService<IPlatformDataAccess>();
+            var tenantLookup = await platformData
+                .FindExecutionTenantAsync(parsedExecutionId, stoppingToken)
+                .ConfigureAwait(false);
+            if (tenantLookup is null)
+            {
+                _logger.SkipSuspendCheckpointTenantNotFound(parsedExecutionId);
+                return;
+            }
+
+            var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
+            var executions = scope.ServiceProvider.GetRequiredService<IExecutionService>();
+            var tenantState = new TenantContextState(
+                tenantLookup.TenantId,
+                tenantLookup.TenantKey,
+                PrincipalId: null,
+                tenantLookup.Lifecycle);
+
+            // Guid 再フォーマットせず Engine 辞書キーをそのまま使う。テナント文脈は FK / filter 用。
+            await TenantExecutionScope
+                .RunAsync(
+                    accessor,
+                    tenantState,
+                    () => executions.PersistCheckpointAndUnloadByEngineIdAsync(
+                        executionId,
+                        nodeId,
+                        stoppingToken))
+                .ConfigureAwait(false);
+        });
+
         return RunWorkerLoopAsync(stoppingToken);
     }
 
@@ -186,6 +225,7 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _executionEngine.SetNodeCompletedHandler(null);
+        _executionEngine.SetSuspendHandler(null);
         await DrainPendingExecutionsOnShutdownAsync(cancellationToken).ConfigureAwait(false);
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }

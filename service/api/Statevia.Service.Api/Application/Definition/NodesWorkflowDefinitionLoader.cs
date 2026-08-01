@@ -215,8 +215,11 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         public List<NodeEdgeDefinition>? Edges { get; init; }
         public string? ActionId { get; init; }
 
-        /// <summary>Wait のイベント名 → 遷移先ノード ID（正本）。</summary>
+        /// <summary>Wait のイベント名 → 遷移先ノード ID（Signal）。</summary>
         public IReadOnlyDictionary<string, string>? WaitEvents { get; init; }
+
+        /// <summary>Wait.subscribe 購読（Subscribe）。</summary>
+        public IReadOnlyList<WaitSubscribeEntry>? WaitSubscribe { get; init; }
 
         /// <summary>Wait の担当者枠（Phase 2。構文保持のみ）。</summary>
         public IReadOnlyList<string>? WaitAssignees { get; init; }
@@ -260,9 +263,9 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             dict.TryGetValue(KeyInput, out var inputVal);
             var output = GetStr(dict, KeyOutput);
             var edges = ParseEdges(id, dict);
-            var (waitEvents, waitAssignees) = kind == NodeKind.Wait
-                ? ParseWaitEvents(id, dict, next)
-                : (null, null);
+            var (waitEvents, waitSubscribe, waitAssignees) = kind == NodeKind.Wait
+                ? ParseWaitPayload(id, dict, next)
+                : (null, null, null);
 
             return new ParsedNode
             {
@@ -273,6 +276,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                 Edges = edges,
                 ActionId = action,
                 WaitEvents = waitEvents,
+                WaitSubscribe = waitSubscribe,
                 WaitAssignees = waitAssignees,
                 Error = error,
                 Branches = branches,
@@ -282,9 +286,12 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         }
 
         /// <summary>
-        /// Wait ノードの <c>events</c> / 旧 <c>event</c>+<c>next</c> を正規化する。
+        /// Wait ノードの <c>events</c> / <c>subscribe</c> / 旧 <c>event</c>+<c>next</c> を正規化する。
         /// </summary>
-        private static (IReadOnlyDictionary<string, string> Events, IReadOnlyList<string>? Assignees) ParseWaitEvents(
+        private static (
+            IReadOnlyDictionary<string, string>? Events,
+            IReadOnlyList<WaitSubscribeEntry>? Subscribe,
+            IReadOnlyList<string>? Assignees) ParseWaitPayload(
             string? nodeId,
             Dictionary<string, object?> dict,
             string? next)
@@ -292,12 +299,19 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             if (HasKeyIgnoreCase(dict, KeyExits))
             {
                 throw new ArgumentException(
-                    $"Wait node '{nodeId ?? "?"}' must not use 'exits'; use 'events'.");
+                    $"Wait node '{nodeId ?? "?"}' must not use 'exits'; use 'events' or 'subscribe'.");
             }
 
             var assignees = GetStrList(dict, KeyAssignees);
             var hasEvents = HasKeyIgnoreCase(dict, KeyEvents);
+            var hasSubscribe = HasKeyIgnoreCase(dict, KeySubscribe);
             var legacyEvent = GetStr(dict, KeyEvent);
+
+            if (hasEvents && hasSubscribe)
+            {
+                throw new ArgumentException(
+                    $"Wait node '{nodeId ?? "?"}' cannot use both 'events' and 'subscribe'.");
+            }
 
             if (hasEvents && !string.IsNullOrWhiteSpace(legacyEvent))
             {
@@ -305,15 +319,22 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                     $"Wait node '{nodeId ?? "?"}' cannot use both 'events' and 'event'.");
             }
 
+            if (hasSubscribe)
+            {
+                var subscribeKey = dict.Keys.First(k => string.Equals(k, KeySubscribe, StringComparison.OrdinalIgnoreCase));
+                return (null, ParseSubscribeList(nodeId, dict[subscribeKey]), assignees);
+            }
+
             if (hasEvents)
             {
                 var eventsKey = dict.Keys.First(k => string.Equals(k, KeyEvents, StringComparison.OrdinalIgnoreCase));
-                return (ParseEventsMap(nodeId, dict[eventsKey]), assignees);
+                return (ParseEventsMap(nodeId, dict[eventsKey]), null, assignees);
             }
 
             if (string.IsNullOrWhiteSpace(legacyEvent))
             {
-                throw new ArgumentException($"Wait node '{nodeId ?? "?"}' must have 'events' or 'event'.");
+                throw new ArgumentException(
+                    $"Wait node '{nodeId ?? "?"}' must have 'events', 'subscribe', or 'event'.");
             }
 
             // 旧形式: event + next → events
@@ -322,7 +343,42 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                 {
                     [legacyEvent.Trim()] = next?.Trim() ?? string.Empty
                 },
+                null,
                 assignees);
+        }
+
+        /// <summary>nodes 形式の subscribe 配列を読み取る。</summary>
+        private static List<WaitSubscribeEntry> ParseSubscribeList(string? nodeId, object? subscribeVal)
+        {
+            if (subscribeVal is not System.Collections.IEnumerable enumerable || subscribeVal is string)
+            {
+                throw new ArgumentException($"Wait node '{nodeId ?? "?"}' subscribe must be a list.");
+            }
+
+            var result = new List<WaitSubscribeEntry>();
+            foreach (var item in enumerable)
+            {
+                if (item == null)
+                    continue;
+
+                var dict = ToStringDict(item);
+                var topic = GetStr(dict, KeyTopic);
+                var key = GetStr(dict, KeyKey);
+                var next = GetStr(dict, KeyNext);
+                result.Add(new WaitSubscribeEntry
+                {
+                    Topic = topic?.Trim() ?? string.Empty,
+                    Key = string.IsNullOrWhiteSpace(key) ? string.Empty : key.Trim(),
+                    Next = next?.Trim() ?? string.Empty
+                });
+            }
+
+            if (result.Count == 0)
+            {
+                throw new ArgumentException($"Wait node '{nodeId ?? "?"}' subscribe must not be empty.");
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -403,6 +459,16 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
                     break;
                 case NodeKind.Wait:
+                    if (WaitSubscribe != null)
+                    {
+                        foreach (var targetId in WaitSubscribe
+                                     .Select(entry => entry.Next)
+                                     .Where(id => !string.IsNullOrWhiteSpace(id)))
+                        {
+                            yield return targetId;
+                        }
+                    }
+
                     if (WaitEvents != null)
                     {
                         foreach (var targetId in WaitEvents.Values.Where(id => !string.IsNullOrWhiteSpace(id)))
@@ -606,9 +672,34 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
                     break;
                 case NodeKind.Wait:
-                    if (WaitEvents == null || WaitEvents.Count == 0)
+                    var hasSubscribe = WaitSubscribe is { Count: > 0 };
+                    var hasSignalEvents = WaitEvents is { Count: > 0 };
+                    if (!hasSubscribe && !hasSignalEvents)
                     {
-                        throw new ArgumentException($"Wait node '{Id}' must have 'events' or 'event'.");
+                        throw new ArgumentException(
+                            $"Wait node '{Id}' must have 'events', 'subscribe', or 'event'.");
+                    }
+
+                    if (hasSubscribe)
+                    {
+                        for (var i = 0; i < WaitSubscribe!.Count; i++)
+                        {
+                            var entry = WaitSubscribe[i];
+                            if (string.IsNullOrWhiteSpace(entry.Topic))
+                            {
+                                throw new ArgumentException(
+                                    $"Wait node '{Id}' subscribe[{i}].topic must not be empty.");
+                            }
+
+                            MustExist(entry.Next, $"{KeySubscribe}[{i}].{KeyNext}");
+                            if (string.Equals(entry.Next, Id, StringComparison.OrdinalIgnoreCase))
+                            {
+                                throw new ArgumentException(
+                                    $"Wait node '{Id}' must not self-reference via subscribe[{i}].");
+                            }
+                        }
+
+                        break;
                     }
 
                     var hasLegacyEvent = HasKeyIgnoreCase(Raw, KeyEvent);
@@ -621,7 +712,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
                     if (!hasLegacyEvent)
                     {
-                        foreach (var (eventName, targetId) in WaitEvents)
+                        foreach (var (eventName, targetId) in WaitEvents!)
                         {
                             MustExist(targetId, $"{KeyEvents}.{eventName}");
                             if (string.Equals(targetId, Id, StringComparison.OrdinalIgnoreCase))
@@ -791,6 +882,18 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                     };
                 case NodeKind.Wait:
                     {
+                        if (WaitSubscribe is { Count: > 0 })
+                        {
+                            return new StateDefinition
+                            {
+                                Wait = new WaitDefinition
+                                {
+                                    Subscribe = WaitSubscribe,
+                                    Assignees = WaitAssignees
+                                }
+                            };
+                        }
+
                         // 旧形式（event+next）は On.Completed を維持（ランタイム移行完了まで）。
                         // events 正本は WaitDefinition.Events。単一イベント時は Completed 遷移も埋める。
                         var waitEvents = WaitEvents

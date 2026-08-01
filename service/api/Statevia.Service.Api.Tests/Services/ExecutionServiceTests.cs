@@ -163,12 +163,6 @@ public sealed class ExecutionServiceTests
             return ApplyResult.Applied;
         }
 
-        public void PublishEvent(string eventName)
-            => throw new NotSupportedException();
-
-        public ApplyResult PublishEvent(string eventName, Guid clientEventId)
-            => throw new NotSupportedException();
-
         public Task CancelAsync(string executionId)
         {
             CancelCalled = true;
@@ -194,6 +188,20 @@ public sealed class ExecutionServiceTests
         {
             // no-op for tests
         }
+
+        public void SetSuspendHandler(Func<string, string, Task>? handler)
+        {
+            // no-op for tests
+        }
+
+        public ExecutionRuntimeCheckpoint? ExportCheckpoint(string executionId) => null;
+
+        public void ImportCheckpoint(CompiledWorkflowDefinition definition, ExecutionRuntimeCheckpoint checkpoint)
+        {
+            // no-op for tests
+        }
+
+        public bool Unload(string executionId) => false;
     }
 
     private sealed class FakeProjectionUpdateQueue : IExecutionProjectionUpdateQueue
@@ -467,6 +475,25 @@ public sealed class ExecutionServiceTests
             Task.FromResult<ExecutionCursorRow?>(null);
     }
 
+    private sealed class FakeExecutionCheckpointStore : IExecutionCheckpointStore
+    {
+        public Task UpsertAsync(
+            ICoreUnitOfWork uow,
+            ExecutionCheckpointDocument document,
+            CancellationToken ct) => Task.CompletedTask;
+
+        public Task<ExecutionCheckpointDocument?> GetByExecutionIdAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            CancellationToken ct) =>
+            Task.FromResult<ExecutionCheckpointDocument?>(null);
+
+        public Task DeleteAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            CancellationToken ct) => Task.CompletedTask;
+    }
+
     private sealed class FakeExecutionWaitRepository : IExecutionWaitRepository
     {
         /// <summary><see cref="DeleteByNodeIdAsync"/> に渡された (executionId, nodeId) の履歴。</summary>
@@ -496,6 +523,19 @@ public sealed class ExecutionServiceTests
             Guid executionId,
             CancellationToken ct) =>
             Task.FromResult(ListByExecutionIdResult);
+
+        public Task<IReadOnlyList<ExecutionWaitRow>> ListExpiredDelayWaitsAsync(
+            DateTime utcNow,
+            int limit,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<ExecutionWaitRow>>(Array.Empty<ExecutionWaitRow>());
+
+        public Task<IReadOnlyList<MatchingWaitSubscription>> ListMatchingSubscriptionsAsync(
+            ICoreUnitOfWork uow,
+            string topic,
+            string correlationKey,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<MatchingWaitSubscription>>(Array.Empty<MatchingWaitSubscription>());
     }
 
     private sealed class FakeEventStoreRepository : IEventStoreRepository
@@ -3907,6 +3947,7 @@ public sealed class ExecutionServiceTests
             NullLogger<ExecutionService>.Instance,
             retryOptions,
             new FixedCorrelationIdAccessor(),
+            new FakeExecutionCheckpointStore(),
             projectionUpdateQueue);
     }
 

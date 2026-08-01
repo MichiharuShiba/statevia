@@ -126,4 +126,113 @@ public sealed class ExecutionInstance
     /// </summary>
     internal bool TryRegisterCancelClientEventId(Guid clientEventId) =>
         _appliedCancelClientEventIds.TryAdd(clientEventId, 0);
+
+    /// <summary>チェックポイント用にランタイム状態をエクスポートする。</summary>
+    internal ExecutionRuntimeCheckpoint ExportRuntimeCheckpoint()
+    {
+        lock (_lock)
+        {
+            var pendingWaits = Graph.GetNodesSnapshot()
+                .Where(n => string.Equals(n.NodeType, "Wait", StringComparison.OrdinalIgnoreCase)
+                    && n.CompletedAt is null)
+                .Select(n => new CheckpointPendingWait
+                {
+                    NodeId = n.NodeId,
+                    StateName = n.StateName,
+                    AllowedEvents = n.AllowedEvents?.ToList() ?? [],
+                    Subscriptions = n.Subscriptions?
+                        .Select(s => new CheckpointWaitSubscription
+                        {
+                            Topic = s.Topic,
+                            Key = s.Key,
+                            ResumeEventName = s.ResumeEventName
+                        })
+                        .ToList()
+                })
+                .ToList();
+
+            var joinData = JoinTracker is JoinTracker concreteJoin
+                ? concreteJoin.ExportCheckpoint()
+                : new CheckpointJoinData
+                {
+                    JoinStateResults = new Dictionary<string, IReadOnlyDictionary<string, CheckpointJoinObserved>>(),
+                    JoinSourceNodeIds = new Dictionary<string, IReadOnlyDictionary<string, string>>(),
+                    StartedJoins = []
+                };
+
+            return new ExecutionRuntimeCheckpoint
+            {
+                SchemaVersion = ExecutionRuntimeCheckpoint.CurrentSchemaVersion,
+                ExecutionId = ExecutionId,
+                DefinitionName = Definition.Name,
+                IsCompleted = IsCompleted,
+                IsCancelled = IsCancelled,
+                IsFailed = IsFailed,
+                ActiveStates = _activeStates.ToList(),
+                StateAttempts = new Dictionary<string, int>(_stateAttempts, StringComparer.OrdinalIgnoreCase),
+                StateOutputs = _stateOutputs.ToDictionary(
+                    kv => kv.Key,
+                    kv => CheckpointJson.ToElement(kv.Value),
+                    StringComparer.OrdinalIgnoreCase),
+                AppliedPublishClientEventIds = _appliedPublishClientEventIds.Keys.ToList(),
+                AppliedCancelClientEventIds = _appliedCancelClientEventIds.Keys.ToList(),
+                Context = Context.ExportCheckpoint(),
+                Graph = Graph.ExportCheckpoint(),
+                Join = joinData,
+                PendingWaits = pendingWaits
+            };
+        }
+    }
+
+    /// <summary>チェックポイントから可変ランタイム状態を適用する（Definition / Fsm / Graph 器は既存）。</summary>
+    /// <param name="checkpoint">チェックポイント。</param>
+    internal void ApplyRuntimeCheckpoint(ExecutionRuntimeCheckpoint checkpoint)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        lock (_lock)
+        {
+            IsCompleted = checkpoint.IsCompleted;
+            IsCancelled = checkpoint.IsCancelled;
+            IsFailed = checkpoint.IsFailed;
+            _activeStates.Clear();
+            foreach (var state in checkpoint.ActiveStates)
+            {
+                _activeStates.Add(state);
+            }
+
+            _stateAttempts.Clear();
+            foreach (var (name, attempt) in checkpoint.StateAttempts)
+            {
+                _stateAttempts[name] = attempt;
+            }
+
+            _stateOutputs.Clear();
+            foreach (var (name, output) in checkpoint.StateOutputs)
+            {
+                _stateOutputs[name] = CheckpointJson.FromElement(output);
+            }
+
+            _appliedPublishClientEventIds.Clear();
+            foreach (var id in checkpoint.AppliedPublishClientEventIds)
+            {
+                _appliedPublishClientEventIds[id] = 0;
+            }
+
+            _appliedCancelClientEventIds.Clear();
+            foreach (var id in checkpoint.AppliedCancelClientEventIds)
+            {
+                _appliedCancelClientEventIds[id] = 0;
+            }
+
+            Context = WorkflowExecutionContext.CreateFromCheckpoint(
+                checkpoint.Context,
+                ExecutionId,
+                Definition.Name);
+            Graph.ImportFromCheckpoint(checkpoint.Graph);
+            if (JoinTracker is JoinTracker concreteJoin)
+            {
+                concreteJoin.ImportFromCheckpoint(checkpoint.Join);
+            }
+        }
+    }
 }

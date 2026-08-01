@@ -93,11 +93,11 @@ public static class Level2Validator
     }
 
     /// <summary>
-    /// wait.events の遷移先を到達可能性グラフに追加する。
+    /// wait.events / wait.subscribe の遷移先を到達可能性グラフに追加する。
     /// </summary>
     private static void ProcessWaitEvents(StateDefinition stateDef, HashSet<string> reachable, Queue<string> queue)
     {
-        if (stateDef.Wait?.Events is null)
+        if (stateDef.Wait is null)
         {
             return;
         }
@@ -106,19 +106,29 @@ public static class Level2Validator
         {
             EnqueueNext(string.IsNullOrWhiteSpace(next) ? null : next.Trim(), reachable, queue);
         }
+
+        foreach (var next in stateDef.Wait.Subscribe.Select(entry => entry.Next))
+        {
+            EnqueueNext(string.IsNullOrWhiteSpace(next) ? null : next.Trim(), reachable, queue);
+        }
     }
 
     /// <summary>
-    /// 初期状態推定用に wait.events の遷移先を参照済み集合へ追加する。
+    /// 初期状態推定用に wait.events / wait.subscribe の遷移先を参照済み集合へ追加する。
     /// </summary>
     private static void CollectWaitEventTargets(StateDefinition stateDef, HashSet<string> referenced)
     {
-        if (stateDef.Wait?.Events is null)
+        if (stateDef.Wait is null)
         {
             return;
         }
 
         foreach (var next in stateDef.Wait.Events.Values)
+        {
+            AddReferencedNext(string.IsNullOrWhiteSpace(next) ? null : next.Trim(), referenced);
+        }
+
+        foreach (var next in stateDef.Wait.Subscribe.Select(entry => entry.Next))
         {
             AddReferencedNext(string.IsNullOrWhiteSpace(next) ? null : next.Trim(), referenced);
         }

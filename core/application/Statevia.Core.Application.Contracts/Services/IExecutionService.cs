@@ -70,4 +70,23 @@ public interface IExecutionService
     /// エンジンの現在状態を読み取り、投影（executions / execution_graph_snapshots）を更新する。
     /// </summary>
     Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct);
+
+    /// <summary>
+    /// Wait 登録直後の suspend 通知。チェックポイントを保存してエンジンから Unload する。
+    /// </summary>
+    /// <param name="executionId">実行 ID。</param>
+    /// <param name="nodeId">登録された Wait ノード ID（ログ用）。</param>
+    /// <param name="ct">キャンセル。</param>
+    Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct);
+
+    /// <summary>
+    /// Engine 実行 ID 文字列を正としてチェックポイントを保存し Unload する。
+    /// </summary>
+    /// <param name="engineExecutionId">Engine 辞書キー（Start 時に渡した文字列）。</param>
+    /// <param name="nodeId">登録された Wait ノード ID（ログ用）。</param>
+    /// <param name="ct">キャンセル。</param>
+    Task PersistCheckpointAndUnloadByEngineIdAsync(
+        string engineExecutionId,
+        string nodeId,
+        CancellationToken ct);
 }

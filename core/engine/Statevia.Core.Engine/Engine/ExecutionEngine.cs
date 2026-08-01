@@ -36,6 +36,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
     private readonly ConcurrentDictionary<string, ExecutionInstance> _instances = new();
     private readonly ConcurrentDictionary<string, EventProvider> _eventProviders = new();
     private Func<string, Task>? _nodeCompletedHandler;
+    private Func<string, string, Task>? _suspendHandler;
 
     /// <summary>
     /// 依存を注入してエンジンを構築する。
@@ -67,13 +68,48 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
     {
         ArgumentNullException.ThrowIfNull(definition);
         executionId ??= _executionIdGenerator.NewExecutionId();
-        var eventProvider = new EventProvider(executionId);
+        var eventProvider = CreateEventProvider(executionId);
         var instance = _instanceFactory.Create(definition, executionId);
         _instances[executionId] = instance;
         _eventProviders[executionId] = eventProvider;
         _executionLog.LogExecutionStarted(executionId, definition.Name, definition.InitialState);
         _ = RunExecutionAsync(instance, eventProvider, input);
         return executionId;
+    }
+
+    private EventProvider CreateEventProvider(string executionId)
+    {
+        var eventProvider = new EventProvider(executionId);
+        eventProvider.OnNodeWaitRegistered = nodeId => NotifySuspend(executionId, nodeId);
+        return eventProvider;
+    }
+
+    private void NotifySuspend(string executionId, string nodeId)
+    {
+        var handler = _suspendHandler;
+        if (handler is null)
+        {
+            return;
+        }
+
+        _ = NotifySuspendAsync(handler, executionId, nodeId);
+    }
+
+    private async Task NotifySuspendAsync(
+        Func<string, string, Task> handler,
+        string executionId,
+        string nodeId)
+    {
+        try
+        {
+            await handler(executionId, nodeId).ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // suspend 通知失敗は実行継続を妨げない
+        catch (Exception ex)
+        {
+            _executionLog.LogExecutionRunFailed(ex, executionId, "suspend-handler");
+        }
+#pragma warning restore CA1031
     }
 
     /// <inheritdoc />
@@ -182,80 +218,6 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
     }
 
     /// <inheritdoc />
-    public void PublishEvent(string eventName)
-    {
-        if (_eventProviders.IsEmpty)
-        {
-            return;
-        }
-
-        List<Exception>? publishFailures = null;
-        foreach (var executionId in _eventProviders.Keys.ToArray())
-        {
-            try
-            {
-                PublishEvent(executionId, eventName);
-            }
-#pragma warning disable CA1031 // 複数実行インスタンスへブロードキャストするため、例外種別に依らず収集して AggregateException にまとめる
-            catch (Exception exception)
-            {
-                publishFailures ??= [];
-                publishFailures.Add(exception);
-            }
-#pragma warning restore CA1031
-        }
-
-        if (publishFailures is { Count: > 0 })
-        {
-            throw publishFailures.Count == 1
-                ? publishFailures[0]
-                : new AggregateException(
-                    "One or more executions failed during PublishEvent broadcast.",
-                    publishFailures);
-        }
-    }
-
-    /// <inheritdoc />
-    public ApplyResult PublishEvent(string eventName, Guid clientEventId)
-    {
-        if (_eventProviders.IsEmpty)
-        {
-            return ApplyResult.Applied;
-        }
-
-        var anyApplied = false;
-        List<Exception>? publishFailures = null;
-        foreach (var executionId in _eventProviders.Keys.ToArray())
-        {
-            try
-            {
-                if (PublishEvent(executionId, eventName, clientEventId).IsApplied)
-                {
-                    anyApplied = true;
-                }
-            }
-#pragma warning disable CA1031 // 複数実行インスタンスへブロードキャストするため、例外種別に依らず収集して AggregateException にまとめる
-            catch (Exception exception)
-            {
-                publishFailures ??= [];
-                publishFailures.Add(exception);
-            }
-#pragma warning restore CA1031
-        }
-
-        if (publishFailures is { Count: > 0 })
-        {
-            throw publishFailures.Count == 1
-                ? publishFailures[0]
-                : new AggregateException(
-                    "One or more executions failed during PublishEvent broadcast with clientEventId.",
-                    publishFailures);
-        }
-
-        return anyApplied ? ApplyResult.Applied : ApplyResult.AlreadyApplied;
-    }
-
-    /// <inheritdoc />
     public async Task CancelAsync(string executionId)
     {
         if (_instances.TryGetValue(executionId, out var instance))
@@ -301,6 +263,138 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         _nodeCompletedHandler = handler;
     }
 
+    /// <inheritdoc />
+    public void SetSuspendHandler(Func<string, string, Task>? handler)
+    {
+        _suspendHandler = handler;
+    }
+
+    /// <inheritdoc />
+    public ExecutionRuntimeCheckpoint? ExportCheckpoint(string executionId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executionId);
+        return _instances.TryGetValue(executionId, out var instance)
+            ? instance.ExportRuntimeCheckpoint()
+            : null;
+    }
+
+    /// <inheritdoc />
+    public void ImportCheckpoint(CompiledWorkflowDefinition definition, ExecutionRuntimeCheckpoint checkpoint)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        if (checkpoint.SchemaVersion != ExecutionRuntimeCheckpoint.CurrentSchemaVersion)
+        {
+            throw new InvalidOperationException(
+                $"Unsupported checkpoint schema version {checkpoint.SchemaVersion}.");
+        }
+
+        if (!string.Equals(definition.Name, checkpoint.DefinitionName, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Definition name mismatch: checkpoint='{checkpoint.DefinitionName}', provided='{definition.Name}'.");
+        }
+
+        var executionId = checkpoint.ExecutionId;
+        if (_instances.ContainsKey(executionId))
+        {
+            throw new InvalidOperationException($"Execution '{executionId}' is already loaded.");
+        }
+
+        var eventProvider = CreateEventProvider(executionId);
+        var instance = _instanceFactory.Create(definition, executionId);
+        instance.ApplyRuntimeCheckpoint(checkpoint);
+        _instances[executionId] = instance;
+        _eventProviders[executionId] = eventProvider;
+
+        foreach (var wait in checkpoint.PendingWaits)
+        {
+            _ = ContinueRestoredWaitAsync(instance, eventProvider, wait);
+        }
+    }
+
+    /// <inheritdoc />
+    public bool Unload(string executionId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executionId);
+        if (!_instances.TryRemove(executionId, out _))
+        {
+            _eventProviders.TryRemove(executionId, out _);
+            return false;
+        }
+
+        if (_eventProviders.TryRemove(executionId, out var eventProvider))
+        {
+            eventProvider.OnNodeWaitRegistered = null;
+            eventProvider.AbortForUnload();
+        }
+
+        return true;
+    }
+
+    private async Task ContinueRestoredWaitAsync(
+        ExecutionInstance instance,
+        EventProvider eventProvider,
+        CheckpointPendingWait wait)
+    {
+        instance.AddActiveState(wait.StateName);
+        try
+        {
+            var (fact, output) = await _scheduler.RunAsync(async ct =>
+            {
+                try
+                {
+                    var eventName = await eventProvider
+                        .WaitForEventAsync(wait.NodeId, wait.AllowedEvents, notifySuspend: false, ct)
+                        .ConfigureAwait(false);
+                    object result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["event"] = eventName
+                    };
+                    instance.SetOutput(wait.StateName, result);
+                    instance.Graph.CompleteNode(wait.NodeId, Fact.Completed, result);
+                    await NotifyNodeCompletedAsync(instance.ExecutionId).ConfigureAwait(false);
+                    return (Fact.Completed, result);
+                }
+                catch (ExecutionUnloadException)
+                {
+                    return ((string?)null, (object?)null);
+                }
+                catch (OperationCanceledException)
+                {
+                    instance.Graph.CompleteNode(wait.NodeId, Fact.Cancelled, null);
+                    await NotifyNodeCompletedAsync(instance.ExecutionId).ConfigureAwait(false);
+                    return (Fact.Cancelled, (object?)null);
+                }
+#pragma warning disable CA1031
+                catch (Exception ex)
+                {
+                    instance.Graph.CompleteNode(wait.NodeId, Fact.Failed, null);
+                    await NotifyNodeCompletedAsync(instance.ExecutionId).ConfigureAwait(false);
+                    _executionLog.LogStateExecuteFailed(
+                        ex,
+                        instance.ExecutionId,
+                        wait.StateName,
+                        wait.NodeId,
+                        ex.GetType().Name);
+                    return (Fact.Failed, (object?)null);
+                }
+#pragma warning restore CA1031
+            }).ConfigureAwait(false);
+
+            if (fact is null)
+            {
+                return;
+            }
+
+            ProcessFact(instance, eventProvider, wait.StateName, fact, output, wait.NodeId);
+        }
+        finally
+        {
+            instance.RemoveActiveState(wait.StateName);
+        }
+    }
+
     private async Task RunExecutionAsync(ExecutionInstance instance, EventProvider eventProvider, object? input)
     {
         instance.InitializeContext(input);
@@ -335,14 +429,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 
         var attempt = instance.NextAttempt(stateName);
         var nodeType = ResolveNodeType(def, stateName);
-        List<string>? allowedEvents = null;
-        string? waitKey = null;
-        if (def.WaitEventRouteTable.TryGetValue(stateName, out var routes) && routes.Count > 0)
-        {
-            allowedEvents = routes.Keys.ToList();
-            if (allowedEvents.Count == 1)
-                waitKey = allowedEvents[0];
-        }
+        var waitMetadata = BuildWaitNodeGraphMetadata(def, stateName);
 
         var nodeId = instance.Graph.AddNode(
             stateName,
@@ -350,8 +437,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             input: input,
             attempt: attempt,
             workerId: _workerId,
-            waitKey: waitKey,
-            allowedEvents: allowedEvents);
+            wait: waitMetadata);
         if (fromNodeId != null && edgeType != null)
         {
             instance.Graph.AddEdge(fromNodeId, nodeId, edgeType.Value);
@@ -383,6 +469,11 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
                 _executionLog.LogStateCompleted(instance.ExecutionId, stateName, nodeId, Fact.Completed, sw.ElapsedMilliseconds);
                 return (Fact.Completed, o);
             }
+            catch (ExecutionUnloadException)
+            {
+                sw.Stop();
+                return ((string?)null, (object?)null);
+            }
             catch (OperationCanceledException)
             {
                 instance.Graph.CompleteNode(nodeId, Fact.Cancelled, null);
@@ -404,6 +495,11 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 #pragma warning restore CA1031
             finally { instance.RemoveActiveState(stateName); }
         }).ConfigureAwait(false);
+
+        if (fact is null)
+        {
+            return;
+        }
 
         ProcessFact(instance, eventProvider, stateName, fact, output, nodeId);
     }
@@ -660,6 +756,40 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 
     /// <inheritdoc />
     public void Dispose() => (_scheduler as IDisposable)?.Dispose();
+
+    /// <summary>コンパイル済み Wait 情報からグラフ用メタデータを構築する。</summary>
+    private static WaitNodeGraphMetadata? BuildWaitNodeGraphMetadata(
+        CompiledWorkflowDefinition def,
+        string stateName)
+    {
+        List<string>? allowedEvents = null;
+        string? waitKey = null;
+        if (def.WaitEventRouteTable.TryGetValue(stateName, out var routes) && routes.Count > 0)
+        {
+            allowedEvents = routes.Keys.ToList();
+            if (allowedEvents.Count == 1)
+                waitKey = allowedEvents[0];
+        }
+
+        IReadOnlyList<WaitSubscriptionSnapshot>? subscriptions = null;
+        if (def.WaitSubscriptions.TryGetValue(stateName, out var waitSubscriptions)
+            && waitSubscriptions.Count > 0)
+        {
+            subscriptions = waitSubscriptions
+                .Select(s => new WaitSubscriptionSnapshot
+                {
+                    Topic = s.Topic,
+                    Key = s.Key,
+                    ResumeEventName = s.ResumeEventName
+                })
+                .ToList();
+        }
+
+        if (allowedEvents is null && waitKey is null && subscriptions is null)
+            return null;
+
+        return new WaitNodeGraphMetadata(waitKey, allowedEvents, subscriptions);
+    }
 
     private static string ResolveNodeType(CompiledWorkflowDefinition def, string stateName)
     {

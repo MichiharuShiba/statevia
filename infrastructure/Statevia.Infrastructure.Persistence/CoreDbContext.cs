@@ -93,7 +93,23 @@ internal class CoreDbContext : DbContext, ICoreDatabase
         public const string NodeId = "node_id";
         public const string WaitKind = "wait_kind";
         public const string AllowedEvents = "allowed_events";
+        public const string CorrelationKey = "correlation_key";
+        public const string Topic = "topic";
+        public const string ResumeEventName = "resume_event_name";
+        public const string SubscriptionId = "subscription_id";
+        public const string AvailableAt = "available_at";
+        public const string LeaseOwner = "lease_owner";
+        public const string LeaseUntil = "lease_until";
+        public const string Attempts = "attempts";
+        public const string WorkItemId = "work_item_id";
         public const string SecuritySnapshotJson = "security_snapshot_json";
+        public const string Payload = "payload";
+        public const string CheckpointJson = "checkpoint_json";
+    }
+
+    private static class ColumnTypes
+    {
+        public const string Jsonb = "jsonb";
     }
 
     private readonly ITenantContextAccessor _tenantAccessor;
@@ -119,6 +135,9 @@ internal class CoreDbContext : DbContext, ICoreDatabase
     public DbSet<ExecutionGraphSnapshotRow> ExecutionGraphSnapshots => Set<ExecutionGraphSnapshotRow>();
     public DbSet<ExecutionCursorRow> ExecutionCursors => Set<ExecutionCursorRow>();
     public DbSet<ExecutionWaitRow> ExecutionWaits => Set<ExecutionWaitRow>();
+    public DbSet<ExecutionWaitSubscriptionRow> ExecutionWaitSubscriptions => Set<ExecutionWaitSubscriptionRow>();
+    public DbSet<ExecutionCheckpointDocument> ExecutionCheckpoints => Set<ExecutionCheckpointDocument>();
+    public DbSet<ExecutionWorkItemRow> ExecutionWorkItems => Set<ExecutionWorkItemRow>();
     public DbSet<CommandDedupRow> CommandDedup => Set<CommandDedupRow>();
     public DbSet<EventDeliveryDedupRow> EventDeliveryDedup => Set<EventDeliveryDedupRow>();
     public DbSet<TenantRow> Tenants => Set<TenantRow>();
@@ -313,7 +332,7 @@ internal class CoreDbContext : DbContext, ICoreDatabase
             e.Property(x => x.WaitKind).HasConversion<string>().HasMaxLength(32).HasColumnName(Columns.WaitKind);
             e.Property(x => x.AllowedEvents)
                 .HasColumnName(Columns.AllowedEvents)
-                .HasColumnType("jsonb")
+                .HasColumnType(ColumnTypes.Jsonb)
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
                     v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null)
@@ -327,7 +346,65 @@ internal class CoreDbContext : DbContext, ICoreDatabase
                         list => list.ToList()));
             e.Property(x => x.ExpiresAt).HasColumnName(Columns.ExpiresAt);
             e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.Ignore(x => x.Subscriptions);
 
+            e.HasOne<ExecutionRow>()
+                .WithMany()
+                .HasForeignKey(x => x.ExecutionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // execution_wait_subscriptions（Wait.subscribe の購読行）
+        modelBuilder.Entity<ExecutionWaitSubscriptionRow>(e =>
+        {
+            e.ToTable("execution_wait_subscriptions");
+            e.HasKey(x => x.SubscriptionId);
+            e.Property(x => x.SubscriptionId).HasColumnName(Columns.SubscriptionId);
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
+            e.Property(x => x.NodeId).HasMaxLength(64).HasColumnName(Columns.NodeId);
+            e.Property(x => x.Topic).HasMaxLength(256).IsRequired().HasColumnName(Columns.Topic);
+            e.Property(x => x.CorrelationKey).HasMaxLength(256).IsRequired().HasColumnName(Columns.CorrelationKey);
+            e.Property(x => x.ResumeEventName).HasMaxLength(256).IsRequired().HasColumnName(Columns.ResumeEventName);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.HasIndex(x => new { x.Topic, x.CorrelationKey });
+
+            e.HasOne<ExecutionWaitRow>()
+                .WithMany()
+                .HasForeignKey(x => new { x.ExecutionId, x.NodeId })
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // execution_runtime_checkpoints（チェックポイント文書ストアの Postgres 物理テーブル）
+        modelBuilder.Entity<ExecutionCheckpointDocument>(e =>
+        {
+            e.ToTable("execution_runtime_checkpoints");
+            e.HasKey(x => x.ExecutionId);
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
+            e.Property(x => x.CheckpointJson).HasColumnName(Columns.CheckpointJson);
+            e.Property(x => x.SchemaVersion).HasColumnName(Columns.SchemaVersion);
+            e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
+
+            e.HasOne<ExecutionRow>()
+                .WithMany()
+                .HasForeignKey(x => x.ExecutionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // execution_work_items（stateless worker 用の耐久キュー）
+        modelBuilder.Entity<ExecutionWorkItemRow>(e =>
+        {
+            e.ToTable("execution_work_items");
+            e.HasKey(x => x.WorkItemId);
+            e.Property(x => x.WorkItemId).HasColumnName(Columns.WorkItemId);
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
+            e.Property(x => x.Kind).HasMaxLength(32).HasColumnName(Columns.Kind);
+            e.Property(x => x.Payload).HasColumnType(ColumnTypes.Jsonb).HasColumnName(Columns.Payload);
+            e.Property(x => x.AvailableAt).HasColumnName(Columns.AvailableAt);
+            e.Property(x => x.LeaseOwner).HasMaxLength(128).HasColumnName(Columns.LeaseOwner);
+            e.Property(x => x.LeaseUntil).HasColumnName(Columns.LeaseUntil);
+            e.Property(x => x.Attempts).HasColumnName(Columns.Attempts);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.HasIndex(x => new { x.AvailableAt, x.LeaseUntil });
             e.HasOne<ExecutionRow>()
                 .WithMany()
                 .HasForeignKey(x => x.ExecutionId)

@@ -28,6 +28,12 @@ public sealed class CompiledWorkflowDefinition
     /// </summary>
     public required IReadOnlyDictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>> WaitEventRouteTable { get; init; }
 
+    /// <summary>
+    /// Wait 明示購読表。状態名 → subscribe エントリ一覧（空なら集合配送対象外）。
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<WaitSubscriptionDefinition>> WaitSubscriptions { get; init; }
+        = new Dictionary<string, IReadOnlyList<WaitSubscriptionDefinition>>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>状態ごとの入力指定（stateName → <see cref="Statevia.Core.Engine.Definition.StateInputDefinition"/>）。未定義状態は raw 通過。</summary>
     public IReadOnlyDictionary<string, Statevia.Core.Engine.Definition.StateInputDefinition> StateInputs { get; init; }
         = new System.Collections.Generic.Dictionary<string, Statevia.Core.Engine.Definition.StateInputDefinition>(System.StringComparer.OrdinalIgnoreCase);

@@ -13,8 +13,15 @@ public sealed partial class EventProvider : IEventProvider
     private readonly string _executionId;
     private readonly Dictionary<string, List<TaskCompletionSource<bool>>> _waiters = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, NodeWaitRegistration> _nodeWaiters = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Wait 登録前に届いた Resume（nodeId → eventName）。ImportCheckpoint 直後の競合を吸収する。</summary>
+    private readonly Dictionary<string, string> _pendingNodeResumes = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
     private readonly ILogger _logger;
+
+    /// <summary>
+    /// ノード Wait を登録した直後に呼ばれる（nodeId）。ホストの suspend 通知に使う。
+    /// </summary>
+    public Action<string>? OnNodeWaitRegistered { get; set; }
 
     /// <summary>
     /// 指定ワークフローに紐づくイベントプロバイダを構築する（相関用の識別子を保持する）。
@@ -52,32 +59,27 @@ public sealed partial class EventProvider : IEventProvider
     }
 
     /// <inheritdoc />
-    public Task<string> WaitForEventAsync(string nodeId, IReadOnlyList<string> eventNames, CancellationToken ct)
+    public Task<string> WaitForEventAsync(string nodeId, IReadOnlyList<string> eventNames, CancellationToken ct) =>
+        WaitForEventAsync(nodeId, eventNames, notifySuspend: true, ct);
+
+    /// <summary>
+    /// ノードスコープでイベントを待機する。
+    /// </summary>
+    /// <param name="nodeId">Wait ノード ID。</param>
+    /// <param name="eventNames">許可イベント。</param>
+    /// <param name="notifySuspend">登録後に <see cref="OnNodeWaitRegistered"/> を呼ぶか（復元時は false）。</param>
+    /// <param name="ct">キャンセル。</param>
+    public Task<string> WaitForEventAsync(
+        string nodeId,
+        IReadOnlyList<string> eventNames,
+        bool notifySuspend,
+        CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
-        ArgumentNullException.ThrowIfNull(eventNames);
-        if (eventNames.Count == 0)
-        {
-            throw new ArgumentException("eventNames must not be empty.", nameof(eventNames));
-        }
-
-        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var name in eventNames)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                throw new ArgumentException("eventNames must not contain null or whitespace.", nameof(eventNames));
-            }
-
-            allowed.Add(name.Trim());
-        }
-
-        if (allowed.Count == 0)
-        {
-            throw new ArgumentException("eventNames must not be empty.", nameof(eventNames));
-        }
+        var allowed = CreateAllowedEventSet(eventNames);
 
         var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        string? pendingEvent = null;
         lock (_lock)
         {
             if (_nodeWaiters.ContainsKey(nodeId))
@@ -86,27 +88,71 @@ public sealed partial class EventProvider : IEventProvider
                     $"Node '{nodeId}' already has an active wait (1 Wait = 1 resume).");
             }
 
-            _nodeWaiters[nodeId] = new NodeWaitRegistration(allowed, tcs);
+            // Resume が Wait 登録より先に来た場合は即完了（hydrate 直後の競合）。
+            if (_pendingNodeResumes.Remove(nodeId, out var buffered) && allowed.Contains(buffered))
+                pendingEvent = buffered;
+
+            if (pendingEvent is null)
+                _nodeWaiters[nodeId] = new NodeWaitRegistration(allowed, tcs);
         }
 
-        if (ct.CanBeCanceled)
+        if (pendingEvent is not null)
         {
-            ct.Register(() =>
-            {
-                lock (_lock)
-                {
-                    if (_nodeWaiters.TryGetValue(nodeId, out var registration)
-                        && ReferenceEquals(registration.Completion, tcs))
-                    {
-                        _nodeWaiters.Remove(nodeId);
-                    }
-                }
-
-                tcs.TrySetCanceled(ct);
-            });
+            tcs.TrySetResult(pendingEvent);
+            return tcs.Task;
         }
 
+        if (notifySuspend)
+            OnNodeWaitRegistered?.Invoke(nodeId);
+
+        RegisterWaitCancellation(nodeId, tcs, ct);
         return tcs.Task;
+    }
+
+    /// <summary>許可イベント名集合を構築する（空白要素は拒否）。</summary>
+    private static HashSet<string> CreateAllowedEventSet(IReadOnlyList<string> eventNames)
+    {
+        ArgumentNullException.ThrowIfNull(eventNames);
+        if (eventNames.Count == 0)
+            throw new ArgumentException("eventNames must not be empty.", nameof(eventNames));
+
+        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in eventNames)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("eventNames must not contain null or whitespace.", nameof(eventNames));
+
+            allowed.Add(name.Trim());
+        }
+
+        if (allowed.Count == 0)
+            throw new ArgumentException("eventNames must not be empty.", nameof(eventNames));
+
+        return allowed;
+    }
+
+    /// <summary>キャンセル時に当該ノード Wait 登録を外す。</summary>
+    private void RegisterWaitCancellation(
+        string nodeId,
+        TaskCompletionSource<string> tcs,
+        CancellationToken ct)
+    {
+        if (!ct.CanBeCanceled)
+            return;
+
+        ct.Register(() =>
+        {
+            lock (_lock)
+            {
+                if (_nodeWaiters.TryGetValue(nodeId, out var registration)
+                    && ReferenceEquals(registration.Completion, tcs))
+                {
+                    _nodeWaiters.Remove(nodeId);
+                }
+            }
+
+            tcs.TrySetCanceled(ct);
+        });
     }
 
     /// <inheritdoc />
@@ -128,6 +174,8 @@ public sealed partial class EventProvider : IEventProvider
         {
             if (!_nodeWaiters.TryGetValue(nodeId, out var registration))
             {
+                // Wait 未登録なら保留（ContinueRestoredWaitAsync が後から登録する）。
+                _pendingNodeResumes[nodeId] = trimmedEventName;
                 return;
             }
 
@@ -138,10 +186,47 @@ public sealed partial class EventProvider : IEventProvider
 
             // 1 Wait = 1 回再開: 未使用イベント分の waiter もまとめて除去する。
             _nodeWaiters.Remove(nodeId);
+            _pendingNodeResumes.Remove(nodeId);
             completion = registration.Completion;
         }
 
         completion.TrySetResult(trimmedEventName);
+    }
+
+    /// <summary>
+    /// unload 時に全待機を <see cref="ExecutionUnloadException"/> で打ち切る。
+    /// </summary>
+    public void AbortForUnload()
+    {
+        List<TaskCompletionSource<bool>> legacy = [];
+        List<TaskCompletionSource<string>> nodeCompletions = [];
+        lock (_lock)
+        {
+            foreach (var list in _waiters.Values)
+            {
+                legacy.AddRange(list);
+            }
+
+            _waiters.Clear();
+            foreach (var registration in _nodeWaiters.Values)
+            {
+                nodeCompletions.Add(registration.Completion);
+            }
+
+            _nodeWaiters.Clear();
+            _pendingNodeResumes.Clear();
+        }
+
+        var unload = new ExecutionUnloadException();
+        foreach (var tcs in legacy)
+        {
+            tcs.TrySetException(unload);
+        }
+
+        foreach (var tcs in nodeCompletions)
+        {
+            tcs.TrySetException(unload);
+        }
     }
 
     /// <inheritdoc />

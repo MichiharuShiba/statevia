@@ -223,12 +223,18 @@ Phase 2（未実装）: wait ノード直下に `duration` / `signal` / `event` 
 
 ### 1.3 Wait（待機）
 
-- **wait.events**（正本）: マップ形式。キーが受付イベント名、値が遷移先状態名。
+Wait は **Signal**（`events`）と **Subscribe**（`subscribe`）の二モードで、**同時指定不可**（どちらか一方が必須）。
+
+- **wait.events**（Signal）: マップ形式。キーが受付イベント名、値が遷移先状態名。
   - コンパイル後は **`WaitEventRouteTable`**（compiled JSON: `waitEventRouteTable`）になる。
   - 再開の HTTP 正本は `POST …/nodes/{nodeId}/resume` で **`resumeKey` = イベント名**（Engine: `ResumeWaitNode`）。
   - Join 互換のため Wait 完了時の FSM 事実は **`Completed`** のまま。次状態の解決は route table（イベント名）が行う。詳細は [execution/wait-cancel.md](execution/wait-cancel.md) / [execution/fsm.md](execution/fsm.md)。
+- **wait.subscribe**（Subscribe）: 配列。各要素は `topic`（必須）・`key`（任意）・`next`（必須）。
+  - 集合配送用。`POST /v1/events` は topic / key のみ送り、遷移名は配信者が指定しない。
+  - コンパイル時に内部イベント名 `statevia.event.subscribe.{index}` を払い出し、route table のキー → `next` に載せる。
+  - `key` 省略・空白は `""` に正規化する（照合も厳密一致）。
 - **旧形式の正規化**: `wait.event: X` + `on.Completed.next: Y` は Loader が `events: { X: Y }` へ自動変換する。`wait.events` と `wait.event` の併記はエラー。
-- **公開語彙**: `event` / `events` / `allowedEvents` / `resumeKey` のみ。`exit` / `exits` は受理しない。
+- **公開語彙**: `events` / `subscribe` / `topic` / `key` / `next` / `allowedEvents` / `resumeKey`。`exit` / `exits` は受理しない。
 
 ### 1.4 Join（合流）
 

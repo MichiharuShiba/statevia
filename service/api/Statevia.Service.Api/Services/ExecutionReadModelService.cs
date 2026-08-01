@@ -4,6 +4,7 @@ using Statevia.Core.Application.Contracts.Persistence;
 using Statevia.Core.Application.Contracts.Security;
 using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Infrastructure;
+using Statevia.Core.Engine.FSM;
 using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Service.Api.Services;
@@ -108,7 +109,7 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
         foreach (var n in dto.Nodes)
         {
             var nodeStatus = MapNodeStatus(n);
-            var canceledByExecution = string.Equals(n.Fact, "Cancelled", StringComparison.OrdinalIgnoreCase);
+            var canceledByExecution = string.Equals(n.Fact, Fact.Cancelled, StringComparison.OrdinalIgnoreCase);
 
             list.Add(new ExecutionNodeReadModel
             {
@@ -134,10 +135,10 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
 
         return node.Fact switch
         {
-            "Completed" => "SUCCEEDED",
-            "Failed" => "FAILED",
-            "Cancelled" => "CANCELED",
-            "Joined" => "SUCCEEDED",
+            Fact.Completed => "SUCCEEDED",
+            Fact.Failed => "FAILED",
+            Fact.Cancelled => "CANCELED",
+            Fact.Joined => "SUCCEEDED",
             _ => "SUCCEEDED"
         };
     }
@@ -156,10 +157,10 @@ internal static class ExecutionStatusMapper
     public static string ToContractStatus(string internalStatus) =>
         internalStatus switch
         {
-            "Running" => "ACTIVE",
-            "Completed" => "COMPLETED",
-            "Failed" => "FAILED",
-            "Cancelled" => "CANCELED",
+            ExecutionProjectionStatuses.Running => "ACTIVE",
+            ExecutionProjectionStatuses.Completed => "COMPLETED",
+            ExecutionProjectionStatuses.Failed => "FAILED",
+            ExecutionProjectionStatuses.Cancelled => "CANCELED",
             _ => "UNKNOWN"
         };
 }

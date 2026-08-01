@@ -42,4 +42,16 @@ internal static partial class ExecutionProjectionUpdateQueueLogMessages
         Level = LogLevel.Warning,
         Message = "Skip projection update because execution tenant was not found ExecutionId={executionId}")]
     public static partial void ExecutionTenantNotFound(this ILogger logger, Guid executionId);
+
+    [LoggerMessage(
+        EventId = 3106,
+        Level = LogLevel.Warning,
+        Message = "Skip suspend checkpoint because execution id '{ExecutionId}' is not a Guid.")]
+    public static partial void SkipSuspendCheckpointInvalidExecutionId(this ILogger logger, string executionId);
+
+    [LoggerMessage(
+        EventId = 3107,
+        Level = LogLevel.Warning,
+        Message = "Skip suspend checkpoint because tenant was not found for execution {ExecutionId}.")]
+    public static partial void SkipSuspendCheckpointTenantNotFound(this ILogger logger, Guid executionId);
 }
