@@ -34,6 +34,7 @@ public sealed class DefinitionCompiler
             ForkTable = BuildForkTable(definition),
             JoinTable = BuildJoinTable(definition),
             WaitEventRouteTable = BuildWaitEventRouteTable(definition),
+            WaitSubscriptions = BuildWaitSubscriptions(definition),
             StateInputs = BuildStateInputTable(definition),
             StateOutputs = BuildStateOutputTable(definition),
             InitialState = DetermineInitialState(definition),
@@ -207,7 +208,7 @@ public sealed class DefinitionCompiler
     }
 
     /// <summary>
-    /// Wait.events から状態名 →（イベント名 → ルート）の表を構築する。
+    /// Wait.events / Wait.subscribe から状態名 →（イベント名 → ルート）の表を構築する。
     /// </summary>
     private static Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>> BuildWaitEventRouteTable(
         WorkflowDefinition definition)
@@ -216,19 +217,35 @@ public sealed class DefinitionCompiler
             StringComparer.OrdinalIgnoreCase);
         foreach (var (stateName, stateDef) in definition.States)
         {
-            if (stateDef.Wait == null || stateDef.Wait.Events.Count == 0)
-            {
+            if (stateDef.Wait == null)
                 continue;
-            }
 
             var routes = new Dictionary<string, WaitEventRouteDefinition>(StringComparer.OrdinalIgnoreCase);
-            foreach (var (eventName, next) in stateDef.Wait.Events)
+            if (stateDef.Wait.Subscribe.Count > 0)
             {
-                var trimmedEvent = eventName.Trim();
-                routes[trimmedEvent] = new WaitEventRouteDefinition
+                for (var i = 0; i < stateDef.Wait.Subscribe.Count; i++)
                 {
-                    Next = (next ?? string.Empty).Trim()
-                };
+                    var entry = stateDef.Wait.Subscribe[i];
+                    routes[WaitSubscribeEventNames.ForIndex(i)] = new WaitEventRouteDefinition
+                    {
+                        Next = (entry.Next ?? string.Empty).Trim()
+                    };
+                }
+            }
+            else if (stateDef.Wait.Events.Count > 0)
+            {
+                foreach (var (eventName, next) in stateDef.Wait.Events)
+                {
+                    var trimmedEvent = eventName.Trim();
+                    routes[trimmedEvent] = new WaitEventRouteDefinition
+                    {
+                        Next = (next ?? string.Empty).Trim()
+                    };
+                }
+            }
+            else
+            {
+                continue;
             }
 
             result[stateName] = routes;
@@ -236,6 +253,37 @@ public sealed class DefinitionCompiler
 
         return result;
     }
+
+    /// <summary>Wait.subscribe 明示購読を状態名キーで構築する。</summary>
+    private static Dictionary<string, IReadOnlyList<WaitSubscriptionDefinition>> BuildWaitSubscriptions(
+        WorkflowDefinition definition)
+    {
+        var result = new Dictionary<string, IReadOnlyList<WaitSubscriptionDefinition>>(
+            StringComparer.OrdinalIgnoreCase);
+        foreach (var (stateName, stateDef) in definition.States)
+        {
+            if (stateDef.Wait == null || stateDef.Wait.Subscribe.Count == 0)
+                continue;
+
+            var entries = stateDef.Wait.Subscribe
+                .Select((entry, index) => new WaitSubscriptionDefinition
+                {
+                    Topic = entry.Topic.Trim(),
+                    Key = NormalizeKey(entry.Key),
+                    ResumeEventName = WaitSubscribeEventNames.ForIndex(index),
+                    Next = entry.Next.Trim()
+                })
+                .ToList();
+
+            result[stateName] = entries;
+        }
+
+        return result;
+    }
+
+    /// <summary>key 未指定・空白を空文字へ正規化する。</summary>
+    private static string NormalizeKey(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
 
     private static string DetermineInitialState(WorkflowDefinition definition)
     {

@@ -52,18 +52,16 @@ public interface IExecutionWaitRepository
         CancellationToken ct);
 
     /// <summary>
-    /// 現在テナント内でイベント配送条件に一致する EventWait を取得する。
+    /// 現在テナント内で topic / key に厳密一致する購読を取得する。
     /// </summary>
     /// <param name="uow">同一トランザクションの Unit of Work。</param>
-    /// <param name="eventName">イベント名。</param>
-    /// <param name="correlationKey">相関キー。null の場合は相関条件なしの wait のみ一致する。</param>
-    /// <param name="topic">トピック。null の場合はトピック条件なしの wait のみ一致する。</param>
+    /// <param name="topic">正規化済みトピック。</param>
+    /// <param name="correlationKey">正規化済み key（未指定は空文字）。</param>
     /// <param name="ct">キャンセル トークン。</param>
-    /// <returns>配送対象の wait 行一覧。</returns>
-    Task<IReadOnlyList<ExecutionWaitRow>> ListMatchingEventWaitsAsync(
+    /// <returns>配送対象の購読一致結果。</returns>
+    Task<IReadOnlyList<MatchingWaitSubscription>> ListMatchingSubscriptionsAsync(
         ICoreUnitOfWork uow,
-        string eventName,
-        string? correlationKey,
-        string? topic,
+        string topic,
+        string correlationKey,
         CancellationToken ct);
 }

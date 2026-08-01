@@ -429,14 +429,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 
         var attempt = instance.NextAttempt(stateName);
         var nodeType = ResolveNodeType(def, stateName);
-        List<string>? allowedEvents = null;
-        string? waitKey = null;
-        if (def.WaitEventRouteTable.TryGetValue(stateName, out var routes) && routes.Count > 0)
-        {
-            allowedEvents = routes.Keys.ToList();
-            if (allowedEvents.Count == 1)
-                waitKey = allowedEvents[0];
-        }
+        var waitMetadata = BuildWaitNodeGraphMetadata(def, stateName);
 
         var nodeId = instance.Graph.AddNode(
             stateName,
@@ -444,8 +437,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             input: input,
             attempt: attempt,
             workerId: _workerId,
-            waitKey: waitKey,
-            allowedEvents: allowedEvents);
+            wait: waitMetadata);
         if (fromNodeId != null && edgeType != null)
         {
             instance.Graph.AddEdge(fromNodeId, nodeId, edgeType.Value);
@@ -764,6 +756,40 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 
     /// <inheritdoc />
     public void Dispose() => (_scheduler as IDisposable)?.Dispose();
+
+    /// <summary>コンパイル済み Wait 情報からグラフ用メタデータを構築する。</summary>
+    private static WaitNodeGraphMetadata? BuildWaitNodeGraphMetadata(
+        CompiledWorkflowDefinition def,
+        string stateName)
+    {
+        List<string>? allowedEvents = null;
+        string? waitKey = null;
+        if (def.WaitEventRouteTable.TryGetValue(stateName, out var routes) && routes.Count > 0)
+        {
+            allowedEvents = routes.Keys.ToList();
+            if (allowedEvents.Count == 1)
+                waitKey = allowedEvents[0];
+        }
+
+        IReadOnlyList<WaitSubscriptionSnapshot>? subscriptions = null;
+        if (def.WaitSubscriptions.TryGetValue(stateName, out var waitSubscriptions)
+            && waitSubscriptions.Count > 0)
+        {
+            subscriptions = waitSubscriptions
+                .Select(s => new WaitSubscriptionSnapshot
+                {
+                    Topic = s.Topic,
+                    Key = s.Key,
+                    ResumeEventName = s.ResumeEventName
+                })
+                .ToList();
+        }
+
+        if (allowedEvents is null && waitKey is null && subscriptions is null)
+            return null;
+
+        return new WaitNodeGraphMetadata(waitKey, allowedEvents, subscriptions);
+    }
 
     private static string ResolveNodeType(CompiledWorkflowDefinition def, string stateName)
     {

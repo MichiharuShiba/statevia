@@ -139,7 +139,15 @@ public sealed class ExecutionInstance
                 {
                     NodeId = n.NodeId,
                     StateName = n.StateName,
-                    AllowedEvents = n.AllowedEvents?.ToList() ?? []
+                    AllowedEvents = n.AllowedEvents?.ToList() ?? [],
+                    Subscriptions = n.Subscriptions?
+                        .Select(s => new CheckpointWaitSubscription
+                        {
+                            Topic = s.Topic,
+                            Key = s.Key,
+                            ResumeEventName = s.ResumeEventName
+                        })
+                        .ToList()
                 })
                 .ToList();
 

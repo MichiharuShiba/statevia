@@ -1090,7 +1090,7 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
 
         // Assert
-        Assert.Contains("must have 'events' or 'event'", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("must have 'events', 'subscribe'", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>fork の branches が 1 件のとき拒否する。</summary>

@@ -45,6 +45,12 @@ internal static class NodesSchemaLiteral
 
     public const string KeyAssignees = "assignees";
 
+    public const string KeySubscribe = "subscribe";
+
+    public const string KeyTopic = "topic";
+
+    public const string KeyKey = "key";
+
     public const string KeyExits = "exits";
 
     public const string KeyBranches = "branches";

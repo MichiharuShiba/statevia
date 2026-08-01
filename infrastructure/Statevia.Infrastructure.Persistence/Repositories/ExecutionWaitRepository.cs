@@ -3,7 +3,7 @@ using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Infrastructure.Persistence.Repositories;
 
-/// <summary>execution_waits 永続化。</summary>
+/// <summary>execution_waits / execution_wait_subscriptions 永続化。</summary>
 internal sealed class ExecutionWaitRepository(IDbContextFactory<CoreDbContext> dbFactory) : IExecutionWaitRepository
 {
     /// <inheritdoc />
@@ -13,14 +13,16 @@ internal sealed class ExecutionWaitRepository(IDbContextFactory<CoreDbContext> d
         IReadOnlyList<ExecutionWaitRow> waits,
         CancellationToken ct)
     {
-        var existingRows = await uow.GetDb().ExecutionWaits
+        var db = uow.GetDb();
+        var existingRows = await db.ExecutionWaits
             .Where(x => x.ExecutionId == executionId)
             .ToListAsync(ct)
             .ConfigureAwait(false);
 
         var desiredNodeIds = waits.Select(x => x.NodeId).ToHashSet(StringComparer.Ordinal);
-        foreach (var stale in existingRows.Where(x => !desiredNodeIds.Contains(x.NodeId)))
-            uow.GetDb().ExecutionWaits.Remove(stale);
+        var staleRows = existingRows.Where(x => !desiredNodeIds.Contains(x.NodeId)).ToList();
+        if (staleRows.Count > 0)
+            db.ExecutionWaits.RemoveRange(staleRows);
 
         var existingByNodeId = existingRows.ToDictionary(x => x.NodeId, StringComparer.Ordinal);
         foreach (var wait in waits)
@@ -30,24 +32,43 @@ internal sealed class ExecutionWaitRepository(IDbContextFactory<CoreDbContext> d
                 existing.WaitKind = wait.WaitKind;
                 existing.AllowedEvents = wait.AllowedEvents;
                 existing.ExpiresAt = wait.ExpiresAt;
-                existing.CorrelationKey = wait.CorrelationKey;
-                existing.Topic = wait.Topic;
                 existing.CreatedAt = wait.CreatedAt;
                 continue;
             }
 
-            uow.GetDb().ExecutionWaits.Add(new ExecutionWaitRow
+            db.ExecutionWaits.Add(new ExecutionWaitRow
             {
                 ExecutionId = executionId,
                 NodeId = wait.NodeId,
                 WaitKind = wait.WaitKind,
                 AllowedEvents = wait.AllowedEvents,
                 ExpiresAt = wait.ExpiresAt,
-                CorrelationKey = wait.CorrelationKey,
-                Topic = wait.Topic,
                 CreatedAt = wait.CreatedAt
             });
         }
+
+        var existingSubscriptions = await db.ExecutionWaitSubscriptions
+            .Where(x => x.ExecutionId == executionId)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+        db.ExecutionWaitSubscriptions.RemoveRange(existingSubscriptions);
+
+        var subscriptionRows = waits
+            .SelectMany(wait => wait.Subscriptions.Select(subscription => new ExecutionWaitSubscriptionRow
+            {
+                SubscriptionId = subscription.SubscriptionId == Guid.Empty
+                    ? Guid.NewGuid()
+                    : subscription.SubscriptionId,
+                ExecutionId = executionId,
+                NodeId = wait.NodeId,
+                Topic = subscription.Topic,
+                CorrelationKey = subscription.CorrelationKey,
+                ResumeEventName = subscription.ResumeEventName,
+                CreatedAt = subscription.CreatedAt == default ? wait.CreatedAt : subscription.CreatedAt
+            }))
+            .ToList();
+        if (subscriptionRows.Count > 0)
+            db.ExecutionWaitSubscriptions.AddRange(subscriptionRows);
     }
 
     /// <inheritdoc />
@@ -64,6 +85,7 @@ internal sealed class ExecutionWaitRepository(IDbContextFactory<CoreDbContext> d
         if (rows.Count == 0)
             return;
 
+        // 子購読は FK CASCADE で削除される。
         uow.GetDb().ExecutionWaits.RemoveRange(rows);
     }
 
@@ -103,27 +125,28 @@ internal sealed class ExecutionWaitRepository(IDbContextFactory<CoreDbContext> d
             .ConfigureAwait(false);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<ExecutionWaitRow>> ListMatchingEventWaitsAsync(
+    public async Task<IReadOnlyList<MatchingWaitSubscription>> ListMatchingSubscriptionsAsync(
         ICoreUnitOfWork uow,
-        string eventName,
-        string? correlationKey,
-        string? topic,
+        string topic,
+        string correlationKey,
         CancellationToken ct)
     {
-        var candidates = await uow.GetDb().ExecutionWaits
-            .Where(wait =>
-                wait.WaitKind == ExecutionWaitKind.EventWait
-                && wait.CorrelationKey == correlationKey
-                && wait.Topic == topic)
-            .OrderBy(wait => wait.CreatedAt)
-            .ThenBy(wait => wait.ExecutionId)
-            .ThenBy(wait => wait.NodeId)
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+        ArgumentNullException.ThrowIfNull(correlationKey);
+
+        return await uow.GetDb().ExecutionWaitSubscriptions
+            .AsNoTracking()
+            .Where(subscription =>
+                subscription.Topic == topic
+                && subscription.CorrelationKey == correlationKey)
+            .OrderBy(subscription => subscription.CreatedAt)
+            .ThenBy(subscription => subscription.ExecutionId)
+            .ThenBy(subscription => subscription.NodeId)
+            .Select(subscription => new MatchingWaitSubscription(
+                subscription.ExecutionId,
+                subscription.NodeId,
+                subscription.ResumeEventName))
             .ToListAsync(ct)
             .ConfigureAwait(false);
-
-        return candidates
-            .Where(wait => wait.AllowedEvents.Any(allowed =>
-                string.Equals(allowed, eventName, StringComparison.OrdinalIgnoreCase)))
-            .ToList();
     }
 }

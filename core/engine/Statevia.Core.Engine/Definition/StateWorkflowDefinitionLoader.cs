@@ -115,34 +115,82 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
             throw new ArgumentException("wait.exits is not supported; use wait.events.");
         }
 
+        EnsureWaitModesAreExclusive(waitDict);
+
+        var assignees = GetStrList(waitDict, "assignees");
+        if (HasKeyIgnoreCase(waitDict, "subscribe"))
+            return ParseSubscribeWait(waitDict, assignees);
+
+        if (HasKeyIgnoreCase(waitDict, "events"))
+            return ParseEventsWait(waitDict, assignees);
+
+        return ParseLegacyEventWait(waitDict, on, assignees);
+    }
+
+    /// <summary>events / subscribe / 旧 event の同時指定を拒否する。</summary>
+    private static void EnsureWaitModesAreExclusive(Dictionary<string, object?> waitDict)
+    {
         var hasEvents = HasKeyIgnoreCase(waitDict, "events");
+        var hasSubscribe = HasKeyIgnoreCase(waitDict, "subscribe");
         var legacyEvent = GetStr(waitDict, "event");
         if (hasEvents && !string.IsNullOrWhiteSpace(legacyEvent))
         {
             throw new ArgumentException("wait.events and wait.event cannot be used together.");
         }
 
-        var assignees = GetStrList(waitDict, "assignees");
-
-        if (hasEvents)
+        if (hasEvents && hasSubscribe)
         {
-            var eventsKey = waitDict.Keys.First(k => string.Equals(k, "events", StringComparison.OrdinalIgnoreCase));
-            var events = ParseWaitEventsMap(waitDict[eventsKey]);
-            if (events.Count == 0 && (assignees == null || assignees.Count == 0))
-            {
-                return null;
-            }
-
-            return new WaitDefinition { Events = events, Assignees = assignees };
+            throw new ArgumentException("wait.events and wait.subscribe cannot be used together.");
         }
+    }
 
+    /// <summary>subscribe モードの Wait 定義を構築する。</summary>
+    private static WaitDefinition? ParseSubscribeWait(
+        Dictionary<string, object?> waitDict,
+        IReadOnlyList<string>? assignees)
+    {
+        var subscribeKey = waitDict.Keys.First(k => string.Equals(k, "subscribe", StringComparison.OrdinalIgnoreCase));
+        var subscribe = ParseWaitSubscribeList(waitDict[subscribeKey]);
+        if (subscribe.Count == 0 && (assignees == null || assignees.Count == 0))
+            return null;
+
+        return new WaitDefinition
+        {
+            Subscribe = subscribe,
+            Assignees = assignees
+        };
+    }
+
+    /// <summary>events モードの Wait 定義を構築する。</summary>
+    private static WaitDefinition? ParseEventsWait(
+        Dictionary<string, object?> waitDict,
+        IReadOnlyList<string>? assignees)
+    {
+        var eventsKey = waitDict.Keys.First(k => string.Equals(k, "events", StringComparison.OrdinalIgnoreCase));
+        var events = ParseWaitEventsMap(waitDict[eventsKey]);
+        if (events.Count == 0 && (assignees == null || assignees.Count == 0))
+            return null;
+
+        return new WaitDefinition
+        {
+            Events = events,
+            Assignees = assignees
+        };
+    }
+
+    /// <summary>旧形式 wait.event を events へ正規化する。</summary>
+    private static WaitDefinition? ParseLegacyEventWait(
+        Dictionary<string, object?> waitDict,
+        IReadOnlyDictionary<string, TransitionDefinition>? on,
+        IReadOnlyList<string>? assignees)
+    {
+        var legacyEvent = GetStr(waitDict, "event");
         if (string.IsNullOrWhiteSpace(legacyEvent))
         {
             if (assignees is { Count: > 0 })
             {
                 return new WaitDefinition
                 {
-                    Events = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
                     Assignees = assignees
                 };
             }
@@ -150,7 +198,6 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
             return null;
         }
 
-        // 旧形式: wait.event + on.Completed.next → events
         var next = string.Empty;
         if (on != null && on.TryGetValue("Completed", out var completed))
         {
@@ -165,6 +212,35 @@ public sealed class StateWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
             },
             Assignees = assignees
         };
+    }
+
+    /// <summary>wait.subscribe 配列を読み取る。</summary>
+    private static List<WaitSubscribeEntry> ParseWaitSubscribeList(object? subscribeVal)
+    {
+        if (subscribeVal is not System.Collections.IEnumerable enumerable || subscribeVal is string)
+        {
+            throw new ArgumentException("wait.subscribe must be a list of objects.");
+        }
+
+        var result = new List<WaitSubscribeEntry>();
+        foreach (var item in enumerable)
+        {
+            if (item == null)
+                continue;
+
+            var dict = ToStringDict(item);
+            var topic = GetStr(dict, "topic");
+            var key = GetStr(dict, "key");
+            var next = GetStr(dict, "next");
+            result.Add(new WaitSubscribeEntry
+            {
+                Topic = topic?.Trim() ?? string.Empty,
+                Key = string.IsNullOrWhiteSpace(key) ? string.Empty : key.Trim(),
+                Next = next?.Trim() ?? string.Empty
+            });
+        }
+
+        return result;
     }
 
     /// <summary>

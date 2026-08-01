@@ -43,8 +43,7 @@ public sealed class ExecutionGraph
     /// <param name="input">状態入力。</param>
     /// <param name="attempt">試行回数。</param>
     /// <param name="workerId">ワーカー識別子。</param>
-    /// <param name="waitKey">単一イベント Wait の互換キー。</param>
-    /// <param name="allowedEvents">Wait の許可イベント名一覧。</param>
+    /// <param name="wait">Wait ノード用の観測メタデータ（任意）。</param>
     /// <returns>採番されたノード ID。</returns>
     public string AddNode(
         string stateName,
@@ -52,8 +51,7 @@ public sealed class ExecutionGraph
         object? input = null,
         int attempt = 1,
         string? workerId = null,
-        string? waitKey = null,
-        IReadOnlyList<string>? allowedEvents = null)
+        WaitNodeGraphMetadata? wait = null)
     {
         var nodeId = Guid.NewGuid().ToString("N")[..8];
         lock (_lock)
@@ -67,8 +65,9 @@ public sealed class ExecutionGraph
                 Input = input,
                 Attempt = attempt,
                 WorkerId = workerId ?? nodeId,
-                WaitKey = waitKey,
-                AllowedEvents = allowedEvents
+                WaitKey = wait?.WaitKey,
+                AllowedEvents = wait?.AllowedEvents,
+                Subscriptions = wait?.Subscriptions
             });
         }
         return nodeId;
@@ -141,6 +140,7 @@ public sealed class ExecutionGraph
                     WorkerId = node.WorkerId,
                     WaitKey = node.WaitKey,
                     AllowedEvents = node.AllowedEvents,
+                    Subscriptions = MapSubscriptions(node.Subscriptions),
                     CanceledByExecution = node.CanceledByExecution
                 });
             }
@@ -178,6 +178,7 @@ public sealed class ExecutionGraph
                     WorkerId = n.WorkerId,
                     WaitKey = n.WaitKey,
                     AllowedEvents = n.AllowedEvents,
+                    Subscriptions = MapCheckpointSubscriptions(n.Subscriptions),
                     CanceledByExecution = n.CanceledByExecution
                 }).ToList(),
                 Edges = _edges.Select(e => new CheckpointGraphEdge
@@ -198,4 +199,35 @@ public sealed class ExecutionGraph
             return JsonSerializer.Serialize(new { nodes = _nodes, edges = _edges }, s_jsonOptions);
         }
     }
+
+    private static List<WaitSubscriptionSnapshot>? MapSubscriptions(
+        IReadOnlyList<CheckpointWaitSubscription>? subscriptions) =>
+        subscriptions?
+            .Select(s => new WaitSubscriptionSnapshot
+            {
+                Topic = s.Topic,
+                Key = s.Key,
+                ResumeEventName = s.ResumeEventName
+            })
+            .ToList();
+
+    private static List<CheckpointWaitSubscription>? MapCheckpointSubscriptions(
+        IReadOnlyList<WaitSubscriptionSnapshot>? subscriptions) =>
+        subscriptions?
+            .Select(s => new CheckpointWaitSubscription
+            {
+                Topic = s.Topic,
+                Key = s.Key,
+                ResumeEventName = s.ResumeEventName
+            })
+            .ToList();
 }
+
+/// <summary>グラフノードへ載せる Wait 観測メタデータ。</summary>
+/// <param name="WaitKey">単一イベント Wait の互換キー。</param>
+/// <param name="AllowedEvents">Wait の許可イベント名一覧。</param>
+/// <param name="Subscriptions">集合配送購読スナップショット。</param>
+public sealed record WaitNodeGraphMetadata(
+    string? WaitKey = null,
+    IReadOnlyList<string>? AllowedEvents = null,
+    IReadOnlyList<WaitSubscriptionSnapshot>? Subscriptions = null);

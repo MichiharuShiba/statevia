@@ -125,6 +125,9 @@ public sealed class CheckpointGraphNode
     /// <summary>許可イベント。</summary>
     public IReadOnlyList<string>? AllowedEvents { get; init; }
 
+    /// <summary>Wait.subscribe 購読一覧。</summary>
+    public IReadOnlyList<CheckpointWaitSubscription>? Subscriptions { get; init; }
+
     /// <summary>実行キャンセル由来か。</summary>
     public bool CanceledByExecution { get; init; }
 }
@@ -176,4 +179,20 @@ public sealed class CheckpointPendingWait
 
     /// <summary>許可イベント。</summary>
     public required IReadOnlyList<string> AllowedEvents { get; init; }
+
+    /// <summary>Wait.subscribe 購読一覧。</summary>
+    public IReadOnlyList<CheckpointWaitSubscription>? Subscriptions { get; init; }
+}
+
+/// <summary>チェックポイント上の Wait 購読エントリ。</summary>
+public sealed class CheckpointWaitSubscription
+{
+    /// <summary>購読トピック。</summary>
+    public required string Topic { get; init; }
+
+    /// <summary>相関キー（未指定は空文字）。</summary>
+    public required string Key { get; init; }
+
+    /// <summary>Resume 用内部イベント名。</summary>
+    public required string ResumeEventName { get; init; }
 }

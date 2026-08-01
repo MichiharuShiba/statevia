@@ -99,19 +99,36 @@ public sealed class ConditionExpressionDefinition
     public object? Value { get; init; }
 }
 
-/// <summary>Wait State のイベント → 遷移先定義。</summary>
+/// <summary>Wait State のイベント / 購読定義。</summary>
 /// <remarks>
-/// <para>DSL 正本は <c>wait.events</c>（イベント名 → 遷移先状態名）。</para>
+/// <para>DSL は Signal（<see cref="Events"/>）と Subscribe（<see cref="Subscribe"/>）の二モードで排他。</para>
 /// <para>旧 <c>wait.event</c> + <c>on.Completed</c> は Loader が <see cref="Events"/> へ正規化する。</para>
 /// <para><see cref="Assignees"/> は Phase 2 の認可枠（構文保持のみ）。</para>
 /// </remarks>
 public sealed class WaitDefinition
 {
-    /// <summary>イベント名 → 遷移先状態名。</summary>
-    public required IReadOnlyDictionary<string, string> Events { get; init; }
+    /// <summary>イベント名 → 遷移先状態名（Signal モード）。</summary>
+    public IReadOnlyDictionary<string, string> Events { get; init; }
+        = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>集合配送購読（Subscribe モード）。</summary>
+    public IReadOnlyList<WaitSubscribeEntry> Subscribe { get; init; } = Array.Empty<WaitSubscribeEntry>();
 
     /// <summary>担当者枠（Phase 2。Loader は保持のみ）。</summary>
     public IReadOnlyList<string>? Assignees { get; init; }
+}
+
+/// <summary>Wait.subscribe の 1 エントリ（DSL）。</summary>
+public sealed class WaitSubscribeEntry
+{
+    /// <summary>購読トピック（必須）。</summary>
+    public required string Topic { get; init; }
+
+    /// <summary>相関キー（未指定は空文字）。</summary>
+    public string Key { get; init; } = string.Empty;
+
+    /// <summary>再開時の遷移先状態名。</summary>
+    public required string Next { get; init; }
 }
 
 /// <summary>Join の all 依存定義。</summary>

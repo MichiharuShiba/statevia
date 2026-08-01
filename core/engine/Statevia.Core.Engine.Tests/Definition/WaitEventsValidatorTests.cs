@@ -53,7 +53,7 @@ public sealed class WaitEventsValidatorTests
         WaitEventsValidator.Validate("Wait", state, stateNames, errors);
 
         // Assert
-        Assert.Contains(errors, e => e.Contains("must not be empty", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(errors, e => e.Contains("must specify events or subscribe", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Next が空なら失敗する（FSM フォールバックはしない）。</summary>
@@ -91,6 +91,8 @@ public sealed class WaitEventsValidatorTests
     [InlineData(Fact.Failed)]
     [InlineData(Fact.Cancelled)]
     [InlineData(Fact.Joined)]
+    [InlineData("statevia.event.delay.completed")]
+    [InlineData("statevia.event.subscribe.0")]
     public void Validate_ReservedEventName_Fails(string reserved)
     {
         // Arrange
@@ -219,6 +221,61 @@ public sealed class WaitEventsValidatorTests
 
         // Assert
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.Contains("must not be empty", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Errors, e => e.Contains("must specify events or subscribe", StringComparison.OrdinalIgnoreCase));
+    }
+
+
+    /// <summary>events と subscribe の同時指定は拒否される。</summary>
+    [Fact]
+    public void Validate_BothEventsAndSubscribe_Fails()
+    {
+        // Arrange
+        var stateNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Wait", "Done" };
+        var state = new StateDefinition
+        {
+            Wait = new WaitDefinition
+            {
+                Events = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["approve"] = "Done"
+                },
+                Subscribe =
+                [
+                    new WaitSubscribeEntry { Topic = "orders.updated", Next = "Done" }
+                ]
+            }
+        };
+        var errors = new List<string>();
+
+        // Act
+        WaitEventsValidator.Validate("Wait", state, stateNames, errors);
+
+        // Assert
+        Assert.Contains(errors, e => e.Contains("both events and subscribe", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>subscribe のみなら検証は通る。</summary>
+    [Fact]
+    public void Validate_SubscribeOnly_Succeeds()
+    {
+        // Arrange
+        var stateNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Wait", "Done" };
+        var state = new StateDefinition
+        {
+            Wait = new WaitDefinition
+            {
+                Subscribe =
+                [
+                    new WaitSubscribeEntry { Topic = "orders.updated", Key = "order-1", Next = "Done" }
+                ]
+            }
+        };
+        var errors = new List<string>();
+
+        // Act
+        WaitEventsValidator.Validate("Wait", state, stateNames, errors);
+
+        // Assert
+        Assert.Empty(errors);
     }
 }

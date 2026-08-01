@@ -1,15 +1,17 @@
 # スキーマ定義
 
-Version: 1.13
+Version: 1.14
 Project: 実行型ステートマシン
 
 **Version 1.7（2026-05-27）**: task 8 — `execution_cursors` / `execution_waits` 追加（operational projection / EventWait durable wait）。
 
-**Version 1.13（2026-07-31）**: DelayWait / TimerFire の Resume イベント名を `statevia.delay.completed` に固定（`ExecutionWaitEventNames.DelayCompleted`）。
+**Version 1.14（2026-08-01）**: `execution_wait_subscriptions` 子テーブルを追加。`execution_waits` から `correlation_key` / `topic` を削除（購読は子行の厳密一致）。
+
+**Version 1.13（2026-07-31）**: DelayWait / TimerFire の Resume イベント名を `statevia.event.delay.completed` に固定（`ExecutionWaitEventNames.DelayCompleted`）。プラットフォーム予約名前空間は `statevia.event.*`。
 
 **Version 1.12（2026-07-30）**: `execution_runtime_checkpoints` を追記（再開可能なランタイム状態の文書ストア。Application 契約は `IExecutionCheckpointStore` / `ExecutionCheckpointDocument`）。
 
-**Version 1.11（2026-07-30）**: `execution_work_items`（lease 付き永続ワークキュー）を追加。`execution_waits` に `correlation_key` / `topic` を追加。
+**Version 1.11（2026-07-30）**: `execution_work_items`（lease 付き永続ワークキュー）を追加。`execution_waits` に `correlation_key` / `topic` を追加（1.14 で子テーブルへ移行）。
 
 **Version 1.10（2026-07-29）**: `execution_waits` — `resume_token` 削除、`allowed_events jsonb` 追加（1 Wait = 1 行。Resume 削除キーは `node_id`）。
 
@@ -267,13 +269,27 @@ project の **認可 truth**。付与先はテナント単位（Principal 単位
 | execution_id | uuid | PK, FK → executions, NOT NULL | 実行 ID |
 | node_id | varchar(64) | PK, NOT NULL | 待機中 Wait ノード ID（Resume 成功時の削除キー） |
 | wait_kind | varchar(32) | NOT NULL | EventWait / CallbackWait / DelayWait |
-| allowed_events | jsonb | NOT NULL | 許可イベント名配列（EventWait は WaitEventRouteTable 由来。DelayWait は `statevia.delay.completed` のみ） |
+| allowed_events | jsonb | NOT NULL | 許可イベント名配列（EventWait は WaitEventRouteTable 由来。DelayWait は `statevia.event.delay.completed` のみ。Subscribe は `statevia.event.subscribe.{index}`） |
 | expires_at | timestamptz | NULL | 期限（EventWait は null。DelayWait は必須） |
-| correlation_key | varchar(256) | NULL | ingress イベントとの相関キー |
-| topic | varchar(256) | NULL | ingress イベントのトピック |
 | created_at | timestamptz | NOT NULL | 作成日時 |
 
-**主キー:** `(execution_id, node_id)`（1 Wait ノード = 1 行）。旧 `(execution_id, resume_token)` インデックスは廃止。**インデックス:** `(correlation_key, topic)`。
+**主キー:** `(execution_id, node_id)`（1 Wait ノード = 1 行）。旧 `(execution_id, resume_token)` インデックスは廃止。集合配送の購読条件は子テーブル `execution_wait_subscriptions`。
+
+### 2.10.2a execution_wait_subscriptions
+
+Wait の `subscribe` 購読（1 Wait ノードあたり 0 件以上）。`POST /v1/events` の照合対象。
+
+| カラム | 型 | 制約 | 説明 |
+| --- | --- | --- | --- |
+| subscription_id | uuid | PK, NOT NULL | 購読行 ID |
+| execution_id | uuid | FK → execution_waits, NOT NULL | 実行 ID |
+| node_id | varchar(64) | FK → execution_waits, NOT NULL | Wait ノード ID |
+| topic | varchar(256) | NOT NULL | 購読トピック |
+| correlation_key | varchar(256) | NOT NULL | 正規化済み key（未指定は空文字） |
+| resume_event_name | varchar(256) | NOT NULL | Resume に渡す内部イベント名 |
+| created_at | timestamptz | NOT NULL | 作成日時 |
+
+**外部キー:** `(execution_id, node_id)` → `execution_waits` ON DELETE CASCADE。**インデックス:** `(topic, correlation_key)`。照合は両列の厳密一致（NULL 比較なし）。
 
 ### 2.10.2b execution_runtime_checkpoints
 
@@ -790,6 +806,7 @@ erDiagram
 | `20260608093652_AddExecutionSecuritySnapshot` | `executions.security_snapshot_json` 追加（E4） |
 | `20260729152815_AddExecutionRuntimeCheckpoints` | `execution_runtime_checkpoints`（ランタイムチェックポイント文書）を追加 |
 | `20260729153444_AddExecutionWorkItemsAndWaitRouting` | `execution_work_items` と `execution_waits` の topic / correlation routing 列を追加 |
+| `20260801112928_AddExecutionWaitSubscriptions` | `execution_wait_subscriptions` 追加、`execution_waits` の routing 列削除 |
 
 適用: `cd service/api && dotnet ef database update --project Statevia.Service.Api`
 

@@ -154,13 +154,37 @@ internal static class ExecutionOperationalProjectionSync
                     WaitKind = ExecutionWaitKind.EventWait,
                     AllowedEvents = allowedEvents,
                     ExpiresAt = null,
-                    CorrelationKey = NormalizeOptional(n.CorrelationKey),
-                    Topic = NormalizeOptional(n.Topic),
-                    CreatedAt = nowUtc
+                    CreatedAt = nowUtc,
+                    Subscriptions = ExtractSubscriptions(executionId, n.NodeId!, n.Subscriptions, nowUtc)
                 };
             })
             .Where(row => row is not null)
             .Select(row => row!)
+            .ToList();
+    }
+
+    /// <summary>グラフの subscriptions を子テーブル行へ写像する。</summary>
+    private static IReadOnlyList<ExecutionWaitSubscriptionRow> ExtractSubscriptions(
+        Guid executionId,
+        string nodeId,
+        List<GraphSubscriptionDto>? subscriptions,
+        DateTime nowUtc)
+    {
+        if (subscriptions is null || subscriptions.Count == 0)
+            return Array.Empty<ExecutionWaitSubscriptionRow>();
+
+        return subscriptions
+            .Where(s => !string.IsNullOrWhiteSpace(s.Topic) && !string.IsNullOrWhiteSpace(s.ResumeEventName))
+            .Select(s => new ExecutionWaitSubscriptionRow
+            {
+                SubscriptionId = Guid.NewGuid(),
+                ExecutionId = executionId,
+                NodeId = nodeId,
+                Topic = s.Topic!.Trim(),
+                CorrelationKey = NormalizeKey(s.Key),
+                ResumeEventName = s.ResumeEventName!.Trim(),
+                CreatedAt = nowUtc
+            })
             .ToList();
     }
 
@@ -193,9 +217,9 @@ internal static class ExecutionOperationalProjectionSync
     private static bool HasConfiguredWaitEvents(GraphNodeDto node) =>
         ResolveAllowedEvents(node).Count > 0;
 
-    /// <summary>グラフの任意文字列を DB の nullable routing 条件へ正規化する。</summary>
-    private static string? NormalizeOptional(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    /// <summary>key 未指定・空白を空文字へ正規化する。</summary>
+    private static string NormalizeKey(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
 
     private static bool TryParseGraph(string graphJson, out List<GraphNodeDto> nodes)
     {
@@ -248,10 +272,19 @@ internal static class ExecutionOperationalProjectionSync
         [JsonPropertyName("allowedEvents")]
         public List<string>? AllowedEvents { get; set; }
 
-        [JsonPropertyName("correlationKey")]
-        public string? CorrelationKey { get; set; }
+        [JsonPropertyName("subscriptions")]
+        public List<GraphSubscriptionDto>? Subscriptions { get; set; }
+    }
 
+    private sealed class GraphSubscriptionDto
+    {
         [JsonPropertyName("topic")]
         public string? Topic { get; set; }
+
+        [JsonPropertyName("key")]
+        public string? Key { get; set; }
+
+        [JsonPropertyName("resumeEventName")]
+        public string? ResumeEventName { get; set; }
     }
 }

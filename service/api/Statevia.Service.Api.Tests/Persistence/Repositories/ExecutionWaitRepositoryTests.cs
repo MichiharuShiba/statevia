@@ -184,4 +184,242 @@ public sealed class ExecutionWaitRepositoryTests
         Assert.Equal(["first"], rows[0].AllowedEvents);
         Assert.Equal(["second"], rows[1].AllowedEvents);
     }
+
+    /// <summary>ReplaceWaitsAsync は親 wait と同時に子購読を全置換する。</summary>
+    [Fact]
+    public async Task ReplaceWaitsAsync_ReplacesSubscriptionsForExecution()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new ExecutionWaitRepository(db.Factory);
+        var executionId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            ctx.Executions.Add(CreateExecution(executionId, now));
+            ctx.ExecutionWaits.Add(new ExecutionWaitRow
+            {
+                ExecutionId = executionId,
+                NodeId = "old-wait",
+                WaitKind = ExecutionWaitKind.EventWait,
+                AllowedEvents = ["statevia.event.subscribe.0"],
+                CreatedAt = now
+            });
+            ctx.ExecutionWaitSubscriptions.Add(new ExecutionWaitSubscriptionRow
+            {
+                SubscriptionId = Guid.NewGuid(),
+                ExecutionId = executionId,
+                NodeId = "old-wait",
+                Topic = "stale.topic",
+                CorrelationKey = "",
+                ResumeEventName = "statevia.event.subscribe.0",
+                CreatedAt = now
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        var desired = new[]
+        {
+            new ExecutionWaitRow
+            {
+                ExecutionId = executionId,
+                NodeId = "wait-node",
+                WaitKind = ExecutionWaitKind.EventWait,
+                AllowedEvents = ["statevia.event.subscribe.0", "statevia.event.subscribe.1"],
+                CreatedAt = now,
+                Subscriptions =
+                [
+                    new ExecutionWaitSubscriptionRow
+                    {
+                        SubscriptionId = Guid.NewGuid(),
+                        ExecutionId = executionId,
+                        NodeId = "wait-node",
+                        Topic = "inventory.received",
+                        CorrelationKey = "SKU-1",
+                        ResumeEventName = "statevia.event.subscribe.0",
+                        CreatedAt = now
+                    },
+                    new ExecutionWaitSubscriptionRow
+                    {
+                        SubscriptionId = Guid.NewGuid(),
+                        ExecutionId = executionId,
+                        NodeId = "wait-node",
+                        Topic = "inventory.returned",
+                        CorrelationKey = "",
+                        ResumeEventName = "statevia.event.subscribe.1",
+                        CreatedAt = now
+                    }
+                ]
+            }
+        };
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        await repo.ReplaceWaitsAsync(uow, executionId, desired, CancellationToken.None);
+        await uow.SaveChangesAsync(CancellationToken.None);
+
+        // Assert
+        await using var verify = new CoreDbContext(db.Options);
+        var waits = await verify.ExecutionWaits.Where(x => x.ExecutionId == executionId).ToListAsync();
+        var subscriptions = await verify.ExecutionWaitSubscriptions
+            .Where(x => x.ExecutionId == executionId)
+            .OrderBy(x => x.ResumeEventName)
+            .ToListAsync();
+        Assert.Single(waits);
+        Assert.Equal("wait-node", waits[0].NodeId);
+        Assert.Equal(2, subscriptions.Count);
+        Assert.Equal("inventory.received", subscriptions[0].Topic);
+        Assert.Equal("SKU-1", subscriptions[0].CorrelationKey);
+        Assert.Equal("inventory.returned", subscriptions[1].Topic);
+        Assert.Equal("", subscriptions[1].CorrelationKey);
+    }
+
+    /// <summary>topic+空 key は厳密一致のみ返す。</summary>
+    [Fact]
+    public async Task ListMatchingSubscriptionsAsync_MatchesEmptyKeyExactly()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new ExecutionWaitRepository(db.Factory);
+        var executionId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        await SeedSubscriptionAsync(
+            db,
+            executionId,
+            "wait-a",
+            "orders.updated",
+            "",
+            "statevia.event.subscribe.0",
+            now);
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var emptyKeyMatches = await repo.ListMatchingSubscriptionsAsync(
+            uow, "orders.updated", "", CancellationToken.None);
+        var keyedMatches = await repo.ListMatchingSubscriptionsAsync(
+            uow, "orders.updated", "order-1", CancellationToken.None);
+
+        // Assert
+        Assert.Single(emptyKeyMatches);
+        Assert.Equal(executionId, emptyKeyMatches[0].ExecutionId);
+        Assert.Equal("statevia.event.subscribe.0", emptyKeyMatches[0].ResumeEventName);
+        Assert.Empty(keyedMatches);
+    }
+
+    /// <summary>topic+非空 key は厳密一致のみ返す。</summary>
+    [Fact]
+    public async Task ListMatchingSubscriptionsAsync_MatchesNonEmptyKeyExactly()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new ExecutionWaitRepository(db.Factory);
+        var executionId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        await SeedSubscriptionAsync(
+            db,
+            executionId,
+            "wait-a",
+            "orders.updated",
+            "order-1",
+            "statevia.event.subscribe.0",
+            now);
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var keyedMatches = await repo.ListMatchingSubscriptionsAsync(
+            uow, "orders.updated", "order-1", CancellationToken.None);
+        var emptyKeyMatches = await repo.ListMatchingSubscriptionsAsync(
+            uow, "orders.updated", "", CancellationToken.None);
+        var otherKeyMatches = await repo.ListMatchingSubscriptionsAsync(
+            uow, "orders.updated", "order-2", CancellationToken.None);
+
+        // Assert
+        Assert.Single(keyedMatches);
+        Assert.Equal("wait-a", keyedMatches[0].NodeId);
+        Assert.Empty(emptyKeyMatches);
+        Assert.Empty(otherKeyMatches);
+    }
+
+    /// <summary>同一 topic+key の複数購読をすべて返す。</summary>
+    [Fact]
+    public async Task ListMatchingSubscriptionsAsync_ReturnsMultipleMatches()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new ExecutionWaitRepository(db.Factory);
+        var execution1 = Guid.NewGuid();
+        var execution2 = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        await SeedSubscriptionAsync(
+            db, execution1, "wait-a", "inventory.received", "SKU-1", "statevia.event.subscribe.0", now);
+        await SeedSubscriptionAsync(
+            db, execution2, "wait-b", "inventory.received", "SKU-1", "statevia.event.subscribe.0", now.AddSeconds(1));
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var matches = await repo.ListMatchingSubscriptionsAsync(
+            uow, "inventory.received", "SKU-1", CancellationToken.None);
+
+        // Assert
+        Assert.Equal(2, matches.Count);
+        Assert.Contains(matches, m => m.ExecutionId == execution1 && m.NodeId == "wait-a");
+        Assert.Contains(matches, m => m.ExecutionId == execution2 && m.NodeId == "wait-b");
+    }
+
+    private static ExecutionRow CreateExecution(Guid executionId, DateTime now) =>
+        new()
+        {
+            ExecutionId = executionId,
+            TenantId = TestTenantIds.T1TenantId,
+            DefinitionId = Guid.NewGuid(),
+            DefinitionVersionId = Guid.NewGuid(),
+            Status = "Running",
+            StartedAt = now,
+            UpdatedAt = now,
+            CancelRequested = false,
+            RestartLost = false
+        };
+
+    private static async Task SeedSubscriptionAsync(
+        InMemoryTestDatabase db,
+        Guid executionId,
+        string nodeId,
+        string topic,
+        string correlationKey,
+        string resumeEventName,
+        DateTime createdAt)
+    {
+        await using var ctx = new CoreDbContext(db.Options);
+        if (!await ctx.Executions.AnyAsync(x => x.ExecutionId == executionId))
+            ctx.Executions.Add(CreateExecution(executionId, createdAt));
+
+        if (!await ctx.ExecutionWaits.AnyAsync(x => x.ExecutionId == executionId && x.NodeId == nodeId))
+        {
+            ctx.ExecutionWaits.Add(new ExecutionWaitRow
+            {
+                ExecutionId = executionId,
+                NodeId = nodeId,
+                WaitKind = ExecutionWaitKind.EventWait,
+                AllowedEvents = [resumeEventName],
+                CreatedAt = createdAt
+            });
+        }
+
+        ctx.ExecutionWaitSubscriptions.Add(new ExecutionWaitSubscriptionRow
+        {
+            SubscriptionId = Guid.NewGuid(),
+            ExecutionId = executionId,
+            NodeId = nodeId,
+            Topic = topic,
+            CorrelationKey = correlationKey,
+            ResumeEventName = resumeEventName,
+            CreatedAt = createdAt
+        });
+        await ctx.SaveChangesAsync();
+    }
 }

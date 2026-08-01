@@ -2,6 +2,19 @@ using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Core.Engine.ExecutionGraphs;
 
+/// <summary>実行グラフ上の Wait 購読スナップショット。</summary>
+public sealed class WaitSubscriptionSnapshot
+{
+    /// <summary>購読トピック。</summary>
+    public required string Topic { get; init; }
+
+    /// <summary>相関キー（未指定は空文字）。</summary>
+    public required string Key { get; init; }
+
+    /// <summary>Resume 用内部イベント名。</summary>
+    public required string ResumeEventName { get; init; }
+}
+
 /// <summary>
 /// 実行グラフのノード。1 回の状態実行を表します。
 /// デバッグ・可視化用であり、実行には影響しません。
@@ -37,6 +50,9 @@ public sealed class ExecutionNode
     /// Wait ノードが受付可能なイベント名一覧（WaitEventRouteTable のキー）。非 Wait では null。
     /// </summary>
     public IReadOnlyList<string>? AllowedEvents { get; set; }
+
+    /// <summary>Wait.subscribe の投影（Subscribe モード。Signal では null または空）。</summary>
+    public IReadOnlyList<WaitSubscriptionSnapshot>? Subscriptions { get; set; }
 
     /// <summary>実行全体によりキャンセルされたかどうか。</summary>
     public bool CanceledByExecution { get; set; }

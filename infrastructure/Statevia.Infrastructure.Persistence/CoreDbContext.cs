@@ -95,6 +95,8 @@ internal class CoreDbContext : DbContext, ICoreDatabase
         public const string AllowedEvents = "allowed_events";
         public const string CorrelationKey = "correlation_key";
         public const string Topic = "topic";
+        public const string ResumeEventName = "resume_event_name";
+        public const string SubscriptionId = "subscription_id";
         public const string AvailableAt = "available_at";
         public const string LeaseOwner = "lease_owner";
         public const string LeaseUntil = "lease_until";
@@ -133,6 +135,7 @@ internal class CoreDbContext : DbContext, ICoreDatabase
     public DbSet<ExecutionGraphSnapshotRow> ExecutionGraphSnapshots => Set<ExecutionGraphSnapshotRow>();
     public DbSet<ExecutionCursorRow> ExecutionCursors => Set<ExecutionCursorRow>();
     public DbSet<ExecutionWaitRow> ExecutionWaits => Set<ExecutionWaitRow>();
+    public DbSet<ExecutionWaitSubscriptionRow> ExecutionWaitSubscriptions => Set<ExecutionWaitSubscriptionRow>();
     public DbSet<ExecutionCheckpointDocument> ExecutionCheckpoints => Set<ExecutionCheckpointDocument>();
     public DbSet<ExecutionWorkItemRow> ExecutionWorkItems => Set<ExecutionWorkItemRow>();
     public DbSet<CommandDedupRow> CommandDedup => Set<CommandDedupRow>();
@@ -342,14 +345,32 @@ internal class CoreDbContext : DbContext, ICoreDatabase
                             (hash, item) => HashCode.Combine(hash, StringComparer.Ordinal.GetHashCode(item))),
                         list => list.ToList()));
             e.Property(x => x.ExpiresAt).HasColumnName(Columns.ExpiresAt);
-            e.Property(x => x.CorrelationKey).HasMaxLength(256).HasColumnName(Columns.CorrelationKey);
-            e.Property(x => x.Topic).HasMaxLength(256).HasColumnName(Columns.Topic);
             e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
-            e.HasIndex(x => new { x.CorrelationKey, x.Topic });
+            e.Ignore(x => x.Subscriptions);
 
             e.HasOne<ExecutionRow>()
                 .WithMany()
                 .HasForeignKey(x => x.ExecutionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // execution_wait_subscriptions（Wait.subscribe の購読行）
+        modelBuilder.Entity<ExecutionWaitSubscriptionRow>(e =>
+        {
+            e.ToTable("execution_wait_subscriptions");
+            e.HasKey(x => x.SubscriptionId);
+            e.Property(x => x.SubscriptionId).HasColumnName(Columns.SubscriptionId);
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
+            e.Property(x => x.NodeId).HasMaxLength(64).HasColumnName(Columns.NodeId);
+            e.Property(x => x.Topic).HasMaxLength(256).IsRequired().HasColumnName(Columns.Topic);
+            e.Property(x => x.CorrelationKey).HasMaxLength(256).IsRequired().HasColumnName(Columns.CorrelationKey);
+            e.Property(x => x.ResumeEventName).HasMaxLength(256).IsRequired().HasColumnName(Columns.ResumeEventName);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.HasIndex(x => new { x.Topic, x.CorrelationKey });
+
+            e.HasOne<ExecutionWaitRow>()
+                .WithMany()
+                .HasForeignKey(x => new { x.ExecutionId, x.NodeId })
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

@@ -530,13 +530,12 @@ public sealed class ExecutionServiceTests
             CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<ExecutionWaitRow>>(Array.Empty<ExecutionWaitRow>());
 
-        public Task<IReadOnlyList<ExecutionWaitRow>> ListMatchingEventWaitsAsync(
+        public Task<IReadOnlyList<MatchingWaitSubscription>> ListMatchingSubscriptionsAsync(
             ICoreUnitOfWork uow,
-            string eventName,
-            string? correlationKey,
-            string? topic,
+            string topic,
+            string correlationKey,
             CancellationToken ct) =>
-            Task.FromResult<IReadOnlyList<ExecutionWaitRow>>(Array.Empty<ExecutionWaitRow>());
+            Task.FromResult<IReadOnlyList<MatchingWaitSubscription>>(Array.Empty<MatchingWaitSubscription>());
     }
 
     private sealed class FakeEventStoreRepository : IEventStoreRepository
