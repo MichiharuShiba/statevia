@@ -169,15 +169,9 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // Engine からの通知は executionId(string) で届くので Guid へ変換して queue へ流す。
+        // ステップ完了ごとに checkpoint（Unload なし）を先に永続化し、続けて投影更新を enqueue する。
         _executionEngine.SetNodeCompletedHandler(executionId =>
-        {
-            if (!Guid.TryParse(executionId, out var parsedExecutionId))
-            {
-                return Task.CompletedTask;
-            }
-
-            return EnqueueAsync(parsedExecutionId, stoppingToken);
-        });
+            HandleNodeCompletedAsync(executionId, stoppingToken));
 
         _executionEngine.SetSuspendHandler(async (executionId, nodeId) =>
         {
@@ -219,6 +213,40 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
         });
 
         return RunWorkerLoopAsync(stoppingToken);
+    }
+
+    /// <summary>
+    /// ステップ完了: keep-loaded checkpoint ののち投影更新を enqueue する。
+    /// </summary>
+    private async Task HandleNodeCompletedAsync(string engineExecutionId, CancellationToken ct)
+    {
+        if (!Guid.TryParse(engineExecutionId, out var parsedExecutionId))
+            return;
+
+        using var scope = _scopeFactory.CreateScope();
+        var platformData = scope.ServiceProvider.GetRequiredService<IPlatformDataAccess>();
+        var tenantLookup = await platformData
+            .FindExecutionTenantAsync(parsedExecutionId, ct)
+            .ConfigureAwait(false);
+        if (tenantLookup is not null)
+        {
+            var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
+            var executions = scope.ServiceProvider.GetRequiredService<IExecutionService>();
+            var tenantState = new TenantContextState(
+                tenantLookup.TenantId,
+                tenantLookup.TenantKey,
+                PrincipalId: null,
+                tenantLookup.Lifecycle);
+
+            await TenantExecutionScope
+                .RunAsync(
+                    accessor,
+                    tenantState,
+                    () => executions.PersistCheckpointKeepLoadedAsync(engineExecutionId, ct))
+                .ConfigureAwait(false);
+        }
+
+        await EnqueueAsync(parsedExecutionId, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

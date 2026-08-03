@@ -15,6 +15,14 @@ public interface IExecutionService
         CancellationToken ct);
 
     /// <summary>
+    /// 受理済み実行の Start work item を同一プロセスで実行する（Worker 用）。
+    /// </summary>
+    Task<ExecutionResponse> ExecuteQueuedStartAsync(
+        Guid executionId,
+        StartExecutionRequest request,
+        CancellationToken ct);
+
+    /// <summary>
     /// ページング一覧を返す。クエリの status・definitionId・name 等で絞り込む。
     /// </summary>
     Task<PagedResult<ExecutionResponse>> ListPagedAsync(
@@ -48,6 +56,17 @@ public interface IExecutionService
         string nodeId,
         string? resumeKey,
         string? idempotencyKey,
+        CommandRequestContext requestContext,
+        CancellationToken ct);
+
+    /// <summary>
+    /// 所有喪失後の継続再開（checkpoint hydrate）。Wait イベントは消費しない。
+    /// </summary>
+    /// <param name="executionId">実行 ID。</param>
+    /// <param name="requestContext">コマンド文脈（Worker 等）。</param>
+    /// <param name="ct">キャンセル。</param>
+    Task RecoverExecutionAsync(
+        Guid executionId,
         CommandRequestContext requestContext,
         CancellationToken ct);
 
@@ -89,4 +108,35 @@ public interface IExecutionService
         string engineExecutionId,
         string nodeId,
         CancellationToken ct);
+
+    /// <summary>
+    /// ステップ完了時に checkpoint を保存する（Unload しない）。
+    /// </summary>
+    /// <param name="engineExecutionId">Engine 辞書キー。</param>
+    /// <param name="ct">キャンセル。</param>
+    Task PersistCheckpointKeepLoadedAsync(string engineExecutionId, CancellationToken ct);
+
+    /// <summary>
+    /// Worker セッションの所有を獲得しトラッカーへ登録する。
+    /// </summary>
+    /// <returns>獲得後の世代。失敗時は null。</returns>
+    Task<long?> BeginOwnedSessionAsync(
+        Guid executionId,
+        string workerId,
+        TimeSpan leaseDuration,
+        CancellationToken ct);
+
+    /// <summary>所有 lease を延長する（世代一致）。</summary>
+    Task<bool> RenewOwnedSessionLeaseAsync(
+        Guid executionId,
+        TimeSpan leaseDuration,
+        CancellationToken ct);
+
+    /// <summary>所有を解放しトラッカーから削除する。</summary>
+    Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct);
+
+    /// <summary>
+    /// lease 喪失時にローカル Engine を Unload しトラッカーを捨てる（DB 所有は触らない）。
+    /// </summary>
+    Task AbandonLocalOwnedSessionAsync(Guid executionId);
 }

@@ -105,6 +105,8 @@ internal class CoreDbContext : DbContext, ICoreDatabase
         public const string SecuritySnapshotJson = "security_snapshot_json";
         public const string Payload = "payload";
         public const string CheckpointJson = "checkpoint_json";
+        public const string OwnerWorkerId = "owner_worker_id";
+        public const string OwnerGeneration = "owner_generation";
     }
 
     private static class ColumnTypes
@@ -383,6 +385,10 @@ internal class CoreDbContext : DbContext, ICoreDatabase
             e.Property(x => x.CheckpointJson).HasColumnName(Columns.CheckpointJson);
             e.Property(x => x.SchemaVersion).HasColumnName(Columns.SchemaVersion);
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
+            e.Property(x => x.OwnerWorkerId).HasMaxLength(128).HasColumnName(Columns.OwnerWorkerId);
+            e.Property(x => x.LeaseUntil).HasColumnName(Columns.LeaseUntil);
+            e.Property(x => x.OwnerGeneration).HasColumnName(Columns.OwnerGeneration);
+            e.HasIndex(x => x.LeaseUntil);
 
             e.HasOne<ExecutionRow>()
                 .WithMany()

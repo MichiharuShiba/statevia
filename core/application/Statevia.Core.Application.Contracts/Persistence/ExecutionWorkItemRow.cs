@@ -11,9 +11,6 @@ public static class ExecutionWorkItemKinds
 
     /// <summary>実行のキャンセル。</summary>
     public const string Cancel = "Cancel";
-
-    /// <summary>DelayWait の期限到達。</summary>
-    public const string TimerFire = "TimerFire";
 }
 
 /// <summary>

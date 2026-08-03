@@ -75,6 +75,7 @@ internal static class ServiceCollectionExtensions
         services.AddHostedService(sp => sp.GetRequiredService<ExecutionProjectionUpdateQueueService>());
         services.AddHostedService<ExecutionWorkItemWorkerHostedService>();
         services.AddHostedService<DelayWaitSchedulerHostedService>();
+        services.AddHostedService<ExecutionOwnershipRecoveryHostedService>();
         services.AddScoped<ExecutionStreamService>();
         services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
         services.AddHttpClient();

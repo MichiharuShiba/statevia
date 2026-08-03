@@ -492,6 +492,64 @@ public sealed class ExecutionServiceTests
             ICoreUnitOfWork uow,
             Guid executionId,
             CancellationToken ct) => Task.CompletedTask;
+
+        public Task<long?> TryAcquireOwnershipAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            string workerId,
+            DateTime leaseUntilUtc,
+            ExecutionCheckpointDocument? seed,
+            CancellationToken ct) =>
+            Task.FromResult<long?>(1);
+
+        public Task<long?> TrySeizeExpiredOwnershipAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            string workerId,
+            DateTime nowUtc,
+            DateTime newLeaseUntilUtc,
+            CancellationToken ct) =>
+            Task.FromResult<long?>(null);
+
+        public Task<bool> TryRenewOwnershipLeaseAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            long ownerGeneration,
+            DateTime leaseUntilUtc,
+            CancellationToken ct) =>
+            Task.FromResult(true);
+
+        public Task<bool> TryUpsertRuntimeWithGenerationAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            long ownerGeneration,
+            string checkpointJson,
+            int schemaVersion,
+            DateTime updatedAtUtc,
+            DateTime? leaseUntilUtc,
+            CancellationToken ct) =>
+            Task.FromResult(true);
+
+        public Task<bool> TryClearOwnershipAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            long ownerGeneration,
+            CancellationToken ct) =>
+            Task.FromResult(true);
+
+        public Task<IReadOnlyList<Guid>> ListExpiredOwnedExecutionIdsAsync(
+            ICoreUnitOfWork uow,
+            DateTime nowUtc,
+            int limit,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<Guid>>([]);
+
+        public Task<bool> TryBumpGenerationAndClearExpiredOwnerAsync(
+            ICoreUnitOfWork uow,
+            Guid executionId,
+            DateTime nowUtc,
+            CancellationToken ct) =>
+            Task.FromResult(false);
     }
 
     private sealed class FakeExecutionWaitRepository : IExecutionWaitRepository

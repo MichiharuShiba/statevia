@@ -60,4 +60,14 @@ public interface IExecutionWorkQueue
     /// <param name="availableAt">再投入可能となる UTC 時刻。</param>
     /// <param name="ct">キャンセル トークン。</param>
     Task ReleaseAsync(Guid workItemId, string leaseOwner, DateTime availableAt, CancellationToken ct);
+
+    /// <summary>
+    /// 期限切れ所有を世代 +1・所有者なしにしたうえで、同一トランザクションで
+    /// <c>Resume mode=recovery</c> を enqueue する。
+    /// </summary>
+    /// <returns>投入した recovery 件数。</returns>
+    Task<int> EnqueueExpiredOwnershipRecoveriesAsync(
+        DateTime nowUtc,
+        int limit,
+        CancellationToken ct);
 }

@@ -35,6 +35,7 @@ public sealed class EventIngressServiceTests
         Assert.Equal(ExecutionWorkItemKinds.Resume, item.Kind);
         var payload = JsonSerializer.Deserialize<ExecutionResumeWorkItemPayload>(item.Payload);
         Assert.NotNull(payload);
+        Assert.Equal(ExecutionResumeWorkItemModes.Event, payload.Mode);
         Assert.Equal("WaitNode", payload.NodeId);
         Assert.Equal("statevia.event.subscribe.0", payload.EventName);
     }
@@ -184,6 +185,12 @@ public sealed class EventIngressServiceTests
             Guid workItemId,
             string leaseOwner,
             DateTime availableAt,
+            CancellationToken ct) =>
+            throw new NotImplementedException();
+
+        public Task<int> EnqueueExpiredOwnershipRecoveriesAsync(
+            DateTime nowUtc,
+            int limit,
             CancellationToken ct) =>
             throw new NotImplementedException();
     }

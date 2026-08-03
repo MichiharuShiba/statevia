@@ -4,25 +4,36 @@ using Microsoft.Extensions.Hosting;
 
 namespace Statevia.Service.Api.Services;
 
-/// <summary>期限切れ DelayWait を TimerFire ワークとして永続キューへ投入するスケジューラー。</summary>
+/// <summary>
+/// DelayWait 期限をスキャンし、<c>Resume mode=event</c>（delay.completed）を投入するスケジューラー。
+/// </summary>
+/// <remarks>
+/// <para>checkpoint 所有の期限切れ recovery は <see cref="ExecutionOwnershipRecoveryHostedService"/> が担う。</para>
+/// <para>
+/// 1 回の取得件数が <see cref="BatchLimit"/> 未満なら <see cref="IdlePollInterval"/> 待機する。
+/// 上限いっぱいなら残件がある可能性が高いため待機せず次イテレーションへ進む。
+/// </para>
+/// </remarks>
 internal sealed class DelayWaitSchedulerHostedService(
     IServiceScopeFactory scopeFactory,
     ILogger<DelayWaitSchedulerHostedService> logger) : BackgroundService
 {
-    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan IdlePollInterval = TimeSpan.FromSeconds(5);
+    private const int BatchLimit = 64;
 
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
+            var waitBeforeNextPoll = true;
             try
             {
                 using var scope = scopeFactory.CreateScope();
                 var waits = scope.ServiceProvider.GetRequiredService<IExecutionWaitRepository>();
                 var queue = scope.ServiceProvider.GetRequiredService<IExecutionWorkQueue>();
                 var now = DateTime.UtcNow;
-                var expired = await waits.ListExpiredDelayWaitsAsync(now, limit: 64, stoppingToken).ConfigureAwait(false);
+                var expired = await waits.ListExpiredDelayWaitsAsync(now, BatchLimit, stoppingToken).ConfigureAwait(false);
                 if (expired.Count > 0)
                 {
                     var items = expired
@@ -30,8 +41,9 @@ internal sealed class DelayWaitSchedulerHostedService(
                         {
                             WorkItemId = Guid.NewGuid(),
                             ExecutionId = wait.ExecutionId,
-                            Kind = ExecutionWorkItemKinds.TimerFire,
+                            Kind = ExecutionWorkItemKinds.Resume,
                             Payload = JsonSerializer.Serialize(new ExecutionResumeWorkItemPayload(
+                                ExecutionResumeWorkItemModes.Event,
                                 wait.NodeId,
                                 ExecutionWaitEventNames.DelayCompleted)),
                             AvailableAt = now,
@@ -41,6 +53,9 @@ internal sealed class DelayWaitSchedulerHostedService(
                         .ToList();
                     await queue.EnqueueManyAsync(items, stoppingToken).ConfigureAwait(false);
                 }
+
+                // 上限いっぱいなら残バッチがある可能性が高いので idle 待機をスキップする。
+                waitBeforeNextPoll = expired.Count < BatchLimit;
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -50,11 +65,12 @@ internal sealed class DelayWaitSchedulerHostedService(
             catch (Exception exception)
             {
                 logger.SchedulingIterationFailed(exception);
+                waitBeforeNextPoll = true;
             }
 #pragma warning restore CA1031
 
-            // 空結果でも必ず待機する（continue すると Delay を飛ばして CPU/ログを食い続ける）。
-            await Task.Delay(PollInterval, stoppingToken).ConfigureAwait(false);
+            if (waitBeforeNextPoll)
+                await Task.Delay(IdlePollInterval, stoppingToken).ConfigureAwait(false);
         }
     }
 }

@@ -161,4 +161,76 @@ internal static partial class ExecutionServiceLogMessages
         int attempt,
         long elapsedMs,
         string errorCode);
+
+    [LoggerMessage(
+        EventId = 3006,
+        Level = LogLevel.Information,
+        Message = "Persisted runtime checkpoint and unloaded execution after start-sync. ExecutionId={executionId}")]
+    public static partial void CheckpointUnloadedAfterStartSync(this ILogger logger, Guid executionId);
+
+    [LoggerMessage(
+        EventId = 3007,
+        Level = LogLevel.Warning,
+        Message = "ExportCheckpoint returned null while durable waits were present. ExecutionId={executionId}")]
+    public static partial void ExportCheckpointNullWithDurableWaits(this ILogger logger, string executionId);
+
+    [LoggerMessage(
+        EventId = 3008,
+        Level = LogLevel.Warning,
+        Message = "Skip keep-loaded checkpoint because engine execution id is not a Guid. EngineExecutionId={engineExecutionId}")]
+    public static partial void SkipKeepLoadedCheckpointInvalidExecutionId(this ILogger logger, string engineExecutionId);
+
+    [LoggerMessage(
+        EventId = 3009,
+        Level = LogLevel.Warning,
+        Message = "Keep-loaded checkpoint rejected by fencing. ExecutionId={executionId}")]
+    public static partial void KeepLoadedCheckpointRejectedByFencing(this ILogger logger, Guid executionId);
+
+    [LoggerMessage(
+        EventId = 3010,
+        Level = LogLevel.Debug,
+        Message = "Unload during abandon. ExecutionId={executionId}")]
+    public static partial void UnloadDuringAbandon(this ILogger logger, Exception exception, Guid executionId);
+
+    [LoggerMessage(
+        EventId = 3011,
+        Level = LogLevel.Warning,
+        Message = "Timed out waiting for Wait node to complete. NodeId={nodeId} ExecutionId={executionId}")]
+    public static partial void WaitNodeCompletionTimedOut(this ILogger logger, string nodeId, string executionId);
+
+    [LoggerMessage(
+        EventId = 3012,
+        Level = LogLevel.Warning,
+        Message = "Timed out waiting for execution to quiesce after Wait resume. ExecutionId={executionId}")]
+    public static partial void WaitResumeQuiesceTimedOut(this ILogger logger, string executionId);
+
+    [LoggerMessage(
+        EventId = 3013,
+        Level = LogLevel.Warning,
+        Message = "Skip checkpoint persist because engine execution id is not a Guid. EngineExecutionId={engineExecutionId}")]
+    public static partial void SkipCheckpointPersistInvalidExecutionId(this ILogger logger, string engineExecutionId);
+
+    [LoggerMessage(
+        EventId = 3014,
+        Level = LogLevel.Warning,
+        Message = "ExportCheckpoint returned null; skip unload. ExecutionId={executionId} NodeId={nodeId}")]
+    public static partial void ExportCheckpointNullSkipUnload(this ILogger logger, string executionId, string nodeId);
+
+    [LoggerMessage(
+        EventId = 3015,
+        Level = LogLevel.Warning,
+        Message = "Unload after Wait because ownership fencing was lost. NodeId={nodeId} ExecutionId={executionId}")]
+    public static partial void UnloadAfterWaitFencingLost(this ILogger logger, string nodeId, Guid executionId);
+
+    [LoggerMessage(
+        EventId = 3016,
+        Level = LogLevel.Information,
+        Message = "Persisted runtime checkpoint and unloaded execution after Wait. ExecutionId={executionId} NodeId={nodeId}")]
+    public static partial void CheckpointUnloadedAfterWait(this ILogger logger, Guid executionId, string nodeId);
+
+    [LoggerMessage(
+        EventId = 3017,
+        Level = LogLevel.Information,
+        Message = "Persisted runtime checkpoint and unloaded execution after projection-sync. ExecutionId={executionId}")]
+    public static partial void CheckpointUnloadedAfterProjectionSync(this ILogger logger, Guid executionId);
 }

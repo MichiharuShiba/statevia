@@ -93,6 +93,13 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         }
 
         public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+        public Task RecoverExecutionAsync(Guid executionId, CommandRequestContext requestContext, CancellationToken ct) => Task.CompletedTask;
+        public Task<ExecutionResponse> ExecuteQueuedStartAsync(Guid executionId, StartExecutionRequest request, CancellationToken ct) => Task.FromResult(new ExecutionResponse());
+        public Task PersistCheckpointKeepLoadedAsync(string engineExecutionId, CancellationToken ct) => Task.CompletedTask;
+        public Task<long?> BeginOwnedSessionAsync(Guid executionId, string workerId, TimeSpan leaseDuration, CancellationToken ct) => Task.FromResult<long?>(1);
+        public Task<bool> RenewOwnedSessionLeaseAsync(Guid executionId, TimeSpan leaseDuration, CancellationToken ct) => Task.FromResult(true);
+        public Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
+        public Task AbandonLocalOwnedSessionAsync(Guid executionId) => Task.CompletedTask;
         public Task PersistCheckpointAndUnloadByEngineIdAsync(string engineExecutionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
 
 
@@ -151,6 +158,13 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         }
 
         public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+        public Task RecoverExecutionAsync(Guid executionId, CommandRequestContext requestContext, CancellationToken ct) => Task.CompletedTask;
+        public Task<ExecutionResponse> ExecuteQueuedStartAsync(Guid executionId, StartExecutionRequest request, CancellationToken ct) => Task.FromResult(new ExecutionResponse());
+        public Task PersistCheckpointKeepLoadedAsync(string engineExecutionId, CancellationToken ct) => Task.CompletedTask;
+        public Task<long?> BeginOwnedSessionAsync(Guid executionId, string workerId, TimeSpan leaseDuration, CancellationToken ct) => Task.FromResult<long?>(1);
+        public Task<bool> RenewOwnedSessionLeaseAsync(Guid executionId, TimeSpan leaseDuration, CancellationToken ct) => Task.FromResult(true);
+        public Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
+        public Task AbandonLocalOwnedSessionAsync(Guid executionId) => Task.CompletedTask;
         public Task PersistCheckpointAndUnloadByEngineIdAsync(string engineExecutionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
 
 
@@ -207,6 +221,13 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         }
 
         public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
+        public Task RecoverExecutionAsync(Guid executionId, CommandRequestContext requestContext, CancellationToken ct) => Task.CompletedTask;
+        public Task<ExecutionResponse> ExecuteQueuedStartAsync(Guid executionId, StartExecutionRequest request, CancellationToken ct) => Task.FromResult(new ExecutionResponse());
+        public Task PersistCheckpointKeepLoadedAsync(string engineExecutionId, CancellationToken ct) => Task.CompletedTask;
+        public Task<long?> BeginOwnedSessionAsync(Guid executionId, string workerId, TimeSpan leaseDuration, CancellationToken ct) => Task.FromResult<long?>(1);
+        public Task<bool> RenewOwnedSessionLeaseAsync(Guid executionId, TimeSpan leaseDuration, CancellationToken ct) => Task.FromResult(true);
+        public Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
+        public Task AbandonLocalOwnedSessionAsync(Guid executionId) => Task.CompletedTask;
         public Task PersistCheckpointAndUnloadByEngineIdAsync(string engineExecutionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
 
 

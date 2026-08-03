@@ -66,6 +66,8 @@ internal sealed class ExecutionService : IExecutionService
     private readonly IExecutionCursorRepository _executionCursors;
     private readonly IExecutionWaitRepository _executionWaits;
     private readonly IExecutionCheckpointStore _checkpointStore;
+    private readonly IExecutionWorkQueue? _workQueue;
+    private readonly ExecutionOwnershipTracker _ownership;
     private readonly IDefinitionRepository _definitions;
     private readonly IProjectAuthorizationService _projectAuth;
     private readonly IRuntimePermissionAuthorization _runtimeAuth;
@@ -112,7 +114,9 @@ internal sealed class ExecutionService : IExecutionService
         IOptions<EventDeliveryRetryOptions> eventDeliveryRetryOptions,
         ICorrelationIdAccessor correlationIdAccessor,
         IExecutionCheckpointStore checkpointStore,
-        IExecutionProjectionUpdateQueue? projectionUpdateQueue = null)
+        IExecutionProjectionUpdateQueue? projectionUpdateQueue = null,
+        IExecutionWorkQueue? workQueue = null,
+        ExecutionOwnershipTracker? ownershipTracker = null)
     {
         _engine = engine;
         _displayIds = displayIds;
@@ -123,6 +127,8 @@ internal sealed class ExecutionService : IExecutionService
         _executionCursors = executionCursors;
         _executionWaits = executionWaits;
         _checkpointStore = checkpointStore;
+        _workQueue = workQueue;
+        _ownership = ownershipTracker ?? new ExecutionOwnershipTracker();
         _definitions = definitions;
         _projectAuth = projectAuth;
         _runtimeAuth = runtimeAuth;
@@ -171,43 +177,57 @@ internal sealed class ExecutionService : IExecutionService
 
         await EnsureCanExecuteOnDefinitionAsync(tenantId, defUuid.Value, ct).ConfigureAwait(false);
 
-        var compiled = RestoreCompiledDefinitionFromVersion(versionRow);
+        // HTTP 受理経路: キューがある場合は Engine を回さず Start work item を投入する。
+        // Worker 文脈（またはテストでキュー未注入）は従来どおり同一プロセスで実行する。
+        if (_workQueue is not null
+            && !string.Equals(requestContext.Method, "WORKER", StringComparison.Ordinal))
+        {
+            return await AcceptStartAndEnqueueAsync(
+                    request,
+                    requestHash,
+                    dedupKey,
+                    tenantId,
+                    defUuid.Value,
+                    versionRow,
+                    ct)
+                .ConfigureAwait(false);
+        }
 
+        return await ExecuteStartInProcessAsync(
+                request,
+                requestHash,
+                dedupKey,
+                tenantId,
+                defUuid.Value,
+                versionRow,
+                executionId: null,
+                ct)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>実行行を受理し <see cref="ExecutionWorkItemKinds.Start"/> を enqueue する。</summary>
+    private async Task<ExecutionResponse> AcceptStartAndEnqueueAsync(
+        StartExecutionRequest request,
+        string requestHash,
+        CommandDedupKey? dedupKey,
+        Guid tenantId,
+        Guid definitionId,
+        DefinitionVersionRow versionRow,
+        CancellationToken ct)
+    {
         var executionId = _idGenerator.NewGuid();
-        var engineId = executionId.ToString();
-        _engine.Start(compiled, engineId, request.Input);
+        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, definitionId.ToString("D"), ct).ConfigureAwait(false)
+            ?? definitionId.ToString("D");
+        const string emptyGraphJson = """{"nodes":[],"edges":[]}""";
 
-        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, defUuid.Value.ToString("D"), ct).ConfigureAwait(false)
-            ?? defUuid.Value.ToString("D");
-
-        var startResult = await _executor.ExecuteReadCommittedAsync(
+        var response = await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
             {
                 var createdAt = DateTime.UtcNow;
                 var securitySnapshot = await _snapshotFactory
-                    .CaptureForStartAsync(tenantId, defUuid.Value, createdAt, innerCt)
+                    .CaptureForStartAsync(tenantId, definitionId, createdAt, innerCt)
                     .ConfigureAwait(false);
                 var securitySnapshotJson = ExecutionSecuritySnapshotJson.Serialize(securitySnapshot);
-
-                // Start 直後に Wait へ到達している場合がある（高速 noop → Wait）。
-                // 投影用 graph は DB 書き込み直前に取得し、durable Wait があれば同一 tx で checkpoint も確定する。
-                var status = MapStatus(_engine.GetSnapshot(engineId));
-                var graphJson = _engine.ExportExecutionGraph(engineId);
-
-                var startedPayload = JsonSerializer.Serialize(
-                    new
-                    {
-                        definitionId = defUuid.Value.ToString(),
-                        definitionVersionId = versionRow.DefinitionVersionId.ToString(),
-                        definitionVersion = versionRow.Version,
-                        tenantId,
-                        startedByPrincipalId = securitySnapshot.StartedByPrincipalId,
-                        permissionSetHash = securitySnapshot.PermissionSetHash,
-                        securityModelVersion = securitySnapshot.SecurityModelVersion,
-                        evaluationMode = securitySnapshot.EvaluationMode.ToString()
-                    },
-                    CamelCaseJsonSerializerOptions);
-
                 var displayId = await _displayIdWrites
                     .AllocateAsync(uow, DisplayIdResourceTypes.Execution, executionId, innerCt)
                     .ConfigureAwait(false);
@@ -216,9 +236,9 @@ internal sealed class ExecutionService : IExecutionService
                 {
                     ExecutionId = executionId,
                     TenantId = tenantId,
-                    DefinitionId = defUuid.Value,
+                    DefinitionId = definitionId,
                     DefinitionVersionId = versionRow.DefinitionVersionId,
-                    Status = status,
+                    Status = ExecutionProjectionStatuses.Running,
                     StartedAt = createdAt,
                     UpdatedAt = createdAt,
                     CancelRequested = false,
@@ -228,46 +248,40 @@ internal sealed class ExecutionService : IExecutionService
                 var snapshotRow = new ExecutionGraphSnapshotRow
                 {
                     ExecutionId = executionId,
-                    GraphJson = graphJson,
+                    GraphJson = emptyGraphJson,
                     UpdatedAt = createdAt
                 };
-
-                var response = new ExecutionResponse
+                var accepted = new ExecutionResponse
                 {
                     DisplayId = displayId,
                     ResourceId = executionId,
                     GraphId = graphId,
-                    Status = status,
+                    Status = ExecutionProjectionStatuses.Running,
                     StartedAt = createdAt
                 };
 
                 await _executions.AddExecutionAndSnapshotAsync(uow, executionRow, snapshotRow, innerCt).ConfigureAwait(false);
-                await SyncOperationalProjectionAsync(
-                        uow,
-                        executionId,
+
+                var startedPayload = JsonSerializer.Serialize(
+                    new
+                    {
+                        definitionId = definitionId.ToString(),
+                        definitionVersionId = versionRow.DefinitionVersionId.ToString(),
+                        definitionVersion = versionRow.Version,
                         tenantId,
-                        status,
-                        graphJson,
-                        nodeIdToClear: null,
-                        innerCt)
-                    .ConfigureAwait(false);
-
-                // Start 中に Wait へ到達した場合、同一 tx で checkpoint を確定する。
-                var checkpointSaved = false;
-                if (string.Equals(status, ExecutionProjectionStatuses.Running, StringComparison.Ordinal)
-                    && ExecutionOperationalProjectionSync.HasDurableWaits(graphJson))
-                {
-                    checkpointSaved = await UpsertRuntimeCheckpointAsync(uow, engineId, executionId, innerCt)
-                        .ConfigureAwait(false);
-                }
-
+                        startedByPrincipalId = securitySnapshot.StartedByPrincipalId,
+                        permissionSetHash = securitySnapshot.PermissionSetHash,
+                        securityModelVersion = securitySnapshot.SecurityModelVersion,
+                        evaluationMode = securitySnapshot.EvaluationMode.ToString()
+                    },
+                    CamelCaseJsonSerializerOptions);
                 await _eventStore
                     .AppendAsync(uow, executionId, EventStoreEventType.WorkflowStarted, startedPayload, innerCt)
                     .ConfigureAwait(false);
 
                 if (dedupKey is { } saveKey)
                 {
-                    var responseJson = JsonSerializer.Serialize(response, CamelCaseJsonSerializerOptions);
+                    var responseJson = JsonSerializer.Serialize(accepted, CamelCaseJsonSerializerOptions);
                     await _dedup.SaveAsync(
                         uow,
                         new CommandDedupRow
@@ -284,6 +298,181 @@ internal sealed class ExecutionService : IExecutionService
                         innerCt).ConfigureAwait(false);
                 }
 
+                return accepted;
+            },
+            ct).ConfigureAwait(false);
+
+        var now = DateTime.UtcNow;
+        await _workQueue!.EnqueueAsync(
+            new ExecutionWorkItemRow
+            {
+                WorkItemId = _idGenerator.NewGuid(),
+                ExecutionId = executionId,
+                Kind = ExecutionWorkItemKinds.Start,
+                Payload = JsonSerializer.Serialize(
+                    new ExecutionStartWorkItemPayload(executionId, request),
+                    CamelCaseJsonSerializerOptions),
+                AvailableAt = now,
+                Attempts = 0,
+                CreatedAt = now
+            },
+            ct).ConfigureAwait(false);
+
+        return response;
+    }
+
+    /// <summary>同一プロセス内で Engine を起動し投影する（Worker / テスト互換）。</summary>
+    private async Task<ExecutionResponse> ExecuteStartInProcessAsync(
+        StartExecutionRequest request,
+        string requestHash,
+        CommandDedupKey? dedupKey,
+        Guid tenantId,
+        Guid definitionId,
+        DefinitionVersionRow versionRow,
+        Guid? executionId,
+        CancellationToken ct)
+    {
+        var compiled = RestoreCompiledDefinitionFromVersion(versionRow);
+        var resolvedExecutionId = executionId ?? _idGenerator.NewGuid();
+        var engineId = resolvedExecutionId.ToString();
+        _engine.Start(compiled, engineId, request.Input);
+
+        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, definitionId.ToString("D"), ct).ConfigureAwait(false)
+            ?? definitionId.ToString("D");
+
+        var startResult = await _executor.ExecuteReadCommittedAsync(
+            async (uow, innerCt) =>
+            {
+                var createdAt = DateTime.UtcNow;
+                var securitySnapshot = await _snapshotFactory
+                    .CaptureForStartAsync(tenantId, definitionId, createdAt, innerCt)
+                    .ConfigureAwait(false);
+                var securitySnapshotJson = ExecutionSecuritySnapshotJson.Serialize(securitySnapshot);
+
+                var status = MapStatus(_engine.GetSnapshot(engineId));
+                var graphJson = _engine.ExportExecutionGraph(engineId);
+
+                var startedPayload = JsonSerializer.Serialize(
+                    new
+                    {
+                        definitionId = definitionId.ToString(),
+                        definitionVersionId = versionRow.DefinitionVersionId.ToString(),
+                        definitionVersion = versionRow.Version,
+                        tenantId,
+                        startedByPrincipalId = securitySnapshot.StartedByPrincipalId,
+                        permissionSetHash = securitySnapshot.PermissionSetHash,
+                        securityModelVersion = securitySnapshot.SecurityModelVersion,
+                        evaluationMode = securitySnapshot.EvaluationMode.ToString()
+                    },
+                    CamelCaseJsonSerializerOptions);
+
+                ExecutionResponse response;
+                if (executionId is null)
+                {
+                    var displayId = await _displayIdWrites
+                        .AllocateAsync(uow, DisplayIdResourceTypes.Execution, resolvedExecutionId, innerCt)
+                        .ConfigureAwait(false);
+
+                    var executionRow = new ExecutionRow
+                    {
+                        ExecutionId = resolvedExecutionId,
+                        TenantId = tenantId,
+                        DefinitionId = definitionId,
+                        DefinitionVersionId = versionRow.DefinitionVersionId,
+                        Status = status,
+                        StartedAt = createdAt,
+                        UpdatedAt = createdAt,
+                        CancelRequested = false,
+                        RestartLost = false,
+                        SecuritySnapshotJson = securitySnapshotJson
+                    };
+                    var snapshotRow = new ExecutionGraphSnapshotRow
+                    {
+                        ExecutionId = resolvedExecutionId,
+                        GraphJson = graphJson,
+                        UpdatedAt = createdAt
+                    };
+                    response = new ExecutionResponse
+                    {
+                        DisplayId = displayId,
+                        ResourceId = resolvedExecutionId,
+                        GraphId = graphId,
+                        Status = status,
+                        StartedAt = createdAt
+                    };
+
+                    await _executions.AddExecutionAndSnapshotAsync(uow, executionRow, snapshotRow, innerCt).ConfigureAwait(false);
+                    await _eventStore
+                        .AppendAsync(uow, resolvedExecutionId, EventStoreEventType.WorkflowStarted, startedPayload, innerCt)
+                        .ConfigureAwait(false);
+
+                    if (dedupKey is { } saveKey)
+                    {
+                        var responseJson = JsonSerializer.Serialize(response, CamelCaseJsonSerializerOptions);
+                        await _dedup.SaveAsync(
+                            uow,
+                            new CommandDedupRow
+                            {
+                                DedupKey = saveKey.DedupKey,
+                                Endpoint = saveKey.Endpoint,
+                                IdempotencyKey = saveKey.IdempotencyKey,
+                                RequestHash = requestHash,
+                                StatusCode = HttpStatus201Created,
+                                ResponseBody = responseJson,
+                                CreatedAt = createdAt,
+                                ExpiresAt = createdAt.AddHours(24)
+                            },
+                            innerCt).ConfigureAwait(false);
+                    }
+                }
+                else
+                {
+                    // 受理済み行を Worker が実行: 投影のみ更新（WorkflowStarted は受理時済み）。
+                    var existing = await _executions.GetByIdAsync(uow, tenantId, resolvedExecutionId, innerCt).ConfigureAwait(false)
+                        ?? throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+                    var displayId = await _displayIds.GetDisplayIdAsync(
+                            DisplayIdResourceTypes.Execution,
+                            resolvedExecutionId.ToString("D"),
+                            innerCt)
+                        .ConfigureAwait(false)
+                        ?? resolvedExecutionId.ToString("D");
+                    response = new ExecutionResponse
+                    {
+                        DisplayId = displayId,
+                        ResourceId = resolvedExecutionId,
+                        GraphId = graphId,
+                        Status = status,
+                        StartedAt = existing.StartedAt
+                    };
+                    await _executions
+                        .UpdateExecutionAndSnapshotAsync(
+                            uow,
+                            resolvedExecutionId,
+                            status,
+                            cancelRequested: existing.CancelRequested,
+                            graphJson,
+                            innerCt)
+                        .ConfigureAwait(false);
+                }
+
+                await SyncOperationalProjectionAsync(
+                        uow,
+                        resolvedExecutionId,
+                        tenantId,
+                        status,
+                        graphJson,
+                        nodeIdToClear: null,
+                        innerCt)
+                    .ConfigureAwait(false);
+
+                var checkpointSaved = false;
+                if (string.Equals(status, ExecutionProjectionStatuses.Running, StringComparison.Ordinal)
+                    && ExecutionOperationalProjectionSync.HasDurableWaits(graphJson))
+                {
+                    checkpointSaved = await UpsertRuntimeCheckpointAsync(uow, engineId, resolvedExecutionId, innerCt)
+                        .ConfigureAwait(false);
+                }
+
                 return (Response: response, UnloadAfterCommit: checkpointSaved);
             },
             ct).ConfigureAwait(false);
@@ -291,12 +480,48 @@ internal sealed class ExecutionService : IExecutionService
         if (startResult.UnloadAfterCommit)
         {
             _engine.Unload(engineId);
-            _logger.LogInformation(
-                "Persisted runtime checkpoint and unloaded execution {ExecutionId} after start-sync.",
-                executionId);
+            _logger.CheckpointUnloadedAfterStartSync(resolvedExecutionId);
         }
 
         return startResult.Response;
+    }
+
+    /// <inheritdoc />
+    public async Task<ExecutionResponse> ExecuteQueuedStartAsync(
+        Guid executionId,
+        StartExecutionRequest request,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
+
+        var tenantId = _tenantContext.GetRequiredTenantId();
+        var execution = await _executor.ExecuteReadOnlyAsync(
+            (uow, innerCt) => _executions.GetByIdAsync(uow, tenantId, executionId, innerCt),
+            ct).ConfigureAwait(false);
+        if (execution is null)
+            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+
+        var versionRow = await _executor.ExecuteReadOnlyAsync(
+            (uow, innerCt) => _definitions.GetVersionForExecutionByIdAsync(
+                uow,
+                tenantId,
+                execution.DefinitionVersionId,
+                innerCt),
+            ct).ConfigureAwait(false);
+        if (versionRow is null)
+            throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
+
+        return await ExecuteStartInProcessAsync(
+                request,
+                requestHash: string.Empty,
+                dedupKey: null,
+                tenantId,
+                execution.DefinitionId,
+                versionRow,
+                executionId,
+                ct)
+            .ConfigureAwait(false);
     }
 
     /// <summary>
@@ -312,13 +537,26 @@ internal sealed class ExecutionService : IExecutionService
         var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
         if (checkpoint is null)
         {
-            _logger.LogWarning(
-                "ExportCheckpoint returned null for execution {ExecutionId} while durable waits were present.",
-                engineExecutionId);
+            _logger.ExportCheckpointNullWithDurableWaits(engineExecutionId);
             return false;
         }
 
         var json = JsonSerializer.Serialize(checkpoint, CamelCaseJsonSerializerOptions);
+        var updatedAt = DateTime.UtcNow;
+        if (_ownership.TryGet(executionId, out _, out var generation))
+        {
+            return await _checkpointStore.TryUpsertRuntimeWithGenerationAsync(
+                    uow,
+                    executionId,
+                    generation,
+                    json,
+                    checkpoint.SchemaVersion,
+                    updatedAt,
+                    leaseUntilUtc: null,
+                    ct)
+                .ConfigureAwait(false);
+        }
+
         await _checkpointStore.UpsertAsync(
             uow,
             new ExecutionCheckpointDocument
@@ -326,7 +564,7 @@ internal sealed class ExecutionService : IExecutionService
                 ExecutionId = executionId,
                 CheckpointJson = json,
                 SchemaVersion = checkpoint.SchemaVersion,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = updatedAt
             },
             ct).ConfigureAwait(false);
         return true;
@@ -471,6 +709,14 @@ internal sealed class ExecutionService : IExecutionService
 
         await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
+        // HTTP 受理経路: キューがある場合は Engine を回さず Cancel work item を投入する。
+        if (_workQueue is not null
+            && !string.Equals(requestContext.Method, "WORKER", StringComparison.Ordinal))
+        {
+            await AcceptCancelAndEnqueueAsync(uuid.Value, dedupKey, ct).ConfigureAwait(false);
+            return;
+        }
+
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
         var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
@@ -556,6 +802,207 @@ internal sealed class ExecutionService : IExecutionService
                     ctInner).ConfigureAwait(false);
             },
             ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Cancel work item を enqueue し、任意で dedup を保存する。</summary>
+    private async Task AcceptCancelAndEnqueueAsync(
+        Guid executionId,
+        CommandDedupKey? dedupKey,
+        CancellationToken ct)
+    {
+        if (dedupKey is { } saveKey)
+        {
+            var now = DateTime.UtcNow;
+            await _executor.ExecuteReadCommittedAsync(
+                async (uow, innerCt) =>
+                {
+                    await _dedup.SaveAsync(
+                        uow,
+                        new CommandDedupRow
+                        {
+                            DedupKey = saveKey.DedupKey,
+                            Endpoint = saveKey.Endpoint,
+                            IdempotencyKey = saveKey.IdempotencyKey,
+                            RequestHash = null,
+                            StatusCode = HttpStatus204NoContent,
+                            ResponseBody = null,
+                            CreatedAt = now,
+                            ExpiresAt = now.AddHours(24)
+                        },
+                        innerCt).ConfigureAwait(false);
+                },
+                ct).ConfigureAwait(false);
+        }
+
+        var enqueueAt = DateTime.UtcNow;
+        await _workQueue!.EnqueueAsync(
+            new ExecutionWorkItemRow
+            {
+                WorkItemId = _idGenerator.NewGuid(),
+                ExecutionId = executionId,
+                Kind = ExecutionWorkItemKinds.Cancel,
+                Payload = "{}",
+                AvailableAt = enqueueAt,
+                Attempts = 0,
+                CreatedAt = enqueueAt
+            },
+            ct).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task PersistCheckpointKeepLoadedAsync(string engineExecutionId, CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(engineExecutionId);
+        if (!Guid.TryParse(engineExecutionId, out var executionId))
+        {
+            _logger.SkipKeepLoadedCheckpointInvalidExecutionId(engineExecutionId);
+            return;
+        }
+
+        var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
+        if (checkpoint is null)
+            return;
+
+        var json = JsonSerializer.Serialize(checkpoint, CamelCaseJsonSerializerOptions);
+        var updatedAt = DateTime.UtcNow;
+
+        await _executor.ExecuteReadCommittedAsync(
+            async (uow, innerCt) =>
+            {
+                if (_ownership.TryGet(executionId, out _, out var generation))
+                {
+                    var ok = await _checkpointStore.TryUpsertRuntimeWithGenerationAsync(
+                            uow,
+                            executionId,
+                            generation,
+                            json,
+                            checkpoint.SchemaVersion,
+                            updatedAt,
+                            leaseUntilUtc: null,
+                            innerCt)
+                        .ConfigureAwait(false);
+                    if (!ok)
+                    {
+                        _logger.KeepLoadedCheckpointRejectedByFencing(executionId);
+                    }
+
+                    return;
+                }
+
+                await _checkpointStore.UpsertAsync(
+                        uow,
+                        new ExecutionCheckpointDocument
+                        {
+                            ExecutionId = executionId,
+                            CheckpointJson = json,
+                            SchemaVersion = checkpoint.SchemaVersion,
+                            UpdatedAt = updatedAt
+                        },
+                        innerCt)
+                    .ConfigureAwait(false);
+            },
+            ct).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<long?> BeginOwnedSessionAsync(
+        Guid executionId,
+        string workerId,
+        TimeSpan leaseDuration,
+        CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(leaseDuration, TimeSpan.Zero);
+
+        var leaseUntil = DateTime.UtcNow.Add(leaseDuration);
+        var generation = await _executor.ExecuteReadCommittedAsync(
+            async (uow, innerCt) =>
+            {
+                var seed = new ExecutionCheckpointDocument
+                {
+                    ExecutionId = executionId,
+                    CheckpointJson = "{}",
+                    SchemaVersion = ExecutionRuntimeCheckpoint.CurrentSchemaVersion,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                return await _checkpointStore.TryAcquireOwnershipAsync(
+                        uow,
+                        executionId,
+                        workerId,
+                        leaseUntil,
+                        seed,
+                        innerCt)
+                    .ConfigureAwait(false);
+            },
+            ct).ConfigureAwait(false);
+
+        if (generation is long gen)
+            _ownership.Set(executionId, workerId, gen);
+
+        return generation;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> RenewOwnedSessionLeaseAsync(
+        Guid executionId,
+        TimeSpan leaseDuration,
+        CancellationToken ct)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(leaseDuration, TimeSpan.Zero);
+        // Wait Unload 済みでトラッカーが空なら延長不要（失敗扱いにすると heartbeat が誤キャンセルする）。
+        if (!_ownership.TryGet(executionId, out _, out var generation))
+            return true;
+
+        var leaseUntil = DateTime.UtcNow.Add(leaseDuration);
+        return await _executor.ExecuteReadCommittedAsync(
+            (uow, innerCt) => _checkpointStore.TryRenewOwnershipLeaseAsync(
+                uow,
+                executionId,
+                generation,
+                leaseUntil,
+                innerCt),
+            ct).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct)
+    {
+        if (!_ownership.TryGet(executionId, out _, out var generation))
+            return;
+
+        try
+        {
+            await _executor.ExecuteReadCommittedAsync(
+                (uow, innerCt) => _checkpointStore.TryClearOwnershipAsync(
+                    uow,
+                    executionId,
+                    generation,
+                    innerCt),
+                ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _ownership.Clear(executionId);
+        }
+    }
+
+    /// <inheritdoc />
+    public Task AbandonLocalOwnedSessionAsync(Guid executionId)
+    {
+        _ownership.Clear(executionId);
+        var engineId = executionId.ToString();
+        try
+        {
+            _engine.Unload(engineId);
+        }
+#pragma warning disable CA1031 // ローカル放棄はベストエフォート。Unload 失敗で Worker を止めない。
+        catch (Exception exception)
+#pragma warning restore CA1031
+        {
+            _logger.UnloadDuringAbandon(exception, executionId);
+        }
+
+        return Task.CompletedTask;
     }
 
     public async Task PublishEventAsync(
@@ -992,6 +1439,59 @@ internal sealed class ExecutionService : IExecutionService
         await _projectionUpdateQueue.EnqueueAsync(uuid.Value, ct).ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
+    public async Task RecoverExecutionAsync(
+        Guid executionId,
+        CommandRequestContext requestContext,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(requestContext);
+        await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
+
+        var tenantId = _tenantContext.GetRequiredTenantId();
+        var execution = await _executor.ExecuteReadOnlyAsync(
+            (uow, innerCt) => _executions.GetByIdAsync(uow, tenantId, executionId, innerCt),
+            ct).ConfigureAwait(false);
+        if (execution is null)
+            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+
+        await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
+
+        if (IsTerminalExecutionProjectionStatus(execution.Status))
+            return;
+
+        // Worker が BeginOwnedSession 済み前提。hydrate 後、完了フロンティア／PendingWaits から継続する。
+        await EnsureEngineRuntimeLoadedForMutationAsync(executionId, execution, ct).ConfigureAwait(false);
+
+        var engineId = executionId.ToString();
+        // ImportCheckpoint が起動した継続（Wait 復元または完了フロンティア遷移）が落ち着くのを待つ。
+        await WaitForEngineQuiescedAfterWaitAsync(engineId, ct).ConfigureAwait(false);
+
+        var (status, cancelRequested, graphJson) = BuildProjectionFromEngine(executionId);
+        await _executor.ExecuteReadCommittedAsync(
+            async (uow, innerCt) =>
+            {
+                await _executions
+                    .UpdateExecutionAndSnapshotAsync(uow, executionId, status, cancelRequested, graphJson, innerCt)
+                    .ConfigureAwait(false);
+                await SyncOperationalProjectionAsync(
+                        uow,
+                        executionId,
+                        tenantId,
+                        status,
+                        graphJson,
+                        nodeIdToClear: null,
+                        innerCt)
+                    .ConfigureAwait(false);
+
+                if (ShouldDiscardRuntimeCheckpoint(status, graphJson))
+                {
+                    await _checkpointStore.DeleteAsync(uow, executionId, innerCt).ConfigureAwait(false);
+                }
+            },
+            ct).ConfigureAwait(false);
+    }
+
     /// <summary>
     /// Resume 適用後、対象 Wait ノードのグラフ完了が反映されるまで短く待つ。
     /// </summary>
@@ -1024,10 +1524,7 @@ internal sealed class ExecutionService : IExecutionService
             await Task.Delay(10, ct).ConfigureAwait(false);
         }
 
-        _logger.LogWarning(
-            "Timed out waiting for Wait node {NodeId} to complete on execution {ExecutionId}.",
-            nodeId,
-            engineExecutionId);
+        _logger.WaitNodeCompletionTimedOut(nodeId, engineExecutionId);
     }
 
     /// <summary>
@@ -1067,9 +1564,7 @@ internal sealed class ExecutionService : IExecutionService
             await Task.Delay(10, ct).ConfigureAwait(false);
         }
 
-        _logger.LogWarning(
-            "Timed out waiting for execution {ExecutionId} to quiesce after Wait resume.",
-            engineExecutionId);
+        _logger.WaitResumeQuiesceTimedOut(engineExecutionId);
     }
 
     /// <summary>グラフ JSON 上の指定 nodeId の完了有無を取得する。</summary>
@@ -1427,9 +1922,7 @@ internal sealed class ExecutionService : IExecutionService
         ArgumentException.ThrowIfNullOrWhiteSpace(engineExecutionId);
         if (!Guid.TryParse(engineExecutionId, out var executionId))
         {
-            _logger.LogWarning(
-                "Skip checkpoint persist because engine execution id '{EngineExecutionId}' is not a Guid.",
-                engineExecutionId);
+            _logger.SkipCheckpointPersistInvalidExecutionId(engineExecutionId);
             return Task.CompletedTask;
         }
 
@@ -1446,17 +1939,35 @@ internal sealed class ExecutionService : IExecutionService
         var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
         if (checkpoint is null)
         {
-            _logger.LogWarning(
-                "ExportCheckpoint returned null for execution {ExecutionId} (node {NodeId}); skip unload.",
-                engineExecutionId,
-                nodeId);
+            _logger.ExportCheckpointNullSkipUnload(engineExecutionId, nodeId);
             return;
         }
 
         var json = JsonSerializer.Serialize(checkpoint, CamelCaseJsonSerializerOptions);
-        await _executor.ExecuteReadCommittedAsync(
+        var updatedAt = DateTime.UtcNow;
+        var fenceLost = await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
             {
+                if (_ownership.TryGet(executionId, out _, out var generation))
+                {
+                    var upserted = await _checkpointStore.TryUpsertRuntimeWithGenerationAsync(
+                            uow,
+                            executionId,
+                            generation,
+                            json,
+                            checkpoint.SchemaVersion,
+                            updatedAt,
+                            leaseUntilUtc: null,
+                            innerCt)
+                        .ConfigureAwait(false);
+                    if (!upserted)
+                        return true;
+
+                    await _checkpointStore.TryClearOwnershipAsync(uow, executionId, generation, innerCt)
+                        .ConfigureAwait(false);
+                    return false;
+                }
+
                 await _checkpointStore.UpsertAsync(
                     uow,
                     new ExecutionCheckpointDocument
@@ -1464,17 +1975,36 @@ internal sealed class ExecutionService : IExecutionService
                         ExecutionId = executionId,
                         CheckpointJson = json,
                         SchemaVersion = checkpoint.SchemaVersion,
-                        UpdatedAt = DateTime.UtcNow
+                        UpdatedAt = updatedAt
                     },
                     innerCt).ConfigureAwait(false);
+
+                var existing = await _checkpointStore.GetByExecutionIdAsync(uow, executionId, innerCt)
+                    .ConfigureAwait(false);
+                if (existing?.OwnerWorkerId is not null)
+                {
+                    await _checkpointStore.TryClearOwnershipAsync(
+                            uow,
+                            executionId,
+                            existing.OwnerGeneration,
+                            innerCt)
+                        .ConfigureAwait(false);
+                }
+
+                return false;
             },
             ct).ConfigureAwait(false);
 
+        _ownership.Clear(executionId);
         _engine.Unload(engineExecutionId);
-        _logger.LogInformation(
-            "Persisted runtime checkpoint and unloaded execution {ExecutionId} after Wait node {NodeId}.",
-            executionId,
-            nodeId);
+
+        if (fenceLost)
+        {
+            _logger.UnloadAfterWaitFencingLost(nodeId, executionId);
+            return;
+        }
+
+        _logger.CheckpointUnloadedAfterWait(executionId, nodeId);
     }
 
     public async Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct)
@@ -1519,9 +2049,7 @@ internal sealed class ExecutionService : IExecutionService
         if (shouldUnloadAfterProjection)
         {
             _engine.Unload(engineExecutionId);
-            _logger.LogInformation(
-                "Persisted runtime checkpoint and unloaded execution {ExecutionId} after projection-sync.",
-                executionId);
+            _logger.CheckpointUnloadedAfterProjectionSync(executionId);
         }
     }
 

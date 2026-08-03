@@ -145,6 +145,79 @@ internal sealed class ExecutionWorkQueue(IDbContextFactory<CoreDbContext> dbFact
             .ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
+    public async Task<int> EnqueueExpiredOwnershipRecoveriesAsync(
+        DateTime nowUtc,
+        int limit,
+        CancellationToken ct)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(limit, 1);
+
+        // mode=recovery の固定 JSON（camelCase）。C# 側で組み立ててパラメーター化する。
+        const string recoveryPayload = """{"mode":"recovery"}""";
+
+        await using var db = await dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        await db.Database.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct)
+            .ConfigureAwait(false);
+        await using var command = db.Database.GetDbConnection().CreateCommand();
+        command.Transaction = db.Database.CurrentTransaction?.GetDbTransaction();
+        command.CommandText = """
+            WITH expired AS (
+                SELECT execution_id
+                FROM execution_runtime_checkpoints
+                WHERE owner_worker_id IS NOT NULL
+                  AND lease_until IS NOT NULL
+                  AND lease_until < @nowUtc
+                ORDER BY lease_until, execution_id
+                FOR UPDATE SKIP LOCKED
+                LIMIT @limit
+            ),
+            bumped AS (
+                UPDATE execution_runtime_checkpoints AS checkpoint
+                SET owner_worker_id = NULL,
+                    lease_until = NULL,
+                    owner_generation = checkpoint.owner_generation + 1,
+                    updated_at = @nowUtc
+                FROM expired
+                WHERE checkpoint.execution_id = expired.execution_id
+                RETURNING checkpoint.execution_id
+            ),
+            inserted AS (
+                INSERT INTO execution_work_items (
+                    work_item_id,
+                    execution_id,
+                    kind,
+                    payload,
+                    available_at,
+                    attempts,
+                    created_at)
+                SELECT gen_random_uuid(),
+                       bumped.execution_id,
+                       'Resume',
+                       CAST(@payload AS jsonb),
+                       @nowUtc,
+                       0,
+                       @nowUtc
+                FROM bumped
+                RETURNING execution_id
+            )
+            SELECT COUNT(*)::int
+            FROM inserted;
+            """;
+        AddParameter(command, "nowUtc", nowUtc);
+        AddParameter(command, "limit", limit);
+        AddParameter(command, "payload", recoveryPayload);
+
+        var scalar = await command.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        var count = scalar is int value
+            ? value
+            : Convert.ToInt32(scalar, System.Globalization.CultureInfo.InvariantCulture);
+
+        await transaction.CommitAsync(ct).ConfigureAwait(false);
+        return count;
+    }
+
     /// <summary>DB コマンドへ値を安全にパラメーター追加する。</summary>
     private static void AddParameter(IDbCommand command, string name, object value)
     {
