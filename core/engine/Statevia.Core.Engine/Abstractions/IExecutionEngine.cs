@@ -69,10 +69,14 @@ public interface IExecutionEngine
     ExecutionRuntimeCheckpoint? ExportCheckpoint(string executionId);
 
     /// <summary>
-    /// チェックポイントから実行を復元し、未完了 Wait の継続を張り直す。
+    /// チェックポイントから実行を復元し、未完了 Wait の継続と完了フロンティア遷移を再開する。
     /// </summary>
     /// <param name="definition">チェックポイントの定義名と一致するコンパイル済み定義。</param>
     /// <param name="checkpoint">保存済みチェックポイント。</param>
+    /// <remarks>
+    /// <para>未完了 Wait は待ち直し。完了済みで出辺のないノードは <c>ProcessFact</c> 相当で次状態へ進む
+    /// （ステップ完了時点の checkpoint からの recovery 用）。</para>
+    /// </remarks>
     void ImportCheckpoint(CompiledWorkflowDefinition definition, ExecutionRuntimeCheckpoint checkpoint);
 
     /// <summary>

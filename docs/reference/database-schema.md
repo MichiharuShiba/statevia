@@ -1,13 +1,15 @@
 # スキーマ定義
 
-Version: 1.14
+Version: 1.15
 Project: 実行型ステートマシン
 
 **Version 1.7（2026-05-27）**: task 8 — `execution_cursors` / `execution_waits` 追加（operational projection / EventWait durable wait）。
 
+**Version 1.15（2026-08-03）**: `execution_runtime_checkpoints` に所有・fencing 列（`owner_worker_id` / `lease_until` / `owner_generation`）。`execution_work_items.kind` を Start / Resume / Cancel に統一（TimerFire 廃止。Delay は Resume event）。
+
 **Version 1.14（2026-08-01）**: `execution_wait_subscriptions` 子テーブルを追加。`execution_waits` から `correlation_key` / `topic` を削除（購読は子行の厳密一致）。
 
-**Version 1.13（2026-07-31）**: DelayWait / TimerFire の Resume イベント名を `statevia.event.delay.completed` に固定（`ExecutionWaitEventNames.DelayCompleted`）。プラットフォーム予約名前空間は `statevia.event.*`。
+**Version 1.13（2026-07-31）**: DelayWait の Resume イベント名を `statevia.event.delay.completed` に固定（`ExecutionWaitEventNames.DelayCompleted`）。プラットフォーム予約名前空間は `statevia.event.*`。
 
 **Version 1.12（2026-07-30）**: `execution_runtime_checkpoints` を追記（再開可能なランタイム状態の文書ストア。Application 契約は `IExecutionCheckpointStore` / `ExecutionCheckpointDocument`）。
 
@@ -61,8 +63,9 @@ Core-API（C#）の EF Core マイグレーションで管理する PostgreSQL �
 | execution_graph_snapshots | ExecutionSpace | 実行グラフのスナップショット（projection） |
 | execution_cursors | ExecutionSpace | 現在位置の operational projection（read-model 正本外） |
 | execution_waits | ExecutionSpace | durable wait（EventWait / CallbackWait / DelayWait）の永続化 |
-| execution_runtime_checkpoints | ExecutionSpace | 再開可能なランタイム状態の文書ストア（現行 Postgres 物理テーブル。契約は `IExecutionCheckpointStore`） |
-| execution_work_items | ExecutionSpace | Resume / Cancel / TimerFire 等を配送する lease 付き耐久キュー |
+| execution_wait_subscriptions | ExecutionSpace | Wait の subscribe 購読行（topic / correlation 厳密一致） |
+| execution_runtime_checkpoints | ExecutionSpace | 再開可能なランタイム状態の文書ストア（現行 Postgres 物理テーブル。契約は `IExecutionCheckpointStore`）。Worker 所有・fencing 列を含む |
+| execution_work_items | ExecutionSpace | Start / Resume / Cancel を配送する lease 付き耐久キュー |
 | command_dedup | 信頼性 | コマンド冪等（Start 等の `X-Idempotency-Key`） |
 | event_delivery_dedup | 信頼性 | イベント配送冪等（Publish / Cancel の client event id） |
 | tenants | Platform | テナントの truth（内部 UUID・外部 `tenant_key`・ライフサイクル） |
@@ -293,7 +296,7 @@ Wait の `subscribe` 購読（1 Wait ノードあたり 0 件以上）。`POST /
 
 ### 2.10.2b execution_runtime_checkpoints
 
-再開可能なランタイム状態の **文書ストア**（キー = `execution_id`）。Application は `IExecutionCheckpointStore` / `ExecutionCheckpointDocument` 経由でのみ扱い、物理テーブル名や RDB 行モデルに依存しない。現行実装は本テーブルへの Postgres アダプタ。
+再開可能なランタイム状態の **文書ストア**（キー = `execution_id`）。Application は `IExecutionCheckpointStore` / `ExecutionCheckpointDocument` 経由でのみ扱い、物理テーブル名や RDB 行モデルに依存しない。現行実装は本テーブルへの Postgres アダプタ。実行中の Worker 所有と fencing も本文書に載せる。
 
 | カラム | 型 | 制約 | 説明 |
 | --- | --- | --- | --- |
@@ -301,6 +304,11 @@ Wait の `subscribe` 購読（1 Wait ノードあたり 0 件以上）。`POST /
 | checkpoint_json | text / jsonb | NOT NULL | Engine `ExecutionRuntimeCheckpoint` の JSON |
 | schema_version | integer | NOT NULL | 文書スキーマ版 |
 | updated_at | timestamptz | NOT NULL | 更新日時 |
+| owner_worker_id | varchar(128) | NULL | 実行中の Worker ID。Wait 中 / 未所有は NULL |
+| lease_until | timestamptz | NULL | 所有 lease の UTC 期限（recovery 検知用） |
+| owner_generation | bigint | NOT NULL | fencing token。所有獲得のたびに +1 |
+
+**インデックス:** `lease_until`（期限切れ所有スキャン）。ステップ完了・heartbeat 更新は `owner_generation` 一致条件付き。
 
 ### 2.10.3 execution_work_items
 
@@ -308,8 +316,8 @@ Wait の `subscribe` 購読（1 Wait ノードあたり 0 件以上）。`POST /
 | --- | --- | --- | --- |
 | work_item_id | uuid | PK, NOT NULL | ワーク項目 ID |
 | execution_id | uuid | FK → executions, NOT NULL | 対象実行 |
-| kind | varchar(32) | NOT NULL | Start / Resume / Cancel / TimerFire |
-| payload | jsonb | NOT NULL | 種別ごとの入力 |
+| kind | varchar(32) | NOT NULL | Start / Resume / Cancel |
+| payload | jsonb | NOT NULL | 種別ごとの入力（Resume は mode が event または recovery） |
 | available_at | timestamptz | NOT NULL | 処理可能日時 |
 | lease_owner | varchar(128) | NULL | 処理権を取得した worker |
 | lease_until | timestamptz | NULL | lease 期限 |
@@ -535,6 +543,7 @@ erDiagram
     int latest_version
     timestamptz created_at
     timestamptz updated_at
+    timestamptz deleted_at
   }
 
   definition_versions {
@@ -594,9 +603,11 @@ erDiagram
 
 - **display_ids**: `resource_id` は `definitions.definition_id` または `executions.execution_id` に対応（kind で区別）。
 - **definitions.project_id** → **projects.project_id**（定義の所属 project。認可 truth は `project_accesses` — §3.2 参照）。
+- **definitions.deleted_at**: catalog 論理削除（NULL = Active）。
 - **executions.definition_version_id** → **definition_versions.definition_version_id**（実行開始時の版固定）。
 - **executions.definition_id** → **definitions.definition_id**（論理参照。版の正は `definition_version_id`）。
 - **event_store** / **execution_events** / **execution_graph_snapshots** → **executions.execution_id**。
+- **operational / durable 実行系**（cursors / waits / checkpoints / work_items）は §3.3 を参照。
 - **workflow_definitions** は図から省略（レガシー。バックフィル後は `definitions` / `definition_versions` が正）。
 
 ### 3.1 Platform（テナント・Principal・認可）
@@ -751,6 +762,7 @@ erDiagram
     int latest_version
     timestamptz created_at
     timestamptz updated_at
+    timestamptz deleted_at
   }
 
   definition_versions {
@@ -766,7 +778,94 @@ erDiagram
 - **projects.owner_tenant_id** → **tenants.tenant_id**（オーナーテナント。行なしでも暗黙 Admin 相当）。
 - **project_accesses** は **認可 truth**（`reader` / `executor` / `publisher` / `admin`）。付与先はテナント単位。複合 PK `(project_id, tenant_id)` はいずれも FK（図上のリレーション参照）。
 - **projects.visibility** は discoverability ヒントのみ（認可非使用）。
-- **definitions** の slug 一意性は **project 内**（`UNIQUE(project_id, slug)`）。`tenant_id` varchar は移行期のオーナー表現。
+- **definitions** の slug 一意性は **project 内**（`UNIQUE(project_id, slug) WHERE deleted_at IS NULL`）。`tenant_id` varchar は移行期のオーナー表現。
+
+### 3.3 ExecutionSpace（operational / durable）
+
+実行の operational projection・durable wait・ランタイム checkpoint（所有・fencing）・ワークキュー。§3 の投影系（`event_store` 等）とは別に描く。
+
+```mermaid
+erDiagram
+  executions ||--o| execution_cursors : "execution_id"
+  executions ||--o{ execution_waits : "execution_id"
+  executions ||--o| execution_runtime_checkpoints : "execution_id"
+  executions ||--o{ execution_work_items : "execution_id"
+  executions ||--o{ event_delivery_dedup : "execution_id"
+  execution_waits ||--o{ execution_wait_subscriptions : "execution_id_node_id"
+
+  executions {
+    uuid execution_id PK
+    uuid tenant_id FK
+    string status
+  }
+
+  execution_cursors {
+    uuid execution_id PK
+    uuid tenant_id FK
+    string current_node_id
+    string current_runtime_id
+    string current_worker_id
+    string state
+    timestamptz updated_at
+  }
+
+  execution_waits {
+    uuid execution_id PK
+    string node_id PK
+    string wait_kind
+    jsonb allowed_events
+    timestamptz expires_at
+    timestamptz created_at
+  }
+
+  execution_wait_subscriptions {
+    uuid subscription_id PK
+    uuid execution_id FK
+    string node_id FK
+    string topic
+    string correlation_key
+    string resume_event_name
+    timestamptz created_at
+  }
+
+  execution_runtime_checkpoints {
+    uuid execution_id PK
+    text checkpoint_json
+    int schema_version
+    timestamptz updated_at
+    string owner_worker_id
+    timestamptz lease_until
+    bigint owner_generation
+  }
+
+  execution_work_items {
+    uuid work_item_id PK
+    uuid execution_id FK
+    string kind
+    jsonb payload
+    timestamptz available_at
+    string lease_owner
+    timestamptz lease_until
+    int attempts
+    timestamptz created_at
+  }
+
+  event_delivery_dedup {
+    uuid tenant_id PK
+    uuid execution_id PK
+    uuid client_event_id PK
+    uuid batch_id
+    string status
+    timestamptz created_at
+  }
+```
+
+- **execution_cursors**: 現在位置の operational projection（GET 正本ではない）。
+- **execution_waits**: 1 Wait ノード = 1 行。複合 PK `(execution_id, node_id)`。
+- **execution_wait_subscriptions**: `(execution_id, node_id)` → `execution_waits` ON DELETE CASCADE。照合は `(topic, correlation_key)` 厳密一致。
+- **execution_runtime_checkpoints**: 文書キー = `execution_id`。`owner_worker_id` / `lease_until` / `owner_generation` で Worker 所有と fencing。Wait 中・未所有は所有者 NULL。
+- **execution_work_items**: `kind` は Start / Resume / Cancel。Resume の `payload.mode` は `event` または `recovery`。claim 用 lease は本テーブル側（checkpoint 所有とは別）。
+- **event_delivery_dedup**: Publish / Cancel 配送冪等。複合 PK `(tenant_id, execution_id, client_event_id)`。
 
 ---
 
@@ -778,10 +877,13 @@ erDiagram
 | projects | (owner_tenant_id, slug) | UNIQUE |
 | project_accesses | (project_id, tenant_id) | PRIMARY KEY |
 | project_accesses | tenant_id | INDEX |
-| definitions | (project_id, slug) | UNIQUE |
+| definitions | (project_id, slug) WHERE deleted_at IS NULL | UNIQUE |
 | definition_versions | (definition_id, version) | UNIQUE |
 | event_store | event_id | UNIQUE |
 | executions | definition_version_id | INDEX（FK） |
+| execution_wait_subscriptions | (topic, correlation_key) | INDEX |
+| execution_runtime_checkpoints | lease_until | INDEX |
+| execution_work_items | (available_at, lease_until) | INDEX |
 | event_delivery_dedup | (tenant_id, execution_id, batch_id) | INDEX |
 | tenants | tenant_key | UNIQUE |
 | permission_definitions | permission_key | UNIQUE |
@@ -807,6 +909,7 @@ erDiagram
 | `20260729152815_AddExecutionRuntimeCheckpoints` | `execution_runtime_checkpoints`（ランタイムチェックポイント文書）を追加 |
 | `20260729153444_AddExecutionWorkItemsAndWaitRouting` | `execution_work_items` と `execution_waits` の topic / correlation routing 列を追加 |
 | `20260801112928_AddExecutionWaitSubscriptions` | `execution_wait_subscriptions` 追加、`execution_waits` の routing 列削除 |
+| `20260802173232_AddExecutionCheckpointOwnership` | `execution_runtime_checkpoints` に `owner_worker_id` / `lease_until` / `owner_generation` と `lease_until` インデックスを追加 |
 
 適用: `cd service/api && dotnet ef database update --project Statevia.Service.Api`
 

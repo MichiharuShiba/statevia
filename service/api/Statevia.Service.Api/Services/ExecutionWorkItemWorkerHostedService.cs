@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Statevia.Core.Application.Services;
 using Statevia.Infrastructure.Security;
 
 namespace Statevia.Service.Api.Services;
@@ -10,9 +11,8 @@ namespace Statevia.Service.Api.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 処理中は <see cref="IExecutionWorkQueue.RenewLeaseAsync"/> で
-/// lease を heartbeat 延長する。プロセス死亡時は heartbeat が止まり、
-/// <c>lease_until</c> 経過後に他ワーカーが再 claim できる。
+/// 処理中は work item lease と checkpoint 所有 lease を heartbeat 延長する。
+/// いずれかが失敗したらローカル実行を即停止し、Unload する。
 /// </para>
 /// </remarks>
 internal sealed class ExecutionWorkItemWorkerHostedService(
@@ -72,9 +72,10 @@ internal sealed class ExecutionWorkItemWorkerHostedService(
     {
         var processCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var heartbeatCts = new CancellationTokenSource();
+        IExecutionService? executions = null;
+        var sessionStarted = false;
         try
         {
-            var heartbeatTask = HeartbeatAsync(queue, item.WorkItemId, processCts, heartbeatCts.Token);
             try
             {
                 var platformData = scopedServices.GetRequiredService<IPlatformDataAccess>();
@@ -94,16 +95,61 @@ internal sealed class ExecutionWorkItemWorkerHostedService(
                     tenant.Lifecycle,
                     WorkerPermissions)))
                 {
-                    var executions = scopedServices.GetRequiredService<IExecutionService>();
-                    await ProcessItemAsync(executions, item, processCts.Token).ConfigureAwait(false);
-                }
+                    executions = scopedServices.GetRequiredService<IExecutionService>();
+                    var generation = await executions.BeginOwnedSessionAsync(
+                            item.ExecutionId,
+                            _leaseOwner,
+                            LeaseDuration,
+                            processCts.Token)
+                        .ConfigureAwait(false);
+                    if (generation is null)
+                    {
+                        logger.WorkItemOwnershipAcquireFailed(item.WorkItemId, item.ExecutionId);
+                        await queue.ReleaseAsync(
+                                item.WorkItemId,
+                                _leaseOwner,
+                                DateTime.UtcNow.Add(RetryDelay),
+                                ct)
+                            .ConfigureAwait(false);
+                        return;
+                    }
 
-                await queue.CompleteAsync(item.WorkItemId, _leaseOwner, processCts.Token).ConfigureAwait(false);
+                    sessionStarted = true;
+                    var heartbeatTask = HeartbeatAsync(
+                        queue,
+                        executions,
+                        item.WorkItemId,
+                        item.ExecutionId,
+                        processCts,
+                        heartbeatCts.Token);
+                    try
+                    {
+                        await ProcessItemAsync(executions, item, processCts.Token).ConfigureAwait(false);
+                        // Start / Resume / recovery は Engine が Wait Unload または終端するまで所有を維持する。
+                        if (item.Kind is ExecutionWorkItemKinds.Start
+                            or ExecutionWorkItemKinds.Resume)
+                        {
+                            await executions.AwaitLocalExecutionLoadAsync(item.ExecutionId, processCts.Token)
+                                .ConfigureAwait(false);
+                        }
+
+                        await queue.CompleteAsync(item.WorkItemId, _leaseOwner, processCts.Token)
+                            .ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        await heartbeatCts.CancelAsync().ConfigureAwait(false);
+                        await AwaitHeartbeatAsync(heartbeatTask).ConfigureAwait(false);
+                    }
+                }
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
                 // heartbeat 失敗による lease 喪失。他ワーカーへ譲るため Release しない。
                 logger.WorkItemLeaseLost(item.WorkItemId);
+                if (executions is not null)
+                    await executions.AbandonLocalOwnedSessionAsync(item.ExecutionId).ConfigureAwait(false);
+                sessionStarted = false;
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
@@ -115,23 +161,35 @@ internal sealed class ExecutionWorkItemWorkerHostedService(
                         ct)
                     .ConfigureAwait(false);
             }
-            finally
-            {
-                await heartbeatCts.CancelAsync().ConfigureAwait(false);
-                await AwaitHeartbeatAsync(heartbeatTask).ConfigureAwait(false);
-            }
         }
         finally
         {
+            if (sessionStarted && executions is not null)
+            {
+                try
+                {
+                    await executions.EndOwnedSessionAsync(item.ExecutionId, ct).ConfigureAwait(false);
+                }
+#pragma warning disable CA1031 // セッション終了はベストエフォート。
+                catch (Exception exception)
+#pragma warning restore CA1031
+                {
+                    logger.WorkItemSessionEndFailed(exception, item.WorkItemId);
+                    await executions.AbandonLocalOwnedSessionAsync(item.ExecutionId).ConfigureAwait(false);
+                }
+            }
+
             processCts.Dispose();
             heartbeatCts.Dispose();
         }
     }
 
-    /// <summary>処理中に lease を周期延長する。失敗時は処理 CTS をキャンセルする。</summary>
+    /// <summary>work item と checkpoint 所有の lease を周期延長する。失敗時は処理 CTS をキャンセルする。</summary>
     private async Task HeartbeatAsync(
         IExecutionWorkQueue queue,
+        IExecutionService executions,
         Guid workItemId,
+        Guid executionId,
         CancellationTokenSource processCts,
         CancellationToken heartbeatCt)
     {
@@ -140,14 +198,19 @@ internal sealed class ExecutionWorkItemWorkerHostedService(
             using var timer = new PeriodicTimer(HeartbeatInterval);
             while (await timer.WaitForNextTickAsync(heartbeatCt).ConfigureAwait(false))
             {
-                var renewed = await queue.RenewLeaseAsync(
+                var workItemRenewed = await queue.RenewLeaseAsync(
                         workItemId,
                         _leaseOwner,
                         DateTime.UtcNow,
                         LeaseDuration,
                         heartbeatCt)
                     .ConfigureAwait(false);
-                if (renewed)
+                var ownershipRenewed = await executions.RenewOwnedSessionLeaseAsync(
+                        executionId,
+                        LeaseDuration,
+                        heartbeatCt)
+                    .ConfigureAwait(false);
+                if (workItemRenewed && ownershipRenewed)
                     continue;
 
                 await processCts.CancelAsync().ConfigureAwait(false);
@@ -183,7 +246,7 @@ internal sealed class ExecutionWorkItemWorkerHostedService(
     private static Task ProcessItemAsync(IExecutionService executions, ExecutionWorkItemRow item, CancellationToken ct) =>
         item.Kind switch
         {
-            ExecutionWorkItemKinds.Resume or ExecutionWorkItemKinds.TimerFire =>
+            ExecutionWorkItemKinds.Resume =>
                 ResumeAsync(executions, item, ct),
             ExecutionWorkItemKinds.Cancel =>
                 executions.CancelAsync(
@@ -198,8 +261,25 @@ internal sealed class ExecutionWorkItemWorkerHostedService(
 
     private static Task ResumeAsync(IExecutionService executions, ExecutionWorkItemRow item, CancellationToken ct)
     {
-        var payload = JsonSerializer.Deserialize<ExecutionResumeWorkItemPayload>(item.Payload)
+        var payload = JsonSerializer.Deserialize<ExecutionResumeWorkItemPayload>(
+                item.Payload,
+                ExecutionWorkItemPayloadJson.Options)
             ?? throw new InvalidOperationException("Resume work item payload is invalid.");
+
+        if (string.Equals(payload.Mode, ExecutionResumeWorkItemModes.Recovery, StringComparison.Ordinal))
+        {
+            return executions.RecoverExecutionAsync(
+                item.ExecutionId,
+                new CommandRequestContext("WORKER", "/internal/execution-work-items"),
+                ct);
+        }
+
+        if (!string.Equals(payload.Mode, ExecutionResumeWorkItemModes.Event, StringComparison.Ordinal))
+            throw new InvalidOperationException($"Unknown resume mode '{payload.Mode}'.");
+
+        if (string.IsNullOrWhiteSpace(payload.NodeId) || string.IsNullOrWhiteSpace(payload.EventName))
+            throw new InvalidOperationException("Event resume payload requires nodeId and eventName.");
+
         return executions.ResumeNodeAsync(
             item.ExecutionId.ToString("D"),
             payload.NodeId,
@@ -214,12 +294,11 @@ internal sealed class ExecutionWorkItemWorkerHostedService(
         ExecutionWorkItemRow item,
         CancellationToken ct)
     {
-        var payload = JsonSerializer.Deserialize<StartExecutionRequest>(item.Payload)
+        var payload = JsonSerializer.Deserialize<ExecutionStartWorkItemPayload>(
+                item.Payload,
+                ExecutionWorkItemPayloadJson.Options)
             ?? throw new InvalidOperationException("Start work item payload is invalid.");
-        return executions.StartAsync(
-            payload,
-            idempotencyKey: null,
-            new CommandRequestContext("WORKER", "/internal/execution-work-items"),
-            ct);
+        ArgumentNullException.ThrowIfNull(payload.Request);
+        return executions.ExecuteQueuedStartAsync(payload.ExecutionId, payload.Request, ct);
     }
 }

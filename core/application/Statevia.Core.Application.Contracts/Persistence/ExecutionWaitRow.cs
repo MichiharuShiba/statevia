@@ -11,17 +11,17 @@ public enum ExecutionWaitKind
     /// <summary>外部コールバック待ち（将来拡張）。</summary>
     CallbackWait,
 
-    /// <summary>長時間遅延待ち（期限到達で TimerFire → 固定イベント Resume）。</summary>
+    /// <summary>長時間遅延待ち（期限到達で Resume event → 固定イベント名）。</summary>
     DelayWait
 }
 
 /// <summary>
-/// durable wait / TimerFire 再開で使うプラットフォーム固定イベント名。
+/// durable wait / Delay 再開で使うプラットフォーム固定イベント名。
 /// </summary>
 /// <remarks>
 /// <para>
 /// 利用者定義の Wait イベント名と衝突しないよう、予約名前空間 <c>statevia.event.*</c> を使う。
-/// DelayWait の <c>allowed_events</c> と TimerFire の Resume <c>eventName</c> は
+/// DelayWait の <c>allowed_events</c> と Delay 期限の Resume <c>eventName</c> は
 /// <see cref="DelayCompleted"/> のみを用いる（先頭要素の恣意的選択はしない）。
 /// </para>
 /// </remarks>

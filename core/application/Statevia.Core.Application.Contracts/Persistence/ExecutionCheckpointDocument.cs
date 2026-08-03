@@ -9,9 +9,8 @@ namespace Statevia.Core.Application.Contracts.Persistence;
 /// <c>ExecutionRuntimeCheckpoint</c>）と <see cref="SchemaVersion"/>。
 /// </para>
 /// <para>
-/// RDB / ドキュメント DB いずれでも同じ論理形状で扱えるよう、結合や一覧照会前提の
-/// フィールドは持たない。現行 Postgres アダプタではテーブル
-/// <c>execution_runtime_checkpoints</c> にマップする。
+/// 実行セッション所有は <see cref="OwnerWorkerId"/> / <see cref="LeaseUntil"/> /
+/// <see cref="OwnerGeneration"/>。Wait 中は所有者なし（NULL）。
 /// </para>
 /// </remarks>
 public class ExecutionCheckpointDocument
@@ -27,4 +26,13 @@ public class ExecutionCheckpointDocument
 
     /// <summary>更新時刻 UTC。</summary>
     public DateTime UpdatedAt { get; set; }
+
+    /// <summary>実行中の Worker ID。未所有・Wait 中は null。</summary>
+    public string? OwnerWorkerId { get; set; }
+
+    /// <summary>所有 lease の UTC 期限（検知用）。</summary>
+    public DateTime? LeaseUntil { get; set; }
+
+    /// <summary>fencing token。所有獲得のたびに増加する。</summary>
+    public long OwnerGeneration { get; set; }
 }

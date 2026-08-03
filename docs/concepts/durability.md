@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Concept |
-| Version | 1.1 |
-| 更新日 | 2026-07-30 |
+| Version | 1.2 |
+| 更新日 | 2026-08-03 |
 | 関連 | [../specifications/data-integration.md](../specifications/data-integration.md) |
 
 ---
@@ -31,7 +31,11 @@ in-process の `GetSnapshot` はデバッグやコールバック経路向けで
 
 `execution_cursors` と `execution_waits`（EventWait の durable wait）は、executions 更新と**同一トランザクション**で同期します。read-model の GET は cursor に依存せず、グラフスナップショットを正とします。
 
-`execution_work_items` は Resume / Cancel / TimerFire 等の実行操作を lease 付きで配送します。複数の API プロセスは PostgreSQL の `FOR UPDATE SKIP LOCKED` により同一項目を同時処理しません。lease が期限切れになった項目は再取得可能です。
+`execution_work_items` の kind は **Start / Resume / Cancel** です（Delay 期限も `Resume` + `mode=event`）。複数の API プロセスは PostgreSQL の `FOR UPDATE SKIP LOCKED` により同一項目を同時処理しません。処理中は work item lease と checkpoint 所有 lease を heartbeat 延長します。
+
+実行中の所有正本は `execution_runtime_checkpoints` の `owner_worker_id` / `lease_until` / `owner_generation` です。`lease_until` は recovery 検討のトリガに過ぎず、排他は **`owner_generation` 一致更新（fencing）** で担保します。ハートビートまたは世代付き更新が失敗した Worker はローカル実行を即停止します。`ExecutionOwnershipRecoveryHostedService` は期限切れ所有を世代 +1 したうえで `Resume mode=recovery` を enqueue します（Wait イベントは消費しない）。DelayWait 期限は別スケジューラ（`DelayWaitSchedulerHostedService`）が `Resume mode=event` を投入します。
+
+ステップ完了ごとに checkpoint を更新し、Unload は durable Wait 到達または終端に限定します。recovery で Action が再実行されうる場合、Action 側の冪等（または適用済み検知）を前提とします。
 
 ## 次に読むもの
 

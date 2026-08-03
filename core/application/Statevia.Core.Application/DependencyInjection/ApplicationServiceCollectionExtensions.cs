@@ -23,6 +23,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IExecutionSecuritySnapshotFactory, ExecutionSecuritySnapshotFactory>();
         services.AddSingleton<IActionSchemaService, ActionSchemaService>();
         services.AddSingleton<IDefinitionSchemaService, DefinitionSchemaService>();
+        services.AddSingleton<ExecutionOwnershipTracker>();
         services.AddScoped<IExecutionService, ExecutionService>();
         services.AddScoped<IEventIngressService, EventIngressService>();
 

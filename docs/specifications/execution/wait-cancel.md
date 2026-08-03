@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.2 |
-| 更新日 | 2026-07-31 |
+| Version | 1.3 |
+| 更新日 | 2026-08-03 |
 | 関連 | [fsm.md](fsm.md), [../definition.md](../definition.md), [concepts/execution-model.md](../../concepts/execution-model.md) |
 
 ---
@@ -29,9 +29,9 @@ Wait は定義の許可イベントのいずれかが発生するまで状態実
 - 各 Wait は一度だけ再開できます。
 - **定義**: `wait.events`（states）または nodes の `events`。コンパイル結果は **`WaitEventRouteTable`**。
 - **再開正本**: Engine `ResumeWaitNode(executionId, nodeId, eventName)`。`EventProvider` はノード単位の `WaitForEventAsync` / `Resume`。
-- **耐久配送**: `execution_work_items` の Resume / TimerFire 項目は worker が checkpoint を hydrate した上でこの再開正本を呼び出す。HTTP Resume は当面、同じ正本を同期呼び出しする。Worker は claim 1 件ずつ処理し、処理中は lease heartbeat（`RenewLeaseAsync`）で延長する。プロセス死亡時は heartbeat 停止後に `lease_until` 切れで再 claim 可能。
-- **checkpoint**: durable Wait の投影同期直後に `execution_runtime_checkpoints` へ保存し Engine から Unload する（再起動後の Resume / hydrate 前提）。suspend 通知でも同処理を行う。
-- **DelayWait / TimerFire**: 期限到達時の Resume `eventName` は固定の `statevia.event.delay.completed`（`ExecutionWaitEventNames.DelayCompleted`）。`allowed_events` の先頭要素は使わない。
+- **耐久配送**: `execution_work_items` の `Resume`（`mode=event`）は worker が checkpoint を hydrate した上でこの再開正本を呼び出す。HTTP Resume は当面、同じ正本を同期呼び出しする。Worker は claim 1 件ずつ処理し、処理中は work item / checkpoint 所有の lease を heartbeat 延長する。プロセス死亡時は heartbeat 停止後に checkpoint `lease_until` 切れを Scheduler が検知し、`Resume mode=recovery` で再割当する。
+- **checkpoint**: ステップ完了ごとに runtime checkpoint を更新する。durable Wait 到達時は waits 投影・checkpoint 保存のうえ Engine から Unload し所有を解放する（suspend 通知でも同処理）。終端では不要な checkpoint を破棄する。
+- **DelayWait**: 期限到達時は `Resume mode=event` を enqueue し、`eventName` は固定の `statevia.event.delay.completed`（`ExecutionWaitEventNames.DelayCompleted`）。`allowed_events` の先頭要素は使わない。
 - **許可外イベント・非アクティブ Wait・不明 nodeId**: 422（`InvalidOperationException` → API `ApiValidationException`）。
 - **FSM の事実**: 待機解消後に状態実行が正常終了すると、JoinTracker 等へ渡す事実は **`Completed`**。次状態の解決は **イベント名 + route table**（[fsm.md](fsm.md)）。
 - **監査**: Wait 完了 output に `{ "event": "<eventName>" }` を載せ得る（遷移判定には使わない）。

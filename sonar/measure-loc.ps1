@@ -1,14 +1,14 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-  engine / api / ui の行数をプロダクト・テスト別に集計する。
+  engine / application / infrastructure / api / cli / action-host / ui などの行数をプロダクト・テスト別に集計する。
 
 .DESCRIPTION
   物理行数（空行・コメント含む）と実効コード行数（空行・コメント除く）を出力する。
   リポジトリの sonar/ から相対パスを解決するため、カレントディレクトリに依存しない。
 
 .PARAMETER Detailed
-  サブプロジェクト単位・言語別・api Migrations / ui e2e などの内訳を表示する。
+  サブプロジェクト単位・言語別・Migrations / ui e2e などの内訳を表示する。
 
 .PARAMETER Json
   集計結果を JSON で標準出力する（テーブル出力は行わない）。
@@ -236,19 +236,10 @@ function Measure-PathGroup {
     }
 }
 
-function Format-CountCell {
-    param(
-        [int]$Physical,
-        [int]$Code
-    )
-
-    return '{0} ({1})' -f $Physical, $Code
-}
-
 function Write-SummaryTable {
     param([array]$Rows)
 
-    $header = '{0,-12} {1,-12} {2,14} {3,14} {4,8} {5,14} {6,14}' -f `
+    $header = '{0,-14} {1,-12} {2,14} {3,14} {4,8} {5,14} {6,14}' -f `
         'Component', 'Category', 'Physical', 'Code', 'Files', 'TestRatio', 'CodeRatio'
     Write-Output $header
     Write-Output ('-' * $header.Length)
@@ -268,7 +259,7 @@ function Write-SummaryTable {
             'n/a'
         }
 
-        Write-Output ('{0,-12} {1,-12} {2,14} {3,14} {4,8} {5,14} {6,14}' -f `
+        Write-Output ('{0,-14} {1,-12} {2,14} {3,14} {4,8} {5,14} {6,14}' -f `
             $row.Component,
             $row.Category,
             $row.Physical,
@@ -278,25 +269,6 @@ function Write-SummaryTable {
             $codeRatio)
     }
 }
-
-$engineProductDefs = @(
-    @{ Name = 'Statevia.Core.Engine'; RelativePath = 'core\engine\Statevia.Core.Engine' }
-    @{ Name = 'Statevia.Service.Cli'; RelativePath = 'core\engine\Statevia.Service.Cli' }
-)
-
-$engineTestDefs = @(
-    @{ Name = 'Statevia.Core.Engine.Tests'; RelativePath = 'core\engine\Statevia.Core.Engine.Tests' }
-    @{ Name = 'Statevia.Service.Cli.Tests'; RelativePath = 'core\engine\Statevia.Service.Cli.Tests' }
-)
-
-$apiProductDefs = @(
-    @{ Name = 'Statevia.Service.Api'; RelativePath = 'service\api\Statevia.Service.Api' }
-    @{ Name = 'Statevia.Service.Api.Bootstrap'; RelativePath = 'service\api\Statevia.Service.Api.Bootstrap' }
-)
-
-$apiTestDefs = @(
-    @{ Name = 'Statevia.Service.Api.Tests'; RelativePath = 'service\api\Statevia.Service.Api.Tests' }
-)
 
 function Measure-DefinitionGroup {
     param(
@@ -337,16 +309,83 @@ function Measure-DefinitionGroup {
     }
 
     return [PSCustomObject]@{
-        Stats   = $groupStats
-        Details = $details
+        Stats      = $groupStats
+        Details    = $details
         ByLanguage = $byLanguage
     }
 }
 
+# --- 集計対象定義（現行リポジトリ構成） ---
+
+$engineProductDefs = @(
+    @{ Name = 'Statevia.Core.Engine'; RelativePath = 'core\engine\Statevia.Core.Engine' }
+)
+
+$engineTestDefs = @(
+    @{ Name = 'Statevia.Core.Engine.Tests'; RelativePath = 'core\engine\Statevia.Core.Engine.Tests' }
+)
+
+$applicationProductDefs = @(
+    @{ Name = 'Statevia.Core.Application'; RelativePath = 'core\application\Statevia.Core.Application' }
+    @{ Name = 'Statevia.Core.Application.Contracts'; RelativePath = 'core\application\Statevia.Core.Application.Contracts' }
+    @{ Name = 'Statevia.Core.Actions.Abstractions'; RelativePath = 'core\actions\Statevia.Core.Actions.Abstractions' }
+)
+
+$infrastructureProductDefs = @(
+    @{ Name = 'Statevia.Infrastructure.Common'; RelativePath = 'infrastructure\Statevia.Infrastructure.Common' }
+    @{ Name = 'Statevia.Infrastructure.Persistence'; RelativePath = 'infrastructure\Statevia.Infrastructure.Persistence' }
+    @{ Name = 'Statevia.Infrastructure.Security'; RelativePath = 'infrastructure\Statevia.Infrastructure.Security' }
+    @{ Name = 'Statevia.Infrastructure.Modules'; RelativePath = 'infrastructure\Statevia.Infrastructure.Modules' }
+    @{ Name = 'Statevia.Infrastructure.Notification'; RelativePath = 'infrastructure\Statevia.Infrastructure.Notification' }
+    @{ Name = 'Statevia.Infrastructure.Actions.Grpc'; RelativePath = 'infrastructure\Statevia.Infrastructure.Actions.Grpc' }
+)
+
+$infrastructureTestDefs = @(
+    @{ Name = 'Statevia.Infrastructure.Modules.Tests'; RelativePath = 'infrastructure\Statevia.Infrastructure.Modules.Tests' }
+    @{ Name = 'Statevia.Infrastructure.Actions.Grpc.Tests'; RelativePath = 'infrastructure\Statevia.Infrastructure.Actions.Grpc.Tests' }
+)
+
+$apiProductDefs = @(
+    @{ Name = 'Statevia.Service.Api'; RelativePath = 'service\api\Statevia.Service.Api' }
+    @{ Name = 'Statevia.Service.Api.Bootstrap'; RelativePath = 'service\api\Statevia.Service.Api.Bootstrap' }
+)
+
+$apiTestDefs = @(
+    @{ Name = 'Statevia.Service.Api.Tests'; RelativePath = 'service\api\Statevia.Service.Api.Tests' }
+)
+
+$cliProductDefs = @(
+    @{ Name = 'Statevia.Service.Cli'; RelativePath = 'service\cli\Statevia.Service.Cli' }
+)
+
+$cliTestDefs = @(
+    @{ Name = 'Statevia.Service.Cli.Tests'; RelativePath = 'service\cli\Statevia.Service.Cli.Tests' }
+)
+
+$actionHostProductDefs = @(
+    @{ Name = 'Statevia.Service.ActionHost'; RelativePath = 'service\action-host\Statevia.Service.ActionHost' }
+)
+
+$actionHostTestDefs = @(
+    @{ Name = 'Statevia.Service.ActionHost.Tests'; RelativePath = 'service\action-host\Statevia.Service.ActionHost.Tests' }
+)
+
+$architectureTestDefs = @(
+    @{ Name = 'Statevia.Architecture.Tests'; RelativePath = 'tests\Statevia.Architecture.Tests' }
+)
+
 $engineProduct = Measure-DefinitionGroup -Definitions $engineProductDefs -Extensions @('.cs') -Language 'csharp'
 $engineTest = Measure-DefinitionGroup -Definitions $engineTestDefs -Extensions @('.cs') -Language 'csharp'
+$applicationProduct = Measure-DefinitionGroup -Definitions $applicationProductDefs -Extensions @('.cs') -Language 'csharp'
+$infrastructureProduct = Measure-DefinitionGroup -Definitions $infrastructureProductDefs -Extensions @('.cs') -Language 'csharp'
+$infrastructureTest = Measure-DefinitionGroup -Definitions $infrastructureTestDefs -Extensions @('.cs') -Language 'csharp'
 $apiProduct = Measure-DefinitionGroup -Definitions $apiProductDefs -Extensions @('.cs') -Language 'csharp'
 $apiTest = Measure-DefinitionGroup -Definitions $apiTestDefs -Extensions @('.cs') -Language 'csharp'
+$cliProduct = Measure-DefinitionGroup -Definitions $cliProductDefs -Extensions @('.cs') -Language 'csharp'
+$cliTest = Measure-DefinitionGroup -Definitions $cliTestDefs -Extensions @('.cs') -Language 'csharp'
+$actionHostProduct = Measure-DefinitionGroup -Definitions $actionHostProductDefs -Extensions @('.cs') -Language 'csharp'
+$actionHostTest = Measure-DefinitionGroup -Definitions $actionHostTestDefs -Extensions @('.cs') -Language 'csharp'
+$architectureTest = Measure-DefinitionGroup -Definitions $architectureTestDefs -Extensions @('.cs') -Language 'csharp'
 
 $uiRoot = Join-Path $RepoRoot 'ui\studio'
 $uiProduct = Measure-PathGroup -RootPath $uiRoot -Extensions @('.ts', '.tsx') -Language 'typescript' -IncludeFile {
@@ -367,16 +406,16 @@ foreach ($key in @('Files', 'Physical', 'Blank', 'Comment', 'Code')) {
     $uiUnitTestStats[$key] -= $uiE2e.Stats[$key]
 }
 
-$apiMigrationsPath = Join-Path $RepoRoot 'service\api\Statevia.Service.Api\Migrations'
-$apiMigrations = Measure-PathGroup -RootPath $apiMigrationsPath -Extensions @('.cs') -Language 'csharp'
+$migrationsPath = Join-Path $RepoRoot 'infrastructure\Statevia.Infrastructure.Persistence\Migrations'
+$migrations = Measure-PathGroup -RootPath $migrationsPath -Extensions @('.cs') -Language 'csharp'
 
-$apiProductWithoutMigrations = New-LineStats
-Add-LineStats -Target $apiProductWithoutMigrations -Source $apiProduct.Stats
-$apiProductWithoutMigrations.Physical -= $apiMigrations.Stats.Physical
-$apiProductWithoutMigrations.Code -= $apiMigrations.Stats.Code
-$apiProductWithoutMigrations.Blank -= $apiMigrations.Stats.Blank
-$apiProductWithoutMigrations.Comment -= $apiMigrations.Stats.Comment
-$apiProductWithoutMigrations.Files -= $apiMigrations.Stats.Files
+$infrastructureProductWithoutMigrations = New-LineStats
+Add-LineStats -Target $infrastructureProductWithoutMigrations -Source $infrastructureProduct.Stats
+$infrastructureProductWithoutMigrations.Physical -= $migrations.Stats.Physical
+$infrastructureProductWithoutMigrations.Code -= $migrations.Stats.Code
+$infrastructureProductWithoutMigrations.Blank -= $migrations.Stats.Blank
+$infrastructureProductWithoutMigrations.Comment -= $migrations.Stats.Comment
+$infrastructureProductWithoutMigrations.Files -= $migrations.Stats.Files
 
 function New-ComponentSummary {
     param(
@@ -398,23 +437,45 @@ function New-ComponentSummary {
     }
 }
 
-$summaryRows = @(
-    (New-ComponentSummary -Component 'engine' -Category 'product' -Stats $engineProduct.Stats -ProductPhysical $engineProduct.Stats.Physical)
-    (New-ComponentSummary -Component 'engine' -Category 'test' -Stats $engineTest.Stats -ProductPhysical $engineProduct.Stats.Physical)
-    (New-ComponentSummary -Component 'api' -Category 'product' -Stats $apiProduct.Stats -ProductPhysical $apiProduct.Stats.Physical)
-    (New-ComponentSummary -Component 'api' -Category 'test' -Stats $apiTest.Stats -ProductPhysical $apiProduct.Stats.Physical)
-    (New-ComponentSummary -Component 'ui' -Category 'product' -Stats $uiProduct.Stats -ProductPhysical $uiProduct.Stats.Physical)
-    (New-ComponentSummary -Component 'ui' -Category 'test' -Stats $uiTest.Stats -ProductPhysical $uiProduct.Stats.Physical)
+$measuredComponents = @(
+    @{ Name = 'engine'; Product = $engineProduct; Test = $engineTest }
+    @{ Name = 'application'; Product = $applicationProduct; Test = $null }
+    @{ Name = 'infrastructure'; Product = $infrastructureProduct; Test = $infrastructureTest }
+    @{ Name = 'api'; Product = $apiProduct; Test = $apiTest }
+    @{ Name = 'cli'; Product = $cliProduct; Test = $cliTest }
+    @{ Name = 'action-host'; Product = $actionHostProduct; Test = $actionHostTest }
+    @{ Name = 'ui'; Product = $uiProduct; Test = $uiTest }
+    @{ Name = 'architecture'; Product = $null; Test = $architectureTest }
 )
+
+$summaryRows = [System.Collections.Generic.List[object]]::new()
+foreach ($component in $measuredComponents) {
+    $productPhysical = 0
+    if ($null -ne $component.Product) {
+        $productPhysical = $component.Product.Stats.Physical
+        $summaryRows.Add(
+            (New-ComponentSummary -Component $component.Name -Category 'product' -Stats $component.Product.Stats -ProductPhysical $productPhysical)
+        )
+    }
+
+    if ($null -ne $component.Test) {
+        $summaryRows.Add(
+            (New-ComponentSummary -Component $component.Name -Category 'test' -Stats $component.Test.Stats -ProductPhysical $productPhysical)
+        )
+    }
+}
 
 $grandProduct = New-LineStats
 $grandTest = New-LineStats
-Add-LineStats -Target $grandProduct -Source $engineProduct.Stats
-Add-LineStats -Target $grandProduct -Source $apiProduct.Stats
-Add-LineStats -Target $grandProduct -Source $uiProduct.Stats
-Add-LineStats -Target $grandTest -Source $engineTest.Stats
-Add-LineStats -Target $grandTest -Source $apiTest.Stats
-Add-LineStats -Target $grandTest -Source $uiTest.Stats
+foreach ($component in $measuredComponents) {
+    if ($null -ne $component.Product) {
+        Add-LineStats -Target $grandProduct -Source $component.Product.Stats
+    }
+
+    if ($null -ne $component.Test) {
+        Add-LineStats -Target $grandTest -Source $component.Test.Stats
+    }
+}
 
 $report = [ordered]@{
     GeneratedAt = (Get-Date).ToString('o')
@@ -422,7 +483,8 @@ $report = [ordered]@{
     Notes       = @(
         'Physical = 物理行数（空行・コメント含む）'
         'Code = 実効コード行数（空行・行コメント・ブロックコメントを除く）'
-        'engine/samples は除外'
+        'core/engine/samples・action-host/Fixtures は対象プロジェクト定義に含めない'
+        'Migrations は infrastructure/Statevia.Infrastructure.Persistence/Migrations'
         'ui テスト = tests/, *.test.*, *.spec.*, e2e/'
         'コメント判定は文字列リテラル内のスラッシュ連続を完全には除外しない近似'
     )
@@ -444,20 +506,38 @@ $report = [ordered]@{
             product = $engineProduct
             test    = $engineTest
         }
-        api    = [ordered]@{
+        application = [ordered]@{
+            product = $applicationProduct
+        }
+        infrastructure = [ordered]@{
+            product = $infrastructureProduct
+            test    = $infrastructureTest
+            migrations = $migrations.Stats
+            productWithoutMigrations = $infrastructureProductWithoutMigrations
+        }
+        api = [ordered]@{
             product = $apiProduct
             test    = $apiTest
-            migrations = $apiMigrations.Stats
-            productWithoutMigrations = $apiProductWithoutMigrations
         }
-        ui     = [ordered]@{
+        cli = [ordered]@{
+            product = $cliProduct
+            test    = $cliTest
+        }
+        'action-host' = [ordered]@{
+            product = $actionHostProduct
+            test    = $actionHostTest
+        }
+        ui = [ordered]@{
             product  = $uiProduct
             test     = $uiTest
             unitTest = @{
                 Stats = $uiUnitTestStats
                 ByLanguage = $uiTest.ByLanguage
             }
-            e2e      = $uiE2e
+            e2e = $uiE2e
+        }
+        architecture = [ordered]@{
+            test = $architectureTest
         }
     }
 }
@@ -484,21 +564,48 @@ if (-not $Detailed) {
     return
 }
 
-Write-Output ''
-Write-Output '=== engine 内訳 ==='
-foreach ($detail in $engineProduct.Details + $engineTest.Details) {
-    Write-Output ('{0}: Physical {1}, Code {2}, Files {3}' -f $detail.Name, $detail.Physical, $detail.Code, $detail.Files)
+function Write-CsharpComponentDetails {
+    param(
+        [string]$Title,
+        $Product,
+        $Test,
+        [string[]]$ExtraLines = @()
+    )
+
+    Write-Output ''
+    Write-Output ("=== {0} 内訳 ===" -f $Title)
+
+    $details = @()
+    if ($null -ne $Product) {
+        $details += @($Product.Details)
+    }
+
+    if ($null -ne $Test) {
+        $details += @($Test.Details)
+    }
+
+    foreach ($detail in $details) {
+        Write-Output ('{0}: Physical {1}, Code {2}, Files {3}' -f $detail.Name, $detail.Physical, $detail.Code, $detail.Files)
+    }
+
+    foreach ($extraLine in $ExtraLines) {
+        Write-Output $extraLine
+    }
 }
 
-Write-Output ''
-Write-Output '=== api 内訳 ==='
-foreach ($detail in $apiProduct.Details + $apiTest.Details) {
-    Write-Output ('{0}: Physical {1}, Code {2}, Files {3}' -f $detail.Name, $detail.Physical, $detail.Code, $detail.Files)
-}
-
-Write-Output ('Migrations: Physical {0}, Code {1}, Files {2}' -f $apiMigrations.Stats.Physical, $apiMigrations.Stats.Code, $apiMigrations.Stats.Files)
-Write-Output ('Api product (Migrations 除く): Physical {0}, Code {1}, Files {2}' -f `
-    $apiProductWithoutMigrations.Physical, $apiProductWithoutMigrations.Code, $apiProductWithoutMigrations.Files)
+Write-CsharpComponentDetails -Title 'engine' -Product $engineProduct -Test $engineTest
+Write-CsharpComponentDetails -Title 'application' -Product $applicationProduct -Test $null
+Write-CsharpComponentDetails -Title 'infrastructure' -Product $infrastructureProduct -Test $infrastructureTest -ExtraLines @(
+    ('Migrations: Physical {0}, Code {1}, Files {2}' -f $migrations.Stats.Physical, $migrations.Stats.Code, $migrations.Stats.Files)
+    ('Infrastructure product (Migrations 除く): Physical {0}, Code {1}, Files {2}' -f `
+        $infrastructureProductWithoutMigrations.Physical,
+        $infrastructureProductWithoutMigrations.Code,
+        $infrastructureProductWithoutMigrations.Files)
+)
+Write-CsharpComponentDetails -Title 'api' -Product $apiProduct -Test $apiTest
+Write-CsharpComponentDetails -Title 'cli' -Product $cliProduct -Test $cliTest
+Write-CsharpComponentDetails -Title 'action-host' -Product $actionHostProduct -Test $actionHostTest
+Write-CsharpComponentDetails -Title 'architecture' -Product $null -Test $architectureTest
 
 Write-Output ''
 Write-Output '=== ui 内訳 ==='
@@ -511,8 +618,16 @@ Write-Output '=== 言語別 (Physical / Code / Files) ==='
 $languageRows = @(
     @{ Component = 'engine'; Category = 'product'; Map = $engineProduct.ByLanguage }
     @{ Component = 'engine'; Category = 'test'; Map = $engineTest.ByLanguage }
+    @{ Component = 'application'; Category = 'product'; Map = $applicationProduct.ByLanguage }
+    @{ Component = 'infrastructure'; Category = 'product'; Map = $infrastructureProduct.ByLanguage }
+    @{ Component = 'infrastructure'; Category = 'test'; Map = $infrastructureTest.ByLanguage }
     @{ Component = 'api'; Category = 'product'; Map = $apiProduct.ByLanguage }
     @{ Component = 'api'; Category = 'test'; Map = $apiTest.ByLanguage }
+    @{ Component = 'cli'; Category = 'product'; Map = $cliProduct.ByLanguage }
+    @{ Component = 'cli'; Category = 'test'; Map = $cliTest.ByLanguage }
+    @{ Component = 'action-host'; Category = 'product'; Map = $actionHostProduct.ByLanguage }
+    @{ Component = 'action-host'; Category = 'test'; Map = $actionHostTest.ByLanguage }
+    @{ Component = 'architecture'; Category = 'test'; Map = $architectureTest.ByLanguage }
     @{ Component = 'ui'; Category = 'product'; Map = $uiProduct.ByLanguage }
     @{ Component = 'ui'; Category = 'test'; Map = $uiTest.ByLanguage }
 )

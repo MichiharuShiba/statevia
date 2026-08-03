@@ -44,7 +44,11 @@ internal sealed class EventIngressService(
                 ExecutionId = match.ExecutionId,
                 Kind = ExecutionWorkItemKinds.Resume,
                 Payload = JsonSerializer.Serialize(
-                    new ExecutionResumeWorkItemPayload(match.NodeId, match.ResumeEventName)),
+                    new ExecutionResumeWorkItemPayload(
+                        ExecutionResumeWorkItemModes.Event,
+                        match.NodeId,
+                        match.ResumeEventName),
+                    ExecutionWorkItemPayloadJson.Options),
                 AvailableAt = now,
                 Attempts = 0,
                 CreatedAt = now

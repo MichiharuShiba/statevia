@@ -307,10 +307,18 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         _instances[executionId] = instance;
         _eventProviders[executionId] = eventProvider;
 
+        if (checkpoint.IsCompleted || checkpoint.IsCancelled || checkpoint.IsFailed)
+        {
+            return;
+        }
+
         foreach (var wait in checkpoint.PendingWaits)
         {
             _ = ContinueRestoredWaitAsync(instance, eventProvider, wait);
         }
+
+        // NodeCompleted 時点の checkpoint は次遷移前のため、完了済みで出辺のないノードから継続する。
+        ContinueCompletedFrontierAfterImport(instance, eventProvider);
     }
 
     /// <inheritdoc />
@@ -392,6 +400,39 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         finally
         {
             instance.RemoveActiveState(wait.StateName);
+        }
+    }
+
+    /// <summary>
+    /// Import 後、完了済みで出辺のないノードから遷移を再開する（recovery / ステップ checkpoint 用）。
+    /// </summary>
+    /// <remarks>
+    /// <see cref="NotifyNodeCompletedAsync"/> 時点の checkpoint は <see cref="ProcessFact"/> 前のため
+    /// 出辺が無い。Wait 未完了は <see cref="ContinueRestoredWaitAsync"/> が担当する。
+    /// </remarks>
+    private void ContinueCompletedFrontierAfterImport(ExecutionInstance instance, EventProvider eventProvider)
+    {
+        var nodes = instance.Graph.GetNodesSnapshot();
+        var nodesWithOutgoing = instance.Graph.GetEdgesSnapshot()
+            .Select(edge => edge.From)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var node in nodes)
+        {
+            if (node.CompletedAt is null || string.IsNullOrWhiteSpace(node.Fact))
+            {
+                continue;
+            }
+
+            if (nodesWithOutgoing.Contains(node.NodeId))
+            {
+                continue;
+            }
+
+            // 未完了 Wait は PendingWaits 経路。完了済み Wait で出辺なしなら ProcessFact が必要。
+            instance.RemoveActiveState(node.StateName);
+            instance.TryGetOutput(node.StateName, out var output);
+            ProcessFact(instance, eventProvider, node.StateName, node.Fact, output, node.NodeId);
         }
     }
 

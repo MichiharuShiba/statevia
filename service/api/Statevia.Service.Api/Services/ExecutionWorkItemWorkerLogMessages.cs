@@ -30,4 +30,19 @@ internal static partial class ExecutionWorkItemWorkerLogMessages
         Level = LogLevel.Warning,
         Message = "Execution work item {WorkItemId} heartbeat failed.")]
     public static partial void WorkItemHeartbeatFailed(this ILogger logger, Exception exception, Guid workItemId);
+
+    [LoggerMessage(
+        EventId = 3305,
+        Level = LogLevel.Warning,
+        Message = "Execution work item {WorkItemId} could not acquire checkpoint ownership for execution {ExecutionId}.")]
+    public static partial void WorkItemOwnershipAcquireFailed(
+        this ILogger logger,
+        Guid workItemId,
+        Guid executionId);
+
+    [LoggerMessage(
+        EventId = 3306,
+        Level = LogLevel.Warning,
+        Message = "Execution work item {WorkItemId} failed to end owned session.")]
+    public static partial void WorkItemSessionEndFailed(this ILogger logger, Exception exception, Guid workItemId);
 }
