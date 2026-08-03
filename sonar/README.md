@@ -112,7 +112,7 @@ Set-Location ..\..
 
 ## 行数集計（`measure-loc.ps1`）
 
-`core/engine` / `service/api` / `ui/studio` のソース行数を、**プロダクト**と**テスト**に分けて集計します。SonarQube の分析とは独立しており、**`SONAR_TOKEN` は不要**です。
+現行リポジトリ構成（`core/` / `infrastructure/` / `service/` / `ui/studio` / `tests/`）のソース行数を、**プロダクト**と**テスト**に分けて集計します。SonarQube の分析とは独立しており、**`SONAR_TOKEN` は不要**です。
 
 ```powershell
 .\sonar\measure-loc.ps1
@@ -124,11 +124,16 @@ Set-Location ..\..
 
 | コンポーネント | プロダクト | テスト |
 | -------------- | ---------- | ------ |
-| engine | `Statevia.Core.Engine`, `Statevia.Service.Cli` | `Statevia.Core.Engine.Tests`, `Statevia.Service.Cli.Tests` |
+| engine | `Statevia.Core.Engine` | `Statevia.Core.Engine.Tests` |
+| application | `Statevia.Core.Application`, `Statevia.Core.Application.Contracts`, `Statevia.Core.Actions.Abstractions` | （なし） |
+| infrastructure | `Statevia.Infrastructure.*`（Common / Persistence / Security / Modules / Notification / Actions.Grpc） | `*.Modules.Tests`, `*.Actions.Grpc.Tests` |
 | api | `Statevia.Service.Api`, `Statevia.Service.Api.Bootstrap` | `Statevia.Service.Api.Tests` |
+| cli | `Statevia.Service.Cli` | `Statevia.Service.Cli.Tests` |
+| action-host | `Statevia.Service.ActionHost` | `Statevia.Service.ActionHost.Tests` |
 | ui | `ui/studio`（`tests/`・`e2e/`・`*.test.*` を除く `*.ts` / `*.tsx`） | `tests/`、`*.test.*`、`*.spec.*`、`e2e/` |
+| architecture | （なし） | `Statevia.Architecture.Tests` |
 
-除外: `bin/`, `obj/`, `node_modules/`, `.next/`, `coverage/`。`core/engine/samples/` は含めません。
+除外: `bin/`, `obj/`, `node_modules/`, `.next/`, `coverage/`。`core/engine/samples/` と `service/action-host/Fixtures/` は対象プロジェクト定義に含めません。Migrations は `infrastructure/Statevia.Infrastructure.Persistence/Migrations` を内訳表示します。
 
 ## 主なファイル
 
