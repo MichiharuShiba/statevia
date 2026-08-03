@@ -42,10 +42,12 @@ internal sealed class DelayWaitSchedulerHostedService(
                             WorkItemId = Guid.NewGuid(),
                             ExecutionId = wait.ExecutionId,
                             Kind = ExecutionWorkItemKinds.Resume,
-                            Payload = JsonSerializer.Serialize(new ExecutionResumeWorkItemPayload(
-                                ExecutionResumeWorkItemModes.Event,
-                                wait.NodeId,
-                                ExecutionWaitEventNames.DelayCompleted)),
+                            Payload = JsonSerializer.Serialize(
+                                new ExecutionResumeWorkItemPayload(
+                                    ExecutionResumeWorkItemModes.Event,
+                                    wait.NodeId,
+                                    ExecutionWaitEventNames.DelayCompleted),
+                                ExecutionWorkItemPayloadJson.Options),
                             AvailableAt = now,
                             Attempts = 0,
                             CreatedAt = now

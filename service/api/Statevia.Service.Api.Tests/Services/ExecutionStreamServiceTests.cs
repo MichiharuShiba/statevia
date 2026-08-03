@@ -52,6 +52,8 @@ public sealed class ExecutionStreamServiceTests
         public Task<bool> RenewOwnedSessionLeaseAsync(Guid executionId, TimeSpan leaseDuration, CancellationToken ct) => Task.FromResult(true);
         public Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task AbandonLocalOwnedSessionAsync(Guid executionId) => Task.CompletedTask;
+
+        public Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task PersistCheckpointAndUnloadByEngineIdAsync(string engineExecutionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
 
     }
@@ -100,6 +102,8 @@ public sealed class ExecutionStreamServiceTests
         public Task<bool> RenewOwnedSessionLeaseAsync(Guid executionId, TimeSpan leaseDuration, CancellationToken ct) => Task.FromResult(true);
         public Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task AbandonLocalOwnedSessionAsync(Guid executionId) => Task.CompletedTask;
+
+        public Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task PersistCheckpointAndUnloadByEngineIdAsync(string engineExecutionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
 
     }
@@ -170,6 +174,8 @@ public sealed class ExecutionStreamServiceTests
         public Task<bool> RenewOwnedSessionLeaseAsync(Guid executionId, TimeSpan leaseDuration, CancellationToken ct) => Task.FromResult(true);
         public Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task AbandonLocalOwnedSessionAsync(Guid executionId) => Task.CompletedTask;
+
+        public Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task PersistCheckpointAndUnloadByEngineIdAsync(string engineExecutionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
 
     }
@@ -201,6 +207,8 @@ public sealed class ExecutionStreamServiceTests
         public Task<bool> RenewOwnedSessionLeaseAsync(Guid executionId, TimeSpan leaseDuration, CancellationToken ct) => Task.FromResult(true);
         public Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task AbandonLocalOwnedSessionAsync(Guid executionId) => Task.CompletedTask;
+
+        public Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task PersistCheckpointAndUnloadByEngineIdAsync(string engineExecutionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
 
     }
@@ -239,6 +247,8 @@ public sealed class ExecutionStreamServiceTests
         public Task<bool> RenewOwnedSessionLeaseAsync(Guid executionId, TimeSpan leaseDuration, CancellationToken ct) => Task.FromResult(true);
         public Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task AbandonLocalOwnedSessionAsync(Guid executionId) => Task.CompletedTask;
+
+        public Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task PersistCheckpointAndUnloadByEngineIdAsync(string engineExecutionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
 
     }

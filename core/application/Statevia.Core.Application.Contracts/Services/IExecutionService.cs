@@ -139,4 +139,11 @@ public interface IExecutionService
     /// lease 喪失時にローカル Engine を Unload しトラッカーを捨てる（DB 所有は触らない）。
     /// </summary>
     Task AbandonLocalOwnedSessionAsync(Guid executionId);
+
+    /// <summary>
+    /// ローカル Engine の Load が Wait Unload または終端になるまで待つ（Worker の 1 claim = 1 Load）。
+    /// </summary>
+    /// <param name="executionId">実行 ID。</param>
+    /// <param name="ct">キャンセル。</param>
+    Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct);
 }

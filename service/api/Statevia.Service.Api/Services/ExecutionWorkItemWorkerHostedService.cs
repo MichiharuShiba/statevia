@@ -125,6 +125,14 @@ internal sealed class ExecutionWorkItemWorkerHostedService(
                     try
                     {
                         await ProcessItemAsync(executions, item, processCts.Token).ConfigureAwait(false);
+                        // Start / Resume / recovery は Engine が Wait Unload または終端するまで所有を維持する。
+                        if (item.Kind is ExecutionWorkItemKinds.Start
+                            or ExecutionWorkItemKinds.Resume)
+                        {
+                            await executions.AwaitLocalExecutionLoadAsync(item.ExecutionId, processCts.Token)
+                                .ConfigureAwait(false);
+                        }
+
                         await queue.CompleteAsync(item.WorkItemId, _leaseOwner, processCts.Token)
                             .ConfigureAwait(false);
                     }
@@ -253,7 +261,9 @@ internal sealed class ExecutionWorkItemWorkerHostedService(
 
     private static Task ResumeAsync(IExecutionService executions, ExecutionWorkItemRow item, CancellationToken ct)
     {
-        var payload = JsonSerializer.Deserialize<ExecutionResumeWorkItemPayload>(item.Payload)
+        var payload = JsonSerializer.Deserialize<ExecutionResumeWorkItemPayload>(
+                item.Payload,
+                ExecutionWorkItemPayloadJson.Options)
             ?? throw new InvalidOperationException("Resume work item payload is invalid.");
 
         if (string.Equals(payload.Mode, ExecutionResumeWorkItemModes.Recovery, StringComparison.Ordinal))
@@ -284,8 +294,11 @@ internal sealed class ExecutionWorkItemWorkerHostedService(
         ExecutionWorkItemRow item,
         CancellationToken ct)
     {
-        var payload = JsonSerializer.Deserialize<ExecutionStartWorkItemPayload>(item.Payload)
+        var payload = JsonSerializer.Deserialize<ExecutionStartWorkItemPayload>(
+                item.Payload,
+                ExecutionWorkItemPayloadJson.Options)
             ?? throw new InvalidOperationException("Start work item payload is invalid.");
+        ArgumentNullException.ThrowIfNull(payload.Request);
         return executions.ExecuteQueuedStartAsync(payload.ExecutionId, payload.Request, ct);
     }
 }

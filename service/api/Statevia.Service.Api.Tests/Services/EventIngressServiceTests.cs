@@ -33,7 +33,9 @@ public sealed class EventIngressServiceTests
         var item = workQueue.Items[0];
         Assert.Equal(executionId, item.ExecutionId);
         Assert.Equal(ExecutionWorkItemKinds.Resume, item.Kind);
-        var payload = JsonSerializer.Deserialize<ExecutionResumeWorkItemPayload>(item.Payload);
+        var payload = JsonSerializer.Deserialize<ExecutionResumeWorkItemPayload>(
+            item.Payload,
+            ExecutionWorkItemPayloadJson.Options);
         Assert.NotNull(payload);
         Assert.Equal(ExecutionResumeWorkItemModes.Event, payload.Mode);
         Assert.Equal("WaitNode", payload.NodeId);

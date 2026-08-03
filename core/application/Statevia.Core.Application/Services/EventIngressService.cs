@@ -47,7 +47,8 @@ internal sealed class EventIngressService(
                     new ExecutionResumeWorkItemPayload(
                         ExecutionResumeWorkItemModes.Event,
                         match.NodeId,
-                        match.ResumeEventName)),
+                        match.ResumeEventName),
+                    ExecutionWorkItemPayloadJson.Options),
                 AvailableAt = now,
                 Attempts = 0,
                 CreatedAt = now
