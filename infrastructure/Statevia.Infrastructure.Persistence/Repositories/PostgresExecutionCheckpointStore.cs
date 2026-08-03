@@ -158,28 +158,24 @@ internal sealed class PostgresExecutionCheckpointStore : IExecutionCheckpointSto
     /// <inheritdoc />
     public async Task<bool> TryUpsertRuntimeWithGenerationAsync(
         ICoreUnitOfWork uow,
-        Guid executionId,
-        long ownerGeneration,
-        string checkpointJson,
-        int schemaVersion,
-        DateTime updatedAtUtc,
-        DateTime? leaseUntilUtc,
+        ExecutionCheckpointRuntimeUpsert upsert,
         CancellationToken ct)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(checkpointJson);
+        ArgumentNullException.ThrowIfNull(upsert);
+        ArgumentException.ThrowIfNullOrWhiteSpace(upsert.CheckpointJson);
         var db = uow.GetDb();
         var existing = await db.ExecutionCheckpoints
             .FirstOrDefaultAsync(
-                x => x.ExecutionId == executionId && x.OwnerGeneration == ownerGeneration,
+                x => x.ExecutionId == upsert.ExecutionId && x.OwnerGeneration == upsert.OwnerGeneration,
                 ct)
             .ConfigureAwait(false);
         if (existing is null)
             return false;
 
-        existing.CheckpointJson = checkpointJson;
-        existing.SchemaVersion = schemaVersion;
-        existing.UpdatedAt = updatedAtUtc;
-        if (leaseUntilUtc is { } lease)
+        existing.CheckpointJson = upsert.CheckpointJson;
+        existing.SchemaVersion = upsert.SchemaVersion;
+        existing.UpdatedAt = upsert.UpdatedAtUtc;
+        if (upsert.LeaseUntilUtc is { } lease)
             existing.LeaseUntil = lease;
         return true;
     }

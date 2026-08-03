@@ -72,12 +72,7 @@ public interface IExecutionCheckpointStore
     /// <returns>更新できたとき true。</returns>
     Task<bool> TryUpsertRuntimeWithGenerationAsync(
         ICoreUnitOfWork uow,
-        Guid executionId,
-        long ownerGeneration,
-        string checkpointJson,
-        int schemaVersion,
-        DateTime updatedAtUtc,
-        DateTime? leaseUntilUtc,
+        ExecutionCheckpointRuntimeUpsert upsert,
         CancellationToken ct);
 
     /// <summary>世代一致時のみ所有を解放する（Unload 時）。</summary>

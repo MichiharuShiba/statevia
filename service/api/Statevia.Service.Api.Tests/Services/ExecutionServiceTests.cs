@@ -521,12 +521,7 @@ public sealed class ExecutionServiceTests
 
         public Task<bool> TryUpsertRuntimeWithGenerationAsync(
             ICoreUnitOfWork uow,
-            Guid executionId,
-            long ownerGeneration,
-            string checkpointJson,
-            int schemaVersion,
-            DateTime updatedAtUtc,
-            DateTime? leaseUntilUtc,
+            ExecutionCheckpointRuntimeUpsert upsert,
             CancellationToken ct) =>
             Task.FromResult(true);
 

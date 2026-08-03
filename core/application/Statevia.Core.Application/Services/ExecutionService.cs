@@ -194,13 +194,14 @@ internal sealed class ExecutionService : IExecutionService
         }
 
         return await ExecuteStartInProcessAsync(
-                request,
-                requestHash,
-                dedupKey,
-                tenantId,
-                defUuid.Value,
-                versionRow,
-                executionId: null,
+                new ExecuteStartInProcessArgs(
+                    request,
+                    requestHash,
+                    dedupKey,
+                    tenantId,
+                    defUuid.Value,
+                    versionRow,
+                    ExecutionId: null),
                 ct)
             .ConfigureAwait(false);
     }
@@ -323,29 +324,23 @@ internal sealed class ExecutionService : IExecutionService
 
     /// <summary>同一プロセス内で Engine を起動し投影する（Worker / テスト互換）。</summary>
     private async Task<ExecutionResponse> ExecuteStartInProcessAsync(
-        StartExecutionRequest request,
-        string requestHash,
-        CommandDedupKey? dedupKey,
-        Guid tenantId,
-        Guid definitionId,
-        DefinitionVersionRow versionRow,
-        Guid? executionId,
+        ExecuteStartInProcessArgs args,
         CancellationToken ct)
     {
-        var compiled = RestoreCompiledDefinitionFromVersion(versionRow);
-        var resolvedExecutionId = executionId ?? _idGenerator.NewGuid();
+        var compiled = RestoreCompiledDefinitionFromVersion(args.VersionRow);
+        var resolvedExecutionId = args.ExecutionId ?? _idGenerator.NewGuid();
         var engineId = resolvedExecutionId.ToString();
-        _engine.Start(compiled, engineId, request.Input);
+        _engine.Start(compiled, engineId, args.Request.Input);
 
-        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, definitionId.ToString("D"), ct).ConfigureAwait(false)
-            ?? definitionId.ToString("D");
+        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, args.DefinitionId.ToString("D"), ct).ConfigureAwait(false)
+            ?? args.DefinitionId.ToString("D");
 
         var startResult = await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
             {
                 var createdAt = DateTime.UtcNow;
                 var securitySnapshot = await _snapshotFactory
-                    .CaptureForStartAsync(tenantId, definitionId, createdAt, innerCt)
+                    .CaptureForStartAsync(args.TenantId, args.DefinitionId, createdAt, innerCt)
                     .ConfigureAwait(false);
                 var securitySnapshotJson = ExecutionSecuritySnapshotJson.Serialize(securitySnapshot);
 
@@ -355,10 +350,10 @@ internal sealed class ExecutionService : IExecutionService
                 var startedPayload = JsonSerializer.Serialize(
                     new
                     {
-                        definitionId = definitionId.ToString(),
-                        definitionVersionId = versionRow.DefinitionVersionId.ToString(),
-                        definitionVersion = versionRow.Version,
-                        tenantId,
+                        definitionId = args.DefinitionId.ToString(),
+                        definitionVersionId = args.VersionRow.DefinitionVersionId.ToString(),
+                        definitionVersion = args.VersionRow.Version,
+                        tenantId = args.TenantId,
                         startedByPrincipalId = securitySnapshot.StartedByPrincipalId,
                         permissionSetHash = securitySnapshot.PermissionSetHash,
                         securityModelVersion = securitySnapshot.SecurityModelVersion,
@@ -367,7 +362,7 @@ internal sealed class ExecutionService : IExecutionService
                     CamelCaseJsonSerializerOptions);
 
                 ExecutionResponse response;
-                if (executionId is null)
+                if (args.ExecutionId is null)
                 {
                     var displayId = await _displayIdWrites
                         .AllocateAsync(uow, DisplayIdResourceTypes.Execution, resolvedExecutionId, innerCt)
@@ -376,9 +371,9 @@ internal sealed class ExecutionService : IExecutionService
                     var executionRow = new ExecutionRow
                     {
                         ExecutionId = resolvedExecutionId,
-                        TenantId = tenantId,
-                        DefinitionId = definitionId,
-                        DefinitionVersionId = versionRow.DefinitionVersionId,
+                        TenantId = args.TenantId,
+                        DefinitionId = args.DefinitionId,
+                        DefinitionVersionId = args.VersionRow.DefinitionVersionId,
                         Status = status,
                         StartedAt = createdAt,
                         UpdatedAt = createdAt,
@@ -406,7 +401,7 @@ internal sealed class ExecutionService : IExecutionService
                         .AppendAsync(uow, resolvedExecutionId, EventStoreEventType.WorkflowStarted, startedPayload, innerCt)
                         .ConfigureAwait(false);
 
-                    if (dedupKey is { } saveKey)
+                    if (args.DedupKey is { } saveKey)
                     {
                         var responseJson = JsonSerializer.Serialize(response, CamelCaseJsonSerializerOptions);
                         await _dedup.SaveAsync(
@@ -416,7 +411,7 @@ internal sealed class ExecutionService : IExecutionService
                                 DedupKey = saveKey.DedupKey,
                                 Endpoint = saveKey.Endpoint,
                                 IdempotencyKey = saveKey.IdempotencyKey,
-                                RequestHash = requestHash,
+                                RequestHash = args.RequestHash,
                                 StatusCode = HttpStatus201Created,
                                 ResponseBody = responseJson,
                                 CreatedAt = createdAt,
@@ -428,7 +423,7 @@ internal sealed class ExecutionService : IExecutionService
                 else
                 {
                     // 受理済み行を Worker が実行: 投影のみ更新（WorkflowStarted は受理時済み）。
-                    var existing = await _executions.GetByIdAsync(uow, tenantId, resolvedExecutionId, innerCt).ConfigureAwait(false)
+                    var existing = await _executions.GetByIdAsync(uow, args.TenantId, resolvedExecutionId, innerCt).ConfigureAwait(false)
                         ?? throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
                     var displayId = await _displayIds.GetDisplayIdAsync(
                             DisplayIdResourceTypes.Execution,
@@ -458,7 +453,7 @@ internal sealed class ExecutionService : IExecutionService
                 await SyncOperationalProjectionAsync(
                         uow,
                         resolvedExecutionId,
-                        tenantId,
+                        args.TenantId,
                         status,
                         graphJson,
                         nodeIdToClear: null,
@@ -513,13 +508,14 @@ internal sealed class ExecutionService : IExecutionService
             throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
 
         return await ExecuteStartInProcessAsync(
-                request,
-                requestHash: string.Empty,
-                dedupKey: null,
-                tenantId,
-                execution.DefinitionId,
-                versionRow,
-                executionId,
+                new ExecuteStartInProcessArgs(
+                    request,
+                    RequestHash: string.Empty,
+                    DedupKey: null,
+                    tenantId,
+                    execution.DefinitionId,
+                    versionRow,
+                    executionId),
                 ct)
             .ConfigureAwait(false);
     }
@@ -547,12 +543,12 @@ internal sealed class ExecutionService : IExecutionService
         {
             return await _checkpointStore.TryUpsertRuntimeWithGenerationAsync(
                     uow,
-                    executionId,
-                    generation,
-                    json,
-                    checkpoint.SchemaVersion,
-                    updatedAt,
-                    leaseUntilUtc: null,
+                    new ExecutionCheckpointRuntimeUpsert(
+                        executionId,
+                        generation,
+                        json,
+                        checkpoint.SchemaVersion,
+                        updatedAt),
                     ct)
                 .ConfigureAwait(false);
         }
@@ -873,12 +869,12 @@ internal sealed class ExecutionService : IExecutionService
                 {
                     var ok = await _checkpointStore.TryUpsertRuntimeWithGenerationAsync(
                             uow,
-                            executionId,
-                            generation,
-                            json,
-                            checkpoint.SchemaVersion,
-                            updatedAt,
-                            leaseUntilUtc: null,
+                            new ExecutionCheckpointRuntimeUpsert(
+                                executionId,
+                                generation,
+                                json,
+                                checkpoint.SchemaVersion,
+                                updatedAt),
                             innerCt)
                         .ConfigureAwait(false);
                     if (!ok)
@@ -1952,12 +1948,12 @@ internal sealed class ExecutionService : IExecutionService
                 {
                     var upserted = await _checkpointStore.TryUpsertRuntimeWithGenerationAsync(
                             uow,
-                            executionId,
-                            generation,
-                            json,
-                            checkpoint.SchemaVersion,
-                            updatedAt,
-                            leaseUntilUtc: null,
+                            new ExecutionCheckpointRuntimeUpsert(
+                                executionId,
+                                generation,
+                                json,
+                                checkpoint.SchemaVersion,
+                                updatedAt),
                             innerCt)
                         .ConfigureAwait(false);
                     if (!upserted)
@@ -2517,4 +2513,13 @@ internal sealed class ExecutionService : IExecutionService
         throw new InvalidOperationException("Event delivery insert retry loop ended unexpectedly.");
     }
 
+    /// <summary>同一プロセス Start の入力束。</summary>
+    private sealed record ExecuteStartInProcessArgs(
+        StartExecutionRequest Request,
+        string RequestHash,
+        CommandDedupKey? DedupKey,
+        Guid TenantId,
+        Guid DefinitionId,
+        DefinitionVersionRow VersionRow,
+        Guid? ExecutionId);
 }

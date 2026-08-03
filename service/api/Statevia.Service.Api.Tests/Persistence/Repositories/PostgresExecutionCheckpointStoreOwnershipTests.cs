@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Application.Contracts.Persistence;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Persistence.Repositories;
 using Statevia.Service.Api.Tests.Infrastructure;
@@ -47,21 +48,21 @@ public sealed class PostgresExecutionCheckpointStoreOwnershipTests
         {
             staleAccepted = await store.TryUpsertRuntimeWithGenerationAsync(
                 uow,
-                executionId,
-                ownerGeneration: generation - 1,
-                checkpointJson: """{"stale":true}""",
-                schemaVersion: 1,
-                updatedAtUtc: DateTime.UtcNow,
-                leaseUntilUtc: null,
+                new ExecutionCheckpointRuntimeUpsert(
+                    executionId,
+                    OwnerGeneration: generation - 1,
+                    CheckpointJson: """{"stale":true}""",
+                    SchemaVersion: 1,
+                    UpdatedAtUtc: DateTime.UtcNow),
                 CancellationToken.None);
             freshAccepted = await store.TryUpsertRuntimeWithGenerationAsync(
                 uow,
-                executionId,
-                ownerGeneration: generation,
-                checkpointJson: """{"fresh":true}""",
-                schemaVersion: 1,
-                updatedAtUtc: DateTime.UtcNow,
-                leaseUntilUtc: null,
+                new ExecutionCheckpointRuntimeUpsert(
+                    executionId,
+                    OwnerGeneration: generation,
+                    CheckpointJson: """{"fresh":true}""",
+                    SchemaVersion: 1,
+                    UpdatedAtUtc: DateTime.UtcNow),
                 CancellationToken.None);
             await uow.SaveChangesAsync(CancellationToken.None);
         }
