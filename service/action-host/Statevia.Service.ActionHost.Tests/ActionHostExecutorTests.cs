@@ -35,6 +35,81 @@ public sealed class ActionHostExecutorTests
         Assert.Equal("DeadlineExceeded", result.ErrorCode);
     }
 
+    /// <summary>将来の deadline は CancelAfter を設定したうえで実行を完了できる。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenDeadlineInFuture_CompletesSuccessfully()
+    {
+        // Arrange
+        var executor = CreateExecutor(CreateEchoRegistration("test.module.echo"));
+        var input = JsonSerializer.SerializeToElement(new { message = "with-deadline" });
+
+        // Act
+        var result = await executor.ExecuteAsync(
+            new ActionExecutionRequest
+            {
+                ExecutionId = "exec-future-deadline",
+                StateName = "Echo",
+                ActionId = "test.module.echo",
+                TenantId = "00000000-0000-4000-8000-000000000001",
+                Deadline = DateTimeOffset.UtcNow.AddMinutes(5),
+                Input = input,
+            },
+            CancellationToken.None);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.NotNull(result.Output);
+        Assert.Equal("with-deadline", result.Output.Value.GetProperty("message").GetString());
+    }
+
+    /// <summary>JsonElement 出力はそのまま Output に載る。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenOutputIsJsonElement_ReturnsSameElement()
+    {
+        // Arrange
+        var executor = CreateExecutor(CreateJsonElementOutputRegistration("test.module.json"));
+
+        // Act
+        var result = await executor.ExecuteAsync(
+            new ActionExecutionRequest
+            {
+                ExecutionId = "exec-json-element",
+                StateName = "Json",
+                ActionId = "test.module.json",
+                TenantId = "00000000-0000-4000-8000-000000000001",
+            },
+            CancellationToken.None);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.NotNull(result.Output);
+        Assert.Equal("direct", result.Output.Value.GetProperty("kind").GetString());
+    }
+
+    /// <summary>NotSupportedException は ActionExecutionFailed を返す。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenActionThrowsNotSupported_ReturnsActionExecutionFailed()
+    {
+        // Arrange
+        var executor = CreateExecutor(CreateNotSupportedRegistration("test.module.unsupported"));
+
+        // Act
+        var result = await executor.ExecuteAsync(
+            new ActionExecutionRequest
+            {
+                ExecutionId = "exec-unsupported",
+                StateName = "Unsupported",
+                ActionId = "test.module.unsupported",
+                TenantId = "00000000-0000-4000-8000-000000000001",
+            },
+            CancellationToken.None);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Equal("ActionExecutionFailed", result.ErrorCode);
+        Assert.Equal("not-supported", result.ErrorMessage);
+    }
+
     /// <summary>キャンセル済みトークンは Cancelled を返す。</summary>
     [Fact]
     public async Task ExecuteAsync_WhenCancellationRequested_ReturnsCancelled()
@@ -153,10 +228,28 @@ public sealed class ActionHostExecutorTests
     private static LoadedActionRegistration CreateNullOutputRegistration(string actionId) =>
         new(actionId, DefaultStateExecutor.Create(new NullOutputState()), "test.module");
 
+    private static LoadedActionRegistration CreateJsonElementOutputRegistration(string actionId) =>
+        new(actionId, DefaultStateExecutor.Create(new JsonElementOutputState()), "test.module");
+
+    private static LoadedActionRegistration CreateNotSupportedRegistration(string actionId) =>
+        new(actionId, DefaultStateExecutor.Create(new NotSupportedState()), "test.module");
+
     private sealed class EchoState : IState<object?, object?>
     {
         public Task<object?> ExecuteAsync(StateContext ctx, object? input, CancellationToken ct) =>
             Task.FromResult(input);
+    }
+
+    private sealed class JsonElementOutputState : IState<object?, object?>
+    {
+        public Task<object?> ExecuteAsync(StateContext ctx, object? input, CancellationToken ct) =>
+            Task.FromResult<object?>(JsonSerializer.SerializeToElement(new { kind = "direct" }));
+    }
+
+    private sealed class NotSupportedState : IState<object?, object?>
+    {
+        public Task<object?> ExecuteAsync(StateContext ctx, object? input, CancellationToken ct) =>
+            throw new NotSupportedException("not-supported");
     }
 
     private sealed class SlowState : IState<object?, object?>
