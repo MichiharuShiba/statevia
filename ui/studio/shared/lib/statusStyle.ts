@@ -3,10 +3,10 @@
  * ドメイン DTO の状態文字列と一致させる。
  */
 
-/** 実行全体の状態（Core-API 準拠）。 */
+/** 実行全体の状態（Service API 準拠）。 */
 export type ExecutionStatus = "Running" | "Completed" | "Cancelled" | "Failed";
 
-/** 実行ノードの状態（Engine / Core-API 準拠）。 */
+/** 実行ノードの状態（Engine / Service API 準拠）。 */
 export type NodeStatus =
   | "IDLE"
   | "READY"

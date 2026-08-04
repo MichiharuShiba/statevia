@@ -8,7 +8,7 @@ namespace Statevia.Infrastructure.Modules;
 /// <remarks>
 /// <para>
 /// CLI の <c>statevia module install</c> から呼び出される。展開結果は
-/// <c>{modulesRoot}/{moduleDirectoryName}/</c> となり、Core-API の filesystem module scan の対象になる。
+/// <c>{modulesRoot}/{moduleDirectoryName}/</c> となり、Service API の filesystem module scan の対象になる。
 /// </para>
 /// <para><b>module ディレクトリ名の決定</b></para>
 /// <list type="bullet">

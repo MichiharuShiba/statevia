@@ -5,18 +5,18 @@ import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "@/shared/auth/authSe
 import { testJwt } from "../helpers/testJwt";
 
 describe("auth login route", () => {
-  const originalBase = process.env.CORE_API_INTERNAL_BASE;
+  const originalBase = process.env.SERVICE_API_INTERNAL_BASE;
 
   beforeEach(() => {
-    process.env.CORE_API_INTERNAL_BASE = "http://core.test";
+    process.env.SERVICE_API_INTERNAL_BASE = "http://core.test";
   });
 
   afterEach(() => {
-    process.env.CORE_API_INTERNAL_BASE = originalBase;
+    process.env.SERVICE_API_INTERNAL_BASE = originalBase;
     vi.unstubAllGlobals();
   });
 
-  it("Core-API 成功時に Cookie を設定して ok を返す", async () => {
+  it("Service API 成功時に Cookie を設定して ok を返す", async () => {
     const expiresAt = new Date(Date.now() + 3_600_000).toISOString();
     vi.stubGlobal(
       "fetch",

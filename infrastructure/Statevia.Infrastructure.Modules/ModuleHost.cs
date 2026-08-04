@@ -10,7 +10,7 @@ using Statevia.Infrastructure.Modules.Catalog;
 
 namespace Statevia.Infrastructure.Modules;
 
-/// <summary>discover 結果の Action Module を load し Catalog へ登録する Core-API 固定ホスト。</summary>
+/// <summary>discover 結果の Action Module を load し Catalog へ登録する Service API 固定ホスト。</summary>
 internal sealed class ModuleHost
 {
     /// <summary>module メタデータが取得できないときに記録するバージョン表記。</summary>

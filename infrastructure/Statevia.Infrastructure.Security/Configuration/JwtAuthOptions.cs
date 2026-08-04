@@ -10,7 +10,7 @@ internal sealed class JwtAuthOptions
     public string SigningKey { get; set; } = "dev-only-change-me-statevia-jwt-signing-key-32chars-min";
 
     /// <summary>発行者。</summary>
-    public string Issuer { get; set; } = "statevia-core-api";
+    public string Issuer { get; set; } = "statevia-service-api";
 
     /// <summary>対象。</summary>
     public string Audience { get; set; } = "statevia-clients";

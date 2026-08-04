@@ -1,6 +1,6 @@
 namespace Statevia.Service.Api.Application.Actions.Execution;
 
-/// <summary>Core-API から Action Host gRPC クライアントへ接続する設定。</summary>
+/// <summary>Service API から Action Host gRPC クライアントへ接続する設定。</summary>
 internal sealed class ActionHostClientOptions
 {
     /// <summary>設定セクション名（Action Host サーバーと共有）。</summary>

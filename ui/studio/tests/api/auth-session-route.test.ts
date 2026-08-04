@@ -5,12 +5,12 @@ import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "@/shared/auth/authSe
 import { testJwt } from "../helpers/testJwt";
 
 describe("GET /api/auth/session", () => {
-  const originalAuthToken = process.env.CORE_API_AUTH_TOKEN;
-  const originalTenantId = process.env.CORE_API_TENANT_ID;
+  const originalAuthToken = process.env.SERVICE_API_AUTH_TOKEN;
+  const originalTenantId = process.env.SERVICE_API_TENANT_ID;
 
   afterEach(() => {
-    process.env.CORE_API_AUTH_TOKEN = originalAuthToken;
-    process.env.CORE_API_TENANT_ID = originalTenantId;
+    process.env.SERVICE_API_AUTH_TOKEN = originalAuthToken;
+    process.env.SERVICE_API_TENANT_ID = originalTenantId;
   });
 
   it("未認証セッションでは authenticated が false", async () => {
@@ -33,8 +33,8 @@ describe("GET /api/auth/session", () => {
     expect(body.tenantKey).toBe("default");
   });
 
-  it("テナント Cookie が無いとき CORE_API_TENANT_ID を返す", async () => {
-    process.env.CORE_API_TENANT_ID = "env-tenant";
+  it("テナント Cookie が無いとき SERVICE_API_TENANT_ID を返す", async () => {
+    process.env.SERVICE_API_TENANT_ID = "env-tenant";
     const req = new NextRequest("http://localhost/api/auth/session");
     req.cookies.set(AUTH_COOKIE_ACCESS, testJwt(Math.floor(Date.now() / 1000) + 3600));
 

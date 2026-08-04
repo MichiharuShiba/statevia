@@ -16,7 +16,7 @@ flowchart LR
     UIQuery["Read表示<br/>Executions一覧・詳細・Graph"]
   end
 
-  subgraph API["Core-API境界 (Integration/Application)"]
+  subgraph API["Service API境界 (Integration/Application)"]
     ExecutionService["ExecutionService<br/>ユースケース統合"]
     ProjectionSync["ExecutionOperationalProjectionSync<br/>投影同期"]
     EngineCallback["Engine観測コールバック<br/>（目標）"]
@@ -71,14 +71,14 @@ flowchart LR
 ## 2. 読み方（要点）
 
 - `Core-Engine` は純粋ドメインロジック（定義解釈、遷移、グラフ生成）を担当し、I/O は持たない。
-- `Core-API` はユースケース実行とトランザクション境界を担当し、Engine 結果を永続化モデルへ写像する。
+- `Service API` はユースケース実行とトランザクション境界を担当し、Engine 結果を永続化モデルへ写像する。
 - UI の正本は `GET /v1/executions*` が返す Read Model（`executions` / `execution_graph_snapshots`）である。
 - `execution_cursors` / `execution_waits` は運用用投影であり、Read API 正本とは分離される。
 - `event_store` は外部可視イベント履歴、`command_dedup` / `event_delivery_dedup` は冪等制御の責務を持つ。
 
 ## 3. 現状と目標の切り分け
 
-- **現状（実装済み）**: 永続化テーブル更新は `Core-API` からのみ実行される。`UI` や `Core-Engine` が DB に直接書き込む経路は持たない。
+- **現状（実装済み）**: 永続化テーブル更新は `Service API` からのみ実行される。`UI` や `Core-Engine` が DB に直接書き込む経路は持たない。
 - **目標（仕様記載あり）**: Engine の状態変化を API 側へ観測コールバックし、API 内キューで execution 単位に併合しつつ `ProjectionSync` で DB 反映する流れを想定する。
 - **図の凡例**: 破線は「目標/導入予定」の経路、実線は「現状の責務境界で成立している経路」を示す。
 
@@ -89,9 +89,9 @@ flowchart LR
 - `docs/specifications/api-http.md`
 - [decisions/event-store.md](../decisions/event-store.md)
 
-## 5. Action 実行プラットフォーム境界（Core-API）
+## 5. Action 実行プラットフォーム境界（Service API）
 
-Engine は `IStateExecutor` のみを知る。Action の解決・テナント可視性・実行モード決定は Core-API の Platform 層が担う。
+Engine は `IStateExecutor` のみを知る。Action の解決・テナント可視性・実行モード決定は Service API の Platform 層が担う。
 
 | コンポーネント | 正本 / 責務 | Engine から見えるか |
 | --- | --- | --- |

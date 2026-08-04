@@ -1,7 +1,7 @@
 namespace Statevia.Core.Application.Contracts.Persistence;
 
 /// <summary>
-/// <c>event_store.type</c> に保存する、Core-API が追記するコマンド由来イベントの種別。
+/// <c>event_store.type</c> に保存する、Service API が追記するコマンド由来イベントの種別。
 /// 値は DB 上で PascalCase 文字列として保存する（<see cref="EventStoreEventTypeExtensions.ToPersistedString"/>）。
 /// </summary>
 public enum EventStoreEventType

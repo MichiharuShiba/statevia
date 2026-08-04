@@ -9,7 +9,7 @@
 
 ---
 
-Statevia は実行の進行を **PostgreSQL** 上の projection と **event_store** で支えます。Engine 自体はインメモリで動きますが、Core-API がトランザクション境界を持ち、開始・キャンセル・publish 等のミューテーションを durable に記録します。Wait で停止した実行はランタイムチェックポイントから hydrate でき、非同期の再開要求は耐久ワークキューで配送します。
+Statevia は実行の進行を **PostgreSQL** 上の projection と **event_store** で支えます。Engine 自体はインメモリで動きますが、Service API がトランザクション境界を持ち、開始・キャンセル・publish 等のミューテーションを durable に記録します。Wait で停止した実行はランタイムチェックポイントから hydrate でき、非同期の再開要求は耐久ワークキューで配送します。
 
 チェックポイント本体は Application の **`IExecutionCheckpointStore`**（文書キー = `executionId`）経由でのみ扱います。現行実装は Postgres テーブル `execution_runtime_checkpoints` ですが、契約は RDB 行ではなく文書ストアとして定義しており、将来 MongoDB / DynamoDB 等へ差し替え可能な境界にしています。
 
@@ -33,7 +33,7 @@ in-process の `GetSnapshot` はデバッグやコールバック経路向けで
 
 `execution_work_items` の kind は **Start / Resume / Cancel** です（Delay 期限も `Resume` + `mode=event`）。複数の API プロセスは PostgreSQL の `FOR UPDATE SKIP LOCKED` により同一項目を同時処理しません。処理中は work item lease と checkpoint 所有 lease を heartbeat 延長します。
 
-実行中の所有正本は `execution_runtime_checkpoints` の `owner_worker_id` / `lease_until` / `owner_generation` です。`lease_until` は recovery 検討のトリガに過ぎず、排他は **`owner_generation` 一致更新（fencing）** で担保します。ハートビートまたは世代付き更新が失敗した Worker はローカル実行を即停止します。`ExecutionOwnershipRecoveryHostedService` は期限切れ所有を世代 +1 したうえで `Resume mode=recovery` を enqueue します（Wait イベントは消費しない）。DelayWait 期限は `DelayWaitSchedulerHostedService` が `FOR UPDATE SKIP LOCKED` で wait を排他 claim し、同一トランザクションで wait 削除と `Resume mode=event` を投入します。これらの HostedService は既定では Core-API 内で動きますが、`Statevia:Runtime` で無効化し `service/runtime` の Scheduler / Worker へ分離できます。
+実行中の所有正本は `execution_runtime_checkpoints` の `owner_worker_id` / `lease_until` / `owner_generation` です。`lease_until` は recovery 検討のトリガに過ぎず、排他は **`owner_generation` 一致更新（fencing）** で担保します。ハートビートまたは世代付き更新が失敗した Worker はローカル実行を即停止します。`ExecutionOwnershipRecoveryHostedService` は期限切れ所有を世代 +1 したうえで `Resume mode=recovery` を enqueue します（Wait イベントは消費しない）。DelayWait 期限は `DelayWaitSchedulerHostedService` が `FOR UPDATE SKIP LOCKED` で wait を排他 claim し、同一トランザクションで wait 削除と `Resume mode=event` を投入します。これらの HostedService は既定では Service API 内で動きますが、`Statevia:Runtime` で無効化し `service/runtime` の Scheduler / Worker へ分離できます。
 
 ステップ完了ごとに checkpoint を更新し、Unload は durable Wait 到達または終端に限定します。recovery で Action が再実行されうる場合、Action 側の冪等（または適用済み検知）を前提とします。
 

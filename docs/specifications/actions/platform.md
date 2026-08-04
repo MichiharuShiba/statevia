@@ -5,12 +5,12 @@
 | 種別 | Specification |
 | Version | 1.2 |
 | 更新日 | 2026-07-19 |
-| Scope | Core-API / ModuleHost / Action 実行 |
+| Scope | Service API / ModuleHost / Action 実行 |
 | 関連 | [module-zip-layout.md](module-zip-layout.md), [../../concepts/actions.md](../../concepts/actions.md) |
 
 ---
 
-Action Module の発見・登録・可視性・実行ポリシー・dispatch の Normative 概要。実装は `core/actions/Statevia.Core.Actions.Abstractions` と Core-API の composition root にある。
+Action Module の発見・登録・可視性・実行ポリシー・dispatch の Normative 概要。実装は `core/actions/Statevia.Core.Actions.Abstractions` と Service API の composition root にある。
 
 ## Normative 要約
 
@@ -58,7 +58,7 @@ Policy が返しうるモード（実装状況はバージョンにより異な�
 
 | モード | 概要 |
 | --- | --- |
-| InProcess | Core-API プロセス内 ALC |
+| InProcess | Service API プロセス内 ALC |
 | OutOfProcess | Action Host（gRPC）。`Statevia:ActionHost:BaseUrl` 必須 |
 | Container | `ContainerProvider=docker` 時、短命 Action Host コンテナ（gRPC）。`Sandbox:Docker:Image` 等。未構成は `SandboxRuntimeNotConfigured` / `SandboxRuntimeUnavailable` |
 | Wasm | ランタイム未実装（正式リリース対象外）。未構成は `SandboxRuntimeNotConfigured` |

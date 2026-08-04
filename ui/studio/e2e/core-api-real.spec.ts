@@ -2,11 +2,11 @@ import { test, expect } from "@playwright/test";
 import { e2eWaitWorkflowYaml } from "./fixtures/e2eWaitWorkflowYaml";
 
 /**
- * Core-API を直接叩くオプション E2E（STV-401/402）。
+ * Service API を直接叩くオプション E2E（STV-401/402）。
  * 実行例:
- *   CORE_API_E2E_URL=http://localhost:8080 npx playwright test e2e/core-api-real.spec.ts
+ *   SERVICE_API_E2E_URL=http://localhost:8080 npx playwright test e2e/core-api-real.spec.ts
  */
-const apiBase = process.env.CORE_API_E2E_URL?.replace(/\/$/, "") ?? "";
+const apiBase = process.env.SERVICE_API_E2E_URL?.replace(/\/$/, "") ?? "";
 
 const tenantHeaders = { "X-Tenant-Id": "default", "Content-Type": "application/json" };
 
@@ -32,10 +32,10 @@ async function waitForExecutionStatus(
   throw new Error(`timeout waiting for execution status ${status}`);
 }
 
-test.describe("Core API (direct)", () => {
+test.describe("Service API (direct)", () => {
   test.describe.configure({ mode: "serial" });
-  // Reason: CORE_API_E2E_URL 未設定時は実体 Core-API が無いため、環境ゲートでスイートをスキップする。
-  test.skip(!apiBase, "CORE_API_E2E_URL が未設定のためスキップ（例: http://localhost:8080）");
+  // Reason: SERVICE_API_E2E_URL 未設定時は実体 Service API が無いため、環境ゲートでスイートをスキップする。
+  test.skip(!apiBase, "SERVICE_API_E2E_URL が未設定のためスキップ（例: http://localhost:8080）");
 
   test("GET /v1/health は ok を返す", async ({ request }) => {
     const res = await request.get(`${apiBase}/v1/health`);

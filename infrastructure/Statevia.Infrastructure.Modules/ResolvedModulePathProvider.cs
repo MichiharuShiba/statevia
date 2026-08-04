@@ -12,7 +12,7 @@ internal interface IResolvedModulePathProvider
     string ModulesRoot { get; }
 }
 
-/// <summary><see cref="ModulePathResolver"/> を Core-API 設定に接続する。</summary>
+/// <summary><see cref="ModulePathResolver"/> を Service API 設定に接続する。</summary>
 internal sealed class ResolvedModulePathProvider : IResolvedModulePathProvider
 {
     /// <summary>新しいインスタンスを初期化する。</summary>

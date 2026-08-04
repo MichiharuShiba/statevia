@@ -11,15 +11,15 @@
 
 ---
 
-**Statevia Studio**（`ui/studio/`）は Next.js の Web ダッシュボードです。Core-API へはブラウザから直接呼ばず、**同一オリジンのプロキシ**（`/api/core/*`）経由でアクセスします。
+**Statevia Studio**（`ui/studio/`）は Next.js の Web ダッシュボードです。Service API へはブラウザから直接呼ばず、**同一オリジンのプロキシ**（`/api/core/*`）経由でアクセスします。
 
 ## 起動
 
-Core-API と PostgreSQL が起動している状態で:
+Service API と PostgreSQL が起動している状態で:
 
 ```bash
 cd ui/studio
-CORE_API_INTERNAL_BASE="http://localhost:8080" npm run dev
+SERVICE_API_INTERNAL_BASE="http://localhost:8080" npm run dev
 ```
 
 ブラウザで `http://localhost:3000` を開きます。Docker Compose 利用時は [operations-docker.md](operations-docker.md) を参照。
@@ -38,7 +38,7 @@ CORE_API_INTERNAL_BASE="http://localhost:8080" npm run dev
 
 ### 定義 catalog の論理削除・復元
 
-Studio の定義一覧・詳細から Core-API の catalog ライフサイクルを操作できる。
+Studio の定義一覧・詳細から Service API の catalog ライフサイクルを操作できる。
 
 | 操作 | 画面 | 備考 |
 | --- | --- | --- |

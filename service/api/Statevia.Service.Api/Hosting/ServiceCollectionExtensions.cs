@@ -33,7 +33,7 @@ using Statevia.Service.Api.Services;
 namespace Statevia.Service.Api.Hosting;
 
 /// <summary>
-/// Core-API / Worker の DI 登録。
+/// Service API / Worker の DI 登録。
 /// </summary>
 /// <remarks>Worker ホストから <see cref="AddStateviaWorkerHost"/> を参照するため public。</remarks>
 #pragma warning disable CA1515 // Worker ホストが参照するため public を維持する
@@ -41,9 +41,9 @@ public static class ServiceCollectionExtensions
 #pragma warning restore CA1515
 {
     /// <summary>
-    /// Core-API 向けに実行ランタイムと HTTP アダプタを登録する。
+    /// Service API 向けに実行ランタイムと HTTP アダプタを登録する。
     /// </summary>
-    public static IServiceCollection AddStateviaCoreApi(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddStateviaServiceApi(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);

@@ -1,4 +1,4 @@
-# Core API 契約（HTTP）
+# Service API 契約（HTTP）
 
 | 項目 | 値 |
 | --- | --- |
@@ -22,7 +22,7 @@
 
 ---
 
-Core-API（C#、`service/api/`）の HTTP 契約。実装に準拠。
+Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 
 **Version 1.10（2026-07-29）**: Wait 複数イベント。`POST …/nodes/{nodeId}/resume` が正本（`resumeKey` = イベント名 → Engine `ResumeWaitNode`）。`POST …/events` は単一 Wait・単一イベント時のみ互換シム（それ以外 422）。Read model に `allowedEvents`。OpenAPI 再エクスポートは follow-up（DTO 変更の機械可読反映）。
 
@@ -468,7 +468,7 @@ Principal 解決後、サービス層で **semantic permission key** を評価�
 
 ### 4.2 JSON 命名ポリシー（実装準拠）
 
-- Core-API が返す JSON は原則 **camelCase** を採用する。
+- Service API が返す JSON は原則 **camelCase** を採用する。
 - `GET /v1/executions/{id}/graph`（ExecutionGraph JSON）と、定義コンパイル由来のデバッグ JSON（`compiledJson`）は camelCase で統一済み。
 
 ### 4.3 ステータスコード
@@ -508,5 +508,5 @@ ModelState 由来の 422 `error.details` 標準形状:
 
 ## 5. UI からのアクセス
 
-UI は `/api/core/*` 経由で Core-API にプロキシする。  
-例: `/api/core/executions/xxx` → Core-API の `/v1/executions/xxx`（route のマッピングは UI 側で実施）。
+UI は `/api/core/*` 経由で Service API にプロキシする。  
+例: `/api/core/executions/xxx` → Service API の `/v1/executions/xxx`（route のマッピングは UI 側で実施）。

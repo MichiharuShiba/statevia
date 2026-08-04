@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "@/shared/auth/authSession";
 
 function base() {
-  const b = process.env.CORE_API_INTERNAL_BASE;
-  if (!b) throw new Error("Missing CORE_API_INTERNAL_BASE");
+  const b = process.env.SERVICE_API_INTERNAL_BASE;
+  if (!b) throw new Error("Missing SERVICE_API_INTERNAL_BASE");
   return b.replace(/\/$/, "");
 }
 
@@ -12,7 +12,7 @@ function joinUrl(parts: string[]) {
   return `${base()}/${p}`;
 }
 
-/** v2: UI は `/executions` のみ。Core-API の `/v1/executions` に転送する。 */
+/** v2: UI は `/executions` のみ。Service API の `/v1/executions` に転送する。 */
 function pathForBackend(pathParts: string[]): string[] {
   if (pathParts[0] === "executions") return ["v1", "executions", ...pathParts.slice(1)];
   if (pathParts[0] === "definitions") return ["v1", "definitions", ...pathParts.slice(1)];
@@ -29,8 +29,8 @@ function authAndTenantHeaders(req: NextRequest, pathParts: string[]): Record<str
   const tenantFromCookie = req.cookies.get(AUTH_COOKIE_TENANT_KEY)?.value?.trim();
   const authFromReq = req.headers.get("authorization");
   const tenantFromReq = req.headers.get("x-tenant-id");
-  const tenantFromEnv = process.env.CORE_API_TENANT_ID;
-  const authFromEnv = process.env.CORE_API_AUTH_TOKEN;
+  const tenantFromEnv = process.env.SERVICE_API_TENANT_ID;
+  const authFromEnv = process.env.SERVICE_API_AUTH_TOKEN;
 
   if (tokenFromCookie) {
     out["Authorization"] = `Bearer ${tokenFromCookie}`;
@@ -60,7 +60,7 @@ function authAndTenantHeaders(req: NextRequest, pathParts: string[]): Record<str
 }
 
 /**
- * Core-API への転送先 URL を組み立てる。
+ * Service API への転送先 URL を組み立てる。
  * `limit` / `offset` / `name` / `status` 等はクエリに載るため、`req.nextUrl.search` を必ず付与する。
  */
 function buildBackendUrl(req: NextRequest, pathParts: string[]): string {
@@ -130,7 +130,7 @@ async function forward(req: NextRequest, method: string, pathParts: string[]) {
   });
 }
 
-/** Core-API への GET プロキシ（Route Handler）。 */
+/** Service API への GET プロキシ（Route Handler）。 */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -138,7 +138,7 @@ export async function GET(
   const { path } = await params;
   return forward(req, "GET", path);
 }
-/** Core-API への POST プロキシ（Route Handler）。 */
+/** Service API への POST プロキシ（Route Handler）。 */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -146,7 +146,7 @@ export async function POST(
   const { path } = await params;
   return forward(req, "POST", path);
 }
-/** Core-API への PUT プロキシ（Route Handler）。 */
+/** Service API への PUT プロキシ（Route Handler）。 */
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -154,7 +154,7 @@ export async function PUT(
   const { path } = await params;
   return forward(req, "PUT", path);
 }
-/** Core-API への PATCH プロキシ（Route Handler）。 */
+/** Service API への PATCH プロキシ（Route Handler）。 */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -162,7 +162,7 @@ export async function PATCH(
   const { path } = await params;
   return forward(req, "PATCH", path);
 }
-/** Core-API への DELETE プロキシ（Route Handler）。 */
+/** Service API への DELETE プロキシ（Route Handler）。 */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }

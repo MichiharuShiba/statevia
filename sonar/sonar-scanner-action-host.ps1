@@ -11,7 +11,7 @@
 .NOTES
   環境変数 SONAR_TOKEN を事前に設定すること。
   sonar-project.properties は SonarScanner for .NET では使わない（begin の /d: で指定）。
-  プロジェクトキー: StateviaCoreActionHost
+  プロジェクトキー: StateviaServiceActionHost
 #>
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -42,7 +42,7 @@ if (-not $env:SONAR_TOKEN) {
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $actionHostDir = Join-Path $repoRoot 'service\action-host'
-$coverageXml = Join-Path $PSScriptRoot 'core-action-host-coverage.xml'
+$coverageXml = Join-Path $PSScriptRoot 'service-action-host-coverage.xml'
 
 if (-not (Test-Path -LiteralPath $actionHostDir -PathType Container)) {
     Write-Error "service/action-host ディレクトリが見つかりません: $actionHostDir"
@@ -51,7 +51,7 @@ if (-not (Test-Path -LiteralPath $actionHostDir -PathType Container)) {
 
 Push-Location -LiteralPath $actionHostDir
 try {
-    dotnet sonarscanner begin /k:"StateviaCoreActionHost" /n:"StateviaCoreActionHost" `
+    dotnet sonarscanner begin /k:"StateviaServiceActionHost" /n:"StateviaServiceActionHost" `
         /d:sonar.host.url="http://localhost:9000" `
         /d:sonar.token="$($env:SONAR_TOKEN)" `
         /d:sonar.projectBaseDir="$repoRoot" `

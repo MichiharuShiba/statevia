@@ -27,7 +27,7 @@ statevia/
 │  ├─ statevia-design-philosophy.md
 │  ├─ statevia-directory.md      # 本ファイル
 │  ├─ development-guidelines.md  # 開発ガイドライン
-│  ├─ specifications/api-http.md      # Core-API HTTP 契約（v1）
+│  ├─ specifications/api-http.md      # Service API HTTP 契約（v1）
 │  ├─ guides/operations-docker.md       # Docker Compose 運用
 │  ├─ specifications/execution/  # Engine 各仕様
 │  └─ specifications/data-integration.md
@@ -83,7 +83,7 @@ statevia/
 │  └─ studio/                    # UI（Next.js / React / ReactFlow — @statevia/studio）
 │     ├─ package.json
 │     ├─ app/                    # 薄い App Router（page / layout / BFF）
-│     │  └─ api/core/[...path]/ # Core-API プロキシ（/v1 へ転送）
+│     │  └─ api/core/[...path]/ # Service API プロキシ（/v1 へ転送）
 │     ├─ features/               # 画面・ドメイン別（definitions, executions 等）
 │     ├─ shared/                 # 横断 api / ui / i18n / auth / lib
 │     └─ Dockerfile
@@ -97,5 +97,5 @@ statevia/
 - **core/**: ドメインと契約。Engine は HTTP/DB に非依存。Application がユースケースを実装し、Contracts が DDD ポートを定義。
 - **infrastructure/**: core の契約の技術実装。DB、認証、通知、Module ホスト等。
 - **service/**: HTTP / gRPC / CLI のアダプタ。Composition Root として DI を組み立てる。
-- **ui/studio/**: Next.js（`@statevia/studio`）。`/api/core/*` で Core-API にプロキシ。内部構成（`app` / `features` / `shared`）の正本は [ui-studio-structure.md](ui-studio-structure.md)。
+- **ui/studio/**: Next.js（`@statevia/studio`）。`/api/core/*` で Service API にプロキシ。内部構成（`app` / `features` / `shared`）の正本は [ui-studio-structure.md](ui-studio-structure.md)。
 - **tests/**: ソリューション横断のアーキテクチャテスト。

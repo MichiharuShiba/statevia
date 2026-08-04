@@ -5,7 +5,7 @@ using Statevia.Service.ActionHost.Execution;
 
 namespace Statevia.Service.ActionHost.Grpc;
 
-/// <summary>Core-API からの OutOfProcess Action 実行 RPC。</summary>
+/// <summary>Service API からの OutOfProcess Action 実行 RPC。</summary>
 internal sealed class ActionExecutionGrpcService : ActionExecutionService.ActionExecutionServiceBase
 {
     private readonly ActionHostExecutor _executor;

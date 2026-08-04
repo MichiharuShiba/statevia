@@ -6,7 +6,7 @@ namespace Statevia.Infrastructure.Modules;
 /// <summary>1 Action Module = 1 隔離 ALC。プラットフォーム契約は Default コンテキストを共有する。</summary>
 /// <remarks>
 /// <para>
-/// Core-API（<c>ModuleHost</c>）と Action Host（<c>ActionHostModuleLoader</c>）の両方から利用する
+/// Service API（<c>ModuleHost</c>）と Action Host（<c>ActionHostModuleLoader</c>）の両方から利用する
 /// ALC 隔離契約の単一正本。Module の entry DLL とその依存は隔離 ALC に load する一方、
 /// プラットフォーム契約アセンブリ（<see cref="SharedAssemblyNames"/>）は Default コンテキストの
 /// 同一型を共有し、ホスト側と Module 側で型が一致するようにする。

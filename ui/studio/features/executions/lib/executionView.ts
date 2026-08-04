@@ -6,7 +6,7 @@ import type {
   RuntimeGraphEdgeDTO
 } from "../types";
 
-/** C# ExecutionGraphResponse のノードを ExecutionNodeDTO に変換（v2）。GET /graph のノード ID は JSON の `nodeId` のみ（Core-API 永続スナップショットと一致）。 */
+/** C# ExecutionGraphResponse のノードを ExecutionNodeDTO に変換（v2）。GET /graph のノード ID は JSON の `nodeId` のみ（Service API 永続スナップショットと一致）。 */
 function graphNodeToExecutionNode(n: ExecutionGraphDTO["nodes"][0]): ExecutionNodeDTO {
   const executionNodeId =
     typeof n.nodeId === "string" && n.nodeId.length > 0 ? n.nodeId : "";

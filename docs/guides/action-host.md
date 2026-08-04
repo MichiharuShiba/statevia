@@ -9,7 +9,7 @@
 
 ---
 
-**Action Host**（`service/action-host/`）は、Policy が **OutOfProcess** を要求する Action を gRPC で実行するサンドボックスプロセスです。Core-API から `Statevia:ActionHost:BaseUrl` で到達します。
+**Action Host**（`service/action-host/`）は、Policy が **OutOfProcess** を要求する Action を gRPC で実行するサンドボックスプロセスです。Service API から `Statevia:ActionHost:BaseUrl` で到達します。
 
 ## いつ必要か
 
@@ -20,7 +20,7 @@
 
 ## ローカル起動（例）
 
-PostgreSQL と Core-API と併せて起動する場合は Docker Compose が簡便です（[operations-docker.md](operations-docker.md)）。
+PostgreSQL と Service API と併せて起動する場合は Docker Compose が簡便です（[operations-docker.md](operations-docker.md)）。
 
 単体で Action Host をホスト起動する例:
 
@@ -29,7 +29,7 @@ cd service/action-host
 dotnet run --project Statevia.Service.ActionHost
 ```
 
-既定 URL は launchSettings に依存します。Core-API の `appsettings` または環境変数で合わせます:
+既定 URL は launchSettings に依存します。Service API の `appsettings` または環境変数で合わせます:
 
 ```json
 "Statevia": {
@@ -42,16 +42,16 @@ dotnet run --project Statevia.Service.ActionHost
 ### 平文 gRPC（h2c）
 
 Action Host は **TLS 無し HTTP/2（h2c）** で待受する（Kestrel `HttpProtocols.Http2`）。  
-`Http1AndHttp2` のまま TLS を付けないと HTTP/1.1 のみになり、Core-API / Container サンドボックスからの gRPC が `Unavailable` / handshake 失敗になる。  
-Core-API 側は `System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport` を有効にして接続する。
+`Http1AndHttp2` のまま TLS を付けないと HTTP/1.1 のみになり、Service API / Container サンドボックスからの gRPC が `Unavailable` / handshake 失敗になる。  
+Service API 側は `System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport` を有効にして接続する。
 
 ## Docker Compose
 
-`docker compose` ではサービス名 `action-host`、Core-API から `http://action-host:5001` を参照する構成が一般的です。
+`docker compose` ではサービス名 `action-host`、Service API から `http://action-host:5001` を参照する構成が一般的です。
 
 ## Module の reload
 
-Module zip を配置したあと、Core-API が新 DLL を読み込むには再起動または `POST /internal/modules/reload` が必要です（[operations-docker.md](operations-docker.md)、[cli-reference.md](cli-reference.md)）。
+Module zip を配置したあと、Service API が新 DLL を読み込むには再起動または `POST /internal/modules/reload` が必要です（[operations-docker.md](operations-docker.md)、[cli-reference.md](cli-reference.md)）。
 
 ## 次に読むもの
 

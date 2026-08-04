@@ -41,7 +41,7 @@ if (-not $env:SONAR_TOKEN) {
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $apiDir = Join-Path $repoRoot 'service\api'
-$coverageXml = Join-Path $PSScriptRoot 'core-api-coverage.xml'
+$coverageXml = Join-Path $PSScriptRoot 'service-api-coverage.xml'
 
 if (-not (Test-Path -LiteralPath $apiDir -PathType Container)) {
     Write-Error "service/api ディレクトリが見つかりません: $apiDir"
@@ -50,7 +50,7 @@ if (-not (Test-Path -LiteralPath $apiDir -PathType Container)) {
 
 Push-Location -LiteralPath $apiDir
 try {
-    dotnet sonarscanner begin /k:"StateviaCoreAPI" /n:"StateviaCoreAPI" `
+    dotnet sonarscanner begin /k:"StateviaServiceApi" /n:"StateviaServiceApi" `
         /d:sonar.host.url="http://localhost:9000" `
         /d:sonar.token="$($env:SONAR_TOKEN)" `
         /d:sonar.projectBaseDir="$repoRoot" `

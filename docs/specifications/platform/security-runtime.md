@@ -20,7 +20,7 @@
 
 ## 概要
 
-Core-API のテナント・Principal・認証・認可の境界を定義する。現行（E3 反映）では **単一テナント前提の QueryFilter**、**JWT / API キー + 移行期 `X-Tenant-Id`**、**Runtime API の Principal 必須化**、**テナントライフサイクルの fail-closed** を固定する。
+Service API のテナント・Principal・認証・認可の境界を定義する。現行（E3 反映）では **単一テナント前提の QueryFilter**、**JWT / API キー + 移行期 `X-Tenant-Id`**、**Runtime API の Principal 必須化**、**テナントライフサイクルの fail-closed** を固定する。
 
 ## テナント識別子
 

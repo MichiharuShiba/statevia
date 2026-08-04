@@ -1,4 +1,4 @@
-/** Action Schema API の型定義（Core-API `/v1/actions/schema` 準拠）。 */
+/** Action Schema API の型定義（Service API `/v1/actions/schema` 準拠）。 */
 
 /** `/v1/actions/schema/index` のレスポンス（登録 action 一覧）。 */
 export type ActionSchemaIndexResponse = {

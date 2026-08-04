@@ -2,7 +2,7 @@
 
 このディレクトリには、ローカル SonarQube 用の **Docker Compose**、**コンポーネント別スキャナ（PowerShell）**、**行数集計スクリプト**（`measure-loc.ps1`）がまとまっています。
 
-C# 分析時のカバレッジ XML（`core-*-coverage.xml`）やローカルダンプ（`*.json`）は **生成物**のため `.gitignore` で除外し、スクリプトと本 README のみリポジトリで共有します。
+C# 分析時のカバレッジ XML（`service-*-coverage.xml` / `core-engine-coverage.xml` 等）やローカルダンプ（`*.json`）は **生成物**のため `.gitignore` で除外し、スクリプトと本 README のみリポジトリで共有します。
 
 ## 前提条件
 
@@ -39,7 +39,7 @@ dotnet build-server shutdown
 & .\sonar\sonar-scanner-ui.ps1
 ```
 
-- **engine / api / runtime / cli / action-host**: `dotnet sonarscanner begin` → `build` → `dotnet-coverage` → `end` の順で、`sonar/core-*-coverage.xml` にカバレッジを出力します（XML は git 管理外）。
+- **engine / api / runtime / cli / action-host**: `dotnet sonarscanner begin` → `build` → `dotnet-coverage` → `end` の順で、`sonar/*-coverage.xml` にカバレッジを出力します（XML は git 管理外）。
 - **ui**: `npm run test:coverage` で `ui/studio/coverage/lcov.info` を生成したあと、`npx sonar-scanner` で `ui/studio/sonar-project.properties` を読み込んで送信します。
 
 C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定し、Phase 0 以降のパス（`core/engine` 等）でも除外設定が効くようにしています。**テストプロジェクト**（`*.Tests`）は `sonar.dotnet.excludeTestProjects=true` で各コンポーネントの projectKey から除外します（品質ゲートの対象はプロダクションコード）。`Statevia.Runtime` は **`StateviaServiceRuntime`** で解析し、API スキャナからは `service/runtime` を除外して二重計上を避けます。
@@ -53,10 +53,10 @@ C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定�
 | コンポーネント | projectKey             |
 | -------------- | ---------------------- |
 | Core Engine    | `StateviaCoreEngine`   |
-| Core API       | `StateviaCoreAPI`      |
-| Runtime        | `StateviaServiceRuntime`      |
-| CLI            | `StateviaCoreCLI`      |
-| Action Host    | `StateviaCoreActionHost` |
+| Service API    | `StateviaServiceApi`   |
+| Runtime        | `StateviaServiceRuntime` |
+| CLI            | `StateviaServiceCLI`   |
+| Action Host    | `StateviaServiceActionHost` |
 | Service UI     | `StateviaServiceUI`    |
 
 ## 手動実行（リポジトリルートをカレントに）
@@ -76,15 +76,15 @@ dotnet sonarscanner end /d:sonar.token="$($env:SONAR_TOKEN)"
 Set-Location $repoRoot
 ```
 
-### Core API
+### Service API
 
 ```powershell
 $env:SONAR_TOKEN = "（トークン）"
 $repoRoot = (Get-Location).Path
 Set-Location service\api
-dotnet sonarscanner begin /k:"StateviaCoreAPI" /d:sonar.host.url="http://localhost:9000" /d:sonar.token="$($env:SONAR_TOKEN)" /d:sonar.projectBaseDir="$repoRoot" /d:sonar.cs.vscoveragexml.reportsPaths="$repoRoot\sonar\core-api-coverage.xml"
+dotnet sonarscanner begin /k:"StateviaServiceApi" /d:sonar.host.url="http://localhost:9000" /d:sonar.token="$($env:SONAR_TOKEN)" /d:sonar.projectBaseDir="$repoRoot" /d:sonar.cs.vscoveragexml.reportsPaths="$repoRoot\sonar\service-api-coverage.xml"
 dotnet build "statevia-api.sln"
-dotnet-coverage collect "dotnet test" -f xml -o "$repoRoot\sonar\core-api-coverage.xml"
+dotnet-coverage collect "dotnet test" -f xml -o "$repoRoot\sonar\service-api-coverage.xml"
 dotnet sonarscanner end /d:sonar.token="$($env:SONAR_TOKEN)"
 Set-Location $repoRoot
 ```
@@ -102,9 +102,9 @@ $env:SONAR_TOKEN = "（トークン）"
 $env:SONAR_TOKEN = "（トークン）"
 $repoRoot = (Get-Location).Path
 Set-Location service\cli
-dotnet sonarscanner begin /k:"StateviaCoreCLI" /d:sonar.host.url="http://localhost:9000" /d:sonar.token="$($env:SONAR_TOKEN)" /d:sonar.projectBaseDir="$repoRoot" /d:sonar.cs.vscoveragexml.reportsPaths="$repoRoot\sonar\core-cli-coverage.xml"
+dotnet sonarscanner begin /k:"StateviaServiceCLI" /d:sonar.host.url="http://localhost:9000" /d:sonar.token="$($env:SONAR_TOKEN)" /d:sonar.projectBaseDir="$repoRoot" /d:sonar.cs.vscoveragexml.reportsPaths="$repoRoot\sonar\service-cli-coverage.xml"
 dotnet build "statevia-cli.sln"
-dotnet-coverage collect "dotnet test" -f xml -o "$repoRoot\sonar\core-cli-coverage.xml"
+dotnet-coverage collect "dotnet test" -f xml -o "$repoRoot\sonar\service-cli-coverage.xml"
 dotnet sonarscanner end /d:sonar.token="$($env:SONAR_TOKEN)"
 Set-Location $repoRoot
 ```

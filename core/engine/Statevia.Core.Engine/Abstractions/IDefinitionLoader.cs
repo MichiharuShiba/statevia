@@ -4,7 +4,7 @@ namespace Statevia.Core.Engine.Abstractions;
 
 /// <summary>
 /// YAML / JSON 文字列から <see cref="WorkflowDefinition"/> を構築する。
-/// Core-API は複数実装（states / nodes 等）をストラテジで切り替える。
+/// Service API は複数実装（states / nodes 等）をストラテジで切り替える。
 /// </summary>
 public interface IDefinitionLoader
 {

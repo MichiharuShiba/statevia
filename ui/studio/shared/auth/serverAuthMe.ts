@@ -3,8 +3,8 @@ import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "./authSession";
 import type { AuthMeResponse } from "@/shared/auth/authMe";
 
 function coreApiBase(): string {
-  const base = process.env.CORE_API_INTERNAL_BASE;
-  if (!base) throw new Error("Missing CORE_API_INTERNAL_BASE");
+  const base = process.env.SERVICE_API_INTERNAL_BASE;
+  if (!base) throw new Error("Missing SERVICE_API_INTERNAL_BASE");
   return base.replace(/\/$/, "");
 }
 

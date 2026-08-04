@@ -252,7 +252,7 @@ Owner Principal **無効化後**の execution 存続は tenant ポリシーで�
 
 ## Engine 接続（将来）
 
-1. Core-API が Start tx で Snapshot を永続化。
+1. Service API が Start tx で Snapshot を永続化。
 2. Cancel / Publish 前に Identity + Owner/Operator Authorization（task 8）。
 3. Engine へは executionId と domain payload のみ。
 4. 将来 action callback 用に Snapshot を読み取り専用 DTO で注入。

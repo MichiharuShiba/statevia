@@ -9,7 +9,7 @@
 
 ---
 
-Core-Engine は **C# ライブラリ**です。Core-API なしで、サンプルプロジェクトから定義をロードしてインメモリ実行できます。
+Core-Engine は **C# ライブラリ**です。Service API なしで、サンプルプロジェクトから定義をロードしてインメモリ実行できます。
 
 ## サンプル: hello-statevia
 
@@ -38,9 +38,9 @@ cd core/engine
 dotnet test statevia-engine.sln
 ```
 
-## Core-API 経由との違い
+## Service API 経由との違い
 
-| 項目 | Engine 単体 | Core-API |
+| 項目 | Engine 単体 | Service API |
 | --- | --- | --- |
 | 永続化 | なし | PostgreSQL |
 | Action Module | サンプル内のスタブ | Catalog / Policy / Host |

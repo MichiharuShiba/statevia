@@ -33,7 +33,7 @@ Action Module の署名検証は、Module の **改ざん検知**（Signed）と
 sequenceDiagram
     participant Pub as 発行者
     participant Ops as 運用者
-    participant Api as Core-API
+    participant Api as Service API
 
     Pub->>Pub: 鍵ペア生成 (一度だけ)
     Pub->>Pub: entry DLL に署名 + signature.json 作成
@@ -82,7 +82,7 @@ EOF
 ```bash
 # 1) 受け取った公開鍵のフィンガープリント（SubjectPublicKeyInfo(DER) の SHA-256）を算出
 openssl pkey -in signer-public.pem -pubin -pubout -outform DER | openssl dgst -sha256
-#   例) SHA256(stdin)= 9f86d081...（大小文字・コロン区切りは可。Core-API 側で正規化）
+#   例) SHA256(stdin)= 9f86d081...（大小文字・コロン区切りは可。Service API 側で正規化）
 ```
 
 2. **真正性の確認（帯域外）**: そのフィンガープリントが本当に意図した発行者のものか、公式サイト・契約・別経路で照合する。ここが信頼の起点であり、自動化しない。
@@ -106,7 +106,7 @@ openssl pkey -in signer-public.pem -pubin -pubout -outform DER | openssl dgst -s
 
 ```bash
 statevia module install ./order.module.zip --modules-path ./modules --api-base http://localhost:8080 --token "<jwt>"
-# 反映には Core-API 再起動、または内部 reload が必要
+# 反映には Service API 再起動、または内部 reload が必要
 curl -X POST http://localhost:8080/internal/modules/reload -H "Authorization: Bearer <jwt>"
 ```
 
@@ -138,6 +138,6 @@ UI / 一覧で `signerName` を表示する場合は、必ず `TrustLevel` と�
 ## 7. セキュリティ上の要点
 
 - 信頼の起点は **運用者の `TrustedSignerFingerprints` のみ**。`signature.json` 同梱の公開鍵・`signerName` は信頼判定に使わない。`signerName` を詐称しても未登録なら `Signed` 止まり。
-- フィンガープリントは `publicKeyPem` から **Core-API が再計算**した値で照合する（manifest 申告値は不採用）。
+- フィンガープリントは `publicKeyPem` から **Service API が再計算**した値で照合する（manifest 申告値は不採用）。
 - 現状の署名対象は **entry DLL 単体**。同梱依存 DLL の差し替えは検知できないため、信頼境界は entry DLL のみと理解する。
 - 秘密鍵は配布・コミットしない。署名は CI 等の保護された環境で行う。

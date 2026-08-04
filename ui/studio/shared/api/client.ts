@@ -87,7 +87,7 @@ async function fetchAndParse<T>(path: string, init?: RequestInit): Promise<T> {
   return json as T;
 }
 
-/** `GET /v1/executions?limit&offset&status&name&definitionId` 向け（Core-API）。 */
+/** `GET /v1/executions?limit&offset&status&name&definitionId` 向け（Service API）。 */
 export type PaginationQuery = {
   limit: number;
   offset: number;
@@ -102,12 +102,12 @@ export type SortQuery = {
   sortOrder?: SortOrder;
 };
 
-/** Core-API へ GET し JSON をパースして返す。 */
+/** Service API へ GET し JSON をパースして返す。 */
 export async function apiGet<T>(path: string): Promise<T> {
   return fetchAndParse<T>(path);
 }
 
-/** Core-API へ POST（冪等キー付き）し JSON を返す。 */
+/** Service API へ POST（冪等キー付き）し JSON を返す。 */
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return fetchAndParse<T>(path, {
     method: "POST",
@@ -119,7 +119,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   });
 }
 
-/** Core-API へ PUT（冪等キー付き）し JSON を返す。 */
+/** Service API へ PUT（冪等キー付き）し JSON を返す。 */
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   return fetchAndParse<T>(path, {
     method: "PUT",
@@ -131,7 +131,7 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   });
 }
 
-/** Core-API へ PATCH（冪等キー付き）し JSON を返す。 */
+/** Service API へ PATCH（冪等キー付き）し JSON を返す。 */
 export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   return fetchAndParse<T>(path, {
     method: "PATCH",
@@ -143,7 +143,7 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   });
 }
 
-/** Core-API へ DELETE する（204 のときは undefined）。 */
+/** Service API へ DELETE する（204 のときは undefined）。 */
 export async function apiDelete(path: string): Promise<void> {
   await fetchAndParse<void>(path, { method: "DELETE" });
 }

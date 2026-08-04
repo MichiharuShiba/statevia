@@ -11,7 +11,7 @@
 .NOTES
   環境変数 SONAR_TOKEN を事前に設定すること。
   sonar-project.properties は SonarScanner for .NET では使わない（begin の /d: で指定）。
-  プロジェクトキー: StateviaCoreCLI
+  プロジェクトキー: StateviaServiceCLI
 #>
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -40,7 +40,7 @@ if (-not $env:SONAR_TOKEN) {
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $cliDir = Join-Path $repoRoot 'service\cli'
-$coverageXml = Join-Path $PSScriptRoot 'core-cli-coverage.xml'
+$coverageXml = Join-Path $PSScriptRoot 'service-cli-coverage.xml'
 
 if (-not (Test-Path -LiteralPath $cliDir -PathType Container)) {
     Write-Error "service/cli ディレクトリが見つかりません: $cliDir"
@@ -49,7 +49,7 @@ if (-not (Test-Path -LiteralPath $cliDir -PathType Container)) {
 
 Push-Location -LiteralPath $cliDir
 try {
-    dotnet sonarscanner begin /k:"StateviaCoreCLI" /n:"StateviaCoreCLI" `
+    dotnet sonarscanner begin /k:"StateviaServiceCLI" /n:"StateviaServiceCLI" `
         /d:sonar.host.url="http://localhost:9000" `
         /d:sonar.token="$($env:SONAR_TOKEN)" `
         /d:sonar.projectBaseDir="$repoRoot" `

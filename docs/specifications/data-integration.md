@@ -5,7 +5,7 @@
 | 種別 | Specification |
 | Version | 1.5 |
 | 更新日 | 2026-05-26 |
-| Scope | Core-Engine / Core-API / UI |
+| Scope | Core-Engine / Service API / UI |
 | 関連 | [concepts/durability.md](../concepts/durability.md), [api-http.md](api-http.md) |
 
 ---
@@ -15,7 +15,7 @@
 - **MUST**: UI は状態を直接書き換えず、Command を API 経由で発行する。
 - **MUST**: HTTP read-model（`GET /v1/executions` / graph）は **DB projection**（`executions` / `execution_graph_snapshots`）を正とする。
 - **MUST**: `executions` / グラフスナップショット / cursor / durable wait / `event_store` の更新は、該当ミューテーションの**同一トランザクション**内で整合させる。
-- **MUST**: Engine は純粋ロジックとし、I/O は Core-API が担当する。
+- **MUST**: Engine は純粋ロジックとし、I/O は Service API が担当する。
 - **SHOULD**: Cancel / Publish 等は契約どおりの tx 分割と Serializable リトライを用いる。
 
 責務の背景は [Concept: 永続化](../concepts/durability.md) を参照。
@@ -39,7 +39,7 @@
 - 固定イベント・Reducer（優先順位 + normalize）・Command→Event のルール（[events-and-commands.md](execution/events-and-commands.md) 等で仕様化）
 - **純粋ロジック**（I/O は API 層が担当）
 
-### Core-API（C# / Integration Boundary）
+### Service API（C# / Integration Boundary）
 
 - HTTP API 契約（[api-http.md](api-http.md)）
 - 永続化（EF Core）・Read API（`/v1/executions`、`/v1/definitions`）
@@ -60,7 +60,7 @@
 2. UI が読むのは **Read Model**（投影）
    - UI は Event を直接読む必要はない（監査画面は例外）
 
-3. Core は “ライブラリ” として Core-API に組み込む（現状）
+3. Core は “ライブラリ” として Service API に組み込む（現状）
    - 将来マイクロサービス化しても契約（Command / Read / Push）は同一
 
 4. 更新は「Command → 成功レスポンス（`201` / `204` 等）→ Read Model 更新（サーバ側）→ **任意**で SSE 通知」
@@ -112,7 +112,7 @@ UIが依存してよいレスポンス形を固定する。
 
 ---
 
-## 3. Core-API（HTTP）: Command 送信と Read 取得
+## 3. Service API（HTTP）: Command 送信と Read 取得
 
 ### 3.1 Command API（Write）
 
@@ -131,7 +131,7 @@ UIが依存してよいレスポンス形を固定する。
 
 #### Idempotency-Key の保持期間
 
-- Core-API は `X-Idempotency-Key` 単位でコマンドを **`command_dedup` テーブルに保存**し、同一キー＋同一エンドポイントの再送時には**重複適用を抑止**する（成功時は初回と同じ HTTP ステータスで整合）。**レスポンス本文の完全なキャッシュ再利用**（`status_code` / `response_body` の永続化）は一部未収束（`CommandDedupRow` の TODO。`v2-modification-plan.md` §8.3 参照）。
+- Service API は `X-Idempotency-Key` 単位でコマンドを **`command_dedup` テーブルに保存**し、同一キー＋同一エンドポイントの再送時には**重複適用を抑止**する（成功時は初回と同じ HTTP ステータスで整合）。**レスポンス本文の完全なキャッシュ再利用**（`status_code` / `response_body` の永続化）は一部未収束（`CommandDedupRow` の TODO。`v2-modification-plan.md` §8.3 参照）。
 - `command_dedup.expires_at` の **デフォルト値は `created_at + 24h`** とし、この期間を過ぎたレコードはクリーンアップ対象とする。
 - **旧 `idempotency_keys` は使用しない（廃止）。冪等は `command_dedup` に一本化している。**
 
@@ -183,7 +183,7 @@ UIが依存してよいレスポンス形を固定する。
 
 #### 目標（ノード完了ごとの投影・契約）
 
-以下は **実装未完了の目標仕様** とし、Core-API と Engine の接続（観測コールバック等）が入った段階で準拠する。
+以下は **実装未完了の目標仕様** とし、Service API と Engine の接続（観測コールバック等）が入った段階で準拠する。
 
 - **「ステート完了」の定義（粒度 A）**: 実行グラフ上で **`CompleteNode` が適用された直後**を、投影更新の契機とする。対象には **通常ステートに加え、Join の合成ノード**を含める（合成ノードも常に投影スナップショットに含める）。
 - **event_store**: ノード完了のたびに **`event_store` へ新種別を追記しない**（当面）。`event_store` に載せるのは **外部送信・コマンドに紐づくイベントのみ**（§STV-414 の表）。ノード履歴の監査や reducer 連携が必要になった場合は **別途** 種別・ペイロード・トランザクション境界を定義する。
@@ -193,7 +193,7 @@ UIが依存してよいレスポンス形を固定する。
 
 #### 高負荷時: API 内キュー（ドラフト）
 
-ノード完了が高頻度でも DB 負荷とロック競合を抑えるため、Engine から Core-API への **観測コールバック**で「投影を進めよ」シグナルを受け、**API プロセス内のキュー**で受け口を一本化する方針を採用してよい。
+ノード完了が高頻度でも DB 負荷とロック競合を抑えるため、Engine から Service API への **観測コールバック**で「投影を進めよ」シグナルを受け、**API プロセス内のキュー**で受け口を一本化する方針を採用してよい。
 
 - **狙い**: エンジンスレッドを DB I/O で長くブロックしない、同一 `execution_id` の書き込みを直列化してデッドロックを減らす、**実行単位の併合（coalesce）**（短時間に複数ノードが完了したとき **最新スナップショット 1 回分**だけ永続化する）を許容し得る。
 - **キューで満たすべき性質（仕様レベル・確定）**
@@ -228,7 +228,7 @@ UIが依存してよいレスポンス形を固定する。
 
 **ノード完了（Engine 内部）**: 当面 **`event_store` には載せない**（§STV-413 目標）。将来、監査・BI・リプレイ要件が出た場合に `NODE_*` 等を **別途** 定義する。
 
-### STV-415: 再送べき等（現行 Core-API + 将来バッチ）
+### STV-415: 再送べき等（現行 Service API + 将来バッチ）
 
 **現行（コマンド同期経路）**
 
@@ -287,7 +287,7 @@ SSE でサーバから UI へ「再取得のきっかけ」を送ると、ポー
 
 #### 5.1.1 `data:` 行の JSON 形（`GraphUpdated`）
 
-Core-API は **Execution Read Model 全体**ではなく、**グラフスナップショット由来の patch.nodes** を送る（実装クラス: `ExecutionStreamService`）。
+Service API は **Execution Read Model 全体**ではなく、**グラフスナップショット由来の patch.nodes** を送る（実装クラス: `ExecutionStreamService`）。
 
 ```json
 {
@@ -360,11 +360,11 @@ UIは受けたら `GET /v1/executions/{id}` を再取得する（最小・堅牢
 ## 7. エラーとUI表現（最小ルール）
 
 - 409 Conflict: 状態競合（例: cancelRequested後のresume）
-- 422: 入力不正、および Core-API が `ArgumentException` にマッピングするコマンド拒否（例: Engine に実行が無く `POST .../cancel` や `POST .../events` を適用できない場合）
+- 422: 入力不正、および Service API が `ArgumentException` にマッピングするコマンド拒否（例: Engine に実行が無く `POST .../cancel` や `POST .../events` を適用できない場合）
 - 404: execution/node不在
 
 UIは 409 を「操作できない理由」として表示できるよう、
-Core-APIはエラーレスポンスに以下を入れる。
+Service APIはエラーレスポンスに以下を入れる。
 
 ```json
 {
@@ -400,21 +400,21 @@ Definition 登録（`POST /v1/definitions`）および更新（`PUT /v1/definiti
 ### 8.1 現状（ポーリングのみ）
 
 ```text
-UI -> Core-API: POST /v1/executions/{id}/cancel
-Core-API -> UI: 204 No Content
-UI -> Core-API: GET /v1/executions/{id} (poll)
-Core-API -> UI: status 等
+UI -> Service API: POST /v1/executions/{id}/cancel
+Service API -> UI: 204 No Content
+UI -> Service API: GET /v1/executions/{id} (poll)
+Service API -> UI: status 等
 ```
 
 ### 8.2 現状（SSE 併用・実装済み）
 
 ```text
-UI -> Core-API: POST /v1/executions/{id}/cancel
-Core-API -> UI: 204 No Content
-UI -> Core-API: GET /v1/executions/{id}/stream (SSE、並行で開く)
-Core-API -> UI: data: {"type":"GraphUpdated", ...}
-UI -> Core-API: GET /v1/executions/{id}
-Core-API -> UI: Read Model（確定状態）
+UI -> Service API: POST /v1/executions/{id}/cancel
+Service API -> UI: 204 No Content
+UI -> Service API: GET /v1/executions/{id}/stream (SSE、並行で開く)
+Service API -> UI: data: {"type":"GraphUpdated", ...}
+UI -> Service API: GET /v1/executions/{id}
+Service API -> UI: Read Model（確定状態）
 ```
 
 ### 8.3 将来（EXECUTION_UPDATED 型の統一イベント）

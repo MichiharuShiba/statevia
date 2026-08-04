@@ -43,7 +43,7 @@ workflow:
 
 states:
   <StateName>:
-    action: <ActionId>            # 任意。Core-API の Action Registry に登録された ID（例: order.create）
+    action: <ActionId>            # 任意。Service API の Action Registry に登録された ID（例: order.create）
     on:                          # 事実駆動の遷移（Fact → 遷移）
       <Fact>:
         next: <StateName>        # 単一遷移
@@ -59,11 +59,11 @@ states:
 - **workflow.name**: ワークフロー名（任意、デフォルト "Unnamed"）。
 - **workflow.modules**: 任意。module alias（キー）→ ModuleId（値）のマップ。`action: mail.send` のように alias 付き action 参照を解決する。alias は **大文字小文字を区別せず一意**（重複・空キー・空 ModuleId は Loader 構文エラー）。現状 ModuleId に version 指定はできない（同一 moduleId の複数版共存・版レンジ解決は**未実装**）。
 - **states**: 状態名 → 状態定義のマップ。各状態は `on`（遷移）、`wait`（待機）、`join`（合流）のいずれかまたは組み合わせを持つ。
-- **action**: 任意。定義登録時に Core-API が Catalog へ照合し、未登録の ID はエラーになる。**省略時**は implicit noop（canonical: `statevia.action.builtin.noop`、即時完了）と同等。Builtin 短名・module alias・FQCN のいずれでも記述できる（§1.1.1）。**`wait` または `join` を指定する状態では `action` と併記できない**。
+- **action**: 任意。定義登録時に Service API が Catalog へ照合し、未登録の ID はエラーになる。**省略時**は implicit noop（canonical: `statevia.action.builtin.noop`、即時完了）と同等。Builtin 短名・module alias・FQCN のいずれでも記述できる（§1.1.1）。**`wait` または `join` を指定する状態では `action` と併記できない**。
 
 ### 1.1.1 Action ID（canonical 形式と解決）
 
-YAML 上の `action` 参照は syntax parse のあと、Core-API Compiler（`ActionNameResolver`）で **canonical actionId** に正規化され、Action Registry へ照合される。Loader は生の参照文字列を保持し、semantic resolution は Compiler のみが行う。
+YAML 上の `action` 参照は syntax parse のあと、Service API Compiler（`ActionNameResolver`）で **canonical actionId** に正規化され、Action Registry へ照合される。Loader は生の参照文字列を保持し、semantic resolution は Compiler のみが行う。
 
 | 記法（YAML） | 正規化後（canonical） | 例 |
 | --- | --- | --- |
@@ -91,14 +91,14 @@ Builtin 短名（MVP）:
 
 解決に失敗した参照（未知の Builtin 短名・未登録 module alias・Catalog 未登録 ID）はコンパイルエラー（HTTP 422）となる。
 
-**TrustLevel と実行モード（Core-API Policy）:** Catalog の `ActionDescriptor.TrustLevel` と実行環境（`ASPNETCORE_ENVIRONMENT` / `Statevia:ExecutionPolicy:DeploymentProfile`）から `ConfigurableExecutionPolicy` が最終 `ActionExecutionMode` を決定する。Builtin は `Trusted`（InProcess）。filesystem Module は既定 `Community`（本番は OutOfProcess 想定 — Phase 3 Action Host まで実行は `UnsupportedExecutionMode`）。Policy は TrustLevel 下限を緩和できない。
+**TrustLevel と実行モード（Service API Policy）:** Catalog の `ActionDescriptor.TrustLevel` と実行環境（`ASPNETCORE_ENVIRONMENT` / `Statevia:ExecutionPolicy:DeploymentProfile`）から `ConfigurableExecutionPolicy` が最終 `ActionExecutionMode` を決定する。Builtin は `Trusted`（InProcess）。filesystem Module は既定 `Community`（本番は OutOfProcess 想定 — Phase 3 Action Host まで実行は `UnsupportedExecutionMode`）。Policy は TrustLevel 下限を緩和できない。
 
 ### 1.1.2 Action パラメータと `input` キー
 
 Action の実行パラメータ（例: rest の `url`）および状態への入力マッピングは、いずれも YAML キー **`input:`** で記述する。**`config:` キーは採用しない**（将来導入予定なし）。
 
 - **状態 input マッピング**: 直前状態の output から値を抽出する（§1.6）。`input.path` 単一形式またはキー付きマップ。
-- **Action パラメータ**: Builtin / Module action の schema に従う `input` マップ。Core-API Compiler が publication の `inputSchema` で検証する（422 `details`: `state`, `actionId`, `jsonPath` — 機微値は含めない）。**Module 由来 action**（`Visibility != Builtin`）は `ActionPublication` 未登録で **422**。Builtin カスタム登録のみ structured warning（`RequireSchemaForUnpublishedActions` で strict 化可）。
+- **Action パラメータ**: Builtin / Module action の schema に従う `input` マップ。Service API Compiler が publication の `inputSchema` で検証する（422 `details`: `state`, `actionId`, `jsonPath` — 機微値は含めない）。**Module 由来 action**（`Visibility != Builtin`）は `ActionPublication` 未登録で **422**。Builtin カスタム登録のみ structured warning（`RequireSchemaForUnpublishedActions` で strict 化可）。
   - **ルートフラット**（フェーズ E）: ルート直下の scalar / 浅い object リテラル（例: rest `headers`）。
   - **ネスト object**（フェーズ F2）: `inputSchema` の `type: object` ノードを再帰検証。`Values` は実行時と同じ論理ツリーへ正規化してから schema を適用する。
   - **ドットキーとネスト map の同等性**: `ship.address: "x"` と `ship: { address: "x" }` は同一論理ツリーとして compile 成功する。正規化衝突（例: `ship` にスカラーと `ship.address` を併記）は 422。`jsonPath` は階層を反映する（例: `$.input.ship.contact.email`）。
@@ -540,7 +540,7 @@ Definition Editor は YAML 編集とグラフ編集で同じドキュメント�
 - **edges[].to**: 文字列、または **`{ id: "<nodeId>" }`**。パース時にエディタは常に遷移先 ID 文字列へ正規化する。
 - **join.mode**: 省略可能（省略時に UI が `mode: all` を自動付与しない）。明示したときのみ `all` を保持する。
 
-Core-API の **`GET /v1/definitions/schema/nodes`** が返すスキーマには、`workflow.description` およびノードの **`input` / `error`** プロパティが含まれる（補完・Lint の参照用）。
+Service API の **`GET /v1/definitions/schema/nodes`** が返すスキーマには、`workflow.description` およびノードの **`input` / `error`** プロパティが含まれる（補完・Lint の参照用）。
 
 ### 2.2 ノード型とプロパティ
 
@@ -712,7 +712,7 @@ states:
 
 ### 2.4 States 形式との対応
 
-Nodes 形式は、実行前に **states 形式の CompiledWorkflowDefinition に変換**して利用する想定。変換レイヤーが nodes の `id`/`type`/`next`/`event`/`branches`/`error` を states の `on`/`wait`/`join` にマッピングする。実装上は Core-API の `NodesWorkflowDefinitionLoader` が nodes を `WorkflowDefinition` に変換し、states 形式は `StateWorkflowDefinitionLoader` が読み込む。
+Nodes 形式は、実行前に **states 形式の CompiledWorkflowDefinition に変換**して利用する想定。変換レイヤーが nodes の `id`/`type`/`next`/`event`/`branches`/`error` を states の `on`/`wait`/`join` にマッピングする。実装上は Service API の `NodesWorkflowDefinitionLoader` が nodes を `WorkflowDefinition` に変換し、states 形式は `StateWorkflowDefinitionLoader` が読み込む。
 
 - `next` / `edges` は `on.Completed` を構成する。
 - `error`（action のみ）は `on.Failed.next` を構成する。

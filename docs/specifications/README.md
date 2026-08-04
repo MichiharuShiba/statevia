@@ -15,7 +15,7 @@
 | ドキュメント | 領域 |
 | --- | --- |
 | [`definition.md`](definition.md) | ワークフロー定義 YAML |
-| [`api-http.md`](api-http.md) | Core-API HTTP 契約 |
+| [`api-http.md`](api-http.md) | Service API HTTP 契約 |
 | [`data-integration.md`](data-integration.md) | Engine / API / UI データ連携 |
 
 ## execution/

@@ -155,7 +155,7 @@ Reference — 辞書・一覧（必要になったら）
 statevia/
 ├─ core/              # Engine · Application
 ├─ infrastructure/    # 永続化 · Module · Security
-├─ service/           # Core-API · CLI · action-host
+├─ service/           # Service API · CLI · action-host · runtime
 ├─ ui/studio/         # Web UI
 └─ docs/              # ドキュメント正本
 ```

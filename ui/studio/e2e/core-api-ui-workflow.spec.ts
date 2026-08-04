@@ -4,21 +4,21 @@ import { e2eWaitWorkflowYaml } from "./fixtures/e2eWaitWorkflowYaml";
 import { uiText } from "@/shared/i18n/uiText";
 
 /**
- * Core-API 実体 + Next プロキシ経由の UI E2E（STV-401/402 の UI 側）。
+ * Service API 実体 + Next プロキシ経由の UI E2E（STV-401/402 の UI 側）。
  *
- * 事前: Core-API を起動し、マイグレーション済み DB を用意する。
+ * 事前: Service API を起動し、マイグレーション済み DB を用意する。
  * 実行例:
- *   CORE_API_E2E_URL=http://localhost:8080 npx playwright test e2e/core-api-ui-execution.spec.ts
+ *   SERVICE_API_E2E_URL=http://localhost:8080 npx playwright test e2e/core-api-ui-execution.spec.ts
  *
- * `playwright.config` は CORE_API_E2E_URL 設定時に CORE_API_INTERNAL_BASE を渡す。
+ * `playwright.config` は SERVICE_API_E2E_URL 設定時に SERVICE_API_INTERNAL_BASE を渡す。
  */
-const apiBase = process.env.CORE_API_E2E_URL?.replace(/\/$/, "") ?? "";
+const apiBase = process.env.SERVICE_API_E2E_URL?.replace(/\/$/, "") ?? "";
 const tenantHeaders = { "X-Tenant-Id": "default", "Content-Type": "application/json" };
 
-test.describe("Core API + UI (real)", () => {
+test.describe("Service API + UI (real)", () => {
   test.describe.configure({ mode: "serial", timeout: 120_000 });
-  // Reason: CORE_API_E2E_URL 未設定時は実体 Core-API が無いため、環境ゲートでスイートをスキップする。
-  test.skip(!apiBase, "CORE_API_E2E_URL が未設定のためスキップ");
+  // Reason: SERVICE_API_E2E_URL 未設定時は実体 Service API が無いため、環境ゲートでスイートをスキップする。
+  test.skip(!apiBase, "SERVICE_API_E2E_URL が未設定のためスキップ");
 
   test("STV-401: Load → Cancel で Cancelled かつ成功トースト", async ({ page, request }) => {
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
