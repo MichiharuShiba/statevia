@@ -1,10 +1,13 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Statevia.Infrastructure.Security.Configuration;
 using Statevia.Service.Api.Application.Actions.Execution;
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Hosting;
+using Statevia.Runtime.Configuration;
+using Statevia.Runtime.Services;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 
@@ -327,6 +330,62 @@ public sealed class OptionsValidationTests
             d => d.ServiceType.IsGenericType
                 && d.ServiceType.GetGenericTypeDefinition() == typeof(IValidateOptions<>)
                 && d.ServiceType.GenericTypeArguments[0] == typeof(JwtAuthOptions));
+        Assert.Contains(
+            services,
+            d => d.ServiceType.IsGenericType
+                && d.ServiceType.GetGenericTypeDefinition() == typeof(IValidateOptions<>)
+                && d.ServiceType.GenericTypeArguments[0] == typeof(RuntimeOptions));
+    }
+
+    /// <summary>Runtime フラグ Off のときプロセス内 Worker / Scheduler を登録しない。</summary>
+    [Fact]
+    public void AddStateviaCoreApi_DisablesInProcessRuntime_WhenFlagsAreFalse()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        {
+            ["Statevia:Runtime:EnableInProcessWorker"] = "false",
+            ["Statevia:Runtime:EnableInProcessDelayWaitScheduler"] = "false",
+            ["Statevia:Runtime:EnableInProcessOwnershipRecovery"] = "false"
+        }));
+
+        // Act / Assert
+        Assert.DoesNotContain(
+            services,
+            d => d.ImplementationType == typeof(ExecutionWorkItemWorkerHostedService));
+        Assert.DoesNotContain(
+            services,
+            d => d.ImplementationType == typeof(DelayWaitSchedulerHostedService));
+        Assert.DoesNotContain(
+            services,
+            d => d.ImplementationType == typeof(ExecutionOwnershipRecoveryHostedService));
+    }
+
+    /// <summary>Worker ホストは実行系のみで API 向けサービスを登録しない。</summary>
+    [Fact]
+    public void AddStateviaWorkerHost_RegistersExecutionRuntimeWithoutApiHost()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddStateviaWorkerHost(BuildValidConfiguration());
+
+        // Act / Assert
+        Assert.Contains(
+            services,
+            d => d.ImplementationType == typeof(ExecutionWorkItemWorkerHostedService));
+        Assert.DoesNotContain(
+            services,
+            d => d.ImplementationType == typeof(DelayWaitSchedulerHostedService));
+        Assert.DoesNotContain(
+            services,
+            d => d.ImplementationType == typeof(ExecutionOwnershipRecoveryHostedService));
+        Assert.DoesNotContain(
+            services,
+            d => d.ServiceType == typeof(Statevia.Service.Api.Services.IAuthService));
+        Assert.DoesNotContain(
+            services,
+            d => d.ImplementationType == typeof(TenantBootstrapHostedService));
     }
 
     private static IConfiguration BuildValidConfiguration(IReadOnlyDictionary<string, string?>? overrides = null)

@@ -70,4 +70,18 @@ public interface IExecutionWorkQueue
         DateTime nowUtc,
         int limit,
         CancellationToken ct);
+
+    /// <summary>
+    /// 期限切れ DelayWait を <c>FOR UPDATE SKIP LOCKED</c> で排他取得し、同一トランザクションで
+    /// wait 行を削除したうえで <c>Resume mode=event</c>（delay.completed）を enqueue する。
+    /// </summary>
+    /// <remarks>
+    /// 複数 Scheduler が並行スキャンしても同一 wait は一度だけ Resume される。
+    /// 子購読行は FK CASCADE で削除される。
+    /// </remarks>
+    /// <returns>投入した Resume 件数。</returns>
+    Task<int> EnqueueExpiredDelayWaitResumesAsync(
+        DateTime nowUtc,
+        int limit,
+        CancellationToken ct);
 }

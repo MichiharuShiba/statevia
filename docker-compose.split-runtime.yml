@@ -1,0 +1,34 @@
+# ランタイム分離: API 内 HostedService を Off し、scheduler / worker を起動する。
+# 使い方:
+#   docker compose -f docker-compose.yml -f docker-compose.split-runtime.yml up -d
+# 戻すとき:
+#   docker compose -f docker-compose.yml -f docker-compose.split-runtime.yml down
+#   docker compose up -d
+services:
+  service-api:
+    environment:
+      Statevia__Runtime__EnableInProcessWorker: "false"
+      Statevia__Runtime__EnableInProcessDelayWaitScheduler: "false"
+      Statevia__Runtime__EnableInProcessOwnershipRecovery: "false"
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: service/runtime/Statevia.Service.Runtime.Scheduler/Dockerfile
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    depends_on:
+      - postgres
+
+  worker:
+    build:
+      context: .
+      dockerfile: service/runtime/Statevia.Service.Runtime.Worker/Dockerfile
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      Statevia__ActionHost__BaseUrl: "http://action-host:5001"
+    depends_on:
+      - postgres
+      - action-host
+    volumes:
+      - ./modules:/app/modules

@@ -1,9 +1,11 @@
-namespace Statevia.Service.Api.Hosting;
+using Microsoft.Extensions.Configuration;
+
+namespace Statevia.Infrastructure.Common;
 
 /// <summary>
 /// PostgreSQL 接続文字列の解決（<c>DATABASE_URL</c> 正規化を含む）。
 /// </summary>
-internal static class DatabaseConnection
+public static class DatabaseConnection
 {
     /// <summary>
     /// 環境変数・設定から Npgsql 用接続文字列を解決する。
@@ -27,7 +29,7 @@ internal static class DatabaseConnection
     /// <summary>
     /// <c>postgres://</c> 形式なら正規化し、それ以外はそのまま返す。
     /// </summary>
-    internal static string NormalizeConnectionString(string value) =>
+    public static string NormalizeConnectionString(string value) =>
         value.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)
         || value.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase)
             ? NormalizePostgresUrl(value)
@@ -36,7 +38,7 @@ internal static class DatabaseConnection
     /// <summary>
     /// <c>postgres://</c> / <c>postgresql://</c> を Npgsql のキー=値形式へ変換する。
     /// </summary>
-    internal static string NormalizePostgresUrl(string url)
+    public static string NormalizePostgresUrl(string url)
     {
         ArgumentNullException.ThrowIfNull(url);
 
