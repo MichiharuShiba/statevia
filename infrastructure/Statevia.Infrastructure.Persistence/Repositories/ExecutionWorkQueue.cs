@@ -218,6 +218,81 @@ internal sealed class ExecutionWorkQueue(IDbContextFactory<CoreDbContext> dbFact
         return count;
     }
 
+    /// <inheritdoc />
+    public async Task<int> EnqueueExpiredDelayWaitResumesAsync(
+        DateTime nowUtc,
+        int limit,
+        CancellationToken ct)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(limit, 1);
+
+        // wait_kind は EF の string 変換と一致させる。eventName はプラットフォーム固定。
+        const string delayWaitKind = nameof(ExecutionWaitKind.DelayWait);
+        var eventName = ExecutionWaitEventNames.DelayCompleted;
+
+        await using var db = await dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        await db.Database.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct)
+            .ConfigureAwait(false);
+        await using var command = db.Database.GetDbConnection().CreateCommand();
+        command.Transaction = db.Database.CurrentTransaction?.GetDbTransaction();
+        command.CommandText = """
+            WITH expired AS (
+                SELECT execution_id, node_id
+                FROM execution_waits
+                WHERE wait_kind = @waitKind
+                  AND expires_at IS NOT NULL
+                  AND expires_at <= @nowUtc
+                ORDER BY expires_at, execution_id, node_id
+                FOR UPDATE SKIP LOCKED
+                LIMIT @limit
+            ),
+            deleted AS (
+                DELETE FROM execution_waits AS wait
+                USING expired
+                WHERE wait.execution_id = expired.execution_id
+                  AND wait.node_id = expired.node_id
+                RETURNING wait.execution_id, wait.node_id
+            ),
+            inserted AS (
+                INSERT INTO execution_work_items (
+                    work_item_id,
+                    execution_id,
+                    kind,
+                    payload,
+                    available_at,
+                    attempts,
+                    created_at)
+                SELECT gen_random_uuid(),
+                       deleted.execution_id,
+                       'Resume',
+                       jsonb_build_object(
+                           'mode', 'event',
+                           'nodeId', deleted.node_id,
+                           'eventName', @eventName),
+                       @nowUtc,
+                       0,
+                       @nowUtc
+                FROM deleted
+                RETURNING execution_id
+            )
+            SELECT COUNT(*)::int
+            FROM inserted;
+            """;
+        AddParameter(command, "nowUtc", nowUtc);
+        AddParameter(command, "limit", limit);
+        AddParameter(command, "waitKind", delayWaitKind);
+        AddParameter(command, "eventName", eventName);
+
+        var scalar = await command.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        var count = scalar is int value
+            ? value
+            : Convert.ToInt32(scalar, System.Globalization.CultureInfo.InvariantCulture);
+
+        await transaction.CommitAsync(ct).ConfigureAwait(false);
+        return count;
+    }
+
     /// <summary>DB コマンドへ値を安全にパラメーター追加する。</summary>
     private static void AddParameter(IDbCommand command, string name, object value)
     {

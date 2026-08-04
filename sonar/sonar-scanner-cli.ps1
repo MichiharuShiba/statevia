@@ -26,6 +26,7 @@ $sonarAnalysisExclusions = @(
     '**/Statevia.Core.Engine/**',
     '**/Statevia.Service.Api/**',
     '**/Statevia.Actions.Abstractions/**',
+    '**/service/runtime/**',
     '**/infrastructure/**',
     '**/Migrations/**',
     '**/docker-compose.yml'

@@ -5,7 +5,7 @@
 ```text
 core/                  # ドメイン・契約（非デプロイ）
 infrastructure/        # 技術実装（差し替え可能・最外殻）
-service/               # デプロイ可能なインターフェイス（API / CLI / action-host）
+service/               # デプロイ可能なインターフェイス（API / CLI / action-host / runtime）
 ui/studio/             # Web ダッシュボード（Next.js — @statevia/studio）
 tests/                 # 横断テスト（Architecture.Tests）
 docs/                  # 契約・運用・開発ガイド
@@ -44,6 +44,9 @@ HTTP / gRPC / CLI のアダプタ。Composition Root として全層を DI で�
 | --- | --- |
 | `service/api/Statevia.Service.Api` | HTTP アダプタ（Controllers + Hosting） |
 | `service/api/Statevia.Service.Api.Bootstrap` | エントリポイント（Program.cs） |
+| `service/runtime/Statevia.Runtime` | Worker / DelayWait Scheduler / OwnershipRecovery の HostedService 正本 |
+| `service/runtime/Statevia.Service.Runtime.Scheduler` | DelayWait / ownership recovery Generic Host（任意分離） |
+| `service/runtime/Statevia.Service.Runtime.Worker` | execution_work_items Worker Generic Host（任意分離） |
 | `service/action-host/Statevia.Service.ActionHost` | OutOfProcess Action 実行（gRPC sandbox） |
 | `service/cli/Statevia.Service.Cli` | 統合 `statevia` コマンド |
 

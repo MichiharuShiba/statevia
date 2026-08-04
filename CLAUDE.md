@@ -185,7 +185,7 @@
 - Serena MCP（調査・設計前調査・実装でのシンボル活用）: `.cursor/skills/serena-workflow-research-impl/SKILL.md`
 - Serena MCP 運用仕様: `.spec-workflow/archive/specs/serena-mcp-project-toggle/`
 
-明示的に Serena を切り替えるチャットコマンド: `/serena-project-engine`、`/serena-project-api`、`/serena-project-ui` 等（`.cursor/commands/`）。切替は `activate_project` ではなく Cursor の MCP トグル（対象 `serena-*` を On、他を Off）。
+明示的に Serena を切り替えるチャットコマンド: `/serena-project-engine`、`/serena-project-api`、`/serena-project-runtime`、`/serena-project-ui` 等（`.cursor/commands/`）。切替は `activate_project` ではなく Cursor の MCP トグル（対象 `serena-*` を On、他を Off）。
 
 Plan の設計を `.spec-workflow/specs/` に書き起こすチャットコマンド: `/spec-from-plan-design`（`.cursor/commands/spec-from-plan-design.md`）。
 

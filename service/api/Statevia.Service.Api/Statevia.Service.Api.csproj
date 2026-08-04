@@ -45,6 +45,7 @@
     <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Modules/Statevia.Infrastructure.Modules.csproj" />
     <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Common/Statevia.Infrastructure.Common.csproj" />
     <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Actions.Grpc/Statevia.Infrastructure.Actions.Grpc.csproj" />
+    <ProjectReference Include="../../runtime/Statevia.Runtime/Statevia.Runtime.csproj" />
   </ItemGroup>
 
 </Project>

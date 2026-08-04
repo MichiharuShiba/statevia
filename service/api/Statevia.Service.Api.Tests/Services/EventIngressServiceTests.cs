@@ -195,5 +195,11 @@ public sealed class EventIngressServiceTests
             int limit,
             CancellationToken ct) =>
             throw new NotImplementedException();
+
+        public Task<int> EnqueueExpiredDelayWaitResumesAsync(
+            DateTime nowUtc,
+            int limit,
+            CancellationToken ct) =>
+            throw new NotImplementedException();
     }
 }

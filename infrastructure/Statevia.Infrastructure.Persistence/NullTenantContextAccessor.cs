@@ -1,7 +1,7 @@
 namespace Statevia.Infrastructure.Persistence;
 
-/// <summary>テナント文脈なし（fail-closed）のアクセサ。テストの既定値。</summary>
-internal sealed class NullTenantContextAccessor : ITenantContextAccessor
+/// <summary>テナント文脈なし（fail-closed）のアクセサ。テスト・システムスキャナの既定値。</summary>
+public sealed class NullTenantContextAccessor : ITenantContextAccessor
 {
     /// <summary>共有インスタンス。</summary>
     public static readonly NullTenantContextAccessor Instance = new();

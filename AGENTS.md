@@ -20,6 +20,9 @@ Cursor Cloud / エージェント向けの**薄い索引**。詳細は [`docs/RE
 | application | `core/application/` |
 | infrastructure | `infrastructure/` |
 | core-api（ASP.NET Core） | `service/api/` |
+| runtime（共有 HostedService） | `service/runtime/Statevia.Runtime/` |
+| scheduler（Generic Host・任意） | `service/runtime/Statevia.Service.Runtime.Scheduler/` |
+| worker（Generic Host・任意） | `service/runtime/Statevia.Service.Runtime.Worker/` |
 | action-host（gRPC） | `service/action-host/` |
 | cli | `service/cli/` |
 | ui（Next.js） | `ui/studio/` |
@@ -31,7 +34,8 @@ PostgreSQL 16 + EF Core。UI は `/api/core/*` で Core-API にプロキシ。
 1. **PostgreSQL** — Docker 例: `docker compose up -d postgres`、または [`docs/guides/getting-started.md`](docs/guides/getting-started.md)
 2. **マイグレーション** — `cd service/api && dotnet ef database update --project Statevia.Service.Api`
 3. **Core-API** — `cd service/api && dotnet run --project Statevia.Service.Api --no-launch-profile`（`ASPNETCORE_URLS=http://0.0.0.0:8080` 推奨。`launchSettings.json` のポートに注意）
-4. **UI** — `cd ui/studio && CORE_API_INTERNAL_BASE=http://localhost:8080 npm run dev`
+4. **（任意）Scheduler / Worker 分離** — `docker compose -f docker-compose.yml -f docker-compose.split-runtime.yml up -d`（API 内 HostedService Off と scheduler/worker 起動を同時に適用。手順: [`docs/guides/operations-docker.md`](docs/guides/operations-docker.md)）
+5. **UI** — `cd ui/studio && CORE_API_INTERNAL_BASE=http://localhost:8080 npm run dev`
 
 Docker Compose 一式: [`docs/guides/operations-docker.md`](docs/guides/operations-docker.md)
 
@@ -65,6 +69,7 @@ Sonar / Analyzer: [`docs/development-guidelines.md`](docs/development-guidelines
 | `Statevia:Modules:S3:*` | S3 Module Source |
 | `Statevia:Modules:Git:*` | Git Module Source（HTTP archive） |
 | `Statevia:ExecutionPolicy:*` | 実行モード下限・テナント Policy / `Sandbox:Docker:*`（Container） |
+| `Statevia:Runtime:*` | API 内 Worker / DelayWait Scheduler / OwnershipRecovery の On/Off（既定 On） |
 
 完全な一覧と説明: [`docs/guides/operations-docker.md`](docs/guides/operations-docker.md)、[`docs/specifications/actions/platform.md`](docs/specifications/actions/platform.md)
 
@@ -73,7 +78,7 @@ Sonar / Analyzer: [`docs/development-guidelines.md`](docs/development-guidelines
 - **Read-model**: `GET /v1/executions` / graph は DB projection 正本（[`data-integration.md`](docs/specifications/data-integration.md)）
 - **IO-14**: 既定で `input` / `output` を一覧 GET に含めない。ログは `LogRedaction`（[`io-log-masking.md`](docs/specifications/platform/io-log-masking.md)）
 - **Engine 境界**: `ExecutionEngine` は `IStateExecutor` のみ。Catalog / Policy / ModuleHost は Core-API 側
-- **Serena MCP**: プロジェクトごとに `serena-engine` … `serena-ui` の 8 サーバー。切替は UI トグル（同時 On は原則 1）。未起動時は停止して起動を促す。[`serena-mcp-project-toggle`](.spec-workflow/archive/specs/serena-mcp-project-toggle/requirements.md) / [`.cursor/skills/serena-mcp-project-switch/SKILL.md`](.cursor/skills/serena-mcp-project-switch/SKILL.md)
+- **Serena MCP**: プロジェクトごとに `serena-engine` … `serena-ui` の 9 サーバー（`serena-runtime` 含む）。切替は UI トグル（同時 On は原則 1）。未起動時は停止して起動を促す。[`serena-mcp-project-toggle`](.spec-workflow/archive/specs/serena-mcp-project-toggle/requirements.md) / [`.cursor/skills/serena-mcp-project-switch/SKILL.md`](.cursor/skills/serena-mcp-project-switch/SKILL.md)
 
 ## .NET SDK
 

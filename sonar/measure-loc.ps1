@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
   engine / application / infrastructure / api / cli / action-host / ui などの行数をプロダクト・テスト別に集計する。
@@ -354,6 +354,12 @@ $apiTestDefs = @(
     @{ Name = 'Statevia.Service.Api.Tests'; RelativePath = 'service\api\Statevia.Service.Api.Tests' }
 )
 
+$runtimeProductDefs = @(
+    @{ Name = 'Statevia.Runtime'; RelativePath = 'service\runtime\Statevia.Runtime' }
+    @{ Name = 'Statevia.Service.Runtime.Scheduler'; RelativePath = 'service\runtime\Statevia.Service.Runtime.Scheduler' }
+    @{ Name = 'Statevia.Service.Runtime.Worker'; RelativePath = 'service\runtime\Statevia.Service.Runtime.Worker' }
+)
+
 $cliProductDefs = @(
     @{ Name = 'Statevia.Service.Cli'; RelativePath = 'service\cli\Statevia.Service.Cli' }
 )
@@ -381,6 +387,7 @@ $infrastructureProduct = Measure-DefinitionGroup -Definitions $infrastructurePro
 $infrastructureTest = Measure-DefinitionGroup -Definitions $infrastructureTestDefs -Extensions @('.cs') -Language 'csharp'
 $apiProduct = Measure-DefinitionGroup -Definitions $apiProductDefs -Extensions @('.cs') -Language 'csharp'
 $apiTest = Measure-DefinitionGroup -Definitions $apiTestDefs -Extensions @('.cs') -Language 'csharp'
+$runtimeProduct = Measure-DefinitionGroup -Definitions $runtimeProductDefs -Extensions @('.cs') -Language 'csharp'
 $cliProduct = Measure-DefinitionGroup -Definitions $cliProductDefs -Extensions @('.cs') -Language 'csharp'
 $cliTest = Measure-DefinitionGroup -Definitions $cliTestDefs -Extensions @('.cs') -Language 'csharp'
 $actionHostProduct = Measure-DefinitionGroup -Definitions $actionHostProductDefs -Extensions @('.cs') -Language 'csharp'
@@ -442,6 +449,7 @@ $measuredComponents = @(
     @{ Name = 'application'; Product = $applicationProduct; Test = $null }
     @{ Name = 'infrastructure'; Product = $infrastructureProduct; Test = $infrastructureTest }
     @{ Name = 'api'; Product = $apiProduct; Test = $apiTest }
+    @{ Name = 'runtime'; Product = $runtimeProduct; Test = $null }
     @{ Name = 'cli'; Product = $cliProduct; Test = $cliTest }
     @{ Name = 'action-host'; Product = $actionHostProduct; Test = $actionHostTest }
     @{ Name = 'ui'; Product = $uiProduct; Test = $uiTest }

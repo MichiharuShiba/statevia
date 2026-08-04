@@ -23,6 +23,10 @@ services:
       ASPNETCORE_URLS: "http://+:8080"
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       Statevia__ActionHost__BaseUrl: "http://action-host:5001"
+      # 既定は API 内 HostedService On。分離は docker-compose.split-runtime.yml を追加する。
+      Statevia__Runtime__EnableInProcessWorker: "true"
+      Statevia__Runtime__EnableInProcessDelayWaitScheduler: "true"
+      Statevia__Runtime__EnableInProcessOwnershipRecovery: "true"
     depends_on:
       - postgres
       - action-host

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace Statevia.Service.Api.Services;
+namespace Statevia.Runtime.Services;
 
 /// <summary>
 /// <see cref="ExecutionWorkItemWorkerHostedService"/> 用のログ（<see cref="LoggerMessageAttribute"/>）。

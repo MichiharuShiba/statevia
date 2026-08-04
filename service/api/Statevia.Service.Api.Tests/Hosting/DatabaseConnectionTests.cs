@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Configuration;
-using Statevia.Service.Api.Hosting;
+using Statevia.Infrastructure.Common;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 

@@ -25,6 +25,31 @@ docker compose up -d
 - **Action Host**（gRPC）: `http://localhost:5001`（`STATEVIA_MODULES_PATH=/app/modules`。task 14 以降 Core-API から OutOfProcess 実行に利用）
 - **UI**: `http://localhost:3000`（`CORE_API_INTERNAL_BASE=http://service-api:8080`）
 
+## ランタイム分離（任意: Worker / Scheduler）
+
+既定の compose では **Worker / DelayWait Scheduler / Ownership Recovery は Core-API プロセス内**で動作します（`Statevia:Runtime:EnableInProcess*` 既定 `true`）。
+
+プロセスを分ける場合は、override ファイル `docker-compose.split-runtime.yml` を追加します。これだけで次の両方が同時に効きます。
+
+1. `service-api` の `Statevia__Runtime__EnableInProcess*` を `false` にする
+2. `scheduler` / `worker` コンテナを起動する
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.split-runtime.yml up -d
+```
+
+| サービス | 役割 |
+| -------- | ---- |
+| scheduler | 期限切れ DelayWait の排他 claim+Resume enqueue、checkpoint 所有 recovery |
+| worker | `execution_work_items` の claim と Start / Resume / Cancel / recovery 実行 |
+
+通常の `docker compose up -d` では `scheduler` / `worker` は定義されず、API 内 HostedService のままです。分離をやめるときは次のように戻します。
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.split-runtime.yml down
+docker compose up -d
+```
+
 ## ヘルス
 
 - Core-API: `GET http://localhost:8080/v1/health` → `{ "status": "ok" }`
@@ -51,12 +76,13 @@ docker compose up -d
 
 | サービス   | 主な変数 |
 | ---------- | -------- |
-| service-api | `DATABASE_URL`（`POSTGRES_*` から組み立て）, `ASPNETCORE_URLS`, `ASPNETCORE_ENVIRONMENT`（compose では `Development`） |
+| service-api | `DATABASE_URL`（`POSTGRES_*` から組み立て）, `ASPNETCORE_URLS`, `ASPNETCORE_ENVIRONMENT`（compose では `Development`）。分離時は override で `Statevia__Runtime__EnableInProcess*=false` |
 | postgres    | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`（`.env` / `.env.example`） |
 | action-host | `ASPNETCORE_URLS`（compose では `http://+:5001`）, `STATEVIA_MODULES_PATH`（`/app/modules`） |
+| scheduler / worker | `DATABASE_URL`（`docker-compose.split-runtime.yml`）。worker は `Statevia__ActionHost__BaseUrl` も共有 |
 | ui-studio  | `CORE_API_INTERNAL_BASE` |
 
-詳細は `docker-compose.yml` と `AGENTS.md` を参照してください。
+詳細は `docker-compose.yml` / `docker-compose.split-runtime.yml` と `AGENTS.md` を参照してください。
 
 ## Action Module（plugins）
 

@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Actions.Abstractions.Catalog;
 using Statevia.Core.Actions.Abstractions.Execution;
 using Statevia.Core.Actions.Abstractions.Visibility;
@@ -14,6 +13,7 @@ using Statevia.Service.Api.Application.Actions.Visibility;
 using Statevia.Service.Api.Application.Definition;
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Contracts;
+using Statevia.Infrastructure.Common;
 using Statevia.Infrastructure.Common.DependencyInjection;
 using Statevia.Infrastructure.Notification.DependencyInjection;
 using Statevia.Infrastructure.Persistence.DependencyInjection;
@@ -21,50 +21,81 @@ using Statevia.Infrastructure.Security.DependencyInjection;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Persistence;
 using Statevia.Service.Api.Persistence.Repositories;
-using Statevia.Service.Api.Services;
 using Statevia.Core.Application.DependencyInjection;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.DependencyInjection;
 using Statevia.Core.Engine.Infrastructure;
-
+using Statevia.Runtime.DependencyInjection;
+using Statevia.Runtime.Configuration;
+using Statevia.Runtime.Services;
+using Statevia.Service.Api.Services;
 namespace Statevia.Service.Api.Hosting;
 
 /// <summary>
-/// Core-API の DI・MVC 登録。
+/// Core-API / Worker の DI 登録。
 /// </summary>
-internal static class ServiceCollectionExtensions
+/// <remarks>Worker ホストから <see cref="AddStateviaWorkerHost"/> を参照するため public。</remarks>
+#pragma warning disable CA1515 // Worker ホストが参照するため public を維持する
+public static class ServiceCollectionExtensions
+#pragma warning restore CA1515
 {
     /// <summary>
-    /// DbContext、ワークフローエンジン、ドメインサービス、HTTP ログ設定を登録する。
+    /// Core-API 向けに実行ランタイムと HTTP アダプタを登録する。
     /// </summary>
     public static IServiceCollection AddStateviaCoreApi(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
-
+        services.AddStateviaExecutionRuntime(configuration);
+        services.AddStateviaApiHost(configuration);
+        return services;
+    }
+    /// <summary>
+    /// Worker 専用ホスト向けに実行ランタイムのみを登録する（HTTP アダプタなし）。
+    /// </summary>
+    /// <remarks>
+    /// プロセス内 Scheduler / OwnershipRecovery は Off、Worker HostedService は On に固定する。
+    /// </remarks>
+    public static IServiceCollection AddStateviaWorkerHost(
+        this IServiceCollection services, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+        // 専用 Worker では API 内スキャナを二重起動しない（後勝ちの in-memory で上書き）。
+        var workerConfiguration = new ConfigurationBuilder()
+            .AddConfiguration(configuration)
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{RuntimeOptions.SectionName}:EnableInProcessWorker"] = "true",
+                [$"{RuntimeOptions.SectionName}:EnableInProcessDelayWaitScheduler"] = "false",
+                [$"{RuntimeOptions.SectionName}:EnableInProcessOwnershipRecovery"] = "false"
+            })
+            .Build();
+        return services.AddStateviaExecutionRuntime(workerConfiguration);
+    }
+    /// <summary>
+    /// Persistence / Engine / Actions / Runtime HostedService など実行系 DI を登録する。
+    /// </summary>
+    /// <remarks>HTTP コントローラ・CORS・OpenAPI・テナント管理 API 向けサービスは含まない。</remarks>
+    public static IServiceCollection AddStateviaExecutionRuntime(
+        this IServiceCollection services, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
         var connectionString = DatabaseConnection.Resolve(configuration);
         services.AddSingleton<ITenantQueryFilterOptions>(EnabledTenantQueryFilterOptions.Instance);
         services.AddStateviaInfrastructurePersistence(connectionString);
         services.AddStateviaInfrastructureSecurity(configuration);
-
+        services.AddStateviaRuntimeOptions(configuration);
         services.AddSingleton<INodesSchemaProvider, Application.Definition.NodesSchemaProvider>();
         services.AddStateviaCoreApplication();
-
-        services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<ITenantAdministrationService, TenantAdministrationService>();
-        services.AddOptions<DevAdminBootstrapOptions>()
-            .Bind(configuration.GetSection(DevAdminBootstrapOptions.SectionName));
-        services.AddHostedService<TenantBootstrapHostedService>();
-
         services.AddScoped<IExecutionMutationPersistence, ExecutionMutationPersistence>();
-
         services.AddScoped<DisplayIdServiceImpl>();
         services.AddScoped<IDisplayIdService>(sp => sp.GetRequiredService<DisplayIdServiceImpl>());
         services.AddScoped<IDisplayIdWriteService>(sp => sp.GetRequiredService<DisplayIdServiceImpl>());
         services.AddScoped<IExecutionReadModelService, ExecutionReadModelService>();
         services.AddStateviaInfrastructureCommon();
-
         services.AddSingleton<IExecutionIdGenerator>(
             sp => new DelegateExecutionIdGenerator(() => sp.GetRequiredService<IIdGenerator>().NewGuid().ToString()));
         services.AddStateviaExecutionEngine();
@@ -73,10 +104,14 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<ExecutionProjectionUpdateQueueService>();
         services.AddSingleton<IExecutionProjectionUpdateQueue>(sp => sp.GetRequiredService<ExecutionProjectionUpdateQueueService>());
         services.AddHostedService(sp => sp.GetRequiredService<ExecutionProjectionUpdateQueueService>());
-        services.AddHostedService<ExecutionWorkItemWorkerHostedService>();
-        services.AddHostedService<DelayWaitSchedulerHostedService>();
-        services.AddHostedService<ExecutionOwnershipRecoveryHostedService>();
-        services.AddScoped<ExecutionStreamService>();
+        var runtimeOptions = configuration.GetSection(RuntimeOptions.SectionName).Get<RuntimeOptions>()
+            ?? new RuntimeOptions();
+        if (runtimeOptions.EnableInProcessWorker)
+            services.AddStateviaRuntimeWorkerHostedService();
+        if (runtimeOptions.EnableInProcessDelayWaitScheduler)
+            services.AddHostedService<DelayWaitSchedulerHostedService>();
+        if (runtimeOptions.EnableInProcessOwnershipRecovery)
+            services.AddHostedService<ExecutionOwnershipRecoveryHostedService>();
         services.AddScoped<IGraphDefinitionService, GraphDefinitionService>();
         services.AddHttpClient();
         services.AddStateviaInfrastructureNotification(configuration);
@@ -112,14 +147,28 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<NodesWorkflowDefinitionLoader>();
         services.AddSingleton<IDefinitionLoadStrategy, DefinitionLoadStrategy>();
         services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
-
-        services.AddOptions<RequestLogOptions>()
-            .Configure<IHostEnvironment>(ConfigureRequestLogOptions);
-
         AddEventDeliveryRetryOptions(services, configuration);
-
+        // Worker でも解決可能にする（HTTP 文脈がなければ空文字）。
         services.AddHttpContextAccessor();
         services.AddScoped<Statevia.Core.Application.Contracts.Services.ICorrelationIdAccessor, Infrastructure.HttpContextCorrelationIdAccessor>();
+        return services;
+    }
+    /// <summary>
+    /// HTTP API 向けサービス（認証・テナント管理・MVC・OpenAPI 等）を登録する。
+    /// </summary>
+    public static IServiceCollection AddStateviaApiHost(
+        this IServiceCollection services, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ITenantAdministrationService, TenantAdministrationService>();
+        services.AddOptions<DevAdminBootstrapOptions>()
+            .Bind(configuration.GetSection(DevAdminBootstrapOptions.SectionName));
+        services.AddHostedService<TenantBootstrapHostedService>();
+        services.AddScoped<ExecutionStreamService>();
+        services.AddOptions<RequestLogOptions>()
+            .Configure<IHostEnvironment>(ConfigureRequestLogOptions);
         services.AddCors();
         services.AddStateviaOpenApi();
         services.AddControllers(options => options.Filters.Add<ApiExceptionFilter>())
@@ -129,12 +178,9 @@ internal static class ServiceCollectionExtensions
                 jsonOptions.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
                 jsonOptions.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
             });
-
         services.Configure<ApiBehaviorOptions>(ConfigureApiValidationResponse);
-
         return services;
     }
-
     /// <summary>Projection キュー Options のバインドと起動時検証（分類 A）。</summary>
     private static void AddExecutionProjectionQueueOptions(IServiceCollection services, IConfiguration configuration)
     {
@@ -148,7 +194,6 @@ internal static class ServiceCollectionExtensions
             .Validate(o => o.RetryMaxDelayMs >= o.RetryBaseDelayMs, "ExecutionProjectionQueue:RetryMaxDelayMs must be >= RetryBaseDelayMs.")
             .ValidateOnStart();
     }
-
     /// <summary>Execution Policy / Docker サンドボックス Options のバインドと起動時検証（分類 A）。</summary>
     private static void AddExecutionPolicyOptions(IServiceCollection services, IConfiguration configuration)
     {
@@ -174,7 +219,6 @@ internal static class ServiceCollectionExtensions
                 "Statevia:ExecutionPolicy:Sandbox:Docker:NetworkMode 'none' is not supported.")
             .ValidateOnStart();
     }
-
     /// <summary>Action Host クライアント Options のバインドと起動時検証（分類 A / C）。</summary>
     private static void AddActionHostClientOptions(IServiceCollection services, IConfiguration configuration)
     {
@@ -185,7 +229,6 @@ internal static class ServiceCollectionExtensions
                 "Statevia:ActionHost:BaseUrl must be an absolute http(s) URI when set.")
             .ValidateOnStart();
     }
-
     /// <summary>イベント配送リトライ Options のバインドと起動時検証（分類 A）。</summary>
     private static void AddEventDeliveryRetryOptions(IServiceCollection services, IConfiguration configuration)
     {
@@ -201,45 +244,36 @@ internal static class ServiceCollectionExtensions
                 "EventDelivery:Retry:SerializablePersistenceMaxAttempts must be between 1 and 50.")
             .ValidateOnStart();
     }
-
     private static bool IsValidSandboxTimeoutSeconds(ExecutionPolicyOptions options) =>
         options.Sandbox.TimeoutSeconds is null
         || options.Sandbox.TimeoutSeconds is >= SandboxOptions.MinTimeoutSeconds
             and <= SandboxOptions.MaxTimeoutSeconds;
-
     private static bool IsValidSandboxMemoryLimitMiB(ExecutionPolicyOptions options) =>
         options.Sandbox.MemoryLimitMiB is null
         || options.Sandbox.MemoryLimitMiB is >= SandboxOptions.MinMemoryLimitMiB
             and <= SandboxOptions.MaxMemoryLimitMiB;
-
     private static bool IsValidSandboxCpuLimit(ExecutionPolicyOptions options) =>
         options.Sandbox.CpuLimit is null
         || options.Sandbox.CpuLimit is >= SandboxOptions.MinCpuLimit
             and <= SandboxOptions.MaxCpuLimit;
-
     private static bool IsValidDockerDefaultTimeoutSeconds(ExecutionPolicyOptions options) =>
         options.Sandbox.Docker.DefaultTimeoutSeconds is >= DockerSandboxOptions.MinDefaultTimeoutSeconds
             and <= DockerSandboxOptions.MaxDefaultTimeoutSeconds;
-
     private static bool IsValidDockerGrpcPort(ExecutionPolicyOptions options) =>
         options.Sandbox.Docker.GrpcPort is >= DockerSandboxOptions.MinGrpcPort
             and <= DockerSandboxOptions.MaxGrpcPort;
-
     private static bool IsSupportedDockerNetworkMode(ExecutionPolicyOptions options) =>
         string.IsNullOrWhiteSpace(options.Sandbox.Docker.NetworkMode)
         || !string.Equals(options.Sandbox.Docker.NetworkMode.Trim(), "none", StringComparison.OrdinalIgnoreCase);
-
     private static bool IsValidActionHostBaseUrl(ActionHostClientOptions options)
     {
         if (string.IsNullOrWhiteSpace(options.BaseUrl))
         {
             return true;
         }
-
         return Uri.TryCreate(options.BaseUrl.Trim(), UriKind.Absolute, out var uri)
             && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
     }
-
     private static void ConfigureRequestLogOptions(RequestLogOptions options, IHostEnvironment environment)
     {
         if (environment.IsProduction())
@@ -252,7 +286,6 @@ internal static class ServiceCollectionExtensions
             options.LogRequestBody = true;
             options.LogResponseBody = true;
         }
-
         if (string.Equals(Environment.GetEnvironmentVariable("STATEVIA_LOG_HTTP_BODIES"), "true",
                 StringComparison.OrdinalIgnoreCase))
         {
@@ -260,7 +293,6 @@ internal static class ServiceCollectionExtensions
             options.LogResponseBody = true;
         }
     }
-
     private static void ConfigureApiValidationResponse(ApiBehaviorOptions options)
     {
         options.InvalidModelStateResponseFactory = context =>
@@ -275,11 +307,9 @@ internal static class ServiceCollectionExtensions
                         : error.ErrorMessage
                 }))
                 .ToArray();
-
             var message = detailItems.Length > 0
                 ? string.Join("; ", detailItems.Select(d => d.message))
                 : "Validation failed";
-
             return new UnprocessableEntityObjectResult(
                 new ErrorResponse
                 {
@@ -292,7 +322,6 @@ internal static class ServiceCollectionExtensions
                 });
         };
     }
-
     /// <summary>
     /// ModelState キー（例: <c>request.Name</c>）を camelCase のフィールド名へ正規化する。
     /// </summary>
@@ -300,18 +329,14 @@ internal static class ServiceCollectionExtensions
     {
         if (string.IsNullOrWhiteSpace(key))
             return key;
-
         var segment = key;
         var lastDot = key.LastIndexOf('.');
         if (lastDot >= 0 && lastDot < key.Length - 1)
             segment = key[(lastDot + 1)..];
-
         if (segment.Length == 0)
             return key;
-
         if (segment.Length == 1)
             return char.ToLowerInvariant(segment[0]).ToString();
-
         return string.Create(segment.Length, segment, static (span, value) =>
         {
             span[0] = char.ToLowerInvariant(value[0]);

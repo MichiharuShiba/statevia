@@ -33,15 +33,16 @@ $env:SONAR_TOKEN = "（SonarQube のトークン）"
 dotnet build-server shutdown
 & .\sonar\sonar-scanner-engine.ps1
 & .\sonar\sonar-scanner-api.ps1
+& .\sonar\sonar-scanner-runtime.ps1
 & .\sonar\sonar-scanner-cli.ps1
 & .\sonar\sonar-scanner-action-host.ps1
 & .\sonar\sonar-scanner-ui.ps1
 ```
 
-- **engine / api / cli / action-host**: `dotnet sonarscanner begin` → `build` → `dotnet-coverage` → `end` の順で、`sonar/core-*-coverage.xml` にカバレッジを出力します（XML は git 管理外）。
+- **engine / api / runtime / cli / action-host**: `dotnet sonarscanner begin` → `build` → `dotnet-coverage` → `end` の順で、`sonar/core-*-coverage.xml` にカバレッジを出力します（XML は git 管理外）。
 - **ui**: `npm run test:coverage` で `ui/studio/coverage/lcov.info` を生成したあと、`npx sonar-scanner` で `ui/studio/sonar-project.properties` を読み込んで送信します。
 
-C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定し、Phase 0 以降のパス（`core/engine` 等）でも除外設定が効くようにしています。**テストプロジェクト**（`*.Tests`）は `sonar.dotnet.excludeTestProjects=true` で各コンポーネントの projectKey から除外します（品質ゲートの対象はプロダクションコード）。
+C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定し、Phase 0 以降のパス（`core/engine` 等）でも除外設定が効くようにしています。**テストプロジェクト**（`*.Tests`）は `sonar.dotnet.excludeTestProjects=true` で各コンポーネントの projectKey から除外します（品質ゲートの対象はプロダクションコード）。`Statevia.Runtime` は **`StateviaServiceRuntime`** で解析し、API スキャナからは `service/runtime` を除外して二重計上を避けます。
 
 ### SonarQube 側の既定 URL
 
@@ -53,6 +54,7 @@ C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定�
 | -------------- | ---------------------- |
 | Core Engine    | `StateviaCoreEngine`   |
 | Core API       | `StateviaCoreAPI`      |
+| Runtime        | `StateviaServiceRuntime`      |
 | CLI            | `StateviaCoreCLI`      |
 | Action Host    | `StateviaCoreActionHost` |
 | Service UI     | `StateviaServiceUI`    |
@@ -85,6 +87,13 @@ dotnet build "statevia-api.sln"
 dotnet-coverage collect "dotnet test" -f xml -o "$repoRoot\sonar\core-api-coverage.xml"
 dotnet sonarscanner end /d:sonar.token="$($env:SONAR_TOKEN)"
 Set-Location $repoRoot
+```
+
+### Runtime
+
+```powershell
+$env:SONAR_TOKEN = "（トークン）"
+& .\sonar\sonar-scanner-runtime.ps1
 ```
 
 ### CLI
@@ -128,6 +137,7 @@ Set-Location ..\..
 | application | `Statevia.Core.Application`, `Statevia.Core.Application.Contracts`, `Statevia.Core.Actions.Abstractions` | （なし） |
 | infrastructure | `Statevia.Infrastructure.*`（Common / Persistence / Security / Modules / Notification / Actions.Grpc） | `*.Modules.Tests`, `*.Actions.Grpc.Tests` |
 | api | `Statevia.Service.Api`, `Statevia.Service.Api.Bootstrap` | `Statevia.Service.Api.Tests` |
+| runtime | `Statevia.Runtime`, `Statevia.Service.Runtime.Scheduler`, `Statevia.Service.Runtime.Worker` | （なし。HostedService テストは Api.Tests） |
 | cli | `Statevia.Service.Cli` | `Statevia.Service.Cli.Tests` |
 | action-host | `Statevia.Service.ActionHost` | `Statevia.Service.ActionHost.Tests` |
 | ui | `ui/studio`（`tests/`・`e2e/`・`*.test.*` を除く `*.ts` / `*.tsx`） | `tests/`、`*.test.*`、`*.spec.*`、`e2e/` |
@@ -142,6 +152,7 @@ Set-Location ..\..
 | `docker-compose.yaml` | ローカル SonarQube + PostgreSQL |
 | `sonar-scanner-engine.ps1` | Engine 向け一括分析 |
 | `sonar-scanner-api.ps1` | API 向け一括分析 |
+| `sonar-scanner-runtime.ps1` | Runtime（HostedService / Scheduler / Worker）向け一括分析 |
 | `sonar-scanner-cli.ps1` | CLI 向け一括分析 |
 | `sonar-scanner-action-host.ps1` | Action Host 向け一括分析 |
 | `sonar-scanner-ui.ps1` | UI 向け一括分析 |

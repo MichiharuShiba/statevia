@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>Statevia.Runtime</RootNamespace>
+    <AssemblyName>Statevia.Runtime</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+    <ProjectReference Include="../../../core/application/Statevia.Core.Application.Contracts/Statevia.Core.Application.Contracts.csproj" />
+    <ProjectReference Include="../../../core/application/Statevia.Core.Application/Statevia.Core.Application.csproj" />
+    <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Common/Statevia.Infrastructure.Common.csproj" />
+    <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Persistence/Statevia.Infrastructure.Persistence.csproj" />
+    <ProjectReference Include="../../../infrastructure/Statevia.Infrastructure.Security/Statevia.Infrastructure.Security.csproj" />
+  </ItemGroup>
+</Project>

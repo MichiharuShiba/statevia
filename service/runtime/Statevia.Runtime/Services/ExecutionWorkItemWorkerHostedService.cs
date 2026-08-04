@@ -1,10 +1,15 @@
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Statevia.Core.Application.Contracts;
+using Statevia.Core.Application.Contracts.Persistence;
+using Statevia.Core.Application.Contracts.Security;
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Services;
 using Statevia.Infrastructure.Security;
 
-namespace Statevia.Service.Api.Services;
+namespace Statevia.Runtime.Services;
 
 /// <summary>
 /// 永続 <c>execution_work_items</c> を lease して実行するワーカー。
@@ -15,7 +20,7 @@ namespace Statevia.Service.Api.Services;
 /// いずれかが失敗したらローカル実行を即停止し、Unload する。
 /// </para>
 /// </remarks>
-internal sealed class ExecutionWorkItemWorkerHostedService(
+public sealed class ExecutionWorkItemWorkerHostedService(
     IServiceScopeFactory scopeFactory,
     ILogger<ExecutionWorkItemWorkerHostedService> logger) : BackgroundService
 {
