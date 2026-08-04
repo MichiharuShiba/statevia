@@ -10,7 +10,7 @@
 
 - **テナント発行 UI はスコープ外**。本手順は運用者・DB 管理者向け。
 - マイグレーション適用時に **`tenant_key = default`** のテナントがシードされる（既存 `"default"` ヘッダ互換）。
-- **Development**（`ASPNETCORE_ENVIRONMENT=Development`）では Core-API 起動時に既定管理者も自動作成される（`admin` / `admin`、設定は `appsettings.Development.json` の `Statevia:Bootstrap:DevAdmin`）。本番では無効。
+- **Development**（`ASPNETCORE_ENVIRONMENT=Development`）では Service API 起動時に既定管理者も自動作成される（`admin` / `admin`、設定は `appsettings.Development.json` の `Statevia:Bootstrap:DevAdmin`）。本番では無効。
 - 追加テナントは SQL または将来の platform ツールで作成する。
 
 ## 1. マイグレーション適用
@@ -37,7 +37,7 @@ $env:DATABASE_URL = "postgres://statevia:statevia@localhost:5432/statevia"
 .\scripts\bootstrap-tenant.ps1 -TenantKey "acme-corp" `
   -DatabaseUrl "postgres://statevia:statevia@localhost:5432/statevia"
 
-# Core API の appsettings を使う場合
+# Service API の appsettings を使う場合
 .\scripts\bootstrap-tenant.ps1 -TenantKey "acme-corp" `
   -Config "service/api/Statevia.Service.Api/appsettings.json"
 ```
@@ -84,7 +84,7 @@ VALUES (
 
 ## 3. 初回テナント管理者（Principal 整合）
 
-**Development（docker compose 既定）** では Core-API 起動時に `tenant_key = default` 向けの管理者が自動作成される（`email = admin`、パスワード `admin`）。既にいる場合はスキップする。
+**Development（docker compose 既定）** では Service API 起動時に `tenant_key = default` 向けの管理者が自動作成される（`email = admin`、パスワード `admin`）。既にいる場合はスキップする。
 
 本番・追加テナント・カスタム資格情報は以下の手動手順を使う。
 
@@ -92,7 +92,7 @@ VALUES (
 2. **User** 行を同一テナントに作成し `is_tenant_admin = true` とする。
 3. **user_principals** で 1:1 紐付けする。
 
-パスワードハッシュは Core-API 内の `PasswordCredentialService`（ASP.NET Core `PasswordHasher`）と同じアルゴリズムを使う。
+パスワードハッシュは Service API 内の `PasswordCredentialService`（ASP.NET Core `PasswordHasher`）と同じアルゴリズムを使う。
 
 ### 推奨: ブートストラップ CLI（手動 SQL の代替）
 

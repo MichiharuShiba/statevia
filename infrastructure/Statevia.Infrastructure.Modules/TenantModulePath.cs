@@ -6,7 +6,7 @@ namespace Statevia.Infrastructure.Modules;
 /// <remarks>
 /// <para>レイアウト正本: <c>{modulesRoot}/{tenantKey}/</c>。</para>
 /// <para>
-/// <c>tenant_key</c> 形式は Core-API の <c>TenantKeyValidator</c> と同規約
+/// <c>tenant_key</c> 形式は Service API の <c>TenantKeyValidator</c> と同規約
 ///（小文字・数字・ハイフン・ドット、最大 64 文字）。
 /// </para>
 /// </remarks>

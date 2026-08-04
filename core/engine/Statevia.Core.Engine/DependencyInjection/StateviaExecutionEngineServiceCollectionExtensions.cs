@@ -6,7 +6,7 @@ using Statevia.Core.Engine.Scheduler;
 namespace Statevia.Core.Engine.DependencyInjection;
 
 /// <summary>
-/// Core-API 等のホストが <see cref="IExecutionEngine"/> を DI に登録するための拡張メソッド。
+/// Service API 等のホストが <see cref="IExecutionEngine"/> を DI に登録するための拡張メソッド。
 /// </summary>
 public static class StateviaExecutionEngineServiceCollectionExtensions
 {

@@ -1,6 +1,6 @@
 # 運用: Docker Compose（フェーズ 4.5）
 
-リポジトリ直下の `docker-compose.yml` で **PostgreSQL 16**・**Core-API（C#）**・**UI（Next.js）** を起動できます。
+リポジトリ直下の `docker-compose.yml` で **PostgreSQL 16**・**Service API（C#）**・**UI（Next.js）** を起動できます。
 
 ## 前提
 
@@ -21,13 +21,13 @@ docker compose up -d
 ```
 
 - **PostgreSQL**: `localhost:5432`（ユーザー/DB: `statevia` / `statevia`）
-- **Core-API**: `http://localhost:8080`（`DATABASE_URL` は compose 内で `POSTGRES_*` から組み立て。ホストからの `ef` は `.env` または手元の URL）
-- **Action Host**（gRPC）: `http://localhost:5001`（`STATEVIA_MODULES_PATH=/app/modules`。task 14 以降 Core-API から OutOfProcess 実行に利用）
-- **UI**: `http://localhost:3000`（`CORE_API_INTERNAL_BASE=http://service-api:8080`）
+- **Service API**: `http://localhost:8080`（`DATABASE_URL` は compose 内で `POSTGRES_*` から組み立て。ホストからの `ef` は `.env` または手元の URL）
+- **Action Host**（gRPC）: `http://localhost:5001`（`STATEVIA_MODULES_PATH=/app/modules`。task 14 以降 Service API から OutOfProcess 実行に利用）
+- **UI**: `http://localhost:3000`（`SERVICE_API_INTERNAL_BASE=http://service-api:8080`）
 
 ## ランタイム分離（任意: Worker / Scheduler）
 
-既定の compose では **Worker / DelayWait Scheduler / Ownership Recovery は Core-API プロセス内**で動作します（`Statevia:Runtime:EnableInProcess*` 既定 `true`）。
+既定の compose では **Worker / DelayWait Scheduler / Ownership Recovery は Service API プロセス内**で動作します（`Statevia:Runtime:EnableInProcess*` 既定 `true`）。
 
 プロセスを分ける場合は、override ファイル `docker-compose.split-runtime.yml` を追加します。これだけで次の両方が同時に効きます。
 
@@ -52,7 +52,7 @@ docker compose up -d
 
 ## ヘルス
 
-- Core-API: `GET http://localhost:8080/v1/health` → `{ "status": "ok" }`
+- Service API: `GET http://localhost:8080/v1/health` → `{ "status": "ok" }`
 
 ## API ドキュメント（OpenAPI / Scalar）
 
@@ -68,7 +68,7 @@ docker compose up -d
 - compose のサービス名を変更したあと `port is already allocated` や `Found orphan containers` が出る → 旧コンテナ（例: `statevia-core-api-1`, `statevia-ui-1`）がポートを占有している。`docker compose up -d --remove-orphans` で orphan を削除するか、`docker compose down --remove-orphans` のあと再起動する
 - マイグレーション未適用で API が失敗する → `database update` を実行してから `service-api` を再起動
 - UI から API に届かない → compose では `ui-studio` → `service-api` は内部 DNS 名。ブラウザからは UI のプロキシ（`/api/core/...`）経由でアクセス
-- Core-API が起動直後に落ちる（`OptionsValidationException`）→ `Statevia:ExecutionPolicy:Sandbox:Docker:*` の範囲外値や `Auth:Jwt:*` の不正を確認。キー名と制約はログに出る（値は出ない）。許容範囲は [environment-variables.md](../reference/environment-variables.md)
+- Service API が起動直後に落ちる（`OptionsValidationException`）→ `Statevia:ExecutionPolicy:Sandbox:Docker:*` の範囲外値や `Auth:Jwt:*` の不正を確認。キー名と制約はログに出る（値は出ない）。許容範囲は [environment-variables.md](../reference/environment-variables.md)
 - 同上で `EventDelivery:Retry:*` も確認 → とくに `MaxDelayMs < BaseDelayMs` は以前黙認されていた誤設定でも **起動失敗**になる
 - Container 実行だけ失敗し API は起動する → `Docker:Image` 未設定は起動時検証の対象外（実行時 `SandboxRuntimeUnavailable`）。Image を設定する
 
@@ -80,15 +80,15 @@ docker compose up -d
 | postgres    | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`（`.env` / `.env.example`） |
 | action-host | `ASPNETCORE_URLS`（compose では `http://+:5001`）, `STATEVIA_MODULES_PATH`（`/app/modules`） |
 | scheduler / worker | `DATABASE_URL`（`docker-compose.split-runtime.yml`）。worker は `Statevia__ActionHost__BaseUrl` も共有 |
-| ui-studio  | `CORE_API_INTERNAL_BASE` |
+| ui-studio  | `SERVICE_API_INTERNAL_BASE` |
 
 詳細は `docker-compose.yml` / `docker-compose.split-runtime.yml` と `AGENTS.md` を参照してください。
 
 ## Action Module（plugins）
 
-Core-API は起動時に **modules ルート**（`STATEVIA_MODULES_PATH` または `Statevia:Modules:Path`、未設定時は `{ContentRoot}/modules`）を **テナント別**（`{modulesRoot}/{tenantKey}/{module}/`）に scan して Action Module を load する。更新・削除の反映は **再起動**または **明示 reload** が必要（add-only watcher は新規追加のみ）。
+Service API は起動時に **modules ルート**（`STATEVIA_MODULES_PATH` または `Statevia:Modules:Path`、未設定時は `{ContentRoot}/modules`）を **テナント別**（`{modulesRoot}/{tenantKey}/{module}/`）に scan して Action Module を load する。更新・削除の反映は **再起動**または **明示 reload** が必要（add-only watcher は新規追加のみ）。
 
-**Action Host**（`docker compose` の `action-host` サービス）は同じ `./modules` ボリュームをマウントし、**別プロセス**で Module を ALC load して gRPC 実行する。現時点では Core-API の InProcess 経路が既定で、OutOfProcess 連携（task 14）は未接続。
+**Action Host**（`docker compose` の `action-host` サービス）は同じ `./modules` ボリュームをマウントし、**別プロセス**で Module を ALC load して gRPC 実行する。現時点では Service API の InProcess 経路が既定で、OutOfProcess 連携（task 14）は未接続。
 
 ### 配置（CLI）
 

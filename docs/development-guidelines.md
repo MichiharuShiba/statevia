@@ -32,7 +32,7 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 
 ## 3. コンポーネント別
 
-### 3.1 Core-API（`service/api/`）
+### 3.1 Service API（`service/api/`）
 
 - **Controller**: ルーティング・バインディング・ヘッダ・HTTP ステータスのみ。ビジネスロジックは Service へ。
 - **Service**: ユースケース境界。`ICoreTransactionExecutor` / `IExecutionMutationPersistence` 経由でコミット境界を決め、Repository・DisplayId・command dedup・`IExecutionEngine` を組み合わせる。Service から `IDbContextFactory` を直接使わない。
@@ -44,11 +44,11 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 ### 3.2 Engine（`core/engine/`）
 
 - ワークフロー実行・FSM・グラフの責務に留める。HTTP や DB に直接触れない。
-- 公開 API の変更は、Core-API や契約ドキュメントへの影響を確認する。
+- 公開 API の変更は、Service API や契約ドキュメントへの影響を確認する。
 
 ### 3.3 UI（`ui/studio/`）
 
-- Core-API へは Next.js の route handler 経由でプロキシ（CORS 回避）。環境変数は `AGENTS.md` の表を参照。
+- Service API へは Next.js の route handler 経由でプロキシ（CORS 回避）。環境変数は `AGENTS.md` の表を参照。
 - 内部構成は feature-first（薄い `app/` + `features/` + `shared/`）。正本: [`architecture/ui-studio-structure.md`](architecture/ui-studio-structure.md)。
   - `app/**/page.tsx` は薄い wrapper。表示・ロジックは `features/<name>/`。
   - 依存は `app` → `features` → `shared`。`shared` → `features` は禁止（i18n 辞書合成のみ例外）。
@@ -71,7 +71,7 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 - **XML ドキュメント**: `public` / `internal` の型・メンバーに `/// <summary>` 等を付ける。`private` は意図が自明でない箇所のみ。
 - **テスト**: メソッドごとに日本語の `/// <summary>` と **`// Arrange` / `// Act` / `// Assert`** 区切り。1 テスト 1 シナリオ（AAA）。
 - **セキュリティ**: 外部入力の検証、認可・テナント境界、機密情報の非出力（ログ・エラー応答含む）。
-- **Options 検証（Core-API）**: `AddOptions<T>().Bind()` した設定は、次の分類で扱う。キー別の許容範囲・不正時挙動は [`reference/environment-variables.md`](reference/environment-variables.md) を参照する。
+- **Options 検証（Service API）**: `AddOptions<T>().Bind()` した設定は、次の分類で扱う。キー別の許容範囲・不正時挙動は [`reference/environment-variables.md`](reference/environment-variables.md) を参照する。
   - **A（起動失敗）**: 範囲外・矛盾など既定では安全に動けない値 → `.Validate()` + `ValidateOnStart()`。メッセージはキー名と制約のみ（値は出さない）。
   - **B（警告＋既定値）**: 未設定・空で既定値により安全に動ける → Warning ログのうえ既定値で続行。サイレント補正は禁止。
   - **C（機能無効）**: 機能有効化はあるが必須キー欠落 → 起動は継続し、実行時に明示エラーコードで fail-safe。
@@ -101,8 +101,8 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 ### 4.4 リンター・ビルド警告・静的チェック
 
 - **C#**: `dotnet build` / `dotnet test` で出る **コンパイラエラー・Analyzer 警告**は、自分の変更に起因するものは **解消してから** PR に出す。触れていないファイルの既存警告をまとめて直すのは必須ではないが、**新規コードで警告を増やさない**こと。
-- **Core-API 厳格 Analyzer**: `service/api/Directory.Build.props` で `AnalysisMode=AllEnabledByDefault` が有効。Api 配下の本番プロジェクトは **`dotnet build service/api/statevia-api.sln` で警告 0** を維持する。
-- **Core-API テスト向け抑制**: ルート `.editorconfig` に加え、`service/api/Statevia.Service.Api.Tests/.editorconfig` で xUnit 向け CA（例: CA1812）を抑制している。テストの命名・`ConfigureAwait` 方針は Engine.Tests と同趣旨。
+- **Service API 厳格 Analyzer**: `service/api/Directory.Build.props` で `AnalysisMode=AllEnabledByDefault` が有効。Api 配下の本番プロジェクトは **`dotnet build service/api/statevia-api.sln` で警告 0** を維持する。
+- **Service API テスト向け抑制**: ルート `.editorconfig` に加え、`service/api/Statevia.Service.Api.Tests/.editorconfig` で xUnit 向け CA（例: CA1812）を抑制している。テストの命名・`ConfigureAwait` 方針は Engine.Tests と同趣旨。
 - **Markdown**: リポジトリ直下の **`.markdownlint.json`** に従う。編集した Markdown には例として次で確認できる。
 
   ```bash
@@ -110,7 +110,7 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
   ```
 
 - **UI（TypeScript）**: **`npm run lint`**（error 厳格）、**`npm run typecheck`**、**`npm run test:run`** を PR 前の必須チェックとする。設定は `ui/studio/eslint.config.js`（`typescript-eslint` strict、`react-hooks`、`jsx-a11y`、`jsdoc`）。
-- **SonarQube（Core-API）**: プロジェクトキー **`StateviaCoreAPI`**。新規コードの Quality Gate（`new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.1**。
+- **SonarQube（Service API）**: プロジェクトキー **`StateviaServiceApi`**。新規コードの Quality Gate（`new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.1**。
 - **SonarQube（Service UI）**: プロジェクトキー **`StateviaServiceUI`**。全体・新規コードの Quality Gate（`coverage` / `new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.2**。
 
 ---
@@ -120,13 +120,13 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 | 領域 | コマンド（例） |
 |------|----------------|
 | Engine | `cd core/engine && dotnet test statevia-engine.sln` |
-| Core-API | `cd service/api && dotnet test statevia-api.sln` |
+| Service API | `cd service/api && dotnet test statevia-api.sln` |
 | UI | `cd ui/studio && npm run lint && npm run typecheck && npm run test:run` |
 | UI（Sonar 前） | `cd ui/studio && npm run test:coverage` |
 
 変更した領域に対応するテストを追加または更新し、ローカルで green を確認してから共有する。UI を Sonar に送る前はカバレッジ付きテストを実行する（**§5.2**）。
 
-### 5.1 Core-API — カバレッジと Sonar（手動）
+### 5.1 Service API — カバレッジと Sonar（手動）
 
 **前提**
 
@@ -157,9 +157,9 @@ dotnet build-server shutdown
 
 スクリプトは次を順に実行する。
 
-1. `dotnet sonarscanner begin`（キー `StateviaCoreAPI`、除外は Engine / UI / Program / Migrations 等）
+1. `dotnet sonarscanner begin`（キー `StateviaServiceApi`、除外は Engine / UI / Program / Migrations 等）
 2. `dotnet build service/api/statevia-api.sln`
-3. `dotnet-coverage collect "dotnet test"` → `sonar/core-api-coverage.xml`
+3. `dotnet-coverage collect "dotnet test"` → `sonar/service-api-coverage.xml`
 4. `dotnet sonarscanner end`
 
 **注意**
@@ -252,6 +252,6 @@ npx --yes sonar-scanner "-Dsonar.token=$($env:SONAR_TOKEN)"
 |------|------|
 | 2026-07-07 | §1 / §4 / §7 を Git 上の正本として自己完結化（`.cursor` パス参照を廃止） |
 | 2026-05-19 | §4.3 / §5 に UI の ESLint・`StateviaServiceUI` Sonar 手順（§5.2・`sonar-scanner-ui.ps1`）を追記 |
-| 2026-05-17 | §4.3 / §5.1 に Core-API 厳格ビルド・coverlet runsettings・`sonar-scanner-api.ps1` 手順を追記 |
+| 2026-05-17 | §4.3 / §5.1 に Service API 厳格ビルド・coverlet runsettings・`sonar-scanner-api.ps1` 手順を追記 |
 | 2026-04-05 | §4 再編（4.1 C#・4.2 TypeScript・4.3 静的チェック）、正本表に TypeScript 細則を追記 |
 | 2026-03-28 | 初版・ブランチ命名を追加 |

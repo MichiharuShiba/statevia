@@ -9,11 +9,11 @@
 
 ---
 
-Core-API の HTTP 契約は **OpenAPI** と手書き Markdown の両方で提供されます。運用叙述・エラー方針・SSE の詳細は [api-http 仕様](../specifications/api-http.md) を正とし、本ページは閲覧・export の導線のみを示します。
+Service API の HTTP 契約は **OpenAPI** と手書き Markdown の両方で提供されます。運用叙述・エラー方針・SSE の詳細は [api-http 仕様](../specifications/api-http.md) を正とし、本ページは閲覧・export の導線のみを示します。
 
 ## ローカルで閲覧
 
-Core-API 起動後（Development または `STATEVIA_ENABLE_API_DOCS=true`）:
+Service API 起動後（Development または `STATEVIA_ENABLE_API_DOCS=true`）:
 
 | リソース | URL |
 | --- | --- |

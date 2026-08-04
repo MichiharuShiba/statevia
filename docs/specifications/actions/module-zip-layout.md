@@ -13,13 +13,13 @@
 
 - **MUST**: zip 展開結果は `module.json` + 署名付き DLL が modules ルート配下の所定レイアウトと一致すること。
 - **MUST**: パストラバーサル・サイズ上限を超えるエントリを拒否する（`ModuleZipInstaller`）。
-- **MUST**: 展開後、Core-API の filesystem scan が discover できる構成であること。
+- **MUST**: 展開後、Service API の filesystem scan が discover できる構成であること。
 - **SHOULD**: install 後に `POST /internal/modules/reload` または再起動で Catalog を更新する。
 
 ---
 
 CLI の `statevia module install` は `ModuleZipInstaller`（`infrastructure/Statevia.Infrastructure.Modules`）で zip を **modules ルート**配下へ展開する。  
-展開後のディレクトリ構成が Core-API の filesystem scan（`FilesystemModuleSource`）と一致している必要がある。
+展開後のディレクトリ構成が Service API の filesystem scan（`FilesystemModuleSource`）と一致している必要がある。
 
 関連:
 
@@ -45,7 +45,7 @@ CLI の `statevia module install` は `ModuleZipInstaller`（`infrastructure/Sta
 
 ### entry assembly の解決規則
 
-Core-API は module ディレクトリの **直下**（サブフォルダは見ない）だけを entry 候補とする。
+Service API は module ディレクトリの **直下**（サブフォルダは見ない）だけを entry 候補とする。
 
 | 条件 | 結果 |
 |------|------|
@@ -144,7 +144,7 @@ modules/bad.module/alpha/alpha.dll   # 直下に entry DLL なし → skip
 
 ## 3.1 署名ファイル（任意・Trust 判定用）
 
-Module ディレクトリ直下に detached 署名ファイル `{moduleDirectoryName}.signature.json` を置くと、Core-API は登録時に署名を検証して信頼レベル（`TrustLevel`）を決定する。署名がない Module は従来どおり `Community` として登録される。発行者・運用者の運用手順は `docs/guides/action-module-signing.md` を参照。
+Module ディレクトリ直下に detached 署名ファイル `{moduleDirectoryName}.signature.json` を置くと、Service API は登録時に署名を検証して信頼レベル（`TrustLevel`）を決定する。署名がない Module は従来どおり `Community` として登録される。発行者・運用者の運用手順は `docs/guides/action-module-signing.md` を参照。
 
 ```json
 {
@@ -209,7 +209,7 @@ Module ディレクトリ直下に detached 署名ファイル `{moduleDirectory
 ## 6. 上書きと reload
 
 - 同一 `{moduleDirectoryName}` が既にある場合、**ディレクトリごと削除してから**再展開する。
-- Core-API が新 DLL を読み込むには **再起動** または `POST /internal/modules/reload` が必要（`docs/guides/operations-docker.md`）。
+- Service API が新 DLL を読み込むには **再起動** または `POST /internal/modules/reload` が必要（`docs/guides/operations-docker.md`）。
 
 ---
 

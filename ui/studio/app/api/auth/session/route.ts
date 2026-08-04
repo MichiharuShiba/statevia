@@ -15,6 +15,6 @@ export function GET(req: NextRequest) {
   const authenticated = isAccessTokenSessionValid(access) || hasServerDevAuthBypass();
   return NextResponse.json({
     authenticated,
-    tenantKey: tenantKey || (process.env.CORE_API_TENANT_ID?.trim() ?? "")
+    tenantKey: tenantKey || (process.env.SERVICE_API_TENANT_ID?.trim() ?? "")
   });
 }

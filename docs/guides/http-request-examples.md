@@ -9,7 +9,7 @@
 
 ---
 
-Core-API（`http://localhost:8080`）への代表的な HTTP 呼び出し例。契約の正本は [api-http 仕様](../specifications/api-http.md) です。
+Service API（`http://localhost:8080`）への代表的な HTTP 呼び出し例。契約の正本は [api-http 仕様](../specifications/api-http.md) です。
 
 ## 前提
 

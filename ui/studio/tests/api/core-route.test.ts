@@ -3,10 +3,10 @@ import { NextRequest } from "next/server";
 import { DELETE, GET, POST, PUT } from "../../app/api/core/[...path]/route";
 
 describe("api/core route GET", () => {
-  const originalBase = process.env.CORE_API_INTERNAL_BASE;
+  const originalBase = process.env.SERVICE_API_INTERNAL_BASE;
 
   beforeEach(() => {
-    process.env.CORE_API_INTERNAL_BASE = "http://core.test";
+    process.env.SERVICE_API_INTERNAL_BASE = "http://core.test";
     vi.stubGlobal(
       "fetch",
       vi.fn(() =>
@@ -21,7 +21,7 @@ describe("api/core route GET", () => {
   });
 
   afterEach(() => {
-    process.env.CORE_API_INTERNAL_BASE = originalBase;
+    process.env.SERVICE_API_INTERNAL_BASE = originalBase;
     vi.unstubAllGlobals();
   });
 
@@ -109,8 +109,8 @@ describe("api/core route GET", () => {
   });
 
   it("環境変数の Bearer トークンを付与する", async () => {
-    process.env.CORE_API_AUTH_TOKEN = "secret-token";
-    process.env.CORE_API_TENANT_ID = "tenant-env";
+    process.env.SERVICE_API_AUTH_TOKEN = "secret-token";
+    process.env.SERVICE_API_TENANT_ID = "tenant-env";
 
     const req = new NextRequest("http://localhost/api/core/executions");
     await GET(req, { params: Promise.resolve({ path: ["executions"] }) });
@@ -125,8 +125,8 @@ describe("api/core route GET", () => {
       })
     );
 
-    delete process.env.CORE_API_AUTH_TOKEN;
-    delete process.env.CORE_API_TENANT_ID;
+    delete process.env.SERVICE_API_AUTH_TOKEN;
+    delete process.env.SERVICE_API_TENANT_ID;
   });
 
   it("セッション Cookie から Bearer と X-Tenant-Id を付与する", async () => {

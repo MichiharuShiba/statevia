@@ -9,14 +9,14 @@
 
 ---
 
-Statevia プラットフォームは **Core-API** を境界として、認証・テナント・永続化・Module 実行・UI 連携を統合します。Engine はドメインカーネルとしてプロセス内に載り、信頼できないコードは Policy に従いプロセス外・サンドボックスへ逃がします。
+Statevia プラットフォームは **Service API** を境界として、認証・テナント・永続化・Module 実行・UI 連携を統合します。Engine はドメインカーネルとしてプロセス内に載り、信頼できないコードは Policy に従いプロセス外・サンドボックスへ逃がします。
 
 ## レイヤーの責務
 
 | 層 | 役割 |
 | --- | --- |
-| UI | 表示と Command 発行。`/api/core/*` で Core-API にプロキシ |
-| Core-API | HTTP 契約、認可、UoW、Engine 起動、Module ホスト |
+| UI | 表示と Command 発行。`/api/core/*` で Service API にプロキシ |
+| Service API | HTTP 契約、認可、UoW、Engine 起動、Module ホスト |
 | Application | ユースケースの orchestration |
 | Engine | 純粋な状態遷移ロジック |
 | Infrastructure | EF Core、JWT、Module Source、Action 実行バックエンド |

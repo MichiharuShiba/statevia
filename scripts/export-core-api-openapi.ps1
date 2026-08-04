@@ -1,4 +1,4 @@
-# Core-API の OpenAPI JSON を service/api/openapi/core-api-v1.openapi.json に export する。
+# Service API の OpenAPI JSON を service/api/openapi/core-api-v1.openapi.json に export する。
 # 用法: リポジトリルートから .\scripts\export-core-api-openapi.ps1
 
 $ErrorActionPreference = "Stop"

@@ -4,10 +4,10 @@ import { GET } from "../../app/api/auth/me/route";
 import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "@/shared/auth/authSession";
 
 describe("GET /api/auth/me", () => {
-  const originalBase = process.env.CORE_API_INTERNAL_BASE;
+  const originalBase = process.env.SERVICE_API_INTERNAL_BASE;
 
   beforeEach(() => {
-    process.env.CORE_API_INTERNAL_BASE = "http://core-api.test";
+    process.env.SERVICE_API_INTERNAL_BASE = "http://core-api.test";
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -23,7 +23,7 @@ describe("GET /api/auth/me", () => {
   });
 
   afterEach(() => {
-    process.env.CORE_API_INTERNAL_BASE = originalBase;
+    process.env.SERVICE_API_INTERNAL_BASE = originalBase;
     vi.unstubAllGlobals();
   });
 
@@ -48,7 +48,7 @@ describe("GET /api/auth/me", () => {
     expect(body.error?.code).toBe("INVALID_RESPONSE");
   });
 
-  it("Bearer とテナントヘッダー付きで Core-API にプロキシする", async () => {
+  it("Bearer とテナントヘッダー付きで Service API にプロキシする", async () => {
     const req = new NextRequest("http://localhost/api/auth/me");
     req.cookies.set(AUTH_COOKIE_ACCESS, "jwt-token");
     req.cookies.set(AUTH_COOKIE_TENANT_KEY, "default");

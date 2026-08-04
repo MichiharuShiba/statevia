@@ -36,7 +36,7 @@ Statevia は次の原則に基づいて設計されています。
 
 大まかな流れは次のとおりです。
 
-1. **定義を書く** — YAML でワークフローを記述し Core-API に publish する
+1. **定義を書く** — YAML でワークフローを記述し Service API に publish する
 2. **実行を開始する** — API が Engine を起動し、永続化とイベント記録を行う
 3. **Action で拡張する** — Module としてビジネスロジックを登録し、Policy に従って実行する
 4. **観測する** — UI や API で実行グラフ・状態を read-model として参照する

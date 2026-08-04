@@ -1,5 +1,5 @@
 /**
- * Definitions feature のドメイン型（Core-API `DefinitionResponse` 相当）。
+ * Definitions feature のドメイン型（Service API `DefinitionResponse` 相当）。
  */
 
 /** GET /v1/definitions の要素。 */

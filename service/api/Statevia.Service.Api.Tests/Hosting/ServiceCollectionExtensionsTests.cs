@@ -16,16 +16,16 @@ namespace Statevia.Service.Api.Tests.Hosting;
 /// <summary><see cref="ServiceCollectionExtensions"/> の DI 登録テスト。</summary>
 public sealed class ServiceCollectionExtensionsTests
 {
-    /// <summary>Core-API の主要サービスが登録される。</summary>
+    /// <summary>Service API の主要サービスが登録される。</summary>
     [Fact]
-    public void AddStateviaCoreApi_RegistersCoreServices()
+    public void AddStateviaServiceApi_RegistersCoreServices()
     {
         // Arrange
         var services = new ServiceCollection();
         var config = BuildConfiguration();
 
         // Act
-        services.AddStateviaCoreApi(config);
+        services.AddStateviaServiceApi(config);
 
         // Assert
         Assert.Contains(services, d => d.ServiceType == typeof(IExecutionService));
@@ -35,7 +35,7 @@ public sealed class ServiceCollectionExtensionsTests
 
     /// <summary>本番環境では HTTP 本文ログが既定オフになる。</summary>
     [Fact]
-    public void AddStateviaCoreApi_Production_DisablesHttpBodyLoggingByDefault()
+    public void AddStateviaServiceApi_Production_DisablesHttpBodyLoggingByDefault()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -43,7 +43,7 @@ public sealed class ServiceCollectionExtensionsTests
         var config = BuildConfiguration();
 
         // Act
-        services.AddStateviaCoreApi(config);
+        services.AddStateviaServiceApi(config);
         using var provider = services.BuildServiceProvider();
         var options = provider.GetRequiredService<IOptions<RequestLogOptions>>().Value;
 
@@ -54,7 +54,7 @@ public sealed class ServiceCollectionExtensionsTests
 
     /// <summary>STATEVIA_LOG_HTTP_BODIES=true で本番でも本文ログを有効化する。</summary>
     [Fact]
-    public void AddStateviaCoreApi_StateviaLogHttpBodies_EnablesBodyLoggingInProduction()
+    public void AddStateviaServiceApi_StateviaLogHttpBodies_EnablesBodyLoggingInProduction()
     {
         // Arrange
         Environment.SetEnvironmentVariable("STATEVIA_LOG_HTTP_BODIES", "true");
@@ -65,7 +65,7 @@ public sealed class ServiceCollectionExtensionsTests
             var config = BuildConfiguration();
 
             // Act
-            services.AddStateviaCoreApi(config);
+            services.AddStateviaServiceApi(config);
             using var provider = services.BuildServiceProvider();
             var options = provider.GetRequiredService<IOptions<RequestLogOptions>>().Value;
 
@@ -81,12 +81,12 @@ public sealed class ServiceCollectionExtensionsTests
 
     /// <summary>モデル検証失敗時に 422 と details を返すファクトリが登録される。</summary>
     [Fact]
-    public void AddStateviaCoreApi_InvalidModelState_ReturnsValidationErrorResponse()
+    public void AddStateviaServiceApi_InvalidModelState_ReturnsValidationErrorResponse()
     {
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<IHostEnvironment>(new TestHostEnvironment(Environments.Development));
-        services.AddStateviaCoreApi(BuildConfiguration());
+        services.AddStateviaServiceApi(BuildConfiguration());
         using var provider = services.BuildServiceProvider();
         var apiBehavior = provider.GetRequiredService<IOptions<ApiBehaviorOptions>>().Value;
         var http = new DefaultHttpContext();

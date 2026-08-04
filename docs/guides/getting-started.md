@@ -9,7 +9,7 @@
 
 ---
 
-Docker Compose で PostgreSQL・Core-API・UI を起動し、API で定義を publish して実行するまでの最短手順。
+Docker Compose で PostgreSQL・Service API・UI を起動し、API で定義を publish して実行するまでの最短手順。
 
 ## 前提
 
@@ -43,7 +43,7 @@ dotnet ef database update --project Statevia.Service.Api
 
 マイグレーション適用時に `tenant_key = default` のテナントがシードされる。詳細は [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md)。
 
-## 2. Core-API と UI の起動
+## 2. Service API と UI の起動
 
 ```bash
 docker compose up -d
@@ -53,7 +53,7 @@ docker compose up -d
 
 | サービス | URL |
 | --- | --- |
-| Core-API | `http://localhost:8080` |
+| Service API | `http://localhost:8080` |
 | UI | `http://localhost:3000` |
 | Scalar（API 閲覧） | `http://localhost:8080/scalar/v1` |
 
@@ -119,7 +119,7 @@ curl -s -X POST "http://localhost:8080/v1/executions" \
 
 ## 6. UI で確認
 
-ブラウザで `http://localhost:3000` を開き、同一オリジンのプロキシ経由で Core-API に接続する。画面操作は [ui-user-guide.md](ui-user-guide.md) を参照。
+ブラウザで `http://localhost:3000` を開き、同一オリジンのプロキシ経由で Service API に接続する。画面操作は [ui-user-guide.md](ui-user-guide.md) を参照。
 
 ## 次に読むもの
 

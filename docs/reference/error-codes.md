@@ -8,7 +8,7 @@
 
 ---
 
-Core-API が返す `error.code` の**調べ物**一覧。Normative 契約は [api-http.md](../specifications/api-http.md) §4.3、[data-integration.md](../specifications/data-integration.md) §7 を正とする。
+Service API が返す `error.code` の**調べ物**一覧。Normative 契約は [api-http.md](../specifications/api-http.md) §4.3、[data-integration.md](../specifications/data-integration.md) §7 を正とする。
 
 実装の写像は主に `ApiExceptionFilter` / `ApiErrorResult` / `TenantContextMiddleware` / 各 Service。
 

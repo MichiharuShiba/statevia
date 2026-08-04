@@ -3,7 +3,7 @@ namespace Statevia.Core.Actions.Abstractions.Execution;
 /// <summary>Action の実行モード。</summary>
 public enum ActionExecutionMode
 {
-    /// <summary>Core-API プロセス内で <see cref="Statevia.Core.Engine.Abstractions.IStateExecutor"/> を実行する。</summary>
+    /// <summary>Service API プロセス内で <see cref="Statevia.Core.Engine.Abstractions.IStateExecutor"/> を実行する。</summary>
     InProcess,
 
     /// <summary>Action Host 経由の別プロセス実行（Phase 3）。</summary>

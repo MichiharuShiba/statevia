@@ -52,8 +52,8 @@ HTTP / gRPC / CLI のアダプタ。Composition Root として全層を DI で�
 
 ## UI（`ui/studio/`）
 
-- Next.js の route handler で Core-API にプロキシし、ブラウザからは同一オリジンの `/api/core/...` 等を利用。
-- 環境変数 `CORE_API_INTERNAL_BASE` でバックエンド基底 URL を指定（`AGENTS.md` の表）。
+- Next.js の route handler で Service API にプロキシし、ブラウザからは同一オリジンの `/api/core/...` 等を利用。
+- 環境変数 `SERVICE_API_INTERNAL_BASE` でバックエンド基底 URL を指定（`AGENTS.md` の表）。
 
 ## Tests（`tests/`）
 
@@ -77,4 +77,4 @@ HTTP / gRPC / CLI のアダプタ。Composition Root として全層を DI で�
 
 ## References
 
-- `AGENTS.md` の Architecture overview と Core-API layers 表
+- `AGENTS.md` の Architecture overview と Service API layers 表

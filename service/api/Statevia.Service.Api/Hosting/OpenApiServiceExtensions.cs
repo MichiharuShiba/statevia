@@ -28,10 +28,10 @@ internal static class OpenApiServiceExtensions
         {
             options.SwaggerDoc(DocumentName, new OpenApiInfo
             {
-                Title = "Statevia Core API",
+                Title = "Statevia Service API",
                 Version = "v1",
                 Description =
-                    "Core-API HTTP 契約。運用・SSE・冪等・IO-14 等の叙述は docs/specifications/api-http.md を参照。"
+                    "Service API HTTP 契約。運用・SSE・冪等・IO-14 等の叙述は docs/specifications/api-http.md を参照。"
             });
 
             var xmlPath = Path.Combine(
@@ -67,7 +67,7 @@ internal static class OpenApiServiceExtensions
             "/scalar/v1",
             options =>
             {
-                options.WithTitle("Statevia Core API");
+                options.WithTitle("Statevia Service API");
                 options.WithOpenApiRoutePattern($"/swagger/{DocumentName}/swagger.json");
             });
 

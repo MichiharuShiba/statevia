@@ -14,8 +14,8 @@ Project: Statevia — 実行型ステートマシン
 - **Core-Engine（C#）**: `core/engine/` のライブラリ。API プロセス内で `IExecutionEngine` として同一プロセス利用。独立 HTTP サービスはない。
 - **Core-Application（C#）**: `core/application/`。ユースケース実装。Engine / Actions.Abstractions のみに依存し、infrastructure / service を参照しない。
 - **Infrastructure（C#）**: `infrastructure/`。EF Core 永続化、JWT 認証、通知、Module ホスト等の技術実装。
-- **Core-API（C#）**: `service/api/`。ASP.NET Core。HTTP アダプタとして v1/definitions・v1/executions を提供。Composition Root として全層を結合。
-- **UI（TypeScript）**: `ui/studio/`。Next.js。Route Handler のプロキシ（`/api/core/*`）で Core-API の `/v1/*` に転送。
+- **Service API（C#）**: `service/api/`。ASP.NET Core。HTTP アダプタとして v1/definitions・v1/executions を提供。Composition Root として全層を結合。
+- **UI（TypeScript）**: `ui/studio/`。Next.js。Route Handler のプロキシ（`/api/core/*`）で Service API の `/v1/*` に転送。
 
 ### 1.2 全体図
 
@@ -70,7 +70,7 @@ flowchart LR
 | Actions Abstractions | `core/actions/Statevia.Core.Actions.Abstractions/` |
 | Persistence | `infrastructure/Statevia.Infrastructure.Persistence/` |
 | Security | `infrastructure/Statevia.Infrastructure.Security/` |
-| Core-API | `service/api/Statevia.Service.Api/` |
+| Service API | `service/api/Statevia.Service.Api/` |
 | Action Host | `service/action-host/Statevia.Service.ActionHost/` |
 | CLI | `service/cli/Statevia.Service.Cli/` |
 | UI | `ui/studio/` |
@@ -111,7 +111,7 @@ flowchart LR
 - gRPC Action Backend
 - ID 生成（UUID v7）
 
-### 2.4 Core-API（HTTP アダプタ / DB 所有者）
+### 2.4 Service API（HTTP アダプタ / DB 所有者）
 
 - **v1/definitions**: 定義の登録・publish・一覧・取得
 - **v1/executions**: 実行開始・一覧・取得・グラフ取得・キャンセル・イベント発行
@@ -121,7 +121,7 @@ flowchart LR
 
 ### 2.5 UI（Next.js）
 
-- `/api/core/*` で Core-API の `/v1/*` にプロキシ
+- `/api/core/*` で Service API の `/v1/*` にプロキシ
 - 一覧・詳細・グラフ表示（ReactFlow）。キャンセル・イベント送信
 
 ---

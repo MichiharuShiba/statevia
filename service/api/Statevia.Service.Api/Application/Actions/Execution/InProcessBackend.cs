@@ -2,7 +2,7 @@ using Statevia.Core.Actions.Abstractions.Execution;
 
 namespace Statevia.Service.Api.Application.Actions.Execution;
 
-/// <summary>InProcess 実行 Backend。Core-API プロセス内で <c>IStateExecutor</c> を実行する。</summary>
+/// <summary>InProcess 実行 Backend。Service API プロセス内で <c>IStateExecutor</c> を実行する。</summary>
 internal sealed class InProcessBackend : IActionExecutionBackend
 {
     private readonly IServiceProvider _serviceProvider;

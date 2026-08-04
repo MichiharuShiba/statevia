@@ -16,7 +16,7 @@ public static class ModuleInstallCommand
             description: "Modules root (default: STATEVIA_MODULES_PATH or ./modules)");
         var apiBaseOption = new Option<string?>(
             aliases: ["--api-base", "-a"],
-            description: "Core-API base URL for optional reload (e.g. http://localhost:8080)");
+            description: "Service API base URL for optional reload (e.g. http://localhost:8080)");
         var bearerTokenOption = new Option<string?>(
             aliases: ["--token", "-t"],
             description: "Bearer token for reload API (tenant admin)");

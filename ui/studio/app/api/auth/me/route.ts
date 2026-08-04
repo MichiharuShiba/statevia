@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "@/shared/auth/authSession";
 
 function coreApiBase(): string {
-  const base = process.env.CORE_API_INTERNAL_BASE;
-  if (!base) throw new Error("Missing CORE_API_INTERNAL_BASE");
+  const base = process.env.SERVICE_API_INTERNAL_BASE;
+  if (!base) throw new Error("Missing SERVICE_API_INTERNAL_BASE");
   return base.replace(/\/$/, "");
 }
 
 /**
- * 認証済み Principal 情報（Core-API `GET /v1/auth/me`）をプロキシする。
+ * 認証済み Principal 情報（Service API `GET /v1/auth/me`）をプロキシする。
  */
 export async function GET(req: NextRequest) {
   const accessToken = req.cookies.get(AUTH_COOKIE_ACCESS)?.value?.trim();

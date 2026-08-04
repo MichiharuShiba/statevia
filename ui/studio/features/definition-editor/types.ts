@@ -1,6 +1,6 @@
 /**
  * Definition Editor feature が扱う API 応答形。
- * catalog 一覧の正本は `features/definitions/types`。フィールドは Core-API 契約に合わせる。
+ * catalog 一覧の正本は `features/definitions/types`。フィールドは Service API 契約に合わせる。
  */
 
 /** GET/PUT/POST /definitions の要素（編集画面用）。 */

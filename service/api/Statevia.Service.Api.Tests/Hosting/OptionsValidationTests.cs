@@ -16,11 +16,11 @@ public sealed class OptionsValidationTests
 {
     /// <summary>既定構成では Options 解決が成功する。</summary>
     [Fact]
-    public void AddStateviaCoreApi_DefaultOptions_ResolveSuccessfully()
+    public void AddStateviaServiceApi_DefaultOptions_ResolveSuccessfully()
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration());
+        services.AddStateviaServiceApi(BuildValidConfiguration());
         using var provider = services.BuildServiceProvider();
 
         // Act
@@ -45,7 +45,7 @@ public sealed class OptionsValidationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["Statevia:ExecutionPolicy:Sandbox:Docker:DefaultTimeoutSeconds"] = "9"
         }));
@@ -65,7 +65,7 @@ public sealed class OptionsValidationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["Statevia:ExecutionPolicy:Sandbox:TimeoutSeconds"] = "9"
         }));
@@ -85,7 +85,7 @@ public sealed class OptionsValidationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["Statevia:ExecutionPolicy:Sandbox:Docker:DefaultTimeoutSeconds"] = "3601"
         }));
@@ -109,7 +109,7 @@ public sealed class OptionsValidationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["Statevia:ExecutionPolicy:Sandbox:Docker:GrpcPort"] = "80"
         }));
@@ -129,7 +129,7 @@ public sealed class OptionsValidationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["Statevia:ExecutionPolicy:Sandbox:Docker:NetworkMode"] = "none"
         }));
@@ -149,7 +149,7 @@ public sealed class OptionsValidationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["Statevia:ExecutionPolicy:Sandbox:MemoryLimitMiB"] = "63"
         }));
@@ -169,7 +169,7 @@ public sealed class OptionsValidationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["Statevia:ExecutionPolicy:Sandbox:CpuLimit"] = "0.1"
         }));
@@ -189,7 +189,7 @@ public sealed class OptionsValidationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["Statevia:ExecutionPolicy:Sandbox:MemoryLimitMiB"] = "8193"
         }));
@@ -209,7 +209,7 @@ public sealed class OptionsValidationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["Statevia:ExecutionPolicy:Sandbox:CpuLimit"] = "8.1"
         }));
@@ -229,7 +229,7 @@ public sealed class OptionsValidationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["Statevia:ActionHost:BaseUrl"] = "localhost:5001"
         }));
@@ -249,7 +249,7 @@ public sealed class OptionsValidationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["EventDelivery:Retry:BaseDelayMs"] = "100",
             ["EventDelivery:Retry:MaxDelayMs"] = "10"
@@ -272,7 +272,7 @@ public sealed class OptionsValidationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["Auth:Jwt:AccessTokenLifetimeMinutes"] = "0"
         }));
@@ -292,7 +292,7 @@ public sealed class OptionsValidationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["Auth:Jwt:SigningKey"] = ""
         }));
@@ -308,11 +308,11 @@ public sealed class OptionsValidationTests
 
     /// <summary>ValidateOnStart 登録により主要 Options が起動検証対象になる。</summary>
     [Fact]
-    public void AddStateviaCoreApi_RegistersValidateOnStartForCriticalOptions()
+    public void AddStateviaServiceApi_RegistersValidateOnStartForCriticalOptions()
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration());
+        services.AddStateviaServiceApi(BuildValidConfiguration());
 
         // Act / Assert
         Assert.Contains(
@@ -339,11 +339,11 @@ public sealed class OptionsValidationTests
 
     /// <summary>Runtime フラグ Off のときプロセス内 Worker / Scheduler を登録しない。</summary>
     [Fact]
-    public void AddStateviaCoreApi_DisablesInProcessRuntime_WhenFlagsAreFalse()
+    public void AddStateviaServiceApi_DisablesInProcessRuntime_WhenFlagsAreFalse()
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddStateviaCoreApi(BuildValidConfiguration(new Dictionary<string, string?>
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
         {
             ["Statevia:Runtime:EnableInProcessWorker"] = "false",
             ["Statevia:Runtime:EnableInProcessDelayWaitScheduler"] = "false",

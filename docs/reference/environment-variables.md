@@ -8,15 +8,15 @@
 
 ---
 
-Core-API / UI / Module の主要な環境変数と `appsettings` キー。**調べ物**用。Normative 契約は各 Specification を正とする。
+Service API / UI / Module の主要な環境変数と `appsettings` キー。**調べ物**用。Normative 契約は各 Specification を正とする。
 
 ## インフラ
 
 | 名前 | サービス | 説明 |
 | --- | --- | --- |
-| `DATABASE_URL` | core-api | PostgreSQL 接続文字列 |
-| `ASPNETCORE_URLS` | core-api | バインド URL（例: `http://0.0.0.0:8080`） |
-| `CORE_API_INTERNAL_BASE` | ui | UI → Core-API プロキシ先 |
+| `DATABASE_URL` | Service API | PostgreSQL 接続文字列 |
+| `ASPNETCORE_URLS` | Service API | バインド URL（例: `http://0.0.0.0:8080`） |
+| `SERVICE_API_INTERNAL_BASE` | ui | UI → Service API プロキシ先 |
 
 ## 運用・デバッグ
 

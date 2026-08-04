@@ -19,7 +19,7 @@ public sealed class WorkflowDefinition
 public sealed class StateDefinition
 {
     /// <summary>
-    /// Core-API の Action Registry で解決するアクション ID（例: <c>order.create</c>）。
+    /// Service API の Action Registry で解決するアクション ID（例: <c>order.create</c>）。
     /// 省略時は既定の no-op。wait のみの状態では通常省略する。
     /// </summary>
     public string? Action { get; init; }

@@ -7,7 +7,7 @@ import type {
   GraphNodeDef,
 } from "@/features/executions/graphs/types";
 
-/** GET /v1/graphs/{graphId}（GraphDefinitionResponse）の緩い形。Core-API の camelCase JSON を前提。 */
+/** GET /v1/graphs/{graphId}（GraphDefinitionResponse）の緩い形。Service API の camelCase JSON を前提。 */
 type ApiGraphNode = {
   nodeId?: string;
   stateName?: string;
@@ -84,7 +84,7 @@ function mapEdge(e: ApiGraphEdge): GraphEdgeDef {
 }
 
 /**
- * Core-API の GraphDefinitionResponse を UI の GraphDefinition に変換する。
+ * Service API の GraphDefinitionResponse を UI の GraphDefinition に変換する。
  * 保存済み座標は `meta.layout.<nodeId>.{x,y}` を前提とする（API が返さない場合もある）。
  * 不正・空の場合は null。
  */

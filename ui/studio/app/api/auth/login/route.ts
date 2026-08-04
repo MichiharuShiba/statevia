@@ -8,8 +8,8 @@ import {
 } from "@/shared/auth/authSession";
 
 function coreApiBase(): string {
-  const base = process.env.CORE_API_INTERNAL_BASE;
-  if (!base) throw new Error("Missing CORE_API_INTERNAL_BASE");
+  const base = process.env.SERVICE_API_INTERNAL_BASE;
+  if (!base) throw new Error("Missing SERVICE_API_INTERNAL_BASE");
   return base.replace(/\/$/, "");
 }
 
@@ -24,7 +24,7 @@ function cookieOptions(maxAgeSec: number) {
 }
 
 /**
- * UI ログイン: Core-API `POST /v1/auth/login` を呼び、JWT を httpOnly Cookie に保存する。
+ * UI ログイン: Service API `POST /v1/auth/login` を呼び、JWT を httpOnly Cookie に保存する。
  */
 export async function POST(req: NextRequest) {
   let body: LoginRequestBody;

@@ -21,15 +21,15 @@ function mockCookieStore(access?: string, tenantKey?: string) {
 }
 
 describe("fetchAuthMeServer", () => {
-  const originalBase = process.env.CORE_API_INTERNAL_BASE;
+  const originalBase = process.env.SERVICE_API_INTERNAL_BASE;
 
   beforeEach(() => {
-    process.env.CORE_API_INTERNAL_BASE = "http://core-api.test/";
+    process.env.SERVICE_API_INTERNAL_BASE = "http://core-api.test/";
     vi.stubGlobal("fetch", vi.fn());
   });
 
   afterEach(() => {
-    process.env.CORE_API_INTERNAL_BASE = originalBase;
+    process.env.SERVICE_API_INTERNAL_BASE = originalBase;
     vi.unstubAllGlobals();
     cookiesMock.mockReset();
   });
@@ -41,7 +41,7 @@ describe("fetchAuthMeServer", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("Core-API から Principal 情報を返す", async () => {
+  it("Service API から Principal 情報を返す", async () => {
     mockCookieStore("jwt-token", "default");
     vi.mocked(fetch).mockResolvedValue(
       Response.json({

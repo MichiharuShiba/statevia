@@ -2,9 +2,9 @@
 
 ## 目的
 
-Core-API と Engine の構造化ログで、同じ概念に同じキー名を使う。
+Service API と Engine の構造化ログで、同じ概念に同じキー名を使う。
 
-## Message テンプレート（Core-API）
+## Message テンプレート（Service API）
 
 - **ラベル**（`=` の左）: **PascalCase**（例: `TraceId`, `TenantId`）
 - **プレースホルダと引数名**（`{…}` 内および partial メソッド引数）: **camelCase**（例: `{traceId}`, 引数 `traceId`）

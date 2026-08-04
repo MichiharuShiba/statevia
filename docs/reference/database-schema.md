@@ -31,7 +31,7 @@ Project: 実行型ステートマシン
 
 ---
 
-Core-API（C#）の EF Core マイグレーションで管理する PostgreSQL スキーマ。  
+Service API（C#）の EF Core マイグレーションで管理する PostgreSQL スキーマ。  
 実装: `infrastructure/Statevia.Infrastructure.Persistence/` および `Migrations/`。
 
 **書き込み経路（2026-05-20 時点）:** 定義の新規作成・publish は **`definitions` + `definition_versions` のみ**。`workflow_definitions` は移行期のレガシーテーブル（バックフィル元）として残存し、**新規 INSERT は行わない**。

@@ -16,7 +16,7 @@ export type ExecutionDTO = {
 };
 
 /**
- * v2: GET /v1/executions/:id/graph のノード（C# ExecutionNode）。JSON は camelCase（Core-API）。
+ * v2: GET /v1/executions/:id/graph のノード（C# ExecutionNode）。JSON は camelCase（Service API）。
  * ノード ID のキーは API／Engine／永続グラフとも `nodeId` のまま。UI 組み立て後の `ExecutionNodeDTO` だけ `executionNodeId` に正規化する。
  */
 export type ExecutionGraphNodeDTO = {
@@ -87,7 +87,7 @@ export type ExecutionView = ExecutionDTO & {
   runtimeEdges?: RuntimeGraphEdgeDTO[];
 };
 
-/** コマンド受理レスポンス（Core-API）。 */
+/** コマンド受理レスポンス（Service API）。 */
 export type CommandAccepted = {
   executionId: string; // v2 では displayId を格納
   command: string;
@@ -175,7 +175,7 @@ export type ExecutionEventsResponse = {
   hasMore?: boolean;
 };
 
-/** GET /v1/executions?limit=&offset= のページング結果（Core-API `PagedResult<T>`）。 */
+/** GET /v1/executions?limit=&offset= のページング結果（Service API `PagedResult<T>`）。 */
 export type PagedResult<T> = {
   items: T[];
   totalCount: number;

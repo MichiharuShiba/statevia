@@ -14,7 +14,7 @@
 - **MUST**: リアルタイム配信は **SSE** のみ（`GET /v1/executions/{id}/stream`）。WebSocket は未実装。
 - **MUST**: UI は状態を直接書き換えず、操作は REST Command API 経由とする。
 - **MUST**: Push ペイロードは ExecutionGraph / 実行状態の read-model に整合すること。
-- **SHOULD**: UI は同一オリジン `/api/core/*` プロキシ経由で Core-API に接続する。
+- **SHOULD**: UI は同一オリジン `/api/core/*` プロキシ経由で Service API に接続する。
 
 ---
 
@@ -70,7 +70,7 @@ X-Tenant-Id: <tenant-id>
 
 ## 4. Push 更新（SSE）
 
-### 接続エンドポイント（Core-API）
+### 接続エンドポイント（Service API）
 
 ```txt
 GET /v1/executions/{id}/stream
@@ -85,11 +85,11 @@ GET /v1/executions/{id}/stream
 
 ## 5. Push イベント種別
 
-**現行 Core-API の SSE が送出するのは §5.1 `GraphUpdated` のみ**（§5.2 以降は将来拡張・別チャネル用の論理例として残す）。
+**現行 Service API の SSE が送出するのは §5.1 `GraphUpdated` のみ**（§5.2 以降は将来拡張・別チャネル用の論理例として残す）。
 
 ### 5.1 GraphUpdated
 
-ExecutionGraph の差分更新（現行 Core-API が SSE で送出する形に準拠）。
+ExecutionGraph の差分更新（現行 Service API が SSE で送出する形に準拠）。
 
 ```json
 {

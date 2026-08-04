@@ -1,5 +1,5 @@
 /**
- * Core-API / BFF のエラー JSON 形状（クライアント側）。
+ * Service API / BFF のエラー JSON 形状（クライアント側）。
  */
 export type ApiError = {
   status?: number;

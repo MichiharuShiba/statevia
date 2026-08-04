@@ -7,7 +7,7 @@ import type { ExecutionView } from "../types";
 /**
  * 指定 seq 時点の実行状態を取得（リプレイ表示用）。
  * atSeq が null の場合は何も取得しない。
- * Core-API: GET /v1/executions/:id/state?atSeq=（現在はスナップショット近似）。
+ * Service API: GET /v1/executions/:id/state?atSeq=（現在はスナップショット近似）。
  */
 export function useExecutionStateAtSeq(
   executionId: string | null,

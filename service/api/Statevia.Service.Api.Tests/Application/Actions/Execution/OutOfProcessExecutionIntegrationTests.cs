@@ -19,7 +19,7 @@ using ActionHostOptions = ActionHost::Statevia.Service.ActionHost.ActionHostOpti
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Execution;
 
-/// <summary>Core-API と Action Host の OutOfProcess 統合テスト。</summary>
+/// <summary>Service API と Action Host の OutOfProcess 統合テスト。</summary>
 public sealed class OutOfProcessExecutionIntegrationTests : IAsyncLifetime
 {
     private readonly string _modulesRoot = CreateModuleLayoutFromBuiltAssembly("test.module");
@@ -109,7 +109,7 @@ public sealed class OutOfProcessExecutionIntegrationTests : IAsyncLifetime
             ActionId = "test.module.echo",
             TenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
         };
-        var inputJson = """{"message":"from-core-api"}""";
+        var inputJson = """{"message":"from-service-api"}""";
         using var inputDocument = System.Text.Json.JsonDocument.Parse(inputJson);
         var runtimeInput = inputDocument.RootElement.Clone();
 

@@ -14,12 +14,12 @@
 ## ストーリー: 拡張の流れ
 
 1. 開発者が Module をビルドし、`module.json` と DLL を zip にまとめる
-2. Core-API の modules ルート（または OCI Source）へ配置する
+2. Service API の modules ルート（または OCI Source）へ配置する
 3. **ModuleHost** がロードし **Catalog** に `ActionDescriptor` を登録する
 4. 定義 publish 時に Action ID が Catalog と照合される
 5. 実行時 **Policy** が TrustLevel・環境・テナント下限から実行モード（InProcess / OutOfProcess / Container 等）を決定し、**Executor** がバックエンドへ dispatch する
 
-Engine は `IStateExecutor` のみを知り、Catalog や ModuleHost には依存しません。拡張点は Core-API の composition root に閉じ込められます。
+Engine は `IStateExecutor` のみを知り、Catalog や ModuleHost には依存しません。拡張点は Service API の composition root に閉じ込められます。
 
 ## 信頼と実行モード
 
