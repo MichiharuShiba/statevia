@@ -16,21 +16,26 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# 依存アセンブリ・生成物・ホストエントリを除外し、Action Host 本体のカバレッジを測る。
+# Statevia.Core.Actions.Abstractions を旧パス名のまま残すと除外漏れで overall coverage が下がる。
 $sonarAnalysisExclusions = @(
     '**/service/api/**',
     '**/api/**',
     '**/ui/studio/**',
-    '**/ui/studio/**',
     '**/core/engine/**',
     '**/engine/**',
+    '**/core/actions/**',
     '**/service/cli/**',
     '**/cli/**',
     '**/service/runtime/**',
     '**/Statevia.Core.Engine/**',
+    '**/Statevia.Core.Actions.Abstractions/**',
     '**/Statevia.Service.Api/**',
-    '**/Statevia.Actions.Abstractions/**',
     '**/infrastructure/**',
     '**/Migrations/**',
+    '**/Program.cs',
+    '**/obj/**',
+    '**/*.g.cs',
     '**/docker-compose.yml'
 ) -join ','
 $sonarCoverageExclusions = $sonarAnalysisExclusions
