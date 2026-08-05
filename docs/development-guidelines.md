@@ -111,7 +111,7 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 
 - **UI（TypeScript）**: **`npm run lint`**（error 厳格）、**`npm run typecheck`**、**`npm run test:run`** を PR 前の必須チェックとする。設定は `ui/studio/eslint.config.js`（`typescript-eslint` strict、`react-hooks`、`jsx-a11y`、`jsdoc`）。
 - **SonarQube（Service API）**: プロジェクトキー **`StateviaServiceApi`**。新規コードの Quality Gate（`new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.1**。
-- **SonarQube（Service UI）**: プロジェクトキー **`StateviaServiceUI`**。全体・新規コードの Quality Gate（`coverage` / `new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.2**。
+- **SonarQube（UI Studio）**: プロジェクトキー **`StateviaUIStudio`**。全体・新規コードの Quality Gate（`coverage` / `new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.2**。
 
 ---
 
@@ -167,7 +167,7 @@ dotnet build-server shutdown
 - `service/api/sonar-project.properties` は **Scanner for .NET では使わない**（設定は `begin` の `/d:` で渡す）。
 - スキャン直後は Sonar UI の数値が遅れて反映されることがある。Quality Gate 判定は Sonar のプロジェクト画面を正とする。
 
-### 5.2 Service UI — カバレッジと Sonar（手動）
+### 5.2 UI Studio — カバレッジと Sonar（手動）
 
 **前提**
 
@@ -197,7 +197,7 @@ npm run test:coverage
 スクリプトは次を順に実行する。
 
 1. `npm run test:coverage`（`ui/studio/coverage/lcov.info` を生成）
-2. `npx sonar-scanner`（キー **`StateviaServiceUI`**、`ui/studio/sonar-project.properties` を読み込み）
+2. `npx sonar-scanner`（キー **`StateviaUIStudio`**、`ui/studio/sonar-project.properties` を読み込み）
 
 **手動（`ui/studio` をカレントに）**
 
@@ -251,7 +251,7 @@ npx --yes sonar-scanner "-Dsonar.token=$($env:SONAR_TOKEN)"
 | 日付 | 内容 |
 |------|------|
 | 2026-07-07 | §1 / §4 / §7 を Git 上の正本として自己完結化（`.cursor` パス参照を廃止） |
-| 2026-05-19 | §4.3 / §5 に UI の ESLint・`StateviaServiceUI` Sonar 手順（§5.2・`sonar-scanner-ui.ps1`）を追記 |
+| 2026-05-19 | §4.3 / §5 に UI の ESLint・`StateviaUIStudio` Sonar 手順（§5.2・`sonar-scanner-ui.ps1`）を追記 |
 | 2026-05-17 | §4.3 / §5.1 に Service API 厳格ビルド・coverlet runsettings・`sonar-scanner-api.ps1` 手順を追記 |
 | 2026-04-05 | §4 再編（4.1 C#・4.2 TypeScript・4.3 静的チェック）、正本表に TypeScript 細則を追記 |
 | 2026-03-28 | 初版・ブランチ命名を追加 |

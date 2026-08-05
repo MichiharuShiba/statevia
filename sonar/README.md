@@ -57,7 +57,7 @@ C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定�
 | Runtime        | `StateviaServiceRuntime` |
 | CLI            | `StateviaServiceCLI`   |
 | Action Host    | `StateviaServiceActionHost` |
-| Service UI     | `StateviaServiceUI`    |
+| UI Studio      | `StateviaUIStudio`     |
 
 ## 手動実行（リポジトリルートをカレントに）
 
