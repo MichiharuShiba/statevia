@@ -72,8 +72,8 @@ HTTP / gRPC / CLI のアダプタ。Composition Root として全層を DI で�
 | --- | --- |
 | エージェント／起動・テスト | ルート `AGENTS.md` |
 | 開発の共通ルール | `docs/development-guidelines.md` |
-| Spec Workflow（本 Steering を含む） | `.spec-workflow/` |
-| 作業用メモ・タスク（任意） | `.workspace-docs/`（入口 `README.md`） |
+| Spec（本 Steering を含む） | `.spec/` |
+| 旧作業用メモ（参照のみ） | `.spec/archive/workspace-docs/` |
 
 ## References
 

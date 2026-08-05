@@ -78,7 +78,7 @@ Sonar / Analyzer: [`docs/development-guidelines.md`](docs/development-guidelines
 - **Read-model**: `GET /v1/executions` / graph は DB projection 正本（[`data-integration.md`](docs/specifications/data-integration.md)）
 - **IO-14**: 既定で `input` / `output` を一覧 GET に含めない。ログは `LogRedaction`（[`io-log-masking.md`](docs/specifications/platform/io-log-masking.md)）
 - **Engine 境界**: `ExecutionEngine` は `IStateExecutor` のみ。Catalog / Policy / ModuleHost は Service API 側
-- **Serena MCP**: プロジェクトごとに `serena-engine` … `serena-ui` の 9 サーバー（`serena-runtime` 含む）。切替は UI トグル（同時 On は原則 1）。未起動時は停止して起動を促す。[`serena-mcp-project-toggle`](.spec-workflow/archive/specs/serena-mcp-project-toggle/requirements.md) / [`.cursor/skills/serena-mcp-project-switch/SKILL.md`](.cursor/skills/serena-mcp-project-switch/SKILL.md)
+- **Serena MCP**: プロジェクトごとに `serena-engine` … `serena-ui` の 9 サーバー（`serena-runtime` 含む）。切替は UI トグル（同時 On は原則 1）。未起動時は停止して起動を促す。[`serena-mcp-project-toggle`](.spec/archive/specs/serena-mcp-project-toggle/requirements.md) / [`.cursor/skills/serena-mcp-project-switch/SKILL.md`](.cursor/skills/serena-mcp-project-switch/SKILL.md)
 
 ## .NET SDK
 

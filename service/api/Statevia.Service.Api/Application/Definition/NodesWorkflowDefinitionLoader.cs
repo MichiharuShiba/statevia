@@ -8,10 +8,7 @@ namespace Statevia.Service.Api.Application.Definition;
 
 using static NodesSchemaLiteral;
 
-/// <summary>
-/// nodes（UI）形式ルート → <see cref="WorkflowDefinition"/>。仕様:
-/// <c>.workspace-docs/specs/in-progress/v2-nodes-to-states-conversion-spec.md</c>。
-/// </summary>
+/// <summary>nodes（UI）形式ルート → <see cref="WorkflowDefinition"/>。</summary>
 internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBase
 {
     public NodesWorkflowDefinitionLoader()

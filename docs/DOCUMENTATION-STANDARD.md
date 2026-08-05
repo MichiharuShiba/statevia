@@ -75,7 +75,7 @@ npx markdownlint-cli2 "docs/<変更したファイルパス>"
 ## リンク
 
 - `docs/` 内の相互リンクは相対パスを用いる
-- **禁止:** `docs/` から `.spec-workflow/`（および `.workspace-docs/` 等の内部作業用フォルダ）へリンクしない
-  - 理由: `docs/` は利用者・実装者向けの正本。作業中の Spec Workflow / 下書きは公開契約に混ぜない
+- **禁止:** `docs/` から `.spec/`（および `.spec/archive/workspace-docs/` 等の内部作業用フォルダ）へリンクしない
+  - 理由: `docs/` は利用者・実装者向けの正本。作業中の Spec / 下書きは公開契約に混ぜない
   - 完了した契約・説明は `docs/` 側へ昇格してから参照する
-  - `.spec-workflow/` → `docs/` の参照は可（実装後の正本への誘導）
+  - `.spec/` → `docs/` の参照は可（実装後の正本への誘導）

@@ -16,7 +16,7 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 | Markdown 執筆 | [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD.md) |
 | エージェント向け起動・テスト・env 索引 | [`AGENTS.md`](../AGENTS.md) |
 | HTTP 契約・エラー形式 | [`specifications/api-http.md`](specifications/api-http.md), [`specifications/data-integration.md`](specifications/data-integration.md) |
-| 作業用仕様・計画（任意） | `.workspace-docs/`（`README.md` が入口） |
+| 作業用仕様・計画（任意） | `.spec/`（`templates/` / `steering/` / `specs/`。旧メモは `.spec/archive/workspace-docs/`） |
 | Markdown lint | ルート [`.markdownlint.json`](../.markdownlint.json)（`markdownlint-cli2` で検証） |
 
 ---
@@ -232,7 +232,7 @@ npx --yes sonar-scanner "-Dsonar.token=$($env:SONAR_TOKEN)"
 - 説明部は **英語の kebab-case**（小文字・単語はハイフン）。**ASCII** に限定する。
 - **1 ブランチ 1 目的**。大きい変更はトピックを分け、必要なら `feature/foo-part-b` のように連番や段階名を付ける。
 - **チケット・Issue 番号**を付ける場合は末尾に付与してよい: `feature/io-api-input-STV-402`（任意）。
-- **長期エピック**で接頭辞を揃える場合は `feature/<エピック>-<要約>` とする（例: `feature/io-c-api-workflow-start-input`）。`.workspace-docs` のタスク表と揃えてもよい。
+- **長期エピック**で接頭辞を揃える場合は `feature/<エピック>-<要約>` とする（例: `feature/io-c-api-workflow-start-input`）。`.spec/specs/` のタスク表と揃えてもよい。
 
 **保護ブランチ**（`main` など）へ直接 push せず、PR 経由でマージする。
 
