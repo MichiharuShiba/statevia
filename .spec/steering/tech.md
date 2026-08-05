@@ -46,7 +46,7 @@
 - **C# のコメント・XML・テスト**: `.cursor/rules/csharp-standards.mdc`。
 - **TypeScript / React のコメント・テスト**: `.cursor/rules/typescript-standards.mdc`。
 - 全体の参照は **`docs/development-guidelines.md` §4**。
-- **ビルド／Analyzer／Markdown／UI の静的チェックの扱い**: 同上 **§4.3**。`.spec-workflow/**/*.md` はルート **`.markdownlint.json`** に従い、`markdownlint-cli2` で検証可能。
+- **ビルド／Analyzer／Markdown／UI の静的チェックの扱い**: 同上 **§4.3**。`.spec/**/*.md` はルート **`.markdownlint.json`** に従い、`markdownlint-cli2` で検証可能。
 
 ## Security & Compliance（概要）
 

@@ -12,14 +12,11 @@
 
 !.cursorrules
 
-!.spec-workflow/
-!.spec-workflow/**
+!.spec/
+!.spec/**
 
 !.serena/
 !.serena/**
 
 !CLAUDE.md
 !AGENTS.md
-
-!.workspace-docs/
-!.workspace-docs/**

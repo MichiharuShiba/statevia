@@ -171,7 +171,7 @@ UIが依存してよいレスポンス形を固定する。
 
 ## 3.3 O6 契約（STV-413〜STV-415）
 
-詳細正本: `.workspace-docs/30_specs/10_in-progress/o6-subtickets_detailed_spec.md`
+本節が O6（STV-413〜STV-415）の契約正本である。
 
 ### STV-413: projection 更新タイミング（現状 + 将来）
 

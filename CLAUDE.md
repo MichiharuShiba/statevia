@@ -105,7 +105,7 @@
 - **定数（制限値）**には意味と採用理由。
 - **テスト**には日本語で検証シナリオを明示。
 - **書かない**: 自明な言い換えコメント、実装と矛盾する説明、機密情報。
-- **仕様・運用に影響する変更**では、関連 `docs/` / `.spec-workflow/` を依頼範囲内で整合。
+- **仕様・運用に影響する変更**では、関連 `docs/` / `.spec/` を依頼範囲内で整合。
 
 詳細は `.cursor/rules/documentation-standards.mdc` と `docs/development-guidelines.md` §4.3。
 
@@ -179,21 +179,21 @@
 
 - Markdown / Spec 作業: `.cursor/skills/markdown-spec-authoring/SKILL.md`
 - コメント・ドキュメント方針: `.cursor/rules/documentation-standards.mdc`
-- `.workspace-docs` 作業: `.cursor/skills/workspace-docs-ops/SKILL.md`
+- 旧 `.workspace-docs` アーカイブ（参照のみ）: `.cursor/skills/workspace-docs-ops/SKILL.md`
 - SonarQube MCP 作業: `.cursor/skills/sonarqube-mcp-ops/SKILL.md`
 - Serena MCP（プロジェクト別 MCP の UI トグル切替）: `.cursor/skills/serena-mcp-project-switch/SKILL.md`
 - Serena MCP（調査・設計前調査・実装でのシンボル活用）: `.cursor/skills/serena-workflow-research-impl/SKILL.md`
-- Serena MCP 運用仕様: `.spec-workflow/archive/specs/serena-mcp-project-toggle/`
+- Serena MCP 運用仕様: `.spec/archive/specs/serena-mcp-project-toggle/`
 
 明示的に Serena を切り替えるチャットコマンド: `/serena-project-engine`、`/serena-project-api`、`/serena-project-runtime`、`/serena-project-ui` 等（`.cursor/commands/`）。切替は `activate_project` ではなく Cursor の MCP トグル（対象 `serena-*` を On、他を Off）。
 
-Plan の設計を `.spec-workflow/specs/` に書き起こすチャットコマンド: `/spec-from-plan-design`（`.cursor/commands/spec-from-plan-design.md`）。
+Plan の設計を `.spec/specs/` に書き起こすチャットコマンド: `/spec-from-plan-design`（`.cursor/commands/spec-from-plan-design.md`）。
 
-完了した仕様セットを `.spec-workflow/archive/specs/` へ移すチャットコマンド: `/spec-archive`（`.cursor/commands/spec-archive.md`）。
+完了した仕様セットを `.spec/archive/specs/` へ移すチャットコマンド: `/spec-archive`（`.cursor/commands/spec-archive.md`）。
 
 常時原則としては次を維持する。
 
 - Markdown 本文は日本語で記述する（テンプレート由来の英語見出しは維持可）。
 - Markdown 編集後は `npx markdownlint-cli2 "<変更したファイルパス>"` を実行する。
-- `.workspace-docs` の文書状態はメタに書かず、状態サブフォルダで表現する。
+- 旧 `.workspace-docs` は `.spec/archive/workspace-docs/` にアーカイブ済み。新規編集禁止。
 - SonarQube のプロジェクトキーは推測しない。
