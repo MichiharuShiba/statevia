@@ -1,7 +1,9 @@
 # スキーマ定義
 
-Version: 1.15
+Version: 1.16
 Project: 実行型ステートマシン
+
+**Version 1.16（2026-08-06）**: `execution_branches` 追加（Hosted Fork 物理子の親子リンク正本。`fork_state` / `join_state` / `branch_state` は定義の状態名空間）。
 
 **Version 1.7（2026-05-27）**: task 8 — `execution_cursors` / `execution_waits` 追加（operational projection / EventWait durable wait）。
 
@@ -64,6 +66,7 @@ Service API（C#）の EF Core マイグレーションで管理する PostgreSQ
 | execution_cursors | ExecutionSpace | 現在位置の operational projection（read-model 正本外） |
 | execution_waits | ExecutionSpace | durable wait（EventWait / CallbackWait / DelayWait）の永続化 |
 | execution_wait_subscriptions | ExecutionSpace | Wait の subscribe 購読行（topic / correlation 厳密一致） |
+| execution_branches | ExecutionSpace | Fork 物理子の親子リンク正本（親 Join 集約用） |
 | execution_runtime_checkpoints | ExecutionSpace | 再開可能なランタイム状態の文書ストア（現行 Postgres 物理テーブル。契約は `IExecutionCheckpointStore`）。Worker 所有・fencing 列を含む |
 | execution_work_items | ExecutionSpace | Start / Resume / Cancel を配送する lease 付き耐久キュー |
 | command_dedup | 信頼性 | コマンド冪等（Start 等の `X-Idempotency-Key`） |
@@ -293,6 +296,24 @@ Wait の `subscribe` 購読（1 Wait ノードあたり 0 件以上）。`POST /
 | created_at | timestamptz | NOT NULL | 作成日時 |
 
 **外部キー:** `(execution_id, node_id)` → `execution_waits` ON DELETE CASCADE。**インデックス:** `(topic, correlation_key)`。照合は両列の厳密一致（NULL 比較なし）。
+
+### 2.10.2c execution_branches
+
+Hosted Runtime が Fork を物理子 execution に展開したときの親子リンク正本。Join 充足判定・合成グラフの材料。
+
+| カラム | 型 | 制約 | 説明 |
+| --- | --- | --- | --- |
+| parent_execution_id | uuid | PK, FK → executions, NOT NULL | 親（ネスト時は親役）execution |
+| fork_state | varchar(256) | PK, NOT NULL | ForkTable キー（定義の状態名。実行短名 UUID ではない） |
+| branch_state | varchar(256) | PK, NOT NULL | 分岐先頭状態名 |
+| execution_id | uuid | UNIQUE, FK → executions, NOT NULL | 子 execution |
+| join_state | varchar(256) | NOT NULL | Join 状態名 |
+| status | varchar(64) | NOT NULL | Running / Completed / Failed / Cancelled |
+| output_json | jsonb | NULL | 終端 output 退避（任意） |
+| created_at | timestamptz | NOT NULL | 作成日時 |
+| updated_at | timestamptz | NOT NULL | 更新日時 |
+
+**主キー:** `(parent_execution_id, fork_state, branch_state)`。**一意:** `execution_id`。両 FK は `executions` へ ON DELETE CASCADE。
 
 ### 2.10.2b execution_runtime_checkpoints
 
