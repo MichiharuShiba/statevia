@@ -158,11 +158,20 @@ public sealed class EventIngressServiceTests
             return Task.CompletedTask;
         }
 
+        public Task EnqueueAsync(ICoreUnitOfWork uow, ExecutionWorkItemRow item, CancellationToken ct) =>
+            EnqueueAsync(item, ct);
+
         public Task EnqueueManyAsync(IReadOnlyList<ExecutionWorkItemRow> items, CancellationToken ct)
         {
             Items.AddRange(items);
             return Task.CompletedTask;
         }
+
+        public Task EnqueueManyAsync(
+            ICoreUnitOfWork uow,
+            IReadOnlyList<ExecutionWorkItemRow> items,
+            CancellationToken ct) =>
+            EnqueueManyAsync(items, ct);
 
         public Task<IReadOnlyList<ExecutionWorkItemRow>> ClaimAsync(
             string leaseOwner,

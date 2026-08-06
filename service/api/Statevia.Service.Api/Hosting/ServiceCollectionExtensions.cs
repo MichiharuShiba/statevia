@@ -22,6 +22,7 @@ using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Persistence;
 using Statevia.Service.Api.Persistence.Repositories;
 using Statevia.Core.Application.DependencyInjection;
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.DependencyInjection;
@@ -148,6 +149,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IDefinitionLoadStrategy, DefinitionLoadStrategy>();
         services.AddSingleton<IDefinitionCompilerService, DefinitionCompilerService>();
         AddEventDeliveryRetryOptions(services, configuration);
+        AddForkChildExpansionOptions(services, configuration);
         // Worker でも解決可能にする（HTTP 文脈がなければ空文字）。
         services.AddHttpContextAccessor();
         services.AddScoped<Statevia.Core.Application.Contracts.Services.ICorrelationIdAccessor, Infrastructure.HttpContextCorrelationIdAccessor>();
@@ -242,6 +244,16 @@ public static class ServiceCollectionExtensions
             .Validate(
                 o => o.SerializablePersistenceMaxAttempts is >= 1 and <= 50,
                 "EventDelivery:Retry:SerializablePersistenceMaxAttempts must be between 1 and 50.")
+            .ValidateOnStart();
+    }
+
+    /// <summary>Fork 物理子展開リトライ Options（D9）。</summary>
+    private static void AddForkChildExpansionOptions(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<ForkChildExpansionOptions>()
+            .Bind(configuration.GetSection(ForkChildExpansionOptions.SectionName))
+            .Validate(o => o.MaxAttempts is >= 1 and <= 50, $"{ForkChildExpansionOptions.SectionName}:MaxAttempts must be between 1 and 50.")
+            .Validate(o => o.BaseDelayMs is >= 0 and <= 600_000, $"{ForkChildExpansionOptions.SectionName}:BaseDelayMs is out of range.")
             .ValidateOnStart();
     }
     private static bool IsValidSandboxTimeoutSeconds(ExecutionPolicyOptions options) =>

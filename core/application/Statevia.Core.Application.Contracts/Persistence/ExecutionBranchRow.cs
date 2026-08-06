@@ -26,8 +26,9 @@ public static class ExecutionBranchStatuses
 /// </summary>
 /// <remarks>
 /// <para>
-/// 一意: <c>(parent_execution_id, fork_state, branch_state)</c> および <c>execution_id</c>。
-/// <c>fork_state</c> / <c>join_state</c> / <c>branch_state</c> は定義の状態名空間（実行短名 UUID ではない）。
+/// 一意: <c>(parent_execution_id, fork_node_id, branch_state)</c> および <c>execution_id</c>。
+/// <c>fork_node_id</c> は親実行グラフ上の Fork 到達インスタンス（実行ノード ID）。
+/// <c>join_state</c> / <c>branch_state</c> は定義の状態名空間。
 /// </para>
 /// </remarks>
 public sealed class ExecutionBranchRow
@@ -38,8 +39,8 @@ public sealed class ExecutionBranchRow
     /// <summary>分岐を走らせる子 execution。</summary>
     public Guid ExecutionId { get; set; }
 
-    /// <summary>ForkTable キー（fork 遷移元の状態名）。</summary>
-    public required string ForkState { get; set; }
+    /// <summary>親実行グラフ上の Fork ノード ID（到達インスタンス）。</summary>
+    public required string ForkNodeId { get; set; }
 
     /// <summary>Join 状態名。</summary>
     public required string JoinState { get; set; }

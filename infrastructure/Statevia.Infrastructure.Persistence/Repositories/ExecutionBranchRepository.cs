@@ -23,7 +23,7 @@ internal sealed class ExecutionBranchRepository : IExecutionBranchRepository
             var existing = await db.ExecutionBranches
                 .FirstOrDefaultAsync(
                     x => x.ParentExecutionId == branch.ParentExecutionId
-                         && x.ForkState == branch.ForkState
+                         && x.ForkNodeId == branch.ForkNodeId
                          && x.BranchState == branch.BranchState,
                     ct)
                 .ConfigureAwait(false);
@@ -34,7 +34,7 @@ internal sealed class ExecutionBranchRepository : IExecutionBranchRepository
                 {
                     ParentExecutionId = branch.ParentExecutionId,
                     ExecutionId = branch.ExecutionId,
-                    ForkState = branch.ForkState,
+                    ForkNodeId = branch.ForkNodeId,
                     JoinState = branch.JoinState,
                     BranchState = branch.BranchState,
                     Status = branch.Status,
@@ -48,7 +48,7 @@ internal sealed class ExecutionBranchRepository : IExecutionBranchRepository
             if (existing.ExecutionId != branch.ExecutionId)
             {
                 throw new InvalidOperationException(
-                    $"execution_branches conflict: parent={branch.ParentExecutionId:D} fork={branch.ForkState} branch={branch.BranchState} already bound to execution {existing.ExecutionId:D}.");
+                    $"execution_branches conflict: parent={branch.ParentExecutionId:D} forkNode={branch.ForkNodeId} branch={branch.BranchState} already bound to execution {existing.ExecutionId:D}.");
             }
         }
     }
@@ -61,22 +61,22 @@ internal sealed class ExecutionBranchRepository : IExecutionBranchRepository
         await uow.GetDb().ExecutionBranches.AsNoTracking()
             .Where(x => x.ParentExecutionId == parentExecutionId)
             .OrderBy(x => x.CreatedAt)
-            .ThenBy(x => x.ForkState)
+            .ThenBy(x => x.ForkNodeId)
             .ThenBy(x => x.BranchState)
             .ToListAsync(ct)
             .ConfigureAwait(false);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<ExecutionBranchRow>> ListByParentAndForkAsync(
+    public async Task<IReadOnlyList<ExecutionBranchRow>> ListByParentAndForkNodeAsync(
         ICoreUnitOfWork uow,
         Guid parentExecutionId,
-        string forkState,
+        string forkNodeId,
         CancellationToken ct)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(forkState);
+        ArgumentException.ThrowIfNullOrWhiteSpace(forkNodeId);
 
         return await uow.GetDb().ExecutionBranches.AsNoTracking()
-            .Where(x => x.ParentExecutionId == parentExecutionId && x.ForkState == forkState)
+            .Where(x => x.ParentExecutionId == parentExecutionId && x.ForkNodeId == forkNodeId)
             .OrderBy(x => x.CreatedAt)
             .ThenBy(x => x.BranchState)
             .ToListAsync(ct)
@@ -96,20 +96,20 @@ internal sealed class ExecutionBranchRepository : IExecutionBranchRepository
     public async Task<bool> TryUpdateStatusAsync(
         ICoreUnitOfWork uow,
         Guid parentExecutionId,
-        string forkState,
+        string forkNodeId,
         string branchState,
         ExecutionBranchStatusUpdate update,
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(update);
-        ArgumentException.ThrowIfNullOrWhiteSpace(forkState);
+        ArgumentException.ThrowIfNullOrWhiteSpace(forkNodeId);
         ArgumentException.ThrowIfNullOrWhiteSpace(branchState);
         ArgumentException.ThrowIfNullOrWhiteSpace(update.Status);
 
         var row = await uow.GetDb().ExecutionBranches
             .FirstOrDefaultAsync(
                 x => x.ParentExecutionId == parentExecutionId
-                     && x.ForkState == forkState
+                     && x.ForkNodeId == forkNodeId
                      && x.BranchState == branchState,
                 ct)
             .ConfigureAwait(false);
@@ -128,7 +128,7 @@ internal sealed class ExecutionBranchRepository : IExecutionBranchRepository
     private static void ValidateBranch(ExecutionBranchRow branch)
     {
         ArgumentNullException.ThrowIfNull(branch);
-        ArgumentException.ThrowIfNullOrWhiteSpace(branch.ForkState);
+        ArgumentException.ThrowIfNullOrWhiteSpace(branch.ForkNodeId);
         ArgumentException.ThrowIfNullOrWhiteSpace(branch.JoinState);
         ArgumentException.ThrowIfNullOrWhiteSpace(branch.BranchState);
         ArgumentException.ThrowIfNullOrWhiteSpace(branch.Status);

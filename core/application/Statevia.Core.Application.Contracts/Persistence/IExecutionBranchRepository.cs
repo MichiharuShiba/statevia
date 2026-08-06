@@ -8,7 +8,7 @@ public interface IExecutionBranchRepository
     /// </summary>
     /// <remarks>
     /// <para>
-    /// キー <c>(parent_execution_id, fork_state, branch_state)</c> が未存在なら挿入する。
+    /// キー <c>(parent_execution_id, fork_node_id, branch_state)</c> が未存在なら挿入する。
     /// 既存かつ <see cref="ExecutionBranchRow.ExecutionId"/> が一致すれば何もしない。
     /// 既存かつ <c>execution_id</c> が異なれば <see cref="InvalidOperationException"/>。
     /// </para>
@@ -34,17 +34,17 @@ public interface IExecutionBranchRepository
         CancellationToken ct);
 
     /// <summary>
-    /// 親・Fork 単位の分岐行を返す。
+    /// 親・Fork 到達インスタンス単位の分岐行を返す。
     /// </summary>
     /// <param name="uow">同一トランザクションの Unit of Work。</param>
     /// <param name="parentExecutionId">親 execution。</param>
-    /// <param name="forkState">Fork 状態名キー。</param>
+    /// <param name="forkNodeId">親実行グラフ上の Fork ノード ID。</param>
     /// <param name="ct">キャンセル トークン。</param>
-    /// <returns>当該 Fork の分岐行一覧。</returns>
-    Task<IReadOnlyList<ExecutionBranchRow>> ListByParentAndForkAsync(
+    /// <returns>当該 Fork 到達の分岐行一覧。</returns>
+    Task<IReadOnlyList<ExecutionBranchRow>> ListByParentAndForkNodeAsync(
         ICoreUnitOfWork uow,
         Guid parentExecutionId,
-        string forkState,
+        string forkNodeId,
         CancellationToken ct);
 
     /// <summary>
@@ -64,7 +64,7 @@ public interface IExecutionBranchRepository
     /// </summary>
     /// <param name="uow">同一トランザクションの Unit of Work。</param>
     /// <param name="parentExecutionId">親 execution。</param>
-    /// <param name="forkState">Fork 状態名キー。</param>
+    /// <param name="forkNodeId">親実行グラフ上の Fork ノード ID。</param>
     /// <param name="branchState">分岐先頭状態名。</param>
     /// <param name="update">status / updatedAt / output の更新内容。</param>
     /// <param name="ct">キャンセル トークン。</param>
@@ -72,7 +72,7 @@ public interface IExecutionBranchRepository
     Task<bool> TryUpdateStatusAsync(
         ICoreUnitOfWork uow,
         Guid parentExecutionId,
-        string forkState,
+        string forkNodeId,
         string branchState,
         ExecutionBranchStatusUpdate update,
         CancellationToken ct);

@@ -37,6 +37,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
     private readonly ConcurrentDictionary<string, EventProvider> _eventProviders = new();
     private Func<string, Task>? _nodeCompletedHandler;
     private Func<string, string, Task>? _suspendHandler;
+    private Func<ForkExpansionEvent, Task>? _forkExpansionHandler;
 
     /// <summary>
     /// 依存を注入してエンジンを構築する。
@@ -64,16 +65,23 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
     }
 
     /// <inheritdoc />
-    public string Start(CompiledWorkflowDefinition definition, string? executionId = null, object? input = null)
+    public string Start(
+        CompiledWorkflowDefinition definition,
+        string? executionId = null,
+        object? input = null,
+        string? initialState = null)
     {
         ArgumentNullException.ThrowIfNull(definition);
         executionId ??= _executionIdGenerator.NewExecutionId();
+        var startState = string.IsNullOrWhiteSpace(initialState)
+            ? definition.InitialState
+            : initialState.Trim();
         var eventProvider = CreateEventProvider(executionId);
         var instance = _instanceFactory.Create(definition, executionId);
         _instances[executionId] = instance;
         _eventProviders[executionId] = eventProvider;
-        _executionLog.LogExecutionStarted(executionId, definition.Name, definition.InitialState);
-        _ = RunExecutionAsync(instance, eventProvider, input);
+        _executionLog.LogExecutionStarted(executionId, definition.Name, startState);
+        _ = RunExecutionAsync(instance, eventProvider, input, startState);
         return executionId;
     }
 
@@ -108,6 +116,36 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         catch (Exception ex)
         {
             _executionLog.LogExecutionRunFailed(ex, executionId, "suspend-handler");
+        }
+#pragma warning restore CA1031
+    }
+
+    private void NotifyForkExpansion(
+        string executionId,
+        string forkState,
+        string sourceNodeId,
+        IReadOnlyList<ForkBranchExpansionPlan> branches)
+    {
+        var handler = _forkExpansionHandler;
+        if (handler is null)
+            return;
+
+        var evt = new ForkExpansionEvent(executionId, forkState, sourceNodeId, branches);
+        _ = NotifyForkExpansionAsync(handler, evt);
+    }
+
+    private async Task NotifyForkExpansionAsync(
+        Func<ForkExpansionEvent, Task> handler,
+        ForkExpansionEvent evt)
+    {
+        try
+        {
+            await handler(evt).ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // Fork 展開通知失敗は呼び出し元の再試行／親 Failed に委ね、Engine ループは止めない
+        catch (Exception ex)
+        {
+            _executionLog.LogExecutionRunFailed(ex, evt.ExecutionId, "fork-expansion-handler");
         }
 #pragma warning restore CA1031
     }
@@ -267,6 +305,12 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
     public void SetSuspendHandler(Func<string, string, Task>? handler)
     {
         _suspendHandler = handler;
+    }
+
+    /// <inheritdoc />
+    public void SetForkExpansionHandler(Func<ForkExpansionEvent, Task>? handler)
+    {
+        _forkExpansionHandler = handler;
     }
 
     /// <inheritdoc />
@@ -436,13 +480,17 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         }
     }
 
-    private async Task RunExecutionAsync(ExecutionInstance instance, EventProvider eventProvider, object? input)
+    private async Task RunExecutionAsync(
+        ExecutionInstance instance,
+        EventProvider eventProvider,
+        object? input,
+        string startState)
     {
         instance.InitializeContext(input);
-        var initialInput = ApplyStateInput(instance, instance.Definition.InitialState, input);
+        var initialInput = ApplyStateInput(instance, startState, input);
         try
         {
-            await ScheduleStateAsync(instance, eventProvider, instance.Definition.InitialState, null, null, initialInput).ConfigureAwait(false);
+            await ScheduleStateAsync(instance, eventProvider, startState, null, null, initialInput).ConfigureAwait(false);
         }
 #pragma warning disable CA1031 // 例外種別に依らず捕捉し、実行失敗は MarkFailed により観測する
         catch (Exception ex)
@@ -671,20 +719,58 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             _executionLog.LogExecutionCompleted(instance.ExecutionId, instance.Definition.Name);
             return;
         }
+
+        ScheduleTransitionContinuation(instance, eventProvider, stateName, transition, output, nodeId);
+    }
+
+    /// <summary>
+    /// Fork / Next 遷移を Hosted 展開または同一インスタンス Schedule に振り分ける。
+    /// </summary>
+    private void ScheduleTransitionContinuation(
+        ExecutionInstance instance,
+        EventProvider eventProvider,
+        string stateName,
+        TransitionResult transition,
+        object? output,
+        string nodeId)
+    {
         if (transition.Fork != null)
         {
-            // Broadcast: 同一 output を各分岐の先頭状態へ渡す（workflow-input-output-spec §3.3）。
-            foreach (var nextState in transition.Fork)
+            // Broadcast: 同一 output を各分岐の先頭状態へ写像（workflow-input-output-spec §3.3）。
+            var plans = transition.Fork
+                .Select(nextState => new ForkBranchExpansionPlan(
+                    nextState,
+                    ApplyStateInput(instance, nextState, output)))
+                .ToList();
+
+            if (_forkExpansionHandler is not null)
             {
-                var mappedForkInput = ApplyStateInput(instance, nextState, output);
-                _ = ScheduleStateAsync(instance, eventProvider, nextState, nodeId, EdgeType.Fork, mappedForkInput);
+                // Hosted: 物理子展開。同一インスタンス上では分岐を走らせない。
+                NotifyForkExpansion(instance.ExecutionId, stateName, nodeId, plans);
+                return;
             }
+
+            foreach (var plan in plans)
+            {
+                _ = ScheduleStateAsync(
+                    instance,
+                    eventProvider,
+                    plan.BranchState,
+                    nodeId,
+                    EdgeType.Fork,
+                    plan.MappedInput);
+            }
+
+            return;
         }
-        else if (transition.Next != null)
+
+        if (transition.Next is null)
         {
-            var mappedInput = ApplyStateInput(instance, transition.Next, output);
-            _ = ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, mappedInput);
+            return;
         }
+
+        var mappedInput = ApplyStateInput(instance, transition.Next, output);
+        _ = ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, mappedInput);
     }
 
     private object? ApplyStateInput(ExecutionInstance instance, string targetState, object? rawInput)

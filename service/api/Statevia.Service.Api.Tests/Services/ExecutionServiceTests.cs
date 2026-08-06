@@ -117,7 +117,11 @@ public sealed class ExecutionServiceTests
         /// <summary>設定時、一致する <c>clientEventId</c> の Cancel で <see cref="ApplyResult.AlreadyApplied"/> を返す。</summary>
         public Guid? CancelAlreadyAppliedWhenClientEventIdEquals { get; set; }
 
-        public string Start(CompiledWorkflowDefinition definition, string? executionId = null, object? input = null)
+        public string Start(
+            CompiledWorkflowDefinition definition,
+            string? executionId = null,
+            object? input = null,
+            string? initialState = null)
         {
             StartCalled = true;
             LastDefinition = definition;
@@ -190,6 +194,11 @@ public sealed class ExecutionServiceTests
         }
 
         public void SetSuspendHandler(Func<string, string, Task>? handler)
+        {
+            // no-op for tests
+        }
+
+        public void SetForkExpansionHandler(Func<ForkExpansionEvent, Task>? handler)
         {
             // no-op for tests
         }

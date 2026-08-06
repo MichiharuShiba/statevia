@@ -303,10 +303,10 @@ namespace Statevia.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("parent_execution_id");
 
-                    b.Property<string>("ForkState")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("fork_state");
+                    b.Property<string>("ForkNodeId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("fork_node_id");
 
                     b.Property<string>("BranchState")
                         .HasMaxLength(256)
@@ -341,7 +341,7 @@ namespace Statevia.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.HasKey("ParentExecutionId", "ForkState", "BranchState");
+                    b.HasKey("ParentExecutionId", "ForkNodeId", "BranchState");
 
                     b.HasIndex("ExecutionId")
                         .IsUnique();

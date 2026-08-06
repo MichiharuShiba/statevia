@@ -3,7 +3,7 @@
 Version: 1.16
 Project: 実行型ステートマシン
 
-**Version 1.16（2026-08-06）**: `execution_branches` 追加（Hosted Fork 物理子の親子リンク正本。`fork_state` / `join_state` / `branch_state` は定義の状態名空間）。
+**Version 1.16（2026-08-06）**: `execution_branches` 追加（Hosted Fork 物理子の親子リンク正本。`fork_node_id` は実行ノード ID、`join_state` / `branch_state` は定義の状態名空間）。
 
 **Version 1.7（2026-05-27）**: task 8 — `execution_cursors` / `execution_waits` 追加（operational projection / EventWait durable wait）。
 
@@ -304,7 +304,7 @@ Hosted Runtime が Fork を物理子 execution に展開したときの親子リ
 | カラム | 型 | 制約 | 説明 |
 | --- | --- | --- | --- |
 | parent_execution_id | uuid | PK, FK → executions, NOT NULL | 親（ネスト時は親役）execution |
-| fork_state | varchar(256) | PK, NOT NULL | ForkTable キー（定義の状態名。実行短名 UUID ではない） |
+| fork_node_id | varchar(64) | PK, NOT NULL | 親実行グラフ上の Fork 到達インスタンス（実行ノード ID） |
 | branch_state | varchar(256) | PK, NOT NULL | 分岐先頭状態名 |
 | execution_id | uuid | UNIQUE, FK → executions, NOT NULL | 子 execution |
 | join_state | varchar(256) | NOT NULL | Join 状態名 |
@@ -313,7 +313,7 @@ Hosted Runtime が Fork を物理子 execution に展開したときの親子リ
 | created_at | timestamptz | NOT NULL | 作成日時 |
 | updated_at | timestamptz | NOT NULL | 更新日時 |
 
-**主キー:** `(parent_execution_id, fork_state, branch_state)`。**一意:** `execution_id`。両 FK は `executions` へ ON DELETE CASCADE。
+**主キー:** `(parent_execution_id, fork_node_id, branch_state)`。**一意:** `execution_id`。両 FK は `executions` へ ON DELETE CASCADE。
 
 ### 2.10.2b execution_runtime_checkpoints
 

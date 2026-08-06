@@ -108,7 +108,7 @@ internal class CoreDbContext : DbContext, ICoreDatabase
         public const string OwnerWorkerId = "owner_worker_id";
         public const string OwnerGeneration = "owner_generation";
         public const string ParentExecutionId = "parent_execution_id";
-        public const string ForkState = "fork_state";
+        public const string ForkNodeId = "fork_node_id";
         public const string JoinState = "join_state";
         public const string BranchState = "branch_state";
         public const string OutputJson = "output_json";
@@ -386,10 +386,10 @@ internal class CoreDbContext : DbContext, ICoreDatabase
         modelBuilder.Entity<ExecutionBranchRow>(e =>
         {
             e.ToTable("execution_branches");
-            e.HasKey(x => new { x.ParentExecutionId, x.ForkState, x.BranchState });
+            e.HasKey(x => new { x.ParentExecutionId, x.ForkNodeId, x.BranchState });
             e.Property(x => x.ParentExecutionId).HasColumnName(Columns.ParentExecutionId);
             e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
-            e.Property(x => x.ForkState).HasMaxLength(256).HasColumnName(Columns.ForkState);
+            e.Property(x => x.ForkNodeId).HasMaxLength(64).HasColumnName(Columns.ForkNodeId);
             e.Property(x => x.JoinState).HasMaxLength(256).HasColumnName(Columns.JoinState);
             e.Property(x => x.BranchState).HasMaxLength(256).HasColumnName(Columns.BranchState);
             e.Property(x => x.Status).HasMaxLength(64).HasColumnName(Columns.Status);

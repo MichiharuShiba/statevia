@@ -26,6 +26,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<ExecutionOwnershipTracker>();
         services.AddScoped<IExecutionService, ExecutionService>();
         services.AddScoped<IEventIngressService, EventIngressService>();
+        services.AddScoped<IForkChildExecutionCoordinator, ForkChildExecutionCoordinator>();
+        services.AddScoped<IForkExpansionHostHandler, ForkExpansionHostHandler>();
 
         return services;
     }

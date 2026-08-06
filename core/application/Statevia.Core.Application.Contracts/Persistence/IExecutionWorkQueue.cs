@@ -5,16 +5,29 @@ namespace Statevia.Core.Application.Contracts.Persistence;
 /// </summary>
 public interface IExecutionWorkQueue
 {
-    /// <summary>ワーク項目をキューへ追加する。</summary>
+    /// <summary>ワーク項目をキューへ追加する（専用 DbContext で即コミット）。</summary>
     /// <param name="item">追加する項目。</param>
     /// <param name="ct">キャンセル トークン。</param>
+    /// <remarks>呼び出し側 UoW と原子性を取る場合は <see cref="EnqueueAsync(ICoreUnitOfWork, ExecutionWorkItemRow, CancellationToken)"/> を使う。</remarks>
     Task EnqueueAsync(ExecutionWorkItemRow item, CancellationToken ct);
 
-    /// <summary>複数のワーク項目を同一コミットでキューへ追加する。</summary>
+    /// <summary>呼び出し側 UoW にワーク項目を追加する（SaveChanges / コミットは呼び出し側）。</summary>
+    /// <param name="uow">同一トランザクションの Unit of Work。</param>
+    /// <param name="item">追加する項目。</param>
+    /// <param name="ct">キャンセル トークン。</param>
+    Task EnqueueAsync(ICoreUnitOfWork uow, ExecutionWorkItemRow item, CancellationToken ct);
+
+    /// <summary>複数のワーク項目を同一コミットでキューへ追加する（専用 DbContext）。</summary>
     /// <param name="items">追加する項目。空なら何もしない。</param>
     /// <param name="ct">キャンセル トークン。</param>
     /// <remarks>チャンク分割は負荷計測後に検討する。現状は呼び出し側の全件を一括投入する。</remarks>
     Task EnqueueManyAsync(IReadOnlyList<ExecutionWorkItemRow> items, CancellationToken ct);
+
+    /// <summary>呼び出し側 UoW に複数ワーク項目を追加する（SaveChanges / コミットは呼び出し側）。</summary>
+    /// <param name="uow">同一トランザクションの Unit of Work。</param>
+    /// <param name="items">追加する項目。空なら何もしない。</param>
+    /// <param name="ct">キャンセル トークン。</param>
+    Task EnqueueManyAsync(ICoreUnitOfWork uow, IReadOnlyList<ExecutionWorkItemRow> items, CancellationToken ct);
 
     /// <summary>
     /// 処理可能で未 lease または期限切れの項目を排他取得する。

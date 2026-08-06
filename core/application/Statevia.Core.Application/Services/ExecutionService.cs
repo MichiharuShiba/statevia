@@ -302,23 +302,23 @@ internal sealed class ExecutionService : IExecutionService
                         innerCt).ConfigureAwait(false);
                 }
 
-                return accepted;
-            },
-            ct).ConfigureAwait(false);
+                await _workQueue!.EnqueueAsync(
+                    uow,
+                    new ExecutionWorkItemRow
+                    {
+                        WorkItemId = _idGenerator.NewGuid(),
+                        ExecutionId = executionId,
+                        Kind = ExecutionWorkItemKinds.Start,
+                        Payload = JsonSerializer.Serialize(
+                            new ExecutionStartWorkItemPayload(executionId, request),
+                            ExecutionWorkItemPayloadJson.Options),
+                        AvailableAt = createdAt,
+                        Attempts = 0,
+                        CreatedAt = createdAt
+                    },
+                    innerCt).ConfigureAwait(false);
 
-        var now = DateTime.UtcNow;
-        await _workQueue!.EnqueueAsync(
-            new ExecutionWorkItemRow
-            {
-                WorkItemId = _idGenerator.NewGuid(),
-                ExecutionId = executionId,
-                Kind = ExecutionWorkItemKinds.Start,
-                Payload = JsonSerializer.Serialize(
-                    new ExecutionStartWorkItemPayload(executionId, request),
-                    ExecutionWorkItemPayloadJson.Options),
-                AvailableAt = now,
-                Attempts = 0,
-                CreatedAt = now
+                return accepted;
             },
             ct).ConfigureAwait(false);
 
@@ -333,7 +333,7 @@ internal sealed class ExecutionService : IExecutionService
         var compiled = RestoreCompiledDefinitionFromVersion(args.VersionRow);
         var resolvedExecutionId = args.ExecutionId ?? _idGenerator.NewGuid();
         var engineId = resolvedExecutionId.ToString();
-        _engine.Start(compiled, engineId, args.Request.Input);
+        _engine.Start(compiled, engineId, args.Request.Input, args.Request.InitialState);
 
         var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, args.DefinitionId.ToString("D"), ct).ConfigureAwait(false)
             ?? args.DefinitionId.ToString("D");
@@ -819,11 +819,11 @@ internal sealed class ExecutionService : IExecutionService
         CommandDedupKey? dedupKey,
         CancellationToken ct)
     {
-        if (dedupKey is { } saveKey)
-        {
-            var now = DateTime.UtcNow;
-            await _executor.ExecuteReadCommittedAsync(
-                async (uow, innerCt) =>
+        var now = DateTime.UtcNow;
+        await _executor.ExecuteReadCommittedAsync(
+            async (uow, innerCt) =>
+            {
+                if (dedupKey is { } saveKey)
                 {
                     await _dedup.SaveAsync(
                         uow,
@@ -839,21 +839,21 @@ internal sealed class ExecutionService : IExecutionService
                             ExpiresAt = now.AddHours(24)
                         },
                         innerCt).ConfigureAwait(false);
-                },
-                ct).ConfigureAwait(false);
-        }
+                }
 
-        var enqueueAt = DateTime.UtcNow;
-        await _workQueue!.EnqueueAsync(
-            new ExecutionWorkItemRow
-            {
-                WorkItemId = _idGenerator.NewGuid(),
-                ExecutionId = executionId,
-                Kind = ExecutionWorkItemKinds.Cancel,
-                Payload = "{}",
-                AvailableAt = enqueueAt,
-                Attempts = 0,
-                CreatedAt = enqueueAt
+                await _workQueue!.EnqueueAsync(
+                    uow,
+                    new ExecutionWorkItemRow
+                    {
+                        WorkItemId = _idGenerator.NewGuid(),
+                        ExecutionId = executionId,
+                        Kind = ExecutionWorkItemKinds.Cancel,
+                        Payload = "{}",
+                        AvailableAt = now,
+                        Attempts = 0,
+                        CreatedAt = now
+                    },
+                    innerCt).ConfigureAwait(false);
             },
             ct).ConfigureAwait(false);
     }

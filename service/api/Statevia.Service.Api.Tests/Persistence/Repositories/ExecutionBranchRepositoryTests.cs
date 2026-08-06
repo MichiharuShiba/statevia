@@ -24,8 +24,8 @@ public sealed class ExecutionBranchRepositoryTests
 
         var branches = new[]
         {
-            CreateBranch(parentId, childA, "Start", "Join1", "A", now),
-            CreateBranch(parentId, childB, "Start", "Join1", "B", now)
+            CreateBranch(parentId, childA, "n1", "Join1", "A", now),
+            CreateBranch(parentId, childB, "n1", "Join1", "B", now)
         };
 
         // Act
@@ -59,7 +59,7 @@ public sealed class ExecutionBranchRepositoryTests
         var now = DateTime.UtcNow;
         await SeedExecutionsAsync(db.Options, now, parentId, childId);
 
-        var branch = CreateBranch(parentId, childId, "Start", "Join1", "A", now);
+        var branch = CreateBranch(parentId, childId, "n1", "Join1", "A", now);
         await using (var uow1 = await uowFactory.CreateAsync())
         {
             await repo.InsertBranchesIdempotentAsync(uow1, [branch], CancellationToken.None);
@@ -95,7 +95,7 @@ public sealed class ExecutionBranchRepositoryTests
         {
             await repo.InsertBranchesIdempotentAsync(
                 uow1,
-                [CreateBranch(parentId, child1, "Start", "Join1", "A", now)],
+                [CreateBranch(parentId, child1, "n1", "Join1", "A", now)],
                 CancellationToken.None);
             await uow1.SaveChangesAsync(CancellationToken.None);
         }
@@ -104,7 +104,7 @@ public sealed class ExecutionBranchRepositoryTests
         await using var uow2 = await uowFactory.CreateAsync();
         var act = () => repo.InsertBranchesIdempotentAsync(
             uow2,
-            [CreateBranch(parentId, child2, "Start", "Join1", "A", now)],
+            [CreateBranch(parentId, child2, "n1", "Join1", "A", now)],
             CancellationToken.None);
 
         // Assert
@@ -128,7 +128,7 @@ public sealed class ExecutionBranchRepositoryTests
         {
             await repo.InsertBranchesIdempotentAsync(
                 uow1,
-                [CreateBranch(parentId, childId, "Start", "Join1", "A", now)],
+                [CreateBranch(parentId, childId, "n1", "Join1", "A", now)],
                 CancellationToken.None);
             await uow1.SaveChangesAsync(CancellationToken.None);
         }
@@ -140,7 +140,7 @@ public sealed class ExecutionBranchRepositoryTests
         var updated = await repo.TryUpdateStatusAsync(
             uow2,
             parentId,
-            "Start",
+            "n1",
             "A",
             new ExecutionBranchStatusUpdate(
                 ExecutionBranchStatuses.Completed,
@@ -175,7 +175,7 @@ public sealed class ExecutionBranchRepositoryTests
         {
             await repo.InsertBranchesIdempotentAsync(
                 uow,
-                [CreateBranch(parentId, childId, "Start", "Join1", "A", now)],
+                [CreateBranch(parentId, childId, "n1", "Join1", "A", now)],
                 CancellationToken.None);
             await uow.SaveChangesAsync(CancellationToken.None);
         }
@@ -193,7 +193,7 @@ public sealed class ExecutionBranchRepositoryTests
     private static ExecutionBranchRow CreateBranch(
         Guid parentId,
         Guid childId,
-        string forkState,
+        string forkNodeId,
         string joinState,
         string branchState,
         DateTime now) =>
@@ -201,7 +201,7 @@ public sealed class ExecutionBranchRepositoryTests
         {
             ParentExecutionId = parentId,
             ExecutionId = childId,
-            ForkState = forkState,
+            ForkNodeId = forkNodeId,
             JoinState = joinState,
             BranchState = branchState,
             Status = ExecutionBranchStatuses.Running,
