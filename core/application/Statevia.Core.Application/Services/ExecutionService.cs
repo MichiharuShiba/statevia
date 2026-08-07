@@ -729,6 +729,14 @@ internal sealed class ExecutionService : IExecutionService
             return;
         }
 
+        // WORKER / 同期 Cancel: 未終端子へ Cancel をカスケード（ネストは各層で再帰）。
+        if (_forkChildCoordinator is not null)
+        {
+            await _forkChildCoordinator
+                .CascadeCancelToRunningChildrenAsync(uuid.Value, ct)
+                .ConfigureAwait(false);
+        }
+
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
         var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
@@ -1123,6 +1131,17 @@ internal sealed class ExecutionService : IExecutionService
         if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
+        // 親 ID への PublishEvent も子 Wait へ振り替える（要件4）。
+        if (await TryRedirectPublishEventToChildWaitAsync(
+                uuid.Value,
+                eventName,
+                idempotencyKey,
+                requestContext,
+                ct).ConfigureAwait(false))
+        {
+            return;
+        }
+
         await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
@@ -1432,6 +1451,18 @@ internal sealed class ExecutionService : IExecutionService
         if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
+        // 親 ID へ届いた分岐 Wait は子 execution へ振り替える（要件4）。
+        if (await TryRedirectResumeToChildWaitAsync(
+                uuid.Value,
+                nodeId,
+                eventName,
+                idempotencyKey,
+                requestContext,
+                ct).ConfigureAwait(false))
+        {
+            return;
+        }
+
         await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
@@ -1535,6 +1566,69 @@ internal sealed class ExecutionService : IExecutionService
 
         // 永続化中に進んだ Engine 完了を取りこぼさない（中間 RUNNING 上書きの保険）。
         await _projectionUpdateQueue.EnqueueAsync(uuid.Value, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 親 ID の Resume を子 Wait へ振り替える。振り替えたとき true。
+    /// </summary>
+    private async Task<bool> TryRedirectResumeToChildWaitAsync(
+        Guid requestedExecutionId,
+        string nodeId,
+        string eventName,
+        string? idempotencyKey,
+        CommandRequestContext requestContext,
+        CancellationToken ct)
+    {
+        if (_forkChildCoordinator is null)
+            return false;
+
+        if (string.Equals(eventName, ExecutionWaitEventNames.ChildCompleted, StringComparison.Ordinal))
+            return false;
+
+        var delivery = await _forkChildCoordinator
+            .TryResolveChildWaitDeliveryAsync(requestedExecutionId, nodeId, eventName, ct)
+            .ConfigureAwait(false);
+        if (delivery is null)
+            return false;
+
+        await ResumeNodeAsync(
+                delivery.ExecutionId.ToString("D"),
+                delivery.NodeId,
+                delivery.EventName,
+                idempotencyKey,
+                requestContext,
+                ct)
+            .ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>
+    /// 親 ID の PublishEvent を子 Wait へ振り替える。振り替えたとき true。
+    /// </summary>
+    private async Task<bool> TryRedirectPublishEventToChildWaitAsync(
+        Guid requestedExecutionId,
+        string eventName,
+        string? idempotencyKey,
+        CommandRequestContext requestContext,
+        CancellationToken ct)
+    {
+        if (_forkChildCoordinator is null)
+            return false;
+
+        var delivery = await _forkChildCoordinator
+            .TryResolveChildWaitDeliveryAsync(requestedExecutionId, nodeId: null, eventName, ct)
+            .ConfigureAwait(false);
+        if (delivery is null)
+            return false;
+
+        await PublishEventAsync(
+                delivery.ExecutionId.ToString("D"),
+                delivery.EventName,
+                idempotencyKey,
+                requestContext,
+                ct)
+            .ConfigureAwait(false);
+        return true;
     }
 
     /// <summary>

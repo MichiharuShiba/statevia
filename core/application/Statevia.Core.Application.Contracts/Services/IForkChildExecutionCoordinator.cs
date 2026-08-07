@@ -85,11 +85,23 @@ public sealed record ForkJoinEvaluation(
     string? FailureStatus = null);
 
 /// <summary>
+/// 親 ID で届いた Wait イベントを子 execution へ振り向ける配送先。
+/// </summary>
+/// <param name="ExecutionId">実際に Resume する execution（子）。</param>
+/// <param name="NodeId">子上の Wait ノード ID。</param>
+/// <param name="EventName">再開イベント名。</param>
+public sealed record ForkWaitDeliveryTarget(
+    Guid ExecutionId,
+    string NodeId,
+    string EventName);
+
+/// <summary>
 /// Hosted Runtime 向けに Fork を親＋子 execution へ展開する。
 /// </summary>
 /// <remarks>
 /// <para>子行作成・security snapshot 継承・Start enqueue・展開リトライ（D9）を担う。</para>
 /// <para>子終端信号・Join 再評価（D2-B / D3）と、充足時の親 Context（states / vars）マージ材料（D5）を担う。</para>
+/// <para>親 Cancel の未終端子カスケードと、分岐 Wait の配送先解決（要件4）も担う。</para>
 /// <para>input 写像は Engine 側で行い、本コーディネータは写像済み input を受け取る。</para>
 /// </remarks>
 public interface IForkChildExecutionCoordinator
@@ -130,6 +142,33 @@ public interface IForkChildExecutionCoordinator
     Task<ForkJoinEvaluation> EvaluateJoinAsync(
         Guid parentExecutionId,
         string forkNodeId,
+        CancellationToken ct);
+
+    /// <summary>
+    /// 親 Cancel 時に、未終端（Running）の子へ Cancel work item を enqueue する。
+    /// </summary>
+    /// <remarks>ネスト時は各層の Cancel 処理で再帰的に孫へ伝播する。</remarks>
+    /// <param name="parentExecutionId">親（または中間親）execution。</param>
+    /// <param name="ct">キャンセル トークン。</param>
+    Task CascadeCancelToRunningChildrenAsync(Guid parentExecutionId, CancellationToken ct);
+
+    /// <summary>
+    /// 親 ID へ届いた Wait Resume / PublishEvent を、子の <c>execution_waits</c> へ解決する。
+    /// </summary>
+    /// <remarks>
+    /// <para>要求 execution 自身に一致 Wait があるときは null（呼び出し側が従来どおり処理）。</para>
+    /// <para>子にだけ一致が 1 件あるとき配送先を返す。複数一致は例外（422）。</para>
+    /// </remarks>
+    /// <param name="requestedExecutionId">クライアントが指定した execution。</param>
+    /// <param name="nodeId">Resume の nodeId。PublishEvent 互換は null。</param>
+    /// <param name="eventName">再開イベント名。</param>
+    /// <param name="ct">キャンセル トークン。</param>
+    /// <returns>子への振替先。振替不要または一致なしのとき null。</returns>
+    /// <exception cref="InvalidOperationException">複数子に一致 Wait があり曖昧なとき。</exception>
+    Task<ForkWaitDeliveryTarget?> TryResolveChildWaitDeliveryAsync(
+        Guid requestedExecutionId,
+        string? nodeId,
+        string eventName,
         CancellationToken ct);
 }
 

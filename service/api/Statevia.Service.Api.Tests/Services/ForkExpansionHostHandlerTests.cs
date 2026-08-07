@@ -365,6 +365,16 @@ public sealed class ForkExpansionHostHandlerTests
             string forkNodeId,
             CancellationToken ct) =>
             Task.FromResult(new ForkJoinEvaluation(ForkJoinEvaluationKind.Waiting, "Join1"));
+
+        public Task CascadeCancelToRunningChildrenAsync(Guid parentExecutionId, CancellationToken ct) =>
+            Task.CompletedTask;
+
+        public Task<ForkWaitDeliveryTarget?> TryResolveChildWaitDeliveryAsync(
+            Guid requestedExecutionId,
+            string? nodeId,
+            string eventName,
+            CancellationToken ct) =>
+            Task.FromResult<ForkWaitDeliveryTarget?>(null);
     }
 
     private sealed class RecordingExecutionService : IExecutionService

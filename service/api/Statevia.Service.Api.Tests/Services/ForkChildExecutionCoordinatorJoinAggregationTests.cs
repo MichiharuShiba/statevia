@@ -142,6 +142,7 @@ public sealed class ForkChildExecutionCoordinatorJoinAggregationTests
             executor,
             new ExecutionRepository(),
             new ExecutionBranchRepository(),
+            new ExecutionWaitRepository(db.Factory),
             workQueue,
             new GuidIdGenerator(),
             new StubDisplayIdWrites(),

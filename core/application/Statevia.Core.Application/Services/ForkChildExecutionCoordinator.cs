@@ -12,10 +12,12 @@ namespace Statevia.Core.Application.Services;
 /// <remarks>
 /// <para>子作成・execution_branches・Start enqueue を同一 ReadCommitted で行い、一時失敗は Options に従い再試行する（D9）。</para>
 /// <para>上限超過時は作成済みの未終端子へ Cancel を enqueue し、親を Failed にする。</para>
+/// <para>親 Cancel カスケードと分岐 Wait の子配送解決（要件4）も担う。</para>
 /// </remarks>
 /// <param name="executor">トランザクション実行。</param>
 /// <param name="executions">executions 永続化。</param>
 /// <param name="branches">execution_branches 永続化。</param>
+/// <param name="waits">execution_waits 永続化（配送先解決）。</param>
 /// <param name="workQueue">work item キュー。</param>
 /// <param name="idGenerator">ID 生成。</param>
 /// <param name="displayIdWrites">display ID 割当。</param>
@@ -30,6 +32,7 @@ public sealed class ForkChildExecutionCoordinator(
     ICoreTransactionExecutor executor,
     IExecutionRepository executions,
     IExecutionBranchRepository branches,
+    IExecutionWaitRepository waits,
     IExecutionWorkQueue workQueue,
     IIdGenerator idGenerator,
     IDisplayIdWriteService displayIdWrites,
@@ -233,6 +236,66 @@ public sealed class ForkChildExecutionCoordinator(
             joinState,
             CandidateInputs: candidateInputs,
             ContextMerges: contextMerges);
+    }
+
+    /// <inheritdoc />
+    public async Task CascadeCancelToRunningChildrenAsync(Guid parentExecutionId, CancellationToken ct)
+    {
+        await executor.ExecuteReadCommittedAsync(
+                async (uow, innerCt) =>
+                {
+                    var rows = await branches.ListByParentExecutionIdAsync(uow, parentExecutionId, innerCt)
+                        .ConfigureAwait(false);
+                    await EnqueueCancelForRunningBranchesAsync(uow, rows, DateTime.UtcNow, innerCt)
+                        .ConfigureAwait(false);
+                },
+                ct)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<ForkWaitDeliveryTarget?> TryResolveChildWaitDeliveryAsync(
+        Guid requestedExecutionId,
+        string? nodeId,
+        string eventName,
+        CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
+        var normalizedEvent = eventName.Trim();
+
+        return await executor.ExecuteReadOnlyAsync(
+                async (uow, innerCt) =>
+                {
+                    var localWaits = await waits.ListByExecutionIdAsync(uow, requestedExecutionId, innerCt)
+                        .ConfigureAwait(false);
+                    if (FindMatchingWaits(localWaits, requestedExecutionId, nodeId, normalizedEvent).Count > 0)
+                        return null;
+
+                    var childRows = await branches.ListByParentExecutionIdAsync(uow, requestedExecutionId, innerCt)
+                        .ConfigureAwait(false);
+                    if (childRows.Count == 0)
+                        return null;
+
+                    var matches = new List<ForkWaitDeliveryTarget>();
+                    foreach (var childExecutionId in childRows.Select(child => child.ExecutionId))
+                    {
+                        var childWaits = await waits.ListByExecutionIdAsync(uow, childExecutionId, innerCt)
+                            .ConfigureAwait(false);
+                        matches.AddRange(
+                            FindMatchingWaits(childWaits, childExecutionId, nodeId, normalizedEvent));
+                    }
+
+                    return matches.Count switch
+                    {
+                        0 => null,
+                        1 => matches[0],
+                        _ => throw new InvalidOperationException(
+                            $"Ambiguous Wait delivery for execution {requestedExecutionId:D} event '{normalizedEvent}': "
+                            + $"{matches.Count} child waits match.")
+                    };
+                },
+                ct)
+            .ConfigureAwait(false);
     }
 
     /// <summary>
@@ -441,26 +504,60 @@ public sealed class ForkChildExecutionCoordinator(
                             innerCt)
                         .ConfigureAwait(false);
 
-                    var cancelItems = rows
-                        .Where(r => string.Equals(r.Status, ExecutionBranchStatuses.Running, StringComparison.Ordinal))
-                        .Select(row => new ExecutionWorkItemRow
-                        {
-                            WorkItemId = idGenerator.NewGuid(),
-                            ExecutionId = row.ExecutionId,
-                            Kind = ExecutionWorkItemKinds.Cancel,
-                            Payload = "{}",
-                            AvailableAt = now,
-                            Attempts = 0,
-                            CreatedAt = now
-                        })
-                        .ToList();
-
-                    await workQueue.EnqueueManyAsync(uow, cancelItems, innerCt).ConfigureAwait(false);
+                    await EnqueueCancelForRunningBranchesAsync(uow, rows, now, innerCt).ConfigureAwait(false);
                 },
                 ct)
             .ConfigureAwait(false);
 
         _ = joinState;
+    }
+
+    private async Task EnqueueCancelForRunningBranchesAsync(
+        ICoreUnitOfWork uow,
+        IReadOnlyList<ExecutionBranchRow> rows,
+        DateTime now,
+        CancellationToken ct)
+    {
+        var cancelItems = rows
+            .Where(r => string.Equals(r.Status, ExecutionBranchStatuses.Running, StringComparison.Ordinal))
+            .Select(row => new ExecutionWorkItemRow
+            {
+                WorkItemId = idGenerator.NewGuid(),
+                ExecutionId = row.ExecutionId,
+                Kind = ExecutionWorkItemKinds.Cancel,
+                Payload = "{}",
+                AvailableAt = now,
+                Attempts = 0,
+                CreatedAt = now
+            })
+            .ToList();
+
+        if (cancelItems.Count == 0)
+            return;
+
+        await workQueue.EnqueueManyAsync(uow, cancelItems, ct).ConfigureAwait(false);
+    }
+
+    private static List<ForkWaitDeliveryTarget> FindMatchingWaits(
+        IReadOnlyList<ExecutionWaitRow> waitRows,
+        Guid executionId,
+        string? nodeId,
+        string eventName)
+    {
+        return waitRows
+            .Where(wait =>
+            {
+                if (!string.IsNullOrWhiteSpace(nodeId)
+                    && !string.Equals(wait.NodeId, nodeId, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                return wait.AllowedEvents.Any(allowed =>
+                    string.Equals(allowed, eventName, StringComparison.Ordinal));
+            })
+            .Select(wait => new ForkWaitDeliveryTarget(executionId, wait.NodeId, eventName))
+            .ToList();
     }
 
     private static JsonElement? ToJsonElement(object? value)

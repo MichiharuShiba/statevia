@@ -184,6 +184,7 @@ public sealed class ForkChildExecutionCoordinatorExpandTests
             executor,
             new ExecutionRepository(),
             branches ?? new ExecutionBranchRepository(),
+            new ExecutionWaitRepository(db.Factory),
             workQueue,
             new GuidIdGenerator(),
             new StubDisplayIdWrites(),
