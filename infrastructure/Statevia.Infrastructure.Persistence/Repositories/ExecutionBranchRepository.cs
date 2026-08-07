@@ -39,6 +39,8 @@ internal sealed class ExecutionBranchRepository : IExecutionBranchRepository
                     BranchState = branch.BranchState,
                     Status = branch.Status,
                     OutputJson = branch.OutputJson,
+                    StatesJson = branch.StatesJson,
+                    VarsJson = branch.VarsJson,
                     CreatedAt = branch.CreatedAt,
                     UpdatedAt = branch.UpdatedAt
                 });
@@ -121,6 +123,10 @@ internal sealed class ExecutionBranchRepository : IExecutionBranchRepository
         row.UpdatedAt = update.UpdatedAt;
         if (update.OutputJson is not null)
             row.OutputJson = update.OutputJson;
+        if (update.StatesJson is not null)
+            row.StatesJson = update.StatesJson;
+        if (update.VarsJson is not null)
+            row.VarsJson = update.VarsJson;
 
         return true;
     }

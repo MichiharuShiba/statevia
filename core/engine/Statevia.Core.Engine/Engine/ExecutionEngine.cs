@@ -786,7 +786,8 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
     public void CompletePhysicalJoin(
         string executionId,
         string joinStateName,
-        IReadOnlyDictionary<string, object?> branchOutputs)
+        IReadOnlyDictionary<string, object?> branchOutputs,
+        IReadOnlyList<PhysicalJoinContextFragment>? contextMerges = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(executionId);
         ArgumentException.ThrowIfNullOrWhiteSpace(joinStateName);
@@ -802,6 +803,17 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         {
             throw new InvalidOperationException(
                 $"Join state '{joinStateName}' is not defined for execution '{executionId}'.");
+        }
+
+        if (contextMerges is { Count: > 0 })
+        {
+            foreach (var fragment in contextMerges)
+            {
+                if (fragment.States is { Count: > 0 })
+                    instance.Context.MergeStateEntries(fragment.States);
+                if (fragment.Vars is not null)
+                    instance.Context.MergeVars(fragment.Vars);
+            }
         }
 
         foreach (var (branchState, branchOutput) in branchOutputs)

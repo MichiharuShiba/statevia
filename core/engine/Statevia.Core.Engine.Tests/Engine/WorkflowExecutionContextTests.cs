@@ -126,4 +126,32 @@ public class WorkflowExecutionContextTests
         Assert.Equal(TimeSpan.Zero, utcNow.Offset);
         Assert.Equal(DateTimeOffset.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), today);
     }
+
+    /// <summary>MergeStateEntries / MergeVars は後から適用した断片が同一キーで勝つ。</summary>
+    [Fact]
+    public void MergeStateEntriesAndVars_LaterFragmentWinsOnConflict()
+    {
+        // Arrange
+        var context = WorkflowExecutionContext.Create(null);
+        context.MergeStateEntries(new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["A"] = new Dictionary<string, object?> { ["output"] = 1 }
+        });
+        context.MergeVars(new Dictionary<string, object?> { ["shared"] = "first", ["onlyFirst"] = true });
+
+        // Act
+        context.MergeStateEntries(new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["A"] = new Dictionary<string, object?> { ["output"] = 99 },
+            ["B"] = new Dictionary<string, object?> { ["output"] = 2 }
+        });
+        context.MergeVars(new Dictionary<string, object?> { ["shared"] = "second" });
+        var root = context.ToPathRoot();
+
+        // Assert
+        Assert.Equal(99, SimpleJsonPathResolver.Resolve(root, "$.states.A.output").Value);
+        Assert.Equal(2, SimpleJsonPathResolver.Resolve(root, "$.states.B.output").Value);
+        Assert.Equal("second", SimpleJsonPathResolver.Resolve(root, "$.vars.shared").Value);
+        Assert.Equal(true, SimpleJsonPathResolver.Resolve(root, "$.vars.onlyFirst").Value);
+    }
 }

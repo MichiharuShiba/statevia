@@ -54,11 +54,24 @@ public enum ForkJoinEvaluationKind
     Failed
 }
 
+/// <summary>
+/// Join 充足時に親 Context へ投影する子 1 件分の Context 断片。
+/// </summary>
+/// <remarks>リスト順が適用順。同一キーは後勝ち（D5）。</remarks>
+/// <param name="States">子の完了済み State エントリ（stateName → `{ output: … }`）。</param>
+/// <param name="Vars">子終端時点の vars オブジェクト。</param>
+public sealed record ForkJoinChildContextMerge(
+    IReadOnlyDictionary<string, object?> States,
+    object? Vars);
+
 /// <summary>親 Join 再評価の結果。</summary>
 /// <param name="Kind">評価結果。</param>
 /// <param name="JoinState">対象 Join 状態名。</param>
 /// <param name="CandidateInputs">
 /// <see cref="ForkJoinEvaluationKind.Satisfied"/> のとき、分岐先頭 → 子終端 output の辞書。
+/// </param>
+/// <param name="ContextMerges">
+/// <see cref="ForkJoinEvaluationKind.Satisfied"/> のとき、UpdatedAt 昇順の Context 断片（後勝ち）。
 /// </param>
 /// <param name="FailureStatus">
 /// <see cref="ForkJoinEvaluationKind.Failed"/> のとき、親へ伝播する終端 status
@@ -68,6 +81,7 @@ public sealed record ForkJoinEvaluation(
     ForkJoinEvaluationKind Kind,
     string JoinState,
     IReadOnlyDictionary<string, object?>? CandidateInputs = null,
+    IReadOnlyList<ForkJoinChildContextMerge>? ContextMerges = null,
     string? FailureStatus = null);
 
 /// <summary>
@@ -75,7 +89,7 @@ public sealed record ForkJoinEvaluation(
 /// </summary>
 /// <remarks>
 /// <para>子行作成・security snapshot 継承・Start enqueue・展開リトライ（D9）を担う。</para>
-/// <para>子終端信号と Join 再評価（D2-B / D3）も担う。親 Context の states/vars マージは別タスク。</para>
+/// <para>子終端信号・Join 再評価（D2-B / D3）と、充足時の親 Context（states / vars）マージ材料（D5）を担う。</para>
 /// <para>input 写像は Engine 側で行い、本コーディネータは写像済み input を受け取る。</para>
 /// </remarks>
 public interface IForkChildExecutionCoordinator
@@ -94,12 +108,16 @@ public interface IForkChildExecutionCoordinator
     /// <param name="childExecutionId">終端した子 execution。</param>
     /// <param name="status">子の投影 status（Completed / Failed / Cancelled）。</param>
     /// <param name="outputJson">子終端 output の JSON（任意）。</param>
+    /// <param name="statesJson">子終端 <c>states</c> の JSON（任意）。</param>
+    /// <param name="varsJson">子終端 <c>vars</c> の JSON（任意）。</param>
     /// <param name="ct">キャンセル トークン。</param>
     /// <returns>分岐行があり信号を処理したとき true。非子のとき false。</returns>
     Task<bool> NotifyChildTerminalAsync(
         Guid childExecutionId,
         string status,
         string? outputJson,
+        string? statesJson,
+        string? varsJson,
         CancellationToken ct);
 
     /// <summary>

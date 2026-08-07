@@ -1,7 +1,9 @@
 # スキーマ定義
 
-Version: 1.16
+Version: 1.17
 Project: 実行型ステートマシン
+
+**Version 1.17（2026-08-07）**: `execution_branches` に `states_json` / `vars_json` を追加（Join 後の親 Context マージ用）。
 
 **Version 1.16（2026-08-06）**: `execution_branches` 追加（Hosted Fork 物理子の親子リンク正本。`fork_node_id` は実行ノード ID、`join_state` / `branch_state` は定義の状態名空間）。
 
@@ -310,6 +312,8 @@ Hosted Runtime が Fork を物理子 execution に展開したときの親子リ
 | join_state | varchar(256) | NOT NULL | Join 状態名 |
 | status | varchar(64) | NOT NULL | Running / Completed / Failed / Cancelled |
 | output_json | jsonb | NULL | 終端 output 退避（任意） |
+| states_json | jsonb | NULL | 子終端時点の `states`（Join 後の親 Context マージ用。任意） |
+| vars_json | jsonb | NULL | 子終端時点の `vars`（Join 後の親 Context マージ用。任意） |
 | created_at | timestamptz | NOT NULL | 作成日時 |
 | updated_at | timestamptz | NOT NULL | 更新日時 |
 

@@ -206,7 +206,8 @@ public sealed class ExecutionServiceTests
         public void CompletePhysicalJoin(
             string executionId,
             string joinStateName,
-            IReadOnlyDictionary<string, object?> branchOutputs)
+            IReadOnlyDictionary<string, object?> branchOutputs,
+            IReadOnlyList<PhysicalJoinContextFragment>? contextMerges = null)
         {
             // no-op for tests
         }

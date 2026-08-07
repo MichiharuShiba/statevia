@@ -54,6 +54,12 @@ public sealed class ExecutionBranchRow
     /// <summary>終端時に親へ渡す output の JSON（任意）。</summary>
     public string? OutputJson { get; set; }
 
+    /// <summary>子終端時点の <c>states</c> JSON（Join 後の親 Context マージ用。任意）。</summary>
+    public string? StatesJson { get; set; }
+
+    /// <summary>子終端時点の <c>vars</c> JSON（Join 後の親 Context マージ用。任意）。</summary>
+    public string? VarsJson { get; set; }
+
     /// <summary>行作成時刻（UTC）。</summary>
     public DateTime CreatedAt { get; set; }
 
@@ -61,11 +67,15 @@ public sealed class ExecutionBranchRow
     public DateTime UpdatedAt { get; set; }
 }
 
-/// <summary><c>execution_branches</c> の status / output 更新用 DTO。</summary>
+/// <summary><c>execution_branches</c> の status / output / Context 更新用 DTO。</summary>
 /// <param name="Status">新しい status（<see cref="ExecutionBranchStatuses"/>）。</param>
 /// <param name="UpdatedAt">更新時刻（UTC）。</param>
 /// <param name="OutputJson">終端 output JSON。null のとき列は変更しない。</param>
+/// <param name="StatesJson">終端 <c>states</c> JSON。null のとき列は変更しない。</param>
+/// <param name="VarsJson">終端 <c>vars</c> JSON。null のとき列は変更しない。</param>
 public sealed record ExecutionBranchStatusUpdate(
     string Status,
     DateTime UpdatedAt,
-    string? OutputJson);
+    string? OutputJson,
+    string? StatesJson = null,
+    string? VarsJson = null);

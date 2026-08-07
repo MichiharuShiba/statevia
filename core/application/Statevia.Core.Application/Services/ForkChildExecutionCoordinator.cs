@@ -98,6 +98,8 @@ public sealed class ForkChildExecutionCoordinator(
         Guid childExecutionId,
         string status,
         string? outputJson,
+        string? statesJson,
+        string? varsJson,
         CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(status);
@@ -120,7 +122,12 @@ public sealed class ForkChildExecutionCoordinator(
                                 branch.ParentExecutionId,
                                 branch.ForkNodeId,
                                 branch.BranchState,
-                                new ExecutionBranchStatusUpdate(status, now, outputJson),
+                                new ExecutionBranchStatusUpdate(
+                                    status,
+                                    now,
+                                    outputJson,
+                                    statesJson,
+                                    varsJson),
                                 innerCt)
                             .ConfigureAwait(false);
                         if (!updated)
@@ -212,15 +219,20 @@ public sealed class ForkChildExecutionCoordinator(
         }
 
         var candidateInputs = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-        foreach (var row in rows)
+        var contextMerges = new List<ForkJoinChildContextMerge>();
+        foreach (var row in rows.OrderBy(r => r.UpdatedAt).ThenBy(r => r.BranchState, StringComparer.Ordinal))
         {
             candidateInputs[row.BranchState] = ParseOutputJson(row.OutputJson);
+            contextMerges.Add(new ForkJoinChildContextMerge(
+                ParseStatesJson(row.StatesJson),
+                ParseOutputJson(row.VarsJson)));
         }
 
         return new ForkJoinEvaluation(
             ForkJoinEvaluationKind.Satisfied,
             joinState,
-            CandidateInputs: candidateInputs);
+            CandidateInputs: candidateInputs,
+            ContextMerges: contextMerges);
     }
 
     /// <summary>
@@ -470,5 +482,21 @@ public sealed class ForkChildExecutionCoordinator(
 
         using var document = JsonDocument.Parse(outputJson);
         return document.RootElement.Clone();
+    }
+
+    private static Dictionary<string, object?> ParseStatesJson(string? statesJson)
+    {
+        if (string.IsNullOrWhiteSpace(statesJson))
+            return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
+        using var document = JsonDocument.Parse(statesJson);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+            return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
+        return document.RootElement.EnumerateObject()
+            .ToDictionary(
+                prop => prop.Name,
+                prop => (object?)prop.Value.Clone(),
+                StringComparer.OrdinalIgnoreCase);
     }
 }

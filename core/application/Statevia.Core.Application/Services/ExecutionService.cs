@@ -1648,7 +1648,19 @@ internal sealed class ExecutionService : IExecutionService
         await EnsureEngineRuntimeLoadedForMutationAsync(parentExecutionId, execution, ct).ConfigureAwait(false);
 
         var engineId = parentExecutionId.ToString();
-        _engine.CompletePhysicalJoin(engineId, evaluation.JoinState, evaluation.CandidateInputs);
+        IReadOnlyList<PhysicalJoinContextFragment>? fragments = null;
+        if (evaluation.ContextMerges is { Count: > 0 })
+        {
+            fragments = evaluation.ContextMerges
+                .Select(m => new PhysicalJoinContextFragment(m.States, m.Vars))
+                .ToList();
+        }
+
+        _engine.CompletePhysicalJoin(
+            engineId,
+            evaluation.JoinState,
+            evaluation.CandidateInputs,
+            fragments);
         await WaitForEngineQuiescedAfterWaitAsync(engineId, ct).ConfigureAwait(false);
 
         var (status, cancelRequested, graphJson) = BuildProjectionFromEngine(parentExecutionId);
@@ -2386,8 +2398,13 @@ internal sealed class ExecutionService : IExecutionService
             ct).ConfigureAwait(false);
 
         string? childTerminalOutputJson = null;
+        string? childTerminalStatesJson = null;
+        string? childTerminalVarsJson = null;
         if (ExecutionProjectionStatuses.IsTerminal(status))
-            childTerminalOutputJson = TryGetWorkflowOutputJson(engineExecutionId);
+        {
+            (childTerminalOutputJson, childTerminalStatesJson, childTerminalVarsJson) =
+                TryGetChildTerminalContextJson(engineExecutionId);
+        }
 
         if (shouldUnloadAfterProjection)
         {
@@ -2398,20 +2415,53 @@ internal sealed class ExecutionService : IExecutionService
         if (ExecutionProjectionStatuses.IsTerminal(status) && _forkChildCoordinator is not null)
         {
             await _forkChildCoordinator
-                .NotifyChildTerminalAsync(executionId, status, childTerminalOutputJson, ct)
+                .NotifyChildTerminalAsync(
+                    executionId,
+                    status,
+                    childTerminalOutputJson,
+                    childTerminalStatesJson,
+                    childTerminalVarsJson,
+                    ct)
                 .ConfigureAwait(false);
         }
     }
 
-    /// <summary>ロード中 Engine から終端 workflow output を JSON 文字列として取り出す。</summary>
-    private string? TryGetWorkflowOutputJson(string engineExecutionId)
+    /// <summary>ロード中 Engine から終端 Context（output / states / vars）を JSON 文字列として取り出す。</summary>
+    private (string? OutputJson, string? StatesJson, string? VarsJson) TryGetChildTerminalContextJson(
+        string engineExecutionId)
     {
         var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
-        var output = checkpoint?.Context.WorkflowOutput;
-        if (output is null || output.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
-            return null;
+        if (checkpoint is null)
+            return (null, null, null);
 
-        return output.Value.GetRawText();
+        var output = checkpoint.Context.WorkflowOutput;
+        string? outputJson = null;
+        if (output is not null
+            && output.Value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
+        {
+            outputJson = output.Value.GetRawText();
+        }
+
+        string? statesJson = null;
+        if (checkpoint.Context.States is { Count: > 0 })
+        {
+            statesJson = JsonSerializer.Serialize(
+                checkpoint.Context.States.ToDictionary(
+                    kv => kv.Key,
+                    kv => kv.Value,
+                    StringComparer.OrdinalIgnoreCase),
+                CamelCaseJsonSerializerOptions);
+        }
+
+        string? varsJson = null;
+        var vars = checkpoint.Context.Vars;
+        if (vars is not null
+            && vars.Value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
+        {
+            varsJson = vars.Value.GetRawText();
+        }
+
+        return (outputJson, statesJson, varsJson);
     }
 
     /// <summary>

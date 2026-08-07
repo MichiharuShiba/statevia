@@ -87,14 +87,19 @@ public interface IExecutionEngine
     /// <param name="executionId">親実行インスタンス ID（ロード済みであること）。</param>
     /// <param name="joinStateName">充足させる Join 状態名。</param>
     /// <param name="branchOutputs">分岐先頭状態名 → 子終端 output。</param>
+    /// <param name="contextMerges">
+    /// 親 Context へ投影する子 Context 断片（適用順。省略可）。
+    /// </param>
     /// <remarks>
     /// <para>既に同一 Join を開始済みなら no-op。</para>
     /// <para>Host が <c>execution_branches</c> で充足を確認したあとに呼び出す。</para>
+    /// <para><paramref name="contextMerges"/> は Join 実行前に適用し、後続状態の <c>$.states</c> / <c>$.vars</c> 解決に使う。</para>
     /// </remarks>
     void CompletePhysicalJoin(
         string executionId,
         string joinStateName,
-        IReadOnlyDictionary<string, object?> branchOutputs);
+        IReadOnlyDictionary<string, object?> branchOutputs,
+        IReadOnlyList<PhysicalJoinContextFragment>? contextMerges = null);
 
     /// <summary>再開可能なランタイム状態をエクスポートする。</summary>
     /// <param name="executionId">実行インスタンス ID。</param>

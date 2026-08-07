@@ -34,6 +34,8 @@ public sealed class ForkChildExecutionCoordinatorJoinAggregationTests
             childA,
             ExecutionProjectionStatuses.Completed,
             """{"v":1}""",
+            """{"A":{"output":"a-out"}}""",
+            """{"x":1}""",
             CancellationToken.None);
 
         // Assert
@@ -48,6 +50,8 @@ public sealed class ForkChildExecutionCoordinatorJoinAggregationTests
         var row = await verify.ExecutionBranches.SingleAsync(x => x.ExecutionId == childA);
         Assert.Equal(ExecutionBranchStatuses.Completed, row.Status);
         Assert.Equal("""{"v":1}""", row.OutputJson);
+        Assert.Equal("""{"A":{"output":"a-out"}}""", row.StatesJson);
+        Assert.Equal("""{"x":1}""", row.VarsJson);
     }
 
     /// <summary>全子 Completed なら候補 input 付き Satisfied を返す。</summary>
@@ -61,8 +65,8 @@ public sealed class ForkChildExecutionCoordinatorJoinAggregationTests
         var childB = Guid.NewGuid();
         var now = DateTime.UtcNow;
         await SeedParentAndBranchesAsync(db.Options, parentId, childA, childB, now);
-        await MarkBranchAsync(db.Options, parentId, "A", ExecutionBranchStatuses.Completed, """{"a":true}""", now);
-        await MarkBranchAsync(db.Options, parentId, "B", ExecutionBranchStatuses.Completed, """{"b":true}""", now);
+        await MarkBranchAsync(db.Options, parentId, "A", ExecutionBranchStatuses.Completed, """{"a":true}""", """{"A":{"output":1}}""", """{"shared":"first"}""", now.AddSeconds(1));
+        await MarkBranchAsync(db.Options, parentId, "B", ExecutionBranchStatuses.Completed, """{"b":true}""", """{"B":{"output":2},"A":{"output":99}}""", """{"shared":"second"}""", now.AddSeconds(2));
 
         var sut = CreateSut(db, new CapturingWorkQueue());
 
@@ -77,6 +81,11 @@ public sealed class ForkChildExecutionCoordinatorJoinAggregationTests
         Assert.True(evaluation.CandidateInputs.ContainsKey("A"));
         Assert.True(evaluation.CandidateInputs.ContainsKey("B"));
         Assert.Equal(JsonValueKind.Object, ((JsonElement)evaluation.CandidateInputs["A"]!).ValueKind);
+        Assert.NotNull(evaluation.ContextMerges);
+        Assert.Equal(2, evaluation.ContextMerges.Count);
+        Assert.True(evaluation.ContextMerges[0].States.ContainsKey("A"));
+        Assert.True(evaluation.ContextMerges[1].States.ContainsKey("A"));
+        Assert.Equal(99, ((JsonElement)evaluation.ContextMerges[1].States["A"]!).GetProperty("output").GetInt32());
     }
 
     /// <summary>一文 Failed なら Failed 評価を返す。</summary>
@@ -90,7 +99,7 @@ public sealed class ForkChildExecutionCoordinatorJoinAggregationTests
         var childB = Guid.NewGuid();
         var now = DateTime.UtcNow;
         await SeedParentAndBranchesAsync(db.Options, parentId, childA, childB, now);
-        await MarkBranchAsync(db.Options, parentId, "A", ExecutionBranchStatuses.Failed, null, now);
+        await MarkBranchAsync(db.Options, parentId, "A", ExecutionBranchStatuses.Failed, null, null, null, now);
 
         var sut = CreateSut(db, new CapturingWorkQueue());
 
@@ -114,7 +123,7 @@ public sealed class ForkChildExecutionCoordinatorJoinAggregationTests
         var childB = Guid.NewGuid();
         var now = DateTime.UtcNow;
         await SeedParentAndBranchesAsync(db.Options, parentId, childA, childB, now);
-        await MarkBranchAsync(db.Options, parentId, "A", ExecutionBranchStatuses.Completed, "{}", now);
+        await MarkBranchAsync(db.Options, parentId, "A", ExecutionBranchStatuses.Completed, "{}", null, null, now);
 
         var sut = CreateSut(db, new CapturingWorkQueue());
 
@@ -217,6 +226,8 @@ public sealed class ForkChildExecutionCoordinatorJoinAggregationTests
         string branchState,
         string status,
         string? outputJson,
+        string? statesJson,
+        string? varsJson,
         DateTime now)
     {
         await using var db = new CoreDbContext(options);
@@ -224,6 +235,8 @@ public sealed class ForkChildExecutionCoordinatorJoinAggregationTests
             x.ParentExecutionId == parentId && x.BranchState == branchState);
         row.Status = status;
         row.OutputJson = outputJson;
+        row.StatesJson = statesJson;
+        row.VarsJson = varsJson;
         row.UpdatedAt = now;
         await db.SaveChangesAsync();
     }

@@ -355,6 +355,8 @@ public sealed class ForkExpansionHostHandlerTests
             Guid childExecutionId,
             string status,
             string? outputJson,
+            string? statesJson,
+            string? varsJson,
             CancellationToken ct) =>
             Task.FromResult(false);
 

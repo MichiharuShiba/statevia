@@ -112,6 +112,8 @@ internal class CoreDbContext : DbContext, ICoreDatabase
         public const string JoinState = "join_state";
         public const string BranchState = "branch_state";
         public const string OutputJson = "output_json";
+        public const string StatesJson = "states_json";
+        public const string VarsJson = "vars_json";
     }
 
     private static class ColumnTypes
@@ -395,6 +397,12 @@ internal class CoreDbContext : DbContext, ICoreDatabase
             e.Property(x => x.Status).HasMaxLength(64).HasColumnName(Columns.Status);
             e.Property(x => x.OutputJson)
                 .HasColumnName(Columns.OutputJson)
+                .HasColumnType(ColumnTypes.Jsonb);
+            e.Property(x => x.StatesJson)
+                .HasColumnName(Columns.StatesJson)
+                .HasColumnType(ColumnTypes.Jsonb);
+            e.Property(x => x.VarsJson)
+                .HasColumnName(Columns.VarsJson)
                 .HasColumnType(ColumnTypes.Jsonb);
             e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
             e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
