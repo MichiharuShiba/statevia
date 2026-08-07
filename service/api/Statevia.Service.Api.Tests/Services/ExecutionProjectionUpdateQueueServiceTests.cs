@@ -60,6 +60,13 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         {
         }
 
+        public void CompletePhysicalJoin(
+            string executionId,
+            string joinStateName,
+            IReadOnlyDictionary<string, object?> branchOutputs)
+        {
+        }
+
         public ExecutionRuntimeCheckpoint? ExportCheckpoint(string executionId) => null;
 
         public void ImportCheckpoint(CompiledWorkflowDefinition definition, ExecutionRuntimeCheckpoint checkpoint)

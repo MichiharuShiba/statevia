@@ -350,6 +350,19 @@ public sealed class ForkExpansionHostHandlerTests
             Called = true;
             return Task.FromResult(Result);
         }
+
+        public Task<bool> NotifyChildTerminalAsync(
+            Guid childExecutionId,
+            string status,
+            string? outputJson,
+            CancellationToken ct) =>
+            Task.FromResult(false);
+
+        public Task<ForkJoinEvaluation> EvaluateJoinAsync(
+            Guid parentExecutionId,
+            string forkNodeId,
+            CancellationToken ct) =>
+            Task.FromResult(new ForkJoinEvaluation(ForkJoinEvaluationKind.Waiting, "Join1"));
     }
 
     private sealed class RecordingExecutionService : IExecutionService

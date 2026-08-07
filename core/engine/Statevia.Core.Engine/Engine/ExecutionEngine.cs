@@ -769,8 +769,47 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             return;
         }
 
+        // Hosted 物理子: Join は親が集約する。子は分岐終端として完了する。
+        if (_forkExpansionHandler is not null
+            && instance.Definition.JoinTable.ContainsKey(transition.Next))
+        {
+            instance.MarkCompleted(output);
+            _executionLog.LogExecutionCompleted(instance.ExecutionId, instance.Definition.Name);
+            return;
+        }
+
         var mappedInput = ApplyStateInput(instance, transition.Next, output);
         _ = ScheduleStateAsync(instance, eventProvider, transition.Next, nodeId, EdgeType.Next, mappedInput);
+    }
+
+    /// <inheritdoc />
+    public void CompletePhysicalJoin(
+        string executionId,
+        string joinStateName,
+        IReadOnlyDictionary<string, object?> branchOutputs)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(joinStateName);
+        ArgumentNullException.ThrowIfNull(branchOutputs);
+
+        if (!_instances.TryGetValue(executionId, out var instance)
+            || !_eventProviders.TryGetValue(executionId, out var eventProvider))
+        {
+            throw new InvalidOperationException($"Execution '{executionId}' is not loaded.");
+        }
+
+        if (!instance.Definition.JoinTable.ContainsKey(joinStateName))
+        {
+            throw new InvalidOperationException(
+                $"Join state '{joinStateName}' is not defined for execution '{executionId}'.");
+        }
+
+        foreach (var (branchState, branchOutput) in branchOutputs)
+        {
+            instance.JoinTracker.RecordFact(branchState, Fact.Completed, branchOutput);
+        }
+
+        _ = RunJoinStateAsync(instance, eventProvider, joinStateName, fromNodeId: null, edgeType: null);
     }
 
     private object? ApplyStateInput(ExecutionInstance instance, string targetState, object? rawInput)

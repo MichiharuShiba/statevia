@@ -9,6 +9,63 @@ namespace Statevia.Core.Engine.Tests.Engine;
 /// <summary>Hosted 向け Fork 展開ハンドラ差し替え。</summary>
 public sealed class ForkExpansionHandlerTests
 {
+    /// <summary>Hosted ハンドラ登録時、分岐子が Join へ遷移すると子は終端する。</summary>
+    [Fact]
+    public async Task SetForkExpansionHandler_ChildTransitionToJoin_MarksCompleted()
+    {
+        // Arrange
+        var def = CreateForkDefinition();
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
+        engine.SetForkExpansionHandler(_ => Task.CompletedTask);
+
+        // Act
+        var executionId = engine.Start(def, initialState: "A");
+        await Task.Delay(300).ConfigureAwait(false);
+        var snapshot = engine.GetSnapshot(executionId);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+        Assert.False(snapshot.IsFailed);
+    }
+
+    /// <summary>CompletePhysicalJoin は候補 input で Join を充足し親を進める。</summary>
+    [Fact]
+    public async Task CompletePhysicalJoin_RunsJoinAndCompletesWhenEnd()
+    {
+        // Arrange
+        var def = CreateForkDefinition();
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2);
+        var unloaded = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        engine.SetForkExpansionHandler(async evt =>
+        {
+            // Hosted: 親は Fork 後に分岐を走らせない（Unload 相当の待機）。
+            await Task.Yield();
+            unloaded.TrySetResult(true);
+        });
+
+        var parentId = engine.Start(def);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        await unloaded.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
+        await Task.Delay(50).ConfigureAwait(false);
+
+        // Act
+        engine.CompletePhysicalJoin(
+            parentId,
+            "Join1",
+            new Dictionary<string, object?>
+            {
+                ["A"] = "a-out",
+                ["B"] = "b-out"
+            });
+        await Task.Delay(300).ConfigureAwait(false);
+        var snapshot = engine.GetSnapshot(parentId);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+    }
+
     /// <summary>ハンドラ登録時は論理 Fork せず、写像済み分岐を通知する。</summary>
     [Fact]
     public async Task SetForkExpansionHandler_DoesNotScheduleBranches_AndNotifiesPlans()

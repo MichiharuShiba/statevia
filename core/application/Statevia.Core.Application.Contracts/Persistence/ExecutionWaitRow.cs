@@ -24,11 +24,18 @@ public enum ExecutionWaitKind
 /// DelayWait の <c>allowed_events</c> と Delay 期限の Resume <c>eventName</c> は
 /// <see cref="DelayCompleted"/> のみを用いる（先頭要素の恣意的選択はしない）。
 /// </para>
+/// <para>
+/// 物理子終端の親向け Resume は <see cref="ChildCompleted"/> を用いる。
+/// Engine の Wait Resume には振らず、Host が Join 再評価する（D3）。
+/// </para>
 /// </remarks>
 public static class ExecutionWaitEventNames
 {
     /// <summary>DelayWait 期限到達時に Resume へ渡す固定イベント名。</summary>
     public const string DelayCompleted = "statevia.event.delay.completed";
+
+    /// <summary>物理子が終端したとき親へ渡す固定イベント名（Join 再評価トリガ）。</summary>
+    public const string ChildCompleted = "statevia.event.child.completed";
 }
 
 /// <summary>execution_waits テーブル。durable wait のみ永続化する（1 Wait ノード = 1 行）。</summary>

@@ -87,6 +87,7 @@ internal sealed class ExecutionService : IExecutionService
     private readonly IOptions<EventDeliveryRetryOptions> _eventDeliveryRetryOptions;
     private readonly ICorrelationIdAccessor _correlationIdAccessor;
     private readonly IExecutionProjectionUpdateQueue _projectionUpdateQueue;
+    private readonly IForkChildExecutionCoordinator? _forkChildCoordinator;
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Major Code Smell",
@@ -119,7 +120,8 @@ internal sealed class ExecutionService : IExecutionService
         IExecutionCheckpointStore checkpointStore,
         IExecutionProjectionUpdateQueue? projectionUpdateQueue = null,
         IExecutionWorkQueue? workQueue = null,
-        ExecutionOwnershipTracker? ownershipTracker = null)
+        ExecutionOwnershipTracker? ownershipTracker = null,
+        IForkChildExecutionCoordinator? forkChildCoordinator = null)
     {
         _engine = engine;
         _displayIds = displayIds;
@@ -148,6 +150,7 @@ internal sealed class ExecutionService : IExecutionService
         _eventDeliveryRetryOptions = eventDeliveryRetryOptions;
         _correlationIdAccessor = correlationIdAccessor;
         _projectionUpdateQueue = projectionUpdateQueue ?? NoopExecutionProjectionUpdateQueue.Instance;
+        _forkChildCoordinator = forkChildCoordinator;
     }
 
     public async Task<ExecutionResponse> StartAsync(
@@ -1438,6 +1441,13 @@ internal sealed class ExecutionService : IExecutionService
         if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
+        // 物理子終端の予約イベントは Wait Resume ではなく Join 再評価へ振る（D3）。
+        if (string.Equals(eventName, ExecutionWaitEventNames.ChildCompleted, StringComparison.Ordinal))
+        {
+            await HandleChildCompletedResumeAsync(uuid.Value, execution, nodeId, ct).ConfigureAwait(false);
+            return;
+        }
+
         await EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
 
         // Resume 正本: nodeId + eventName。wait 行は nodeId で先行削除する。
@@ -1525,6 +1535,164 @@ internal sealed class ExecutionService : IExecutionService
 
         // 永続化中に進んだ Engine 完了を取りこぼさない（中間 RUNNING 上書きの保険）。
         await _projectionUpdateQueue.EnqueueAsync(uuid.Value, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 物理子終端の予約 Resume を受け、親の Join を再評価する（D2-B / D3）。
+    /// </summary>
+    /// <param name="parentExecutionId">親 execution。</param>
+    /// <param name="execution">親の投影行。</param>
+    /// <param name="forkNodeId">Resume payload の nodeId（Fork 到達インスタンス）。</param>
+    /// <param name="ct">キャンセル。</param>
+    private async Task HandleChildCompletedResumeAsync(
+        Guid parentExecutionId,
+        ExecutionRow execution,
+        string forkNodeId,
+        CancellationToken ct)
+    {
+        if (_forkChildCoordinator is null)
+            return;
+
+        if (IsTerminalExecutionProjectionStatus(execution.Status))
+            return;
+
+        var evaluation = await _forkChildCoordinator
+            .EvaluateJoinAsync(parentExecutionId, forkNodeId, ct)
+            .ConfigureAwait(false);
+
+        switch (evaluation.Kind)
+        {
+            case ForkJoinEvaluationKind.Waiting:
+                return;
+
+            case ForkJoinEvaluationKind.Failed:
+                await FailParentFromJoinAsync(
+                        parentExecutionId,
+                        forkNodeId,
+                        evaluation.FailureStatus ?? ExecutionProjectionStatuses.Failed,
+                        ct)
+                    .ConfigureAwait(false);
+                return;
+
+            case ForkJoinEvaluationKind.Satisfied:
+                await CompleteParentPhysicalJoinAsync(
+                        parentExecutionId,
+                        execution,
+                        forkNodeId,
+                        evaluation,
+                        ct)
+                    .ConfigureAwait(false);
+                return;
+
+            default:
+                throw new InvalidOperationException($"Unknown fork join evaluation kind '{evaluation.Kind}'.");
+        }
+    }
+
+    /// <summary>Join 失敗／キャンセルを親投影へ伝播する（残子 Cancel はタスク 6）。</summary>
+    private async Task FailParentFromJoinAsync(
+        Guid parentExecutionId,
+        string forkNodeId,
+        string failureStatus,
+        CancellationToken ct)
+    {
+        _logger.ForkJoinFailedPropagated(parentExecutionId, forkNodeId, failureStatus);
+
+        var snapshot = await _executor.ExecuteReadOnlyAsync(
+                (uow, innerCt) => _executions.GetSnapshotByExecutionIdAsync(uow, parentExecutionId, innerCt),
+                ct)
+            .ConfigureAwait(false);
+        var graphJson = snapshot?.GraphJson ?? """{"nodes":[],"edges":[]}""";
+        var cancelRequested = string.Equals(
+            failureStatus,
+            ExecutionProjectionStatuses.Cancelled,
+            StringComparison.Ordinal);
+
+        await _executor.ExecuteReadCommittedAsync(
+                async (uow, innerCt) =>
+                {
+                    await _executions
+                        .UpdateExecutionAndSnapshotAsync(
+                            uow,
+                            parentExecutionId,
+                            failureStatus,
+                            cancelRequested,
+                            graphJson,
+                            innerCt)
+                        .ConfigureAwait(false);
+
+                    await DiscardOrRefreshRuntimeCheckpointAsync(
+                            uow,
+                            parentExecutionId.ToString(),
+                            parentExecutionId,
+                            innerCt)
+                        .ConfigureAwait(false);
+                },
+                ct)
+            .ConfigureAwait(false);
+
+        _engine.Unload(parentExecutionId.ToString());
+    }
+
+    /// <summary>Join 充足時に親 Engine で物理 Join を完了し投影を更新する。</summary>
+    private async Task CompleteParentPhysicalJoinAsync(
+        Guid parentExecutionId,
+        ExecutionRow execution,
+        string forkNodeId,
+        ForkJoinEvaluation evaluation,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(evaluation.CandidateInputs);
+        _logger.ForkJoinSatisfied(parentExecutionId, forkNodeId, evaluation.JoinState);
+
+        await EnsureEngineRuntimeLoadedForMutationAsync(parentExecutionId, execution, ct).ConfigureAwait(false);
+
+        var engineId = parentExecutionId.ToString();
+        _engine.CompletePhysicalJoin(engineId, evaluation.JoinState, evaluation.CandidateInputs);
+        await WaitForEngineQuiescedAfterWaitAsync(engineId, ct).ConfigureAwait(false);
+
+        var (status, cancelRequested, graphJson) = BuildProjectionFromEngine(parentExecutionId);
+        await _executor.ExecuteReadCommittedAsync(
+                async (uow, innerCt) =>
+                {
+                    await _executions
+                        .UpdateExecutionAndSnapshotAsync(
+                            uow,
+                            parentExecutionId,
+                            status,
+                            cancelRequested,
+                            graphJson,
+                            innerCt)
+                        .ConfigureAwait(false);
+                    await SyncOperationalProjectionAsync(
+                            uow,
+                            parentExecutionId,
+                            execution.TenantId,
+                            status,
+                            graphJson,
+                            nodeIdToClear: null,
+                            innerCt)
+                        .ConfigureAwait(false);
+
+                    if (ShouldDiscardRuntimeCheckpoint(status, graphJson))
+                    {
+                        await DiscardOrRefreshRuntimeCheckpointAsync(
+                                uow,
+                                engineId,
+                                parentExecutionId,
+                                innerCt)
+                            .ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await UpsertRuntimeCheckpointAsync(uow, engineId, parentExecutionId, innerCt)
+                            .ConfigureAwait(false);
+                    }
+                },
+                ct)
+            .ConfigureAwait(false);
+
+        await _projectionUpdateQueue.EnqueueAsync(parentExecutionId, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -2217,11 +2385,33 @@ internal sealed class ExecutionService : IExecutionService
             },
             ct).ConfigureAwait(false);
 
+        string? childTerminalOutputJson = null;
+        if (ExecutionProjectionStatuses.IsTerminal(status))
+            childTerminalOutputJson = TryGetWorkflowOutputJson(engineExecutionId);
+
         if (shouldUnloadAfterProjection)
         {
             _engine.Unload(engineExecutionId);
             _logger.CheckpointUnloadedAfterProjectionSync(executionId);
         }
+
+        if (ExecutionProjectionStatuses.IsTerminal(status) && _forkChildCoordinator is not null)
+        {
+            await _forkChildCoordinator
+                .NotifyChildTerminalAsync(executionId, status, childTerminalOutputJson, ct)
+                .ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>ロード中 Engine から終端 workflow output を JSON 文字列として取り出す。</summary>
+    private string? TryGetWorkflowOutputJson(string engineExecutionId)
+    {
+        var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
+        var output = checkpoint?.Context.WorkflowOutput;
+        if (output is null || output.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return null;
+
+        return output.Value.GetRawText();
     }
 
     /// <summary>

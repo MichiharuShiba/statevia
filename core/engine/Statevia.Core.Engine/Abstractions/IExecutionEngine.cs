@@ -74,8 +74,27 @@ public interface IExecutionEngine
     /// <remarks>
     /// <para>登録時は論理 Fork（同一インスタンス上の分岐 Schedule）を行わず、ハンドラのみ呼び出す。</para>
     /// <para>未登録時は従来どおり論理 Fork する（スタンドアロン Engine）。</para>
+    /// <para>
+    /// 登録時、分岐子が Join 状態へ遷移しようとした場合は親が集約するため、
+    /// 子インスタンスは当該 output で <c>MarkCompleted</c> する。
+    /// </para>
     /// </remarks>
     void SetForkExpansionHandler(Func<ForkExpansionEvent, Task>? handler);
+
+    /// <summary>
+    /// Hosted 物理子の完了事実を親 JoinTracker へ反映し、充足していれば Join 状態を実行する。
+    /// </summary>
+    /// <param name="executionId">親実行インスタンス ID（ロード済みであること）。</param>
+    /// <param name="joinStateName">充足させる Join 状態名。</param>
+    /// <param name="branchOutputs">分岐先頭状態名 → 子終端 output。</param>
+    /// <remarks>
+    /// <para>既に同一 Join を開始済みなら no-op。</para>
+    /// <para>Host が <c>execution_branches</c> で充足を確認したあとに呼び出す。</para>
+    /// </remarks>
+    void CompletePhysicalJoin(
+        string executionId,
+        string joinStateName,
+        IReadOnlyDictionary<string, object?> branchOutputs);
 
     /// <summary>再開可能なランタイム状態をエクスポートする。</summary>
     /// <param name="executionId">実行インスタンス ID。</param>

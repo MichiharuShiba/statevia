@@ -49,4 +49,35 @@ internal static partial class ForkExpansionLogMessages
         this ILogger logger,
         Guid parentExecutionId,
         string forkNodeId);
+
+    [LoggerMessage(
+        EventId = 3106,
+        Level = LogLevel.Information,
+        Message = "Fork child terminal signaled to parent. ChildExecutionId={childExecutionId} ParentExecutionId={parentExecutionId} ForkNodeId={forkNodeId} Status={status}")]
+    public static partial void ForkChildTerminalSignaled(
+        this ILogger logger,
+        Guid childExecutionId,
+        Guid parentExecutionId,
+        string forkNodeId,
+        string status);
+
+    [LoggerMessage(
+        EventId = 3107,
+        Level = LogLevel.Information,
+        Message = "Fork join satisfied; completing physical join. ParentExecutionId={parentExecutionId} ForkNodeId={forkNodeId} JoinState={joinState}")]
+    public static partial void ForkJoinSatisfied(
+        this ILogger logger,
+        Guid parentExecutionId,
+        string forkNodeId,
+        string joinState);
+
+    [LoggerMessage(
+        EventId = 3108,
+        Level = LogLevel.Warning,
+        Message = "Fork join failed; propagating to parent. ParentExecutionId={parentExecutionId} ForkNodeId={forkNodeId} FailureStatus={failureStatus}")]
+    public static partial void ForkJoinFailedPropagated(
+        this ILogger logger,
+        Guid parentExecutionId,
+        string forkNodeId,
+        string failureStatus);
 }

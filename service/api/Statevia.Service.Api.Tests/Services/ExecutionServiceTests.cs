@@ -203,6 +203,14 @@ public sealed class ExecutionServiceTests
             // no-op for tests
         }
 
+        public void CompletePhysicalJoin(
+            string executionId,
+            string joinStateName,
+            IReadOnlyDictionary<string, object?> branchOutputs)
+        {
+            // no-op for tests
+        }
+
         public ExecutionRuntimeCheckpoint? ExportCheckpoint(string executionId) => null;
 
         public void ImportCheckpoint(CompiledWorkflowDefinition definition, ExecutionRuntimeCheckpoint checkpoint)

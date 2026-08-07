@@ -93,6 +93,136 @@ public sealed class ForkChildExecutionCoordinator(
         return new ForkExpansionResult(Succeeded: false, Array.Empty<Guid>(), joinState);
     }
 
+    /// <inheritdoc />
+    public async Task<bool> NotifyChildTerminalAsync(
+        Guid childExecutionId,
+        string status,
+        string? outputJson,
+        CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(status);
+        if (!ExecutionProjectionStatuses.IsTerminal(status))
+            throw new ArgumentException($"Status '{status}' is not terminal.", nameof(status));
+
+        var now = DateTime.UtcNow;
+        return await executor.ExecuteReadCommittedAsync(
+                async (uow, innerCt) =>
+                {
+                    var branch = await branches.GetByChildExecutionIdAsync(uow, childExecutionId, innerCt)
+                        .ConfigureAwait(false);
+                    if (branch is null)
+                        return false;
+
+                    if (string.Equals(branch.Status, ExecutionBranchStatuses.Running, StringComparison.Ordinal))
+                    {
+                        var updated = await branches.TryUpdateStatusAsync(
+                                uow,
+                                branch.ParentExecutionId,
+                                branch.ForkNodeId,
+                                branch.BranchState,
+                                new ExecutionBranchStatusUpdate(status, now, outputJson),
+                                innerCt)
+                            .ConfigureAwait(false);
+                        if (!updated)
+                            return false;
+                    }
+                    else if (!ExecutionProjectionStatuses.IsTerminal(branch.Status))
+                    {
+                        return false;
+                    }
+
+                    var resumePayload = JsonSerializer.Serialize(
+                        new ExecutionResumeWorkItemPayload(
+                            ExecutionResumeWorkItemModes.Event,
+                            branch.ForkNodeId,
+                            ExecutionWaitEventNames.ChildCompleted),
+                        ExecutionWorkItemPayloadJson.Options);
+
+                    await workQueue.EnqueueAsync(
+                            uow,
+                            new ExecutionWorkItemRow
+                            {
+                                WorkItemId = idGenerator.NewGuid(),
+                                ExecutionId = branch.ParentExecutionId,
+                                Kind = ExecutionWorkItemKinds.Resume,
+                                Payload = resumePayload,
+                                AvailableAt = now,
+                                Attempts = 0,
+                                CreatedAt = now
+                            },
+                            innerCt)
+                        .ConfigureAwait(false);
+
+                    logger.ForkChildTerminalSignaled(
+                        childExecutionId,
+                        branch.ParentExecutionId,
+                        branch.ForkNodeId,
+                        status);
+                    return true;
+                },
+                ct)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<ForkJoinEvaluation> EvaluateJoinAsync(
+        Guid parentExecutionId,
+        string forkNodeId,
+        CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(forkNodeId);
+
+        var rows = await executor.ExecuteReadOnlyAsync(
+                (uow, innerCt) => branches.ListByParentAndForkNodeAsync(
+                    uow,
+                    parentExecutionId,
+                    forkNodeId,
+                    innerCt),
+                ct)
+            .ConfigureAwait(false);
+
+        if (rows.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"No execution_branches for parent {parentExecutionId:D} forkNodeId '{forkNodeId}'.");
+        }
+
+        var joinState = rows[0].JoinState;
+
+        var failed = rows.FirstOrDefault(r =>
+            string.Equals(r.Status, ExecutionBranchStatuses.Failed, StringComparison.Ordinal)
+            || string.Equals(r.Status, ExecutionBranchStatuses.Cancelled, StringComparison.Ordinal));
+        if (failed is not null)
+        {
+            // 論理 Join と同様、一文失敗は未終端の兄弟を待たずに親へ伝播する。
+            return new ForkJoinEvaluation(
+                ForkJoinEvaluationKind.Failed,
+                joinState,
+                FailureStatus: failed.Status);
+        }
+
+        if (rows.Any(r => string.Equals(r.Status, ExecutionBranchStatuses.Running, StringComparison.Ordinal)))
+        {
+            return new ForkJoinEvaluation(ForkJoinEvaluationKind.Waiting, joinState);
+        }
+
+        if (!rows.All(r => string.Equals(r.Status, ExecutionBranchStatuses.Completed, StringComparison.Ordinal)))
+        {
+            return new ForkJoinEvaluation(ForkJoinEvaluationKind.Waiting, joinState);
+        }
+
+        var candidateInputs = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in rows)
+        {
+            candidateInputs[row.BranchState] = ParseOutputJson(row.OutputJson);
+        }
+
+        return new ForkJoinEvaluation(
+            ForkJoinEvaluationKind.Satisfied,
+            joinState,
+            CandidateInputs: candidateInputs);
+    }
+
     /// <summary>
     /// Join.all と Fork 分岐先頭集合が一致する Join を一意に解決する。
     /// </summary>
@@ -331,5 +461,14 @@ public sealed class ForkChildExecutionCoordinator(
         var json = JsonSerializer.Serialize(value, CamelCaseJson);
         using var doc = JsonDocument.Parse(json);
         return doc.RootElement.Clone();
+    }
+
+    private static JsonElement? ParseOutputJson(string? outputJson)
+    {
+        if (string.IsNullOrWhiteSpace(outputJson))
+            return null;
+
+        using var document = JsonDocument.Parse(outputJson);
+        return document.RootElement.Clone();
     }
 }
