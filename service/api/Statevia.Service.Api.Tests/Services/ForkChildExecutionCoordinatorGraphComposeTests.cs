@@ -75,6 +75,25 @@ public sealed class ForkChildExecutionCoordinatorGraphComposeTests
                 && e["type"]!.GetValue<int>() == 1);
     }
 
+    /// <summary>直下の子 execution ID を列挙する（D6.1）。</summary>
+    [Fact]
+    public async Task ListDescendantExecutionIdsAsync_ReturnsDirectChild()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var parentId = Guid.NewGuid();
+        var childId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        await SeedAsync(db.Options, parentId, childId, "fork0001", """{"nodes":[],"edges":[]}""", """{"nodes":[],"edges":[]}""", now);
+        var sut = CreateSut(db);
+
+        // Act
+        var ids = await sut.ListDescendantExecutionIdsAsync(parentId, CancellationToken.None);
+
+        // Assert
+        Assert.Equal([childId], ids);
+    }
+
     private static ForkChildExecutionCoordinator CreateSut(InMemoryTestDatabase db)
     {
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);

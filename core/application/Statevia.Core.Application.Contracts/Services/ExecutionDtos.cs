@@ -168,7 +168,10 @@ public sealed class ExecutionEventsResponseDto
 /// <summary>タイムライン／SSE 用のイベント（UI の <c>ExecutionStreamEvent</c> + seq）。</summary>
 public sealed class TimelineEventDto
 {
-    /// <summary>event_store 上のシーケンス番号。</summary>
+    /// <summary>
+    /// タイムライン上のシーケンス番号。
+    /// 親 events GET（合成時）では合成通番。個別 execution の永続 seq とは限らない。
+    /// </summary>
     public long Seq { get; init; }
 
     /// <summary>イベント種別。</summary>

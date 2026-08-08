@@ -13,7 +13,7 @@ namespace Statevia.Core.Application.Services;
 /// <para>子作成・execution_branches・Start enqueue を同一 ReadCommitted で行い、一時失敗は Options に従い再試行する（D9）。</para>
 /// <para>上限超過時は作成済みの未終端子へ Cancel を enqueue し、親を Failed にする。</para>
 /// <para>親 Cancel カスケードと分岐 Wait の子配送解決（要件4）も担う。</para>
-/// <para>親 graph 読み取り時の論理 Fork/Join 合成（D6）も担う。</para>
+/// <para>親 graph 読み取り時の論理 Fork/Join 合成（D6）と、イベント合成用の子孫列挙（D6.1）も担う。</para>
 /// </remarks>
 /// <param name="executor">トランザクション実行。</param>
 /// <param name="executions">executions 永続化。</param>
@@ -341,6 +341,36 @@ public sealed class ForkChildExecutionCoordinator(
         }
 
         return PhysicalForkGraphComposer.Compose(baseGraphJson, composedBranches);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Guid>> ListDescendantExecutionIdsAsync(
+        Guid parentExecutionId,
+        CancellationToken ct)
+    {
+        var result = new List<Guid>();
+        var queue = new Queue<Guid>();
+        queue.Enqueue(parentExecutionId);
+        var seen = new HashSet<Guid> { parentExecutionId };
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            var childRows = await executor.ExecuteReadOnlyAsync(
+                    (uow, innerCt) => branches.ListByParentExecutionIdAsync(uow, current, innerCt),
+                    ct)
+                .ConfigureAwait(false);
+
+            foreach (var childId in childRows
+                         .Select(r => r.ExecutionId)
+                         .Where(id => seen.Add(id)))
+            {
+                result.Add(childId);
+                queue.Enqueue(childId);
+            }
+        }
+
+        return result;
     }
 
     /// <summary>

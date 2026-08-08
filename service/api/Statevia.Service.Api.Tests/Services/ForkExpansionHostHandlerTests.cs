@@ -381,6 +381,11 @@ public sealed class ForkExpansionHostHandlerTests
             string baseGraphJson,
             CancellationToken ct) =>
             Task.FromResult(baseGraphJson);
+
+        public Task<IReadOnlyList<Guid>> ListDescendantExecutionIdsAsync(
+            Guid parentExecutionId,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<Guid>>([]);
     }
 
     private sealed class RecordingExecutionService : IExecutionService

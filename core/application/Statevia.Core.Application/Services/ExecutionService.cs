@@ -1378,54 +1378,69 @@ internal sealed class ExecutionService : IExecutionService
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
         var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false) ?? execution.ExecutionId.ToString("D");
+        // D6 / D6.1: GraphUpdated patch は合成グラフ由来。
         var graphJson = await GetGraphJsonAsync(idOrUuid, ct).ConfigureAwait(false);
         var patchNodes = ExecutionViewMapper.MapGraphPatchNodes(graphJson);
 
-        var (items, hasMore) = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _eventStore.ListAfterSeqAsync(uow, uuid.Value, afterSeq, limit, innerCt),
-            ct).ConfigureAwait(false);
-
-        var typeStarted = EventStoreEventType.WorkflowStarted.ToPersistedString();
-        var typeCancelled = EventStoreEventType.WorkflowCancelled.ToPersistedString();
-        var typePublished = EventStoreEventType.EventPublished.ToPersistedString();
-
-        var events = new List<TimelineEventDto>(items.Count);
-        foreach (var row in items)
-        {
-            var at = row.OccurredAt.ToString("O");
-            var timelineEvent = row.Type switch
-            {
-                _ when row.Type == typeStarted => new TimelineEventDto
-                {
-                    Seq = row.Seq,
-                    Type = "ExecutionStatusChanged",
-                    ExecutionId = displayId,
-                    To = ExecutionProjectionStatuses.Running,
-                    At = at
-                },
-                _ when row.Type == typeCancelled => new TimelineEventDto
-                {
-                    Seq = row.Seq,
-                    Type = "ExecutionStatusChanged",
-                    ExecutionId = displayId,
-                    To = ExecutionProjectionStatuses.Cancelled,
-                    At = at
-                },
-                _ when row.Type == typePublished => new TimelineEventDto
-                {
-                    Seq = row.Seq,
-                    Type = "GraphUpdated",
-                    ExecutionId = displayId,
-                    Patch = new GraphUpdatedPatchDto { Nodes = patchNodes },
-                    At = at
-                },
-                _ => null
-            };
-            if (timelineEvent is not null)
-                events.Add(timelineEvent);
-        }
+        var sourceRows = await LoadEventStoreRowsForTimelineAsync(uuid.Value, ct).ConfigureAwait(false);
+        var (events, hasMore) = PhysicalForkEventTimelineComposer.ComposePage(
+            sourceRows,
+            displayId,
+            patchNodes,
+            afterSeq,
+            limit);
 
         return new ExecutionEventsResponseDto { Events = events, HasMore = hasMore };
+    }
+
+    /// <summary>
+    /// 親＋再帰子孫の event_store 行を読み取り合成用に集める（D6.1）。
+    /// </summary>
+    private async Task<IReadOnlyList<PhysicalForkEventTimelineComposer.SourceRow>> LoadEventStoreRowsForTimelineAsync(
+        Guid rootExecutionId,
+        CancellationToken ct)
+    {
+        var executionIds = new List<Guid> { rootExecutionId };
+        if (_forkChildCoordinator is not null)
+        {
+            var descendants = await _forkChildCoordinator
+                .ListDescendantExecutionIdsAsync(rootExecutionId, ct)
+                .ConfigureAwait(false);
+            executionIds.AddRange(descendants);
+        }
+
+        var rows = new List<PhysicalForkEventTimelineComposer.SourceRow>();
+        foreach (var executionId in executionIds)
+        {
+            var isRoot = executionId == rootExecutionId;
+            long afterSeq = 0;
+            while (true)
+            {
+                var pageAfter = afterSeq;
+                var (items, hasMore) = await _executor.ExecuteReadOnlyAsync(
+                        (uow, innerCt) => _eventStore.ListAfterSeqAsync(
+                            uow,
+                            executionId,
+                            pageAfter,
+                            limit: 500,
+                            innerCt),
+                        ct)
+                    .ConfigureAwait(false);
+
+                foreach (var item in items)
+                    rows.Add(new PhysicalForkEventTimelineComposer.SourceRow(item, isRoot));
+
+                if (!hasMore || items.Count == 0)
+                    break;
+
+                afterSeq = items[^1].Seq;
+                // 暴走防止（異常に長い event_store）。
+                if (rows.Count >= 50_000)
+                    break;
+            }
+        }
+
+        return rows;
     }
 
     public async Task ResumeNodeAsync(
