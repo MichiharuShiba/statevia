@@ -559,6 +559,7 @@ Service API の **`GET /v1/definitions/schema/nodes`** が返すスキーマに�
 - **wait**: 正本は **`events`**（イベント名 → 次ノード ID）。単一イベントの旧形式 `event` + `next` も受理し、Loader が `events` へ正規化する。`timeout`（ISO 8601 duration）は現行変換では未使用。
 - **fork**: `branches` に並列ブランチのノード ID の配列。
 - **join**: すべてのブランチの完了を待ち、`next` へ進む。
+  - Join と Fork の対応: 各枝先頭が当該 Join を**供給**する一意の Fork を選ぶ。供給は (1) 枝の `next` が直接 Join、または (2) 枝先頭が内側 Fork で、その内側 Join の `next` 連鎖が当該 Join に到達すること（ネスト）。`Join.all` は外側 Fork の枝先頭集合になる。例: [`docs/samples/ui-nested-fork.yaml`](../samples/ui-nested-fork.yaml)。
 
 ### 2.3 例（Nodes 形式・抜粋）
 

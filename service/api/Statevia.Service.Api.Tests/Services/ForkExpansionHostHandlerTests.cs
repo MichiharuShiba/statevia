@@ -375,6 +375,12 @@ public sealed class ForkExpansionHostHandlerTests
             string eventName,
             CancellationToken ct) =>
             Task.FromResult<ForkWaitDeliveryTarget?>(null);
+
+        public Task<string> ComposeReadModelGraphJsonAsync(
+            Guid executionId,
+            string baseGraphJson,
+            CancellationToken ct) =>
+            Task.FromResult(baseGraphJson);
     }
 
     private sealed class RecordingExecutionService : IExecutionService

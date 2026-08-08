@@ -347,7 +347,10 @@ internal sealed class ExecutionService : IExecutionService
                 async (uow, innerCt) =>
                 {
                     var createdAt = DateTime.UtcNow;
-                    var status = MapStatus(_engine.GetSnapshot(engineId));
+                    var startSnapshot = _engine.GetSnapshot(engineId)
+                        ?? throw new InvalidOperationException(
+                            $"Cannot project execution '{resolvedExecutionId}': engine snapshot is missing after Start.");
+                    var status = MapStatus(startSnapshot);
                     var graphJson = _engine.ExportExecutionGraph(engineId);
 
                     ExecutionResponse response;
@@ -664,7 +667,15 @@ internal sealed class ExecutionService : IExecutionService
         var row = await _executor.ExecuteReadOnlyAsync(
             (uow, innerCt) => _executions.GetSnapshotByExecutionIdAsync(uow, uuid.Value, innerCt),
             ct).ConfigureAwait(false);
-        return row is null ? throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound) : row.GraphJson;
+        if (row is null)
+            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+
+        if (_forkChildCoordinator is null)
+            return row.GraphJson;
+
+        return await _forkChildCoordinator
+            .ComposeReadModelGraphJsonAsync(uuid.Value, row.GraphJson, ct)
+            .ConfigureAwait(false);
     }
 
     public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) =>
@@ -1038,7 +1049,10 @@ internal sealed class ExecutionService : IExecutionService
 
             if (snapshot.IsCompleted || snapshot.IsCancelled || snapshot.IsFailed)
             {
-                // 終端後も Load が残る経路があるため、Worker の Load 境界で解放する。
+                // 終端後に Unload すると投影キューが engine 不在でスキップし、
+                // Start 直後の不完全 graph のまま Completed だけ残る。最終投影を先に確定する。
+                await _projectionUpdateQueue.DrainAsync(executionId, ct).ConfigureAwait(false);
+                await UpdateProjectionFromEngineAsync(executionId, ct).ConfigureAwait(false);
                 _engine.Unload(engineId);
                 return;
             }
@@ -2003,7 +2017,16 @@ internal sealed class ExecutionService : IExecutionService
                 var graphId = await _displayIds
                     .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, execution.DefinitionId.ToString("D"), innerCt)
                     .ConfigureAwait(false) ?? execution.DefinitionId.ToString("D");
-                return ExecutionViewMapper.BuildExecutionView(execution, snapshot.GraphJson, displayId, graphId);
+
+                var graphJson = snapshot.GraphJson;
+                if (_forkChildCoordinator is not null)
+                {
+                    graphJson = await _forkChildCoordinator
+                        .ComposeReadModelGraphJsonAsync(uuid, snapshot.GraphJson, innerCt)
+                        .ConfigureAwait(false);
+                }
+
+                return ExecutionViewMapper.BuildExecutionView(execution, graphJson, displayId, graphId);
             },
             ct).ConfigureAwait(false);
     }
@@ -2183,9 +2206,9 @@ internal sealed class ExecutionService : IExecutionService
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
     }
 
-    private static string MapStatus(ExecutionSnapshot? snapshot)
+    private static string MapStatus(ExecutionSnapshot snapshot)
     {
-        if (snapshot is null) return ExecutionProjectionStatuses.Unknown;
+        ArgumentNullException.ThrowIfNull(snapshot);
         if (snapshot.IsCompleted) return ExecutionProjectionStatuses.Completed;
         if (snapshot.IsCancelled) return ExecutionProjectionStatuses.Cancelled;
         if (snapshot.IsFailed) return ExecutionProjectionStatuses.Failed;
@@ -2352,10 +2375,17 @@ internal sealed class ExecutionService : IExecutionService
         }
 
         // Unload 前に投影へ反映する（Unload 後は GetSnapshot が null になり投影キューが空振りする）。
+        // snapshot 欠落時は Unknown/`{}` を書かず checkpoint のみ残す（マルチ Worker 競合で UI を壊さない）。
         var snapshot = _engine.GetSnapshot(engineExecutionId);
-        var status = MapStatus(snapshot);
-        var cancelRequested = snapshot?.IsCancelled;
-        var graphJson = _engine.ExportExecutionGraph(engineExecutionId);
+        string? status = null;
+        bool? cancelRequested = null;
+        string? graphJson = null;
+        if (snapshot is not null)
+        {
+            status = MapStatus(snapshot);
+            cancelRequested = snapshot.IsCancelled;
+            graphJson = _engine.ExportExecutionGraph(engineExecutionId);
+        }
 
         var json = JsonSerializer.Serialize(checkpoint, CamelCaseJsonSerializerOptions);
         var updatedAt = DateTime.UtcNow;
@@ -2364,7 +2394,7 @@ internal sealed class ExecutionService : IExecutionService
             {
                 var execution = await _executions.GetByExecutionIdAsync(uow, executionId, innerCt)
                     .ConfigureAwait(false);
-                if (execution is not null && graphJson is not null)
+                if (execution is not null && status is not null && graphJson is not null)
                 {
                     await _executions
                         .UpdateExecutionAndSnapshotAsync(
@@ -2586,13 +2616,28 @@ internal sealed class ExecutionService : IExecutionService
             ct).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Engine 上の実行から投影用 status / graph を取得する。
+    /// </summary>
+    /// <remarks>
+    /// snapshot 欠落時に <c>Unknown</c> と <c>{}</c> を永続すると一覧 UI が落ちるため、欠落は例外とする。
+    /// 呼び出し側は事前に Load / Ensure 済みであること。キュー投影は
+    /// <see cref="BuildProjectionFromEngineForQueue"/> を使い欠落をスキップする。
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">Engine に snapshot が無いとき。</exception>
     private (string Status, bool? CancelRequested, string GraphJson) BuildProjectionFromEngine(Guid executionId)
     {
         var engineId = executionId.ToString();
         var snapshot = _engine.GetSnapshot(engineId);
+        if (snapshot is null)
+        {
+            throw new InvalidOperationException(
+                $"Cannot project execution '{executionId}': engine snapshot is missing.");
+        }
+
         var graphJson = _engine.ExportExecutionGraph(engineId);
         var status = MapStatus(snapshot);
-        return (status, snapshot?.IsCancelled, graphJson);
+        return (status, snapshot.IsCancelled, graphJson);
     }
 
     private (string? status, bool? cancelRequested, string? graphJson) BuildProjectionFromEngineForQueue(Guid executionId)

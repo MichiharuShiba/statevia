@@ -126,8 +126,21 @@ public sealed class ExecutionServiceTests
             StartCalled = true;
             LastDefinition = definition;
             LastInput = input;
-            LastEngineId = executionId;
-            return executionId ?? "generated";
+            var resolvedId = executionId ?? "generated";
+            LastEngineId = resolvedId;
+            // 実 Engine 同様、Start 後は投影可能な Running スナップショットを返す。
+            SnapshotToReturn ??= new ExecutionSnapshot
+            {
+                ExecutionId = resolvedId,
+                WorkflowName = definition.Name,
+                ActiveStates = string.IsNullOrWhiteSpace(initialState)
+                    ? Array.Empty<string>()
+                    : [initialState],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            };
+            return resolvedId;
         }
 
         /// <summary>設定時、PublishEvent(executionId, name, clientEventId) がこの例外を投げる。</summary>
@@ -219,7 +232,15 @@ public sealed class ExecutionServiceTests
             // no-op for tests
         }
 
-        public bool Unload(string executionId) => false;
+        /// <summary><see cref="Unload"/> が呼ばれた回数。</summary>
+        public int UnloadCalls { get; private set; }
+
+        public bool Unload(string executionId)
+        {
+            UnloadCalls += 1;
+            SnapshotToReturn = null;
+            return true;
+        }
     }
 
     private sealed class FakeProjectionUpdateQueue : IExecutionProjectionUpdateQueue
@@ -1722,6 +1743,72 @@ public sealed class ExecutionServiceTests
         Assert.True(engine.CancelCalled);
         Assert.Empty(eventStore.Appended);
         Assert.Empty(dedupRepo.SavedRows);
+    }
+
+    /// <summary>
+    /// 終端検知時は Unload 前に投影キュー排水と最終投影を行い、不完全 graph のまま Completed が残らないこと。
+    /// </summary>
+    [Fact]
+    public async Task AwaitLocalExecutionLoadAsync_WhenTerminal_DrainsProjectsThenUnloads()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        const string finalGraphJson = """{"nodes":[{"id":"a"},{"id":"b"},{"id":"c"},{"id":"d"}]}""";
+        using var sqlite = new SqliteTestDatabase();
+        var projectionQueue = new FakeProjectionUpdateQueue();
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = Array.Empty<string>(),
+                IsCompleted = true,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn = finalGraphJson
+        };
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = Guid.NewGuid(),
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var sut = BuildExecutionService(
+            sqlite,
+            engine,
+            new FakeDisplayIdService(),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            executionRepo,
+            new StubDefinitionRepository(),
+            new FakeCommandDedupRepository(),
+            new FakeEventStoreRepository(),
+            new FakeEventDeliveryDedupRepository(),
+            projectionQueue);
+
+        // Act
+        await sut.AwaitLocalExecutionLoadAsync(executionId, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(1, projectionQueue.DrainCalls);
+        Assert.Equal(executionId, projectionQueue.LastDrainExecutionId);
+        Assert.Single(executionRepo.Updates);
+        Assert.Equal("Completed", executionRepo.Updates[0].Status);
+        Assert.Equal(finalGraphJson, executionRepo.Updates[0].GraphJson);
+        Assert.True(engine.UnloadCalls >= 1);
+        Assert.Null(engine.SnapshotToReturn);
     }
 
     /// <summary>非公開投影更新処理が実行行とスナップショットを更新する。</summary>

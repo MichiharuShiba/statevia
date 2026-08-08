@@ -175,6 +175,48 @@ public sealed class ForkExpansionHandlerTests
         Assert.True(snapshot.IsCompleted);
     }
 
+    /// <summary>
+    /// ネスト: 内側 Join 完了後の次が親側 Join（ローカル未充足）のとき、物理子は終端する。
+    /// </summary>
+    [Fact]
+    public async Task CompletePhysicalJoin_WhenNextIsUnsatisfiedOuterJoin_MarksChildCompleted()
+    {
+        // Arrange
+        var def = CreateNestedForkMidChildDefinition();
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2);
+        var forked = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        engine.SetForkExpansionHandler(_ =>
+        {
+            forked.TrySetResult(true);
+            return Task.CompletedTask;
+        });
+
+        var childId = engine.Start(def, initialState: "InnerFork");
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        await forked.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
+        await Task.Delay(50).ConfigureAwait(false);
+
+        // Act — 内側 Join のみ充足。外側 Join の依存（OuterFast / InnerFork）は子に無い。
+        engine.CompletePhysicalJoin(
+            childId,
+            "InnerJoin",
+            new Dictionary<string, object?>
+            {
+                ["InnerA"] = "a",
+                ["InnerB"] = "b"
+            });
+        await Task.Delay(300).ConfigureAwait(false);
+        var snapshot = engine.GetSnapshot(childId);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+        Assert.False(snapshot.IsFailed);
+        var graph = engine.ExportExecutionGraph(childId);
+        Assert.Contains("InnerJoin", graph, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"stateName\":\"OuterJoin\"", graph, StringComparison.Ordinal);
+    }
+
     /// <summary>initialState 指定時はその状態から開始する。</summary>
     [Fact]
     public async Task Start_WithInitialStateOverride_StartsAtBranch()
@@ -243,6 +285,63 @@ public sealed class ForkExpansionHandlerTests
             ["A"] = DefaultStateExecutor.Create(new ImmediateState()),
             ["B"] = DefaultStateExecutor.Create(new ImmediateState()),
             ["After"] = DefaultStateExecutor.Create(new ImmediateState())
+        })
+    };
+
+    private static CompiledWorkflowDefinition CreateNestedForkMidChildDefinition() => new()
+    {
+        Name = "NestedForkMidChild",
+        InitialState = "OuterFork",
+        Transitions = new Dictionary<string, IReadOnlyDictionary<string, TransitionTarget>>
+        {
+            ["OuterFork"] = new Dictionary<string, TransitionTarget>
+            {
+                ["Completed"] = new TransitionTarget { Fork = ["OuterFast", "InnerFork"] }
+            },
+            ["OuterFast"] = new Dictionary<string, TransitionTarget>
+            {
+                ["Completed"] = new TransitionTarget { Next = "OuterJoin" }
+            },
+            ["InnerFork"] = new Dictionary<string, TransitionTarget>
+            {
+                ["Completed"] = new TransitionTarget { Fork = ["InnerA", "InnerB"] }
+            },
+            ["InnerA"] = new Dictionary<string, TransitionTarget>
+            {
+                ["Completed"] = new TransitionTarget { Next = "InnerJoin" }
+            },
+            ["InnerB"] = new Dictionary<string, TransitionTarget>
+            {
+                ["Completed"] = new TransitionTarget { Next = "InnerJoin" }
+            },
+            ["InnerJoin"] = new Dictionary<string, TransitionTarget>
+            {
+                ["Joined"] = new TransitionTarget { Next = "OuterJoin" }
+            },
+            ["OuterJoin"] = new Dictionary<string, TransitionTarget>
+            {
+                ["Joined"] = new TransitionTarget { End = true }
+            }
+        },
+        ForkTable = new Dictionary<string, IReadOnlyList<string>>
+        {
+            ["OuterFork"] = ["OuterFast", "InnerFork"],
+            ["InnerFork"] = ["InnerA", "InnerB"]
+        },
+        JoinTable = new Dictionary<string, IReadOnlyList<string>>
+        {
+            ["InnerJoin"] = ["InnerA", "InnerB"],
+            ["OuterJoin"] = ["OuterFast", "InnerFork"]
+        },
+        WaitEventRouteTable = new Dictionary<string, IReadOnlyDictionary<string, WaitEventRouteDefinition>>(
+            StringComparer.OrdinalIgnoreCase),
+        StateExecutorFactory = new DictionaryStateExecutorFactory(new Dictionary<string, IStateExecutor>
+        {
+            ["OuterFork"] = DefaultStateExecutor.Create(new ImmediateState()),
+            ["OuterFast"] = DefaultStateExecutor.Create(new ImmediateState()),
+            ["InnerFork"] = DefaultStateExecutor.Create(new ImmediateState()),
+            ["InnerA"] = DefaultStateExecutor.Create(new ImmediateState()),
+            ["InnerB"] = DefaultStateExecutor.Create(new ImmediateState())
         })
     };
 

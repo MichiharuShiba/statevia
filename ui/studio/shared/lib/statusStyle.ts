@@ -144,9 +144,16 @@ const STATUS_STYLE: Record<StatusLike, StatusStyle> = {
   },
 };
 
-/** 状態から表示スタイルを返す。 */
-export function getStatusStyle(status: StatusLike): StatusStyle {
-  return STATUS_STYLE[status];
+/**
+ * 状態から表示スタイルを返す。
+ * API が想定外の status（例: Unknown）を返しても一覧が落ちないよう、未定義時は Failed 相当に倒す。
+ */
+export function getStatusStyle(status: string): StatusStyle {
+  if (status in STATUS_STYLE) {
+    return STATUS_STYLE[status as StatusLike];
+  }
+
+  return STATUS_STYLE.Failed;
 }
 
 /** 一覧ソート用のノード状態ウェイト。 */

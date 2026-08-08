@@ -506,6 +506,18 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         var def = instance.Definition;
         if (def.JoinTable.ContainsKey(stateName))
         {
+            // Hosted 物理子: 親側 Join に到達してもローカル事実が揃わないときは
+            // Join を実行せず子 execution として終端する（ネスト Fork の内側→外側 Join）。
+            // 通常のアクション完了時の「next が Join なら MarkCompleted」と同契約。
+            if (_forkExpansionHandler is not null
+                && !instance.JoinTracker.IsJoinReadyToExecute(stateName))
+            {
+                instance.MarkCompleted(input);
+                _executionLog.LogExecutionCompleted(instance.ExecutionId, instance.Definition.Name);
+                await NotifyNodeCompletedAsync(instance.ExecutionId).ConfigureAwait(false);
+                return;
+            }
+
             await RunJoinStateAsync(instance, eventProvider, stateName, fromNodeId, edgeType).ConfigureAwait(false);
             return;
         }

@@ -123,16 +123,7 @@ public sealed class JoinTracker : IJoinTracker
             {
                 return false;
             }
-            if (!_joinTable.TryGetValue(joinStateName, out var dependencies) || dependencies.Count == 0)
-            {
-                return false;
-            }
-            if (!_joinStateResults.TryGetValue(joinStateName, out var results))
-            {
-                return false;
-            }
-            if (!_completionPolicies.TryGetValue(joinStateName, out var completionPolicy)
-                || !completionPolicy.IsSatisfied(results))
+            if (!IsJoinReadyToExecuteUnlocked(joinStateName))
             {
                 return false;
             }
@@ -140,6 +131,32 @@ public sealed class JoinTracker : IJoinTracker
             _startedJoins.Add(joinStateName);
             return true;
         }
+    }
+
+    /// <summary>
+    /// Join の依存事実が揃い、まだ開始されていないときに実行可能か（開始マークはしない）。
+    /// </summary>
+    /// <param name="joinStateName">Join 状態名。</param>
+    /// <returns>実行可能なら <see langword="true"/>。</returns>
+    public bool IsJoinReadyToExecute(string joinStateName)
+    {
+        lock (_lock)
+        {
+            if (_startedJoins.Contains(joinStateName))
+                return false;
+
+            return IsJoinReadyToExecuteUnlocked(joinStateName);
+        }
+    }
+
+    private bool IsJoinReadyToExecuteUnlocked(string joinStateName)
+    {
+        if (!_joinTable.TryGetValue(joinStateName, out var dependencies) || dependencies.Count == 0)
+            return false;
+        if (!_joinStateResults.TryGetValue(joinStateName, out var results))
+            return false;
+        return _completionPolicies.TryGetValue(joinStateName, out var completionPolicy)
+            && completionPolicy.IsSatisfied(results);
     }
 
     /// <summary>可変状態をチェックポイントへエクスポートする。</summary>

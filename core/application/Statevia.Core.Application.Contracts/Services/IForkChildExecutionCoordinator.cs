@@ -102,6 +102,7 @@ public sealed record ForkWaitDeliveryTarget(
 /// <para>子行作成・security snapshot 継承・Start enqueue・展開リトライ（D9）を担う。</para>
 /// <para>子終端信号・Join 再評価（D2-B / D3）と、充足時の親 Context（states / vars）マージ材料（D5）を担う。</para>
 /// <para>親 Cancel の未終端子カスケードと、分岐 Wait の配送先解決（要件4）も担う。</para>
+/// <para>親 graph 読み取り時の論理 Fork/Join 合成（D6）も担う。</para>
 /// <para>input 写像は Engine 側で行い、本コーディネータは写像済み input を受け取る。</para>
 /// </remarks>
 public interface IForkChildExecutionCoordinator
@@ -169,6 +170,18 @@ public interface IForkChildExecutionCoordinator
         Guid requestedExecutionId,
         string? nodeId,
         string eventName,
+        CancellationToken ct);
+
+    /// <summary>
+    /// 親の読み取り用 graph JSON を、直下（再帰）の物理子グラフと合成する（D6・GET 時）。
+    /// </summary>
+    /// <param name="executionId">対象 execution（親または中間親）。</param>
+    /// <param name="baseGraphJson">当該 execution の永続 graph JSON。</param>
+    /// <param name="ct">キャンセル トークン。</param>
+    /// <returns>合成後 JSON。子が無ければ <paramref name="baseGraphJson"/>。</returns>
+    Task<string> ComposeReadModelGraphJsonAsync(
+        Guid executionId,
+        string baseGraphJson,
         CancellationToken ct);
 }
 

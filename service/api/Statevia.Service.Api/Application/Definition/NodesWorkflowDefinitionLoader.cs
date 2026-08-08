@@ -775,11 +775,20 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             }
         }
 
-        /// <summary>単一 fork から各 branch が直接 join に入る MVP パターンのみ。</summary>
+        /// <summary>
+        /// Join に対応する Fork の枝集合を解決する。
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// 各枝先頭が当該 Join を「供給」する一意の Fork を選ぶ。
+        /// 供給とは (1) <c>next</c> が直接 Join、または (2) 枝先頭が内側 Fork で、
+        /// その内側 Join の出口（<c>next</c> 連鎖）が当該 Join に到達すること。
+        /// </para>
+        /// </remarks>
         [System.Diagnostics.CodeAnalysis.SuppressMessage(
             "Critical Code Smell",
             "S3776:Cognitive Complexity of methods should not be too high",
-            Justification = "fork/join の MVP パターン照合を単一メソッドに集約している。")]
+            Justification = "fork/join（ネスト含む）の照合を単一メソッドに集約している。")]
         private IReadOnlyList<string> ResolveJoinAll(IReadOnlyDictionary<string, ParsedNode> byId)
         {
             var joinId = Id;
@@ -792,23 +801,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                     continue;
                 }
 
-                var ok = true;
-                foreach (var b in n.Branches)
-                {
-                    if (!byId.TryGetValue(b, out var branchHead) || branchHead.Kind == NodeKind.Join)
-                    {
-                        ok = false;
-                        break;
-                    }
-
-                    if (!string.Equals(branchHead.Next, joinId, StringComparison.OrdinalIgnoreCase))
-                    {
-                        ok = false;
-                        break;
-                    }
-                }
-
-                if (ok)
+                if (ForkFeedsJoin(n, joinId, byId, []))
                 {
                     candidates.Add((n.Id, n.Branches));
                 }
@@ -817,17 +810,116 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             if (candidates.Count == 0)
             {
                 throw new ArgumentException(
-                    $"Join '{joinId}' has no matching fork where each branch node's 'next' points to this join. MVP supports a single fork feeding the join directly (see v2-nodes-to-states-conversion-spec §5.7).");
+                    $"Join '{joinId}' has no matching fork whose branches feed this join " +
+                    "(direct next, or nested fork whose inner join exits to this join).");
             }
 
             if (candidates.Count > 1)
             {
                 var names = string.Join(", ", candidates.Select(c => c.ForkId));
                 throw new ArgumentException(
-                    $"Join '{joinId}' matches multiple forks ({names}). MVP requires a unique fork (§5.7).");
+                    $"Join '{joinId}' matches multiple forks ({names}). A join must pair with a unique fork.");
             }
 
             return candidates[0].Branches;
+        }
+
+        /// <summary>Fork の全枝が <paramref name="joinId"/> を供給するか。</summary>
+        private static bool ForkFeedsJoin(
+            ParsedNode fork,
+            string joinId,
+            IReadOnlyDictionary<string, ParsedNode> byId,
+            HashSet<string> visitingForks)
+        {
+            if (fork.Branches is null || fork.Branches.Count < 2)
+                return false;
+
+            foreach (var branchId in fork.Branches)
+            {
+                if (!byId.TryGetValue(branchId, out var branchHead) || branchHead.Kind == NodeKind.Join)
+                    return false;
+
+                if (!BranchFeedsJoin(branchHead, joinId, byId, visitingForks))
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 枝先頭が Join を供給するか（直接 <c>next</c>、またはネスト Fork → 内側 Join → 出口連鎖）。
+        /// </summary>
+        private static bool BranchFeedsJoin(
+            ParsedNode branchHead,
+            string joinId,
+            IReadOnlyDictionary<string, ParsedNode> byId,
+            HashSet<string> visitingForks)
+        {
+            if (string.Equals(branchHead.Next, joinId, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (branchHead.Kind != NodeKind.Fork || branchHead.Branches is null)
+                return false;
+
+            if (!visitingForks.Add(branchHead.Id))
+                return false;
+
+            var pairedInnerJoin = TryFindUniqueJoinPairedWithFork(branchHead, byId, visitingForks);
+            if (pairedInnerJoin is null)
+                return false;
+
+            // 内側 Join 完了後の next 連鎖が外側 Join に到達すればネスト供給とみなす。
+            return PathReachesNode(pairedInnerJoin.Next, joinId, byId, maxSteps: byId.Count + 1);
+        }
+
+        /// <summary>指定 Fork と一意にペアになる Join（全枝が当該 Join を供給）を探す。</summary>
+        private static ParsedNode? TryFindUniqueJoinPairedWithFork(
+            ParsedNode fork,
+            IReadOnlyDictionary<string, ParsedNode> byId,
+            HashSet<string> visitingForks)
+        {
+            ParsedNode? found = null;
+            foreach (var candidate in byId.Values)
+            {
+                if (candidate.Kind != NodeKind.Join)
+                    continue;
+
+                if (!ForkFeedsJoin(fork, candidate.Id, byId, visitingForks))
+                    continue;
+
+                if (found is not null)
+                    return null;
+
+                found = candidate;
+            }
+
+            return found;
+        }
+
+        /// <summary><paramref name="fromNodeId"/> から <c>next</c> だけを辿り <paramref name="targetId"/> に達するか。</summary>
+        private static bool PathReachesNode(
+            string? fromNodeId,
+            string targetId,
+            IReadOnlyDictionary<string, ParsedNode> byId,
+            int maxSteps)
+        {
+            var current = fromNodeId;
+            for (var step = 0; step < maxSteps && !string.IsNullOrWhiteSpace(current); step++)
+            {
+                if (string.Equals(current, targetId, StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                if (!byId.TryGetValue(current, out var node))
+                    return false;
+
+                // Fork に入ったらネスト解決側に任せ、直線追跡は打ち切る。
+                if (node.Kind is NodeKind.Fork or NodeKind.End)
+                    return false;
+
+                current = node.Next;
+            }
+
+            return false;
         }
 
         /// <summary>
