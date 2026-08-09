@@ -107,6 +107,13 @@ internal class CoreDbContext : DbContext, ICoreDatabase
         public const string CheckpointJson = "checkpoint_json";
         public const string OwnerWorkerId = "owner_worker_id";
         public const string OwnerGeneration = "owner_generation";
+        public const string ParentExecutionId = "parent_execution_id";
+        public const string ForkNodeId = "fork_node_id";
+        public const string JoinState = "join_state";
+        public const string BranchState = "branch_state";
+        public const string OutputJson = "output_json";
+        public const string StatesJson = "states_json";
+        public const string VarsJson = "vars_json";
     }
 
     private static class ColumnTypes
@@ -138,6 +145,7 @@ internal class CoreDbContext : DbContext, ICoreDatabase
     public DbSet<ExecutionCursorRow> ExecutionCursors => Set<ExecutionCursorRow>();
     public DbSet<ExecutionWaitRow> ExecutionWaits => Set<ExecutionWaitRow>();
     public DbSet<ExecutionWaitSubscriptionRow> ExecutionWaitSubscriptions => Set<ExecutionWaitSubscriptionRow>();
+    public DbSet<ExecutionBranchRow> ExecutionBranches => Set<ExecutionBranchRow>();
     public DbSet<ExecutionCheckpointDocument> ExecutionCheckpoints => Set<ExecutionCheckpointDocument>();
     public DbSet<ExecutionWorkItemRow> ExecutionWorkItems => Set<ExecutionWorkItemRow>();
     public DbSet<CommandDedupRow> CommandDedup => Set<CommandDedupRow>();
@@ -373,6 +381,41 @@ internal class CoreDbContext : DbContext, ICoreDatabase
             e.HasOne<ExecutionWaitRow>()
                 .WithMany()
                 .HasForeignKey(x => new { x.ExecutionId, x.NodeId })
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // execution_branches（Fork 物理子の親子リンク正本）
+        modelBuilder.Entity<ExecutionBranchRow>(e =>
+        {
+            e.ToTable("execution_branches");
+            e.HasKey(x => new { x.ParentExecutionId, x.ForkNodeId, x.BranchState });
+            e.Property(x => x.ParentExecutionId).HasColumnName(Columns.ParentExecutionId);
+            e.Property(x => x.ExecutionId).HasColumnName(Columns.ExecutionId);
+            e.Property(x => x.ForkNodeId).HasMaxLength(64).HasColumnName(Columns.ForkNodeId);
+            e.Property(x => x.JoinState).HasMaxLength(256).HasColumnName(Columns.JoinState);
+            e.Property(x => x.BranchState).HasMaxLength(256).HasColumnName(Columns.BranchState);
+            e.Property(x => x.Status).HasMaxLength(64).HasColumnName(Columns.Status);
+            e.Property(x => x.OutputJson)
+                .HasColumnName(Columns.OutputJson)
+                .HasColumnType(ColumnTypes.Jsonb);
+            e.Property(x => x.StatesJson)
+                .HasColumnName(Columns.StatesJson)
+                .HasColumnType(ColumnTypes.Jsonb);
+            e.Property(x => x.VarsJson)
+                .HasColumnName(Columns.VarsJson)
+                .HasColumnType(ColumnTypes.Jsonb);
+            e.Property(x => x.CreatedAt).HasColumnName(Columns.CreatedAt);
+            e.Property(x => x.UpdatedAt).HasColumnName(Columns.UpdatedAt);
+            e.HasIndex(x => x.ExecutionId).IsUnique();
+            e.HasIndex(x => x.ParentExecutionId);
+
+            e.HasOne<ExecutionRow>()
+                .WithMany()
+                .HasForeignKey(x => x.ParentExecutionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<ExecutionRow>()
+                .WithMany()
+                .HasForeignKey(x => x.ExecutionId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

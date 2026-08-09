@@ -19,7 +19,11 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
     {
         private Func<string, Task>? _nodeCompletedHandler;
 
-        public string Start(CompiledWorkflowDefinition definition, string? executionId = null, object? input = null) =>
+        public string Start(
+            CompiledWorkflowDefinition definition,
+            string? executionId = null,
+            object? input = null,
+            string? initialState = null) =>
             throw new NotSupportedException();
 
         public void ResumeWaitNode(string executionId, string nodeId, string eventName) =>
@@ -49,6 +53,18 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         }
 
         public void SetSuspendHandler(Func<string, string, Task>? handler)
+        {
+        }
+
+        public void SetForkExpansionHandler(Func<ForkExpansionEvent, Task>? handler)
+        {
+        }
+
+        public void CompletePhysicalJoin(
+            string executionId,
+            string joinStateName,
+            IReadOnlyDictionary<string, object?> branchOutputs,
+            IReadOnlyList<PhysicalJoinContextFragment>? contextMerges = null)
         {
         }
 

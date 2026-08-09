@@ -1,0 +1,91 @@
+# =============================================================================
+# 公式サンプル: ネスト Fork / Join（nodes 形式・version: 1）
+# -----------------------------------------------------------------------------
+# 配置: docs/samples/ui-nested-fork.yaml
+#
+# 外側 Fork の一方の枝先頭が内側 Fork。内側 Join の next が外側 Join。
+# nodes 変換は「枝が Join を供給する」（直接 next、またはネスト Fork→内側 Join→外口）
+# で外側 Join と照合する。
+#
+# 起動 input 例: {}
+# CLI の Statevia.Service.Cli は states 形式のみ。本ファイルは Service API 経由で検証してください。
+# =============================================================================
+
+version: 1
+
+workflow:
+  id: sample.nested.fork
+  name: NestedForkSample
+  description: >
+    外側並列（即時枝 + 内側並列）→ 内側合流 → 外側合流 → 完了。
+    Hosted では外側・内側とも物理子 execution に展開される。
+
+nodes:
+  - id: nest.start
+    type: start
+    label: 開始
+    next: nest.outer.fork
+
+  - id: nest.outer.fork
+    type: fork
+    label: 外側並列
+    branches:
+      - nest.outer.fast
+      - nest.inner.fork
+
+  - id: nest.outer.fast
+    type: action
+    label: 外側・即時処理
+    action: noop
+    input:
+      lane: outer-fast
+    next: nest.outer.join
+
+  - id: nest.inner.fork
+    type: fork
+    label: 内側並列
+    branches:
+      - nest.inner.a
+      - nest.inner.b
+
+  - id: nest.inner.a
+    type: action
+    label: 内側 A
+    action: sleep
+    input:
+      duration: 1s
+      lane: inner-a
+    next: nest.inner.join
+
+  - id: nest.inner.b
+    type: action
+    label: 内側 B
+    action: sleep
+    input:
+      duration: 2s
+      lane: inner-b
+    next: nest.inner.join
+
+  - id: nest.inner.join
+    type: join
+    label: 内側合流
+    mode: all
+    next: nest.outer.join
+
+  - id: nest.outer.join
+    type: join
+    label: 外側合流
+    mode: all
+    next: nest.notify
+
+  - id: nest.notify
+    type: action
+    label: 完了通知
+    action: noop
+    input:
+      phase: nested-done
+    next: nest.end
+
+  - id: nest.end
+    type: end
+    label: 完了

@@ -1,0 +1,75 @@
+# =============================================================================
+# 公式サンプル: 循環 Fork / Join（nodes 形式・version: 1）
+# -----------------------------------------------------------------------------
+# 配置: docs/samples/ui-cyclic-fork.yaml
+#
+# Fork → 並列枝 → Join のあと、イベントで同じ Fork に戻れる。
+# 再到達のたびに親グラフ上で別 nodeId の Fork / Join が生え、
+# 合成辺は Join 到達 nodeId に固定される（循環対応）。
+#
+# 起動 input 例: {}
+# 操作:
+#   1. 実行開始 → 1 周目の Fork/Join まで進む（decide で待機）
+#   2. Resume / Publish「Again」→ Fork 再到達（2 周目）
+#   3. 「Finish」→ 終了
+#
+# CLI の Statevia.Service.Cli は states 形式のみ。本ファイルは Service API 経由で検証してください。
+# =============================================================================
+
+version: 1
+
+workflow:
+  id: sample.cyclic.fork
+  name: CyclicForkSample
+  description: >
+    Fork1 → Task1a/Task1b → Join1 → decide。
+    decide で Again なら同じ Fork1 へ戻り、Finish で終端する。
+    循環 Join 依存（Join 同士の相互待機）ではなく、制御フローの Fork 再到達。
+
+nodes:
+  - id: cycle.start
+    type: start
+    label: 開始
+    next: cycle.fork
+
+  - id: cycle.fork
+    type: fork
+    label: 並列ラウンド
+    branches:
+      - cycle.work.a
+      - cycle.work.b
+
+  - id: cycle.work.a
+    type: action
+    label: 作業 A
+    action: noop
+    input:
+      lane: a
+    next: cycle.join
+
+  - id: cycle.work.b
+    type: action
+    label: 作業 B
+    action: sleep
+    input:
+      duration: 1s
+      lane: b
+    next: cycle.join
+
+  - id: cycle.join
+    type: join
+    label: ラウンド合流
+    mode: all
+    next: cycle.decide
+
+  # 自己遷移禁止のため、Join 直後に別ノードで分岐する
+  - id: cycle.decide
+    type: wait
+    label: 再実行するか
+    events:
+      Again: cycle.fork
+      Finish: cycle.end
+
+  - id: cycle.end
+    type: end
+    label: 完了

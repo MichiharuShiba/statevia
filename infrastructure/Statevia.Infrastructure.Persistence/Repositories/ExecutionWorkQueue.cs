@@ -5,6 +5,10 @@ using System.Data;
 namespace Statevia.Infrastructure.Persistence.Repositories;
 
 /// <summary>PostgreSQL の行ロックを使用する永続実行ワークキュー。</summary>
+/// <remarks>
+/// 単独 DbContext で即コミットする API と、呼び出し側 <see cref="ICoreUnitOfWork"/> に参加する API を提供する。
+/// Fork 子展開など原子性が必要な経路は後者を使う。
+/// </remarks>
 internal sealed class ExecutionWorkQueue(IDbContextFactory<CoreDbContext> dbFactory) : IExecutionWorkQueue
 {
     /// <inheritdoc />
@@ -12,6 +16,13 @@ internal sealed class ExecutionWorkQueue(IDbContextFactory<CoreDbContext> dbFact
     {
         ArgumentNullException.ThrowIfNull(item);
         return EnqueueManyAsync([item], ct);
+    }
+
+    /// <inheritdoc />
+    public Task EnqueueAsync(ICoreUnitOfWork uow, ExecutionWorkItemRow item, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return EnqueueManyAsync(uow, [item], ct);
     }
 
     /// <inheritdoc />
@@ -24,6 +35,18 @@ internal sealed class ExecutionWorkQueue(IDbContextFactory<CoreDbContext> dbFact
         await using var db = await dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         db.ExecutionWorkItems.AddRange(items);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public Task EnqueueManyAsync(ICoreUnitOfWork uow, IReadOnlyList<ExecutionWorkItemRow> items, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(uow);
+        ArgumentNullException.ThrowIfNull(items);
+        if (items.Count == 0)
+            return Task.CompletedTask;
+
+        uow.GetDb().ExecutionWorkItems.AddRange(items);
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />

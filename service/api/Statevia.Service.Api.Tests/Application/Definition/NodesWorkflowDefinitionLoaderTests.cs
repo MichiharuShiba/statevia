@@ -36,6 +36,66 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.True(definition.States["endNode"].On![Fact.Completed].End);
     }
 
+    /// <summary>ネスト Fork（枝先頭が内側 Fork）でも外側 Join.All が外側枝先頭になる。</summary>
+    [Fact]
+    public void Load_NestedForkJoin_BuildsOuterJoinAllFromOuterBranchHeads()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: NestedFork
+            nodes:
+              - id: start
+                type: start
+                next: outerFork
+              - id: outerFork
+                type: fork
+                branches: [outerFast, innerFork]
+              - id: outerFast
+                type: action
+                action: noop
+                next: outerJoin
+              - id: innerFork
+                type: fork
+                branches: [innerA, innerB]
+              - id: innerA
+                type: action
+                action: noop
+                next: innerJoin
+              - id: innerB
+                type: action
+                action: noop
+                next: innerJoin
+              - id: innerJoin
+                type: join
+                mode: all
+                next: outerJoin
+              - id: outerJoin
+                type: join
+                mode: all
+                next: endNode
+              - id: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        var inner = definition.States["innerJoin"].Join;
+        Assert.NotNull(inner);
+        Assert.Contains("innerA", inner.All, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("innerB", inner.All, StringComparer.OrdinalIgnoreCase);
+
+        var outer = definition.States["outerJoin"].Join;
+        Assert.NotNull(outer);
+        Assert.Equal(2, outer.All.Count);
+        Assert.Contains("outerFast", outer.All, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("innerFork", outer.All, StringComparer.OrdinalIgnoreCase);
+        Assert.DoesNotContain("innerA", outer.All, StringComparer.OrdinalIgnoreCase);
+    }
+
     /// <summary>fork / join（mode: all）から Join.All が構築される。</summary>
     [Fact]
     public void Load_ForkJoin_BuildsJoinAll()

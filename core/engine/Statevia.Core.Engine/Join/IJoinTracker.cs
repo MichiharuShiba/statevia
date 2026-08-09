@@ -14,4 +14,11 @@ public interface IJoinTracker
     IReadOnlyList<string> GetJoinSourceNodeIds(string joinStateName);
     /// <summary>Join 状態が完了ポリシーを満たして実行可能かを判定し、未実行なら開始済みとしてマークします。</summary>
     bool TryBeginJoinExecution(string joinStateName);
+
+    /// <summary>
+    /// Join の依存事実が揃い、まだ開始されていないとき実行可能か（開始マークはしない）。
+    /// </summary>
+    /// <param name="joinStateName">Join 状態名。</param>
+    /// <returns>実行可能なら <see langword="true"/>。</returns>
+    bool IsJoinReadyToExecute(string joinStateName);
 }

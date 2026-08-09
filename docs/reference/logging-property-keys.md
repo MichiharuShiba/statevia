@@ -4,6 +4,12 @@
 
 Service API と Engine の構造化ログで、同じ概念に同じキー名を使う。
 
+## 出力手段（必須）
+
+- **`ILogger.LogInformation` / `LogWarning` / `LogError` 等を直接呼ばない。**
+- `[LoggerMessage]`（ソース生成）の partial メソッド経由で出す（例: `ExecutionServiceLogMessages`、`ForkExpansionLogMessages`）。
+- 新規カテゴリは `*LogMessages.cs` にまとめ、EventId 帯が既存と衝突しないようにする。
+
 ## Message テンプレート（Service API）
 
 - **ラベル**（`=` の左）: **PascalCase**（例: `TraceId`, `TenantId`）
@@ -18,6 +24,8 @@ Service API と Engine の構造化ログで、同じ概念に同じキー名を
 | 相関 ID | `TraceId` | API / Engine | `traceparent` / `X-Trace-Id` から解決 |
 | テナント | `TenantId` | API | 解決済み `tenants.tenant_id`（UUID）。未解決パスでは null |
 | ワークフロー ID | `ExecutionId` | API enrich / 実行系 / Engine | route `{id}` 由来（display ID の場合あり） |
+| 親ワークフロー ID | `ParentExecutionId` | Fork 展開 | 物理子展開時の親 |
+| Fork ノード ID | `ForkNodeId` | Fork 展開 | 親実行グラフ上の Fork 到達インスタンス |
 | 状態名 | `StateName` | Engine | State 実行ログ・Warning |
 | 定義 ID | `DefinitionId` | API enrich | route `{id}` 由来（display ID の場合あり） |
 | グラフ定義 ID | `GraphDefinitionId` | API enrich | route `{graphId}` |

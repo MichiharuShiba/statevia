@@ -117,13 +117,30 @@ public sealed class ExecutionServiceTests
         /// <summary>設定時、一致する <c>clientEventId</c> の Cancel で <see cref="ApplyResult.AlreadyApplied"/> を返す。</summary>
         public Guid? CancelAlreadyAppliedWhenClientEventIdEquals { get; set; }
 
-        public string Start(CompiledWorkflowDefinition definition, string? executionId = null, object? input = null)
+        public string Start(
+            CompiledWorkflowDefinition definition,
+            string? executionId = null,
+            object? input = null,
+            string? initialState = null)
         {
             StartCalled = true;
             LastDefinition = definition;
             LastInput = input;
-            LastEngineId = executionId;
-            return executionId ?? "generated";
+            var resolvedId = executionId ?? "generated";
+            LastEngineId = resolvedId;
+            // 実 Engine 同様、Start 後は投影可能な Running スナップショットを返す。
+            SnapshotToReturn ??= new ExecutionSnapshot
+            {
+                ExecutionId = resolvedId,
+                WorkflowName = definition.Name,
+                ActiveStates = string.IsNullOrWhiteSpace(initialState)
+                    ? Array.Empty<string>()
+                    : [initialState],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            };
+            return resolvedId;
         }
 
         /// <summary>設定時、PublishEvent(executionId, name, clientEventId) がこの例外を投げる。</summary>
@@ -194,6 +211,20 @@ public sealed class ExecutionServiceTests
             // no-op for tests
         }
 
+        public void SetForkExpansionHandler(Func<ForkExpansionEvent, Task>? handler)
+        {
+            // no-op for tests
+        }
+
+        public void CompletePhysicalJoin(
+            string executionId,
+            string joinStateName,
+            IReadOnlyDictionary<string, object?> branchOutputs,
+            IReadOnlyList<PhysicalJoinContextFragment>? contextMerges = null)
+        {
+            // no-op for tests
+        }
+
         public ExecutionRuntimeCheckpoint? ExportCheckpoint(string executionId) => null;
 
         public void ImportCheckpoint(CompiledWorkflowDefinition definition, ExecutionRuntimeCheckpoint checkpoint)
@@ -201,7 +232,15 @@ public sealed class ExecutionServiceTests
             // no-op for tests
         }
 
-        public bool Unload(string executionId) => false;
+        /// <summary><see cref="Unload"/> が呼ばれた回数。</summary>
+        public int UnloadCalls { get; private set; }
+
+        public bool Unload(string executionId)
+        {
+            UnloadCalls += 1;
+            SnapshotToReturn = null;
+            return true;
+        }
     }
 
     private sealed class FakeProjectionUpdateQueue : IExecutionProjectionUpdateQueue
@@ -638,6 +677,9 @@ public sealed class ExecutionServiceTests
             return Task.FromResult(true);
         }
 
+        /// <summary>execution ごとの行。未設定時は <see cref="AfterSeqItems"/> を使う。</summary>
+        public Dictionary<Guid, List<EventStoreRow>> ItemsByExecutionId { get; } = new();
+
         public async Task<(IReadOnlyList<EventStoreRow> Items, bool HasMore)> ListAfterSeqAsync(
             ICoreUnitOfWork uow,
             Guid executionId,
@@ -647,7 +689,25 @@ public sealed class ExecutionServiceTests
         {
             _ = uow;
             await Task.Yield(); // async boundary for coverage
-            return ((IReadOnlyList<EventStoreRow>)AfterSeqItems, AfterSeqHasMore);
+            var source = ItemsByExecutionId.TryGetValue(executionId, out var keyed)
+                ? keyed
+                : AfterSeqItems;
+            var page = source
+                .Where(r => r.Seq > afterSeq)
+                .OrderBy(r => r.Seq)
+                .Take(limit + 1)
+                .ToList();
+            var hasMore = page.Count > limit;
+            if (!hasMore
+                && ItemsByExecutionId.Count == 0
+                && AfterSeqHasMore)
+            {
+                hasMore = true;
+            }
+
+            if (page.Count > limit)
+                page.RemoveAt(page.Count - 1);
+            return (page, hasMore);
         }
 
         public async Task<long> GetMaxSeqAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct = default)
@@ -1376,6 +1436,98 @@ public sealed class ExecutionServiceTests
         Assert.Equal("Wait", nodeB.StateName);
     }
 
+    /// <summary>親 events GET で子孫の EventPublished を合成し、子 WorkflowStarted は落とす。</summary>
+    [Fact]
+    public async Task ListEventsAsync_ComposesDescendantEvents_AndDropsChildWorkflowStarted()
+    {
+        // Arrange
+        var parentId = Guid.NewGuid();
+        var childId = Guid.NewGuid();
+        var t0 = new DateTime(2026, 8, 8, 10, 0, 0, DateTimeKind.Utc);
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = parentId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = Guid.NewGuid(),
+                Status = "Running",
+                StartedAt = t0,
+                UpdatedAt = t0,
+                CancelRequested = false,
+                RestartLost = false
+            },
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
+            {
+                ExecutionId = parentId,
+                GraphJson = """{"nodes":[{"nodeId":"a","stateName":"A"}],"edges":[]}""",
+                UpdatedAt = t0
+            }
+        };
+        var display = new FakeDisplayIdService
+        {
+            ResolveResultExecution = parentId,
+            GetDisplayIdResult = "eidCompose"
+        };
+        var eventStore = new FakeEventStoreRepository();
+        eventStore.ItemsByExecutionId[parentId] =
+        [
+            new EventStoreRow
+            {
+                ExecutionId = parentId,
+                Seq = 1,
+                Type = EventStoreEventType.WorkflowStarted.ToPersistedString(),
+                OccurredAt = t0
+            }
+        ];
+        eventStore.ItemsByExecutionId[childId] =
+        [
+            new EventStoreRow
+            {
+                ExecutionId = childId,
+                Seq = 1,
+                Type = EventStoreEventType.WorkflowStarted.ToPersistedString(),
+                OccurredAt = t0.AddSeconds(1)
+            },
+            new EventStoreRow
+            {
+                ExecutionId = childId,
+                Seq = 2,
+                Type = EventStoreEventType.EventPublished.ToPersistedString(),
+                OccurredAt = t0.AddSeconds(2)
+            }
+        ];
+        var coordinator = new FakeForkChildCoordinator { DescendantIds = [childId] };
+
+        using var sqlite = new SqliteTestDatabase();
+        var sut = BuildExecutionService(
+            sqlite,
+            new FakeExecutionEngine(),
+            display,
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            executionRepo,
+            new StubDefinitionRepository(),
+            new FakeCommandDedupRepository(),
+            eventStore,
+            new FakeEventDeliveryDedupRepository(),
+            forkChildCoordinator: coordinator);
+
+        // Act
+        var res = await sut.ListEventsAsync("eidCompose", afterSeq: 0, limit: 10, CancellationToken.None);
+
+        // Assert
+        Assert.False(res.HasMore);
+        Assert.Equal(2, res.Events.Count);
+        Assert.Equal("ExecutionStatusChanged", res.Events[0].Type);
+        Assert.Equal("Running", res.Events[0].To);
+        Assert.Equal("GraphUpdated", res.Events[1].Type);
+        Assert.Equal("eidCompose", res.Events[1].ExecutionId);
+        Assert.Equal(1, res.Events[0].Seq);
+        Assert.Equal(2, res.Events[1].Seq);
+    }
+
     /// <summary>取消要求で冪等一致かつ有効行があるとき副作用なく即時終了する。</summary>
     [Fact]
     public async Task CancelAsync_WhenDedupHitAndExistingNotNull_ReturnsEarly_WithoutSideEffects()
@@ -1704,6 +1856,72 @@ public sealed class ExecutionServiceTests
         Assert.True(engine.CancelCalled);
         Assert.Empty(eventStore.Appended);
         Assert.Empty(dedupRepo.SavedRows);
+    }
+
+    /// <summary>
+    /// 終端検知時は Unload 前に投影キュー排水と最終投影を行い、不完全 graph のまま Completed が残らないこと。
+    /// </summary>
+    [Fact]
+    public async Task AwaitLocalExecutionLoadAsync_WhenTerminal_DrainsProjectsThenUnloads()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        const string finalGraphJson = """{"nodes":[{"id":"a"},{"id":"b"},{"id":"c"},{"id":"d"}]}""";
+        using var sqlite = new SqliteTestDatabase();
+        var projectionQueue = new FakeProjectionUpdateQueue();
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = Array.Empty<string>(),
+                IsCompleted = true,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn = finalGraphJson
+        };
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = Guid.NewGuid(),
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var sut = BuildExecutionService(
+            sqlite,
+            engine,
+            new FakeDisplayIdService(),
+            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new FakeCommandDedupService(null),
+            executionRepo,
+            new StubDefinitionRepository(),
+            new FakeCommandDedupRepository(),
+            new FakeEventStoreRepository(),
+            new FakeEventDeliveryDedupRepository(),
+            projectionQueue);
+
+        // Act
+        await sut.AwaitLocalExecutionLoadAsync(executionId, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(1, projectionQueue.DrainCalls);
+        Assert.Equal(executionId, projectionQueue.LastDrainExecutionId);
+        Assert.Single(executionRepo.Updates);
+        Assert.Equal("Completed", executionRepo.Updates[0].Status);
+        Assert.Equal(finalGraphJson, executionRepo.Updates[0].GraphJson);
+        Assert.True(engine.UnloadCalls >= 1);
+        Assert.Null(engine.SnapshotToReturn);
     }
 
     /// <summary>非公開投影更新処理が実行行とスナップショットを更新する。</summary>
@@ -3940,6 +4158,50 @@ public sealed class ExecutionServiceTests
             waitRepo: waitRepo);
     }
 
+    private sealed class FakeForkChildCoordinator : IForkChildExecutionCoordinator
+    {
+        public List<Guid> DescendantIds { get; init; } = [];
+
+        public Task<ForkExpansionResult> ExpandForkAsync(ForkExpansionRequest request, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<bool> NotifyChildTerminalAsync(
+            Guid childExecutionId,
+            string status,
+            string? outputJson,
+            string? statesJson,
+            string? varsJson,
+            CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<ForkJoinEvaluation> EvaluateJoinAsync(
+            Guid parentExecutionId,
+            string forkNodeId,
+            CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task CascadeCancelToRunningChildrenAsync(Guid parentExecutionId, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<ForkWaitDeliveryTarget?> TryResolveChildWaitDeliveryAsync(
+            Guid requestedExecutionId,
+            string? nodeId,
+            string eventName,
+            CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<string> ComposeReadModelGraphJsonAsync(
+            Guid executionId,
+            string baseGraphJson,
+            CancellationToken ct) =>
+            Task.FromResult(baseGraphJson);
+
+        public Task<IReadOnlyList<Guid>> ListDescendantExecutionIdsAsync(
+            Guid parentExecutionId,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<Guid>>(DescendantIds);
+    }
+
     private static ExecutionService BuildExecutionService(
         SqliteTestDatabase sqlite,
         IExecutionEngine engine,
@@ -3956,7 +4218,8 @@ public sealed class ExecutionServiceTests
         Microsoft.Extensions.Options.IOptions<EventDeliveryRetryOptions>? eventDeliveryRetryOptions = null,
         IExecutionMutationPersistence? mutationPersistence = null,
         IProjectAuthorizationService? projectAuthorization = null,
-        FakeExecutionWaitRepository? waitRepo = null)
+        FakeExecutionWaitRepository? waitRepo = null,
+        IForkChildExecutionCoordinator? forkChildCoordinator = null)
     {
         if (displayIds is not IDisplayIdWriteService displayIdWrites)
             throw new InvalidOperationException("Test display id service must implement IDisplayIdWriteService.");
@@ -4001,7 +4264,10 @@ public sealed class ExecutionServiceTests
             retryOptions,
             new FixedCorrelationIdAccessor(),
             new FakeExecutionCheckpointStore(),
-            projectionUpdateQueue);
+            projectionUpdateQueue,
+            workQueue: null,
+            ownershipTracker: null,
+            forkChildCoordinator: forkChildCoordinator);
     }
 
     /// <summary>Reader 付与テナントは Start（Executor）が 403。</summary>

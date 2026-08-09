@@ -1,5 +1,5 @@
 using System.Globalization;
-
+using System.Text.Json;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 
@@ -111,6 +111,65 @@ public sealed class WorkflowExecutionContext
         lock (_lock)
         {
             return _states.ContainsKey(stateName);
+        }
+    }
+
+    /// <summary>
+    /// 完了済み State エントリを一括投影する（既存キーは上書き＝後勝ち）。
+    /// </summary>
+    /// <param name="states">stateName → `{ output: … }` 形式のエントリ。</param>
+    public void MergeStateEntries(IReadOnlyDictionary<string, object?> states)
+    {
+        ArgumentNullException.ThrowIfNull(states);
+        lock (_lock)
+        {
+            foreach (var (stateName, entry) in states)
+            {
+                if (string.IsNullOrWhiteSpace(stateName))
+                    continue;
+                _states[stateName] = CloneForIsolation(entry);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 子終端 vars を親 vars へトップレベルキー単位でマージする（既存キーは上書き＝後勝ち）。
+    /// </summary>
+    /// <param name="vars">辞書形式の vars。それ以外は無視する。</param>
+    public void MergeVars(object? vars)
+    {
+        if (vars is null)
+            return;
+
+        IReadOnlyDictionary<string, object?>? source = vars switch
+        {
+            IReadOnlyDictionary<string, object?> typed => typed,
+            JsonElement { ValueKind: JsonValueKind.Object } element => element.EnumerateObject()
+                .ToDictionary(
+                    prop => prop.Name,
+                    prop => (object?)prop.Value.Clone(),
+                    StringComparer.OrdinalIgnoreCase),
+            System.Collections.IDictionary untyped => untyped.Keys
+                .Cast<object>()
+                .Where(k => k is string)
+                .ToDictionary(
+                    k => (string)k,
+                    k => untyped[k],
+                    StringComparer.OrdinalIgnoreCase),
+            _ => null
+        };
+        if (source is null || source.Count == 0)
+            return;
+
+        lock (_lock)
+        {
+            var root = EnsureVarsDictionary();
+            foreach (var (key, value) in source)
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                    continue;
+                root[key] = CloneForIsolation(value);
+            }
         }
     }
 

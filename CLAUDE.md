@@ -77,6 +77,7 @@
 ### 可観測性・運用性（C#）
 
 - 障害解析に必要な構造化ログと相関 ID（TraceId など）を維持し、主要処理の追跡可能性を確保する。
+- **`ILogger.Log*`（`LogWarning` / `LogError` 等）を直接呼ばない。** `[LoggerMessage]` によるソース生成 partial（例: `*LogMessages.cs`）経由で記録する。キー命名は `docs/reference/logging-property-keys.md`。
 - 監視で利用するメトリクスとログ粒度を意識し、運用時に判断できない実装を避ける。
 
 ### 信頼性・回復性（C#）

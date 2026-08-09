@@ -3,9 +3,9 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.1 |
-| 更新日 | 2026-05-11 |
-| 関連 | [api-http.md](../api-http.md), [concepts/execution-model.md](../../concepts/execution-model.md) |
+| Version | 1.2 |
+| 更新日 | 2026-08-09 |
+| 関連 | [api-http.md](../api-http.md), [concepts/execution-model.md](../../concepts/execution-model.md), [fork-join.md](fork-join.md) |
 
 ---
 
@@ -14,6 +14,7 @@
 - **MUST**: JSON キーは **camelCase** とする。
 - **MUST**: 実行グラフの `edges[*].from` / `to` は**実行ノード ID**（`nodes[*].nodeId`）を指す（定義キャンバスの nodeId とは別）。
 - **MUST**: HTTP GET graph の正本は DB projection と整合させる（in-process export はデバッグ用途）。
+- **MUST**: Hosted で物理 Fork がある親の `GET …/graph` は、永続生グラフを **GET 時に論理 Fork/Join へ合成**して返す（UI は分割非認知。[fork-join.md](fork-join.md)）。
 - **SHOULD**: `input` / `output` を外部ログへ載せる前に IO-14 に従いマスキングする。
 
 ---
@@ -104,7 +105,7 @@
 | `output` | `any \| null` | 任意 | 状態出力。`object` としてシリアライズ |
 | `input` | `any \| null` | 任意 | 当該状態実行に渡された入力（説明責任・Join 合成入力の記録に利用） |
 | `attempt` | `number` | 必須 | 試行回数（現行実装では主に `1`） |
-| `workerId` | `string \| null` | 任意 | ワーカー識別子。現行では未指定時に `nodeId` と同値が入ることがある |
+| `workerId` | `string \| null` | 任意 | ワーカー識別子。現行では未指定時に `nodeId` と同値が入ることがある。親グラフの **合成表示**では、分岐を実行した子グラフの `workerId` を引き継ぐ |
 | `waitKey` | `string \| null` | 任意 | 単一イベント Wait の互換キー（`allowedEvents` が 1 件のときそのイベント名。複数イベント時は `null`） |
 | `allowedEvents` | `string[] \| null` | 任意 | Wait ノードの許可イベント名一覧（`WaitEventRouteTable` のキー）。非 Wait では `null` |
 | `canceledByExecution` | `boolean` | 必須 | 実行全体のキャンセルにより当該ノードがキャンセル扱いになったか |
@@ -204,9 +205,10 @@ JSON プロパティ名は **camelCase** のため、C# の `From` / `To` は **
 
 ## 7. API/UI 境界
 
-- `GET /v1/executions/{id}/graph` の本文は、本書の **`nodes` / `edges` 構造をそのまま** `execution_graph_snapshots` から返す（キー名・意味はエンジン `ExportJson` と一致）。
+- `GET /v1/executions/{id}/graph` の本文は、本書の **`nodes` / `edges` 構造**を返す（キー名・意味はエンジン `ExportJson` と一致）。
+- 永続は `execution_graph_snapshots` の生グラフ。Hosted の親 execution で物理子がある場合、応答は **GET 時合成**後の論理 Fork/Join グラフになる（合成規則・Join 辺の `nodeId` 固定は [fork-join.md](fork-join.md)）。
 - API は実行グラフの `conditionRouting` を透過的に返却する。
-- UI は `conditionRouting` を再評価しない（表示専用データとして扱う）。
+- UI は `conditionRouting` を再評価しない（表示専用データとして扱う）。物理子や `execution_branches` を意識しない。
 - UI が定義グラフ（`GET /v1/graphs/{graphId}`）と合成するときは、**実行ノードの `nodeId` と定義ノードの `nodeId`（状態名）が一致しない**前提で、`stateName` やエッジの `from`/`to` を用いて対応付ける（`ui/studio/features/executions/lib/mergeGraph.ts`）。
 
 詳細は `docs/specifications/api-http.md` を参照。

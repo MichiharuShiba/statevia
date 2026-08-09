@@ -294,6 +294,68 @@ namespace Statevia.Infrastructure.Persistence.Migrations
                     b.ToTable("event_store", (string)null);
                 });
 
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionBranchRow", b =>
+                {
+                    b.Property<Guid>("ParentExecutionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_execution_id");
+
+                    b.Property<string>("ForkNodeId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("fork_node_id");
+
+                    b.Property<string>("BranchState")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("branch_state");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("ExecutionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("execution_id");
+
+                    b.Property<string>("JoinState")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("join_state");
+
+                    b.Property<string>("OutputJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("output_json");
+
+                    b.Property<string>("StatesJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("states_json");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("VarsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("vars_json");
+
+                    b.HasKey("ParentExecutionId", "ForkNodeId", "BranchState");
+
+                    b.HasIndex("ExecutionId")
+                        .IsUnique();
+
+                    b.HasIndex("ParentExecutionId");
+
+                    b.ToTable("execution_branches", (string)null);
+                });
+
             modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionCheckpointDocument", b =>
                 {
                     b.Property<Guid>("ExecutionId")
@@ -1150,6 +1212,21 @@ namespace Statevia.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Statevia.Core.Application.Contracts.Persistence.ExecutionBranchRow", b =>
+                {
+                    b.HasOne("Statevia.Core.Application.Contracts.Persistence.ExecutionRow", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Statevia.Core.Application.Contracts.Persistence.ExecutionRow", null)
+                        .WithMany()
+                        .HasForeignKey("ParentExecutionId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

@@ -3,9 +3,9 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Concept |
-| Version | 1.0 |
-| 更新日 | 2026-07-07 |
-| 関連 | [../specifications/execution/](../specifications/execution/) |
+| Version | 1.1 |
+| 更新日 | 2026-08-09 |
+| 関連 | [../specifications/execution/](../specifications/execution/), [../specifications/execution/fork-join.md](../specifications/execution/fork-join.md) |
 
 ---
 
@@ -29,13 +29,15 @@
 
 並列分岐と合流は**制御ノード**としてグラフに表現されます。Join は依存する分岐の完了事実を待ち、すべて揃った時点で次へ進みます。
 
+**Hosted Runtime** では Fork を親＋物理子 execution に展開し、親子リンクと Join 充足は `execution_branches` が正本です。定義語彙は透過のまま、UI 向け graph / events は GET 時に論理 1 実行へ合成します。詳細は [fork-join.md](../specifications/execution/fork-join.md)。
+
 ### 5. Wait と Cancel
 
-EventWait など durable な待機は operational projection と整合します。キャンセルは協調的: 要求は Command として受理されますが、遷移はキャンセルが処理された**事実**まで保留されます。
+EventWait など durable な待機は operational projection と整合します。キャンセルは協調的: 要求は Command として受理されますが、遷移はキャンセルが処理された**事実**まで保留されます。物理 Fork 下の分岐 Wait は子 execution へ配送し、親 Cancel は未終端子へカスケードします。
 
 ### 6. 実行グラフの可視化
 
-Engine は実行時グラフ（ノード ID、状態名、attempt、waitKey 等）をエクスポートします。HTTP GET の read-model は DB projection を正とし、in-process スナップショットと一致しない場合がある点に注意してください。
+Engine は実行時グラフ（ノード ID、状態名、attempt、waitKey 等）をエクスポートします。HTTP GET の read-model は DB projection を正とし、in-process スナップショットと一致しない場合がある点に注意してください。親の物理 Fork がある場合、GET graph は合成後の論理見え方を返します（合成ノードの `workerId` は子から引き継ぎ）。
 
 ## Specification への対応
 

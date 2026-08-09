@@ -29,6 +29,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<IExecutionRepository, ExecutionRepository>();
         services.AddScoped<IExecutionCursorRepository, ExecutionCursorRepository>();
         services.AddScoped<IExecutionWaitRepository, ExecutionWaitRepository>();
+        services.AddScoped<IExecutionBranchRepository, ExecutionBranchRepository>();
         services.AddScoped<IExecutionWorkQueue, ExecutionWorkQueue>();
         services.AddScoped<IExecutionCheckpointStore, PostgresExecutionCheckpointStore>();
         services.AddScoped<ICommandDedupRepository, CommandDedupRepository>();

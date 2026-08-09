@@ -3,9 +3,9 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.5.0 |
-| 更新日 | 2026-07-29 |
-| 関連 | [concepts/definition.md](../concepts/definition.md), [execution/wait-cancel.md](execution/wait-cancel.md) |
+| Version | 1.5.1 |
+| 更新日 | 2026-08-09 |
+| 関連 | [concepts/definition.md](../concepts/definition.md), [execution/wait-cancel.md](execution/wait-cancel.md), [execution/fork-join.md](execution/fork-join.md) |
 
 ---
 
@@ -240,6 +240,8 @@ Wait は **Signal**（`events`）と **Subscribe**（`subscribe`）の二モー�
 
 - **join.all**: 完了を待つ状態名のリスト。すべてが完了すると `Joined` 事実が発生し、`on.Joined` で次へ遷移できる。
 - Join 状態は合成ノードとして実行され、**`action` は指定しない**（`wait` と同様に `action` 併記は Level 1 検証エラー）。
+- **Hosted Runtime**: Fork は物理子 execution に展開される。定義語彙（`fork` / `join.all` / `$.states…`）は維持する。実行時契約（兄弟参照不可・Join 後の親 Context マージ・読みモデル合成）は [execution/fork-join.md](execution/fork-join.md) を正とする。
+- **兄弟参照**: Join 前に同一 Fork の兄弟の `$.states…` / `$.vars…` を参照してはならない。Join 後は親へマージされた結果のみ参照できる（キー衝突は後勝ち）。
 
 ### 1.5 例（States 形式）
 
@@ -559,6 +561,7 @@ Service API の **`GET /v1/definitions/schema/nodes`** が返すスキーマに�
 - **wait**: 正本は **`events`**（イベント名 → 次ノード ID）。単一イベントの旧形式 `event` + `next` も受理し、Loader が `events` へ正規化する。`timeout`（ISO 8601 duration）は現行変換では未使用。
 - **fork**: `branches` に並列ブランチのノード ID の配列。
 - **join**: すべてのブランチの完了を待ち、`next` へ進む。
+  - Join と Fork の対応: 各枝先頭が当該 Join を**供給**する一意の Fork を選ぶ。供給は (1) 枝の `next` が直接 Join、または (2) 枝先頭が内側 Fork で、その内側 Join の `next` 連鎖が当該 Join に到達すること（ネスト）。`Join.all` は外側 Fork の枝先頭集合になる。例: [`docs/samples/ui-nested-fork.yaml`](../samples/ui-nested-fork.yaml)。Fork 再到達（循環）の例: [`docs/samples/ui-cyclic-fork.yaml`](../samples/ui-cyclic-fork.yaml)。
 
 ### 2.3 例（Nodes 形式・抜粋）
 
@@ -724,7 +727,7 @@ Nodes 形式は、実行前に **states 形式の CompiledWorkflowDefinition に
 - 状態名（states 形式）またはノード ID（nodes 形式）は一意とする。
 - 自己遷移（A → A）は禁止。
 - Join の all / branches は既存の状態・ノードを参照する。
-- Fork と Join は制御構造であり、実行順序の保証範囲は実装に依存する。
+- Fork と Join は制御構造であり、実行順序の保証範囲は実装に依存する。Hosted では [execution/fork-join.md](execution/fork-join.md) の物理子契約に従う。
 - Wait は指定イベントで再開する待機を表す。
 
 ---

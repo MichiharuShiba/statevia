@@ -1,7 +1,11 @@
-import { getStatusStyle, type StatusLike } from "@/shared/lib/statusStyle";
+import { getStatusStyle } from "@/shared/lib/statusStyle";
 
 type StatusBadgeProps = {
-  status: StatusLike;
+  /**
+   * 表示する状態文字列。
+   * 既知の StatusLike に加え、API 由来の想定外値も受け付ける（getStatusStyle がフォールバックする）。
+   */
+  status: string;
   className?: string;
 };
 

@@ -10,7 +10,12 @@ public interface IExecutionEngine
     /// <param name="definition">コンパイル済みワークフロー定義。</param>
     /// <param name="executionId">使用する実行インスタンス ID。省略時はエンジンが生成する。</param>
     /// <param name="input">初期状態の <see cref="IStateExecutor.ExecuteAsync"/> に渡す入力（省略時は <c>null</c>）。</param>
-    string Start(CompiledWorkflowDefinition definition, string? executionId = null, object? input = null);
+    /// <param name="initialState">開始状態名。省略時は <see cref="CompiledWorkflowDefinition.InitialState"/>。</param>
+    string Start(
+        CompiledWorkflowDefinition definition,
+        string? executionId = null,
+        object? input = null,
+        string? initialState = null);
 
     /// <summary>
     /// 待機中 Wait ノードを指定イベントで再開する（ランタイム正本）。
@@ -62,6 +67,39 @@ public interface IExecutionEngine
     /// </summary>
     /// <remarks>単体 DLL 利用時は未登録のままでよい（メモリ常駐）。</remarks>
     void SetSuspendHandler(Func<string, string, Task>? handler);
+
+    /// <summary>
+    /// Fork 到達時の物理子展開ハンドラを登録または解除します。
+    /// </summary>
+    /// <remarks>
+    /// <para>登録時は論理 Fork（同一インスタンス上の分岐 Schedule）を行わず、ハンドラのみ呼び出す。</para>
+    /// <para>未登録時は従来どおり論理 Fork する（スタンドアロン Engine）。</para>
+    /// <para>
+    /// 登録時、分岐子が Join 状態へ遷移しようとした場合は親が集約するため、
+    /// 子インスタンスは当該 output で <c>MarkCompleted</c> する。
+    /// </para>
+    /// </remarks>
+    void SetForkExpansionHandler(Func<ForkExpansionEvent, Task>? handler);
+
+    /// <summary>
+    /// Hosted 物理子の完了事実を親 JoinTracker へ反映し、充足していれば Join 状態を実行する。
+    /// </summary>
+    /// <param name="executionId">親実行インスタンス ID（ロード済みであること）。</param>
+    /// <param name="joinStateName">充足させる Join 状態名。</param>
+    /// <param name="branchOutputs">分岐先頭状態名 → 子終端 output。</param>
+    /// <param name="contextMerges">
+    /// 親 Context へ投影する子 Context 断片（適用順。省略可）。
+    /// </param>
+    /// <remarks>
+    /// <para>既に同一 Join を開始済みなら no-op。</para>
+    /// <para>Host が <c>execution_branches</c> で充足を確認したあとに呼び出す。</para>
+    /// <para><paramref name="contextMerges"/> は Join 実行前に適用し、後続状態の <c>$.states</c> / <c>$.vars</c> 解決に使う。</para>
+    /// </remarks>
+    void CompletePhysicalJoin(
+        string executionId,
+        string joinStateName,
+        IReadOnlyDictionary<string, object?> branchOutputs,
+        IReadOnlyList<PhysicalJoinContextFragment>? contextMerges = null);
 
     /// <summary>再開可能なランタイム状態をエクスポートする。</summary>
     /// <param name="executionId">実行インスタンス ID。</param>

@@ -111,10 +111,11 @@ Guide のあと、なぜそうなっているかを理解する。
 
 ## Future（将来構想）
 
-**未実装**の構想のみ。現行仕様と混同しないこと。
+契約・実装の正本ではない。論理到達像と成熟度・フェーズ展望。現行仕様と混同しないこと。
 
 | ドキュメント | 内容 |
 | --- | --- |
+| [product-roadmap.md](future/product-roadmap.md) | 能力成熟度（ある／部分／ない）と Near / Mid / Long |
 | [platform-architecture.md](future/platform-architecture.md) | プラットフォーム構成（将来構想） |
 
 一覧: [future/README.md](future/README.md)

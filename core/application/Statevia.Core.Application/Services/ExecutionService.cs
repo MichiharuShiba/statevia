@@ -87,6 +87,7 @@ internal sealed class ExecutionService : IExecutionService
     private readonly IOptions<EventDeliveryRetryOptions> _eventDeliveryRetryOptions;
     private readonly ICorrelationIdAccessor _correlationIdAccessor;
     private readonly IExecutionProjectionUpdateQueue _projectionUpdateQueue;
+    private readonly IForkChildExecutionCoordinator? _forkChildCoordinator;
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Major Code Smell",
@@ -119,7 +120,8 @@ internal sealed class ExecutionService : IExecutionService
         IExecutionCheckpointStore checkpointStore,
         IExecutionProjectionUpdateQueue? projectionUpdateQueue = null,
         IExecutionWorkQueue? workQueue = null,
-        ExecutionOwnershipTracker? ownershipTracker = null)
+        ExecutionOwnershipTracker? ownershipTracker = null,
+        IForkChildExecutionCoordinator? forkChildCoordinator = null)
     {
         _engine = engine;
         _displayIds = displayIds;
@@ -148,6 +150,7 @@ internal sealed class ExecutionService : IExecutionService
         _eventDeliveryRetryOptions = eventDeliveryRetryOptions;
         _correlationIdAccessor = correlationIdAccessor;
         _projectionUpdateQueue = projectionUpdateQueue ?? NoopExecutionProjectionUpdateQueue.Instance;
+        _forkChildCoordinator = forkChildCoordinator;
     }
 
     public async Task<ExecutionResponse> StartAsync(
@@ -302,23 +305,23 @@ internal sealed class ExecutionService : IExecutionService
                         innerCt).ConfigureAwait(false);
                 }
 
-                return accepted;
-            },
-            ct).ConfigureAwait(false);
+                await _workQueue!.EnqueueAsync(
+                    uow,
+                    new ExecutionWorkItemRow
+                    {
+                        WorkItemId = _idGenerator.NewGuid(),
+                        ExecutionId = executionId,
+                        Kind = ExecutionWorkItemKinds.Start,
+                        Payload = JsonSerializer.Serialize(
+                            new ExecutionStartWorkItemPayload(executionId, request),
+                            ExecutionWorkItemPayloadJson.Options),
+                        AvailableAt = createdAt,
+                        Attempts = 0,
+                        CreatedAt = createdAt
+                    },
+                    innerCt).ConfigureAwait(false);
 
-        var now = DateTime.UtcNow;
-        await _workQueue!.EnqueueAsync(
-            new ExecutionWorkItemRow
-            {
-                WorkItemId = _idGenerator.NewGuid(),
-                ExecutionId = executionId,
-                Kind = ExecutionWorkItemKinds.Start,
-                Payload = JsonSerializer.Serialize(
-                    new ExecutionStartWorkItemPayload(executionId, request),
-                    ExecutionWorkItemPayloadJson.Options),
-                AvailableAt = now,
-                Attempts = 0,
-                CreatedAt = now
+                return accepted;
             },
             ct).ConfigureAwait(false);
 
@@ -333,7 +336,7 @@ internal sealed class ExecutionService : IExecutionService
         var compiled = RestoreCompiledDefinitionFromVersion(args.VersionRow);
         var resolvedExecutionId = args.ExecutionId ?? _idGenerator.NewGuid();
         var engineId = resolvedExecutionId.ToString();
-        _engine.Start(compiled, engineId, args.Request.Input);
+        _engine.Start(compiled, engineId, args.Request.Input, args.Request.InitialState);
 
         var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, args.DefinitionId.ToString("D"), ct).ConfigureAwait(false)
             ?? args.DefinitionId.ToString("D");
@@ -344,7 +347,10 @@ internal sealed class ExecutionService : IExecutionService
                 async (uow, innerCt) =>
                 {
                     var createdAt = DateTime.UtcNow;
-                    var status = MapStatus(_engine.GetSnapshot(engineId));
+                    var startSnapshot = _engine.GetSnapshot(engineId)
+                        ?? throw new InvalidOperationException(
+                            $"Cannot project execution '{resolvedExecutionId}': engine snapshot is missing after Start.");
+                    var status = MapStatus(startSnapshot);
                     var graphJson = _engine.ExportExecutionGraph(engineId);
 
                     ExecutionResponse response;
@@ -661,7 +667,15 @@ internal sealed class ExecutionService : IExecutionService
         var row = await _executor.ExecuteReadOnlyAsync(
             (uow, innerCt) => _executions.GetSnapshotByExecutionIdAsync(uow, uuid.Value, innerCt),
             ct).ConfigureAwait(false);
-        return row is null ? throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound) : row.GraphJson;
+        if (row is null)
+            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+
+        if (_forkChildCoordinator is null)
+            return row.GraphJson;
+
+        return await _forkChildCoordinator
+            .ComposeReadModelGraphJsonAsync(uuid.Value, row.GraphJson, ct)
+            .ConfigureAwait(false);
     }
 
     public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) =>
@@ -724,6 +738,14 @@ internal sealed class ExecutionService : IExecutionService
         {
             await AcceptCancelAndEnqueueAsync(uuid.Value, dedupKey, ct).ConfigureAwait(false);
             return;
+        }
+
+        // WORKER / 同期 Cancel: 未終端子へ Cancel をカスケード（ネストは各層で再帰）。
+        if (_forkChildCoordinator is not null)
+        {
+            await _forkChildCoordinator
+                .CascadeCancelToRunningChildrenAsync(uuid.Value, ct)
+                .ConfigureAwait(false);
         }
 
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
@@ -819,11 +841,11 @@ internal sealed class ExecutionService : IExecutionService
         CommandDedupKey? dedupKey,
         CancellationToken ct)
     {
-        if (dedupKey is { } saveKey)
-        {
-            var now = DateTime.UtcNow;
-            await _executor.ExecuteReadCommittedAsync(
-                async (uow, innerCt) =>
+        var now = DateTime.UtcNow;
+        await _executor.ExecuteReadCommittedAsync(
+            async (uow, innerCt) =>
+            {
+                if (dedupKey is { } saveKey)
                 {
                     await _dedup.SaveAsync(
                         uow,
@@ -839,21 +861,21 @@ internal sealed class ExecutionService : IExecutionService
                             ExpiresAt = now.AddHours(24)
                         },
                         innerCt).ConfigureAwait(false);
-                },
-                ct).ConfigureAwait(false);
-        }
+                }
 
-        var enqueueAt = DateTime.UtcNow;
-        await _workQueue!.EnqueueAsync(
-            new ExecutionWorkItemRow
-            {
-                WorkItemId = _idGenerator.NewGuid(),
-                ExecutionId = executionId,
-                Kind = ExecutionWorkItemKinds.Cancel,
-                Payload = "{}",
-                AvailableAt = enqueueAt,
-                Attempts = 0,
-                CreatedAt = enqueueAt
+                await _workQueue!.EnqueueAsync(
+                    uow,
+                    new ExecutionWorkItemRow
+                    {
+                        WorkItemId = _idGenerator.NewGuid(),
+                        ExecutionId = executionId,
+                        Kind = ExecutionWorkItemKinds.Cancel,
+                        Payload = "{}",
+                        AvailableAt = now,
+                        Attempts = 0,
+                        CreatedAt = now
+                    },
+                    innerCt).ConfigureAwait(false);
             },
             ct).ConfigureAwait(false);
     }
@@ -1027,7 +1049,10 @@ internal sealed class ExecutionService : IExecutionService
 
             if (snapshot.IsCompleted || snapshot.IsCancelled || snapshot.IsFailed)
             {
-                // 終端後も Load が残る経路があるため、Worker の Load 境界で解放する。
+                // 終端後に Unload すると投影キューが engine 不在でスキップし、
+                // Start 直後の不完全 graph のまま Completed だけ残る。最終投影を先に確定する。
+                await _projectionUpdateQueue.DrainAsync(executionId, ct).ConfigureAwait(false);
+                await UpdateProjectionFromEngineAsync(executionId, ct).ConfigureAwait(false);
                 _engine.Unload(engineId);
                 return;
             }
@@ -1119,6 +1144,17 @@ internal sealed class ExecutionService : IExecutionService
             ct).ConfigureAwait(false);
         if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+
+        // 親 ID への PublishEvent も子 Wait へ振り替える（要件4）。
+        if (await TryRedirectPublishEventToChildWaitAsync(
+                uuid.Value,
+                eventName,
+                idempotencyKey,
+                requestContext,
+                ct).ConfigureAwait(false))
+        {
+            return;
+        }
 
         await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
@@ -1342,54 +1378,69 @@ internal sealed class ExecutionService : IExecutionService
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
         var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false) ?? execution.ExecutionId.ToString("D");
+        // D6 / D6.1: GraphUpdated patch は合成グラフ由来。
         var graphJson = await GetGraphJsonAsync(idOrUuid, ct).ConfigureAwait(false);
         var patchNodes = ExecutionViewMapper.MapGraphPatchNodes(graphJson);
 
-        var (items, hasMore) = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _eventStore.ListAfterSeqAsync(uow, uuid.Value, afterSeq, limit, innerCt),
-            ct).ConfigureAwait(false);
-
-        var typeStarted = EventStoreEventType.WorkflowStarted.ToPersistedString();
-        var typeCancelled = EventStoreEventType.WorkflowCancelled.ToPersistedString();
-        var typePublished = EventStoreEventType.EventPublished.ToPersistedString();
-
-        var events = new List<TimelineEventDto>(items.Count);
-        foreach (var row in items)
-        {
-            var at = row.OccurredAt.ToString("O");
-            var timelineEvent = row.Type switch
-            {
-                _ when row.Type == typeStarted => new TimelineEventDto
-                {
-                    Seq = row.Seq,
-                    Type = "ExecutionStatusChanged",
-                    ExecutionId = displayId,
-                    To = ExecutionProjectionStatuses.Running,
-                    At = at
-                },
-                _ when row.Type == typeCancelled => new TimelineEventDto
-                {
-                    Seq = row.Seq,
-                    Type = "ExecutionStatusChanged",
-                    ExecutionId = displayId,
-                    To = ExecutionProjectionStatuses.Cancelled,
-                    At = at
-                },
-                _ when row.Type == typePublished => new TimelineEventDto
-                {
-                    Seq = row.Seq,
-                    Type = "GraphUpdated",
-                    ExecutionId = displayId,
-                    Patch = new GraphUpdatedPatchDto { Nodes = patchNodes },
-                    At = at
-                },
-                _ => null
-            };
-            if (timelineEvent is not null)
-                events.Add(timelineEvent);
-        }
+        var sourceRows = await LoadEventStoreRowsForTimelineAsync(uuid.Value, ct).ConfigureAwait(false);
+        var (events, hasMore) = PhysicalForkEventTimelineComposer.ComposePage(
+            sourceRows,
+            displayId,
+            patchNodes,
+            afterSeq,
+            limit);
 
         return new ExecutionEventsResponseDto { Events = events, HasMore = hasMore };
+    }
+
+    /// <summary>
+    /// 親＋再帰子孫の event_store 行を読み取り合成用に集める（D6.1）。
+    /// </summary>
+    private async Task<IReadOnlyList<PhysicalForkEventTimelineComposer.SourceRow>> LoadEventStoreRowsForTimelineAsync(
+        Guid rootExecutionId,
+        CancellationToken ct)
+    {
+        var executionIds = new List<Guid> { rootExecutionId };
+        if (_forkChildCoordinator is not null)
+        {
+            var descendants = await _forkChildCoordinator
+                .ListDescendantExecutionIdsAsync(rootExecutionId, ct)
+                .ConfigureAwait(false);
+            executionIds.AddRange(descendants);
+        }
+
+        var rows = new List<PhysicalForkEventTimelineComposer.SourceRow>();
+        foreach (var executionId in executionIds)
+        {
+            var isRoot = executionId == rootExecutionId;
+            long afterSeq = 0;
+            while (true)
+            {
+                var pageAfter = afterSeq;
+                var (items, hasMore) = await _executor.ExecuteReadOnlyAsync(
+                        (uow, innerCt) => _eventStore.ListAfterSeqAsync(
+                            uow,
+                            executionId,
+                            pageAfter,
+                            limit: 500,
+                            innerCt),
+                        ct)
+                    .ConfigureAwait(false);
+
+                foreach (var item in items)
+                    rows.Add(new PhysicalForkEventTimelineComposer.SourceRow(item, isRoot));
+
+                if (!hasMore || items.Count == 0)
+                    break;
+
+                afterSeq = items[^1].Seq;
+                // 暴走防止（異常に長い event_store）。
+                if (rows.Count >= 50_000)
+                    break;
+            }
+        }
+
+        return rows;
     }
 
     public async Task ResumeNodeAsync(
@@ -1429,6 +1480,18 @@ internal sealed class ExecutionService : IExecutionService
         if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
+        // 親 ID へ届いた分岐 Wait は子 execution へ振り替える（要件4）。
+        if (await TryRedirectResumeToChildWaitAsync(
+                uuid.Value,
+                nodeId,
+                eventName,
+                idempotencyKey,
+                requestContext,
+                ct).ConfigureAwait(false))
+        {
+            return;
+        }
+
         await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
         await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
@@ -1437,6 +1500,13 @@ internal sealed class ExecutionService : IExecutionService
 
         if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
+
+        // 物理子終端の予約イベントは Wait Resume ではなく Join 再評価へ振る（D3）。
+        if (string.Equals(eventName, ExecutionWaitEventNames.ChildCompleted, StringComparison.Ordinal))
+        {
+            await HandleChildCompletedResumeAsync(uuid.Value, execution, nodeId, ct).ConfigureAwait(false);
+            return;
+        }
 
         await EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
 
@@ -1525,6 +1595,239 @@ internal sealed class ExecutionService : IExecutionService
 
         // 永続化中に進んだ Engine 完了を取りこぼさない（中間 RUNNING 上書きの保険）。
         await _projectionUpdateQueue.EnqueueAsync(uuid.Value, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 親 ID の Resume を子 Wait へ振り替える。振り替えたとき true。
+    /// </summary>
+    private async Task<bool> TryRedirectResumeToChildWaitAsync(
+        Guid requestedExecutionId,
+        string nodeId,
+        string eventName,
+        string? idempotencyKey,
+        CommandRequestContext requestContext,
+        CancellationToken ct)
+    {
+        if (_forkChildCoordinator is null)
+            return false;
+
+        if (string.Equals(eventName, ExecutionWaitEventNames.ChildCompleted, StringComparison.Ordinal))
+            return false;
+
+        var delivery = await _forkChildCoordinator
+            .TryResolveChildWaitDeliveryAsync(requestedExecutionId, nodeId, eventName, ct)
+            .ConfigureAwait(false);
+        if (delivery is null)
+            return false;
+
+        await ResumeNodeAsync(
+                delivery.ExecutionId.ToString("D"),
+                delivery.NodeId,
+                delivery.EventName,
+                idempotencyKey,
+                requestContext,
+                ct)
+            .ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>
+    /// 親 ID の PublishEvent を子 Wait へ振り替える。振り替えたとき true。
+    /// </summary>
+    private async Task<bool> TryRedirectPublishEventToChildWaitAsync(
+        Guid requestedExecutionId,
+        string eventName,
+        string? idempotencyKey,
+        CommandRequestContext requestContext,
+        CancellationToken ct)
+    {
+        if (_forkChildCoordinator is null)
+            return false;
+
+        var delivery = await _forkChildCoordinator
+            .TryResolveChildWaitDeliveryAsync(requestedExecutionId, nodeId: null, eventName, ct)
+            .ConfigureAwait(false);
+        if (delivery is null)
+            return false;
+
+        await PublishEventAsync(
+                delivery.ExecutionId.ToString("D"),
+                delivery.EventName,
+                idempotencyKey,
+                requestContext,
+                ct)
+            .ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>
+    /// 物理子終端の予約 Resume を受け、親の Join を再評価する（D2-B / D3）。
+    /// </summary>
+    /// <param name="parentExecutionId">親 execution。</param>
+    /// <param name="execution">親の投影行。</param>
+    /// <param name="forkNodeId">Resume payload の nodeId（Fork 到達インスタンス）。</param>
+    /// <param name="ct">キャンセル。</param>
+    private async Task HandleChildCompletedResumeAsync(
+        Guid parentExecutionId,
+        ExecutionRow execution,
+        string forkNodeId,
+        CancellationToken ct)
+    {
+        if (_forkChildCoordinator is null)
+            return;
+
+        if (IsTerminalExecutionProjectionStatus(execution.Status))
+            return;
+
+        var evaluation = await _forkChildCoordinator
+            .EvaluateJoinAsync(parentExecutionId, forkNodeId, ct)
+            .ConfigureAwait(false);
+
+        switch (evaluation.Kind)
+        {
+            case ForkJoinEvaluationKind.Waiting:
+                return;
+
+            case ForkJoinEvaluationKind.Failed:
+                await FailParentFromJoinAsync(
+                        parentExecutionId,
+                        forkNodeId,
+                        evaluation.FailureStatus ?? ExecutionProjectionStatuses.Failed,
+                        ct)
+                    .ConfigureAwait(false);
+                return;
+
+            case ForkJoinEvaluationKind.Satisfied:
+                await CompleteParentPhysicalJoinAsync(
+                        parentExecutionId,
+                        execution,
+                        forkNodeId,
+                        evaluation,
+                        ct)
+                    .ConfigureAwait(false);
+                return;
+
+            default:
+                throw new InvalidOperationException($"Unknown fork join evaluation kind '{evaluation.Kind}'.");
+        }
+    }
+
+    /// <summary>Join 失敗／キャンセルを親投影へ伝播する（残子 Cancel はタスク 6）。</summary>
+    private async Task FailParentFromJoinAsync(
+        Guid parentExecutionId,
+        string forkNodeId,
+        string failureStatus,
+        CancellationToken ct)
+    {
+        _logger.ForkJoinFailedPropagated(parentExecutionId, forkNodeId, failureStatus);
+
+        var snapshot = await _executor.ExecuteReadOnlyAsync(
+                (uow, innerCt) => _executions.GetSnapshotByExecutionIdAsync(uow, parentExecutionId, innerCt),
+                ct)
+            .ConfigureAwait(false);
+        var graphJson = snapshot?.GraphJson ?? """{"nodes":[],"edges":[]}""";
+        var cancelRequested = string.Equals(
+            failureStatus,
+            ExecutionProjectionStatuses.Cancelled,
+            StringComparison.Ordinal);
+
+        await _executor.ExecuteReadCommittedAsync(
+                async (uow, innerCt) =>
+                {
+                    await _executions
+                        .UpdateExecutionAndSnapshotAsync(
+                            uow,
+                            parentExecutionId,
+                            failureStatus,
+                            cancelRequested,
+                            graphJson,
+                            innerCt)
+                        .ConfigureAwait(false);
+
+                    await DiscardOrRefreshRuntimeCheckpointAsync(
+                            uow,
+                            parentExecutionId.ToString(),
+                            parentExecutionId,
+                            innerCt)
+                        .ConfigureAwait(false);
+                },
+                ct)
+            .ConfigureAwait(false);
+
+        _engine.Unload(parentExecutionId.ToString());
+    }
+
+    /// <summary>Join 充足時に親 Engine で物理 Join を完了し投影を更新する。</summary>
+    private async Task CompleteParentPhysicalJoinAsync(
+        Guid parentExecutionId,
+        ExecutionRow execution,
+        string forkNodeId,
+        ForkJoinEvaluation evaluation,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(evaluation.CandidateInputs);
+        _logger.ForkJoinSatisfied(parentExecutionId, forkNodeId, evaluation.JoinState);
+
+        await EnsureEngineRuntimeLoadedForMutationAsync(parentExecutionId, execution, ct).ConfigureAwait(false);
+
+        var engineId = parentExecutionId.ToString();
+        IReadOnlyList<PhysicalJoinContextFragment>? fragments = null;
+        if (evaluation.ContextMerges is { Count: > 0 })
+        {
+            fragments = evaluation.ContextMerges
+                .Select(m => new PhysicalJoinContextFragment(m.States, m.Vars))
+                .ToList();
+        }
+
+        _engine.CompletePhysicalJoin(
+            engineId,
+            evaluation.JoinState,
+            evaluation.CandidateInputs,
+            fragments);
+        await WaitForEngineQuiescedAfterWaitAsync(engineId, ct).ConfigureAwait(false);
+
+        var (status, cancelRequested, graphJson) = BuildProjectionFromEngine(parentExecutionId);
+        await _executor.ExecuteReadCommittedAsync(
+                async (uow, innerCt) =>
+                {
+                    await _executions
+                        .UpdateExecutionAndSnapshotAsync(
+                            uow,
+                            parentExecutionId,
+                            status,
+                            cancelRequested,
+                            graphJson,
+                            innerCt)
+                        .ConfigureAwait(false);
+                    await SyncOperationalProjectionAsync(
+                            uow,
+                            parentExecutionId,
+                            execution.TenantId,
+                            status,
+                            graphJson,
+                            nodeIdToClear: null,
+                            innerCt)
+                        .ConfigureAwait(false);
+
+                    if (ShouldDiscardRuntimeCheckpoint(status, graphJson))
+                    {
+                        await DiscardOrRefreshRuntimeCheckpointAsync(
+                                uow,
+                                engineId,
+                                parentExecutionId,
+                                innerCt)
+                            .ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await UpsertRuntimeCheckpointAsync(uow, engineId, parentExecutionId, innerCt)
+                            .ConfigureAwait(false);
+                    }
+                },
+                ct)
+            .ConfigureAwait(false);
+
+        await _projectionUpdateQueue.EnqueueAsync(parentExecutionId, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -1729,7 +2032,16 @@ internal sealed class ExecutionService : IExecutionService
                 var graphId = await _displayIds
                     .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, execution.DefinitionId.ToString("D"), innerCt)
                     .ConfigureAwait(false) ?? execution.DefinitionId.ToString("D");
-                return ExecutionViewMapper.BuildExecutionView(execution, snapshot.GraphJson, displayId, graphId);
+
+                var graphJson = snapshot.GraphJson;
+                if (_forkChildCoordinator is not null)
+                {
+                    graphJson = await _forkChildCoordinator
+                        .ComposeReadModelGraphJsonAsync(uuid, snapshot.GraphJson, innerCt)
+                        .ConfigureAwait(false);
+                }
+
+                return ExecutionViewMapper.BuildExecutionView(execution, graphJson, displayId, graphId);
             },
             ct).ConfigureAwait(false);
     }
@@ -1909,9 +2221,9 @@ internal sealed class ExecutionService : IExecutionService
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
     }
 
-    private static string MapStatus(ExecutionSnapshot? snapshot)
+    private static string MapStatus(ExecutionSnapshot snapshot)
     {
-        if (snapshot is null) return ExecutionProjectionStatuses.Unknown;
+        ArgumentNullException.ThrowIfNull(snapshot);
         if (snapshot.IsCompleted) return ExecutionProjectionStatuses.Completed;
         if (snapshot.IsCancelled) return ExecutionProjectionStatuses.Cancelled;
         if (snapshot.IsFailed) return ExecutionProjectionStatuses.Failed;
@@ -2078,10 +2390,17 @@ internal sealed class ExecutionService : IExecutionService
         }
 
         // Unload 前に投影へ反映する（Unload 後は GetSnapshot が null になり投影キューが空振りする）。
+        // snapshot 欠落時は Unknown/`{}` を書かず checkpoint のみ残す（マルチ Worker 競合で UI を壊さない）。
         var snapshot = _engine.GetSnapshot(engineExecutionId);
-        var status = MapStatus(snapshot);
-        var cancelRequested = snapshot?.IsCancelled;
-        var graphJson = _engine.ExportExecutionGraph(engineExecutionId);
+        string? status = null;
+        bool? cancelRequested = null;
+        string? graphJson = null;
+        if (snapshot is not null)
+        {
+            status = MapStatus(snapshot);
+            cancelRequested = snapshot.IsCancelled;
+            graphJson = _engine.ExportExecutionGraph(engineExecutionId);
+        }
 
         var json = JsonSerializer.Serialize(checkpoint, CamelCaseJsonSerializerOptions);
         var updatedAt = DateTime.UtcNow;
@@ -2090,7 +2409,7 @@ internal sealed class ExecutionService : IExecutionService
             {
                 var execution = await _executions.GetByExecutionIdAsync(uow, executionId, innerCt)
                     .ConfigureAwait(false);
-                if (execution is not null && graphJson is not null)
+                if (execution is not null && status is not null && graphJson is not null)
                 {
                     await _executions
                         .UpdateExecutionAndSnapshotAsync(
@@ -2217,11 +2536,71 @@ internal sealed class ExecutionService : IExecutionService
             },
             ct).ConfigureAwait(false);
 
+        string? childTerminalOutputJson = null;
+        string? childTerminalStatesJson = null;
+        string? childTerminalVarsJson = null;
+        if (ExecutionProjectionStatuses.IsTerminal(status))
+        {
+            (childTerminalOutputJson, childTerminalStatesJson, childTerminalVarsJson) =
+                TryGetChildTerminalContextJson(engineExecutionId);
+        }
+
         if (shouldUnloadAfterProjection)
         {
             _engine.Unload(engineExecutionId);
             _logger.CheckpointUnloadedAfterProjectionSync(executionId);
         }
+
+        if (ExecutionProjectionStatuses.IsTerminal(status) && _forkChildCoordinator is not null)
+        {
+            await _forkChildCoordinator
+                .NotifyChildTerminalAsync(
+                    executionId,
+                    status,
+                    childTerminalOutputJson,
+                    childTerminalStatesJson,
+                    childTerminalVarsJson,
+                    ct)
+                .ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>ロード中 Engine から終端 Context（output / states / vars）を JSON 文字列として取り出す。</summary>
+    private (string? OutputJson, string? StatesJson, string? VarsJson) TryGetChildTerminalContextJson(
+        string engineExecutionId)
+    {
+        var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
+        if (checkpoint is null)
+            return (null, null, null);
+
+        var output = checkpoint.Context.WorkflowOutput;
+        string? outputJson = null;
+        if (output is not null
+            && output.Value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
+        {
+            outputJson = output.Value.GetRawText();
+        }
+
+        string? statesJson = null;
+        if (checkpoint.Context.States is { Count: > 0 })
+        {
+            statesJson = JsonSerializer.Serialize(
+                checkpoint.Context.States.ToDictionary(
+                    kv => kv.Key,
+                    kv => kv.Value,
+                    StringComparer.OrdinalIgnoreCase),
+                CamelCaseJsonSerializerOptions);
+        }
+
+        string? varsJson = null;
+        var vars = checkpoint.Context.Vars;
+        if (vars is not null
+            && vars.Value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
+        {
+            varsJson = vars.Value.GetRawText();
+        }
+
+        return (outputJson, statesJson, varsJson);
     }
 
     /// <summary>
@@ -2252,13 +2631,28 @@ internal sealed class ExecutionService : IExecutionService
             ct).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Engine 上の実行から投影用 status / graph を取得する。
+    /// </summary>
+    /// <remarks>
+    /// snapshot 欠落時に <c>Unknown</c> と <c>{}</c> を永続すると一覧 UI が落ちるため、欠落は例外とする。
+    /// 呼び出し側は事前に Load / Ensure 済みであること。キュー投影は
+    /// <see cref="BuildProjectionFromEngineForQueue"/> を使い欠落をスキップする。
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">Engine に snapshot が無いとき。</exception>
     private (string Status, bool? CancelRequested, string GraphJson) BuildProjectionFromEngine(Guid executionId)
     {
         var engineId = executionId.ToString();
         var snapshot = _engine.GetSnapshot(engineId);
+        if (snapshot is null)
+        {
+            throw new InvalidOperationException(
+                $"Cannot project execution '{executionId}': engine snapshot is missing.");
+        }
+
         var graphJson = _engine.ExportExecutionGraph(engineId);
         var status = MapStatus(snapshot);
-        return (status, snapshot?.IsCancelled, graphJson);
+        return (status, snapshot.IsCancelled, graphJson);
     }
 
     private (string? status, bool? cancelRequested, string? graphJson) BuildProjectionFromEngineForQueue(Guid executionId)

@@ -50,11 +50,20 @@ public sealed class DelayWaitSchedulerHostedServiceTests
         public Task EnqueueAsync(ExecutionWorkItemRow item, CancellationToken ct) =>
             throw new NotImplementedException();
 
+        public Task EnqueueAsync(ICoreUnitOfWork uow, ExecutionWorkItemRow item, CancellationToken ct) =>
+            throw new NotImplementedException();
+
         public Task EnqueueManyAsync(IReadOnlyList<ExecutionWorkItemRow> items, CancellationToken ct)
         {
             EnqueueManyCallCount++;
             return Task.CompletedTask;
         }
+
+        public Task EnqueueManyAsync(
+            ICoreUnitOfWork uow,
+            IReadOnlyList<ExecutionWorkItemRow> items,
+            CancellationToken ct) =>
+            throw new NotImplementedException();
 
         public Task<IReadOnlyList<ExecutionWorkItemRow>> ClaimAsync(
             string leaseOwner,

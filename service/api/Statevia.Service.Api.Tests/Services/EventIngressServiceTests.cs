@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Application.Contracts.Persistence;
 using Statevia.Core.Application.Services;
 using Statevia.Infrastructure.Persistence;
@@ -84,6 +85,33 @@ public sealed class EventIngressServiceTests
         Assert.Empty(workQueue.Items);
     }
 
+    /// <summary>購読は子 execution_id に紐づき、親 ID へ Resume しない。</summary>
+    [Fact]
+    public async Task PublishAsync_WhenSubscriptionOnChild_EnqueuesResumeForChildNotParent()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var transactions = new TestCoreTransactionExecutor(uowFactory);
+        var waits = new ExecutionWaitRepository(db.Factory);
+        var workQueue = new CapturingWorkQueue();
+        var service = new EventIngressService(transactions, waits, workQueue);
+        var parentId = Guid.NewGuid();
+        var childId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        await SeedExecutionAsync(db, parentId, now);
+        await SeedSubscriptionAsync(db, childId, "ChildWait", "approval.needed", "req-1", "Approve", now);
+
+        // Act
+        await service.PublishAsync("approval.needed", "req-1", CancellationToken.None);
+
+        // Assert
+        Assert.Single(workQueue.Items);
+        Assert.Equal(childId, workQueue.Items[0].ExecutionId);
+        Assert.NotEqual(parentId, workQueue.Items[0].ExecutionId);
+        Assert.Equal(ExecutionWorkItemKinds.Resume, workQueue.Items[0].Kind);
+    }
+
     /// <summary>購読が空 key のとき key 付き配信は一致しない。</summary>
     [Fact]
     public async Task PublishAsync_EmptyKeySubscription_DoesNotMatchNonEmptyKey()
@@ -114,19 +142,8 @@ public sealed class EventIngressServiceTests
         string resumeEventName,
         DateTime createdAt)
     {
+        await SeedExecutionAsync(db, executionId, createdAt);
         await using var ctx = new CoreDbContext(db.Options);
-        ctx.Executions.Add(new ExecutionRow
-        {
-            ExecutionId = executionId,
-            TenantId = TestTenantIds.T1TenantId,
-            DefinitionId = Guid.NewGuid(),
-            DefinitionVersionId = Guid.NewGuid(),
-            Status = "Running",
-            StartedAt = createdAt,
-            UpdatedAt = createdAt,
-            CancelRequested = false,
-            RestartLost = false
-        });
         ctx.ExecutionWaits.Add(new ExecutionWaitRow
         {
             ExecutionId = executionId,
@@ -148,6 +165,27 @@ public sealed class EventIngressServiceTests
         await ctx.SaveChangesAsync();
     }
 
+    private static async Task SeedExecutionAsync(InMemoryTestDatabase db, Guid executionId, DateTime createdAt)
+    {
+        await using var ctx = new CoreDbContext(db.Options);
+        if (await ctx.Executions.AnyAsync(x => x.ExecutionId == executionId))
+            return;
+
+        ctx.Executions.Add(new ExecutionRow
+        {
+            ExecutionId = executionId,
+            TenantId = TestTenantIds.T1TenantId,
+            DefinitionId = Guid.NewGuid(),
+            DefinitionVersionId = Guid.NewGuid(),
+            Status = "Running",
+            StartedAt = createdAt,
+            UpdatedAt = createdAt,
+            CancelRequested = false,
+            RestartLost = false
+        });
+        await ctx.SaveChangesAsync();
+    }
+
     private sealed class CapturingWorkQueue : IExecutionWorkQueue
     {
         public List<ExecutionWorkItemRow> Items { get; } = [];
@@ -158,11 +196,20 @@ public sealed class EventIngressServiceTests
             return Task.CompletedTask;
         }
 
+        public Task EnqueueAsync(ICoreUnitOfWork uow, ExecutionWorkItemRow item, CancellationToken ct) =>
+            EnqueueAsync(item, ct);
+
         public Task EnqueueManyAsync(IReadOnlyList<ExecutionWorkItemRow> items, CancellationToken ct)
         {
             Items.AddRange(items);
             return Task.CompletedTask;
         }
+
+        public Task EnqueueManyAsync(
+            ICoreUnitOfWork uow,
+            IReadOnlyList<ExecutionWorkItemRow> items,
+            CancellationToken ct) =>
+            EnqueueManyAsync(items, ct);
 
         public Task<IReadOnlyList<ExecutionWorkItemRow>> ClaimAsync(
             string leaseOwner,

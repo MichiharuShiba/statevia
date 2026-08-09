@@ -30,6 +30,13 @@ public class StartExecutionRequest
 
     /// <summary>実行開始時の入力（任意）。</summary>
     public JsonElement? Input { get; set; }
+
+    /// <summary>
+    /// 開始状態名（省略時は定義の InitialState）。
+    /// Hosted の Fork 子 execution が分岐先頭から開始するときに使う。
+    /// </summary>
+    [JsonPropertyName("initialState")]
+    public string? InitialState { get; set; }
 }
 
 /// <summary>POST …/events のリクエスト本文。</summary>
@@ -161,7 +168,10 @@ public sealed class ExecutionEventsResponseDto
 /// <summary>タイムライン／SSE 用のイベント（UI の <c>ExecutionStreamEvent</c> + seq）。</summary>
 public sealed class TimelineEventDto
 {
-    /// <summary>event_store 上のシーケンス番号。</summary>
+    /// <summary>
+    /// タイムライン上のシーケンス番号。
+    /// 親 events GET（合成時）では合成通番。個別 execution の永続 seq とは限らない。
+    /// </summary>
     public long Seq { get; init; }
 
     /// <summary>イベント種別。</summary>

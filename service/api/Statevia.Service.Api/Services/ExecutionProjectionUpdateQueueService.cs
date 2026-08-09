@@ -212,6 +212,41 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
                 .ConfigureAwait(false);
         });
 
+        _executionEngine.SetForkExpansionHandler(async evt =>
+        {
+            if (!Guid.TryParse(evt.ExecutionId, out var parsedExecutionId))
+            {
+                _logger.SkipSuspendCheckpointInvalidExecutionId(evt.ExecutionId);
+                return;
+            }
+
+            using var scope = _scopeFactory.CreateScope();
+            var platformData = scope.ServiceProvider.GetRequiredService<IPlatformDataAccess>();
+            var tenantLookup = await platformData
+                .FindExecutionTenantAsync(parsedExecutionId, stoppingToken)
+                .ConfigureAwait(false);
+            if (tenantLookup is null)
+            {
+                _logger.SkipSuspendCheckpointTenantNotFound(parsedExecutionId);
+                return;
+            }
+
+            var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
+            var handler = scope.ServiceProvider.GetRequiredService<IForkExpansionHostHandler>();
+            var tenantState = new TenantContextState(
+                tenantLookup.TenantId,
+                tenantLookup.TenantKey,
+                PrincipalId: null,
+                tenantLookup.Lifecycle);
+
+            await TenantExecutionScope
+                .RunAsync(
+                    accessor,
+                    tenantState,
+                    () => handler.HandleAsync(evt, stoppingToken))
+                .ConfigureAwait(false);
+        });
+
         return RunWorkerLoopAsync(stoppingToken);
     }
 
@@ -254,6 +289,7 @@ internal sealed class ExecutionProjectionUpdateQueueService : BackgroundService,
     {
         _executionEngine.SetNodeCompletedHandler(null);
         _executionEngine.SetSuspendHandler(null);
+        _executionEngine.SetForkExpansionHandler(null);
         await DrainPendingExecutionsOnShutdownAsync(cancellationToken).ConfigureAwait(false);
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
