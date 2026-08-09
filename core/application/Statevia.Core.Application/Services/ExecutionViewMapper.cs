@@ -51,7 +51,7 @@ internal static class ExecutionViewMapper
 
             list.Add(new ExecutionViewNodeDto
             {
-                ExecutionNodeId = n.NodeId ?? string.Empty,
+                NodeId = n.NodeId ?? string.Empty,
                 NodeName = n.NodeName ?? string.Empty,
                 NodeType = nodeType,
                 Status = nodeStatus,
@@ -74,7 +74,7 @@ internal static class ExecutionViewMapper
         var nodes = MapNodes(graphJson);
         return nodes.Select(n => new GraphPatchNodeDto
         {
-            ExecutionNodeId = n.ExecutionNodeId,
+            NodeId = n.NodeId,
             NodeName = string.IsNullOrWhiteSpace(n.NodeName) ? null : n.NodeName,
             Status = n.Status,
             Attempt = n.Attempt,

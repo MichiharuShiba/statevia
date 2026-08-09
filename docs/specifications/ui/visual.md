@@ -11,7 +11,7 @@
 
 ## Normative 要約
 
-- **MUST**: UI は ExecutionGraph を正として表示し、定義キャンバスと実行グラフをマージする際は `stateName` / `executionNodeId` の対応規則に従う。
+- **MUST**: UI は ExecutionGraph を正として表示し、定義キャンバスと実行グラフをマージする際は `nodeName` / `nodeId` の対応規則に従う（定義 YAML の `name` = Graph Def / 実行の `nodeName`。実行短名 UUID は `nodeId`）。
 - **MUST**: ノード状態の視覚表現（色・形状・ラベル）は本書の優先順位ルールに従う。
 - **SHOULD**: Fork / Join はグルーピングで表現し、通常状態と区別する。
 - **SHOULD**: Wait / Cancel 中のノードをユーザーが識別できるよう強調する。

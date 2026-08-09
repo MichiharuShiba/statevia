@@ -67,11 +67,11 @@ export function useExecution(executionDisplayId: string, options: UseExecutionOp
   const applyExecutionSnapshot = (view: ExecutionView) => {
     setExecution(view);
     setSelectedNodeId((current) => {
-      if (!current) return view.nodes[0]?.executionNodeId ?? null;
+      if (!current) return view.nodes[0]?.nodeId ?? null;
       const key = current.trim();
-      if (view.nodes.some((node) => node.executionNodeId === key)) return current;
+      if (view.nodes.some((node) => node.nodeId === key)) return current;
       if (view.nodes.some((node) => (node.nodeName?.trim() ?? "") === key)) return current;
-      return view.nodes[0]?.executionNodeId ?? null;
+      return view.nodes[0]?.nodeId ?? null;
     });
   };
 

@@ -15,7 +15,7 @@ export type GraphLayoutHints = {
 
 /** レイアウト計算へのノード入力。 */
 export type LayoutNodeInput = {
-  /** グラフ定義上のノード名（一意）。実行時 UUID（executionNodeId）とは異なる。 */
+  /** グラフ定義上のノード名（一意）。実行時 UUID（nodeId）とは異なる。 */
   name: string;
   nodeType: string;
   branch?: string;

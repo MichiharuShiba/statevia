@@ -7,7 +7,7 @@ import { renderWithUiText } from "../../testUtils";
 
 const positionedNode = (overrides: Partial<MergedGraphNode> = {}): PositionedNode<MergedGraphNode> => ({
   name: "n-1",
-  executionNodeId: "n-1",
+  nodeId: "n-1",
   nodeName: "task",
   nodeType: "Task",
   label: "Task 1",

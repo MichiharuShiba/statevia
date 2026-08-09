@@ -5,8 +5,8 @@ import type { LayoutEdgeInput, PositionedNode } from "@/shared/lib/graphLayout";
 import type { GraphGroupDef } from "@/features/executions/graphs/types";
 
 function execNodes(ids: string[]): ExecutionNodeDTO[] {
-  return ids.map((executionNodeId) => ({
-    executionNodeId,
+  return ids.map((nodeId) => ({
+    nodeId,
     nodeType: "TASK",
     status: "IDLE" as const,
     attempt: 0,

@@ -73,7 +73,7 @@ export type ExecutionsFeatureUiText = {
     meta: {
       type: (nodeType: string) => string;
       nodeName: (nodeName: string) => string;
-      executionNodeId: (id: string) => string;
+      nodeId: (id: string) => string;
       workerId: (workerId: string) => string;
       attempt: (attempt: number) => string;
       waitKey: (waitKey: string) => string;
@@ -211,7 +211,7 @@ export type ExecutionsFeatureUiText = {
       status: string;
       type: string;
       nodeName: string;
-      executionNodeId: string;
+      nodeId: string;
       duration: string;
     };
 

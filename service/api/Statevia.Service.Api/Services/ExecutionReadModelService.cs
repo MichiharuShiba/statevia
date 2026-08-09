@@ -113,7 +113,7 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
 
             list.Add(new ExecutionNodeReadModel
             {
-                ExecutionNodeId = n.NodeId ?? string.Empty,
+                NodeId = n.NodeId ?? string.Empty,
                 NodeName = n.NodeName ?? string.Empty,
                 NodeType = string.IsNullOrWhiteSpace(n.NodeType) ? "Task" : n.NodeType,
                 Status = nodeStatus,

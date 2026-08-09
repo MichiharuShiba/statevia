@@ -5,7 +5,7 @@ import { renderWithUiText } from "../../testUtils";
 import type { ExecutionNodeDTO } from "@/features/executions/types";
 
 const node = (id: string, status: ExecutionNodeDTO["status"]): ExecutionNodeDTO => ({
-  executionNodeId: id,
+  nodeId: id,
   nodeType: "Task",
   status,
   attempt: 1,

@@ -23,7 +23,7 @@ describe("mergeGraph", () => {
     // Arrange
     const def = getGraphDefinition("hello")!;
     const exec = execution(
-      [{ executionNodeId: "start", nodeType: "Start", status: "RUNNING", attempt: 1, workerId: "w-1", waitKey: null, canceledByExecution: false }],
+      [{ nodeId: "start", nodeType: "Start", status: "RUNNING", attempt: 1, workerId: "w-1", waitKey: null, canceledByExecution: false }],
       "hello"
     );
 
@@ -39,7 +39,7 @@ describe("mergeGraph", () => {
     expect(startNode?.status).toBe("RUNNING");
     expect(startNode?.attempt).toBe(1);
     expect(startNode?.workerId).toBe("w-1");
-    expect(startNode?.executionNodeId).toBe("start");
+    expect(startNode?.nodeId).toBe("start");
   });
 
   it("execution に無い定義ノードは IDLE にする", () => {
@@ -58,7 +58,7 @@ describe("mergeGraph", () => {
   it("definition が null のとき execution のみのマージを返す", () => {
     // Arrange
     const exec = execution([
-      { executionNodeId: "n-1", nodeType: "TASK", status: "RUNNING", attempt: 1, workerId: "w-1", waitKey: null, canceledByExecution: false }
+      { nodeId: "n-1", nodeType: "TASK", status: "RUNNING", attempt: 1, workerId: "w-1", waitKey: null, canceledByExecution: false }
     ]);
 
     // Act
@@ -69,7 +69,7 @@ describe("mergeGraph", () => {
     expect(result.isDefinitionBased).toBe(false);
     expect(result.nodes).toHaveLength(1);
     expect(result.nodes[0].name).toBe("n-1");
-    expect(result.nodes[0].executionNodeId).toBe("n-1");
+    expect(result.nodes[0].nodeId).toBe("n-1");
     expect(result.nodes[0].label).toBe("n-1");
     expect(result.nodes[0].status).toBe("RUNNING");
     expect(result.edges).toHaveLength(0);
@@ -114,7 +114,7 @@ describe("mergeGraph", () => {
     const exec = execution(
       [
         {
-          executionNodeId: "rt-start-1",
+          nodeId: "rt-start-1",
           nodeName: "start",
           nodeType: "Start",
           status: "SUCCEEDED",
@@ -124,7 +124,7 @@ describe("mergeGraph", () => {
           canceledByExecution: false
         },
         {
-          executionNodeId: "rt-task-a-1",
+          nodeId: "rt-task-a-1",
           nodeName: "task-a",
           nodeType: "Task",
           status: "RUNNING",
@@ -145,8 +145,8 @@ describe("mergeGraph", () => {
 
     expect(startNode?.status).toBe("SUCCEEDED");
     expect(taskANode?.status).toBe("RUNNING");
-    expect(startNode?.executionNodeId).toBe("rt-start-1");
-    expect(taskANode?.executionNodeId).toBe("rt-task-a-1");
+    expect(startNode?.nodeId).toBe("rt-start-1");
+    expect(taskANode?.nodeId).toBe("rt-task-a-1");
     expect(startToTaskA?.traversed).toBe(true);
   });
 
@@ -162,7 +162,7 @@ describe("mergeGraph", () => {
 
     expect(result.nodes).toHaveLength(1);
     expect(result.nodes[0].name).toBe("canvas-n1");
-    expect(result.nodes[0].executionNodeId).toBe("canvas-n1");
+    expect(result.nodes[0].nodeId).toBe("canvas-n1");
     expect(result.nodes[0].nodeName).toBe("canvas-n1");
   });
 
@@ -171,7 +171,7 @@ describe("mergeGraph", () => {
     const exec = execution(
       [
         {
-          executionNodeId: "start",
+          nodeId: "start",
           nodeName: "startStateApi",
           nodeType: "Start",
           status: "RUNNING",

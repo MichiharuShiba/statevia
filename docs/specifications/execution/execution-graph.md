@@ -12,7 +12,7 @@
 ## Normative 要約
 
 - **MUST**: JSON キーは **camelCase** とする。
-- **MUST**: 実行グラフの `edges[*].from` / `to` は**実行ノード ID**（`nodes[*].nodeId`）を指す（定義キャンバスの nodeId とは別）。
+- **MUST**: 実行グラフの `edges[*].from` / `to` は**実行ノード ID**（`nodes[*].nodeId`）を指す（定義 YAML の `name` / Graph Def の `nodeName` とは別）。
 - **MUST**: HTTP GET graph の正本は DB projection と整合させる（in-process export はデバッグ用途）。
 - **MUST**: Hosted で物理 Fork がある親の `GET …/graph` は、永続生グラフを **GET 時に論理 Fork/Join へ合成**して返す（UI は分割非認知。[fork-join.md](fork-join.md)）。
 - **SHOULD**: `input` / `output` を外部ログへ載せる前に IO-14 に従いマスキングする。
@@ -68,7 +68,7 @@
 ```json
 {
   "nodeId": "a1b2c3d4",
-  "stateName": "Route",
+  "nodeName": "Route",
   "nodeType": "Task",
   "startedAt": "2026-04-21T12:00:00.0000000Z",
   "completedAt": "2026-04-21T12:00:01.0000000Z",
@@ -96,8 +96,8 @@
 
 | キー | 型 | 必須 | 説明 |
 | --- | --- | --- | --- |
-| `nodeId` | `string` | 必須 | **ランタイム実行ノード ID**（opaque）。新規採番は `Guid("N")` の先頭 **12** 文字（小文字 Hex）で、同一実行グラフ内の衝突時は再採番する。既存実行・checkpoint に残る **8** 桁 ID はそのまま有効（変換しない）。定義キャンバスの `nodeId`（状態名ベース）とは別物 |
-| `stateName` | `string` | 必須 | ワークフロー定義上の状態名 |
+| `nodeId` | `string` | 必須 | **ランタイム実行ノード ID**（opaque）。新規採番は `Guid("N")` の先頭 **12** 文字（小文字 Hex）で、同一実行グラフ内の衝突時は再採番する。既存実行・checkpoint に残る **8** 桁 ID はそのまま有効（変換しない）。定義 YAML の `name` / Graph Def の `nodeName`（状態名ベース）とは別物 |
+| `nodeName` | `string` | 必須 | ワークフロー定義上の状態名（StateName と同値。旧キー `stateName` は用いない） |
 | `nodeType` | `string` | 必須 | ノード種別（例: `Start` / `Task` / `Fork` / `Join` / `Wait` / `End`。既定は `Task`） |
 | `startedAt` | `string(date-time)` | 必須 | ノード開始 UTC 時刻 |
 | `completedAt` | `string(date-time) \| null` | 任意 | 未完了時は `null` |
@@ -209,6 +209,6 @@ JSON プロパティ名は **camelCase** のため、C# の `From` / `To` は **
 - 永続は `execution_graph_snapshots` の生グラフ。Hosted の親 execution で物理子がある場合、応答は **GET 時合成**後の論理 Fork/Join グラフになる（合成規則・Join 辺の `nodeId` 固定は [fork-join.md](fork-join.md)）。
 - API は実行グラフの `conditionRouting` を透過的に返却する。
 - UI は `conditionRouting` を再評価しない（表示専用データとして扱う）。物理子や `execution_branches` を意識しない。
-- UI が定義グラフ（`GET /v1/graphs/{graphId}`）と合成するときは、**実行ノードの `nodeId` と定義ノードの `nodeId`（状態名）が一致しない**前提で、`stateName` やエッジの `from`/`to` を用いて対応付ける（`ui/studio/features/executions/lib/mergeGraph.ts`）。
+- UI が定義グラフ（`GET /v1/graphs/{graphId}`）と合成するときは、**実行ノードの `nodeId` と定義ノードの `nodeName`（状態名）が一致しない**前提で、実行側の `nodeName` やエッジの `from`/`to` を用いて対応付ける（`ui/studio/features/executions/lib/mergeGraph.ts`）。
 
 詳細は `docs/specifications/api-http.md` を参照。

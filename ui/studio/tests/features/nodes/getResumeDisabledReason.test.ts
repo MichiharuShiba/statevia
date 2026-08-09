@@ -19,7 +19,7 @@ function execution(overrides: Partial<ExecutionView> = {}): ExecutionView {
 
 function node(overrides: Partial<ExecutionNodeDTO> = {}): ExecutionNodeDTO {
   return {
-    executionNodeId: "n-1",
+    nodeId: "n-1",
     nodeType: "TASK",
     status: "WAITING",
     attempt: 1,

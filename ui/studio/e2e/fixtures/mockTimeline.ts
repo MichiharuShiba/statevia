@@ -15,8 +15,8 @@ export const timelineEventsPage1: ExecutionEventWithSeq[] = [
     executionId: EXECUTION_ID,
     patch: {
       nodes: [
-        { executionNodeId: "start", nodeType: "Start", status: "IDLE" },
-        { executionNodeId: "task-a", nodeType: "Task", status: "IDLE" },
+        { nodeId: "start", nodeType: "Start", status: "IDLE" },
+        { nodeId: "task-a", nodeType: "Task", status: "IDLE" },
       ],
     },
     at: at("2026-02-28T10:00:00.000Z"),
@@ -34,7 +34,7 @@ export const timelineEventsPage1: ExecutionEventWithSeq[] = [
     executionId: EXECUTION_ID,
     patch: {
       nodes: [
-        { executionNodeId: "start", nodeType: "Start", status: "READY" },
+        { nodeId: "start", nodeType: "Start", status: "READY" },
       ],
     },
     at: at("2026-02-28T10:00:02.000Z"),
@@ -49,8 +49,8 @@ export const timelineEventsPage2: ExecutionEventWithSeq[] = [
     executionId: EXECUTION_ID,
     patch: {
       nodes: [
-        { executionNodeId: "start", nodeType: "Start", status: "SUCCEEDED" },
-        { executionNodeId: "task-a", nodeType: "Task", status: "RUNNING", attempt: 1 },
+        { nodeId: "start", nodeType: "Start", status: "SUCCEEDED" },
+        { nodeId: "task-a", nodeType: "Task", status: "RUNNING", attempt: 1 },
       ],
     },
     at: at("2026-02-28T10:00:03.000Z"),
@@ -61,7 +61,7 @@ export const timelineEventsPage2: ExecutionEventWithSeq[] = [
     executionId: EXECUTION_ID,
     patch: {
       nodes: [
-        { executionNodeId: "task-a", nodeType: "Task", status: "SUCCEEDED" },
+        { nodeId: "task-a", nodeType: "Task", status: "SUCCEEDED" },
       ],
     },
     at: at("2026-02-28T10:00:04.000Z"),
@@ -73,8 +73,8 @@ export const stateAtSeq1: ExecutionView = {
   ...mockExecution,
   displayId: EXECUTION_ID,
   nodes: [
-    { executionNodeId: "start", nodeType: "Start", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
-    { executionNodeId: "task-a", nodeType: "Task", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
+    { nodeId: "start", nodeType: "Start", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
+    { nodeId: "task-a", nodeType: "Task", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
   ],
 };
 
@@ -82,8 +82,8 @@ export const stateAtSeq1: ExecutionView = {
 export const stateAtSeq2: ExecutionView = {
   ...stateAtSeq1,
   nodes: [
-    { executionNodeId: "start", nodeType: "Start", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
-    { executionNodeId: "task-a", nodeType: "Task", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
+    { nodeId: "start", nodeType: "Start", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
+    { nodeId: "task-a", nodeType: "Task", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
   ],
 };
 
@@ -91,8 +91,8 @@ export const stateAtSeq2: ExecutionView = {
 export const stateAtSeq3: ExecutionView = {
   ...stateAtSeq1,
   nodes: [
-    { executionNodeId: "start", nodeType: "Start", status: "READY", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
-    { executionNodeId: "task-a", nodeType: "Task", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
+    { nodeId: "start", nodeType: "Start", status: "READY", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
+    { nodeId: "task-a", nodeType: "Task", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false },
   ],
 };
 
@@ -100,8 +100,8 @@ export const stateAtSeq3: ExecutionView = {
 export const stateAtSeq4: ExecutionView = {
   ...stateAtSeq1,
   nodes: [
-    { executionNodeId: "start", nodeType: "Start", status: "SUCCEEDED", attempt: 1, workerId: null, waitKey: null, canceledByExecution: false },
-    { executionNodeId: "task-a", nodeType: "Task", status: "RUNNING", attempt: 1, workerId: "w1", waitKey: null, canceledByExecution: false },
+    { nodeId: "start", nodeType: "Start", status: "SUCCEEDED", attempt: 1, workerId: null, waitKey: null, canceledByExecution: false },
+    { nodeId: "task-a", nodeType: "Task", status: "RUNNING", attempt: 1, workerId: "w1", waitKey: null, canceledByExecution: false },
   ],
 };
 

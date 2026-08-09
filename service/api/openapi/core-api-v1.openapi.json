@@ -4029,7 +4029,7 @@
             "ExecutionViewNodeDto": {
                 "type": "object",
                 "properties": {
-                    "executionNodeId": {
+                    "nodeId": {
                         "type": "string",
                         "nullable": true
                     },
@@ -4137,7 +4137,7 @@
             "GraphPatchNodeDto": {
                 "type": "object",
                 "properties": {
-                    "executionNodeId": {
+                    "nodeId": {
                         "type": "string",
                         "nullable": true
                     },

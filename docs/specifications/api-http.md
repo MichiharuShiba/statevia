@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.10 |
-| 更新日 | 2026-07-29 |
+| Version | 1.11 |
+| 更新日 | 2026-08-09 |
 | 関連 | [reference/api-openapi.md](../reference/api-openapi.md), [concepts/platform.md](../concepts/platform.md), [execution/wait-cancel.md](execution/wait-cancel.md) |
 
 ---
@@ -23,6 +23,8 @@
 ---
 
 Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
+
+**Version 1.11（2026-08-09）**: Nodes YAML のキャンバスキーを `name` に、Graph Definition を `nodeName` に、実行グラフ／View の状態名を `nodeName` に揃える。実行 View の短名 UUID は `nodeId`（旧 `executionNodeId` は廃止）。定義 YAML の `name` と実行 `nodeId` は別物。
 
 **Version 1.10（2026-07-29）**: Wait 複数イベント。`POST …/nodes/{nodeId}/resume` が正本（`resumeKey` = イベント名 → Engine `ResumeWaitNode`）。`POST …/events` は単一 Wait・単一イベント時のみ互換シム（それ以外 422）。Read model に `allowedEvents`。OpenAPI 再エクスポートは follow-up（DTO 変更の機械可読反映）。
 
@@ -288,8 +290,8 @@ Response: 200 OK、Content-Type: application/json。`execution_graph_snapshots` 
 
 - JSON キー命名は **camelCase**。
 - トップレベルは **`nodes`**, **`edges`**（ExecutionGraph のシリアライズ形）。**HTTP** では `execution_graph_snapshots` の行が無い場合は **404**（`ExecutionService.GetGraphJsonAsync`）。エンジン API `ExportExecutionGraph` がメモリにインスタンスを持たないときは **`{}`** 文字列を返し得るが、それは in-process 観測用であり、Read API の正本ではない（`AGENTS.md` Read-model authority）。
-- **`nodes[*].nodeId`**: ランタイム実行ノード ID（opaque。新規は小文字 Hex 12、既存実行は 8 桁のまま混在しうる）。**定義**の `GET /v1/graphs/{graphId}` における **`nodes[*].nodeId`（状態名ベースのキャンバス ID）とは別**。詳細は `docs/specifications/execution/execution-graph.md` §4。
-- **`nodes[*].stateName`**: 定義上の状態名。UI はマージ時に `stateName` および実行エッジで対応付ける（`docs/specifications/execution/execution-graph.md` §7）。
+- **`nodes[*].nodeId`**: ランタイム実行ノード ID（opaque。新規は小文字 Hex 12、既存実行は 8 桁のまま混在しうる）。**定義**の `GET /v1/graphs/{graphId}` における **`nodes[*].nodeName`（状態名ベースのキャンバスキー）および定義 YAML の `name` とは別**。詳細は `docs/specifications/execution/execution-graph.md` §4。
+- **`nodes[*].nodeName`**: 定義上の状態名（StateName と同値。旧キー `stateName` は用いない）。UI はマージ時に `nodeName` および実行エッジで対応付ける（`docs/specifications/execution/execution-graph.md` §7）。
 - **`edges[*].from` / `edges[*].to`**: いずれも **`nodes[*].nodeId`** を指す。旧キー `fromNodeId` / `toNodeId` は用いない。
 - **`edges[*].type`**: `EdgeType` の数値（`Next` 0 など）。`Join`（2）では合流元から Join 合成ノードへ **複数辺** が立ち得る。
 - 条件遷移を評価したノードは `conditionRouting` を含む。
@@ -308,8 +310,8 @@ Response: 200 OK、Content-Type: application/json。`execution_graph_snapshots` 
 - 現行実装は **スナップショット近似**であり、`atSeq` 時点の厳密な過去状態の完全再構成を保証するものではない（運用上の注意は UI 文言・将来の強化チケットに委ねる）。
 - **`ExecutionViewDto`** は UI の `ExecutionView` に近い camelCase。`displayId`, `resourceId`, `graphId`, `status`, `startedAt`, `updatedAt`, `cancelRequested`, `restartLost`, **`nodes`**。
 - **`ExecutionViewDto.nodes[*]`**（`ExecutionViewNodeDto`）の主なフィールド:
-  - **`executionNodeId`**: 実行グラフの **`nodeId`** と一致させる識別子（試行単位の実行ノード）。
-  - **`stateName`**: 定義上の状態名（**`executionNodeId` とは別**）。
+  - **`nodeId`**: 実行グラフの **`nodeId`** と一致する識別子（試行単位の実行ノード。旧キー `executionNodeId` は用いない）。
+  - **`nodeName`**: 定義上の状態名（**`nodeId` とは別**。旧キー `stateName` は用いない）。
   - **`nodeType`**, **`status`**, **`attempt`**, **`workerId`**, **`waitKey`**, **`allowedEvents`**, **`canceledByExecution`**
   - **`waitKey`**: 単一イベント Wait の互換表示（任意）。複数イベント時は省略または `null`。
   - **`allowedEvents`**: Wait が受付可能なイベント名一覧（任意。UI の Resume 選択に利用）。

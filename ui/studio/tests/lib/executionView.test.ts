@@ -41,7 +41,7 @@ describe("buildExecutionView", () => {
 
     // Assert
     expect(view.nodes).toHaveLength(1);
-    expect(view.nodes[0]?.executionNodeId).toBe("n-1");
+    expect(view.nodes[0]?.nodeId).toBe("n-1");
     expect(view.nodes[0]?.nodeType).toBe("Task");
     expect(view.nodes[0]?.conditionRouting).toEqual(conditionRouting);
     expect(view.nodes[0]?.startedAt).toBe("2026-01-01T00:00:00Z");
@@ -80,7 +80,7 @@ describe("buildExecutionView", () => {
 
     const view = buildExecutionView(execution, graph);
 
-    expect(view.nodes[0]?.executionNodeId).toBe("n-1");
+    expect(view.nodes[0]?.nodeId).toBe("n-1");
     expect(view.nodes[0]?.input).toEqual({ payload: 1 });
     expect(view.nodes[0]?.output).toEqual({ result: 42 });
     expect(view.nodes[0]?.attempt).toBe(2);

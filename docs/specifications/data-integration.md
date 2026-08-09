@@ -108,7 +108,7 @@ UIが依存してよいレスポンス形を固定する。
 
 - **`nodes[*].nodeName`**: 定義上の状態名（StateName と同値）。実行グラフ JSON の `nodeName` を投影する。
 - **`nodes[*].nodeType`**: ノード種別（`Task` / `Wait` / `Join` 等）。**`nodeName` とは別**であり、状態名を種別として返してはならない。
-- 現行 HTTP の一部経路では実行ノード識別子が `executionNodeId` として公開される場合がある（将来 `nodeId` に揃える）。
+- 現行 HTTP の実行ノード識別子は `nodeId`（短名 UUID。定義 YAML の `name` / Graph Def の `nodeName` とは別）。
 
 #### UI側の最低保証
 
@@ -263,14 +263,14 @@ Read Model は「状態」だけなので、UIは別途「構造」を知る必�
 {
   "graphId": "hello",
   "nodes": [
-    { "nodeId": "start", "nodeType": "Start", "label": "Start" },
-    { "nodeId": "task-1", "nodeType": "Task", "label": "Task A" }
+    { "nodeName": "start", "nodeType": "Start", "label": "Start" },
+    { "nodeName": "task-1", "nodeType": "Task", "label": "Task A" }
   ],
   "edges": [{ "from": "start", "to": "task-1" }]
 }
 ```
 
-- **Graph Definition** の `edges[*].from` / `to` は **定義キャンバス上の `nodeId`**（状態名と一致しやすい）を指す。一方 **`GET /v1/executions/{id}/graph`** の実行グラフでは **`from` / `to` が実行ノード ID**（`nodes[*].nodeId`）を指す（`docs/specifications/execution/execution-graph.md`）。
+- **Graph Definition** の `edges[*].from` / `to` は **定義キャンバス上の `nodeName`**（状態名と一致しやすい）を指す。一方 **`GET /v1/executions/{id}/graph`** の実行グラフでは **`from` / `to` が実行ノード ID**（`nodes[*].nodeId`）を指す（`docs/specifications/execution/execution-graph.md`）。
 - **現行の `GraphDefinitionResponse` には UI 専用のレイアウト塊は含めない**（クライアント側レジストリ等で補う）。上記 `json` の `ui` は参考用の擬似例であり、API 本文には載らない。
 
 #### 重要
@@ -305,7 +305,7 @@ Service API は **Execution Read Model 全体**ではなく、**グラフスナ�
 ```
 
 - `executionId`: 実行の **display_id**（UI の URL 等と一致しやすい）
-- `patch.nodes`: `ExecutionViewMapper.MapGraphPatchNodes` の結果。各要素は **`executionNodeId`**（実行グラフの `nodeId`）をキーとするマップの値に相当し、**`stateName`**, **`status`**, **`attempt`**, **`workerId`**, **`waitKey`**, **`canceledByExecution`** 等を含み得る（詳細は `ExecutionViewDto` / `GraphPatchNodeDto` および `docs/specifications/api-http.md` §3.5）。
+- `patch.nodes`: `ExecutionViewMapper.MapGraphPatchNodes` の結果。各要素は **`nodeId`**（実行グラフの `nodeId`）をキーとするマップの値に相当し、**`nodeName`**, **`status`**, **`attempt`**, **`workerId`**, **`waitKey`**, **`canceledByExecution`** 等を含み得る（詳細は `ExecutionViewDto` / `GraphPatchNodeDto` および `docs/specifications/api-http.md` §3.5）。
 
 **UI の推奨**: 本イベントを受けたら **`GET /v1/executions/{id}`** で Read Model を再取得し、画面を確定状態に揃える（SSE は「いま読み直す価値がある」通知であり、正本は Read API とする方針は §3.3 / `AGENTS.md` の Read-model authority と整合）。
 

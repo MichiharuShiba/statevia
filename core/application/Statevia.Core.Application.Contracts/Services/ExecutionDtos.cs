@@ -119,9 +119,9 @@ public sealed class ExecutionViewDto
 public sealed class ExecutionViewNodeDto
 {
     /// <summary>ExecutionGraph が付与するノード識別子（試行単位）。定義キャンバスのノードキーとは別。</summary>
-    public string ExecutionNodeId { get; init; } = string.Empty;
+    public string NodeId { get; init; } = string.Empty;
 
-    /// <summary>ノード名。定義上の StateName と同値（<see cref="ExecutionNodeId"/> とは別）。</summary>
+    /// <summary>ノード名。定義上の StateName と同値（<see cref="NodeId"/> とは別）。</summary>
     public string NodeName { get; init; } = string.Empty;
 
     /// <summary>ノード種別（例: Action, Wait）。</summary>
@@ -204,7 +204,7 @@ public sealed class GraphUpdatedPatchDto
 public sealed class GraphPatchNodeDto
 {
     /// <summary>実行ノード ID。</summary>
-    public string ExecutionNodeId { get; init; } = string.Empty;
+    public string NodeId { get; init; } = string.Empty;
 
     /// <summary>ノード名（任意）。定義上の StateName と同値。</summary>
     public string? NodeName { get; init; }
@@ -270,7 +270,7 @@ public sealed class ExecutionReadModel
 public sealed class ExecutionNodeReadModel
 {
     /// <summary>ExecutionGraph のノード識別子（試行単位）。</summary>
-    public string ExecutionNodeId { get; init; } = string.Empty;
+    public string NodeId { get; init; } = string.Empty;
 
     /// <summary>ノード名。定義上の StateName と同値。</summary>
     public string NodeName { get; init; } = string.Empty;

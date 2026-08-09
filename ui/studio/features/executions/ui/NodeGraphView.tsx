@@ -36,7 +36,7 @@ type ExecutionNodeData = {
   /** 定義グラフ上のノード名（選択・Resume エッジ照合）。 */
   name: string;
   /** ExecutionGraph のノード ID（Resume API 本体）。 */
-  executionNodeId: string;
+  nodeId: string;
   label: string;
   nodeType: string;
   status: NodeStatus;
@@ -45,8 +45,8 @@ type ExecutionNodeData = {
   allowedEvents?: string[] | null;
   selected: boolean;
   onSelect: (name: string) => void;
-  /** Resume API 呼び出し（executionNodeId + イベント名）。 */
-  onResume: (executionNodeId: string, eventName: string) => void;
+  /** Resume API 呼び出し（nodeId + イベント名）。 */
+  onResume: (nodeId: string, eventName: string) => void;
   resumeDisabledReason: string | null;
   /** 比較モード時の差分ハイライト（該当時のみ ring 表示） */
   diffHighlight?: { isFailureOrCancel: boolean } | null;
@@ -156,7 +156,7 @@ function WaitingResumeControls({
   useEffect(() => {
     const nextEvents = resumeEventsKey.length > 0 ? resumeEventsKey.split("\0") : [];
     setSelectedEvent(nextEvents[0] ?? "");
-  }, [data.executionNodeId, resumeEventsKey]);
+  }, [data.nodeId, resumeEventsKey]);
 
   return (
     <div className={`shrink-0 ${isGateway ? "mt-2" : "mt-3"} space-y-1`}>
@@ -181,7 +181,7 @@ function WaitingResumeControls({
         className="nodrag w-full cursor-pointer rounded-lg bg-amber-500 px-2 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
         onClick={(event) => {
           event.stopPropagation();
-          data.onResume(data.executionNodeId, effectiveEvent);
+          data.onResume(data.nodeId, effectiveEvent);
         }}
         disabled={disabled}
       >
@@ -244,7 +244,7 @@ type NodeGraphViewProps = {
   defaultViewport?: GraphViewport;
   /** パン・ズーム終了時に呼ばれる（状態保持用） */
   onViewportChange?: (viewport: GraphViewport) => void;
-  /** 比較モード時のノード差分ハイライト（executionNodeId -> ハイライト情報） */
+  /** 比較モード時のノード差分ハイライト（nodeId -> ハイライト情報） */
   nodeDiffHighlight?: NodeDiffHighlight;
 };
 
@@ -284,7 +284,7 @@ export function NodeGraphView({
       draggable: true,
       data: {
         name: node.name,
-        executionNodeId: node.executionNodeId,
+        nodeId: node.nodeId,
         label: node.label,
         nodeType: node.nodeType,
         status: node.status,
@@ -295,7 +295,7 @@ export function NodeGraphView({
         onSelect: (id: string) => onSelectNode(id),
         onResume: (id: string, eventName: string) => onResumeNode(id, eventName),
         resumeDisabledReason: getResumeDisabledReason(node.name),
-        diffHighlight: nodeDiffHighlight?.[node.executionNodeId] ?? null
+        diffHighlight: nodeDiffHighlight?.[node.nodeId] ?? null
       },
       style: { width: node.w, height: node.h }
     }));
@@ -328,7 +328,7 @@ export function NodeGraphView({
           resumeDisabledReason: getResumeDisabledReason(d.name),
           onSelect: (id: string) => onSelectNode(id),
           onResume: (id: string, eventName: string) => onResumeNode(id, eventName),
-          diffHighlight: nodeDiffHighlight?.[d.executionNodeId] ?? null
+          diffHighlight: nodeDiffHighlight?.[d.nodeId] ?? null
         }
       };
     });

@@ -6,7 +6,7 @@ export type MergedGraphNode = {
   /** 定義グラフ上のノード名（GraphNodeDef.nodeName）。エッジ・レイアウト・グループのキー。 */
   name: string;
   /** ExecutionGraph のノード ID（差分ハイライト・ランタイム行と対応）。定義のみの IDLE 行では `name` と同一の合成値。 */
-  executionNodeId: string;
+  nodeId: string;
   /** 定義グラフ・API の状態名（実行ノードに nodeName があればそれを優先） */
   nodeName: string;
   nodeType: string;
@@ -48,7 +48,7 @@ export type MergedGraph = {
 /** 定義のみ存在するノード用。`name` は定義上のノード名、`nodeName` はワークフロー状態名（通常は同一値）。 */
 function asIdleNode(name: string, nodeName: string, nodeType: string): ExecutionNodeDTO {
   return {
-    executionNodeId: name,
+    nodeId: name,
     nodeName,
     nodeType,
     status: "IDLE",
@@ -80,11 +80,11 @@ export function mergeGraph(execution: ExecutionView, definition: GraphDefinition
   const byNodeNameKey = new Map<string, ExecutionNodeDTO>();
   const nodeNameByRuntimeId = new Map<string, string>();
   for (const n of execution.nodes) {
-    byRuntimeId.set(n.executionNodeId, n);
+    byRuntimeId.set(n.nodeId, n);
     const trimmed = typeof n.nodeName === "string" ? n.nodeName.trim() : "";
     if (trimmed.length === 0) continue;
     byNodeNameKey.set(trimmed, n);
-    nodeNameByRuntimeId.set(n.executionNodeId, trimmed);
+    nodeNameByRuntimeId.set(n.nodeId, trimmed);
   }
 
   const traversedEdgeKeys = new Set(
@@ -100,11 +100,11 @@ export function mergeGraph(execution: ExecutionView, definition: GraphDefinition
     return {
       graphId: execution.graphId,
       nodes: execution.nodes.map((n) => ({
-        name: n.executionNodeId,
-        executionNodeId: n.executionNodeId,
+        name: n.nodeId,
+        nodeId: n.nodeId,
         nodeName: n.nodeName ?? "",
         nodeType: n.nodeType,
-        label: n.executionNodeId,
+        label: n.nodeId,
         status: n.status,
         attempt: n.attempt,
         workerId: n.workerId,
@@ -136,7 +136,7 @@ export function mergeGraph(execution: ExecutionView, definition: GraphDefinition
 
     return {
       name: defNode.nodeName,
-      executionNodeId: runtimeNode.executionNodeId,
+      nodeId: runtimeNode.nodeId,
       nodeName: resolvedNodeName,
       nodeType: defNode.nodeType,
       label: defNode.label ?? defNode.nodeName,

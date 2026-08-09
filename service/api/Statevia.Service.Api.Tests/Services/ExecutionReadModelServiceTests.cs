@@ -179,7 +179,7 @@ public sealed class ExecutionReadModelServiceTests
         Assert.Equal("Task", res.Nodes[0].NodeType);
         Assert.False(res.Nodes[0].CanceledByExecution);
 
-        Assert.Equal(string.Empty, res.Nodes[1].ExecutionNodeId);
+        Assert.Equal(string.Empty, res.Nodes[1].NodeId);
         Assert.Equal("SUCCEEDED", res.Nodes[1].Status);
         Assert.Equal("S2", res.Nodes[1].NodeName);
         Assert.Equal("Wait", res.Nodes[1].NodeType);

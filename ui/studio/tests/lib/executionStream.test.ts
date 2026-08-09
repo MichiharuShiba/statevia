@@ -15,7 +15,7 @@ const baseExecution: ExecutionView = {
   graphId: "g-1",
   nodes: [
     {
-      executionNodeId: "n-1",
+      nodeId: "n-1",
       nodeType: "TASK",
       status: "IDLE",
       attempt: 0,
@@ -32,7 +32,7 @@ describe("parseExecutionStreamEvent", () => {
     const raw = JSON.stringify({
       type: "GraphUpdated",
       executionId: "ex-1",
-      patch: { nodes: [{ executionNodeId: "n-1", status: "RUNNING" }] },
+      patch: { nodes: [{ nodeId: "n-1", status: "RUNNING" }] },
       at: "2026-01-01T00:00:00Z"
     });
 
@@ -176,7 +176,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ executionNodeId: "n-1", status: "RUNNING", attempt: 1 }] }
+        patch: { nodes: [{ nodeId: "n-1", status: "RUNNING", attempt: 1 }] }
       })
     )!;
 
@@ -193,7 +193,7 @@ describe("applyExecutionStreamEvent", () => {
       ...baseExecution,
       nodes: [
         {
-          executionNodeId: "n-1",
+          nodeId: "n-1",
           nodeName: "Alpha",
           nodeType: "TASK",
           status: "IDLE",
@@ -208,7 +208,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ executionNodeId: "n-1", status: "RUNNING" }] }
+        patch: { nodes: [{ nodeId: "n-1", status: "RUNNING" }] }
       })
     )!;
     const next = applyExecutionStreamEvent(execution, event);
@@ -221,7 +221,7 @@ describe("applyExecutionStreamEvent", () => {
       ...baseExecution,
       nodes: [
         {
-          executionNodeId: "n-1",
+          nodeId: "n-1",
           nodeName: "Alpha",
           nodeType: "TASK",
           status: "IDLE",
@@ -237,7 +237,7 @@ describe("applyExecutionStreamEvent", () => {
         type: "GraphUpdated",
         executionId: "ex-1",
         patch: {
-          nodes: [{ executionNodeId: "n-1", status: "RUNNING", nodeName: "Beta", workerId: "new-w" }]
+          nodes: [{ nodeId: "n-1", status: "RUNNING", nodeName: "Beta", workerId: "new-w" }]
         }
       })
     )!;
@@ -255,7 +255,7 @@ describe("applyExecutionStreamEvent", () => {
         patch: {
           nodes: [
             {
-              executionNodeId: "n-1",
+              nodeId: "n-1",
               status: "FAILED",
               error: { message: "merged error" },
               cancelReason: "merged reason"
@@ -427,7 +427,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ executionNodeId: "n-2", status: "IDLE" }] }
+        patch: { nodes: [{ nodeId: "n-2", status: "IDLE" }] }
       })
     )!;
 
@@ -436,7 +436,7 @@ describe("applyExecutionStreamEvent", () => {
 
     // Assert
     expect(next.nodes).toHaveLength(2);
-    const added = next.nodes.find((n) => n.executionNodeId === "n-2");
+    const added = next.nodes.find((n) => n.nodeId === "n-2");
     expect(added?.status).toBe("IDLE");
     expect(added?.nodeType).toBe("Unknown");
   });
@@ -492,7 +492,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ executionNodeId: "n-1", status: "CANCELLED" }] }
+        patch: { nodes: [{ nodeId: "n-1", status: "CANCELLED" }] }
       })
     )!;
 
@@ -509,7 +509,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ executionNodeId: "n-1" }] }
+        patch: { nodes: [{ nodeId: "n-1" }] }
       })
     )!;
 
@@ -518,7 +518,7 @@ describe("applyExecutionStreamEvent", () => {
 
     // Assert
     expect(next.nodes).toHaveLength(1);
-    expect(next.nodes[0].executionNodeId).toBe("n-1");
+    expect(next.nodes[0].nodeId).toBe("n-1");
   });
 
   it("GraphUpdated で patch の status が不正な文字列のときは normalizeNodeStatus が null で status は undefined で上書きされる", () => {
@@ -527,7 +527,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ executionNodeId: "n-1", status: "INVALID_STATUS" }] }
+        patch: { nodes: [{ nodeId: "n-1", status: "INVALID_STATUS" }] }
       })
     )!;
 
@@ -535,7 +535,7 @@ describe("applyExecutionStreamEvent", () => {
     const next = applyExecutionStreamEvent(baseExecution, event);
 
     // Assert
-    expect(next.nodes[0].executionNodeId).toBe("n-1");
+    expect(next.nodes[0].nodeId).toBe("n-1");
     expect(next.nodes).toHaveLength(1);
   });
 
@@ -546,7 +546,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ executionNodeId: "n-new", status: "IDLE" }] }
+        patch: { nodes: [{ nodeId: "n-new", status: "IDLE" }] }
       })
     )!;
 
@@ -565,7 +565,7 @@ describe("applyExecutionStreamEvent", () => {
       JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ executionNodeId: "n-1", status: "IDLE" }] }
+        patch: { nodes: [{ nodeId: "n-1", status: "IDLE" }] }
       })
     )!;
 
@@ -574,7 +574,7 @@ describe("applyExecutionStreamEvent", () => {
 
     // Assert
     expect(next.nodes).toHaveLength(1);
-    expect(next.nodes[0].executionNodeId).toBe("n-1");
+    expect(next.nodes[0].nodeId).toBe("n-1");
     expect(next.nodes[0].status).toBe("IDLE");
   });
 });

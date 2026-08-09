@@ -50,7 +50,7 @@ describe("useGraphData", () => {
   it("definition が null のとき definitionBased は false", () => {
     // Arrange
     const exec = execution([
-      { executionNodeId: "n-1", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false }
+      { nodeId: "n-1", nodeType: "TASK", status: "IDLE", attempt: 0, workerId: null, waitKey: null, canceledByExecution: false }
     ]);
 
     // Act

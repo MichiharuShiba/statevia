@@ -21,13 +21,13 @@ function normalizeNodeStatus(value: string): NodeStatus | null {
   return allowed.has(normalized as NodeStatus) ? (normalized as NodeStatus) : null;
 }
 
-function upsertNode(nodes: ExecutionNodeDTO[], incoming: Partial<ExecutionNodeDTO> & { executionNodeId: string }): ExecutionNodeDTO[] {
-  const index = nodes.findIndex((node) => node.executionNodeId === incoming.executionNodeId);
+function upsertNode(nodes: ExecutionNodeDTO[], incoming: Partial<ExecutionNodeDTO> & { nodeId: string }): ExecutionNodeDTO[] {
+  const index = nodes.findIndex((node) => node.nodeId === incoming.nodeId);
   if (index < 0) {
     return [
       ...nodes,
       {
-        executionNodeId: incoming.executionNodeId,
+        nodeId: incoming.nodeId,
         nodeName: incoming.nodeName ?? "",
         nodeType: incoming.nodeType ?? "Unknown",
         status: incoming.status ?? "IDLE",
@@ -43,11 +43,11 @@ function upsertNode(nodes: ExecutionNodeDTO[], incoming: Partial<ExecutionNodeDT
   }
 
   const target = nodes[index];
-  const { executionNodeId: _ignoredExecutionNodeId, ...rest } = incoming;
+  const { nodeId: _ignoredNodeId, ...rest } = incoming;
   const definedPatch = Object.fromEntries(
     Object.entries(rest).filter(([, value]) => value !== undefined)
   ) as Partial<ExecutionNodeDTO>;
-  const nextNode: ExecutionNodeDTO = { ...target, ...definedPatch, executionNodeId: target.executionNodeId };
+  const nextNode: ExecutionNodeDTO = { ...target, ...definedPatch, nodeId: target.nodeId };
 
   return [...nodes.slice(0, index), nextNode, ...nodes.slice(index + 1)];
 }
@@ -57,7 +57,7 @@ function applyGraphUpdated(execution: ExecutionView, event: Extract<ExecutionStr
   const nextNodes = patchNodes.reduce((acc, patchNode) => {
     const normalizedStatus = patchNode.status ? normalizeNodeStatus(patchNode.status) : null;
     return upsertNode(acc, {
-      executionNodeId: patchNode.executionNodeId,
+      nodeId: patchNode.nodeId,
       nodeName: patchNode.nodeName,
       status: normalizedStatus ?? undefined,
       attempt: patchNode.attempt,
@@ -86,7 +86,7 @@ function applyNodeCancelled(execution: ExecutionView, event: Extract<ExecutionSt
   return {
     ...execution,
     nodes: upsertNode(execution.nodes, {
-      executionNodeId: event.nodeId,
+      nodeId: event.nodeId,
       status: "CANCELED",
       canceledByExecution: true,
       cancelReason: reason
@@ -100,7 +100,7 @@ function applyNodeFailed(execution: ExecutionView, event: Extract<ExecutionStrea
   return {
     ...execution,
     nodes: upsertNode(execution.nodes, {
-      executionNodeId: event.nodeId,
+      nodeId: event.nodeId,
       status: "FAILED",
       error
     })

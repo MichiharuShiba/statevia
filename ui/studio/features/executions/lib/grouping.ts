@@ -18,7 +18,7 @@ export function buildGroups(nodes: ExecutionView["nodes"]): {
   groups: Array<{ groupId: string; label: string; nodeIds: string[] }>;
   nodeToGroup: Record<string, string>;
 } {
-  const ids = nodes.map((n) => n.executionNodeId);
+  const ids = nodes.map((n) => n.nodeId);
   const firstForkIndex = ids.findIndex((id) => id.includes("fork-"));
   const firstJoinIndex = ids.findIndex((id) => id.includes("join-"));
   if (firstForkIndex < 0 || firstJoinIndex < 0 || firstForkIndex >= firstJoinIndex) {

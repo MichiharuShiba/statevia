@@ -27,49 +27,46 @@ workflow:
     循環 Join 依存（Join 同士の相互待機）ではなく、制御フローの Fork 再到達。
 
 nodes:
-  - id: cycle.start
+  - name: cycle.start
     type: start
     label: 開始
     next: cycle.fork
 
-  - id: cycle.fork
+  - name: cycle.fork
     type: fork
     label: 並列ラウンド
     branches:
       - cycle.work.a
       - cycle.work.b
 
-  - id: cycle.work.a
+  - name: cycle.work.a
     type: action
     label: 作業 A
     action: noop
-    input:
-      lane: a
     next: cycle.join
 
-  - id: cycle.work.b
+  - name: cycle.work.b
     type: action
     label: 作業 B
     action: sleep
     input:
       duration: 1s
-      lane: b
     next: cycle.join
 
-  - id: cycle.join
+  - name: cycle.join
     type: join
     label: ラウンド合流
     mode: all
     next: cycle.decide
 
   # 自己遷移禁止のため、Join 直後に別ノードで分岐する
-  - id: cycle.decide
+  - name: cycle.decide
     type: wait
     label: 再実行するか
     events:
       Again: cycle.fork
       Finish: cycle.end
 
-  - id: cycle.end
+  - name: cycle.end
     type: end
     label: 完了

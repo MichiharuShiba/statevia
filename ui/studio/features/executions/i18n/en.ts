@@ -82,7 +82,7 @@ export const executionsUiTextEn: ExecutionsFeatureUiText = {
     meta: {
       type: (nodeType: string) => `Type: ${nodeType}`,
       nodeName: (nodeName: string) => `Node name: ${nodeName}`,
-      executionNodeId: (id: string) => `Execution node ID: ${id}`,
+      nodeId: (id: string) => `Node ID: ${id}`,
       workerId: (workerId: string) => `Worker ID: ${workerId}`,
       attempt: (attempt: number) => `Attempts: ${attempt}`,
       waitKey: (waitKey: string) => `Wait key: ${waitKey}`,
@@ -230,7 +230,7 @@ export const executionsUiTextEn: ExecutionsFeatureUiText = {
       status: "Status",
       type: "Type",
       nodeName: "Node name",
-      executionNodeId: "Execution node ID",
+      nodeId: "Node ID",
       duration: "Duration",
     },
 

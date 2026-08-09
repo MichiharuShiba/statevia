@@ -307,7 +307,7 @@ describe("useExecution", () => {
       const graphUpdated = JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ executionNodeId: "n-1", status: "RUNNING" }] }
+        patch: { nodes: [{ nodeId: "n-1", status: "RUNNING" }] }
       });
 
       await act(async () => {
@@ -446,7 +446,7 @@ describe("useExecution", () => {
       const graphUpdated = JSON.stringify({
         type: "GraphUpdated",
         executionId: "ex-1",
-        patch: { nodes: [{ executionNodeId: "n-1", status: "RUNNING" }] }
+        patch: { nodes: [{ nodeId: "n-1", status: "RUNNING" }] }
       });
 
       await act(async () => {

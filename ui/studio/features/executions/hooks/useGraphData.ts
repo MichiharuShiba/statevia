@@ -54,7 +54,7 @@ export function useGraphData(
 
 /**
  * ノード詳細・Resume 用に `ExecutionNodeDTO` を解決する。
- * リストはランタイム `executionNodeId`（UUID）、グラフは定義の `name`（状態キー）で選択するため、
+ * リストはランタイム `nodeId`（UUID）、グラフは定義の `name`（状態キー）で選択するため、
  * `nodeName` およびマージ結果の `nodeName` でランタイム行へ寄せる。
  */
 export function getNodeWithFallback(
@@ -65,7 +65,7 @@ export function getNodeWithFallback(
   if (!execution || !nodeId) return null;
   const key = nodeId.trim();
 
-  const byRuntimeId = execution.nodes.find((n) => n.executionNodeId === key);
+  const byRuntimeId = execution.nodes.find((n) => n.nodeId === key);
   if (byRuntimeId) return byRuntimeId;
 
   const byNodeNameKey = execution.nodes.find(
@@ -77,22 +77,21 @@ export function getNodeWithFallback(
   if (byNodeNameKey) return byNodeNameKey;
 
   const mergedNode = graphData?.mergedNodes.find((n) => n.name === key);
-  if (mergedNode) {
-    const mergedState = mergedNode.nodeName.trim();
-    if (mergedState.length > 0) {
-      const byMergedNodeName = execution.nodes.find(
-        (n) =>
-          typeof n.nodeName === "string" &&
-          n.nodeName.trim().toLowerCase() === mergedState.toLowerCase()
-      );
-      if (byMergedNodeName) return byMergedNodeName;
-    }
-  }
-
   if (!mergedNode) return null;
 
-  return {
-    executionNodeId: mergedNode.executionNodeId,
+  const mergedState = mergedNode.nodeName.trim();
+  if (mergedState.length > 0) {
+    const byMergedNodeName = execution.nodes.find(
+      (n) =>
+        typeof n.nodeName === "string" &&
+        n.nodeName.trim().toLowerCase() === mergedState.toLowerCase()
+    );
+    if (byMergedNodeName) return byMergedNodeName;
+  }
+
+  // 定義のみの IDLE 行など、実行 nodes に無いときはマージ結果から DTO を合成する。
+  const fallbackFromMerged: ExecutionNodeDTO = {
+    nodeId: mergedNode.nodeId,
     nodeName: mergedNode.nodeName,
     nodeType: mergedNode.nodeType,
     status: mergedNode.status,
@@ -102,4 +101,5 @@ export function getNodeWithFallback(
     allowedEvents: mergedNode.allowedEvents ?? null,
     canceledByExecution: mergedNode.canceledByExecution
   };
+  return fallbackFromMerged;
 }

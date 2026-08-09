@@ -17,7 +17,7 @@ export type ExecutionDTO = {
 
 /**
  * v2: GET /v1/executions/:id/graph のノード（C# ExecutionNode）。JSON は camelCase（Service API）。
- * ノード ID のキーは API／Engine／永続グラフとも `nodeId` のまま。UI 組み立て後の `ExecutionNodeDTO` だけ `executionNodeId` に正規化する。
+ * ノード ID のキーは API／Engine／永続グラフ／View／UI とも `nodeId`。
  */
 export type ExecutionGraphNodeDTO = {
   nodeId?: string;
@@ -59,8 +59,8 @@ export type ExecutionGraphDTO = {
 
 /** グラフ可視化用のノード（状態実行）。v2 では ExecutionGraphDTO から変換。 */
 export type ExecutionNodeDTO = {
-  /** UI 向けの実行ノード ID。永続グラフ JSON のキーは `nodeId` のまま（API／Engine は変更しない）。グラフから組み立てるときはその値と同じ。 */
-  executionNodeId: string;
+  /** 実行ノード短名 UUID（API／Engine／View の `nodeId` と同値）。定義キャンバスの `name` / Graph Def の `nodeName` とは別。 */
+  nodeId: string;
   nodeName?: string;
   nodeType: string;
   status: NodeStatus;
@@ -96,9 +96,9 @@ export type CommandAccepted = {
   idempotencyKey: string;
 };
 
-/** GraphUpdated 等のパッチ。`executionNodeId` は UI／REST 向け名（永続グラフ JSON の `nodeId` と同値）。 */
+/** GraphUpdated 等のパッチ。`nodeId` は UI／REST 向け名（永続グラフ JSON の `nodeId` と同値）。 */
 export type GraphPatchNode = {
-  executionNodeId: string;
+  nodeId: string;
   nodeName?: string;
   nodeType?: string;
   status?: NodeStatus;
