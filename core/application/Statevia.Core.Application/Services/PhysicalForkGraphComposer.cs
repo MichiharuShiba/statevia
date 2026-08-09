@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Statevia.Core.Application.Infrastructure;
 using Statevia.Core.Engine.ExecutionGraphs;
 
 namespace Statevia.Core.Application.Services;
@@ -28,11 +29,6 @@ internal static class PhysicalForkGraphComposer
     private const string StateNameProperty = "stateName";
     private const string NodeTypeProperty = "nodeType";
     private const string JoinNodeType = "Join";
-
-    private static readonly JsonSerializerOptions CompactJson = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
 
     /// <summary>1 分岐分の子グラフ（再帰合成済み可）。</summary>
     /// <param name="ForkNodeId">親上の Fork 到達ノード ID。</param>
@@ -75,7 +71,7 @@ internal static class PhysicalForkGraphComposer
             ["nodes"] = new JsonArray(nodeById.Values.Select(n => n.DeepClone()).ToArray()),
             ["edges"] = new JsonArray(edges.Select(e => (JsonNode?)e.DeepClone()).ToArray())
         };
-        return root.ToJsonString(CompactJson);
+        return root.ToJsonString(JsonSerializerProfiles.CamelCase);
     }
 
     /// <summary>

@@ -14,11 +14,6 @@ namespace Statevia.Core.Application.Services;
 /// </summary>
 internal static class ExecutionOperationalProjectionSync
 {
-    private static readonly JsonSerializerOptions CaseInsensitiveJsonSerializerOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
     /// <summary>
     /// 投影フラッシュと同一トランザクション内で cursor / durable wait を同期する。
     /// Publish / Resume 時は <see cref="ExecutionOperationalProjectionSyncRequest.NodeIdToClear"/> で該当 wait を先行削除する。
@@ -233,7 +228,7 @@ internal static class ExecutionOperationalProjectionSync
 
         if (!JsonDeserialize.TryDeserialize(
                 graphJson,
-                CaseInsensitiveJsonSerializerOptions,
+                JsonSerializerProfiles.CaseInsensitive,
                 out ExecutionGraphSnapshotDto? dto)
             || dto?.Nodes is null)
             return false;

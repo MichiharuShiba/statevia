@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Statevia.Core.Application.Contracts.Services;
+using Statevia.Core.Application.Infrastructure;
 using Statevia.Core.Application.Services;
 
 namespace Statevia.Service.Api.Services;
@@ -70,7 +71,7 @@ public sealed class ExecutionStreamService
         response.Headers.Connection = "keep-alive";
         response.Headers["X-Accel-Buffering"] = "no";
 
-        var jsonOpts = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+        var jsonOpts = JsonSerializerProfiles.CamelCase;
         string? lastHash = null;
 
         while (!ct.IsCancellationRequested)
