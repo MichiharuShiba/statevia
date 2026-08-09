@@ -97,7 +97,7 @@ internal static class ExecutionOperationalProjectionSync
         {
             var activeStateSet = snapshot.ActiveStates.ToHashSet(StringComparer.Ordinal);
             var activeStateNode = runningNodes
-                .Where(n => !string.IsNullOrWhiteSpace(n.StateName) && activeStateSet.Contains(n.StateName!))
+                .Where(n => !string.IsNullOrWhiteSpace(n.NodeName) && activeStateSet.Contains(n.NodeName!))
                 .OrderByDescending(n => n.StartedAt)
                 .FirstOrDefault();
             if (activeStateNode is not null)
@@ -250,8 +250,8 @@ internal static class ExecutionOperationalProjectionSync
         [JsonPropertyName("nodeId")]
         public string? NodeId { get; set; }
 
-        [JsonPropertyName("stateName")]
-        public string? StateName { get; set; }
+        [JsonPropertyName("nodeName")]
+        public string? NodeName { get; set; }
 
         [JsonPropertyName("nodeType")]
         public string? NodeType { get; set; }

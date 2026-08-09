@@ -121,8 +121,8 @@ public sealed class ExecutionViewNodeDto
     /// <summary>ExecutionGraph が付与するノード識別子（試行単位）。定義キャンバスのノードキーとは別。</summary>
     public string ExecutionNodeId { get; init; } = string.Empty;
 
-    /// <summary>ワークフロー定義上の状態名（<see cref="ExecutionNodeId"/> とは別）。</summary>
-    public string StateName { get; init; } = string.Empty;
+    /// <summary>ノード名。定義上の StateName と同値（<see cref="ExecutionNodeId"/> とは別）。</summary>
+    public string NodeName { get; init; } = string.Empty;
 
     /// <summary>ノード種別（例: Action, Wait）。</summary>
     public string NodeType { get; init; } = string.Empty;
@@ -206,8 +206,8 @@ public sealed class GraphPatchNodeDto
     /// <summary>実行ノード ID。</summary>
     public string ExecutionNodeId { get; init; } = string.Empty;
 
-    /// <summary>状態名（任意）。</summary>
-    public string? StateName { get; init; }
+    /// <summary>ノード名（任意）。定義上の StateName と同値。</summary>
+    public string? NodeName { get; init; }
 
     /// <summary>ノード状態（任意）。</summary>
     public string? Status { get; init; }

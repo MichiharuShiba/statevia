@@ -114,7 +114,7 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
             list.Add(new ExecutionNodeReadModel
             {
                 ExecutionNodeId = n.NodeId ?? string.Empty,
-                NodeType = string.IsNullOrWhiteSpace(n.StateName) ? "Task" : n.StateName,
+                NodeType = string.IsNullOrWhiteSpace(n.NodeName) ? "Task" : n.NodeName,
                 Status = nodeStatus,
                 Attempt = 1,
                 WorkerId = null,
@@ -147,7 +147,7 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
 
     private sealed record ExecutionNodeDto(
         string? NodeId,
-        string? StateName,
+        string? NodeName,
         DateTime? CompletedAt,
         string? Fact);
 }

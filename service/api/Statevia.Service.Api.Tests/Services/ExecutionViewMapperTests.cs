@@ -14,7 +14,7 @@ public sealed class ExecutionViewMapperTests
     /// <summary>
     /// 永続化された camelCase の実行グラフ JSON を <see cref="ExecutionViewMapper.MapNodes"/> が解釈し、
     /// <see cref="ExecutionViewNodeDto.ExecutionNodeId"/>（JSON の <c>nodeId</c>）、
-    /// <see cref="ExecutionViewNodeDto.StateName"/>、
+    /// <see cref="ExecutionViewNodeDto.NodeName"/>、
     /// <see cref="ExecutionViewNodeDto.WorkerId"/>、
     /// <see cref="ExecutionViewNodeDto.Input"/> が取り込まれること。
     /// </summary>
@@ -28,7 +28,7 @@ public sealed class ExecutionViewMapperTests
               "nodes": [
                 {
                   "nodeId": "nid-1",
-                  "stateName": "S1",
+                  "nodeName": "S1",
                   "nodeType": "Task",
                   "startedAt": "2020-01-01T00:00:00Z",
                   "completedAt": null,
@@ -49,7 +49,7 @@ public sealed class ExecutionViewMapperTests
         // Assert
         Assert.Single(nodes);
         Assert.Equal("nid-1", nodes[0].ExecutionNodeId);
-        Assert.Equal("S1", nodes[0].StateName);
+        Assert.Equal("S1", nodes[0].NodeName);
         Assert.Equal("w-9", nodes[0].WorkerId);
         Assert.True(nodes[0].Input.HasValue);
         var inputElement = nodes[0].Input!.Value;
@@ -60,7 +60,7 @@ public sealed class ExecutionViewMapperTests
     /// <summary>
     /// グラフパッチ用 JSON を <see cref="ExecutionViewMapper.MapGraphPatchNodes"/> が解釈し、
     /// <see cref="GraphPatchNodeDto.ExecutionNodeId"/>、
-    /// <see cref="GraphPatchNodeDto.StateName"/>、
+    /// <see cref="GraphPatchNodeDto.NodeName"/>、
     /// <see cref="GraphPatchNodeDto.WorkerId"/> が取り込まれること。
     /// </summary>
     [Fact]
@@ -73,7 +73,7 @@ public sealed class ExecutionViewMapperTests
               "nodes": [
                 {
                   "nodeId": "nid-1",
-                  "stateName": "S1",
+                  "nodeName": "S1",
                   "nodeType": "Task",
                   "startedAt": "2020-01-01T00:00:00Z",
                   "completedAt": null,
@@ -93,7 +93,7 @@ public sealed class ExecutionViewMapperTests
         // Assert
         Assert.Single(patch);
         Assert.Equal("nid-1", patch[0].ExecutionNodeId);
-        Assert.Equal("S1", patch[0].StateName);
+        Assert.Equal("S1", patch[0].NodeName);
         Assert.Equal("w-9", patch[0].WorkerId);
     }
 
@@ -110,7 +110,7 @@ public sealed class ExecutionViewMapperTests
               "nodes": [
                 {
                   "nodeId": "wait-1",
-                  "stateName": "ApproveTask",
+                  "nodeName": "ApproveTask",
                   "nodeType": "Wait",
                   "startedAt": "2020-01-01T00:00:00Z",
                   "completedAt": null,

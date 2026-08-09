@@ -22,8 +22,8 @@ public sealed class ExecutionOperationalProjectionSyncTests
         var graphJson =
             """
             {"nodes":[
-              {"nodeId":"wait1","stateName":"Ask","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","waitKey":"Approve","workerId":"w1"},
-              {"nodeId":"task1","stateName":"Work","nodeType":"Task","startedAt":"2026-05-26T00:00:01Z","completedAt":"2026-05-26T00:00:02Z","fact":"Completed"}
+              {"nodeId":"wait1","nodeName":"Ask","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","waitKey":"Approve","workerId":"w1"},
+              {"nodeId":"task1","nodeName":"Work","nodeType":"Task","startedAt":"2026-05-26T00:00:01Z","completedAt":"2026-05-26T00:00:02Z","fact":"Completed"}
             ]}
             """;
 
@@ -75,7 +75,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         var graphJson =
             """
             {"nodes":[
-              {"nodeId":"wait-multi","stateName":"ApproveTask","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","waitKey":null,"allowedEvents":["approve","reject"],"workerId":"w1"}
+              {"nodeId":"wait-multi","nodeName":"ApproveTask","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","waitKey":null,"allowedEvents":["approve","reject"],"workerId":"w1"}
             ]}
             """;
 
@@ -124,8 +124,8 @@ public sealed class ExecutionOperationalProjectionSyncTests
         var graphJson =
             """
             {"nodes":[
-              {"nodeId":"wait-empty","stateName":"BrokenWait","nodeType":"Wait","startedAt":"2026-05-26T00:00:02Z","waitKey":null,"allowedEvents":[],"workerId":"w-wait"},
-              {"nodeId":"task1","stateName":"Prepare","nodeType":"Task","startedAt":"2026-05-26T00:00:01Z","workerId":"worker-prepare"}
+              {"nodeId":"wait-empty","nodeName":"BrokenWait","nodeType":"Wait","startedAt":"2026-05-26T00:00:02Z","waitKey":null,"allowedEvents":[],"workerId":"w-wait"},
+              {"nodeId":"task1","nodeName":"Prepare","nodeType":"Task","startedAt":"2026-05-26T00:00:01Z","workerId":"worker-prepare"}
             ]}
             """;
         var request = new ExecutionOperationalProjectionSyncRequest(
@@ -263,7 +263,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
             GraphJson:
             """
             {"nodes":[
-              {"nodeId":"wait-other","stateName":"Other","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","waitKey":"Other","workerId":"w2"}
+              {"nodeId":"wait-other","nodeName":"Other","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","waitKey":"Other","workerId":"w2"}
             ]}
             """,
             NodeIdToClear: "wait-old");
@@ -296,7 +296,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         var graphJson =
             """
             {"nodes":[
-              {"nodeId":"task1","stateName":"Prepare","nodeType":"Task","startedAt":"2026-05-26T00:00:01Z","workerId":"worker-prepare"}
+              {"nodeId":"task1","nodeName":"Prepare","nodeType":"Task","startedAt":"2026-05-26T00:00:01Z","workerId":"worker-prepare"}
             ]}
             """;
         var request = new ExecutionOperationalProjectionSyncRequest(
@@ -341,8 +341,8 @@ public sealed class ExecutionOperationalProjectionSyncTests
         var graphJson =
             """
             {"nodes":[
-              {"nodeId":"task-old","stateName":"A","nodeType":"Task","startedAt":"2026-05-26T00:00:00Z","workerId":"w-old"},
-              {"nodeId":"task-new","stateName":"B","nodeType":"Task","startedAt":"2026-05-26T00:00:02Z","workerId":"w-new"}
+              {"nodeId":"task-old","nodeName":"A","nodeType":"Task","startedAt":"2026-05-26T00:00:00Z","workerId":"w-old"},
+              {"nodeId":"task-new","nodeName":"B","nodeType":"Task","startedAt":"2026-05-26T00:00:02Z","workerId":"w-new"}
             ]}
             """;
         var request = new ExecutionOperationalProjectionSyncRequest(

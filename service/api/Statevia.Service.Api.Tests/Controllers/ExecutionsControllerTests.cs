@@ -450,7 +450,7 @@ public sealed class ExecutionsControllerTests
                     new ExecutionViewNodeDto
                     {
                         ExecutionNodeId = "n1",
-                        StateName = "S1",
+                        NodeName = "S1",
                         NodeType = "Task",
                         Status = "RUNNING",
                         Attempt = 1,
