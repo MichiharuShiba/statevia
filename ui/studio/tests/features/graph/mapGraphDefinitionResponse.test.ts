@@ -6,8 +6,8 @@ describe("mapGraphDefinitionResponse", () => {
     const raw = {
       graphId: "hello",
       nodes: [
-        { nodeId: "a", nodeType: "Start", label: "A" },
-        { nodeId: "b", nodeType: "Task", label: "B" }
+        { nodeName: "a", nodeType: "Start", label: "A" },
+        { nodeName: "b", nodeType: "Task", label: "B" }
       ],
       edges: [{ from: "a", to: "b" }]
     };
@@ -21,16 +21,16 @@ describe("mapGraphDefinitionResponse", () => {
     expect(def.edges[0].to).toBe("b");
   });
 
-  it("node に nodeName があれば GraphNodeDef に引き継ぐ", () => {
+  it("node の nodeName を GraphNodeDef.nodeName に引き継ぐ", () => {
     const def = mapGraphDefinitionResponse(
       {
         graphId: "g",
-        nodes: [{ nodeId: "n1", nodeName: "s1", nodeType: "Task" }],
+        nodes: [{ nodeName: "s1", nodeType: "Task" }],
         edges: []
       },
       "g"
     );
-    expect(def?.nodes[0]).toMatchObject({ nodeId: "n1", nodeName: "s1" });
+    expect(def?.nodes[0]).toMatchObject({ nodeName: "s1" });
   });
 
   it("nodes が空なら null", () => {
@@ -41,7 +41,7 @@ describe("mapGraphDefinitionResponse", () => {
     const def = mapGraphDefinitionResponse(
       {
         graphId: "g",
-        nodes: [{ nodeId: "a", nodeType: "Start" }],
+        nodes: [{ nodeName: "a", nodeType: "Start" }],
         edges: [],
         meta: { layout: { a: { x: 10, y: 20 } } }
       },

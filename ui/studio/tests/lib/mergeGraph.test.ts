@@ -35,7 +35,7 @@ describe("mergeGraph", () => {
     expect(result.isDefinitionBased).toBe(true);
     expect(result.nodes.length).toBe(def.nodes.length);
     expect(result.edges.length).toBe(def.edges.length);
-    const startNode = result.nodes.find((n) => n.nodeId === "start");
+    const startNode = result.nodes.find((n) => n.name === "start");
     expect(startNode?.status).toBe("RUNNING");
     expect(startNode?.attempt).toBe(1);
     expect(startNode?.workerId).toBe("w-1");
@@ -52,7 +52,7 @@ describe("mergeGraph", () => {
 
     // Assert
     expect(result.nodes.every((n) => n.status === "IDLE" && n.attempt === 0)).toBe(true);
-    expect(result.nodes.some((n) => n.nodeId === "task-a" && n.label === "Task A")).toBe(true);
+    expect(result.nodes.some((n) => n.name === "task-a" && n.label === "Task A")).toBe(true);
   });
 
   it("definition が null のとき execution のみのマージを返す", () => {
@@ -68,7 +68,7 @@ describe("mergeGraph", () => {
     expect(result.graphId).toBe("g-1");
     expect(result.isDefinitionBased).toBe(false);
     expect(result.nodes).toHaveLength(1);
-    expect(result.nodes[0].nodeId).toBe("n-1");
+    expect(result.nodes[0].name).toBe("n-1");
     expect(result.nodes[0].executionNodeId).toBe("n-1");
     expect(result.nodes[0].label).toBe("n-1");
     expect(result.nodes[0].status).toBe("RUNNING");
@@ -139,8 +139,8 @@ describe("mergeGraph", () => {
     exec.runtimeEdges = [{ from: "rt-start-1", to: "rt-task-a-1", type: 0 }];
 
     const result = mergeGraph(exec, def);
-    const startNode = result.nodes.find((n) => n.nodeId === "start");
-    const taskANode = result.nodes.find((n) => n.nodeId === "task-a");
+    const startNode = result.nodes.find((n) => n.name === "start");
+    const taskANode = result.nodes.find((n) => n.name === "task-a");
     const startToTaskA = result.edges.find((e) => e.from === "start" && e.to === "task-a");
 
     expect(startNode?.status).toBe("SUCCEEDED");
@@ -150,10 +150,10 @@ describe("mergeGraph", () => {
     expect(startToTaskA?.traversed).toBe(true);
   });
 
-  it("定義で nodeId と nodeName が異なるときマージ結果で両方を維持する", () => {
+  it("execution に対応ノードがないとき定義の nodeName が nodeName にフォールバックする", () => {
     const def: GraphDefinition = {
       graphId: "custom-split",
-      nodes: [{ nodeId: "canvas-n1", nodeName: "workflowState", nodeType: "Task" }],
+      nodes: [{ nodeName: "canvas-n1", nodeType: "Task" }],
       edges: []
     };
     const exec = execution([], "custom-split");
@@ -161,9 +161,9 @@ describe("mergeGraph", () => {
     const result = mergeGraph(exec, def);
 
     expect(result.nodes).toHaveLength(1);
-    expect(result.nodes[0].nodeId).toBe("canvas-n1");
+    expect(result.nodes[0].name).toBe("canvas-n1");
     expect(result.nodes[0].executionNodeId).toBe("canvas-n1");
-    expect(result.nodes[0].nodeName).toBe("workflowState");
+    expect(result.nodes[0].nodeName).toBe("canvas-n1");
   });
 
   it("実行ノードに nodeName があるときマージ結果の nodeName に反映する", () => {
@@ -185,7 +185,7 @@ describe("mergeGraph", () => {
     );
 
     const result = mergeGraph(exec, def);
-    const mergedStart = result.nodes.find((n) => n.nodeId === "start");
+    const mergedStart = result.nodes.find((n) => n.name === "start");
     expect(mergedStart?.nodeName).toBe("startStateApi");
   });
 });
@@ -204,11 +204,11 @@ describe("mergeGraph (境界値)", () => {
     expect(result.nodes.every((n) => n.status === "IDLE")).toBe(true);
   });
 
-  it("definition のノードに label が無いとき nodeId を label に (mergeGraph L78-79)", () => {
+  it("definition のノードに label が無いとき name を label に (mergeGraph L78-79)", () => {
     // Arrange
     const def: GraphDefinition = {
       graphId: "custom",
-      nodes: [{ nodeId: "n1", nodeType: "TASK" }],
+      nodes: [{ nodeName: "n1", nodeType: "TASK" }],
       edges: []
     };
     const exec = execution([], "custom");
@@ -224,7 +224,7 @@ describe("mergeGraph (境界値)", () => {
   it("definition.meta が merged に引き継がれる", () => {
     const def: GraphDefinition = {
       graphId: "custom",
-      nodes: [{ nodeId: "n1", nodeType: "TASK" }],
+      nodes: [{ nodeName: "n1", nodeType: "TASK" }],
       edges: [],
       meta: { layout: { n1: { x: 5, y: 6 } } }
     };

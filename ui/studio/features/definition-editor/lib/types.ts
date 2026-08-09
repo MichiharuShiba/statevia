@@ -24,13 +24,14 @@ export type DefinitionGraphEdge = {
 
 /** 定義グラフドキュメント内のノード。 */
 export type DefinitionGraphNode = {
-  id: string;
+  /** 定義内で一意なノード名（YAML `name`、実行時の StateName と一致） */
+  name: string;
   type: NodeType;
   action?: string;
   /** action: 失敗時の遷移先（on.Failed.next） */
   error?: string;
   event?: string;
-  /** wait: イベント名 → 遷移先ノード ID（新形式。event+next より優先） */
+  /** wait: イベント名 → 遷移先ノード名（新形式。event+next より優先） */
   events?: Record<string, string>;
   next?: string;
   branches?: string[];
@@ -43,7 +44,7 @@ export type DefinitionGraphNode = {
 
 /** エディタ専用メタ（実行エンジンは無視） */
 export type DefinitionGraphMeta = {
-  /** グラフキャンバス上のノード座標（node id → x/y） */
+  /** グラフキャンバス上のノード座標（node name → x/y） */
   layout?: Record<string, { x: number; y: number }>;
 };
 

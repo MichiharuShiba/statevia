@@ -23,7 +23,7 @@ describe("useGraphDefinition", () => {
   it("API が有効な定義を返すとき source は api", async () => {
     vi.mocked(api.apiGet).mockResolvedValue({
       graphId: "hello",
-      nodes: [{ nodeId: "n1", nodeType: "TASK" }],
+      nodes: [{ nodeName: "n1", nodeType: "TASK" }],
       edges: []
     });
 

@@ -8,31 +8,31 @@ import type {
 /** グラフ検証メッセージのオプション。 */
 export type ValidateGraphDocumentMessageOptions = {
   nodesRequired: () => string;
-  nodeIdRequired: () => string;
-  duplicateNodeId: (nodeId: string) => string;
+  nodeNameRequired: () => string;
+  duplicateNodeName: (nodeName: string) => string;
   startCountInvalid: (count: number) => string;
   endCountInvalid: (count: number) => string;
-  startRequiresTransition: (nodeId: string) => string;
-  actionRequired: (nodeId: string) => string;
-  actionRequiresTransition: (nodeId: string) => string;
-  waitEventRequired: (nodeId: string) => string;
-  waitRequiresTransition: (nodeId: string) => string;
-  waitEventsAndEventTogether: (nodeId: string) => string;
-  waitEventsCannotHaveEdges: (nodeId: string) => string;
-  waitEventTargetRequired: (nodeId: string, eventName: string) => string;
-  forkBranchesRequired: (nodeId: string) => string;
-  joinRequiresTransition: (nodeId: string) => string;
-  joinModeInvalid: (nodeId: string) => string;
-  endCannotHaveTransition: (nodeId: string) => string;
-  edgeToRequired: (nodeId: string) => string;
-  edgeWhenPathRequired: (nodeId: string) => string;
-  edgeWhenOpRequired: (nodeId: string) => string;
-  edgeWhenValueRequired: (nodeId: string) => string;
-  edgeWhenValueInInvalid: (nodeId: string) => string;
-  edgeWhenValueBetweenInvalid: (nodeId: string) => string;
-  edgeDefaultMultiple: (nodeId: string) => string;
-  selfReferenceEdge: (nodeId: string) => string;
-  missingTargetNode: (nodeId: string, targetId: string) => string;
+  startRequiresTransition: (nodeName: string) => string;
+  actionRequired: (nodeName: string) => string;
+  actionRequiresTransition: (nodeName: string) => string;
+  waitEventRequired: (nodeName: string) => string;
+  waitRequiresTransition: (nodeName: string) => string;
+  waitEventsAndEventTogether: (nodeName: string) => string;
+  waitEventsCannotHaveEdges: (nodeName: string) => string;
+  waitEventTargetRequired: (nodeName: string, eventName: string) => string;
+  forkBranchesRequired: (nodeName: string) => string;
+  joinRequiresTransition: (nodeName: string) => string;
+  joinModeInvalid: (nodeName: string) => string;
+  endCannotHaveTransition: (nodeName: string) => string;
+  edgeToRequired: (nodeName: string) => string;
+  edgeWhenPathRequired: (nodeName: string) => string;
+  edgeWhenOpRequired: (nodeName: string) => string;
+  edgeWhenValueRequired: (nodeName: string) => string;
+  edgeWhenValueInInvalid: (nodeName: string) => string;
+  edgeWhenValueBetweenInvalid: (nodeName: string) => string;
+  edgeDefaultMultiple: (nodeName: string) => string;
+  selfReferenceEdge: (nodeName: string) => string;
+  missingTargetNode: (nodeName: string, targetName: string) => string;
 };
 
 function collectConfiguredEdgeTargets(node: DefinitionGraphNode): string[] {
@@ -46,8 +46,8 @@ function collectForkBranchTargets(node: DefinitionGraphNode): string[] {
     return [];
   }
   return node.branches
-    .map((branchId) => branchId?.trim())
-    .filter((branchId): branchId is string => Boolean(branchId));
+    .map((branchName) => branchName?.trim())
+    .filter((branchName): branchName is string => Boolean(branchName));
 }
 
 function collectWaitEventTargets(node: DefinitionGraphNode): string[] {
@@ -55,8 +55,8 @@ function collectWaitEventTargets(node: DefinitionGraphNode): string[] {
     return [];
   }
   return Object.values(node.events)
-    .map((targetId) => targetId?.trim())
-    .filter((targetId): targetId is string => Boolean(targetId));
+    .map((targetName) => targetName?.trim())
+    .filter((targetName): targetName is string => Boolean(targetName));
 }
 
 function collectEdgeTargets(node: DefinitionGraphNode): string[] {
@@ -73,7 +73,7 @@ function collectEdgeTargets(node: DefinitionGraphNode): string[] {
 
 type NodeValidationContext = {
   node: DefinitionGraphNode;
-  nodeId: string;
+  nodeName: string;
   hasNext: boolean;
   hasEdges: boolean;
   hasBranches: boolean;
@@ -99,29 +99,29 @@ function hasConfiguredWaitEvents(node: DefinitionGraphNode): boolean {
  */
 function validateWaitEventsMapNode({
   node,
-  nodeId,
+  nodeName,
   hasEdges,
   messages,
   options
 }: NodeValidationContext): void {
   if (node.event?.trim()) {
-    messages.push(options.waitEventsAndEventTogether(nodeId));
+    messages.push(options.waitEventsAndEventTogether(nodeName));
   }
   if (hasEdges) {
-    messages.push(options.waitEventsCannotHaveEdges(nodeId));
+    messages.push(options.waitEventsCannotHaveEdges(nodeName));
   }
   if (!hasConfiguredWaitEvents(node)) {
-    messages.push(options.waitEventRequired(nodeId));
+    messages.push(options.waitEventRequired(nodeName));
     return;
   }
-  validateWaitEventTargets(nodeId, node.events ?? {}, messages, options);
+  validateWaitEventTargets(nodeName, node.events ?? {}, messages, options);
 }
 
 /**
  * events マップ各エントリの遷移先が非空か検証する。
  */
 function validateWaitEventTargets(
-  nodeId: string,
+  nodeName: string,
   events: Record<string, string>,
   messages: string[],
   options: ValidateGraphDocumentMessageOptions
@@ -131,7 +131,7 @@ function validateWaitEventTargets(
     if (!trimmedName || rawTarget?.trim()) {
       continue;
     }
-    messages.push(options.waitEventTargetRequired(nodeId, trimmedName));
+    messages.push(options.waitEventTargetRequired(nodeName, trimmedName));
   }
 }
 
@@ -140,17 +140,17 @@ function validateWaitEventTargets(
  */
 function validateLegacyWaitNode({
   node,
-  nodeId,
+  nodeName,
   hasNext,
   hasEdges,
   messages,
   options
 }: NodeValidationContext): void {
   if (!node.event?.trim()) {
-    messages.push(options.waitEventRequired(nodeId));
+    messages.push(options.waitEventRequired(nodeName));
   }
   if (!hasNext && !hasEdges) {
-    messages.push(options.waitRequiresTransition(nodeId));
+    messages.push(options.waitRequiresTransition(nodeName));
   }
 }
 
@@ -188,7 +188,7 @@ function whenScalarValueIsAbsent(value: unknown): boolean {
 }
 
 function validateWhenValueForOp(
-  nodeId: string,
+  nodeName: string,
   opUpper: string,
   value: unknown,
   messages: string[],
@@ -200,40 +200,40 @@ function validateWhenValueForOp(
   if (opUpper === "IN") {
     const arr = asWhenConditionArray(value);
     if (arr == null || arr.length === 0) {
-      messages.push(options.edgeWhenValueInInvalid(nodeId));
+      messages.push(options.edgeWhenValueInInvalid(nodeName));
     }
     return;
   }
   if (opUpper === "BETWEEN") {
     const arr = asWhenConditionArray(value);
     if (arr == null || arr.length < 2) {
-      messages.push(options.edgeWhenValueBetweenInvalid(nodeId));
+      messages.push(options.edgeWhenValueBetweenInvalid(nodeName));
     }
     return;
   }
   if (whenScalarValueIsAbsent(value)) {
-    messages.push(options.edgeWhenValueRequired(nodeId));
+    messages.push(options.edgeWhenValueRequired(nodeName));
   }
 }
 
 function validateEdgeCondition(
-  nodeId: string,
+  nodeName: string,
   edge: DefinitionGraphEdge,
   messages: string[],
   options: ValidateGraphDocumentMessageOptions
 ): void {
   if (!edge.to?.trim()) {
-    messages.push(options.edgeToRequired(nodeId));
+    messages.push(options.edgeToRequired(nodeName));
   }
   if (edge.when) {
     if (!edge.when.path?.trim()) {
-      messages.push(options.edgeWhenPathRequired(nodeId));
+      messages.push(options.edgeWhenPathRequired(nodeName));
     }
     const opRaw = edge.when.op?.trim() ?? "";
     if (opRaw) {
-      validateWhenValueForOp(nodeId, opRaw.toUpperCase(), edge.when.value, messages, options);
+      validateWhenValueForOp(nodeName, opRaw.toUpperCase(), edge.when.value, messages, options);
     } else {
-      messages.push(options.edgeWhenOpRequired(nodeId));
+      messages.push(options.edgeWhenOpRequired(nodeName));
     }
   }
 }
@@ -243,21 +243,21 @@ function collectNodeMap(
   messages: string[],
   options: ValidateGraphDocumentMessageOptions
 ): Map<string, DefinitionGraphNode> {
-  const byId = new Map<string, DefinitionGraphNode>();
+  const byName = new Map<string, DefinitionGraphNode>();
   for (const node of nodes) {
-    const nodeId = node.id?.trim();
-    if (!nodeId) {
-      messages.push(options.nodeIdRequired());
+    const nodeName = node.name?.trim();
+    if (!nodeName) {
+      messages.push(options.nodeNameRequired());
       continue;
     }
-    const normalized = nodeId.toLowerCase();
-    if (byId.has(normalized)) {
-      messages.push(options.duplicateNodeId(nodeId));
+    const normalized = nodeName.toLowerCase();
+    if (byName.has(normalized)) {
+      messages.push(options.duplicateNodeName(nodeName));
       continue;
     }
-    byId.set(normalized, { ...node, id: nodeId });
+    byName.set(normalized, { ...node, name: nodeName });
   }
-  return byId;
+  return byName;
 }
 
 function validateStartEndCounts(
@@ -278,17 +278,17 @@ function validateStartEndCounts(
 type NodeTypeValidator = (context: NodeValidationContext) => void;
 
 const nodeTypeValidators: Record<DefinitionGraphNode["type"], NodeTypeValidator> = {
-  start: ({ nodeId, hasNext, hasEdges, messages, options }) => {
+  start: ({ nodeName, hasNext, hasEdges, messages, options }) => {
     if (!hasNext && !hasEdges) {
-      messages.push(options.startRequiresTransition(nodeId));
+      messages.push(options.startRequiresTransition(nodeName));
     }
   },
-  action: ({ node, nodeId, hasNext, hasEdges, messages, options }) => {
+  action: ({ node, nodeName, hasNext, hasEdges, messages, options }) => {
     if (!node.action?.trim()) {
-      messages.push(options.actionRequired(nodeId));
+      messages.push(options.actionRequired(nodeName));
     }
     if (!hasNext && !hasEdges) {
-      messages.push(options.actionRequiresTransition(nodeId));
+      messages.push(options.actionRequiresTransition(nodeName));
     }
   },
   wait: (context) => {
@@ -298,22 +298,22 @@ const nodeTypeValidators: Record<DefinitionGraphNode["type"], NodeTypeValidator>
     }
     validateLegacyWaitNode(context);
   },
-  fork: ({ node, nodeId, hasBranches, messages, options }) => {
+  fork: ({ node, nodeName, hasBranches, messages, options }) => {
     if (!hasBranches || (node.branches?.length ?? 0) < 2) {
-      messages.push(options.forkBranchesRequired(nodeId));
+      messages.push(options.forkBranchesRequired(nodeName));
     }
   },
-  join: ({ node, nodeId, hasNext, hasEdges, messages, options }) => {
+  join: ({ node, nodeName, hasNext, hasEdges, messages, options }) => {
     if (!hasNext && !hasEdges) {
-      messages.push(options.joinRequiresTransition(nodeId));
+      messages.push(options.joinRequiresTransition(nodeName));
     }
     if (node.mode && node.mode !== "all") {
-      messages.push(options.joinModeInvalid(nodeId));
+      messages.push(options.joinModeInvalid(nodeName));
     }
   },
-  end: ({ nodeId, hasNext, hasEdges, messages, options }) => {
+  end: ({ nodeName, hasNext, hasEdges, messages, options }) => {
     if (hasNext || hasEdges) {
-      messages.push(options.endCannotHaveTransition(nodeId));
+      messages.push(options.endCannotHaveTransition(nodeName));
     }
   }
 };
@@ -324,30 +324,30 @@ function validateNodeByType(context: NodeValidationContext): void {
 
 function validateNodeTargets(
   node: DefinitionGraphNode,
-  nodeId: string,
-  byId: Map<string, DefinitionGraphNode>,
+  nodeName: string,
+  byName: Map<string, DefinitionGraphNode>,
   messages: string[],
   options: ValidateGraphDocumentMessageOptions
 ): void {
   const targets = collectEdgeTargets(node);
-  for (const targetId of targets) {
-    if (targetId.toLowerCase() === nodeId.toLowerCase()) {
-      messages.push(options.selfReferenceEdge(nodeId));
+  for (const targetName of targets) {
+    if (targetName.toLowerCase() === nodeName.toLowerCase()) {
+      messages.push(options.selfReferenceEdge(nodeName));
     }
-    if (!byId.has(targetId.toLowerCase())) {
-      messages.push(options.missingTargetNode(nodeId, targetId));
+    if (!byName.has(targetName.toLowerCase())) {
+      messages.push(options.missingTargetNode(nodeName, targetName));
     }
   }
 }
 
 function validateNode(
   node: DefinitionGraphNode,
-  byId: Map<string, DefinitionGraphNode>,
+  byName: Map<string, DefinitionGraphNode>,
   messages: string[],
   options: ValidateGraphDocumentMessageOptions
 ): void {
-  const nodeId = node.id?.trim() ?? "";
-  if (!nodeId) {
+  const nodeName = node.name?.trim() ?? "";
+  if (!nodeName) {
     return;
   }
 
@@ -358,7 +358,7 @@ function validateNode(
 
   validateNodeByType({
     node,
-    nodeId,
+    nodeName,
     hasNext,
     hasEdges,
     hasBranches,
@@ -368,19 +368,19 @@ function validateNode(
 
   if (hasEdges) {
     for (const edge of node.edges ?? []) {
-      validateEdgeCondition(nodeId, edge, messages, options);
+      validateEdgeCondition(nodeName, edge, messages, options);
     }
     if (defaultEdgeCount > 1) {
-      messages.push(options.edgeDefaultMultiple(nodeId));
+      messages.push(options.edgeDefaultMultiple(nodeName));
     }
   }
 
-  validateNodeTargets(node, nodeId, byId, messages, options);
+  validateNodeTargets(node, nodeName, byName, messages, options);
 }
 
 /**
  * Graph編集用ドキュメントのクライアント側整合性を検証する。
- * 保存前に弾ける構造不整合（自己参照、重複ID、必須項目不足）を返す。
+ * 保存前に弾ける構造不整合（自己参照、重複名、必須項目不足）を返す。
  */
 export function validateGraphDocument(
   document: DefinitionGraphDocument,
@@ -394,10 +394,10 @@ export function validateGraphDocument(
     };
   }
 
-  const byId = collectNodeMap(document.nodes, messages, options);
+  const byName = collectNodeMap(document.nodes, messages, options);
   validateStartEndCounts(document.nodes, messages, options);
   for (const node of document.nodes) {
-    validateNode(node, byId, messages, options);
+    validateNode(node, byName, messages, options);
   }
 
   return {

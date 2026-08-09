@@ -6,7 +6,7 @@ import type { ExecutionView } from "../types";
 export type GroupBounds = {
   groupId: string;
   label: string;
-  nodeIds: string[];
+  nodeNames: string[];
   x: number;
   y: number;
   w: number;
@@ -35,14 +35,14 @@ export function buildGroups(nodes: ExecutionView["nodes"]): {
 }
 
 function inferGroupsFromGraph(nodes: PositionedNode[], edges: LayoutEdgeInput[]): GraphGroupDef[] {
-  const nodeById = new Map(nodes.map((node) => [node.nodeId, node] as const));
+  const nodeByName = new Map(nodes.map((node) => [node.name, node] as const));
   const forks = nodes.filter(
-    (node) => node.nodeId.includes("fork-") || node.nodeType.trim().toUpperCase() === "FORK"
+    (node) => node.name.includes("fork-") || node.nodeType.trim().toUpperCase() === "FORK"
   );
   const joins = new Set(
     nodes
-      .filter((node) => node.nodeId.includes("join-") || node.nodeType.trim().toUpperCase() === "JOIN")
-      .map((node) => node.nodeId)
+      .filter((node) => node.name.includes("join-") || node.nodeType.trim().toUpperCase() === "JOIN")
+      .map((node) => node.name)
   );
   if (forks.length === 0 || joins.size === 0) return [];
 
@@ -55,13 +55,13 @@ function inferGroupsFromGraph(nodes: PositionedNode[], edges: LayoutEdgeInput[])
 
   return forks
     .map((forkNode, index) => {
-      const visited = new Set<string>([forkNode.nodeId]);
-      const queue = [...(outgoing.get(forkNode.nodeId) ?? [])];
+      const visited = new Set<string>([forkNode.name]);
+      const queue = [...(outgoing.get(forkNode.name) ?? [])];
 
       while (queue.length > 0) {
         const current = queue.shift();
         if (!current || visited.has(current)) continue;
-        if (!nodeById.has(current)) continue;
+        if (!nodeByName.has(current)) continue;
 
         visited.add(current);
         if (joins.has(current)) continue;
@@ -72,13 +72,13 @@ function inferGroupsFromGraph(nodes: PositionedNode[], edges: LayoutEdgeInput[])
         });
       }
 
-      const groupNodes = Array.from(visited).filter((id) => nodeById.has(id));
+      const groupNodes = Array.from(visited).filter((name) => nodeByName.has(name));
       if (groupNodes.length < 3) return null;
 
       return {
         groupId: `inferred-parallel-${index + 1}`,
         label: "Parallel Block",
-        nodeIds: groupNodes
+        nodeNames: groupNodes
       } satisfies GraphGroupDef;
     })
     .filter((group): group is GraphGroupDef => !!group);
@@ -100,11 +100,11 @@ export function resolveGroupBounds(
   const paddingX = hints?.groupPadding?.x ?? 40;
   const paddingY = hints?.groupPadding?.y ?? 30;
   const header = hints?.groupPadding?.header ?? 28;
-  const byId = new Map(positionedNodes.map((node) => [node.nodeId, node] as const));
+  const byName = new Map(positionedNodes.map((node) => [node.name, node] as const));
 
   return groups
     .map((group) => {
-      const members = group.nodeIds.map((id) => byId.get(id)).filter((m): m is PositionedNode => !!m);
+      const members = group.nodeNames.map((name) => byName.get(name)).filter((m): m is PositionedNode => !!m);
       if (members.length === 0) return null;
       const minX = Math.min(...members.map((n) => n.x));
       const minY = Math.min(...members.map((n) => n.y));
@@ -114,7 +114,7 @@ export function resolveGroupBounds(
       return {
         groupId: group.groupId,
         label: group.label,
-        nodeIds: group.nodeIds,
+        nodeNames: group.nodeNames,
         x: minX - paddingX,
         y: minY - paddingY - header,
         w: maxX - minX + paddingX * 2,

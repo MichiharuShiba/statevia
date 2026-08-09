@@ -3,12 +3,12 @@ import { validateGraphDocument, type ValidateGraphDocumentMessageOptions } from 
 import type { DefinitionGraphDocument } from "@/features/definition-editor/lib/types";
 
 function opts(): ValidateGraphDocumentMessageOptions {
-  const m = (prefix: string) => (nodeId: string) => `${prefix}:${nodeId}`;
+  const m = (prefix: string) => (nodeName: string) => `${prefix}:${nodeName}`;
   const m2 = (prefix: string) => (a: string, b: string) => `${prefix}:${a}:${b}`;
   return {
     nodesRequired: () => "nodesRequired",
-    nodeIdRequired: () => "nodeIdRequired",
-    duplicateNodeId: m("dup"),
+    nodeNameRequired: () => "nodeNameRequired",
+    duplicateNodeName: m("dup"),
     startCountInvalid: (c) => `startCount:${c}`,
     endCountInvalid: (c) => `endCount:${c}`,
     startRequiresTransition: m("startReq"),
@@ -18,7 +18,7 @@ function opts(): ValidateGraphDocumentMessageOptions {
     waitRequiresTransition: m("waitTrans"),
     waitEventsAndEventTogether: m("waitBoth"),
     waitEventsCannotHaveEdges: m("waitEdges"),
-    waitEventTargetRequired: (nodeId, eventName) => `waitTarget:${nodeId}:${eventName}`,
+    waitEventTargetRequired: (nodeName, eventName) => `waitTarget:${nodeName}:${eventName}`,
     forkBranchesRequired: m("fork"),
     joinRequiresTransition: m("joinTrans"),
     joinModeInvalid: m("joinMode"),
@@ -40,14 +40,14 @@ function linearActionWithEdge(when: { path: string; op: string; value?: unknown 
     version: 1,
     workflow: { name: "w" },
     nodes: [
-      { id: "s", type: "start", next: "a" },
+      { name: "s", type: "start", next: "a" },
       {
-        id: "a",
+        name: "a",
         type: "action",
         action: "noop",
         edges: [{ to: "e", when }]
       },
-      { id: "e", type: "end" }
+      { name: "e", type: "end" }
     ]
   };
 }
@@ -126,9 +126,9 @@ describe("validateGraphDocument / edge.when.value", () => {
       version: 1,
       workflow: { name: "w" },
       nodes: [
-        { id: "s", type: "start", next: "a" },
+        { name: "s", type: "start", next: "a" },
         {
-          id: "a",
+          name: "a",
           type: "action",
           action: "noop",
           edges: [
@@ -136,7 +136,7 @@ describe("validateGraphDocument / edge.when.value", () => {
             { to: "e", default: true }
           ]
         },
-        { id: "e", type: "end" }
+        { name: "e", type: "end" }
       ]
     };
     const r = validateGraphDocument(doc, opts());
@@ -149,9 +149,9 @@ describe("validateGraphDocument / edge.when.value", () => {
       version: 1,
       workflow: { name: "w" },
       nodes: [
-        { id: "s", type: "start", next: "j" },
-        { id: "j", type: "join", next: "e" },
-        { id: "e", type: "end" }
+        { name: "s", type: "start", next: "j" },
+        { name: "j", type: "join", next: "e" },
+        { name: "e", type: "end" }
       ]
     };
     expect(validateGraphDocument(doc, opts()).isValid).toBe(true);
@@ -162,9 +162,9 @@ describe("validateGraphDocument / edge.when.value", () => {
       version: 1,
       workflow: { name: "w" },
       nodes: [
-        { id: "s", type: "start", next: "a" },
-        { id: "a", type: "action", action: "noop", next: "e", error: "unknown" },
-        { id: "e", type: "end" }
+        { name: "s", type: "start", next: "a" },
+        { name: "a", type: "action", action: "noop", next: "e", error: "unknown" },
+        { name: "e", type: "end" }
       ]
     };
     const r = validateGraphDocument(doc, opts());
@@ -177,9 +177,9 @@ describe("validateGraphDocument / edge.when.value", () => {
       version: 1,
       workflow: { name: "w" },
       nodes: [
-        { id: "s", type: "start", next: "a" },
-        { id: "a", type: "action", action: "noop", next: "e", error: "a" },
-        { id: "e", type: "end" }
+        { name: "s", type: "start", next: "a" },
+        { name: "a", type: "action", action: "noop", next: "e", error: "a" },
+        { name: "e", type: "end" }
       ]
     };
     const r = validateGraphDocument(doc, opts());
@@ -195,15 +195,15 @@ describe("validateGraphDocument / wait.events", () => {
       version: 1,
       workflow: { name: "w" },
       nodes: [
-        { id: "s", type: "start", next: "w1" },
+        { name: "s", type: "start", next: "w1" },
         {
-          id: "w1",
+          name: "w1",
           type: "wait",
           events: { approve: "ok", reject: "ng" }
         },
-        { id: "ok", type: "action", action: "noop", next: "e" },
-        { id: "ng", type: "action", action: "noop", next: "e" },
-        { id: "e", type: "end" }
+        { name: "ok", type: "action", action: "noop", next: "e" },
+        { name: "ng", type: "action", action: "noop", next: "e" },
+        { name: "e", type: "end" }
       ]
     };
 
@@ -219,9 +219,9 @@ describe("validateGraphDocument / wait.events", () => {
       version: 1,
       workflow: { name: "w" },
       nodes: [
-        { id: "s", type: "start", next: "w1" },
-        { id: "w1", type: "wait", event: "resume", next: "e" },
-        { id: "e", type: "end" }
+        { name: "s", type: "start", next: "w1" },
+        { name: "w1", type: "wait", event: "resume", next: "e" },
+        { name: "e", type: "end" }
       ]
     };
     expect(validateGraphDocument(doc, opts()).isValid).toBe(true);
@@ -232,14 +232,14 @@ describe("validateGraphDocument / wait.events", () => {
       version: 1,
       workflow: { name: "w" },
       nodes: [
-        { id: "s", type: "start", next: "w1" },
+        { name: "s", type: "start", next: "w1" },
         {
-          id: "w1",
+          name: "w1",
           type: "wait",
           event: "resume",
           events: { approve: "e" }
         },
-        { id: "e", type: "end" }
+        { name: "e", type: "end" }
       ]
     };
     const r = validateGraphDocument(doc, opts());
@@ -252,14 +252,14 @@ describe("validateGraphDocument / wait.events", () => {
       version: 1,
       workflow: { name: "w" },
       nodes: [
-        { id: "s", type: "start", next: "w1" },
+        { name: "s", type: "start", next: "w1" },
         {
-          id: "w1",
+          name: "w1",
           type: "wait",
           events: { approve: "e" },
           edges: [{ to: "e" }]
         },
-        { id: "e", type: "end" }
+        { name: "e", type: "end" }
       ]
     };
     const r = validateGraphDocument(doc, opts());
@@ -272,9 +272,9 @@ describe("validateGraphDocument / wait.events", () => {
       version: 1,
       workflow: { name: "w" },
       nodes: [
-        { id: "s", type: "start", next: "w1" },
-        { id: "w1", type: "wait", events: { approve: "  " } },
-        { id: "e", type: "end" }
+        { name: "s", type: "start", next: "w1" },
+        { name: "w1", type: "wait", events: { approve: "  " } },
+        { name: "e", type: "end" }
       ]
     };
     const r = validateGraphDocument(doc, opts());
@@ -287,9 +287,9 @@ describe("validateGraphDocument / wait.events", () => {
       version: 1,
       workflow: { name: "w" },
       nodes: [
-        { id: "s", type: "start", next: "w1" },
-        { id: "w1", type: "wait", events: { approve: "unknown" } },
-        { id: "e", type: "end" }
+        { name: "s", type: "start", next: "w1" },
+        { name: "w1", type: "wait", events: { approve: "unknown" } },
+        { name: "e", type: "end" }
       ]
     };
     const r = validateGraphDocument(doc, opts());

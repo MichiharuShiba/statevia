@@ -6,7 +6,7 @@ import type { MergedGraphNode } from "../../../features/executions/lib/mergeGrap
 import { renderWithUiText } from "../../testUtils";
 
 const positionedNode = (overrides: Partial<MergedGraphNode> = {}): PositionedNode<MergedGraphNode> => ({
-  nodeId: "n-1",
+  name: "n-1",
   executionNodeId: "n-1",
   nodeName: "task",
   nodeType: "Task",

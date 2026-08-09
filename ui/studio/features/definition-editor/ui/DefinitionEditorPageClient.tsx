@@ -142,8 +142,8 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
   const graphValidationMessageOptions = useMemo<ValidateGraphDocumentMessageOptions>(
     () => ({
       nodesRequired: uiText.definitionEditor.graph.nodesRequired,
-      nodeIdRequired: uiText.definitionEditor.graph.nodeIdRequired,
-      duplicateNodeId: uiText.definitionEditor.graph.duplicateNodeId,
+      nodeNameRequired: uiText.definitionEditor.graph.nodeNameRequired,
+      duplicateNodeName: uiText.definitionEditor.graph.duplicateNodeName,
       startCountInvalid: uiText.definitionEditor.graph.startCountInvalid,
       endCountInvalid: uiText.definitionEditor.graph.endCountInvalid,
       startRequiresTransition: uiText.definitionEditor.graph.startRequiresTransition,

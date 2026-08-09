@@ -13,78 +13,78 @@ describe("parseDefinitionYaml / serializeDefinitionYaml（ローダー整合）"
 workflow:
   name: W
 nodes:
-  - id: s
+  - name: s
     type: start
     next: a
-  - id: a
+  - name: a
     type: action
     action: noop
     input: "$.input.x"
     next: e
-  - id: e
+  - name: e
     type: end
 `;
     const r = parseDefinitionYaml(yaml, parseOpts);
     expect(r.document).not.toBeNull();
-    expect(r.document?.nodes.find((n) => n.id === "a")?.input).toBe("$.input.x");
+    expect(r.document?.nodes.find((n) => n.name === "a")?.input).toBe("$.input.x");
 
     if (!r.document) {
       throw new Error("document should not be null");
     }
     const round = serializeDefinitionYaml(r.document);
     const again = parseDefinitionYaml(round, parseOpts);
-    expect(again.document?.nodes.find((n) => n.id === "a")?.input).toBe("$.input.x");
+    expect(again.document?.nodes.find((n) => n.name === "a")?.input).toBe("$.input.x");
   });
 
-  it("edges[].to がオブジェクトのとき id に正規化する", () => {
+  it("edges[].to がオブジェクトのとき name に正規化する", () => {
     const yaml = `version: 1
 workflow:
   name: W
 nodes:
-  - id: s
+  - name: s
     type: start
     next: a
-  - id: a
+  - name: a
     type: action
     action: noop
     edges:
       - to:
-          id: e
-  - id: e
+          name: e
+  - name: e
     type: end
 `;
     const r = parseDefinitionYaml(yaml, parseOpts);
-    expect(r.document?.nodes.find((n) => n.id === "a")?.edges?.[0]?.to).toBe("e");
+    expect(r.document?.nodes.find((n) => n.name === "a")?.edges?.[0]?.to).toBe("e");
   });
 
-  it("action.error を保持し、{id} 形式を正規化する", () => {
+  it("action.error を保持し、{name} 形式を正規化する", () => {
     const yaml = `version: 1
 workflow:
   name: W
 nodes:
-  - id: s
+  - name: s
     type: start
     next: a
-  - id: a
+  - name: a
     type: action
     action: noop
     next: e
     error:
-      id: ng
-  - id: ng
+      name: ng
+  - name: ng
     type: end
-  - id: e
+  - name: e
     type: end
 `;
     const r = parseDefinitionYaml(yaml, parseOpts);
-    expect(r.document?.nodes.find((n) => n.id === "a")?.error).toBe("ng");
+    expect(r.document?.nodes.find((n) => n.name === "a")?.error).toBe("ng");
 
     if (!r.document) {
       throw new Error("document should not be null");
     }
     const round = serializeDefinitionYaml(r.document);
     const again = parseDefinitionYaml(round, parseOpts);
-    expect(again.document?.nodes.find((n) => n.id === "a")?.error).toBe("ng");
+    expect(again.document?.nodes.find((n) => n.name === "a")?.error).toBe("ng");
   });
 
   it("workflow.id / description を保持し、往復で欠落しない", () => {
@@ -94,10 +94,10 @@ workflow:
   name: MyName
   description: "Hello"
 nodes:
-  - id: s
+  - name: s
     type: start
     next: e
-  - id: e
+  - name: e
     type: end
 `;
     const r = parseDefinitionYaml(yaml, parseOpts);
@@ -120,17 +120,17 @@ nodes:
 workflow:
   name: W
 nodes:
-  - id: s
+  - name: s
     type: start
     next: j
-  - id: j
+  - name: j
     type: join
     next: e
-  - id: e
+  - name: e
     type: end
 `;
     const r = parseDefinitionYaml(yaml, parseOpts);
-    expect(r.document?.nodes.find((n) => n.id === "j")?.mode).toBeUndefined();
+    expect(r.document?.nodes.find((n) => n.name === "j")?.mode).toBeUndefined();
   });
 
   it("join mode: all を保持する", () => {
@@ -138,18 +138,18 @@ nodes:
 workflow:
   name: W
 nodes:
-  - id: s
+  - name: s
     type: start
     next: j
-  - id: j
+  - name: j
     type: join
     mode: all
     next: e
-  - id: e
+  - name: e
     type: end
 `;
     const r = parseDefinitionYaml(yaml, parseOpts);
-    expect(r.document?.nodes.find((n) => n.id === "j")?.mode).toBe("all");
+    expect(r.document?.nodes.find((n) => n.name === "j")?.mode).toBe("all");
   });
 
   it("wait.events を保持し往復できる", () => {
@@ -157,27 +157,27 @@ nodes:
 workflow:
   name: W
 nodes:
-  - id: s
+  - name: s
     type: start
     next: w1
-  - id: w1
+  - name: w1
     type: wait
     events:
       approve: ok
       reject: ng
-  - id: ok
+  - name: ok
     type: action
     action: noop
     next: e
-  - id: ng
+  - name: ng
     type: action
     action: noop
     next: e
-  - id: e
+  - name: e
     type: end
 `;
     const r = parseDefinitionYaml(yaml, parseOpts);
-    expect(r.document?.nodes.find((n) => n.id === "w1")?.events).toEqual({
+    expect(r.document?.nodes.find((n) => n.name === "w1")?.events).toEqual({
       approve: "ok",
       reject: "ng"
     });
@@ -187,7 +187,7 @@ nodes:
     }
     const round = serializeDefinitionYaml(r.document);
     const again = parseDefinitionYaml(round, parseOpts);
-    expect(again.document?.nodes.find((n) => n.id === "w1")?.events).toEqual({
+    expect(again.document?.nodes.find((n) => n.name === "w1")?.events).toEqual({
       approve: "ok",
       reject: "ng"
     });

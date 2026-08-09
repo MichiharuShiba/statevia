@@ -36,7 +36,7 @@ export function useGraphData(
     const nodes =
       layoutMap && Object.keys(layoutMap).length > 0
         ? positioned.nodes.map((n) => {
-            const p = layoutMap[n.nodeId];
+            const p = layoutMap[n.name];
             return p ? { ...n, x: p.x, y: p.y } : n;
           })
         : positioned.nodes;
@@ -54,7 +54,7 @@ export function useGraphData(
 
 /**
  * ノード詳細・Resume 用に `ExecutionNodeDTO` を解決する。
- * リストはランタイム `executionNodeId`（UUID）、グラフは定義の `nodeId`（状態キー）で選択するため、
+ * リストはランタイム `executionNodeId`（UUID）、グラフは定義の `name`（状態キー）で選択するため、
  * `nodeName` およびマージ結果の `nodeName` でランタイム行へ寄せる。
  */
 export function getNodeWithFallback(
@@ -76,7 +76,7 @@ export function getNodeWithFallback(
   );
   if (byNodeNameKey) return byNodeNameKey;
 
-  const mergedNode = graphData?.mergedNodes.find((n) => n.nodeId === key);
+  const mergedNode = graphData?.mergedNodes.find((n) => n.name === key);
   if (mergedNode) {
     const mergedState = mergedNode.nodeName.trim();
     if (mergedState.length > 0) {

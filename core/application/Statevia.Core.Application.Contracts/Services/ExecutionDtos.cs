@@ -311,8 +311,8 @@ public sealed class GraphDefinitionResponse
 [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public sealed class GraphNodeDefinition
 {
-    /// <summary>ノード名（キャンバス上のキー。定義 StateName と同値）。</summary>
-    public string Name { get; init; } = string.Empty;
+    /// <summary>ノード名（キャンバス上のキー。定義 StateName と同値。JSON <c>nodeName</c>）。</summary>
+    public string NodeName { get; init; } = string.Empty;
 
     /// <summary>ノード種別。</summary>
     public string NodeType { get; init; } = string.Empty;

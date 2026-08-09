@@ -3,8 +3,9 @@ import type { ExecutionNodeDTO, NodeStatus, ExecutionView } from "../types";
 
 /** 実行＋定義をマージしたグラフノード。 */
 export type MergedGraphNode = {
-  nodeId: string;
-  /** ExecutionGraph のノード ID（差分ハイライト・ランタイム行と対応）。定義のみの IDLE 行では `nodeId` と同一の合成値。 */
+  /** 定義グラフ上のノード名（GraphNodeDef.nodeName）。エッジ・レイアウト・グループのキー。 */
+  name: string;
+  /** ExecutionGraph のノード ID（差分ハイライト・ランタイム行と対応）。定義のみの IDLE 行では `name` と同一の合成値。 */
   executionNodeId: string;
   /** 定義グラフ・API の状態名（実行ノードに nodeName があればそれを優先） */
   nodeName: string;
@@ -44,10 +45,10 @@ export type MergedGraph = {
   isDefinitionBased: boolean;
 };
 
-/** 定義のみ存在するノード用。`nodeId` は定義上のノードキー、`nodeName` はワークフロー状態名。 */
-function asIdleNode(nodeId: string, nodeName: string, nodeType: string): ExecutionNodeDTO {
+/** 定義のみ存在するノード用。`name` は定義上のノード名、`nodeName` はワークフロー状態名（通常は同一値）。 */
+function asIdleNode(name: string, nodeName: string, nodeType: string): ExecutionNodeDTO {
   return {
-    executionNodeId: nodeId,
+    executionNodeId: name,
     nodeName,
     nodeType,
     status: "IDLE",
@@ -99,7 +100,7 @@ export function mergeGraph(execution: ExecutionView, definition: GraphDefinition
     return {
       graphId: execution.graphId,
       nodes: execution.nodes.map((n) => ({
-        nodeId: n.executionNodeId,
+        name: n.executionNodeId,
         executionNodeId: n.executionNodeId,
         nodeName: n.nodeName ?? "",
         nodeType: n.nodeType,
@@ -119,15 +120,14 @@ export function mergeGraph(execution: ExecutionView, definition: GraphDefinition
   }
 
   const nodes = definition.nodes.map((defNode) => {
-    const definitionNodeName =
-      typeof defNode.nodeName === "string" && defNode.nodeName.trim().length > 0
-        ? defNode.nodeName.trim()
-        : defNode.nodeId;
+    const definitionNodeName = defNode.nodeName.trim();
 
+    // 定義グラフのノード名（＝ワークフロー状態名）で実行ノードを突き合わせる。
+    // 突き合わせ不可（旧データ等）の際のみ実行ノード ID 直接一致にフォールバックする。
     const runtimeNode =
-      byRuntimeId.get(defNode.nodeId) ??
       byNodeNameKey.get(definitionNodeName) ??
-      asIdleNode(defNode.nodeId, definitionNodeName, defNode.nodeType);
+      byRuntimeId.get(defNode.nodeName) ??
+      asIdleNode(defNode.nodeName, definitionNodeName, defNode.nodeType);
 
     const resolvedNodeName =
       typeof runtimeNode.nodeName === "string" && runtimeNode.nodeName.trim().length > 0
@@ -135,11 +135,11 @@ export function mergeGraph(execution: ExecutionView, definition: GraphDefinition
         : definitionNodeName;
 
     return {
-      nodeId: defNode.nodeId,
+      name: defNode.nodeName,
       executionNodeId: runtimeNode.executionNodeId,
       nodeName: resolvedNodeName,
       nodeType: defNode.nodeType,
-      label: defNode.label ?? defNode.nodeId,
+      label: defNode.label ?? defNode.nodeName,
       branch: defNode.branch,
       status: runtimeNode.status,
       attempt: runtimeNode.attempt,
@@ -162,4 +162,3 @@ export function mergeGraph(execution: ExecutionView, definition: GraphDefinition
     isDefinitionBased: true
   };
 }
-

@@ -11,19 +11,19 @@ export type GraphAdjacencyEdge = {
  */
 function appendNodeOutgoingEdges(node: DefinitionGraphNode, edges: GraphAdjacencyEdge[]): void {
   if (node.next) {
-    edges.push({ sourceId: node.id, targetId: node.next });
+    edges.push({ sourceId: node.name, targetId: node.next });
   }
   if (node.type === "action" && node.error) {
-    edges.push({ sourceId: node.id, targetId: node.error });
+    edges.push({ sourceId: node.name, targetId: node.error });
   }
   for (const edge of node.edges ?? []) {
     if (edge.to) {
-      edges.push({ sourceId: node.id, targetId: edge.to });
+      edges.push({ sourceId: node.name, targetId: edge.to });
     }
   }
   if (node.type === "fork") {
     for (const branch of node.branches ?? []) {
-      edges.push({ sourceId: node.id, targetId: branch });
+      edges.push({ sourceId: node.name, targetId: branch });
     }
   }
 }

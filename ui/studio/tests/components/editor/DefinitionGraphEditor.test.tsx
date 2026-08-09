@@ -132,7 +132,7 @@ describe("DefinitionGraphEditor", () => {
     const documentWithInput: DefinitionGraphDocument = {
       ...parsed.document!,
       nodes: parsed.document!.nodes.map((entry) =>
-        entry.id === "slowStep" && entry.type === "action"
+        entry.name === "slowStep" && entry.type === "action"
           ? {
               ...entry,
               input: {
@@ -159,7 +159,7 @@ describe("DefinitionGraphEditor", () => {
     fireEvent.blur(actionInput);
 
     const nextDocument = onDocumentChange.mock.calls.at(-1)?.[0] as DefinitionGraphDocument;
-    const updatedNode = nextDocument.nodes.find((entry) => entry.id === "slowStep");
+    const updatedNode = nextDocument.nodes.find((entry) => entry.name === "slowStep");
     expect(updatedNode?.type).toBe("action");
     if (updatedNode?.type === "action") {
       expect(updatedNode.action).toBe("statevia.action.builtin.noop");

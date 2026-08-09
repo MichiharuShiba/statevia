@@ -16,7 +16,7 @@ function execNodes(ids: string[]): ExecutionNodeDTO[] {
   }));
 }
 
-function positioned(nodes: Array<{ nodeId: string; x: number; y: number; w: number; h: number }>): PositionedNode[] {
+function positioned(nodes: Array<{ name: string; x: number; y: number; w: number; h: number }>): PositionedNode[] {
   return nodes.map((n) => ({
     ...n,
     nodeType: "TASK",
@@ -91,7 +91,7 @@ describe("buildGroups", () => {
 describe("resolveGroupBounds", () => {
   it("定義グループが無く推論も空のとき空を返す", () => {
     // Arrange
-    const nodes = positioned([{ nodeId: "a", x: 0, y: 0, w: 100, h: 50 }]);
+    const nodes = positioned([{ name: "a", x: 0, y: 0, w: 100, h: 50 }]);
     const edges: LayoutEdgeInput[] = [];
 
     // Act
@@ -104,12 +104,12 @@ describe("resolveGroupBounds", () => {
   it("定義グループから bounds を計算する", () => {
     // Arrange
     const nodes = positioned([
-      { nodeId: "n1", x: 10, y: 20, w: 100, h: 50 },
-      { nodeId: "n2", x: 150, y: 20, w: 100, h: 50 }
+      { name: "n1", x: 10, y: 20, w: 100, h: 50 },
+      { name: "n2", x: 150, y: 20, w: 100, h: 50 }
     ]);
     const edges: LayoutEdgeInput[] = [];
     const definitionGroups: GraphGroupDef[] = [
-      { groupId: "g1", label: "Group 1", nodeIds: ["n1", "n2"] }
+      { groupId: "g1", label: "Group 1", nodeNames: ["n1", "n2"] }
     ];
 
     // Act
@@ -119,7 +119,7 @@ describe("resolveGroupBounds", () => {
     expect(result).toHaveLength(1);
     expect(result[0].groupId).toBe("g1");
     expect(result[0].label).toBe("Group 1");
-    expect(result[0].nodeIds).toEqual(["n1", "n2"]);
+    expect(result[0].nodeNames).toEqual(["n1", "n2"]);
     expect(result[0].x).toBeLessThanOrEqual(10);
     expect(result[0].w).toBeGreaterThan(200);
     expect(result[0].h).toBeGreaterThan(50);
@@ -127,9 +127,9 @@ describe("resolveGroupBounds", () => {
 
   it("group の nodeIds が positionedNodes に無い場合はそのグループをスキップ (members.length === 0)", () => {
     // Arrange
-    const nodes = positioned([{ nodeId: "n1", x: 10, y: 20, w: 100, h: 50 }]);
+    const nodes = positioned([{ name: "n1", x: 10, y: 20, w: 100, h: 50 }]);
     const definitionGroups: GraphGroupDef[] = [
-      { groupId: "g1", label: "Missing", nodeIds: ["not-present"] }
+      { groupId: "g1", label: "Missing", nodeNames: ["not-present"] }
     ];
 
     // Act
@@ -141,8 +141,8 @@ describe("resolveGroupBounds", () => {
 
   it("hints から groupPadding を使う", () => {
     // Arrange
-    const nodes = positioned([{ nodeId: "n1", x: 100, y: 100, w: 80, h: 40 }]);
-    const definitionGroups: GraphGroupDef[] = [{ groupId: "g1", label: "G", nodeIds: ["n1"] }];
+    const nodes = positioned([{ name: "n1", x: 100, y: 100, w: 80, h: 40 }]);
+    const definitionGroups: GraphGroupDef[] = [{ groupId: "g1", label: "G", nodeNames: ["n1"] }];
 
     // Act
     const result = resolveGroupBounds(nodes, [], definitionGroups, {
@@ -158,10 +158,10 @@ describe("resolveGroupBounds", () => {
   it("定義グループが空で fork/join があるときグラフからグループを推論する", () => {
     // Arrange: nodes with fork- and join- so inferGroupsFromGraph runs
     const nodes = positioned([
-      { nodeId: "fork-1", x: 0, y: 0, w: 100, h: 50 },
-      { nodeId: "task-b", x: 100, y: 0, w: 100, h: 50 },
-      { nodeId: "task-c", x: 100, y: 60, w: 100, h: 50 },
-      { nodeId: "join-1", x: 200, y: 30, w: 100, h: 50 }
+      { name: "fork-1", x: 0, y: 0, w: 100, h: 50 },
+      { name: "task-b", x: 100, y: 0, w: 100, h: 50 },
+      { name: "task-c", x: 100, y: 60, w: 100, h: 50 },
+      { name: "join-1", x: 200, y: 30, w: 100, h: 50 }
     ]).map((n, i) => ({ ...n, nodeType: ["FORK", "TASK", "TASK", "JOIN"][i] }));
     const edges = [
       { id: "e1", from: "fork-1", to: "task-b" },
@@ -176,15 +176,15 @@ describe("resolveGroupBounds", () => {
     // Assert
     expect(result.length).toBeGreaterThan(0);
     expect(result[0].label).toBe("Parallel Block");
-    expect(result[0].nodeIds).toContain("fork-1");
-    expect(result[0].nodeIds).toContain("join-1");
+    expect(result[0].nodeNames).toContain("fork-1");
+    expect(result[0].nodeNames).toContain("join-1");
   });
 
   it("inferGroupsFromGraph: fork に outgoing が無いとき queue が空で groupNodes.length < 3 → null (L57, L73)", () => {
     // Arrange: fork-1 から出る edge なし
     const nodes = positioned([
-      { nodeId: "fork-1", x: 0, y: 0, w: 100, h: 50 },
-      { nodeId: "join-1", x: 200, y: 0, w: 100, h: 50 }
+      { name: "fork-1", x: 0, y: 0, w: 100, h: 50 },
+      { name: "join-1", x: 200, y: 0, w: 100, h: 50 }
     ]).map((n, i) => ({ ...n, nodeType: ["FORK", "JOIN"][i] }));
     const edges: LayoutEdgeInput[] = [];
 
@@ -198,9 +198,9 @@ describe("resolveGroupBounds", () => {
   it("inferGroupsFromGraph: edge の先が nodeById に無いノードのとき continue (L62)", () => {
     // Arrange: fork -> ghost, fork -> task-b, task-b -> join. ghost は nodes に無い
     const nodes = positioned([
-      { nodeId: "fork-1", x: 0, y: 0, w: 100, h: 50 },
-      { nodeId: "task-b", x: 100, y: 0, w: 100, h: 50 },
-      { nodeId: "join-1", x: 200, y: 0, w: 100, h: 50 }
+      { name: "fork-1", x: 0, y: 0, w: 100, h: 50 },
+      { name: "task-b", x: 100, y: 0, w: 100, h: 50 },
+      { name: "join-1", x: 200, y: 0, w: 100, h: 50 }
     ]).map((n, i) => ({ ...n, nodeType: ["FORK", "TASK", "JOIN"][i] }));
     const edges: LayoutEdgeInput[] = [
       { id: "e1", from: "fork-1", to: "ghost" },
@@ -213,9 +213,9 @@ describe("resolveGroupBounds", () => {
 
     // Assert: ghost はスキップされ、fork/task-b/join の 3 ノードで 1 グループ
     expect(result).toHaveLength(1);
-    expect(result[0].nodeIds).toContain("fork-1");
-    expect(result[0].nodeIds).toContain("task-b");
-    expect(result[0].nodeIds).toContain("join-1");
-    expect(result[0].nodeIds).not.toContain("ghost");
+    expect(result[0].nodeNames).toContain("fork-1");
+    expect(result[0].nodeNames).toContain("task-b");
+    expect(result[0].nodeNames).toContain("join-1");
+    expect(result[0].nodeNames).not.toContain("ghost");
   });
 });

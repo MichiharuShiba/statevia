@@ -45,13 +45,13 @@ function parseCondition(value: unknown): EdgeCondition | undefined {
   };
 }
 
-/** `to` が文字列または `{ id }` のとき遷移先 ID を返す（ローダー ResolveEdgeTargetId と整合）。 */
-function resolveEdgeToId(raw: unknown): string {
+/** `to` が文字列または `{ name }` のとき遷移先ノード名を返す（ローダー ResolveEdgeTargetId と整合）。 */
+function resolveEdgeToName(raw: unknown): string {
   if (typeof raw === "string") {
     return raw;
   }
-  if (isRecord(raw) && typeof raw.id === "string") {
-    return raw.id;
+  if (isRecord(raw) && typeof raw.name === "string") {
+    return raw.name;
   }
   return "";
 }
@@ -60,7 +60,7 @@ function parseEdge(value: unknown): DefinitionGraphEdge | null {
   if (!isRecord(value)) {
     return null;
   }
-  const to = resolveEdgeToId(value.to);
+  const to = resolveEdgeToName(value.to);
   const order = typeof value.order === "number" ? value.order : undefined;
   const isDefault = value.default === true;
   return {
@@ -91,7 +91,7 @@ function applyActionErrorField(node: DefinitionGraphNode, value: Record<string, 
   if (node.type !== "action") {
     return;
   }
-  const errorTarget = resolveEdgeToId(value.error);
+  const errorTarget = resolveEdgeToName(value.error);
   if (errorTarget.trim().length > 0) {
     node.error = errorTarget;
   }
@@ -152,12 +152,12 @@ function parseNode(value: unknown): DefinitionGraphNode | null {
   if (!isRecord(value)) {
     return null;
   }
-  const id = typeof value.id === "string" ? value.id : "";
+  const name = typeof value.name === "string" ? value.name : "";
   const type = parseNodeType(value.type);
-  if (!id || type == null) {
+  if (!name || type == null) {
     return null;
   }
-  const node: DefinitionGraphNode = { id, type };
+  const node: DefinitionGraphNode = { name, type };
   applyOptionalNodeFields(node, value);
   return node;
 }
@@ -167,14 +167,14 @@ function parseLayoutRecord(raw: unknown): Record<string, { x: number; y: number 
     return null;
   }
   const graphPositions: Record<string, { x: number; y: number }> = {};
-  for (const [id, val] of Object.entries(raw)) {
-    if (!id.trim() || !isRecord(val)) {
+  for (const [nodeName, val] of Object.entries(raw)) {
+    if (!nodeName.trim() || !isRecord(val)) {
       continue;
     }
     const x = typeof val.x === "number" && Number.isFinite(val.x) ? val.x : null;
     const y = typeof val.y === "number" && Number.isFinite(val.y) ? val.y : null;
     if (x != null && y != null) {
-      graphPositions[id] = { x, y };
+      graphPositions[nodeName] = { x, y };
     }
   }
   return Object.keys(graphPositions).length > 0 ? graphPositions : null;

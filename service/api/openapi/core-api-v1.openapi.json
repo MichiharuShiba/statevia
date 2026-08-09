@@ -4119,7 +4119,7 @@
             "GraphNodeDefinition": {
                 "type": "object",
                 "properties": {
-                    "name": {
+                    "nodeName": {
                         "type": "string",
                         "nullable": true
                     },

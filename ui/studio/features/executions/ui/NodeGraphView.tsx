@@ -33,8 +33,8 @@ import { resolveWaitResumeEvents } from "../lib/waitResumeEvents";
 export type NodeDiffHighlight = Record<string, { isFailureOrCancel: boolean }>;
 
 type ExecutionNodeData = {
-  /** 定義グラフ上のノード ID（選択・Resume エッジ照合）。 */
-  nodeId: string;
+  /** 定義グラフ上のノード名（選択・Resume エッジ照合）。 */
+  name: string;
   /** ExecutionGraph のノード ID（Resume API 本体）。 */
   executionNodeId: string;
   label: string;
@@ -44,8 +44,8 @@ type ExecutionNodeData = {
   waitKey: string | null;
   allowedEvents?: string[] | null;
   selected: boolean;
-  onSelect: (nodeId: string) => void;
-  /** Resume API 呼び出し（nodeId + イベント名）。 */
+  onSelect: (name: string) => void;
+  /** Resume API 呼び出し（executionNodeId + イベント名）。 */
   onResume: (executionNodeId: string, eventName: string) => void;
   resumeDisabledReason: string | null;
   /** 比較モード時の差分ハイライト（該当時のみ ring 表示） */
@@ -57,7 +57,7 @@ type GroupNodeData = {
 };
 
 function isExecutionNodeData(data: ExecutionNodeData | GroupNodeData | undefined): data is ExecutionNodeData {
-  return data != null && typeof data === "object" && "nodeId" in data;
+  return data != null && typeof data === "object" && "name" in data;
 }
 
 function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
@@ -124,7 +124,7 @@ function ExecutionNodeComponent({ data }: NodeProps<ExecutionNodeData>) {
             type="button"
             aria-label={uiText.nodeGraph.aria.selectNode(data.label)}
             className={`min-h-0 flex-1 cursor-grab text-left outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] active:cursor-grabbing ${isGateway ? "border-0 bg-transparent p-0" : ""}`}
-            onClick={() => data.onSelect(data.nodeId)}
+            onClick={() => data.onSelect(data.name)}
           >
             {nodeMainSection}
           </button>
@@ -274,7 +274,7 @@ export function NodeGraphView({
     }));
 
     const executionNodes: Array<Node<ExecutionNodeData>> = nodes.map((node) => ({
-      id: node.nodeId,
+      id: node.name,
       type: "executionNode",
       position: { x: node.x, y: node.y },
       width: node.w,
@@ -283,7 +283,7 @@ export function NodeGraphView({
       targetPosition: Position.Top,
       draggable: true,
       data: {
-        nodeId: node.nodeId,
+        name: node.name,
         executionNodeId: node.executionNodeId,
         label: node.label,
         nodeType: node.nodeType,
@@ -294,7 +294,7 @@ export function NodeGraphView({
         selected: false,
         onSelect: (id: string) => onSelectNode(id),
         onResume: (id: string, eventName: string) => onResumeNode(id, eventName),
-        resumeDisabledReason: getResumeDisabledReason(node.nodeId),
+        resumeDisabledReason: getResumeDisabledReason(node.name),
         diffHighlight: nodeDiffHighlight?.[node.executionNodeId] ?? null
       },
       style: { width: node.w, height: node.h }
@@ -324,8 +324,8 @@ export function NodeGraphView({
         ...node,
         data: {
           ...d,
-          selected: selectedNodeId === d.nodeId,
-          resumeDisabledReason: getResumeDisabledReason(d.nodeId),
+          selected: selectedNodeId === d.name,
+          resumeDisabledReason: getResumeDisabledReason(d.name),
           onSelect: (id: string) => onSelectNode(id),
           onResume: (id: string, eventName: string) => onResumeNode(id, eventName),
           diffHighlight: nodeDiffHighlight?.[d.executionNodeId] ?? null

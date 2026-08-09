@@ -8,15 +8,15 @@ describe("serializeDefinitionYaml", () => {
       version: 1,
       workflow: { name: "W", id: "w-1", description: "desc" },
       nodes: [
-        { id: "s", type: "start", next: "a" },
+        { name: "s", type: "start", next: "a" },
         {
-          id: "a",
+          name: "a",
           type: "action",
           action: "noop",
           error: "e",
           edges: [{ to: "e" }]
         },
-        { id: "e", type: "end" }
+        { name: "e", type: "end" }
       ]
     };
 
@@ -33,10 +33,10 @@ describe("serializeDefinitionYaml", () => {
       version: 1,
       workflow: { name: "W" },
       nodes: [
-        { id: "f", type: "fork", branches: ["a", "b"] },
-        { id: "j", type: "join", mode: "all", next: "e" },
+        { name: "f", type: "fork", branches: ["a", "b"] },
+        { name: "j", type: "join", mode: "all", next: "e" },
         {
-          id: "w",
+          name: "w",
           type: "wait",
           event: "evt",
           edges: [
@@ -48,7 +48,7 @@ describe("serializeDefinitionYaml", () => {
             }
           ]
         },
-        { id: "e", type: "end" }
+        { name: "e", type: "end" }
       ]
     };
 
@@ -63,7 +63,7 @@ describe("serializeDefinitionYaml", () => {
     const document: DefinitionGraphDocument = {
       version: 1,
       workflow: { name: "W" },
-      nodes: [{ id: "a", type: "action", action: "x", input: {} }]
+      nodes: [{ name: "a", type: "action", action: "x", input: {} }]
     };
 
     const yaml = serializeDefinitionYaml(document);

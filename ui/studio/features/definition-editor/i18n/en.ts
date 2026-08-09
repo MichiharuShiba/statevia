@@ -46,40 +46,40 @@ export const definitionEditorUiTextEn: DefinitionEditorFeatureUiText = {
       rootObjectRequired: () => "YAML root must be an object.",
       nodesArrayRequired: () => "nodes must be an array.",
       nodesRequired: () => "nodes requires at least one item.",
-      nodeIdRequired: () => "node.id is required.",
-      duplicateNodeId: (nodeId: string) => `Duplicate node.id: '${nodeId}'`,
+      nodeNameRequired: () => "node.name is required.",
+      duplicateNodeName: (nodeName: string) => `Duplicate node.name: '${nodeName}'`,
       startCountInvalid: (count: number) => `Exactly one start node is required (current: ${count}).`,
       endCountInvalid: (count: number) => `Exactly one end node is required (current: ${count}).`,
-      startRequiresTransition: (nodeId: string) => `Node '${nodeId}': start requires next or edges.`,
-      actionRequired: (nodeId: string) => `Node '${nodeId}': action node requires action.`,
-      actionRequiresTransition: (nodeId: string) => `Node '${nodeId}': action requires next or edges.`,
-      waitEventRequired: (nodeId: string) =>
-        `Node '${nodeId}': wait node requires events or event.`,
-      waitRequiresTransition: (nodeId: string) =>
-        `Node '${nodeId}': legacy wait (event) requires next or edges.`,
-      waitEventsAndEventTogether: (nodeId: string) =>
-        `Node '${nodeId}': wait cannot use both events and event.`,
-      waitEventsCannotHaveEdges: (nodeId: string) =>
-        `Node '${nodeId}': wait cannot use edges with events; put targets in events.`,
-      waitEventTargetRequired: (nodeId: string, eventName: string) =>
-        `Node '${nodeId}': events['${eventName}'] requires a next node id.`,
-      forkBranchesRequired: (nodeId: string) => `Node '${nodeId}': fork requires at least two branches.`,
-      joinRequiresTransition: (nodeId: string) => `Node '${nodeId}': join requires next or edges.`,
-      joinModeInvalid: (nodeId: string) => `Node '${nodeId}': join.mode must be 'all'.`,
-      endCannotHaveTransition: (nodeId: string) => `Node '${nodeId}': end cannot have next/edges.`,
-      edgeToRequired: (nodeId: string) => `Node '${nodeId}': edge.to is required.`,
-      edgeWhenPathRequired: (nodeId: string) => `Node '${nodeId}': edge.when.path is required.`,
-      edgeWhenOpRequired: (nodeId: string) => `Node '${nodeId}': edge.when.op is required.`,
-      edgeWhenValueRequired: (nodeId: string) =>
-        `Node '${nodeId}': edge.when.value is required for this operator (not EXISTS).`,
-      edgeWhenValueInInvalid: (nodeId: string) =>
-        `Node '${nodeId}': IN requires a non-empty array (or JSON array string) for edge.when.value.`,
-      edgeWhenValueBetweenInvalid: (nodeId: string) =>
-        `Node '${nodeId}': BETWEEN requires an array of at least two values (or JSON array string) for edge.when.value.`,
-      edgeDefaultMultiple: (nodeId: string) =>
-        `Node '${nodeId}': only one edge can have default=true.`,
-      selfReferenceEdge: (nodeId: string) => `Node '${nodeId}': self-referencing edge is not allowed.`,
-      missingTargetNode: (nodeId: string, targetId: string) => `Node '${nodeId}': target '${targetId}' does not exist.`,
+      startRequiresTransition: (nodeName: string) => `Node '${nodeName}': start requires next or edges.`,
+      actionRequired: (nodeName: string) => `Node '${nodeName}': action node requires action.`,
+      actionRequiresTransition: (nodeName: string) => `Node '${nodeName}': action requires next or edges.`,
+      waitEventRequired: (nodeName: string) =>
+        `Node '${nodeName}': wait node requires events or event.`,
+      waitRequiresTransition: (nodeName: string) =>
+        `Node '${nodeName}': legacy wait (event) requires next or edges.`,
+      waitEventsAndEventTogether: (nodeName: string) =>
+        `Node '${nodeName}': wait cannot use both events and event.`,
+      waitEventsCannotHaveEdges: (nodeName: string) =>
+        `Node '${nodeName}': wait cannot use edges with events; put targets in events.`,
+      waitEventTargetRequired: (nodeName: string, eventName: string) =>
+        `Node '${nodeName}': events['${eventName}'] requires a next node name.`,
+      forkBranchesRequired: (nodeName: string) => `Node '${nodeName}': fork requires at least two branches.`,
+      joinRequiresTransition: (nodeName: string) => `Node '${nodeName}': join requires next or edges.`,
+      joinModeInvalid: (nodeName: string) => `Node '${nodeName}': join.mode must be 'all'.`,
+      endCannotHaveTransition: (nodeName: string) => `Node '${nodeName}': end cannot have next/edges.`,
+      edgeToRequired: (nodeName: string) => `Node '${nodeName}': edge.to is required.`,
+      edgeWhenPathRequired: (nodeName: string) => `Node '${nodeName}': edge.when.path is required.`,
+      edgeWhenOpRequired: (nodeName: string) => `Node '${nodeName}': edge.when.op is required.`,
+      edgeWhenValueRequired: (nodeName: string) =>
+        `Node '${nodeName}': edge.when.value is required for this operator (not EXISTS).`,
+      edgeWhenValueInInvalid: (nodeName: string) =>
+        `Node '${nodeName}': IN requires a non-empty array (or JSON array string) for edge.when.value.`,
+      edgeWhenValueBetweenInvalid: (nodeName: string) =>
+        `Node '${nodeName}': BETWEEN requires an array of at least two values (or JSON array string) for edge.when.value.`,
+      edgeDefaultMultiple: (nodeName: string) =>
+        `Node '${nodeName}': only one edge can have default=true.`,
+      selfReferenceEdge: (nodeName: string) => `Node '${nodeName}': self-referencing edge is not allowed.`,
+      missingTargetNode: (nodeName: string, targetName: string) => `Node '${nodeName}': target '${targetName}' does not exist.`,
       selfReferenceRejected: "Self-referencing edges are not allowed.",
       whenOpPlaceholder: "Select operator",
       whenPathPlaceholder: "$.states.Fetch.output.amount",

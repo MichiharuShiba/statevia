@@ -44,19 +44,19 @@ export function buildOutputSchemaPathHints(
  * グラフ上の上流 action ノードの outputSchema から when.path 候補を収集する。
  */
 export function collectUpstreamOutputPathHints(
-  nodes: ReadonlyArray<{ id: string; type: string; action?: string }>,
+  nodes: ReadonlyArray<{ name: string; type: string; action?: string }>,
   edges: ReadonlyArray<{ sourceId: string; targetId: string }>,
-  targetNodeId: string,
+  targetNodeName: string,
   outputSchemaByActionId: ReadonlyMap<string, JsonSchemaObject | undefined>
 ): string[] {
-  const upstreamActions = findUpstreamActionNodes(nodes, edges, targetNodeId);
+  const upstreamActions = findUpstreamActionNodes(nodes, edges, targetNodeName);
   const hints = new Set<string>();
   for (const node of upstreamActions) {
     const actionId = node.action?.trim();
     if (!actionId) {
       continue;
     }
-    for (const hint of buildOutputSchemaPathHints(outputSchemaByActionId.get(actionId), node.id)) {
+    for (const hint of buildOutputSchemaPathHints(outputSchemaByActionId.get(actionId), node.name)) {
       hints.add(hint);
     }
   }
@@ -64,24 +64,24 @@ export function collectUpstreamOutputPathHints(
 }
 
 function findUpstreamActionNodes(
-  nodes: ReadonlyArray<{ id: string; type: string; action?: string }>,
+  nodes: ReadonlyArray<{ name: string; type: string; action?: string }>,
   edges: ReadonlyArray<{ sourceId: string; targetId: string }>,
-  targetNodeId: string
-): Array<{ id: string; type: string; action?: string }> {
-  const nodeById = new Map(nodes.map((node) => [node.id, node]));
-  const actionNodes: Array<{ id: string; type: string; action?: string }> = [];
+  targetNodeName: string
+): Array<{ name: string; type: string; action?: string }> {
+  const nodeByName = new Map(nodes.map((node) => [node.name, node]));
+  const actionNodes: Array<{ name: string; type: string; action?: string }> = [];
   const visited = new Set<string>();
   const queue = edges
-    .filter((edge) => edge.targetId === targetNodeId)
+    .filter((edge) => edge.targetId === targetNodeName)
     .map((edge) => edge.sourceId);
 
   while (queue.length > 0) {
-    const currentId = queue.shift();
-    if (!currentId || visited.has(currentId)) {
+    const currentName = queue.shift();
+    if (!currentName || visited.has(currentName)) {
       continue;
     }
-    visited.add(currentId);
-    const node = nodeById.get(currentId);
+    visited.add(currentName);
+    const node = nodeByName.get(currentName);
     if (!node) {
       continue;
     }
@@ -89,7 +89,7 @@ function findUpstreamActionNodes(
       actionNodes.push(node);
     }
     for (const edge of edges) {
-      if (edge.targetId === currentId) {
+      if (edge.targetId === currentName) {
         queue.push(edge.sourceId);
       }
     }

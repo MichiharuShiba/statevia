@@ -31,7 +31,7 @@ describe("getNodeWithFallback", () => {
     // Arrange
     const graph = graphData([
       {
-        nodeId: "n-1",
+        name: "n-1",
         executionNodeId: "n-1",
         nodeName: "n-1",
         nodeType: "TASK",
@@ -88,7 +88,7 @@ describe("getNodeWithFallback", () => {
     const exec = execution([]);
     const mergedNodes = [
       {
-        nodeId: "n-2",
+        name: "n-2",
         executionNodeId: "n-2",
         nodeName: "n-2",
         nodeType: "WAIT",
@@ -143,7 +143,7 @@ describe("getNodeWithFallback", () => {
     const exec = execution([runtimeNode]);
     const graph = graphData([
       {
-        nodeId: "slowStep",
+        name: "slowStep",
         executionNodeId: "uuid-slow-step",
         nodeName: "slowStep",
         nodeType: "Task",
@@ -169,7 +169,7 @@ describe("getNodeWithFallback", () => {
     const exec = execution([runtimeNode]);
     const graph = graphData([
       {
-        nodeId: "n-1",
+        name: "n-1",
         executionNodeId: "n-1",
         nodeName: "n-1",
         nodeType: "TASK",
@@ -209,7 +209,7 @@ describe("getNodeWithFallback (境界値)", () => {
     const exec = execution([]);
     const graph = graphData([
       {
-        nodeId: "only-in-merged",
+        name: "only-in-merged",
         executionNodeId: "only-in-merged",
         nodeName: "only-in-merged",
         nodeType: "TASK",

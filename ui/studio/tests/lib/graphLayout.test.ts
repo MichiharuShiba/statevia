@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { layoutGraph, buildFallbackEdges } from "@/shared/lib/graphLayout";
 import type { LayoutNodeInput } from "@/shared/lib/graphLayout";
 
-const node = (nodeId: string, nodeType: string, branch?: string): LayoutNodeInput => ({
-  nodeId,
+const node = (name: string, nodeType: string, branch?: string): LayoutNodeInput => ({
+  name,
   nodeType,
   ...(branch && { branch })
 });
@@ -174,7 +174,7 @@ describe("layoutGraph (境界値)", () => {
 
     // Assert
     expect(result.nodes).toHaveLength(1);
-    expect(result.nodes[0].nodeId).toBe("single");
+    expect(result.nodes[0].name).toBe("single");
     expect(result.edges).toHaveLength(0);
     expect((result.nodes[0] as { x: number }).x).toBeDefined();
     expect((result.nodes[0] as { y: number }).y).toBeDefined();
