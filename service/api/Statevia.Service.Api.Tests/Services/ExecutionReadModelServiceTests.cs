@@ -126,11 +126,11 @@ public sealed class ExecutionReadModelServiceTests
         // Act
         var graphJson =
             "{\"nodes\":[" +
-            "{\"NodeId\":\"n1\",\"StateName\":\"S1\",\"StartedAt\":\"2020-01-01T00:00:00Z\",\"CompletedAt\":null,\"Fact\":null}," +
-            "{\"NodeId\":null,\"StateName\":\"S2\",\"StartedAt\":\"2020-01-01T00:00:00Z\",\"CompletedAt\":\"2020-01-01T00:00:00Z\",\"Fact\":\"Completed\"}," +
-            "{\"NodeId\":\"n3\",\"StateName\":\"S3\",\"StartedAt\":\"2020-01-01T00:00:00Z\",\"CompletedAt\":\"2020-01-01T00:00:00Z\",\"Fact\":\"Failed\"}," +
-            "{\"NodeId\":\"n4\",\"StateName\":\"S4\",\"StartedAt\":\"2020-01-01T00:00:00Z\",\"CompletedAt\":\"2020-01-01T00:00:00Z\",\"Fact\":\"Cancelled\"}," +
-            "{\"NodeId\":\"n5\",\"StateName\":\"S5\",\"StartedAt\":\"2020-01-01T00:00:00Z\",\"CompletedAt\":\"2020-01-01T00:00:00Z\",\"Fact\":\"Joined\"}" +
+            "{\"nodeId\":\"n1\",\"nodeName\":\"S1\",\"nodeType\":\"Task\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
+            "{\"nodeId\":null,\"nodeName\":\"S2\",\"nodeType\":\"Wait\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Completed\"}," +
+            "{\"nodeId\":\"n3\",\"nodeName\":\"S3\",\"nodeType\":\"Task\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Failed\"}," +
+            "{\"nodeId\":\"n4\",\"nodeName\":\"S4\",\"nodeType\":\"End\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Cancelled\"}," +
+            "{\"nodeId\":\"n5\",\"nodeName\":\"S5\",\"nodeType\":\"Join\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Joined\"}" +
             "]}";
 
         await using (var ctx = new CoreDbContext(db.Options))
@@ -175,18 +175,25 @@ public sealed class ExecutionReadModelServiceTests
 
         Assert.Equal(5, res.Nodes.Count);
         Assert.Equal("RUNNING", res.Nodes[0].Status);
+        Assert.Equal("S1", res.Nodes[0].NodeName);
+        Assert.Equal("Task", res.Nodes[0].NodeType);
         Assert.False(res.Nodes[0].CanceledByExecution);
 
         Assert.Equal(string.Empty, res.Nodes[1].ExecutionNodeId);
         Assert.Equal("SUCCEEDED", res.Nodes[1].Status);
+        Assert.Equal("S2", res.Nodes[1].NodeName);
+        Assert.Equal("Wait", res.Nodes[1].NodeType);
 
         Assert.Equal("FAILED", res.Nodes[2].Status);
+        Assert.Equal("Task", res.Nodes[2].NodeType);
         Assert.False(res.Nodes[2].CanceledByExecution);
 
         Assert.Equal("CANCELED", res.Nodes[3].Status);
+        Assert.Equal("End", res.Nodes[3].NodeType);
         Assert.True(res.Nodes[3].CanceledByExecution);
 
         Assert.Equal("SUCCEEDED", res.Nodes[4].Status);
+        Assert.Equal("Join", res.Nodes[4].NodeType);
     }
 
     /// <summary>
@@ -214,7 +221,7 @@ public sealed class ExecutionReadModelServiceTests
         var updatedAt = DateTime.UtcNow;
         var startedAt = DateTime.UtcNow.AddHours(-1);
 
-        const string graphJson = "{\"nodes\":[{\"NodeId\":\"n1\",\"StateName\":null,\"StartedAt\":\"2020-01-01T00:00:00Z\",\"CompletedAt\":null,\"Fact\":null}]}";
+        const string graphJson = "{\"nodes\":[{\"nodeId\":\"n1\",\"nodeName\":null,\"nodeType\":\"Task\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}]}";
 
         await using (var ctx = new CoreDbContext(db.Options))
         {
@@ -324,7 +331,7 @@ public sealed class ExecutionReadModelServiceTests
         // Act
         var graphJson =
             "{\"nodes\":[" +
-            "{\"NodeId\":\"n1\",\"StateName\":\"S1\",\"StartedAt\":\"2020-01-01T00:00:00Z\",\"CompletedAt\":\"2020-01-01T00:00:00Z\",\"Fact\":\"SomeOtherFact\"}" +
+            "{\"nodeId\":\"n1\",\"nodeName\":\"S1\",\"nodeType\":\"Task\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"SomeOtherFact\"}" +
             "]}";
 
         await using (var ctx = new CoreDbContext(db.Options))

@@ -93,6 +93,7 @@ UIが依存してよいレスポンス形を固定する。
   "nodes": [
     {
       "nodeId": "task-1",
+      "nodeName": "ApproveTask",
       "nodeType": "Task|Wait|Fork|Join|...",
       "status": "IDLE|READY|RUNNING|WAITING|SUCCEEDED|FAILED|CANCELED",
       "attempt": 1,
@@ -104,6 +105,10 @@ UIが依存してよいレスポンス形を固定する。
   ]
 }
 ```
+
+- **`nodes[*].nodeName`**: 定義上の状態名（StateName と同値）。実行グラフ JSON の `nodeName` を投影する。
+- **`nodes[*].nodeType`**: ノード種別（`Task` / `Wait` / `Join` 等）。**`nodeName` とは別**であり、状態名を種別として返してはならない。
+- 現行 HTTP の一部経路では実行ノード識別子が `executionNodeId` として公開される場合がある（将来 `nodeId` に揃える）。
 
 #### UI側の最低保証
 

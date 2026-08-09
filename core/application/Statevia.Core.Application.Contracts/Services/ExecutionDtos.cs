@@ -272,6 +272,9 @@ public sealed class ExecutionNodeReadModel
     /// <summary>ExecutionGraph のノード識別子（試行単位）。</summary>
     public string ExecutionNodeId { get; init; } = string.Empty;
 
+    /// <summary>ノード名。定義上の StateName と同値。</summary>
+    public string NodeName { get; init; } = string.Empty;
+
     /// <summary>ノード種別。</summary>
     public string NodeType { get; init; } = string.Empty;
 
