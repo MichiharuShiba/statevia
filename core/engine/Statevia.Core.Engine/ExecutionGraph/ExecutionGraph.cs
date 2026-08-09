@@ -106,7 +106,7 @@ public sealed class ExecutionGraph
         for (var attempt = 0; attempt < ExecutionNodeIdMaxAllocationAttempts; attempt++)
         {
             var candidate = CreateNodeIdCandidate();
-            if (!_nodes.Exists(n => string.Equals(n.NodeId, candidate, StringComparison.OrdinalIgnoreCase)))
+            if (FindNodeUnlocked(candidate) is null)
             {
                 return candidate;
             }
@@ -127,12 +127,18 @@ public sealed class ExecutionGraph
         return Guid.NewGuid().ToString("N")[..ExecutionNodeIdHexLength];
     }
 
+    /// <summary>
+    /// 同一グラフ内のノードを NodeId で探す（大文字小文字無視。呼び出し元が <c>_lock</c> を保持していること）。
+    /// </summary>
+    private ExecutionNode? FindNodeUnlocked(string nodeId) =>
+        _nodes.Find(n => string.Equals(n.NodeId, nodeId, StringComparison.OrdinalIgnoreCase));
+
     /// <summary>ノードを完了としてマークし、事実と出力を記録します。</summary>
     public void CompleteNode(string nodeId, string fact, object? output)
     {
         lock (_lock)
         {
-            var node = _nodes.FirstOrDefault(n => n.NodeId == nodeId);
+            var node = FindNodeUnlocked(nodeId);
             if (node != null)
             {
                 node.CompletedAt = DateTime.UtcNow;
@@ -150,7 +156,7 @@ public sealed class ExecutionGraph
     {
         lock (_lock)
         {
-            var node = _nodes.FirstOrDefault(n => n.NodeId == nodeId);
+            var node = FindNodeUnlocked(nodeId);
             if (node is not null)
             {
                 node.ConditionRouting = diagnostics;
