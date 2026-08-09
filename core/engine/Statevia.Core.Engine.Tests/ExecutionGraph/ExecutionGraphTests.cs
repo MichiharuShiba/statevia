@@ -102,6 +102,46 @@ public class ExecutionGraphTests
         Assert.Equal(2, graph.GetNodesSnapshot().Count);
     }
 
+    /// <summary>CompleteNode / SetNodeConditionRouting が NodeId を大文字小文字無視で解決することを検証する。</summary>
+    [Fact]
+    public void CompleteNode_AndSetConditionRouting_ResolveNodeIdIgnoreCase()
+    {
+        // Arrange
+        var graph = new ExecutionGraph();
+        graph.ImportFromCheckpoint(new CheckpointGraphData
+        {
+            Nodes =
+            [
+                new CheckpointGraphNode
+                {
+                    NodeId = "AaBbCcDdEeFf",
+                    StateName = "Mixed",
+                    NodeType = "Task",
+                    StartedAt = DateTime.UtcNow,
+                    Attempt = 1
+                }
+            ],
+            Edges = []
+        });
+        var diagnostics = new ConditionRoutingDiagnostics
+        {
+            Fact = "Completed",
+            Resolution = ConditionRoutingResolutions.Linear
+        };
+
+        // Act
+        graph.SetNodeConditionRouting("aabbccddeeff", diagnostics);
+        graph.CompleteNode("AABBCCDDEEFF", "Completed", new { ok = true });
+        var node = Assert.Single(graph.GetNodesSnapshot());
+
+        // Assert
+        Assert.Equal("AaBbCcDdEeFf", node.NodeId);
+        Assert.NotNull(node.CompletedAt);
+        Assert.Equal("Completed", node.Fact);
+        Assert.NotNull(node.ConditionRouting);
+        Assert.Equal(ConditionRoutingResolutions.Linear, node.ConditionRouting.Resolution);
+    }
+
     /// <summary>AddEdge がノード間の辺を記録し、Edges から取得できることを検証する。</summary>
     [Fact]
     public void AddEdge_RecordsRelationship()
