@@ -95,7 +95,7 @@ internal sealed class ExecutionReadModelService : IExecutionReadModelService
             return Array.Empty<ExecutionNodeReadModel>();
         }
 
-        if (!JsonDeserialize.TryDeserialize(graphJson, JsonDeserialize.CaseInsensitiveDeserializeOptions, out ExecutionGraphSnapshotDto? dto))
+        if (!JsonDeserialize.TryDeserialize(graphJson, JsonSerializerProfiles.CaseInsensitive, out ExecutionGraphSnapshotDto? dto))
         {
             return Array.Empty<ExecutionNodeReadModel>();
         }

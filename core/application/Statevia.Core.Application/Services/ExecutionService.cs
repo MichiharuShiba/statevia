@@ -15,24 +15,8 @@ namespace Statevia.Core.Application.Services;
 
 internal sealed class ExecutionService : IExecutionService
 {
-    /// <summary>
-    /// イベント本文・冪等キャッシュ応答・リクエストハッシュ入力など、camelCase でシリアル化する際の共有オプション（都度 new しない）。
-    /// </summary>
-    private static readonly JsonSerializerOptions CamelCaseJsonSerializerOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
-
     /// <summary>Worker が 1 Load を待つときのポーリング間隔。</summary>
     private static readonly TimeSpan LocalExecutionLoadPollInterval = TimeSpan.FromMilliseconds(250);
-
-    /// <summary>
-    /// <see cref="CommandDedupRow.ResponseBody"/> からの逆シリアル用（プロパティ名の大文字小文字を許容）。
-    /// </summary>
-    private static readonly JsonSerializerOptions CaseInsensitiveJsonSerializerOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
 
     /// <summary><c>event_delivery_decision</c> 構造化ログの <c>decision</c> プロパティ値。</summary>
     private static class EventDeliveryLogDecisions
@@ -281,14 +265,14 @@ internal sealed class ExecutionService : IExecutionService
                         securityModelVersion = securitySnapshot.SecurityModelVersion,
                         evaluationMode = securitySnapshot.EvaluationMode.ToString()
                     },
-                    CamelCaseJsonSerializerOptions);
+                    JsonSerializerProfiles.CamelCase);
                 await _eventStore
                     .AppendAsync(uow, executionId, EventStoreEventType.WorkflowStarted, startedPayload, innerCt)
                     .ConfigureAwait(false);
 
                 if (dedupKey is { } saveKey)
                 {
-                    var responseJson = JsonSerializer.Serialize(accepted, CamelCaseJsonSerializerOptions);
+                    var responseJson = JsonSerializer.Serialize(accepted, JsonSerializerProfiles.CamelCase);
                     await _dedup.SaveAsync(
                         uow,
                         new CommandDedupRow
@@ -374,7 +358,7 @@ internal sealed class ExecutionService : IExecutionService
                                 securityModelVersion = securitySnapshot.SecurityModelVersion,
                                 evaluationMode = securitySnapshot.EvaluationMode.ToString()
                             },
-                            CamelCaseJsonSerializerOptions);
+                            JsonSerializerProfiles.CamelCase);
 
                         var displayId = await _displayIdWrites
                             .AllocateAsync(uow, DisplayIdResourceTypes.Execution, resolvedExecutionId, innerCt)
@@ -415,7 +399,7 @@ internal sealed class ExecutionService : IExecutionService
 
                         if (args.DedupKey is { } saveKey)
                         {
-                            var responseJson = JsonSerializer.Serialize(response, CamelCaseJsonSerializerOptions);
+                            var responseJson = JsonSerializer.Serialize(response, JsonSerializerProfiles.CamelCase);
                             await _dedup.SaveAsync(
                                 uow,
                                 new CommandDedupRow
@@ -556,7 +540,7 @@ internal sealed class ExecutionService : IExecutionService
             return false;
         }
 
-        var json = JsonSerializer.Serialize(checkpoint, CamelCaseJsonSerializerOptions);
+        var json = JsonSerializer.Serialize(checkpoint, JsonSerializerProfiles.CamelCase);
         var updatedAt = DateTime.UtcNow;
         if (_ownership.TryGet(executionId, out _, out var generation))
         {
@@ -763,7 +747,7 @@ internal sealed class ExecutionService : IExecutionService
         var (projStatus, projCancel, projGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var cancelPayload = JsonSerializer.Serialize(
             new { tenantId },
-            CamelCaseJsonSerializerOptions);
+            JsonSerializerProfiles.CamelCase);
 
         await _mutationPersistence.ExecuteSerializableWithRetryAsync(
             tenantId,
@@ -894,7 +878,7 @@ internal sealed class ExecutionService : IExecutionService
         if (checkpoint is null)
             return;
 
-        var json = JsonSerializer.Serialize(checkpoint, CamelCaseJsonSerializerOptions);
+        var json = JsonSerializer.Serialize(checkpoint, JsonSerializerProfiles.CamelCase);
         var updatedAt = DateTime.UtcNow;
 
         await _executor.ExecuteReadCommittedAsync(
@@ -1188,7 +1172,7 @@ internal sealed class ExecutionService : IExecutionService
         var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var publishedPayload = JsonSerializer.Serialize(
             new { tenantId, name = eventName },
-            CamelCaseJsonSerializerOptions);
+            JsonSerializerProfiles.CamelCase);
 
         await _mutationPersistence.ExecuteSerializableWithRetryAsync(
             tenantId,
@@ -1522,7 +1506,7 @@ internal sealed class ExecutionService : IExecutionService
         var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
         var publishedPayload = JsonSerializer.Serialize(
             new { tenantId, name = eventName, nodeId },
-            CamelCaseJsonSerializerOptions);
+            JsonSerializerProfiles.CamelCase);
 
         await _mutationPersistence.ExecuteSerializableWithRetryAsync(
             tenantId,
@@ -2050,7 +2034,7 @@ internal sealed class ExecutionService : IExecutionService
     {
         if (string.IsNullOrEmpty(existing.ResponseBody))
             return null;
-        return JsonDeserialize.TryDeserialize<ExecutionResponse>(existing.ResponseBody, CaseInsensitiveJsonSerializerOptions, out var deserialized)
+        return JsonDeserialize.TryDeserialize<ExecutionResponse>(existing.ResponseBody, JsonSerializerProfiles.CaseInsensitive, out var deserialized)
             ? deserialized
             : null;
     }
@@ -2217,7 +2201,7 @@ internal sealed class ExecutionService : IExecutionService
                 definitionVersionId = request.DefinitionVersionId,
                 input = request.Input
             },
-            CamelCaseJsonSerializerOptions);
+            JsonSerializerProfiles.CamelCase);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
     }
 
@@ -2330,7 +2314,7 @@ internal sealed class ExecutionService : IExecutionService
         var compiled = RestoreCompiledDefinitionFromVersion(versionRow);
         var checkpoint = JsonSerializer.Deserialize<ExecutionRuntimeCheckpoint>(
             checkpointDocument.CheckpointJson,
-            CamelCaseJsonSerializerOptions)
+            JsonSerializerProfiles.CamelCase)
             ?? throw new InvalidOperationException("Stored runtime checkpoint JSON is invalid.");
 
         try
@@ -2402,7 +2386,7 @@ internal sealed class ExecutionService : IExecutionService
             graphJson = _engine.ExportExecutionGraph(engineExecutionId);
         }
 
-        var json = JsonSerializer.Serialize(checkpoint, CamelCaseJsonSerializerOptions);
+        var json = JsonSerializer.Serialize(checkpoint, JsonSerializerProfiles.CamelCase);
         var updatedAt = DateTime.UtcNow;
         var fenceLost = await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
@@ -2589,7 +2573,7 @@ internal sealed class ExecutionService : IExecutionService
                     kv => kv.Key,
                     kv => kv.Value,
                     StringComparer.OrdinalIgnoreCase),
-                CamelCaseJsonSerializerOptions);
+                JsonSerializerProfiles.CamelCase);
         }
 
         string? varsJson = null;

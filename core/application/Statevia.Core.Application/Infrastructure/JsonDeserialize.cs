@@ -10,14 +10,6 @@ namespace Statevia.Core.Application.Infrastructure;
 internal static class JsonDeserialize
 {
     /// <summary>
-    /// 実行グラフスナップショット等、歴史的に PascalCase も混在する JSON をゆるやかに解釈するとき。
-    /// </summary>
-    internal static readonly JsonSerializerOptions CaseInsensitiveDeserializeOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
-    /// <summary>
     /// <see cref="JsonSerializer.Deserialize{T}(string, JsonSerializerOptions?)"/> を試し、復元処理で想定する例外のみ失敗として扱う。
     /// </summary>
     /// <returns><c>true</c> のとき復帰値を解釈可能（入力が JSON の <c>null</c> であれば <paramref name="value"/> は既定の参照型どおりになりうる）。</returns>

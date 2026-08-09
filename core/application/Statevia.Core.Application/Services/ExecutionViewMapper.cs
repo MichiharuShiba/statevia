@@ -35,7 +35,7 @@ internal static class ExecutionViewMapper
         if (string.IsNullOrWhiteSpace(graphJson))
             return Array.Empty<ExecutionViewNodeDto>();
 
-        if (!JsonDeserialize.TryDeserialize(graphJson, JsonDeserialize.CaseInsensitiveDeserializeOptions, out ExecutionGraphSnapshotDto? dto))
+        if (!JsonDeserialize.TryDeserialize(graphJson, JsonSerializerProfiles.CaseInsensitive, out ExecutionGraphSnapshotDto? dto))
             return Array.Empty<ExecutionViewNodeDto>();
 
         if (dto?.Nodes is null || dto.Nodes.Count == 0)

@@ -14,7 +14,7 @@ public sealed class JsonDeserializeTests
         const string json = """{"name":"x"}""";
 
         // Act
-        var ok = JsonDeserialize.TryDeserialize(json, JsonDeserialize.CaseInsensitiveDeserializeOptions, out JsonElement? value);
+        var ok = JsonDeserialize.TryDeserialize(json, JsonSerializerProfiles.CaseInsensitive, out JsonElement? value);
 
         // Assert
         Assert.True(ok);

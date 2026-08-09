@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Statevia.Core.Application.Contracts.Services;
+using Statevia.Core.Application.Infrastructure;
 using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Core.Application.Services;
@@ -41,11 +42,6 @@ public sealed class ForkChildExecutionCoordinator(
     IOptions<ForkChildExpansionOptions> options,
     ILogger<ForkChildExecutionCoordinator> logger) : IForkChildExecutionCoordinator
 {
-    private static readonly JsonSerializerOptions CamelCaseJson = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
-
     private readonly ForkChildExpansionOptions _options = options.Value;
 
     /// <inheritdoc />
@@ -478,7 +474,7 @@ public sealed class ForkChildExecutionCoordinator(
                                 definitionVersion = request.DefinitionVersion,
                                 tenantId = request.TenantId
                             },
-                            CamelCaseJson);
+                            JsonSerializerProfiles.CamelCase);
                         await eventStore
                             .AppendAsync(uow, childId, EventStoreEventType.WorkflowStarted, startedPayload, innerCt)
                             .ConfigureAwait(false);
@@ -642,7 +638,7 @@ public sealed class ForkChildExecutionCoordinator(
         if (value is JsonElement element)
             return element.Clone();
 
-        var json = JsonSerializer.Serialize(value, CamelCaseJson);
+        var json = JsonSerializer.Serialize(value, JsonSerializerProfiles.CamelCase);
         using var doc = JsonDocument.Parse(json);
         return doc.RootElement.Clone();
     }
