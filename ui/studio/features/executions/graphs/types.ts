@@ -1,12 +1,7 @@
 /** 定義グラフ上のノード定義。 */
 export type GraphNodeDef = {
-  /** 定義グラフ上のノード ID（エッジ・レイアウトのキー）。 */
-  nodeId: string;
-  /**
-   * ワークフローの状態名（API の execution `stateName` と揃える）。
-   * 省略時は `nodeId` とみなす。
-   */
-  stateName?: string;
+  /** 定義グラフ上のノード名（エッジ・レイアウトのキー。ワークフローの状態名＝API / 実行の `nodeName` と一致）。 */
+  nodeName: string;
   nodeType: string;
   label?: string;
   branch?: string;
@@ -34,7 +29,8 @@ export type GraphEdgeDef = {
 export type GraphGroupDef = {
   groupId: string;
   label: string;
-  nodeIds: string[];
+  /** グループに属するノード名（GraphNodeDef.nodeName）の一覧。 */
+  nodeNames: string[];
 };
 
 /**
@@ -42,7 +38,7 @@ export type GraphGroupDef = {
  * 保存座標・dagre 向けヒント・グループ余白などを同一オブジェクトで扱う。
  */
 export type GraphDefinitionMeta = {
-  /** ノード ID → 保存済みキャンバス座標 */
+  /** ノード名 → 保存済みキャンバス座標 */
   layout?: Record<string, { x: number; y: number }>;
   /** dagre rankdir: LR=左→右, TB=上→下, RL/BT も指定可 */
   direction?: "LR" | "TB" | "RL" | "BT";

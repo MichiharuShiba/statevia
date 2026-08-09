@@ -628,10 +628,10 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: N
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -653,25 +653,25 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: ForkJoin
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: fork1
-              - id: fork1
+              - name: fork1
                 type: fork
                 branches: [b1, b2]
-              - id: b1
+              - name: b1
                 type: action
                 action: noop
                 next: join1
-              - id: b2
+              - name: b2
                 type: action
                 action: noop
                 next: join1
-              - id: join1
+              - name: join1
                 type: join
                 mode: all
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -696,16 +696,16 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: EdgeNextEquiv
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 next: endNode
                 edges:
                   - to: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -729,15 +729,15 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: StartEdgesOnly
             nodes:
-              - id: start
+              - name: start
                 type: start
                 edges:
                   - to: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -762,20 +762,20 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: EdgeNextMismatch
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 next: endNode
                 edges:
                   - to: b
-              - id: b
+              - name: b
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -798,10 +798,10 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: ConditionalEdges
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 edges:
@@ -818,15 +818,15 @@ public sealed class DefinitionCompilerServiceTests
                       value: 0
                     order: 20
                   - to: low
-              - id: high
+              - name: high
                 type: action
                 action: noop
                 next: endNode
-              - id: low
+              - name: low
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -850,19 +850,19 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: FailedPath
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 next: endNode
                 error: failedHandler
-              - id: failedHandler
+              - name: failedHandler
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -888,20 +888,20 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: FailedPathObj
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 next: endNode
                 error:
-                  id: failedHandler
-              - id: failedHandler
+                  name: failedHandler
+              - name: failedHandler
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -926,15 +926,15 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: ErrorOnWait
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: wait1
-              - id: wait1
+              - name: wait1
                 type: wait
                 event: resume
                 next: endNode
                 error: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -956,15 +956,15 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: ErrorSelf
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 next: endNode
                 error: a
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -986,21 +986,21 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: ErrorUnknown
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 next: endNode
                 error: missing
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
         // Act & Assert
         var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("ErrorUnknown", yaml));
-        Assert.Contains("references unknown id", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("references unknown name", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -1016,10 +1016,10 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: ConditionalEdges
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 edges:
@@ -1036,15 +1036,15 @@ public sealed class DefinitionCompilerServiceTests
                       value: 0
                     order: 20
                   - to: low
-              - id: high
+              - name: high
                 type: action
                 action: noop
                 next: endNode
-              - id: low
+              - name: low
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1083,10 +1083,10 @@ public sealed class DefinitionCompilerServiceTests
               name: CustomerOrderParallel
               id: sample.customer.order.parallel
             nodes:
-              - id: order.start
+              - name: order.start
                 type: start
                 next: order.preflight
-              - id: order.preflight
+              - name: order.preflight
                 type: action
                 action: noop
                 edges:
@@ -1097,15 +1097,15 @@ public sealed class DefinitionCompilerServiceTests
                       value: true
                     order: 10
                   - to: order.reject.notify
-              - id: order.validate
+              - name: order.validate
                 type: action
                 action: noop
                 next: order.end
-              - id: order.reject.notify
+              - name: order.reject.notify
                 type: action
                 action: noop
                 next: order.end
-              - id: order.end
+              - name: order.end
                 type: end
             """;
 
@@ -1122,7 +1122,7 @@ public sealed class DefinitionCompilerServiceTests
         using var graphDoc = JsonDocument.Parse(graphJson);
         var preflightNode = graphDoc.RootElement.GetProperty("nodes").EnumerateArray()
             .First(n =>
-                string.Equals(n.GetProperty("stateName").GetString(), "order.preflight", StringComparison.Ordinal));
+                string.Equals(n.GetProperty("nodeName").GetString(), "order.preflight", StringComparison.Ordinal));
         Assert.True(preflightNode.TryGetProperty("conditionRouting", out var routing));
         Assert.Equal(ConditionRoutingResolutions.MatchedCase, routing.GetProperty("resolution").GetString());
         Assert.Equal(0, routing.GetProperty("matchedCaseIndex").GetInt32());
@@ -1139,7 +1139,7 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: X
             nodes:
-              - id: a
+              - name: a
                 type: start
                 next: b
             states:
@@ -1189,16 +1189,16 @@ public sealed class DefinitionCompilerServiceTests
             workflow:
               name: N
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: act
-              - id: act
+              - name: act
                 type: action
                 action: noop
                 input:
                   orderId: $.input.-orderId
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 

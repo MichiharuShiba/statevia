@@ -114,7 +114,7 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     private static List<GraphNodeDefinition> BuildNodes(IEnumerable<string> stateNames, CompiledDefinitionDto dto) =>
         stateNames.Select(state => new GraphNodeDefinition
         {
-            NodeId = state,
+            NodeName = state,
             NodeType = GetNodeType(state, dto),
             Label = state
         }).ToList();

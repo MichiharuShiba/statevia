@@ -912,7 +912,7 @@ public sealed class ExecutionServiceTests
         var engine = new FakeExecutionEngine
         {
             SnapshotToReturn = engineSnapshot,
-            GraphJsonToReturn = "{\"nodes\":[{\"nodeId\":\"n1\",\"stateName\":\"S\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}]}"
+            GraphJsonToReturn = "{\"nodes\":[{\"nodeId\":\"n1\",\"nodeName\":\"S\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}]}"
         };
 
         var executionRepo = new FakeExecutionRepository();
@@ -1144,8 +1144,8 @@ public sealed class ExecutionServiceTests
                 ExecutionId = executionId,
                 GraphJson =
                     "{\"nodes\":[" +
-                    "{\"nodeId\":\"n1\",\"stateName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
-                    "{\"nodeId\":\"n2\",\"stateName\":\"S2\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Failed\"}" +
+                    "{\"nodeId\":\"n1\",\"nodeName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
+                    "{\"nodeId\":\"n2\",\"nodeName\":\"S2\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Failed\"}" +
                     "]}",
                 UpdatedAt = DateTime.UtcNow
             }
@@ -1182,7 +1182,7 @@ public sealed class ExecutionServiceTests
         Assert.Equal("Task", view.Nodes[0].NodeType);
         Assert.Equal("RUNNING", view.Nodes[0].Status);
         Assert.Equal("Task", view.Nodes[1].NodeType);
-        Assert.Equal("S2", view.Nodes[1].StateName);
+        Assert.Equal("S2", view.Nodes[1].NodeName);
         Assert.Equal("FAILED", view.Nodes[1].Status);
         Assert.Equal(defId.ToString("D"), view.GraphId);
     }
@@ -1241,8 +1241,8 @@ public sealed class ExecutionServiceTests
                 ExecutionId = executionId,
                 GraphJson =
                     "{\"nodes\":[" +
-                    "{\"nodeId\":\"n1\",\"stateName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
-                    "{\"nodeId\":\"n2\",\"stateName\":\"S2\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Failed\"}" +
+                    "{\"nodeId\":\"n1\",\"nodeName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
+                    "{\"nodeId\":\"n2\",\"nodeName\":\"S2\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Failed\"}" +
                     "]}",
                 UpdatedAt = DateTime.UtcNow
             }
@@ -1302,8 +1302,8 @@ public sealed class ExecutionServiceTests
                 ExecutionId = executionId,
                 GraphJson =
                     "{\"nodes\":[" +
-                    "{\"nodeId\":\"n1\",\"stateName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
-                    "{\"nodeId\":\"n2\",\"stateName\":\"S2\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Failed\"}" +
+                    "{\"nodeId\":\"n1\",\"nodeName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
+                    "{\"nodeId\":\"n2\",\"nodeName\":\"S2\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Failed\"}" +
                     "]}",
                 UpdatedAt = DateTime.UtcNow
             }
@@ -1340,7 +1340,7 @@ public sealed class ExecutionServiceTests
         Assert.Equal("Task", view.Nodes[0].NodeType);
         Assert.Equal("RUNNING", view.Nodes[0].Status);
         Assert.Equal("Task", view.Nodes[1].NodeType);
-        Assert.Equal("S2", view.Nodes[1].StateName);
+        Assert.Equal("S2", view.Nodes[1].NodeName);
         Assert.Equal("FAILED", view.Nodes[1].Status);
         Assert.Equal(defId.ToString("D"), view.GraphId);
     }
@@ -1353,8 +1353,8 @@ public sealed class ExecutionServiceTests
         var executionId = Guid.NewGuid();
         var graphJson =
             "{\"nodes\":[" +
-            "{\"nodeId\":\"a\",\"stateName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
-            "{\"nodeId\":\"b\",\"stateName\":\"Wait\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Cancelled\"}" +
+            "{\"nodeId\":\"a\",\"nodeName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}," +
+            "{\"nodeId\":\"b\",\"nodeName\":\"Wait\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Cancelled\"}" +
             "]}";
 
         var executionRepo = new FakeExecutionRepository
@@ -1431,10 +1431,10 @@ public sealed class ExecutionServiceTests
         Assert.NotNull(res.Events[2].Patch!.Nodes);
         Assert.Equal(2, res.Events[2].Patch!.Nodes!.Count);
 
-        var nodeB = Assert.Single(res.Events[2].Patch!.Nodes!, n => n.ExecutionNodeId == "b");
+        var nodeB = Assert.Single(res.Events[2].Patch!.Nodes!, n => n.NodeId == "b");
         Assert.True(nodeB.CanceledByExecution.GetValueOrDefault());
         Assert.Equal("CANCELED", nodeB.Status);
-        Assert.Equal("Wait", nodeB.StateName);
+        Assert.Equal("Wait", nodeB.NodeName);
     }
 
     /// <summary>親 events GET で子孫の EventPublished を合成し、子 WorkflowStarted は落とす。</summary>
@@ -1461,7 +1461,7 @@ public sealed class ExecutionServiceTests
             SnapshotByExecutionId = new ExecutionGraphSnapshotRow
             {
                 ExecutionId = parentId,
-                GraphJson = """{"nodes":[{"nodeId":"a","stateName":"A"}],"edges":[]}""",
+                GraphJson = """{"nodes":[{"nodeId":"a","nodeName":"A"}],"edges":[]}""",
                 UpdatedAt = t0
             }
         };
@@ -1730,7 +1730,7 @@ public sealed class ExecutionServiceTests
                 IsCancelled = true,
                 IsFailed = false
             },
-            GraphJsonToReturn = "{\"nodes\":[{\"nodeId\":\"n1\",\"stateName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}]}"
+            GraphJsonToReturn = "{\"nodes\":[{\"nodeId\":\"n1\",\"nodeName\":null,\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null}]}"
         };
 
         var display = new FakeDisplayIdService
@@ -2160,7 +2160,7 @@ public sealed class ExecutionServiceTests
             GraphJsonToReturn =
                 """
                 {"nodes":[
-                  {"nodeId":"wait-1","stateName":"flow.approve.wait","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","allowedEvents":["approve","reject"]}
+                  {"nodeId":"wait-1","nodeName":"flow.approve.wait","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","allowedEvents":["approve","reject"]}
                 ]}
                 """,
             PublishEventExceptionToThrow = new InvalidOperationException(engineMessage)
@@ -2224,7 +2224,7 @@ public sealed class ExecutionServiceTests
             GraphJsonToReturn =
                 """
                 {"nodes":[
-                  {"nodeId":"wait-1","stateName":"flow.approve.wait","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","allowedEvents":["approve"]}
+                  {"nodeId":"wait-1","nodeName":"flow.approve.wait","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","allowedEvents":["approve"]}
                 ]}
                 """,
             ResumeWaitNodeExceptionToThrow = new InvalidOperationException(engineMessage)
@@ -2289,7 +2289,7 @@ public sealed class ExecutionServiceTests
             GraphJsonToReturn =
                 """
                 {"nodes":[
-                  {"nodeId":"wait-1","stateName":"Ask","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","waitKey":"Approve"}
+                  {"nodeId":"wait-1","nodeName":"Ask","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","waitKey":"Approve"}
                 ]}
                 """
         };
@@ -3265,11 +3265,11 @@ public sealed class ExecutionServiceTests
 
         var graphJson =
             "{\"nodes\":[" +
-            "{\"nodeId\":\"n1\",\"stateName\":null,\"nodeType\":\"Task\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null,\"input\":{\"seed\":1},\"output\":{\"next\":2},\"attempt\":2,\"workerId\":\"wk-1\",\"waitKey\":\"resume-1\",\"canceledByExecution\":false}," +
-            "{\"nodeId\":null,\"stateName\":\"S2\",\"nodeType\":\"Wait\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Cancelled\"}" +
-            ",{\"nodeId\":\"n3\",\"stateName\":\"S3\",\"nodeType\":\"Task\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"SomeOtherFact\"}," +
-            "{\"nodeId\":\"n4\",\"stateName\":\"S4\",\"nodeType\":\"End\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Completed\"}," +
-            "{\"nodeId\":\"n5\",\"stateName\":\"S5\",\"nodeType\":\"Join\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Joined\"}" +
+            "{\"nodeId\":\"n1\",\"nodeName\":null,\"nodeType\":\"Task\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":null,\"fact\":null,\"input\":{\"seed\":1},\"output\":{\"next\":2},\"attempt\":2,\"workerId\":\"wk-1\",\"waitKey\":\"resume-1\",\"canceledByExecution\":false}," +
+            "{\"nodeId\":null,\"nodeName\":\"S2\",\"nodeType\":\"Wait\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Cancelled\"}" +
+            ",{\"nodeId\":\"n3\",\"nodeName\":\"S3\",\"nodeType\":\"Task\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"SomeOtherFact\"}," +
+            "{\"nodeId\":\"n4\",\"nodeName\":\"S4\",\"nodeType\":\"End\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Completed\"}," +
+            "{\"nodeId\":\"n5\",\"nodeName\":\"S5\",\"nodeType\":\"Join\",\"startedAt\":\"2020-01-01T00:00:00Z\",\"completedAt\":\"2020-01-01T00:00:00Z\",\"fact\":\"Joined\"}" +
             "]}";
 
         var executionRepo = new FakeExecutionRepository
@@ -3316,7 +3316,7 @@ public sealed class ExecutionServiceTests
         Assert.Equal(defId.ToString("D"), view.GraphId); // graphId fallback
 
         Assert.Equal(5, view.Nodes.Count);
-        Assert.Equal("n1", view.Nodes[0].ExecutionNodeId);
+        Assert.Equal("n1", view.Nodes[0].NodeId);
         Assert.Equal("Task", view.Nodes[0].NodeType);
         Assert.Equal("RUNNING", view.Nodes[0].Status);
         Assert.Equal(2, view.Nodes[0].Attempt);
@@ -3324,22 +3324,22 @@ public sealed class ExecutionServiceTests
         Assert.Equal("resume-1", view.Nodes[0].WaitKey);
         Assert.False(view.Nodes[0].CanceledByExecution);
 
-        Assert.Equal(string.Empty, view.Nodes[1].ExecutionNodeId);
+        Assert.Equal(string.Empty, view.Nodes[1].NodeId);
         Assert.Equal("Wait", view.Nodes[1].NodeType);
         Assert.Equal("CANCELED", view.Nodes[1].Status);
         Assert.True(view.Nodes[1].CanceledByExecution);
 
-        Assert.Equal("n3", view.Nodes[2].ExecutionNodeId);
+        Assert.Equal("n3", view.Nodes[2].NodeId);
         Assert.Equal("Task", view.Nodes[2].NodeType);
         Assert.Equal("SUCCEEDED", view.Nodes[2].Status); // default branch of MapNodeStatus
         Assert.False(view.Nodes[2].CanceledByExecution);
 
-        Assert.Equal("n4", view.Nodes[3].ExecutionNodeId);
+        Assert.Equal("n4", view.Nodes[3].NodeId);
         Assert.Equal("End", view.Nodes[3].NodeType);
         Assert.Equal("SUCCEEDED", view.Nodes[3].Status); // Completed -> SUCCEEDED
         Assert.False(view.Nodes[3].CanceledByExecution);
 
-        Assert.Equal("n5", view.Nodes[4].ExecutionNodeId);
+        Assert.Equal("n5", view.Nodes[4].NodeId);
         Assert.Equal("Join", view.Nodes[4].NodeType);
         Assert.Equal("SUCCEEDED", view.Nodes[4].Status); // Joined -> SUCCEEDED
         Assert.False(view.Nodes[4].CanceledByExecution);

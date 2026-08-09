@@ -21,71 +21,65 @@ workflow:
     Hosted では外側・内側とも物理子 execution に展開される。
 
 nodes:
-  - id: nest.start
+  - name: nest.start
     type: start
     label: 開始
     next: nest.outer.fork
 
-  - id: nest.outer.fork
+  - name: nest.outer.fork
     type: fork
     label: 外側並列
     branches:
       - nest.outer.fast
       - nest.inner.fork
 
-  - id: nest.outer.fast
+  - name: nest.outer.fast
     type: action
     label: 外側・即時処理
     action: noop
-    input:
-      lane: outer-fast
     next: nest.outer.join
 
-  - id: nest.inner.fork
+  - name: nest.inner.fork
     type: fork
     label: 内側並列
     branches:
       - nest.inner.a
       - nest.inner.b
 
-  - id: nest.inner.a
+  - name: nest.inner.a
     type: action
     label: 内側 A
     action: sleep
     input:
       duration: 1s
-      lane: inner-a
     next: nest.inner.join
 
-  - id: nest.inner.b
+  - name: nest.inner.b
     type: action
     label: 内側 B
     action: sleep
     input:
       duration: 2s
-      lane: inner-b
     next: nest.inner.join
 
-  - id: nest.inner.join
+  - name: nest.inner.join
     type: join
     label: 内側合流
     mode: all
     next: nest.outer.join
 
-  - id: nest.outer.join
+  - name: nest.outer.join
     type: join
     label: 外側合流
     mode: all
     next: nest.notify
 
-  - id: nest.notify
+  - name: nest.notify
     type: action
     label: 完了通知
     action: noop
-    input:
-      phase: nested-done
     next: nest.end
 
-  - id: nest.end
+  - name: nest.end
     type: end
     label: 完了

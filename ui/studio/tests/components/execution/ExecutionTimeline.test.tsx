@@ -10,7 +10,7 @@ const baseEvents: ExecutionEventWithSeq[] = [
     seq: 1,
     type: "GraphUpdated",
     executionId: "ex-1",
-    patch: { nodes: [{ executionNodeId: "n-1", status: "RUNNING" }] },
+    patch: { nodes: [{ nodeId: "n-1", status: "RUNNING" }] },
     at: "2026-01-15T10:00:00.000Z"
   },
   {

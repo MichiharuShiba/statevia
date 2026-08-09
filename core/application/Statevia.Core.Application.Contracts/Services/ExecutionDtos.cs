@@ -119,10 +119,10 @@ public sealed class ExecutionViewDto
 public sealed class ExecutionViewNodeDto
 {
     /// <summary>ExecutionGraph が付与するノード識別子（試行単位）。定義キャンバスのノードキーとは別。</summary>
-    public string ExecutionNodeId { get; init; } = string.Empty;
+    public string NodeId { get; init; } = string.Empty;
 
-    /// <summary>ワークフロー定義上の状態名（<see cref="ExecutionNodeId"/> とは別）。</summary>
-    public string StateName { get; init; } = string.Empty;
+    /// <summary>ノード名。定義上の StateName と同値（<see cref="NodeId"/> とは別）。</summary>
+    public string NodeName { get; init; } = string.Empty;
 
     /// <summary>ノード種別（例: Action, Wait）。</summary>
     public string NodeType { get; init; } = string.Empty;
@@ -204,10 +204,10 @@ public sealed class GraphUpdatedPatchDto
 public sealed class GraphPatchNodeDto
 {
     /// <summary>実行ノード ID。</summary>
-    public string ExecutionNodeId { get; init; } = string.Empty;
+    public string NodeId { get; init; } = string.Empty;
 
-    /// <summary>状態名（任意）。</summary>
-    public string? StateName { get; init; }
+    /// <summary>ノード名（任意）。定義上の StateName と同値。</summary>
+    public string? NodeName { get; init; }
 
     /// <summary>ノード状態（任意）。</summary>
     public string? Status { get; init; }
@@ -270,7 +270,10 @@ public sealed class ExecutionReadModel
 public sealed class ExecutionNodeReadModel
 {
     /// <summary>ExecutionGraph のノード識別子（試行単位）。</summary>
-    public string ExecutionNodeId { get; init; } = string.Empty;
+    public string NodeId { get; init; } = string.Empty;
+
+    /// <summary>ノード名。定義上の StateName と同値。</summary>
+    public string NodeName { get; init; } = string.Empty;
 
     /// <summary>ノード種別。</summary>
     public string NodeType { get; init; } = string.Empty;
@@ -308,8 +311,8 @@ public sealed class GraphDefinitionResponse
 [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public sealed class GraphNodeDefinition
 {
-    /// <summary>ノード ID（キャンバス上のキー）。</summary>
-    public string NodeId { get; init; } = string.Empty;
+    /// <summary>ノード名（キャンバス上のキー。定義 StateName と同値。JSON <c>nodeName</c>）。</summary>
+    public string NodeName { get; init; } = string.Empty;
 
     /// <summary>ノード種別。</summary>
     public string NodeType { get; init; } = string.Empty;
@@ -321,10 +324,10 @@ public sealed class GraphNodeDefinition
 /// <summary>グラフ上の 1 辺。</summary>
 public sealed class GraphEdgeDefinition
 {
-    /// <summary>始点ノード ID。</summary>
+    /// <summary>始点ノード名（定義 StateName）。</summary>
     public string From { get; init; } = string.Empty;
 
-    /// <summary>終点ノード ID。</summary>
+    /// <summary>終点ノード名（定義 StateName）。</summary>
     public string To { get; init; } = string.Empty;
 
     /// <summary>表示ラベル（Wait のイベント名など。未設定時は空）。</summary>

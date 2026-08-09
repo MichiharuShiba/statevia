@@ -29,7 +29,7 @@ public sealed class ForkChildExecutionCoordinatorGraphComposeTests
               "nodes": [
                 {
                   "nodeId": "fork0001",
-                  "stateName": "ForkSrc",
+                  "nodeName": "ForkSrc",
                   "nodeType": "Task",
                   "startedAt": "2026-08-07T00:00:00Z",
                   "completedAt": "2026-08-07T00:00:01Z",
@@ -46,7 +46,7 @@ public sealed class ForkChildExecutionCoordinatorGraphComposeTests
               "nodes": [
                 {
                   "nodeId": "child001",
-                  "stateName": "A",
+                  "nodeName": "A",
                   "nodeType": "Wait",
                   "startedAt": "2026-08-07T00:00:01Z",
                   "attempt": 1,

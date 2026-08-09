@@ -26,7 +26,7 @@ namespace Statevia.Core.Application.Services;
 internal static class PhysicalForkGraphComposer
 {
     private const string NodeIdProperty = "nodeId";
-    private const string StateNameProperty = "stateName";
+    private const string NodeNameProperty = "nodeName";
     private const string NodeTypeProperty = "nodeType";
     private const string JoinNodeType = "Join";
 
@@ -202,7 +202,7 @@ internal static class PhysicalForkGraphComposer
             if (!nodeById.TryGetValue(terminalId, out var terminalNode))
                 continue;
 
-            var terminalState = ReadString(terminalNode, StateNameProperty);
+            var terminalState = ReadString(terminalNode, NodeNameProperty);
             // 枝先頭状態の終端だけ Join 辺。ネスト内側 Join などは Next（定義の next に相当）。
             var edgeType = IsBranchHeadState(terminalState, branch.BranchState)
                 ? EdgeType.Join
@@ -231,7 +231,7 @@ internal static class PhysicalForkGraphComposer
                 .Where(n =>
                 {
                     var id = ReadString(n, NodeIdProperty);
-                    var state = ReadString(n, StateNameProperty);
+                    var state = ReadString(n, NodeNameProperty);
                     return !string.IsNullOrWhiteSpace(id)
                         && childNodeIds.Contains(id)
                         && IsBranchHeadState(state, branchState);
@@ -278,10 +278,10 @@ internal static class PhysicalForkGraphComposer
                     ReadString(n, NodeTypeProperty),
                     JoinNodeType,
                     StringComparison.OrdinalIgnoreCase),
-                ReadString(n, StateNameProperty)))
+                ReadString(n, NodeNameProperty)))
             .Where(x =>
                 !string.IsNullOrWhiteSpace(x.Id)
-                && string.Equals(x.StateName, joinState, StringComparison.OrdinalIgnoreCase))
+                && string.Equals(x.NodeName, joinState, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(x => x.IsJoin)
             .ThenBy(x => x.Time ?? DateTime.MaxValue)
             .ThenBy(x => x.Id, StringComparer.Ordinal)
@@ -308,7 +308,7 @@ internal static class PhysicalForkGraphComposer
         string forkNodeId,
         IReadOnlyList<JoinCandidate> joinCandidates)
     {
-        var forkStateName = ReadString(forkNode, StateNameProperty);
+        var forkStateName = ReadString(forkNode, NodeNameProperty);
         if (string.IsNullOrWhiteSpace(forkStateName))
             return joinCandidates[0].Id;
 
@@ -317,11 +317,11 @@ internal static class PhysicalForkGraphComposer
             {
                 Id = ReadString(n, NodeIdProperty),
                 Time = ReadNodeTime(n),
-                StateName = ReadString(n, StateNameProperty)
+                NodeName = ReadString(n, NodeNameProperty)
             })
             .Where(x =>
                 !string.IsNullOrWhiteSpace(x.Id)
-                && string.Equals(x.StateName, forkStateName, StringComparison.OrdinalIgnoreCase))
+                && string.Equals(x.NodeName, forkStateName, StringComparison.OrdinalIgnoreCase))
             .OrderBy(x => x.Time ?? DateTime.MaxValue)
             .ThenBy(x => x.Id, StringComparer.Ordinal)
             .Select(x => x.Id!)
@@ -439,5 +439,5 @@ internal static class PhysicalForkGraphComposer
         string? Id,
         DateTime? Time,
         bool IsJoin,
-        string? StateName);
+        string? NodeName);
 }

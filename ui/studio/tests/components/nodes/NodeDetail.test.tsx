@@ -16,7 +16,7 @@ const baseExecution: ExecutionView = {
 };
 
 const baseNode: ExecutionNodeDTO = {
-  executionNodeId: "n-1",
+  nodeId: "n-1",
   nodeType: "Task",
   status: "RUNNING",
   attempt: 1,
@@ -56,10 +56,10 @@ describe("NodeDetail", () => {
     expect(screen.getByText(uiText.nodeDetail.prompts.selectNode(uiText.entities.node))).toBeInTheDocument();
   });
 
-  it("node が選択されているとき詳細見出しと実行ノード ID を表示する", () => {
+  it("node が選択されているとき詳細見出しとノード ID を表示する", () => {
     render(<NodeDetail {...defaultProps} />);
     expect(screen.getByText(uiText.nodeDetail.title(uiText.entities.node))).toBeInTheDocument();
-    expect(screen.getByText(uiText.nodeDetail.meta.executionNodeId("n-1"))).toBeInTheDocument();
+    expect(screen.getByText(uiText.nodeDetail.meta.nodeId("n-1"))).toBeInTheDocument();
     expect(screen.getByText("RUNNING")).toBeInTheDocument();
   });
 
@@ -86,10 +86,10 @@ describe("NodeDetail", () => {
     expect(screen.getByText(/"x": 1/, { exact: false })).toBeInTheDocument();
   });
 
-  it("stateName があるときメタ情報にノード名を表示する", () => {
-    const node: ExecutionNodeDTO = { ...baseNode, stateName: "MyState" };
+  it("nodeName があるときメタ情報にノード名を表示する", () => {
+    const node: ExecutionNodeDTO = { ...baseNode, nodeName: "MyState" };
     render(<NodeDetail {...defaultProps} node={node} />);
-    expect(screen.getByText(uiText.nodeDetail.meta.stateName("MyState"))).toBeInTheDocument();
+    expect(screen.getByText(uiText.nodeDetail.meta.nodeName("MyState"))).toBeInTheDocument();
   });
 
   it("input を渡すとトレース欄に入力見出しと内容を表示する", () => {

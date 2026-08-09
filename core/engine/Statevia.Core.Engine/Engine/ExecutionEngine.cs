@@ -179,11 +179,11 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
 
         // EventProvider.Resume と route table キー（Load 時 Trim）に合わせて正規化する。
         var trimmedEventName = eventName.Trim();
-        if (!instance.Definition.WaitEventRouteTable.TryGetValue(node.StateName, out var routes)
+        if (!instance.Definition.WaitEventRouteTable.TryGetValue(node.NodeName, out var routes)
             || !routes.ContainsKey(trimmedEventName))
         {
             throw new InvalidOperationException(
-                $"Event '{trimmedEventName}' is not allowed for Wait state '{node.StateName}'.");
+                $"Event '{trimmedEventName}' is not allowed for Wait state '{node.NodeName}'.");
         }
 
         eventProvider.Resume(nodeId, trimmedEventName);
@@ -211,11 +211,11 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         }
 
         var waitNode = activeWaits[0];
-        if (!instance.Definition.WaitEventRouteTable.TryGetValue(waitNode.StateName, out var routes)
+        if (!instance.Definition.WaitEventRouteTable.TryGetValue(waitNode.NodeName, out var routes)
             || routes.Count != 1)
         {
             throw new InvalidOperationException(
-                $"PublishEvent requires the active Wait state '{waitNode.StateName}' to have exactly one event.");
+                $"PublishEvent requires the active Wait state '{waitNode.NodeName}' to have exactly one event.");
         }
 
         // シムは「唯一の許可イベント」と呼び出し eventName が一致するときだけ委譲する。
@@ -224,7 +224,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         if (!string.Equals(soleAllowedEvent, trimmedEventName, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
-                $"PublishEvent event '{trimmedEventName}' does not match the sole allowed event '{soleAllowedEvent}' for Wait state '{waitNode.StateName}'.");
+                $"PublishEvent event '{trimmedEventName}' does not match the sole allowed event '{soleAllowedEvent}' for Wait state '{waitNode.NodeName}'.");
         }
 
         ResumeWaitNode(executionId, waitNode.NodeId, soleAllowedEvent);
@@ -389,7 +389,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         EventProvider eventProvider,
         CheckpointPendingWait wait)
     {
-        instance.AddActiveState(wait.StateName);
+        instance.AddActiveState(wait.NodeName);
         try
         {
             var (fact, output) = await _scheduler.RunAsync(async ct =>
@@ -403,7 +403,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
                     {
                         ["event"] = eventName
                     };
-                    instance.SetOutput(wait.StateName, result);
+                    instance.SetOutput(wait.NodeName, result);
                     instance.Graph.CompleteNode(wait.NodeId, Fact.Completed, result);
                     await NotifyNodeCompletedAsync(instance.ExecutionId).ConfigureAwait(false);
                     return (Fact.Completed, result);
@@ -426,7 +426,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
                     _executionLog.LogStateExecuteFailed(
                         ex,
                         instance.ExecutionId,
-                        wait.StateName,
+                        wait.NodeName,
                         wait.NodeId,
                         ex.GetType().Name);
                     return (Fact.Failed, (object?)null);
@@ -439,11 +439,11 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
                 return;
             }
 
-            ProcessFact(instance, eventProvider, wait.StateName, fact, output, wait.NodeId);
+            ProcessFact(instance, eventProvider, wait.NodeName, fact, output, wait.NodeId);
         }
         finally
         {
-            instance.RemoveActiveState(wait.StateName);
+            instance.RemoveActiveState(wait.NodeName);
         }
     }
 
@@ -474,9 +474,9 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             }
 
             // 未完了 Wait は PendingWaits 経路。完了済み Wait で出辺なしなら ProcessFact が必要。
-            instance.RemoveActiveState(node.StateName);
-            instance.TryGetOutput(node.StateName, out var output);
-            ProcessFact(instance, eventProvider, node.StateName, node.Fact, output, node.NodeId);
+            instance.RemoveActiveState(node.NodeName);
+            instance.TryGetOutput(node.NodeName, out var output);
+            ProcessFact(instance, eventProvider, node.NodeName, node.Fact, output, node.NodeId);
         }
     }
 

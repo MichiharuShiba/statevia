@@ -75,9 +75,9 @@ describe("ExecutionDashboard", () => {
     useGraphDataMock.mockReturnValue({
       nodes: [
         {
+          name: "n-1",
           nodeId: "n-1",
-          executionNodeId: "n-1",
-          stateName: "task",
+          nodeName: "task",
           nodeType: "Task",
           label: "Task node",
           status: "RUNNING",

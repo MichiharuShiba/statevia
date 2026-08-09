@@ -59,7 +59,7 @@ export function useNodeCommands(
   /**
    * Wait ノードを指定イベント名で Resume する。
    *
-   * @param nodeId 実行ノード ID。
+   * @param nodeId 実行ノード短名 UUID（`nodeId`）。
    * @param resumeKey 再開イベント名（`resumeKey` として API に送る）。
    */
   async function resumeNode(nodeId: string, resumeKey: string) {
@@ -67,12 +67,12 @@ export function useNodeCommands(
     if (!execution) return;
     const eventName = resumeKey.trim();
     if (eventName.length === 0) return;
-    const node = execution.nodes.find((n) => n.executionNodeId === nodeId);
+    const node = execution.nodes.find((n) => n.nodeId === nodeId);
     if (!node) return;
     setLoading(true);
     try {
       await apiPost<CommandAccepted>(
-        `/executions/${execution.displayId}/nodes/${node.executionNodeId}/resume`,
+        `/executions/${execution.displayId}/nodes/${node.nodeId}/resume`,
         { resumeKey: eventName }
       );
       onSuccess?.();

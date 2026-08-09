@@ -17,7 +17,7 @@ public sealed class PhysicalForkGraphComposerTests
               "nodes": [
                 {
                   "nodeId": "fork0001",
-                  "stateName": "ForkSrc",
+                  "nodeName": "ForkSrc",
                   "nodeType": "Task",
                   "startedAt": "2026-08-07T00:00:00Z",
                   "completedAt": "2026-08-07T00:00:01Z",
@@ -27,7 +27,7 @@ public sealed class PhysicalForkGraphComposerTests
                 },
                 {
                   "nodeId": "join0001",
-                  "stateName": "Join1",
+                  "nodeName": "Join1",
                   "nodeType": "Join",
                   "startedAt": "2026-08-07T00:00:02Z",
                   "completedAt": "2026-08-07T00:00:03Z",
@@ -44,7 +44,7 @@ public sealed class PhysicalForkGraphComposerTests
               "nodes": [
                 {
                   "nodeId": "child001",
-                  "stateName": "A",
+                  "nodeName": "A",
                   "nodeType": "Task",
                   "startedAt": "2026-08-07T00:00:01Z",
                   "completedAt": "2026-08-07T00:00:02Z",
@@ -95,8 +95,8 @@ public sealed class PhysicalForkGraphComposerTests
         const string parentJson = """
             {
               "nodes": [
-                {"nodeId":"outer-fork","stateName":"OuterFork","nodeType":"Fork"},
-                {"nodeId":"outer-join","stateName":"OuterJoin","nodeType":"Join"}
+                {"nodeId":"outer-fork","nodeName":"OuterFork","nodeType":"Fork"},
+                {"nodeId":"outer-join","nodeName":"OuterJoin","nodeType":"Join"}
               ],
               "edges": []
             }
@@ -105,10 +105,10 @@ public sealed class PhysicalForkGraphComposerTests
         const string nestedChildJson = """
             {
               "nodes": [
-                {"nodeId":"inner-fork","stateName":"InnerFork","nodeType":"Fork"},
-                {"nodeId":"inner-a","stateName":"InnerA","nodeType":"Task"},
-                {"nodeId":"inner-b","stateName":"InnerB","nodeType":"Task"},
-                {"nodeId":"inner-join","stateName":"InnerJoin","nodeType":"Join"}
+                {"nodeId":"inner-fork","nodeName":"InnerFork","nodeType":"Fork"},
+                {"nodeId":"inner-a","nodeName":"InnerA","nodeType":"Task"},
+                {"nodeId":"inner-b","nodeName":"InnerB","nodeType":"Task"},
+                {"nodeId":"inner-join","nodeName":"InnerJoin","nodeType":"Join"}
               ],
               "edges": [
                 {"from":"inner-fork","to":"inner-a","type":1},
@@ -119,7 +119,7 @@ public sealed class PhysicalForkGraphComposerTests
             }
             """;
         const string fastChildJson = """
-            {"nodes":[{"nodeId":"outer-fast","stateName":"OuterFast","nodeType":"Task"}],"edges":[]}
+            {"nodes":[{"nodeId":"outer-fast","nodeName":"OuterFast","nodeType":"Task"}],"edges":[]}
             """;
 
         // Act
@@ -187,35 +187,35 @@ public sealed class PhysicalForkGraphComposerTests
               "nodes": [
                 {
                   "nodeId": "fork-v1",
-                  "stateName": "Fork1",
+                  "nodeName": "Fork1",
                   "nodeType": "Fork",
                   "startedAt": "2026-08-07T00:00:00Z",
                   "completedAt": "2026-08-07T00:00:01Z"
                 },
                 {
                   "nodeId": "join-v1",
-                  "stateName": "Join1",
+                  "nodeName": "Join1",
                   "nodeType": "Join",
                   "startedAt": "2026-08-07T00:00:10Z",
                   "completedAt": "2026-08-07T00:00:11Z"
                 },
                 {
                   "nodeId": "task2-v1",
-                  "stateName": "Task2",
+                  "nodeName": "Task2",
                   "nodeType": "Task",
                   "startedAt": "2026-08-07T00:00:12Z",
                   "completedAt": "2026-08-07T00:00:13Z"
                 },
                 {
                   "nodeId": "fork-v2",
-                  "stateName": "Fork1",
+                  "nodeName": "Fork1",
                   "nodeType": "Fork",
                   "startedAt": "2026-08-07T00:00:14Z",
                   "completedAt": "2026-08-07T00:00:15Z"
                 },
                 {
                   "nodeId": "join-v2",
-                  "stateName": "Join1",
+                  "nodeName": "Join1",
                   "nodeType": "Join",
                   "startedAt": "2026-08-07T00:00:20Z",
                   "completedAt": "2026-08-07T00:00:21Z"
@@ -225,10 +225,10 @@ public sealed class PhysicalForkGraphComposerTests
             }
             """;
         const string childV1 = """
-            {"nodes":[{"nodeId":"task1-v1","stateName":"Task1","nodeType":"Task"}],"edges":[]}
+            {"nodes":[{"nodeId":"task1-v1","nodeName":"Task1","nodeType":"Task"}],"edges":[]}
             """;
         const string childV2 = """
-            {"nodes":[{"nodeId":"task1-v2","stateName":"Task1","nodeType":"Task"}],"edges":[]}
+            {"nodes":[{"nodeId":"task1-v2","nodeName":"Task1","nodeType":"Task"}],"edges":[]}
             """;
 
         var joinV1 = PhysicalForkGraphComposer.ResolveJoinNodeId(parentJson, "fork-v1", "Join1");
@@ -271,14 +271,14 @@ public sealed class PhysicalForkGraphComposerTests
         const string parentJson = """
             {
               "nodes": [
-                {"nodeId":"fork0001","stateName":"Fork1"},
-                {"nodeId":"join0001","stateName":"Join1","nodeType":"Join"}
+                {"nodeId":"fork0001","nodeName":"Fork1"},
+                {"nodeId":"join0001","nodeName":"Join1","nodeType":"Join"}
               ],
               "edges": []
             }
             """;
         const string childJson = """
-            {"nodes":[{"nodeId":"child001","stateName":"A"}],"edges":[]}
+            {"nodes":[{"nodeId":"child001","nodeName":"A"}],"edges":[]}
             """;
 
         // Act

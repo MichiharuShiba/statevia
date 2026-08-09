@@ -58,7 +58,7 @@ public enum ForkJoinEvaluationKind
 /// Join 充足時に親 Context へ投影する子 1 件分の Context 断片。
 /// </summary>
 /// <remarks>リスト順が適用順。同一キーは後勝ち（D5）。</remarks>
-/// <param name="States">子の完了済み State エントリ（stateName → `{ output: … }`）。</param>
+/// <param name="States">子の完了済み State エントリ（nodeName → `{ output: … }`）。</param>
 /// <param name="Vars">子終端時点の vars オブジェクト。</param>
 public sealed record ForkJoinChildContextMerge(
     IReadOnlyDictionary<string, object?> States,

@@ -4,9 +4,9 @@ import type { GraphDefinition } from "../types";
 export const graph1GraphDefinition: GraphDefinition = {
   graphId: "graph-1",
   nodes: [
-    { nodeId: "start", nodeType: "Start", label: "Start" },
-    { nodeId: "task-1", nodeType: "Task", label: "Task 1" },
-    { nodeId: "success", nodeType: "Success", label: "Success" }
+    { nodeName: "start", nodeType: "Start", label: "Start" },
+    { nodeName: "task-1", nodeType: "Task", label: "Task 1" },
+    { nodeName: "success", nodeType: "Success", label: "Success" }
   ],
   edges: [
     { from: "start", to: "task-1" },

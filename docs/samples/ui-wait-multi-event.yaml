@@ -25,25 +25,25 @@ workflow:
     UI のイベント選択と allowedEvents 表示の確認用。
 
 nodes:
-  - id: flow.start
+  - name: flow.start
     type: start
     label: 開始
     next: flow.prepare
 
-  - id: flow.prepare
+  - name: flow.prepare
     type: action
     label: 準備（noop）
     action: noop
     next: flow.approve.wait
 
-  - id: flow.approve.wait
+  - name: flow.approve.wait
     type: wait
     label: 承認待ち
     events:
       approve: flow.approved
       reject: flow.rejected
 
-  - id: flow.approved
+  - name: flow.approved
     type: action
     label: 承認後処理
     action: noop
@@ -51,7 +51,7 @@ nodes:
       result: approved
     next: flow.end
 
-  - id: flow.rejected
+  - name: flow.rejected
     type: action
     label: 却下後処理
     action: noop
@@ -59,6 +59,6 @@ nodes:
       result: rejected
     next: flow.end
 
-  - id: flow.end
+  - name: flow.end
     type: end
     label: 完了

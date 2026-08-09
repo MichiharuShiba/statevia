@@ -449,8 +449,8 @@ public sealed class ExecutionsControllerTests
                 [
                     new ExecutionViewNodeDto
                     {
-                        ExecutionNodeId = "n1",
-                        StateName = "S1",
+                        NodeId = "n1",
+                        NodeName = "S1",
                         NodeType = "Task",
                         Status = "RUNNING",
                         Attempt = 1,
@@ -477,7 +477,7 @@ public sealed class ExecutionsControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var model = Assert.IsType<ExecutionViewDto>(ok.Value);
         Assert.Single(model.Nodes);
-        Assert.Equal("n1", model.Nodes[0].ExecutionNodeId);
+        Assert.Equal("n1", model.Nodes[0].NodeId);
         Assert.True(model.Nodes[0].ConditionRouting.HasValue);
         Assert.Equal(
             ConditionRoutingResolutions.MatchedCase,

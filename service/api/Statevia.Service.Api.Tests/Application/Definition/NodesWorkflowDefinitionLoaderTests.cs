@@ -19,10 +19,10 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: Minimal
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -46,36 +46,36 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: NestedFork
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: outerFork
-              - id: outerFork
+              - name: outerFork
                 type: fork
                 branches: [outerFast, innerFork]
-              - id: outerFast
+              - name: outerFast
                 type: action
                 action: noop
                 next: outerJoin
-              - id: innerFork
+              - name: innerFork
                 type: fork
                 branches: [innerA, innerB]
-              - id: innerA
+              - name: innerA
                 type: action
                 action: noop
                 next: innerJoin
-              - id: innerB
+              - name: innerB
                 type: action
                 action: noop
                 next: innerJoin
-              - id: innerJoin
+              - name: innerJoin
                 type: join
                 mode: all
                 next: outerJoin
-              - id: outerJoin
+              - name: outerJoin
                 type: join
                 mode: all
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -106,25 +106,25 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: ForkJoin
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: fork1
-              - id: fork1
+              - name: fork1
                 type: fork
                 branches: [b1, b2]
-              - id: b1
+              - name: b1
                 type: action
                 action: noop
                 next: join1
-              - id: b2
+              - name: b2
                 type: action
                 action: noop
                 next: join1
-              - id: join1
+              - name: join1
                 type: join
                 mode: all
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -150,19 +150,19 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: FailedPath
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 next: endNode
                 error: failedHandler
-              - id: failedHandler
+              - name: failedHandler
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -183,15 +183,15 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: VarsOutput
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: getUser
-              - id: getUser
+              - name: getUser
                 type: action
                 action: noop
                 output: $.vars.user
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -202,7 +202,7 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.Equal("$.vars.user", definition.States["getUser"].Output);
     }
 
-    /// <summary>action.error の object 形式（id）を受理する。</summary>
+    /// <summary>action.error の object 形式（name）を受理する。</summary>
     [Fact]
     public void Load_ActionErrorObject_NormalizesTarget()
     {
@@ -212,20 +212,20 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: FailedPathObj
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 next: endNode
                 error:
-                  id: failedHandler
-              - id: failedHandler
+                  name: failedHandler
+              - name: failedHandler
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -246,14 +246,14 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: WaitFlow
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: wait1
-              - id: wait1
+              - name: wait1
                 type: wait
                 event: resume
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -278,23 +278,23 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: MultiWait
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: approve
-              - id: approve
+              - name: approve
                 type: wait
                 events:
                   approve: approved
                   reject: rejected
-              - id: approved
+              - name: approved
                 type: action
                 action: statevia.action.builtin.noop
                 next: endNode
-              - id: rejected
+              - name: rejected
                 type: action
                 action: statevia.action.builtin.noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -319,16 +319,16 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: WaitEventsEdges
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: approve
-              - id: approve
+              - name: approve
                 type: wait
                 events:
                   approve: endNode
                 edges:
                   - to: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -350,10 +350,10 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: ConditionalEdges
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 edges:
@@ -370,15 +370,15 @@ public sealed class NodesWorkflowDefinitionLoaderTests
                       value: 0
                     order: 20
                   - to: low
-              - id: high
+              - name: high
                 type: action
                 action: noop
                 next: endNode
-              - id: low
+              - name: low
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -403,15 +403,15 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: StartEdgesOnly
             nodes:
-              - id: start
+              - name: start
                 type: start
                 edges:
                   - to: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -433,10 +433,10 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               id: wf-from-id
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -458,10 +458,10 @@ public sealed class NodesWorkflowDefinitionLoaderTests
               name: N
             controls: []
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -501,11 +501,11 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: N
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: endNode
               -
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -526,14 +526,14 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: Unreachable
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: endNode
-              - id: orphan
+              - name: orphan
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -545,9 +545,9 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.Contains("orphan", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>ノード ID が重複しているとき拒否する。</summary>
+    /// <summary>ノード name が重複しているとき拒否する。</summary>
     [Fact]
-    public void Load_Throws_WhenDuplicateNodeId()
+    public void Load_Throws_WhenDuplicateNodeName()
     {
         // Arrange
         var yaml = """
@@ -555,14 +555,14 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: Dup
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: endNode
-              - id: Start
+              - name: Start
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -570,7 +570,32 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
 
         // Assert
-        Assert.Contains("Duplicate", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Duplicate node name", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>ノードに id のみがあり name がないとき拒否する（フォールバックなし）。</summary>
+    [Fact]
+    public void Load_Throws_WhenNodeHasIdButNoName()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: IdOnly
+            nodes:
+              - id: start
+                type: start
+                next: endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("Every node must have", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("'name'", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>action.error の自己参照は拒否する。</summary>
@@ -583,15 +608,15 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: ErrorSelf
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 next: endNode
                 error: a
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -612,15 +637,15 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: ErrorOnWait
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: wait1
-              - id: wait1
+              - name: wait1
                 type: wait
                 event: resume
                 next: endNode
                 error: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -641,20 +666,20 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: EdgeNextMismatch
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 next: endNode
                 edges:
                   - to: b
-              - id: b
+              - name: b
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -675,25 +700,25 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: JoinMode
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: fork1
-              - id: fork1
+              - name: fork1
                 type: fork
                 branches: [b1, b2]
-              - id: b1
+              - name: b1
                 type: action
                 action: noop
                 next: join1
-              - id: b2
+              - name: b2
                 type: action
                 action: noop
                 next: join1
-              - id: join1
+              - name: join1
                 type: join
                 mode: any
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -714,10 +739,10 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: BadType
             nodes:
-              - id: start
+              - name: start
                 type: mystery
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -738,10 +763,10 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: EndNext
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
                 next: start
             """;
@@ -763,10 +788,10 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: BadVersion
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -786,10 +811,10 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: N
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -808,10 +833,10 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         var yaml = """
             version: 1
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -832,13 +857,13 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: TwoStarts
             nodes:
-              - id: start1
+              - name: start1
                 type: start
                 next: endNode
-              - id: start2
+              - name: start2
                 type: start
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -859,13 +884,13 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: OrphanJoin
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: join1
-              - id: join1
+              - name: join1
                 type: join
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -886,26 +911,26 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: ForkEdges
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: fork1
-              - id: fork1
+              - name: fork1
                 type: fork
                 branches: [b1, b2]
                 edges:
                   - to: b1
-              - id: b1
+              - name: b1
                 type: action
                 action: noop
                 next: join1
-              - id: b2
+              - name: b2
                 type: action
                 action: noop
                 next: join1
-              - id: join1
+              - name: join1
                 type: join
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -926,13 +951,13 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: NoAction
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -943,7 +968,7 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.Contains("must have 'action'", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>edge.to の object 形式（id）を受理する。</summary>
+    /// <summary>edge.to の object 形式（name）を受理する。</summary>
     [Fact]
     public void Load_EdgeToObject_Succeeds()
     {
@@ -953,12 +978,12 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: EdgeObj
             nodes:
-              - id: start
+              - name: start
                 type: start
                 edges:
                   - to:
-                      id: endNode
-              - id: endNode
+                      name: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -979,39 +1004,39 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: MultiFork
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: forkOuter
-              - id: forkOuter
+              - name: forkOuter
                 type: fork
                 branches: [fork1, fork2]
-              - id: fork1
+              - name: fork1
                 type: fork
                 branches: [b1, b2]
-              - id: b1
+              - name: b1
                 type: action
                 action: noop
                 next: join1
-              - id: b2
+              - name: b2
                 type: action
                 action: noop
                 next: join1
-              - id: fork2
+              - name: fork2
                 type: fork
                 branches: [c1, c2]
-              - id: c1
+              - name: c1
                 type: action
                 action: noop
                 next: join1
-              - id: c2
+              - name: c2
                 type: action
                 action: noop
                 next: join1
-              - id: join1
+              - name: join1
                 type: join
                 mode: all
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1032,10 +1057,10 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: NoEnd
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
             """;
@@ -1057,15 +1082,15 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: BadErrorRef
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 next: endNode
                 error: missing
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1073,7 +1098,7 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
 
         // Assert
-        Assert.Contains("references unknown id", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("references unknown name", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>start に outgoing が無いとき拒否する。</summary>
@@ -1086,9 +1111,9 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: StartNoOut
             nodes:
-              - id: start
+              - name: start
                 type: start
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1109,13 +1134,13 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: ActionNoOut
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1136,13 +1161,13 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: WaitNoEvent
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: wait1
-              - id: wait1
+              - name: wait1
                 type: wait
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1163,17 +1188,17 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: ForkOneBranch
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: fork1
-              - id: fork1
+              - name: fork1
                 type: fork
                 branches: [b1]
-              - id: b1
+              - name: b1
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1194,24 +1219,24 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: JoinNoOut
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: fork1
-              - id: fork1
+              - name: fork1
                 type: fork
                 branches: [b1, b2]
-              - id: b1
+              - name: b1
                 type: action
                 action: noop
                 next: join1
-              - id: b2
+              - name: b2
                 type: action
                 action: noop
                 next: join1
-              - id: join1
+              - name: join1
                 type: join
                 mode: all
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1232,11 +1257,11 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: StartBadEdge
             nodes:
-              - id: start
+              - name: start
                 type: start
                 edges:
                   - to: missing
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1244,7 +1269,7 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
 
         // Assert
-        Assert.Contains("references unknown id", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("references unknown name", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>条件付き edges に default が無いとき拒否する。</summary>
@@ -1257,10 +1282,10 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: NoDefaultEdge
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 edges:
@@ -1274,15 +1299,15 @@ public sealed class NodesWorkflowDefinitionLoaderTests
                       path: $.x
                       op: lte
                       value: 0
-              - id: high
+              - name: high
                 type: action
                 action: noop
                 next: endNode
-              - id: low
+              - name: low
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1303,20 +1328,20 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: MultiUncondEdge
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: a
-              - id: a
+              - name: a
                 type: action
                 action: noop
                 edges:
                   - to: b
                   - to: endNode
-              - id: b
+              - name: b
                 type: action
                 action: noop
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1339,14 +1364,14 @@ public sealed class NodesWorkflowDefinitionLoaderTests
               modules:
                 mail: com.company.mail
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: act
-              - id: act
+              - name: act
                 type: action
                 action: mail.send
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1370,17 +1395,17 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: W
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: act
-              - id: act
+              - name: act
                 type: action
                 action: noop
                 retry:
                   limit: 2
                   backoff: exponential
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1404,15 +1429,15 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: W
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: act
-              - id: act
+              - name: act
                 type: action
                 action: noop
                 retry: {}
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1434,10 +1459,10 @@ public sealed class NodesWorkflowDefinitionLoaderTests
               name: W
               modules: {}
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 
@@ -1458,17 +1483,17 @@ public sealed class NodesWorkflowDefinitionLoaderTests
             workflow:
               name: W
             nodes:
-              - id: start
+              - name: start
                 type: start
                 next: act
-              - id: act
+              - name: act
                 type: action
                 action: noop
                 input:
                   retry:
                     limit: 3
                 next: endNode
-              - id: endNode
+              - name: endNode
                 type: end
             """;
 

@@ -23,10 +23,10 @@ function exec(
 }
 
 const node = (
-  executionNodeId: string,
+  nodeId: string,
   status: ExecutionView["nodes"][0]["status"]
 ): ExecutionView["nodes"][0] => ({
-  executionNodeId,
+  nodeId,
   nodeType: "Task",
   status,
   attempt: 1,

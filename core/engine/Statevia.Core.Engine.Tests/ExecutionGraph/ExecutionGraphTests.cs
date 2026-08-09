@@ -85,7 +85,7 @@ public class ExecutionGraphTests
                 new CheckpointGraphNode
                 {
                     NodeId = "deadbeef",
-                    StateName = "Legacy",
+                    NodeName = "Legacy",
                     NodeType = "Task",
                     StartedAt = DateTime.UtcNow,
                     Attempt = 1
@@ -115,7 +115,7 @@ public class ExecutionGraphTests
                 new CheckpointGraphNode
                 {
                     NodeId = "AaBbCcDdEeFf",
-                    StateName = "Mixed",
+                    NodeName = "Mixed",
                     NodeType = "Task",
                     StartedAt = DateTime.UtcNow,
                     Attempt = 1
@@ -192,7 +192,7 @@ public class ExecutionGraphTests
 
         // Assert
         Assert.Equal(2, nodes.Count);
-        Assert.Contains(nodes, n => n.NodeId == id1 && n.StateName == "A");
-        Assert.Contains(nodes, n => n.NodeId == id2 && n.StateName == "B");
+        Assert.Contains(nodes, n => n.NodeId == id1 && n.NodeName == "A");
+        Assert.Contains(nodes, n => n.NodeId == id2 && n.NodeName == "B");
     }
 }

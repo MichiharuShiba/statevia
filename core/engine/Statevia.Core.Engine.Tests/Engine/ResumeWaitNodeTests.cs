@@ -32,7 +32,7 @@ public sealed class ResumeWaitNodeTests
         Assert.True(snapshot!.IsCompleted);
         Assert.Contains(
             GetGraphNodes(engine, executionId),
-            n => string.Equals(n.StateName, "Approved", StringComparison.OrdinalIgnoreCase)
+            n => string.Equals(n.NodeName, "Approved", StringComparison.OrdinalIgnoreCase)
                 && n.IsCompleted);
     }
 
@@ -48,7 +48,7 @@ public sealed class ResumeWaitNodeTests
         var waitNodes = GetGraphNodes(engine, executionId)
             .Where(n => string.Equals(n.NodeType, "Wait", StringComparison.OrdinalIgnoreCase)
                 && !n.IsCompleted)
-            .ToDictionary(n => n.StateName, n => n.NodeId, StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(n => n.NodeName, n => n.NodeId, StringComparer.OrdinalIgnoreCase);
 
         // Act
         engine.ResumeWaitNode(executionId, waitNodes["ManagerApproval"], "approve");
@@ -61,7 +61,7 @@ public sealed class ResumeWaitNodeTests
         Assert.True(snapshot!.IsCompleted);
         Assert.Contains(
             GetGraphNodes(engine, executionId),
-            n => string.Equals(n.StateName, "Join1", StringComparison.OrdinalIgnoreCase)
+            n => string.Equals(n.NodeName, "Join1", StringComparison.OrdinalIgnoreCase)
                 && n.IsCompleted);
     }
 
@@ -83,11 +83,11 @@ public sealed class ResumeWaitNodeTests
         Assert.True(engine.GetSnapshot(executionId)!.IsCompleted);
         Assert.Contains(
             GetGraphNodes(engine, executionId),
-            n => string.Equals(n.StateName, "Rejected", StringComparison.OrdinalIgnoreCase)
+            n => string.Equals(n.NodeName, "Rejected", StringComparison.OrdinalIgnoreCase)
                 && n.IsCompleted);
         Assert.DoesNotContain(
             GetGraphNodes(engine, executionId),
-            n => string.Equals(n.StateName, "Approved", StringComparison.OrdinalIgnoreCase));
+            n => string.Equals(n.NodeName, "Approved", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>単一 Wait・単一イベントなら PublishEvent シムが ResumeWaitNode 相当に動く。</summary>
@@ -203,7 +203,7 @@ public sealed class ResumeWaitNodeTests
         Assert.True(engine.GetSnapshot(executionId)!.IsCompleted);
         Assert.Contains(
             GetGraphNodes(engine, executionId),
-            n => string.Equals(n.StateName, "Approved", StringComparison.OrdinalIgnoreCase)
+            n => string.Equals(n.NodeName, "Approved", StringComparison.OrdinalIgnoreCase)
                 && n.IsCompleted);
     }
 
@@ -227,7 +227,7 @@ public sealed class ResumeWaitNodeTests
         Assert.True(engine.GetSnapshot(executionId)!.IsCompleted);
         Assert.Contains(
             GetGraphNodes(engine, executionId),
-            n => string.Equals(n.StateName, "Approved", StringComparison.OrdinalIgnoreCase)
+            n => string.Equals(n.NodeName, "Approved", StringComparison.OrdinalIgnoreCase)
                 && n.IsCompleted);
     }
 
@@ -406,7 +406,7 @@ public sealed class ResumeWaitNodeTests
         }),
     };
 
-    private static IReadOnlyList<(string NodeId, string StateName, string? NodeType, bool IsCompleted)> GetGraphNodes(
+    private static IReadOnlyList<(string NodeId, string NodeName, string? NodeType, bool IsCompleted)> GetGraphNodes(
         ExecutionEngine engine,
         string executionId)
     {
@@ -420,11 +420,11 @@ public sealed class ResumeWaitNodeTests
             .Select(n =>
             {
                 var nodeId = n.GetProperty("nodeId").GetString() ?? string.Empty;
-                var stateName = n.GetProperty("stateName").GetString() ?? string.Empty;
+                var nodeName = n.GetProperty("nodeName").GetString() ?? string.Empty;
                 var nodeType = n.TryGetProperty("nodeType", out var nt) ? nt.GetString() : null;
                 var isCompleted = n.TryGetProperty("completedAt", out var completedAt)
                     && completedAt.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined;
-                return (nodeId, stateName, nodeType, isCompleted);
+                return (nodeId, nodeName, nodeType, isCompleted);
             })
             .ToList();
     }

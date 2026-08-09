@@ -41,8 +41,8 @@ describe("outputSchemaHints", () => {
 
   it("直前 action ノードの outputSchema から Context パス候補を収集する", () => {
     const nodes = [
-      { id: "Rest", type: "action", action: "statevia.action.builtin.rest" },
-      { id: "Next", type: "action", action: "statevia.action.builtin.noop" }
+      { name: "Rest", type: "action", action: "statevia.action.builtin.rest" },
+      { name: "Next", type: "action", action: "statevia.action.builtin.noop" }
     ];
     const edges = [{ sourceId: "Rest", targetId: "Next" }];
     const outputSchemaByActionId = new Map([

@@ -33,13 +33,13 @@ workflow:
     { "eligible": true, "shared": { "orderId": "ORD-1001" } }
 
 nodes:
-  - id: order.start
+  - name: order.start
     type: start
     label: 開始
     next: order.preflight
 
   # 条件付き edges の例（既定 branch で却下ハンドラへ）
-  - id: order.preflight
+  - name: order.preflight
     type: action
     label: 受付ゲート
     action: noop
@@ -52,14 +52,14 @@ nodes:
         order: 10
       - to: order.reject.notify
 
-  - id: order.validate
+  - name: order.validate
     type: action
     label: 受注検証
     action: noop
     next: order.split
     error: order.reject.notify
 
-  - id: order.reject.notify
+  - name: order.reject.notify
     type: action
     label: 却下・検証失敗の通知
     action: noop
@@ -68,14 +68,14 @@ nodes:
       stage: pre_fulfillment
     next: order.end
 
-  - id: order.split
+  - name: order.split
     type: fork
     label: 並列出荷
     branches:
       - order.ship.east
       - order.await.transfer
 
-  - id: order.ship.east
+  - name: order.ship.east
     type: action
     label: 東倉から即出荷（遅延シミュレート）
     action: sleep
@@ -83,19 +83,19 @@ nodes:
       duration: 5s
     next: order.merge
 
-  - id: order.await.transfer
+  - name: order.await.transfer
     type: wait
     label: 在庫横持ち完了待ち
     event: StockTransferred
     next: order.merge
 
-  - id: order.merge
+  - name: order.merge
     type: join
     label: 出荷ライン合流
     mode: all
     next: order.notify.customer
 
-  - id: order.notify.customer
+  - name: order.notify.customer
     type: action
     label: 顧客へ発送通知
     action: noop
@@ -104,6 +104,6 @@ nodes:
       template: order.shipped
     next: order.end
 
-  - id: order.end
+  - name: order.end
     type: end
     label: 完了

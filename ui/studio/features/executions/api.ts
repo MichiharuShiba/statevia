@@ -92,16 +92,16 @@ export async function publishExecutionEvent(
 /**
  * Wait ノードの Resume を要求する。
  * @param displayId 実行 displayId
- * @param executionNodeId ノード ID
+ * @param nodeId ノード ID
  * @param resumeKey 再開イベント名（必須）
  */
 export async function resumeExecutionNode(
   displayId: string,
-  executionNodeId: string,
+  nodeId: string,
   resumeKey: string
 ): Promise<CommandAccepted> {
   return apiPost<CommandAccepted>(
-    `/executions/${encodeURIComponent(displayId)}/nodes/${encodeURIComponent(executionNodeId)}/resume`,
+    `/executions/${encodeURIComponent(displayId)}/nodes/${encodeURIComponent(nodeId)}/resume`,
     { resumeKey }
   );
 }

@@ -3,32 +3,32 @@ export const defaultDefinitionYaml = `version: 1
 workflow:
   name: DefinitionMinimal
 nodes:
-  - id: start
+  - name: start
     type: start
     next: slowStep
-  - id: slowStep
+  - name: slowStep
     type: action
     action: sleep
     input:
       duration: 5s
     next: fork1
-  - id: fork1
+  - name: fork1
     type: fork
     branches: [branchLeft, branchRight]
-  - id: branchLeft
+  - name: branchLeft
     type: action
     action: noop
     next: join1
-  - id: branchRight
+  - name: branchRight
     type: action
     action: sleep
     input:
       duration: 5s
     next: join1
-  - id: join1
+  - name: join1
     type: join
     mode: all
     next: endNode
-  - id: endNode
+  - name: endNode
     type: end
 `;

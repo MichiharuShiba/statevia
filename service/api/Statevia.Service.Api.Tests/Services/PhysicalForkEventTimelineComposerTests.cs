@@ -56,7 +56,7 @@ public sealed class PhysicalForkEventTimelineComposerTests
         };
         var patch = new List<GraphPatchNodeDto>
         {
-            new() { ExecutionNodeId = "n1", StateName = "A", Status = "SUCCEEDED" }
+            new() { NodeId = "n1", NodeName = "A", Status = "SUCCEEDED" }
         };
 
         // Act

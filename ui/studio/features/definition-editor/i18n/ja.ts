@@ -43,40 +43,40 @@ export const definitionEditorUiTextJa: DefinitionEditorFeatureUiText = {
       rootObjectRequired: () => "YAML ルートはオブジェクトである必要があります。",
       nodesArrayRequired: () => "nodes は配列で指定してください。",
       nodesRequired: () => "nodes は1件以上必要です。",
-      nodeIdRequired: () => "node.id は必須です。",
-      duplicateNodeId: (nodeId: string) => `重複 node.id: '${nodeId}'`,
+      nodeNameRequired: () => "node.name は必須です。",
+      duplicateNodeName: (nodeName: string) => `重複 node.name: '${nodeName}'`,
       startCountInvalid: (count: number) => `start ノードは1件のみ許可されます（現在 ${count} 件）。`,
       endCountInvalid: (count: number) => `end ノードは1件のみ許可されます（現在 ${count} 件）。`,
-      startRequiresTransition: (nodeId: string) => `Node '${nodeId}': start は next または edges が必要です。`,
-      actionRequired: (nodeId: string) => `Node '${nodeId}': action ノードは action が必須です。`,
-      actionRequiresTransition: (nodeId: string) => `Node '${nodeId}': action は next または edges が必要です。`,
-      waitEventRequired: (nodeId: string) =>
-        `Node '${nodeId}': wait ノードは events または event が必須です。`,
-      waitRequiresTransition: (nodeId: string) =>
-        `Node '${nodeId}': wait の旧形式（event）は next または edges が必要です。`,
-      waitEventsAndEventTogether: (nodeId: string) =>
-        `Node '${nodeId}': wait の events と event は併用できません。`,
-      waitEventsCannotHaveEdges: (nodeId: string) =>
-        `Node '${nodeId}': wait の events と edges は併用できません。遷移先は events に書いてください。`,
-      waitEventTargetRequired: (nodeId: string, eventName: string) =>
-        `Node '${nodeId}': events['${eventName}'] の遷移先が必須です。`,
-      forkBranchesRequired: (nodeId: string) => `Node '${nodeId}': fork は branches を2件以上指定してください。`,
-      joinRequiresTransition: (nodeId: string) => `Node '${nodeId}': join は next または edges が必要です。`,
-      joinModeInvalid: (nodeId: string) => `Node '${nodeId}': join.mode は 'all' のみ許可されます。`,
-      endCannotHaveTransition: (nodeId: string) => `Node '${nodeId}': end は next/edges を持てません。`,
-      edgeToRequired: (nodeId: string) => `Node '${nodeId}': edge.to は必須です。`,
-      edgeWhenPathRequired: (nodeId: string) => `Node '${nodeId}': edge.when.path は必須です。`,
-      edgeWhenOpRequired: (nodeId: string) => `Node '${nodeId}': edge.when.op は必須です。`,
-      edgeWhenValueRequired: (nodeId: string) =>
-        `Node '${nodeId}': この演算子では edge.when.value が必須です（EXISTS 以外）。`,
-      edgeWhenValueInInvalid: (nodeId: string) =>
-        `Node '${nodeId}': IN では edge.when.value は空でない配列（または JSON 配列文字列）が必要です。`,
-      edgeWhenValueBetweenInvalid: (nodeId: string) =>
-        `Node '${nodeId}': BETWEEN では edge.when.value は要素2件以上の配列（または JSON 配列文字列）が必要です。`,
-      edgeDefaultMultiple: (nodeId: string) =>
-        `Node '${nodeId}': default=true の edge は 1 つまでです。`,
-      selfReferenceEdge: (nodeId: string) => `Node '${nodeId}': 自己参照エッジは許可されません。`,
-      missingTargetNode: (nodeId: string, targetId: string) => `Node '${nodeId}': 参照先 '${targetId}' が存在しません。`,
+      startRequiresTransition: (nodeName: string) => `Node '${nodeName}': start は next または edges が必要です。`,
+      actionRequired: (nodeName: string) => `Node '${nodeName}': action ノードは action が必須です。`,
+      actionRequiresTransition: (nodeName: string) => `Node '${nodeName}': action は next または edges が必要です。`,
+      waitEventRequired: (nodeName: string) =>
+        `Node '${nodeName}': wait ノードは events または event が必須です。`,
+      waitRequiresTransition: (nodeName: string) =>
+        `Node '${nodeName}': wait の旧形式（event）は next または edges が必要です。`,
+      waitEventsAndEventTogether: (nodeName: string) =>
+        `Node '${nodeName}': wait の events と event は併用できません。`,
+      waitEventsCannotHaveEdges: (nodeName: string) =>
+        `Node '${nodeName}': wait の events と edges は併用できません。遷移先は events に書いてください。`,
+      waitEventTargetRequired: (nodeName: string, eventName: string) =>
+        `Node '${nodeName}': events['${eventName}'] の遷移先が必須です。`,
+      forkBranchesRequired: (nodeName: string) => `Node '${nodeName}': fork は branches を2件以上指定してください。`,
+      joinRequiresTransition: (nodeName: string) => `Node '${nodeName}': join は next または edges が必要です。`,
+      joinModeInvalid: (nodeName: string) => `Node '${nodeName}': join.mode は 'all' のみ許可されます。`,
+      endCannotHaveTransition: (nodeName: string) => `Node '${nodeName}': end は next/edges を持てません。`,
+      edgeToRequired: (nodeName: string) => `Node '${nodeName}': edge.to は必須です。`,
+      edgeWhenPathRequired: (nodeName: string) => `Node '${nodeName}': edge.when.path は必須です。`,
+      edgeWhenOpRequired: (nodeName: string) => `Node '${nodeName}': edge.when.op は必須です。`,
+      edgeWhenValueRequired: (nodeName: string) =>
+        `Node '${nodeName}': この演算子では edge.when.value が必須です（EXISTS 以外）。`,
+      edgeWhenValueInInvalid: (nodeName: string) =>
+        `Node '${nodeName}': IN では edge.when.value は空でない配列（または JSON 配列文字列）が必要です。`,
+      edgeWhenValueBetweenInvalid: (nodeName: string) =>
+        `Node '${nodeName}': BETWEEN では edge.when.value は要素2件以上の配列（または JSON 配列文字列）が必要です。`,
+      edgeDefaultMultiple: (nodeName: string) =>
+        `Node '${nodeName}': default=true の edge は 1 つまでです。`,
+      selfReferenceEdge: (nodeName: string) => `Node '${nodeName}': 自己参照エッジは許可されません。`,
+      missingTargetNode: (nodeName: string, targetName: string) => `Node '${nodeName}': 参照先 '${targetName}' が存在しません。`,
       selfReferenceRejected: "自己参照エッジは作成できません。",
       whenOpPlaceholder: "演算子を選択",
       whenPathPlaceholder: "$.states.Fetch.output.amount",

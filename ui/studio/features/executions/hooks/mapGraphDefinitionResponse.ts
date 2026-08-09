@@ -9,8 +9,7 @@ import type {
 
 /** GET /v1/graphs/{graphId}（GraphDefinitionResponse）の緩い形。Service API の camelCase JSON を前提。 */
 type ApiGraphNode = {
-  nodeId?: string;
-  stateName?: string;
+  nodeName?: string;
   nodeType?: string;
   label?: string;
   branch?: string;
@@ -51,20 +50,17 @@ function parseMetaLayout(rawMeta: unknown): GraphDefinitionMeta | undefined {
   const layoutRaw = rawMeta.layout;
   if (!isRecord(layoutRaw)) return undefined;
   const layout: Record<string, { x: number; y: number }> = {};
-  for (const [nodeId, pos] of Object.entries(layoutRaw)) {
+  for (const [nodeName, pos] of Object.entries(layoutRaw)) {
     const p = parsePosition(pos);
-    if (p) layout[nodeId] = p;
+    if (p) layout[nodeName] = p;
   }
   return Object.keys(layout).length > 0 ? { layout } : undefined;
 }
 
 function mapNode(n: ApiGraphNode): GraphNodeDef {
-  const nodeId = typeof n.nodeId === "string" ? n.nodeId : "";
-  const stateName =
-    typeof n.stateName === "string" && n.stateName.trim().length > 0 ? n.stateName.trim() : undefined;
+  const nodeName = typeof n.nodeName === "string" ? n.nodeName : "";
   return {
-    nodeId,
-    ...(stateName === undefined ? {} : { stateName }),
+    nodeName,
     nodeType: typeof n.nodeType === "string" && n.nodeType.length > 0 ? n.nodeType : "Task",
     label: typeof n.label === "string" && n.label.length > 0 ? n.label : undefined,
     branch: typeof n.branch === "string" && n.branch.length > 0 ? n.branch : undefined
@@ -85,7 +81,7 @@ function mapEdge(e: ApiGraphEdge): GraphEdgeDef {
 
 /**
  * Service API の GraphDefinitionResponse を UI の GraphDefinition に変換する。
- * 保存済み座標は `meta.layout.<nodeId>.{x,y}` を前提とする（API が返さない場合もある）。
+ * 保存済み座標は `meta.layout.<nodeName>.{x,y}` を前提とする（API が返さない場合もある）。
  * 不正・空の場合は null。
  */
 export function mapGraphDefinitionResponse(raw: unknown, fallbackGraphId: string): GraphDefinition | null {
@@ -96,7 +92,7 @@ export function mapGraphDefinitionResponse(raw: unknown, fallbackGraphId: string
   const edgesRaw = Array.isArray(o.edges) ? o.edges : [];
   if (nodesRaw.length === 0) return null;
 
-  const nodes = nodesRaw.map(mapNode).filter((n) => n.nodeId.length > 0);
+  const nodes = nodesRaw.map(mapNode).filter((n) => n.nodeName.length > 0);
   if (nodes.length === 0) return null;
 
   const edges = edgesRaw.map(mapEdge).filter((e) => e.from && e.to);

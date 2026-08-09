@@ -25,7 +25,7 @@ describe("buildExecutionView", () => {
       nodes: [
         {
           nodeId: "n-1",
-          stateName: "RouteByScore",
+          nodeName: "RouteByScore",
           nodeType: "Task",
           startedAt: "2026-01-01T00:00:00Z",
           completedAt: "2026-01-01T00:00:01Z",
@@ -41,7 +41,7 @@ describe("buildExecutionView", () => {
 
     // Assert
     expect(view.nodes).toHaveLength(1);
-    expect(view.nodes[0]?.executionNodeId).toBe("n-1");
+    expect(view.nodes[0]?.nodeId).toBe("n-1");
     expect(view.nodes[0]?.nodeType).toBe("Task");
     expect(view.nodes[0]?.conditionRouting).toEqual(conditionRouting);
     expect(view.nodes[0]?.startedAt).toBe("2026-01-01T00:00:00Z");
@@ -63,7 +63,7 @@ describe("buildExecutionView", () => {
       nodes: [
         {
           nodeId: "n-1",
-          stateName: "Task",
+          nodeName: "Task",
           completedAt: "2026-01-01T00:00:02Z",
           fact: "Completed",
           input: { payload: 1 },
@@ -80,7 +80,7 @@ describe("buildExecutionView", () => {
 
     const view = buildExecutionView(execution, graph);
 
-    expect(view.nodes[0]?.executionNodeId).toBe("n-1");
+    expect(view.nodes[0]?.nodeId).toBe("n-1");
     expect(view.nodes[0]?.input).toEqual({ payload: 1 });
     expect(view.nodes[0]?.output).toEqual({ result: 42 });
     expect(view.nodes[0]?.attempt).toBe(2);
@@ -105,7 +105,7 @@ describe("buildExecutionView", () => {
       nodes: [
         {
           nodeId: "wait-1",
-          stateName: "flow.approve.wait",
+          nodeName: "flow.approve.wait",
           nodeType: "Wait",
           startedAt: "2026-01-01T00:00:00Z",
           completedAt: null,

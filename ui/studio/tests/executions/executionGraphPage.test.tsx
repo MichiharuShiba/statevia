@@ -35,9 +35,9 @@ vi.mock("../../features/executions/hooks/useGraphData", () => ({
   useGraphData: () => ({
     nodes: [
       {
+        name: "n-1",
         nodeId: "n-1",
-        executionNodeId: "n-1",
-        stateName: "task",
+        nodeName: "task",
         nodeType: "Task",
         label: "Task",
         status: "RUNNING",

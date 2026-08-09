@@ -30,7 +30,7 @@ function copyWaitEvents(
 export function serializeDefinitionYaml(document: DefinitionGraphDocument): string {
   const nodes = document.nodes.map((node: DefinitionGraphNode) => {
     const base: Record<string, unknown> = {
-      id: node.id,
+      name: node.name,
       type: node.type
     };
 

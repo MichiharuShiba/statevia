@@ -11,9 +11,9 @@ type NodeListViewProps = {
   onSelectNode: (nodeId: string) => void;
 };
 
-/** 一覧の「ノード名」列: `stateName` があればそのまま、なければダッシュ。 */
+/** 一覧の「ノード名」列: `nodeName` があればそのまま、なければダッシュ。 */
 function listNodeName(node: ExecutionNodeDTO): string {
-  const trimmed = typeof node.stateName === "string" ? node.stateName.trim() : "";
+  const trimmed = typeof node.nodeName === "string" ? node.nodeName.trim() : "";
   return trimmed.length > 0 ? trimmed : "—";
 }
 
@@ -23,7 +23,7 @@ function listDurationText(node: ExecutionNodeDTO): string {
 }
 
 /**
- * 実行ノードの一覧（ステータス・タイプ・ノード名・実行ノード ID・実行時間）。
+ * 実行ノードの一覧（ステータス・タイプ・ノード名・ノード ID・実行時間）。
  */
 export function NodeListView({ nodes, selectedNodeId, onSelectNode }: Readonly<NodeListViewProps>) {
   const uiText = useUiText();
@@ -41,20 +41,20 @@ export function NodeListView({ nodes, selectedNodeId, onSelectNode }: Readonly<N
             <th className="py-2 pl-2 pr-2">{uiText.nodeList.columns.status}</th>
             <th className="py-2 pl-2 pr-2">{uiText.nodeList.columns.type}</th>
             <th className="py-2 pl-2 pr-2">{uiText.nodeList.columns.nodeName}</th>
-            <th className="py-2 pl-2 pr-2">{uiText.nodeList.columns.executionNodeId}</th>
+            <th className="py-2 pl-2 pr-2">{uiText.nodeList.columns.nodeId}</th>
             <th className="py-2 pl-2 pr-2">{uiText.nodeList.columns.duration}</th>
           </tr>
         </thead>
         <tbody>
           {sorted.map((node) => {
             const style = getStatusStyle(node.status);
-            const selected = selectedNodeId === node.executionNodeId;
+            const selected = selectedNodeId === node.nodeId;
             const runningClass = node.status === "RUNNING" ? "opacity-80" : "";
             return (
               <tr
-                key={node.executionNodeId}
+                key={node.nodeId}
                 className={`cursor-pointer border-t border-[var(--md-sys-color-outline)] ${style.bgClass} ${runningClass} ${selected ? "outline outline-2 outline-[var(--md-sys-color-primary)]" : ""}`}
-                onClick={() => onSelectNode(node.executionNodeId)}
+                onClick={() => onSelectNode(node.nodeId)}
               >
                 <td className="py-2 pl-2 pr-2">
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${style.badgeClass}`}>
@@ -65,7 +65,7 @@ export function NodeListView({ nodes, selectedNodeId, onSelectNode }: Readonly<N
                 <td className="max-w-[10rem] truncate py-2 pl-2 pr-2 font-mono text-xs" title={listNodeName(node)}>
                   {listNodeName(node)}
                 </td>
-                <td className="py-2 pl-2 pr-2 font-mono text-xs">{node.executionNodeId}</td>
+                <td className="py-2 pl-2 pr-2 font-mono text-xs">{node.nodeId}</td>
                 <td className="py-2 pl-2 pr-2 font-mono text-xs">{listDurationText(node)}</td>
               </tr>
             );

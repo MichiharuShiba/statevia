@@ -29,7 +29,7 @@ type NodeDetailDerivedFields = {
   isWaiting: boolean;
   isCanceled: boolean;
   isFailed: boolean;
-  stateNameText: string;
+  nodeNameText: string;
   outputText: string;
   inputText: string;
   conditionRoutingText: string;
@@ -54,7 +54,7 @@ function deriveNodeDetailFields(
     isWaiting: node.status === "WAITING",
     isCanceled: node.status === "CANCELED",
     isFailed: node.status === "FAILED",
-    stateNameText: typeof node.stateName === "string" ? node.stateName.trim() : "",
+    nodeNameText: typeof node.nodeName === "string" ? node.nodeName.trim() : "",
     outputText: "output" in node && node.output !== undefined ? formatTracePayload(node.output) : "",
     inputText: "input" in node && node.input !== undefined ? formatTracePayload(node.input) : "",
     conditionRoutingText:
@@ -151,7 +151,7 @@ export function NodeDetail({
   useEffect(() => {
     const nextEvents = resumeEventsKey.length > 0 ? resumeEventsKey.split("\0") : [];
     setSelectedResumeEvent(nextEvents[0] ?? "");
-  }, [node?.executionNodeId, resumeEventsKey]);
+  }, [node?.nodeId, resumeEventsKey]);
 
   if (!execution) {
     return (
@@ -176,7 +176,7 @@ export function NodeDetail({
       <h2 className="text-sm font-semibold">{uiText.nodeDetail.title(uiText.entities.node)}</h2>
       <div className={`mt-3 rounded-xl border p-3 ${fields.style.borderClass} ${fields.style.bgClass}`}>
         <div className="flex items-center justify-between">
-          <div className="font-mono text-xs">{uiText.nodeDetail.meta.executionNodeId(node.executionNodeId)}</div>
+          <div className="font-mono text-xs">{uiText.nodeDetail.meta.nodeId(node.nodeId)}</div>
           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${fields.style.badgeClass}`}>
             {node.status}
           </span>
@@ -186,7 +186,7 @@ export function NodeDetail({
             <div className="font-mono">{uiText.nodeDetail.meta.workerId(node.workerId)}</div>
           )}
           <div>{uiText.nodeDetail.meta.type(node.nodeType)}</div>
-          {fields.stateNameText !== "" && <div>{uiText.nodeDetail.meta.stateName(fields.stateNameText)}</div>}
+          {fields.nodeNameText !== "" && <div>{uiText.nodeDetail.meta.nodeName(fields.nodeNameText)}</div>}
           <div>{uiText.nodeDetail.meta.attempt(node.attempt)}</div>
           <div>{uiText.nodeDetail.meta.waitKey(node.waitKey ?? "—")}</div>
           <div>{uiText.nodeDetail.meta.allowedEvents(fields.allowedEventsLabel)}</div>

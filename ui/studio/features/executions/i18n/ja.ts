@@ -75,8 +75,8 @@ export const executionsUiTextJa: ExecutionsFeatureUiText = {
     title: (_nodeLabel: string) => "ノード詳細",
     meta: {
       type: (nodeType: string) => `タイプ: ${nodeType}`,
-      stateName: (stateName: string) => `ノード名: ${stateName}`,
-      executionNodeId: (id: string) => `実行ノードID: ${id}`,
+      nodeName: (nodeName: string) => `ノード名: ${nodeName}`,
+      nodeId: (id: string) => `ノードID: ${id}`,
       workerId: (workerId: string) => `ワーカーID: ${workerId}`,
       attempt: (attempt: number) => `試行回数: ${attempt}`,
       waitKey: (waitKey: string) => `Wait キー: ${waitKey}`,
@@ -215,7 +215,7 @@ export const executionsUiTextJa: ExecutionsFeatureUiText = {
       status: "ステータス",
       type: "タイプ",
       nodeName: "ノード名",
-      executionNodeId: "実行ノードID",
+      nodeId: "ノードID",
       duration: "実行時間",
     },
 

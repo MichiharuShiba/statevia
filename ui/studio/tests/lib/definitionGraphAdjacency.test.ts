@@ -8,17 +8,17 @@ describe("buildDocumentAdjacency", () => {
       version: 1,
       workflow: { name: "wf" },
       nodes: [
-        { id: "Start", type: "start", next: "Action" },
-        { id: "Action", type: "action", action: "noop", next: "Fork", error: "End" },
+        { name: "Start", type: "start", next: "Action" },
+        { name: "Action", type: "action", action: "noop", next: "Fork", error: "End" },
         {
-          id: "Fork",
+          name: "Fork",
           type: "fork",
           branches: ["JoinA", "JoinB"],
           edges: [{ to: "JoinA" }, { to: "JoinB", when: { path: "$.x", op: "eq", value: 1 } }]
         },
-        { id: "JoinA", type: "join", next: "End" },
-        { id: "JoinB", type: "join" },
-        { id: "End", type: "end" }
+        { name: "JoinA", type: "join", next: "End" },
+        { name: "JoinB", type: "join" },
+        { name: "End", type: "end" }
       ]
     };
 

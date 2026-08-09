@@ -506,11 +506,11 @@ states:
 
 ## 2. Nodes 形式
 
-フル構成の公式 YAML サンプルは [`docs/samples/ui-customer-order-parallel.yaml`](../samples/ui-customer-order-parallel.yaml)（`ui-` プレフィックス・ドット区切りノード ID・条件 edges・fork/join）を参照する。
+フル構成の公式 YAML サンプルは [`docs/samples/ui-customer-order-parallel.yaml`](../samples/ui-customer-order-parallel.yaml)（`ui-` プレフィックス・ドット区切りノード名・条件 edges・fork/join）を参照する。
 
 ### 2.1 基本構造
 
-ルートに **nodes** 配列があり、各要素が `id` と `type` を持つ。`workflow` メタデータと任意で `controls`（cancel/resume イベント）を併記する。
+ルートに **nodes** 配列があり、各要素が `name` と `type` を持つ。`workflow` メタデータと任意で `controls`（cancel/resume イベント）を併記する。
 
 ```yaml
 version: 1
@@ -527,7 +527,7 @@ controls:                  # 任意
     event: <EventName>
 
 nodes:
-  - id: <nodeId>
+  - name: <nodeName>
     type: start | end | action | wait | fork | join
     label: <string>        # 任意
     # 型ごとのプロパティ（下記）
@@ -539,7 +539,7 @@ Definition Editor は YAML 編集とグラフ編集で同じドキュメント�
 
 - **workflow**: `id` / `name` / `description`。`name` が無く `id` だけの場合、ローダーはワークフロー名に `id` を使うため、エディタも表示名を同様に解決し、`id` を別フィールドとして保持する。
 - **action.input**: 文字列（`$` / `$.` パスやリテラル）またはオブジェクト（キー→パス／リテラル）。グラフのノードインスペクターからも編集できる。
-- **edges[].to**: 文字列、または **`{ id: "<nodeId>" }`**。パース時にエディタは常に遷移先 ID 文字列へ正規化する。
+- **edges[].to**: 文字列、または **`{ name: "<nodeName>" }`**。パース時にエディタは常に遷移先ノード名文字列へ正規化する。
 - **join.mode**: 省略可能（省略時に UI が `mode: all` を自動付与しない）。明示したときのみ `all` を保持する。
 
 Service API の **`GET /v1/definitions/schema/nodes`** が返すスキーマには、`workflow.description` およびノードの **`input` / `error`** プロパティが含まれる（補完・Lint の参照用）。
@@ -555,11 +555,11 @@ Service API の **`GET /v1/definitions/schema/nodes`** が返すスキーマに�
 | fork   | branches           | 2 要素以上の配列。 |
 | join   | next               | mode: all 等。 |
 
-- **start**: `next` で次ノード ID。
+- **start**: `next` で次ノード名。
 - **end**: `next` なし。
 - **action**: `action` はアクション参照（§1.1.1。例: `mail.send`、`statevia.action.builtin.noop`）。`next` で通常遷移先、`error` で失敗時遷移先（action のみ）。`input` で入力マップ（§1.1.2）。
-- **wait**: 正本は **`events`**（イベント名 → 次ノード ID）。単一イベントの旧形式 `event` + `next` も受理し、Loader が `events` へ正規化する。`timeout`（ISO 8601 duration）は現行変換では未使用。
-- **fork**: `branches` に並列ブランチのノード ID の配列。
+- **wait**: 正本は **`events`**（イベント名 → 次ノード名）。単一イベントの旧形式 `event` + `next` も受理し、Loader が `events` へ正規化する。`timeout`（ISO 8601 duration）は現行変換では未使用。
+- **fork**: `branches` に並列ブランチのノード名の配列。
 - **join**: すべてのブランチの完了を待ち、`next` へ進む。
   - Join と Fork の対応: 各枝先頭が当該 Join を**供給**する一意の Fork を選ぶ。供給は (1) 枝の `next` が直接 Join、または (2) 枝先頭が内側 Fork で、その内側 Join の `next` 連鎖が当該 Join に到達すること（ネスト）。`Join.all` は外側 Fork の枝先頭集合になる。例: [`docs/samples/ui-nested-fork.yaml`](../samples/ui-nested-fork.yaml)。Fork 再到達（循環）の例: [`docs/samples/ui-cyclic-fork.yaml`](../samples/ui-cyclic-fork.yaml)。
 
@@ -573,37 +573,37 @@ workflow:
   name: Order Processing Workflow
 
 nodes:
-  - id: start
+  - name: start
     type: start
     label: Start
     next: createOrder
 
-  - id: createOrder
+  - name: createOrder
     type: action
     label: Create Order
     action: order.create
     next: waitPayment
 
-  - id: waitPayment
+  - name: waitPayment
     type: wait
     label: Wait Payment
     events:
       payment.completed: endSuccess
 
-  - id: forkFulfillment
+  - name: forkFulfillment
     type: fork
     label: Parallel Fulfillment
     branches:
       - prepareShipment
       - notifyUser
 
-  - id: joinFulfillment
+  - name: joinFulfillment
     type: join
     label: Join Fulfillment
     mode: all
     next: shipOrder
 
-  - id: endSuccess
+  - name: endSuccess
     type: end
     label: Completed
 ```
@@ -623,42 +623,42 @@ workflow:
   name: ForkJoin InputMapping (Nodes)
 
 nodes:
-  - id: start
+  - name: start
     type: action
     action: seed
     next: fork1
 
-  - id: fork1
+  - name: fork1
     type: fork
     branches: [a, b]
 
-  - id: a
+  - name: a
     type: action
     action: branch.a
     input:
       path: $.states['start'].output.shared
     next: join1
 
-  - id: b
+  - name: b
     type: action
     action: branch.b
     input:
       path: $.states['start'].output.shared
     next: join1
 
-  - id: join1
+  - name: join1
     type: join
     mode: all
     next: afterJoin
 
-  - id: afterJoin
+  - name: afterJoin
     type: action
     action: finalize
     input:
       path: $.states['a'].output
     next: end1
 
-  - id: end1
+  - name: end1
     type: end
 ```
 
@@ -668,7 +668,7 @@ nodes:
 
 ### 2.3.2 例（Nodes 形式 + error）
 
-`error` は action ノード限定の失敗遷移先を表す。値はノード ID 文字列（または `{ id: "<nodeId>" }`）を受け付け、states 形式では `on.Failed.next` に変換される。
+`error` は action ノード限定の失敗遷移先を表す。値はノード名文字列（または `{ name: "<nodeName>" }`）を受け付け、states 形式では `on.Failed.next` に変換される。
 
 ```yaml
 version: 1
@@ -678,22 +678,22 @@ workflow:
   name: Failed Routing
 
 nodes:
-  - id: start
+  - name: start
     type: start
     next: runMain
 
-  - id: runMain
+  - name: runMain
     type: action
     action: sample.run
     next: endSuccess
     error: handleFailed
 
-  - id: handleFailed
+  - name: handleFailed
     type: action
     action: sample.handle-failed
     next: endSuccess
 
-  - id: endSuccess
+  - name: endSuccess
     type: end
 ```
 
@@ -715,7 +715,7 @@ states:
 
 ### 2.4 States 形式との対応
 
-Nodes 形式は、実行前に **states 形式の CompiledWorkflowDefinition に変換**して利用する想定。変換レイヤーが nodes の `id`/`type`/`next`/`event`/`branches`/`error` を states の `on`/`wait`/`join` にマッピングする。実装上は Service API の `NodesWorkflowDefinitionLoader` が nodes を `WorkflowDefinition` に変換し、states 形式は `StateWorkflowDefinitionLoader` が読み込む。
+Nodes 形式は、実行前に **states 形式の CompiledWorkflowDefinition に変換**して利用する想定。変換レイヤーが nodes の `name`/`type`/`next`/`event`/`branches`/`error` を states の `on`/`wait`/`join` にマッピングする。実装上は Service API の `NodesWorkflowDefinitionLoader` が nodes を `WorkflowDefinition` に変換し、states 形式は `StateWorkflowDefinitionLoader` が読み込む。
 
 - `next` / `edges` は `on.Completed` を構成する。
 - `error`（action のみ）は `on.Failed.next` を構成する。
@@ -724,7 +724,7 @@ Nodes 形式は、実行前に **states 形式の CompiledWorkflowDefinition に
 
 ## 3. ルール（共通）
 
-- 状態名（states 形式）またはノード ID（nodes 形式）は一意とする。
+- 状態名（states 形式）またはノード名（nodes 形式の `name`）は一意とする。
 - 自己遷移（A → A）は禁止。
 - Join の all / branches は既存の状態・ノードを参照する。
 - Fork と Join は制御構造であり、実行順序の保証範囲は実装に依存する。Hosted では [execution/fork-join.md](execution/fork-join.md) の物理子契約に従う。

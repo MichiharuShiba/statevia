@@ -8,9 +8,9 @@ import type {
 
 /** C# ExecutionGraphResponse のノードを ExecutionNodeDTO に変換（v2）。GET /graph のノード ID は JSON の `nodeId` のみ（Service API 永続スナップショットと一致）。 */
 function graphNodeToExecutionNode(n: ExecutionGraphDTO["nodes"][0]): ExecutionNodeDTO {
-  const executionNodeId =
+  const nodeId =
     typeof n.nodeId === "string" && n.nodeId.length > 0 ? n.nodeId : "";
-  const stateName = typeof n.stateName === "string" ? n.stateName : "";
+  const nodeName = typeof n.nodeName === "string" ? n.nodeName : "";
   const nodeType = typeof n.nodeType === "string" ? n.nodeType : "";
   const fact = n.fact;
   const startedAt = typeof n.startedAt === "string" ? n.startedAt : undefined;
@@ -28,8 +28,8 @@ function graphNodeToExecutionNode(n: ExecutionGraphDTO["nodes"][0]): ExecutionNo
   const status = resolveNodeStatus(completedAt, factText, nodeType);
 
   return {
-    executionNodeId,
-    stateName,
+    nodeId,
+    nodeName,
     nodeType,
     status,
     attempt,

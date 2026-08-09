@@ -15,7 +15,8 @@ export type GraphLayoutHints = {
 
 /** レイアウト計算へのノード入力。 */
 export type LayoutNodeInput = {
-  nodeId: string;
+  /** グラフ定義上のノード名（一意）。実行時 UUID（nodeId）とは異なる。 */
+  name: string;
   nodeType: string;
   branch?: string;
 };
@@ -78,9 +79,9 @@ export function buildFallbackEdges(nodes: LayoutNodeInput[]): LayoutEdgeInput[] 
   const edges: LayoutEdgeInput[] = [];
   for (let i = 0; i < sorted.length - 1; i += 1) {
     edges.push({
-      id: `fallback-${sorted[i].nodeId}-${sorted[i + 1].nodeId}`,
-      from: sorted[i].nodeId,
-      to: sorted[i + 1].nodeId,
+      id: `fallback-${sorted[i].name}-${sorted[i + 1].name}`,
+      from: sorted[i].name,
+      to: sorted[i + 1].name,
       kind: "normal"
     });
   }
@@ -89,17 +90,17 @@ export function buildFallbackEdges(nodes: LayoutNodeInput[]): LayoutEdgeInput[] 
   const join = sorted.find((n) => normalizeType(n.nodeType) === "JOIN");
   if (!fork) return edges;
 
-  const afterFork = sorted.filter((n) => n.nodeId !== fork.nodeId);
+  const afterFork = sorted.filter((n) => n.name !== fork.name);
   const branches = afterFork.slice(0, 2);
   if (branches.length === 2) {
     edges.push(
-      { id: `fallback-fork-${fork.nodeId}-${branches[0].nodeId}`, from: fork.nodeId, to: branches[0].nodeId, kind: "fork" },
-      { id: `fallback-fork-${fork.nodeId}-${branches[1].nodeId}`, from: fork.nodeId, to: branches[1].nodeId, kind: "fork" }
+      { id: `fallback-fork-${fork.name}-${branches[0].name}`, from: fork.name, to: branches[0].name, kind: "fork" },
+      { id: `fallback-fork-${fork.name}-${branches[1].name}`, from: fork.name, to: branches[1].name, kind: "fork" }
     );
     if (join) {
       edges.push(
-        { id: `fallback-join-${branches[0].nodeId}-${join.nodeId}`, from: branches[0].nodeId, to: join.nodeId, kind: "join" },
-        { id: `fallback-join-${branches[1].nodeId}-${join.nodeId}`, from: branches[1].nodeId, to: join.nodeId, kind: "join" }
+        { id: `fallback-join-${branches[0].name}-${join.name}`, from: branches[0].name, to: join.name, kind: "join" },
+        { id: `fallback-join-${branches[1].name}-${join.name}`, from: branches[1].name, to: join.name, kind: "join" }
       );
     }
   }
@@ -138,13 +139,13 @@ export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: Lay
   edges: LayoutEdgeInput[];
 } {
   const edges = rawEdges.length > 0 ? rawEdges : buildFallbackEdges(nodes);
-  const nodeIdSet = new Set(nodes.map((n) => n.nodeId));
+  const nodeNameSet = new Set(nodes.map((n) => n.name));
   const safeEdges = edges.filter(
     (edge) =>
       edge.from.length > 0 &&
       edge.to.length > 0 &&
-      nodeIdSet.has(edge.from) &&
-      nodeIdSet.has(edge.to)
+      nodeNameSet.has(edge.from) &&
+      nodeNameSet.has(edge.to)
   );
   const rankdir = hints?.direction ?? "TB";
   const compact =
@@ -162,8 +163,8 @@ export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: Lay
 
   nodes.forEach((node) => {
     const baseSize = getNodeSize(node.nodeType, hints);
-    const override = hints?.nodeSizeOverrides?.[node.nodeId];
-    graph.setNode(node.nodeId, {
+    const override = hints?.nodeSizeOverrides?.[node.name];
+    graph.setNode(node.name, {
       width: override?.w ?? baseSize.w,
       height: override?.h ?? baseSize.h
     });
@@ -187,7 +188,7 @@ export function layoutGraph<T extends LayoutNodeInput>(nodes: T[], rawEdges: Lay
   dagre.layout(graph);
 
   const positioned: Array<PositionedNode<T>> = nodes.map((node) => {
-    const gNode = graph.node(node.nodeId) as { x: number; y: number; width: number; height: number };
+    const gNode = graph.node(node.name) as { x: number; y: number; width: number; height: number };
     return {
       ...node,
       x: gNode.x - gNode.width / 2,

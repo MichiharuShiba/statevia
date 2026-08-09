@@ -52,7 +52,7 @@ public class ExecutionInputPropagationTests
 
         using var doc = JsonDocument.Parse(engine.ExportExecutionGraph(id));
         var nodes = doc.RootElement.GetProperty("nodes").EnumerateArray().ToList();
-        var startNode = Assert.Single(nodes, n => n.GetProperty("stateName").GetString() == "Start");
+        var startNode = Assert.Single(nodes, n => n.GetProperty("nodeName").GetString() == "Start");
         Assert.Equal(JsonValueKind.Object, startNode.GetProperty("input").ValueKind);
         Assert.Equal("v", startNode.GetProperty("input").GetProperty("k").GetString());
     }
@@ -155,7 +155,7 @@ public class ExecutionInputPropagationTests
         using var doc = JsonDocument.Parse(engine.ExportExecutionGraph(id));
         var root = doc.RootElement;
         var nodes = root.GetProperty("nodes").EnumerateArray().ToList();
-        var joinNodes = nodes.Where(n => n.GetProperty("stateName").GetString() == "Join1").ToList();
+        var joinNodes = nodes.Where(n => n.GetProperty("nodeName").GetString() == "Join1").ToList();
         Assert.Single(joinNodes);
         var joinNodeId = joinNodes[0].GetProperty("nodeId").GetString();
         Assert.NotNull(joinNodeId);
@@ -167,8 +167,8 @@ public class ExecutionInputPropagationTests
 
         var expectedJoinSources = nodes
             .Where(n =>
-                n.GetProperty("stateName").GetString() == "A"
-                || n.GetProperty("stateName").GetString() == "B")
+                n.GetProperty("nodeName").GetString() == "A"
+                || n.GetProperty("nodeName").GetString() == "B")
             .Select(n => n.GetProperty("nodeId").GetString())
             .ToHashSet();
         var actualJoinSources = joinEdges.Select(e => e.GetProperty("from").GetString()).ToHashSet();
@@ -179,7 +179,7 @@ public class ExecutionInputPropagationTests
             e.GetProperty("type").GetInt32() == (int)EdgeType.Next
             && e.GetProperty("from").GetString() == joinNodeId).ToList();
         Assert.Single(fromJoinNext);
-        Assert.Equal("AfterJoin", nodes.Single(n => n.GetProperty("nodeId").GetString() == fromJoinNext[0].GetProperty("to").GetString()).GetProperty("stateName").GetString());
+        Assert.Equal("AfterJoin", nodes.Single(n => n.GetProperty("nodeId").GetString() == fromJoinNext[0].GetProperty("to").GetString()).GetProperty("nodeName").GetString());
 
         var joinInput = joinNodes[0].GetProperty("input");
         var joinInputKeys = joinInput.EnumerateObject().Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
