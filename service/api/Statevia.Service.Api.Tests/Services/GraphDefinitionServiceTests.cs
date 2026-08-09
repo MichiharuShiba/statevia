@@ -154,7 +154,7 @@ public sealed class GraphDefinitionServiceTests
 
         var nodeById = new Dictionary<string, GraphNodeDefinition>(StringComparer.OrdinalIgnoreCase);
         foreach (var n in res.Nodes)
-            nodeById[n.NodeId] = n;
+            nodeById[n.Name] = n;
 
         Assert.Equal("Start", nodeById["StartState"].NodeType);
         Assert.Equal("Wait", nodeById["WaitState"].NodeType);
@@ -217,7 +217,7 @@ public sealed class GraphDefinitionServiceTests
 
         var nodeById = new Dictionary<string, GraphNodeDefinition>(StringComparer.OrdinalIgnoreCase);
         foreach (var n in res.Nodes)
-            nodeById[n.NodeId] = n;
+            nodeById[n.Name] = n;
 
         // Assert
         Assert.Equal("Start", nodeById["StartState"].NodeType);

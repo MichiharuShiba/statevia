@@ -42,10 +42,10 @@ internal static class NodesSchemaDefinition
                 items = new
                 {
                     type = TypeObject,
-                    required = new[] { KeyId, KeyType },
+                    required = new[] { KeyName, KeyType },
                     properties = new
                     {
-                        id = new { type = TypeString },
+                        name = new { type = TypeString },
                         type = new
                         {
                             type = TypeString,
@@ -70,9 +70,9 @@ internal static class NodesSchemaDefinition
                                     type = TypeObject,
                                     properties = new
                                     {
-                                        id = new { type = TypeString }
+                                        name = new { type = TypeString }
                                     },
-                                    required = new[] { KeyId }
+                                    required = new[] { KeyName }
                                 }
                             }
                         },
@@ -121,7 +121,7 @@ internal static class NodesSchemaDefinition
                                                 type = TypeObject,
                                                 properties = new
                                                 {
-                                                    id = new { type = TypeString }
+                                                    name = new { type = TypeString }
                                                 }
                                             }
                                         }

@@ -24,7 +24,7 @@ public sealed class WorkflowDefinitionYamlFormatTests
         const string content = """
             version: 1
             nodes:
-              - id: a
+              - name: a
             """;
 
         // Act
@@ -60,7 +60,7 @@ public sealed class WorkflowDefinitionYamlFormatTests
         // Arrange
         const string content = """
             nodes:
-              - id: a
+              - name: a
             states:
               A: {}
             """;

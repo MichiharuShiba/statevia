@@ -10,8 +10,9 @@ public sealed class NodesSchemaDefinitionTests
 {
     /// <summary>
     /// <see cref="NodesSchemaDefinition.CreateSchemaDocument"/> の JSON に
-    /// <c>workflow.properties.description</c> および
-    /// <c>nodes.items.properties.input</c>（<c>anyOf</c> が 2 要素以上）が含まれること。
+    /// <c>workflow.properties.description</c>、
+    /// <c>nodes.items.properties.input</c>（<c>anyOf</c> が 2 要素以上）、
+    /// および <c>nodes.items.required</c> に <c>name</c>/<c>type</c>（<c>id</c> なし）が含まれること。
     /// </summary>
     [Fact]
     public void CreateSchemaDocument_IncludesWorkflowDescriptionAndNodeInput()
@@ -37,6 +38,12 @@ public sealed class NodesSchemaDefinitionTests
         Assert.True(
             inputProperty.TryGetProperty("anyOf", out var anyOfArray) && anyOfArray.GetArrayLength() >= 2,
             "nodes.items.properties.input.anyOf must have at least 2 items");
+
+        var nodeRequired = rootProperties.GetProperty("nodes").GetProperty("items").GetProperty("required");
+        var requiredKeys = nodeRequired.EnumerateArray().Select(e => e.GetString()).ToHashSet(StringComparer.Ordinal);
+        Assert.Contains("name", requiredKeys);
+        Assert.Contains("type", requiredKeys);
+        Assert.DoesNotContain("id", requiredKeys);
     }
 
     /// <summary>
@@ -69,7 +76,7 @@ public sealed class NodesSchemaDefinitionTests
             "nodes.items.properties.error.oneOf が 2 要素以上であること");
 
         var hasStringType = false;
-        var hasObjectWithIdProperty = false;
+        var hasObjectWithNameProperty = false;
 
         foreach (var oneOfItem in oneOfArray.EnumerateArray())
         {
@@ -81,14 +88,14 @@ public sealed class NodesSchemaDefinitionTests
                 }
                 else if (typeElement.GetString() is "object"
                     && oneOfItem.TryGetProperty("properties", out var props)
-                    && props.TryGetProperty("id", out _))
+                    && props.TryGetProperty("name", out _))
                 {
-                    hasObjectWithIdProperty = true;
+                    hasObjectWithNameProperty = true;
                 }
             }
         }
 
         Assert.True(hasStringType, "error.oneOf に type:string の要素が含まれること");
-        Assert.True(hasObjectWithIdProperty, "error.oneOf に type:object かつ properties.id を持つ要素が含まれること");
+        Assert.True(hasObjectWithNameProperty, "error.oneOf に type:object かつ properties.name を持つ要素が含まれること");
     }
 }

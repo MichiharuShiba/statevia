@@ -311,8 +311,8 @@ public sealed class GraphDefinitionResponse
 [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public sealed class GraphNodeDefinition
 {
-    /// <summary>ノード ID（キャンバス上のキー）。</summary>
-    public string NodeId { get; init; } = string.Empty;
+    /// <summary>ノード名（キャンバス上のキー。定義 StateName と同値）。</summary>
+    public string Name { get; init; } = string.Empty;
 
     /// <summary>ノード種別。</summary>
     public string NodeType { get; init; } = string.Empty;
@@ -324,10 +324,10 @@ public sealed class GraphNodeDefinition
 /// <summary>グラフ上の 1 辺。</summary>
 public sealed class GraphEdgeDefinition
 {
-    /// <summary>始点ノード ID。</summary>
+    /// <summary>始点ノード名（定義 StateName）。</summary>
     public string From { get; init; } = string.Empty;
 
-    /// <summary>終点ノード ID。</summary>
+    /// <summary>終点ノード名（定義 StateName）。</summary>
     public string To { get; init; } = string.Empty;
 
     /// <summary>表示ラベル（Wait のイベント名など。未設定時は空）。</summary>
