@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Infrastructure.Security;
@@ -85,9 +86,16 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
     private static readonly Guid DefaultTenantId = Guid.Parse("00000000-0000-4000-8000-000000000001");
 
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
+    private readonly IIdGenerator _idGenerator;
 
     /// <summary>新しいインスタンスを初期化する。</summary>
-    public PlatformDataAccess(IDbContextFactory<CoreDbContext> dbFactory) => _dbFactory = dbFactory;
+    /// <param name="dbFactory">DbContext 工場。</param>
+    /// <param name="idGenerator">永続 UUID 採番。</param>
+    public PlatformDataAccess(IDbContextFactory<CoreDbContext> dbFactory, IIdGenerator idGenerator)
+    {
+        _dbFactory = dbFactory;
+        _idGenerator = idGenerator;
+    }
 
     /// <inheritdoc />
     public async Task<TenantRow?> FindTenantByKeyAsync(string tenantKey, CancellationToken cancellationToken)
@@ -302,7 +310,7 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
 
             db.PermissionDefinitions.Add(new PermissionDefinitionRow
             {
-                PermissionDefinitionId = Guid.NewGuid(),
+                PermissionDefinitionId = _idGenerator.NewSequentialGuid(),
                 PermissionKey = entry.PermissionKey,
                 DisplayLabel = entry.DisplayLabel,
                 DisplayKey = entry.DisplayKey,

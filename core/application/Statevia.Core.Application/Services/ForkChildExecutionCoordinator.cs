@@ -153,7 +153,7 @@ public sealed class ForkChildExecutionCoordinator(
                             uow,
                             new ExecutionWorkItemRow
                             {
-                                WorkItemId = idGenerator.NewGuid(),
+                                WorkItemId = idGenerator.NewSequentialGuid(),
                                 ExecutionId = branch.ParentExecutionId,
                                 Kind = ExecutionWorkItemKinds.Resume,
                                 Payload = resumePayload,
@@ -439,7 +439,7 @@ public sealed class ForkChildExecutionCoordinator(
 
                     foreach (var branch in request.Branches)
                     {
-                        var childId = idGenerator.NewGuid();
+                        var childId = idGenerator.NewSequentialGuid();
                         await displayIdWrites
                             .AllocateAsync(uow, DisplayIdResourceTypes.Execution, childId, innerCt)
                             .ConfigureAwait(false);
@@ -505,7 +505,7 @@ public sealed class ForkChildExecutionCoordinator(
                         };
                         startItems.Add(new ExecutionWorkItemRow
                         {
-                            WorkItemId = idGenerator.NewGuid(),
+                            WorkItemId = idGenerator.NewSequentialGuid(),
                             ExecutionId = childId,
                             Kind = ExecutionWorkItemKinds.Start,
                             Payload = JsonSerializer.Serialize(
@@ -597,7 +597,7 @@ public sealed class ForkChildExecutionCoordinator(
             .Where(r => string.Equals(r.Status, ExecutionBranchStatuses.Running, StringComparison.Ordinal))
             .Select(row => new ExecutionWorkItemRow
             {
-                WorkItemId = idGenerator.NewGuid(),
+                WorkItemId = idGenerator.NewSequentialGuid(),
                 ExecutionId = row.ExecutionId,
                 Kind = ExecutionWorkItemKinds.Cancel,
                 Payload = "{}",

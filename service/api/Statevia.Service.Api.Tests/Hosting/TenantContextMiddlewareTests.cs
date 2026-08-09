@@ -27,7 +27,7 @@ public sealed class TenantContextMiddlewareTests
         var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
         var (token, _) = jwt.IssueAccessToken(TestTenantIds.DefaultTenantId, "default", Guid.NewGuid());
 
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var middleware = new TenantContextMiddleware(_ => Task.CompletedTask, jwt);
 
         var context = new DefaultHttpContext();
@@ -53,7 +53,7 @@ public sealed class TenantContextMiddlewareTests
         var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
         var principalId = Guid.NewGuid();
         var (token, _) = jwt.IssueAccessToken(TestTenantIds.DefaultTenantId, "default", principalId);
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var accessor = new SettableTenantContextAccessor();
         var nextInvoked = false;
 
@@ -83,7 +83,7 @@ public sealed class TenantContextMiddlewareTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var accessor = new SettableTenantContextAccessor();
         var nextInvoked = false;
 
@@ -111,7 +111,7 @@ public sealed class TenantContextMiddlewareTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var accessor = new SettableTenantContextAccessor();
         var nextInvoked = false;
 
@@ -139,7 +139,7 @@ public sealed class TenantContextMiddlewareTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var accessor = new SettableTenantContextAccessor();
         var middleware = new TenantContextMiddleware(_ => Task.CompletedTask, jwt);
 
@@ -163,7 +163,7 @@ public sealed class TenantContextMiddlewareTests
         var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
         var wrongTenantId = Guid.NewGuid();
         var (token, _) = jwt.IssueAccessToken(wrongTenantId, "default", Guid.NewGuid());
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var accessor = new SettableTenantContextAccessor();
         var middleware = new TenantContextMiddleware(_ => Task.CompletedTask, jwt);
 
@@ -196,7 +196,7 @@ public sealed class TenantContextMiddlewareTests
         var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
         var jwt = new JwtTokenService(Options.Create(options));
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var accessor = new SettableTenantContextAccessor();
         var middleware = new TenantContextMiddleware(_ => Task.CompletedTask, jwt);
 
@@ -218,7 +218,7 @@ public sealed class TenantContextMiddlewareTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var accessor = new SettableTenantContextAccessor();
         var nextInvoked = false;
 
@@ -247,7 +247,7 @@ public sealed class TenantContextMiddlewareTests
         using var database = new SqliteTestDatabase();
         var (principalId, _, plainKey) = await SecurityTestSeed.SeedApiKeyAsync(database);
         var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var accessor = new SettableTenantContextAccessor();
         var nextInvoked = false;
         Guid? resolvedPrincipalId = null;
@@ -283,7 +283,7 @@ public sealed class TenantContextMiddlewareTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var accessor = new SettableTenantContextAccessor();
         var middleware = new TenantContextMiddleware(_ => Task.CompletedTask, jwt);
         var context = new DefaultHttpContext();

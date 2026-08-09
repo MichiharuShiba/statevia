@@ -228,7 +228,7 @@ internal static class GitArchiveMaterializer
         var normalizedModulePath = NormalizeModulePath(modulePath);
         Directory.CreateDirectory(artifactCacheDir);
 
-        var tempArchivePath = Path.Combine(Path.GetTempPath(), $"statevia-git-{Guid.NewGuid():N}.zip");
+        var tempArchivePath = Path.Combine(Path.GetTempPath(), $"statevia-git-{Path.GetRandomFileName()}.zip");
         try
         {
             File.WriteAllBytes(tempArchivePath, archiveZip);
@@ -263,7 +263,7 @@ internal static class GitArchiveMaterializer
                 string.Equals(NormalizeEntryPath(e.FullName), archiveRelative, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException($"Module zip entry '{archiveRelative}' was not found in Git archive.");
 
-        var tempZipPath = Path.Combine(Path.GetTempPath(), $"statevia-git-mod-{Guid.NewGuid():N}.zip");
+        var tempZipPath = Path.Combine(Path.GetTempPath(), $"statevia-git-mod-{Path.GetRandomFileName()}.zip");
         try
         {
             ExtractEntryToFile(entry, tempZipPath);

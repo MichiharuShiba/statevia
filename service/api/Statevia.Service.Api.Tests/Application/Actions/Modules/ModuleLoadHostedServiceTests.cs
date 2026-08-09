@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Service.Api.Application.Actions.Catalog;
+using Statevia.Infrastructure.Common;
 using Statevia.Infrastructure.Modules;
 using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Hosting;
@@ -30,6 +32,7 @@ public sealed class ModuleLoadHostedServiceTests
             NullLogger<FilesystemModuleSource>.Instance);
         var services = new ServiceCollection();
         services.AddSingleton(database.Factory);
+        services.AddSingleton<IIdGenerator, DefaultIdGenerator>();
         services.AddScoped<IPlatformDataAccess, PlatformDataAccess>();
         using var provider = services.BuildServiceProvider();
         var verifier = new ModuleSignatureVerifier(

@@ -179,7 +179,7 @@ internal sealed class OciModuleSource(
     {
         Directory.CreateDirectory(artifactCacheDir);
 
-        var tempZipPath = Path.Combine(Path.GetTempPath(), $"statevia-oci-{Guid.NewGuid():N}.zip");
+        var tempZipPath = Path.Combine(Path.GetTempPath(), $"statevia-oci-{Path.GetRandomFileName()}.zip");
         try
         {
             File.WriteAllBytes(tempZipPath, layerZip);

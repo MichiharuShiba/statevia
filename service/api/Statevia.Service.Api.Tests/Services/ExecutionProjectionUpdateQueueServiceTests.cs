@@ -332,7 +332,7 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         await using var serviceProvider = BuildServiceProvider(
             executionService,
             tenantContextAccessor,
-            new PlatformDataAccess(database.Factory));
+            new PlatformDataAccess(database.Factory, new DefaultIdGenerator()));
         var queue = BuildQueueService(executionEngine, serviceProvider, new ExecutionProjectionQueueOptions
         {
             MaxGlobalQueueSize = 10,

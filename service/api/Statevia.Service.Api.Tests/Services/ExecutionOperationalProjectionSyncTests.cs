@@ -17,7 +17,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var cursorRepo = new ExecutionCursorRepository();
-        var waitRepo = new ExecutionWaitRepository(db.Factory);
+        var waitRepo = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
         var executionId = Guid.NewGuid();
         var graphJson =
             """
@@ -47,7 +47,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        await ExecutionOperationalProjectionSync.SyncAsync(uow, cursorRepo, waitRepo, request, CancellationToken.None);
+        await ExecutionOperationalProjectionSync.SyncAsync(uow, cursorRepo, waitRepo, request, new DefaultIdGenerator(), CancellationToken.None);
         await uow.SaveChangesAsync(CancellationToken.None);
 
         // Assert
@@ -70,7 +70,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var cursorRepo = new ExecutionCursorRepository();
-        var waitRepo = new ExecutionWaitRepository(db.Factory);
+        var waitRepo = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
         var executionId = Guid.NewGuid();
         var graphJson =
             """
@@ -99,7 +99,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        await ExecutionOperationalProjectionSync.SyncAsync(uow, cursorRepo, waitRepo, request, CancellationToken.None);
+        await ExecutionOperationalProjectionSync.SyncAsync(uow, cursorRepo, waitRepo, request, new DefaultIdGenerator(), CancellationToken.None);
         await uow.SaveChangesAsync(CancellationToken.None);
 
         // Assert
@@ -146,12 +146,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        await ExecutionOperationalProjectionSync.SyncAsync(
-            uow,
-            new ExecutionCursorRepository(),
-            new ExecutionWaitRepository(db.Factory),
-            request,
-            CancellationToken.None);
+        await ExecutionOperationalProjectionSync.SyncAsync(uow, new ExecutionCursorRepository(), new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator()), request, new DefaultIdGenerator(), CancellationToken.None);
         await uow.SaveChangesAsync(CancellationToken.None);
 
         // Assert
@@ -170,7 +165,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var cursorRepo = new ExecutionCursorRepository();
-        var waitRepo = new ExecutionWaitRepository(db.Factory);
+        var waitRepo = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
         var executionId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
@@ -216,7 +211,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        await ExecutionOperationalProjectionSync.SyncAsync(uow, cursorRepo, waitRepo, request, CancellationToken.None);
+        await ExecutionOperationalProjectionSync.SyncAsync(uow, cursorRepo, waitRepo, request, new DefaultIdGenerator(), CancellationToken.None);
         await uow.SaveChangesAsync(CancellationToken.None);
 
         // Assert
@@ -233,7 +228,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var cursorRepo = new ExecutionCursorRepository();
-        var waitRepo = new ExecutionWaitRepository(db.Factory);
+        var waitRepo = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
         var executionId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
@@ -275,7 +270,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        await ExecutionOperationalProjectionSync.SyncAsync(uow, cursorRepo, waitRepo, request, CancellationToken.None);
+        await ExecutionOperationalProjectionSync.SyncAsync(uow, cursorRepo, waitRepo, request, new DefaultIdGenerator(), CancellationToken.None);
         await uow.SaveChangesAsync(CancellationToken.None);
 
         // Assert
@@ -322,12 +317,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        await ExecutionOperationalProjectionSync.SyncAsync(
-            uow,
-            new ExecutionCursorRepository(),
-            new ExecutionWaitRepository(db.Factory),
-            request,
-            CancellationToken.None);
+        await ExecutionOperationalProjectionSync.SyncAsync(uow, new ExecutionCursorRepository(), new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator()), request, new DefaultIdGenerator(), CancellationToken.None);
         await uow.SaveChangesAsync(CancellationToken.None);
 
         // Assert
@@ -373,12 +363,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        await ExecutionOperationalProjectionSync.SyncAsync(
-            uow,
-            new ExecutionCursorRepository(),
-            new ExecutionWaitRepository(db.Factory),
-            request,
-            CancellationToken.None);
+        await ExecutionOperationalProjectionSync.SyncAsync(uow, new ExecutionCursorRepository(), new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator()), request, new DefaultIdGenerator(), CancellationToken.None);
         await uow.SaveChangesAsync(CancellationToken.None);
 
         // Assert

@@ -2,7 +2,7 @@ namespace Statevia.Core.Engine.Abstractions;
 
 /// <summary>
 /// <see cref="IExecutionEngine.Start"/> で <c>executionId</c> が未指定のときに使うインスタンス ID 文字列を生成します。
-/// Service API では <c>IIdGenerator.NewGuid().ToString()</c> と一致させるため、DI で差し替え可能にします。
+/// Service API では <c>IIdGenerator.NewSequentialGuid().ToString()</c> と一致させるため、DI で差し替え可能にします。
 /// </summary>
 public interface IExecutionIdGenerator
 {

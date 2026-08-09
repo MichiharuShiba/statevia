@@ -18,7 +18,7 @@ public sealed class ProjectAuthorizationServiceTests
         using var db = new SqliteTestDatabase();
         var granteeTenantId = Guid.NewGuid();
         var projectId = await SeedSharedProjectAsync(db, granteeTenantId, ProjectAccessRole.Reader);
-        var service = new ProjectAuthorizationService(new ProjectRepository());
+        var service = new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator()));
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
 
         // Act
@@ -38,7 +38,7 @@ public sealed class ProjectAuthorizationServiceTests
         using var db = new SqliteTestDatabase();
         var granteeTenantId = Guid.NewGuid();
         var projectId = await SeedSharedProjectAsync(db, granteeTenantId, ProjectAccessRole.Reader);
-        var service = new ProjectAuthorizationService(new ProjectRepository());
+        var service = new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator()));
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
 
         // Act
@@ -58,7 +58,7 @@ public sealed class ProjectAuthorizationServiceTests
         using var db = new SqliteTestDatabase();
         var granteeTenantId = Guid.NewGuid();
         var projectId = await SeedSharedProjectAsync(db, granteeTenantId, ProjectAccessRole.Executor);
-        var service = new ProjectAuthorizationService(new ProjectRepository());
+        var service = new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator()));
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
 
         // Act
@@ -78,7 +78,7 @@ public sealed class ProjectAuthorizationServiceTests
         using var db = new SqliteTestDatabase();
         var granteeTenantId = Guid.NewGuid();
         var projectId = await SeedSharedProjectAsync(db, granteeTenantId, ProjectAccessRole.Publisher);
-        var service = new ProjectAuthorizationService(new ProjectRepository());
+        var service = new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator()));
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
 
         // Act
@@ -98,7 +98,7 @@ public sealed class ProjectAuthorizationServiceTests
         using var db = new SqliteTestDatabase();
         var granteeTenantId = Guid.NewGuid();
         var projectId = await SeedSharedProjectAsync(db, granteeTenantId, ProjectAccessRole.Executor);
-        var service = new ProjectAuthorizationService(new ProjectRepository());
+        var service = new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator()));
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
 
         // Act
@@ -119,7 +119,7 @@ public sealed class ProjectAuthorizationServiceTests
         var ownerTenantId = Guid.NewGuid();
         var otherTenantId = Guid.NewGuid();
         var projectId = Guid.NewGuid();
-        var service = new ProjectAuthorizationService(new ProjectRepository());
+        var service = new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator()));
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
 
         await using (var seed = db.Factory.CreateDbContext())

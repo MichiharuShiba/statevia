@@ -152,7 +152,7 @@ public sealed class DependencyDirectionTests
         typeof(Infrastructure.Modules.DependencyInjection.ModulesServiceCollectionExtensions).Assembly;
 
     private static Assembly InfraCommonAssembly =>
-        typeof(Infrastructure.Common.UuidV7Generator).Assembly;
+        typeof(Infrastructure.Common.DefaultIdGenerator).Assembly;
 
     /// <summary>Infrastructure.Persistence は Service に依存しない。</summary>
     [Fact]

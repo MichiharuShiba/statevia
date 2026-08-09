@@ -29,7 +29,7 @@ public sealed class PrincipalPermissionExpansionTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var principalId = await SecurityTestSeed.SeedUserAsync(database, "admin@example.com", "password", isTenantAdmin: true);
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
 
         // Act
@@ -47,7 +47,7 @@ public sealed class PrincipalPermissionExpansionTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var (_, _, plainKey) = await SecurityTestSeed.SeedApiKeyAsync(database);
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var lookup = await platform.FindApiKeyCredentialAsync(
             PasswordCredentialService.ApiKeyPrefix(plainKey),
             PasswordCredentialService.HashApiKey(plainKey),
@@ -69,7 +69,7 @@ public sealed class PrincipalPermissionExpansionTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var principalId = await SecurityTestSeed.SeedUserAsync(database, "admin-only@example.com", "password", isTenantAdmin: true);
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var isAdmin = await platform.IsTenantAdminAsync(principalId, CancellationToken.None);
@@ -84,7 +84,7 @@ public sealed class PrincipalPermissionExpansionTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
@@ -130,7 +130,7 @@ public sealed class PrincipalPermissionExpansionTests
             await db.SaveChangesAsync();
         }
 
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var keys = await platform.ExpandPrincipalPermissionKeysAsync(principalId, CancellationToken.None);
@@ -146,7 +146,7 @@ public sealed class PrincipalPermissionExpansionTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var (_, _, plainKey) = await SecurityTestSeed.SeedApiKeyAsync(database);
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var lookup = await platform.FindApiKeyCredentialAsync(
             PasswordCredentialService.ApiKeyPrefix(plainKey),
             PasswordCredentialService.HashApiKey(plainKey),
@@ -167,7 +167,7 @@ public sealed class PrincipalPermissionExpansionTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var principalId = await SecurityTestSeed.SeedUserAsync(database, "member@example.com", "password", isTenantAdmin: false);
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var isAdmin = await platform.IsTenantAdminAsync(principalId, CancellationToken.None);

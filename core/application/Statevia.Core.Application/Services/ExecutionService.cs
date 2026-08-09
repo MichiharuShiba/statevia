@@ -222,7 +222,7 @@ internal sealed class ExecutionService : IExecutionService
         DefinitionVersionRow versionRow,
         CancellationToken ct)
     {
-        var executionId = _idGenerator.NewGuid();
+        var executionId = _idGenerator.NewSequentialGuid();
         var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, definitionId.ToString("D"), ct).ConfigureAwait(false)
             ?? definitionId.ToString("D");
         const string emptyGraphJson = """{"nodes":[],"edges":[]}""";
@@ -309,7 +309,7 @@ internal sealed class ExecutionService : IExecutionService
                     uow,
                     new ExecutionWorkItemRow
                     {
-                        WorkItemId = _idGenerator.NewGuid(),
+                        WorkItemId = _idGenerator.NewSequentialGuid(),
                         ExecutionId = executionId,
                         Kind = ExecutionWorkItemKinds.Start,
                         Payload = JsonSerializer.Serialize(
@@ -334,7 +334,7 @@ internal sealed class ExecutionService : IExecutionService
         CancellationToken ct)
     {
         var compiled = RestoreCompiledDefinitionFromVersion(args.VersionRow);
-        var resolvedExecutionId = args.ExecutionId ?? _idGenerator.NewGuid();
+        var resolvedExecutionId = args.ExecutionId ?? _idGenerator.NewSequentialGuid();
         var engineId = resolvedExecutionId.ToString();
         _engine.Start(compiled, engineId, args.Request.Input, args.Request.InitialState);
 
@@ -867,7 +867,7 @@ internal sealed class ExecutionService : IExecutionService
                     uow,
                     new ExecutionWorkItemRow
                     {
-                        WorkItemId = _idGenerator.NewGuid(),
+                        WorkItemId = _idGenerator.NewSequentialGuid(),
                         ExecutionId = executionId,
                         Kind = ExecutionWorkItemKinds.Cancel,
                         Payload = "{}",
@@ -2628,6 +2628,7 @@ internal sealed class ExecutionService : IExecutionService
             _executionCursors,
             _executionWaits,
             request,
+            _idGenerator,
             ct).ConfigureAwait(false);
     }
 

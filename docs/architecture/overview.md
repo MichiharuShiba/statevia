@@ -109,7 +109,12 @@ flowchart LR
 - 通知送信（SMTP）
 - Module ホスト・OCI Source・署名検証
 - gRPC Action Backend
-- ID 生成（UUID v7）
+- ID 生成（`IIdGenerator`）
+  - 永続 PK / 文書キー: `NewSequentialGuid()`（UUIDv7・時刻順）
+  - 非永続（TraceId・lease 接尾辞等）: `NewRandomGuid()`（UUIDv4 相当）
+  - 本番ホストでは生 `Guid.NewGuid()` を禁止（BannedApi パイロット）。Engine・テストは対象外
+  - 固定シード既定テナント ID と適用済みマイグレーションの `gen_random_uuid()` は変更しない
+  - DelayWait / ownership recovery の一括 enqueue SQL は当面 `gen_random_uuid()`（DB 側）。アプリ経路の work item は `NewSequentialGuid`
 
 ### 2.4 Service API（HTTP アダプタ / DB 所有者）
 

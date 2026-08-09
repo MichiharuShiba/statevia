@@ -98,7 +98,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IExecutionReadModelService, ExecutionReadModelService>();
         services.AddStateviaInfrastructureCommon();
         services.AddSingleton<IExecutionIdGenerator>(
-            sp => new DelegateExecutionIdGenerator(() => sp.GetRequiredService<IIdGenerator>().NewGuid().ToString()));
+            sp => new DelegateExecutionIdGenerator(() => sp.GetRequiredService<IIdGenerator>().NewSequentialGuid().ToString()));
         services.AddStateviaExecutionEngine();
         services.AddScoped<IDefinitionRepository, DefinitionRepository>();
         AddExecutionProjectionQueueOptions(services, configuration);

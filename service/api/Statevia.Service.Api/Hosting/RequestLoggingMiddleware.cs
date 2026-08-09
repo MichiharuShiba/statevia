@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Statevia.Core.Application.Contracts.Services;
 
 namespace Statevia.Service.Api.Hosting;
 
@@ -19,11 +20,13 @@ internal sealed class RequestLoggingMiddleware
         HttpContext context,
         ILogger<RequestLoggingMiddleware> logger,
         IOptions<RequestLogOptions> optionsAccessor,
-        ITenantContextAccessor tenantContextAccessor)
+        ITenantContextAccessor tenantContextAccessor,
+        IIdGenerator idGenerator)
     {
         ArgumentNullException.ThrowIfNull(tenantContextAccessor);
+        ArgumentNullException.ThrowIfNull(idGenerator);
         var opts = optionsAccessor.Value;
-        var traceId = TraceIdResolver.ResolveTraceId(context.Request);
+        var traceId = TraceIdResolver.ResolveTraceId(context.Request, idGenerator);
         // 後続ミドルウェア・フィルタと共有（enrich ログ等）
         context.Items[RequestLogContext.TraceIdItemKey] = traceId;
 

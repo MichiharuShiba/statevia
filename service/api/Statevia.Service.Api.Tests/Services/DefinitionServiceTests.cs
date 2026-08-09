@@ -24,7 +24,7 @@ public sealed class DefinitionServiceTests
         IIdGenerator idGen)
     {
         var executor = new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(inDb.Factory));
-        var projectRepo = new ProjectRepository();
+        var projectRepo = new ProjectRepository(new DefaultIdGenerator());
         var tenantAccessor = new FixedTenantContextAccessor(TestTenantIds.DefaultContext);
         return new DefinitionService(
             display,
@@ -64,7 +64,8 @@ public sealed class DefinitionServiceTests
     {
         private readonly Guid _id;
         public FixedIdGenerator(Guid id) => _id = id;
-        public Guid NewGuid() => _id;
+        public Guid NewSequentialGuid() => _id;
+        public Guid NewRandomGuid() => _id;
     }
 
     private sealed class StubCompiler : IDefinitionCompilerService

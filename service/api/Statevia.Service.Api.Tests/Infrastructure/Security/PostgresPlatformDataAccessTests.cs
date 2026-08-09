@@ -34,7 +34,7 @@ public sealed class PostgresPlatformDataAccessTests
 
         // Act
         var exception = await Record.ExceptionAsync(() =>
-            new PlatformDataAccess(factory).GetGroupSnapshotsForPrincipalAsync(principalId, CancellationToken.None));
+            new PlatformDataAccess(factory, new DefaultIdGenerator()).GetGroupSnapshotsForPrincipalAsync(principalId, CancellationToken.None));
 
         // Assert
         Assert.Null(exception);
@@ -52,7 +52,7 @@ public sealed class PostgresPlatformDataAccessTests
         var factory = CreatePostgresFactory();
 
         // Act
-        var snapshots = await new PlatformDataAccess(factory)
+        var snapshots = await new PlatformDataAccess(factory, new DefaultIdGenerator())
             .GetGroupSnapshotsForPrincipalAsync(principalId, CancellationToken.None);
 
         // Assert
@@ -76,10 +76,10 @@ public sealed class PostgresPlatformDataAccessTests
         var uowFactory = new TestCoreUnitOfWorkFactory(postgresFactory);
         var factory = new ExecutionSecuritySnapshotFactory(
             database.TenantAccessor,
-            new PrincipalDataAccessAdapter(new PlatformDataAccess(postgresFactory)),
+            new PrincipalDataAccessAdapter(new PlatformDataAccess(postgresFactory, new DefaultIdGenerator())),
             new TestCoreTransactionExecutor(uowFactory),
             TestRepositoryFactory.CreateDefinitionRepository(),
-            new ProjectRepository());
+            new ProjectRepository(new DefaultIdGenerator()));
 
         // Act
         var exception = await Record.ExceptionAsync(() =>

@@ -25,7 +25,7 @@ public sealed class RuntimePermissionAuthorizationTests
         accessor.Set(TestTenantIds.DefaultContext with { PrincipalId = principalId });
         var authorization = new RuntimePermissionAuthorization(
             accessor,
-            new PlatformDataAccess(database.Factory));
+            new PlatformDataAccess(database.Factory, new DefaultIdGenerator()));
 
         // Act
         var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
@@ -45,7 +45,7 @@ public sealed class RuntimePermissionAuthorizationTests
         accessor.Set(TestTenantIds.DefaultContext with { PrincipalId = Guid.NewGuid() });
         var authorization = new RuntimePermissionAuthorization(
             accessor,
-            new PlatformDataAccess(database.Factory));
+            new PlatformDataAccess(database.Factory, new DefaultIdGenerator()));
 
         // Act
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -65,7 +65,7 @@ public sealed class RuntimePermissionAuthorizationTests
         accessor.Set(TestTenantIds.DefaultContext);
         var authorization = new RuntimePermissionAuthorization(
             accessor,
-            new PlatformDataAccess(database.Factory));
+            new PlatformDataAccess(database.Factory, new DefaultIdGenerator()));
 
         // Act
         var ex = await Assert.ThrowsAsync<UnauthorizedException>(() =>
@@ -91,7 +91,7 @@ public sealed class RuntimePermissionAuthorizationTests
         accessor.Set(TestTenantIds.DefaultContext with { PrincipalId = principalId });
         var authorization = new RuntimePermissionAuthorization(
             accessor,
-            new PlatformDataAccess(database.Factory));
+            new PlatformDataAccess(database.Factory, new DefaultIdGenerator()));
 
         // Act
         var exception = await Record.ExceptionAsync(() =>
@@ -123,7 +123,7 @@ public sealed class RuntimePermissionAuthorizationTests
         });
         var authorization = new RuntimePermissionAuthorization(
             accessor,
-            new PlatformDataAccess(database.Factory));
+            new PlatformDataAccess(database.Factory, new DefaultIdGenerator()));
 
         // Act
         var readException = await Record.ExceptionAsync(() =>

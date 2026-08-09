@@ -255,8 +255,8 @@ public sealed class ExecutionMutationAuthorizationTests
         accessor.Set(TestTenantIds.DefaultContext);
         var authorization = new ExecutionMutationAuthorization(
             accessor,
-            new RuntimePermissionAuthorization(accessor, new PlatformDataAccess(database.Factory)),
-            new PlatformDataAccess(database.Factory));
+            new RuntimePermissionAuthorization(accessor, new PlatformDataAccess(database.Factory, new DefaultIdGenerator())),
+            new PlatformDataAccess(database.Factory, new DefaultIdGenerator()));
 
         // Act
         var ex = await Assert.ThrowsAsync<UnauthorizedException>(() =>
@@ -275,8 +275,8 @@ public sealed class ExecutionMutationAuthorizationTests
         accessor.Set(TestTenantIds.DefaultContext with { PrincipalId = principalId });
         return new ExecutionMutationAuthorization(
             accessor,
-            new RuntimePermissionAuthorization(accessor, new PlatformDataAccess(database.Factory)),
-            new PlatformDataAccess(database.Factory));
+            new RuntimePermissionAuthorization(accessor, new PlatformDataAccess(database.Factory, new DefaultIdGenerator())),
+            new PlatformDataAccess(database.Factory, new DefaultIdGenerator()));
     }
 
     private static ExecutionSecuritySnapshot CreateSnapshot(

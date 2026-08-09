@@ -131,9 +131,9 @@ public sealed class ExecutionSecuritySnapshotFactoryTests
         var uowFactory = new TestCoreUnitOfWorkFactory(database.Factory);
         return new ExecutionSecuritySnapshotFactory(
             database.TenantAccessor,
-            new PrincipalDataAccessAdapter(new PlatformDataAccess(database.Factory)),
+            new PrincipalDataAccessAdapter(new PlatformDataAccess(database.Factory, new DefaultIdGenerator())),
             new TestCoreTransactionExecutor(uowFactory),
             TestRepositoryFactory.CreateDefinitionRepository(),
-            new ProjectRepository());
+            new ProjectRepository(new DefaultIdGenerator()));
     }
 }

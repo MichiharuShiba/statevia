@@ -9,5 +9,5 @@ internal static class TestRepositoryFactory
 {
     /// <summary>project 認可付き <see cref="DefinitionRepository"/>。</summary>
     public static DefinitionRepository CreateDefinitionRepository() =>
-        new(new ProjectAuthorizationService(new ProjectRepository()));
+        new(new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator())));
 }

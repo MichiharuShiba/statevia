@@ -19,9 +19,9 @@ public sealed class EventIngressServiceTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var transactions = new TestCoreTransactionExecutor(uowFactory);
-        var waits = new ExecutionWaitRepository(db.Factory);
+        var waits = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
         var workQueue = new CapturingWorkQueue();
-        var service = new EventIngressService(transactions, waits, workQueue);
+        var service = new EventIngressService(transactions, waits, workQueue, new DefaultIdGenerator());
         var executionId = Guid.NewGuid();
         var now = DateTime.UtcNow;
         await SeedSubscriptionAsync(db, executionId, "WaitNode", "inventory.received", "SKU-1", "statevia.event.subscribe.0", now);
@@ -51,9 +51,9 @@ public sealed class EventIngressServiceTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var transactions = new TestCoreTransactionExecutor(uowFactory);
-        var waits = new ExecutionWaitRepository(db.Factory);
+        var waits = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
         var workQueue = new CapturingWorkQueue();
-        var service = new EventIngressService(transactions, waits, workQueue);
+        var service = new EventIngressService(transactions, waits, workQueue, new DefaultIdGenerator());
         var executionId = Guid.NewGuid();
         await SeedSubscriptionAsync(
             db, executionId, "WaitNode", "orders.updated", "", "statevia.event.subscribe.0", DateTime.UtcNow);
@@ -74,9 +74,9 @@ public sealed class EventIngressServiceTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var transactions = new TestCoreTransactionExecutor(uowFactory);
-        var waits = new ExecutionWaitRepository(db.Factory);
+        var waits = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
         var workQueue = new CapturingWorkQueue();
-        var service = new EventIngressService(transactions, waits, workQueue);
+        var service = new EventIngressService(transactions, waits, workQueue, new DefaultIdGenerator());
 
         // Act
         await service.PublishAsync("missing.topic", "", CancellationToken.None);
@@ -93,9 +93,9 @@ public sealed class EventIngressServiceTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var transactions = new TestCoreTransactionExecutor(uowFactory);
-        var waits = new ExecutionWaitRepository(db.Factory);
+        var waits = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
         var workQueue = new CapturingWorkQueue();
-        var service = new EventIngressService(transactions, waits, workQueue);
+        var service = new EventIngressService(transactions, waits, workQueue, new DefaultIdGenerator());
         var parentId = Guid.NewGuid();
         var childId = Guid.NewGuid();
         var now = DateTime.UtcNow;
@@ -120,9 +120,9 @@ public sealed class EventIngressServiceTests
         using var db = new InMemoryTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var transactions = new TestCoreTransactionExecutor(uowFactory);
-        var waits = new ExecutionWaitRepository(db.Factory);
+        var waits = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
         var workQueue = new CapturingWorkQueue();
-        var service = new EventIngressService(transactions, waits, workQueue);
+        var service = new EventIngressService(transactions, waits, workQueue, new DefaultIdGenerator());
         await SeedSubscriptionAsync(
             db, Guid.NewGuid(), "WaitNode", "orders.updated", "", "statevia.event.subscribe.0", DateTime.UtcNow);
 

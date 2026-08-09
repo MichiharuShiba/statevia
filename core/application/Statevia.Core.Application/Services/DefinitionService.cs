@@ -67,8 +67,8 @@ internal sealed class DefinitionService : IDefinitionService
                 new { message = ex.Message, field = "yaml" }
             }, ex);
         }
-        var id = _idGenerator.NewGuid();
-        var versionId = _idGenerator.NewGuid();
+        var id = _idGenerator.NewSequentialGuid();
+        var versionId = _idGenerator.NewSequentialGuid();
 
         return await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
@@ -207,7 +207,7 @@ internal sealed class DefinitionService : IDefinitionService
                 new { message = ex.Message, field = "yaml" }
             }, ex);
         }
-        var newVersionId = _idGenerator.NewGuid();
+        var newVersionId = _idGenerator.NewSequentialGuid();
 
         return await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Infrastructure.Security;
@@ -28,16 +29,23 @@ internal sealed class TenantAdminBootstrap
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
     private readonly IPlatformDataAccess _platformDataAccess;
     private readonly PasswordCredentialService _passwordCredentialService;
+    private readonly IIdGenerator _idGenerator;
 
     /// <summary>新しいインスタンスを初期化する。</summary>
+    /// <param name="dbFactory">DbContext 工場。</param>
+    /// <param name="platformDataAccess">Platform データアクセス。</param>
+    /// <param name="passwordCredentialService">パスワードハッシュ。</param>
+    /// <param name="idGenerator">永続 UUID 採番。</param>
     public TenantAdminBootstrap(
         IDbContextFactory<CoreDbContext> dbFactory,
         IPlatformDataAccess platformDataAccess,
-        PasswordCredentialService passwordCredentialService)
+        PasswordCredentialService passwordCredentialService,
+        IIdGenerator idGenerator)
     {
         _dbFactory = dbFactory;
         _platformDataAccess = platformDataAccess;
         _passwordCredentialService = passwordCredentialService;
+        _idGenerator = idGenerator;
     }
 
     /// <summary>
@@ -118,8 +126,8 @@ internal sealed class TenantAdminBootstrap
                 $"User '{normalizedEmail}' already exists for tenant '{normalizedTenantKey}'.");
         }
 
-        var userId = Guid.NewGuid();
-        var principalId = Guid.NewGuid();
+        var userId = _idGenerator.NewSequentialGuid();
+        var principalId = _idGenerator.NewSequentialGuid();
         var now = DateTime.UtcNow;
         var principalDisplayName = string.IsNullOrWhiteSpace(displayName) ? normalizedEmail : displayName.Trim();
 

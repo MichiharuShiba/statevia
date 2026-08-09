@@ -7,14 +7,14 @@ namespace Statevia.Infrastructure.Common.DependencyInjection;
 public static class CommonServiceCollectionExtensions
 {
     /// <summary>
-    /// <see cref="IIdGenerator"/> の既定実装（UUID v7）を登録する。
+    /// <see cref="IIdGenerator"/> の既定実装（Sequential=v7 / Random=v4）を登録する。
     /// </summary>
     /// <param name="services">サービスコレクション。</param>
     public static IServiceCollection AddStateviaInfrastructureCommon(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddSingleton<IIdGenerator, UuidV7Generator>();
+        services.AddSingleton<IIdGenerator, DefaultIdGenerator>();
 
         return services;
     }

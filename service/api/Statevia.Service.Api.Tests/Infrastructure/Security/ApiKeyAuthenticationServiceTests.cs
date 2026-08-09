@@ -173,5 +173,5 @@ public sealed class ApiKeyAuthenticationServiceTests
     }
 
     private static ApiKeyAuthenticationService CreateService(SqliteTestDatabase database) =>
-        new(new PlatformDataAccess(database.Factory));
+        new(new PlatformDataAccess(database.Factory, new DefaultIdGenerator()));
 }

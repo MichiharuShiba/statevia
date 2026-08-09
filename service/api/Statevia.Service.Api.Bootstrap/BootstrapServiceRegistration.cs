@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Infrastructure.Common;
 using Statevia.Infrastructure.Security;
 using Statevia.Infrastructure.Persistence;
@@ -44,6 +45,7 @@ internal static class BootstrapServiceRegistration
     {
         services.AddSingleton<ITenantContextAccessor>(NullTenantContextAccessor.Instance);
         services.AddSingleton<ITenantQueryFilterOptions>(DisabledTenantQueryFilterOptions.Instance);
+        services.AddSingleton<IIdGenerator, DefaultIdGenerator>();
         services.AddSingleton<PasswordCredentialService>();
         services.AddSingleton<IPlatformDataAccess, PlatformDataAccess>();
         services.AddSingleton<TenantBootstrap>();

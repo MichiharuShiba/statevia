@@ -196,5 +196,5 @@ internal static class SecurityTestSeed
     private static Task EnsurePermissionCatalogAsync(
         SqliteTestDatabase database,
         CancellationToken cancellationToken = default) =>
-        new PlatformDataAccess(database.Factory).EnsurePermissionCatalogAsync(cancellationToken);
+        new PlatformDataAccess(database.Factory, new DefaultIdGenerator()).EnsurePermissionCatalogAsync(cancellationToken);
 }

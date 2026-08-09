@@ -17,7 +17,7 @@ public sealed class TenantAdminAuthorizationTests
             "admin@example.com",
             "password",
             isTenantAdmin: true);
-        var authorization = new TenantAdminAuthorization(new PlatformDataAccess(database.Factory));
+        var authorization = new TenantAdminAuthorization(new PlatformDataAccess(database.Factory, new DefaultIdGenerator()));
 
         // Act
         var isAdmin = await authorization.IsTenantAdminAsync(principalId, CancellationToken.None);

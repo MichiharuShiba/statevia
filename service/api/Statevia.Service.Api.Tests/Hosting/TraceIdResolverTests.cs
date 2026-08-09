@@ -13,7 +13,7 @@ public sealed class TraceIdResolverTests
         ctx.Request.Headers["traceparent"] =
             "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
 
-        var id = TraceIdResolver.ResolveTraceId(ctx.Request);
+        var id = TraceIdResolver.ResolveTraceId(ctx.Request, new DefaultIdGenerator());
 
         Assert.Equal("0af7651916cd43dd8448eb211c80319c", id);
     }
@@ -25,7 +25,7 @@ public sealed class TraceIdResolverTests
         ctx.Request.Headers["traceparent"] = "invalid";
         ctx.Request.Headers["X-Trace-Id"] = "  my-trace  ";
 
-        var id = TraceIdResolver.ResolveTraceId(ctx.Request);
+        var id = TraceIdResolver.ResolveTraceId(ctx.Request, new DefaultIdGenerator());
 
         Assert.Equal("my-trace", id);
     }
@@ -37,7 +37,7 @@ public sealed class TraceIdResolverTests
         ctx.Request.Headers["X-Trace-Id"] = new string('a', 129);
         ctx.Request.Headers["X-Request-Id"] = "req-1";
 
-        var id = TraceIdResolver.ResolveTraceId(ctx.Request);
+        var id = TraceIdResolver.ResolveTraceId(ctx.Request, new DefaultIdGenerator());
 
         Assert.Equal("req-1", id);
     }
