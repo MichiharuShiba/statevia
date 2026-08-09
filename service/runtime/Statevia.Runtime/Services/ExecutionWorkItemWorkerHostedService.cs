@@ -22,7 +22,8 @@ namespace Statevia.Runtime.Services;
 /// </remarks>
 public sealed class ExecutionWorkItemWorkerHostedService(
     IServiceScopeFactory scopeFactory,
-    ILogger<ExecutionWorkItemWorkerHostedService> logger) : BackgroundService
+    ILogger<ExecutionWorkItemWorkerHostedService> logger,
+    IIdGenerator idGenerator) : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan LeaseDuration = TimeSpan.FromMinutes(1);
@@ -31,7 +32,7 @@ public sealed class ExecutionWorkItemWorkerHostedService(
     private const int ClaimLimit = 1;
     private static readonly IReadOnlySet<string> WorkerPermissions =
         new HashSet<string>(StringComparer.Ordinal) { WellKnownPermissionKeys.ExecutionsWrite };
-    private readonly string _leaseOwner = $"{Environment.MachineName}:{Guid.NewGuid():N}";
+    private readonly string _leaseOwner = $"{Environment.MachineName}:{idGenerator.NewRandomGuid():N}";
 
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

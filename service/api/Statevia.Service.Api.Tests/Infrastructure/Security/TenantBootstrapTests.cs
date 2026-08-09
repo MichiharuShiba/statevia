@@ -13,7 +13,7 @@ public sealed class TenantBootstrapTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var bootstrap = new TenantBootstrap(database.Factory, new PlatformDataAccess(database.Factory));
+        var bootstrap = new TenantBootstrap(database.Factory, new PlatformDataAccess(database.Factory, new DefaultIdGenerator()), new DefaultIdGenerator());
 
         // Act
         var result = await bootstrap.CreateTenantAsync(
@@ -39,7 +39,7 @@ public sealed class TenantBootstrapTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var bootstrap = new TenantBootstrap(database.Factory, new PlatformDataAccess(database.Factory));
+        var bootstrap = new TenantBootstrap(database.Factory, new PlatformDataAccess(database.Factory, new DefaultIdGenerator()), new DefaultIdGenerator());
         await bootstrap.CreateTenantAsync("acme-corp", null, false, CancellationToken.None);
 
         // Act
@@ -61,7 +61,7 @@ public sealed class TenantBootstrapTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var bootstrap = new TenantBootstrap(database.Factory, new PlatformDataAccess(database.Factory));
+        var bootstrap = new TenantBootstrap(database.Factory, new PlatformDataAccess(database.Factory, new DefaultIdGenerator()), new DefaultIdGenerator());
 
         // Act
         var result = await bootstrap.CreateTenantAsync(
@@ -82,7 +82,7 @@ public sealed class TenantBootstrapTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var bootstrap = new TenantBootstrap(database.Factory, new PlatformDataAccess(database.Factory));
+        var bootstrap = new TenantBootstrap(database.Factory, new PlatformDataAccess(database.Factory, new DefaultIdGenerator()), new DefaultIdGenerator());
         await bootstrap.CreateTenantAsync("acme-corp", null, false, CancellationToken.None);
 
         // Act & Assert
@@ -97,7 +97,7 @@ public sealed class TenantBootstrapTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var bootstrap = new TenantBootstrap(database.Factory, new PlatformDataAccess(database.Factory));
+        var bootstrap = new TenantBootstrap(database.Factory, new PlatformDataAccess(database.Factory, new DefaultIdGenerator()), new DefaultIdGenerator());
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() =>

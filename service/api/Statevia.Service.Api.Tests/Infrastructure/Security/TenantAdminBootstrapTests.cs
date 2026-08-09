@@ -32,7 +32,7 @@ public sealed class TenantAdminBootstrapTests
         Assert.Equal(email, result.Email);
 
         var auth = new AuthService(
-            new PlatformDataAccess(database.Factory),
+            new PlatformDataAccess(database.Factory, new DefaultIdGenerator()),
             CreateJwt(),
             new PasswordCredentialService());
         var login = await auth.LoginAsync(
@@ -116,8 +116,9 @@ public sealed class TenantAdminBootstrapTests
     private static TenantAdminBootstrap CreateBootstrap(SqliteTestDatabase database) =>
         new(
             database.Factory,
-            new PlatformDataAccess(database.Factory),
-            new PasswordCredentialService());
+            new PlatformDataAccess(database.Factory, new DefaultIdGenerator()),
+            new PasswordCredentialService(),
+            new DefaultIdGenerator());
 
     private static JwtTokenService CreateJwt()
     {

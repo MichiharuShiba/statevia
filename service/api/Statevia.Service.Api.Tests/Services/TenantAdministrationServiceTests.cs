@@ -20,9 +20,9 @@ public sealed class TenantAdministrationServiceTests
         return new TenantAdministrationService(
             database.Factory,
             tenantContext,
-            new TenantAdminAuthorization(new PlatformDataAccess(database.Factory)),
+            new TenantAdminAuthorization(new PlatformDataAccess(database.Factory, new DefaultIdGenerator())),
             new PasswordCredentialService(),
-            new UuidV7Generator());
+            new DefaultIdGenerator());
     }
 
     /// <summary>非管理者はユーザー一覧を拒否される。</summary>
@@ -103,7 +103,7 @@ public sealed class TenantAdministrationServiceTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
         var adminId = await SecurityTestSeed.SeedUserAsync(database, "admin-groups@example.com", "password", isTenantAdmin: true);
         var tenantContext = new SettableTenantContextAccessor();
@@ -134,7 +134,7 @@ public sealed class TenantAdministrationServiceTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
         var adminId = await SecurityTestSeed.SeedUserAsync(database, "admin-apikeys@example.com", "password", isTenantAdmin: true);
         var tenantContext = new SettableTenantContextAccessor();
@@ -165,7 +165,7 @@ public sealed class TenantAdministrationServiceTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
         var adminId = await SecurityTestSeed.SeedUserAsync(database, "admin-revoke@example.com", "password", isTenantAdmin: true);
         var tenantContext = new SettableTenantContextAccessor();

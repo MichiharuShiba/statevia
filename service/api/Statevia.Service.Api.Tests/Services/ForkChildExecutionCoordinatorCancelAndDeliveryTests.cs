@@ -140,7 +140,7 @@ public sealed class ForkChildExecutionCoordinatorCancelAndDeliveryTests
             executor,
             new ExecutionRepository(),
             new ExecutionBranchRepository(),
-            new ExecutionWaitRepository(db.Factory),
+            new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator()),
             workQueue,
             new GuidIdGenerator(),
             new StubDisplayIdWrites(),
@@ -248,7 +248,8 @@ public sealed class ForkChildExecutionCoordinatorCancelAndDeliveryTests
 
     private sealed class GuidIdGenerator : IIdGenerator
     {
-        public Guid NewGuid() => Guid.NewGuid();
+        public Guid NewSequentialGuid() => Guid.NewGuid();
+        public Guid NewRandomGuid() => Guid.NewGuid();
     }
 
     private sealed class StubDisplayIdWrites : IDisplayIdWriteService

@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Application.Contracts.Services;
 
 namespace Statevia.Infrastructure.Persistence.Repositories;
 
 /// <summary><see cref="IProjectRepository"/> の EF 実装。</summary>
-internal sealed class ProjectRepository : IProjectRepository
+internal sealed class ProjectRepository(IIdGenerator idGenerator) : IProjectRepository
 {
     /// <summary>移行・初回定義作成時の既定 project slug。</summary>
     public const string DefaultProjectSlug = "default";
@@ -27,7 +28,7 @@ internal sealed class ProjectRepository : IProjectRepository
         var now = DateTime.UtcNow;
         var project = new ProjectRow
         {
-            ProjectId = Guid.NewGuid(),
+            ProjectId = idGenerator.NewSequentialGuid(),
             OwnerTenantId = ownerTenantId,
             Slug = DefaultProjectSlug,
             DisplayName = $"{ownerTenantKey} default",

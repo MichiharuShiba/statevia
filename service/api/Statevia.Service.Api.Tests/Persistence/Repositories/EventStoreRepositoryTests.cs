@@ -18,7 +18,7 @@ public sealed class EventStoreRepositoryTests
         // Arrange
         using var db = CreateDb();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new EventStoreRepository(new UuidV7Generator());
+        var repo = new EventStoreRepository(new DefaultIdGenerator());
         var wfId = Guid.NewGuid();
 
         // Act
@@ -49,7 +49,7 @@ public sealed class EventStoreRepositoryTests
         // Arrange
         using var db = CreateDb();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new EventStoreRepository(new UuidV7Generator());
+        var repo = new EventStoreRepository(new DefaultIdGenerator());
         var wfId = Guid.NewGuid();
 
         // Act
@@ -72,7 +72,7 @@ public sealed class EventStoreRepositoryTests
         // Arrange
         using var db = CreateDb();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new EventStoreRepository(new UuidV7Generator());
+        var repo = new EventStoreRepository(new DefaultIdGenerator());
         var wfId = Guid.NewGuid();
 
         await using (var uow = await uowFactory.CreateAsync())
@@ -103,7 +103,7 @@ public sealed class EventStoreRepositoryTests
         // Arrange
         using var db = CreateDb();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new EventStoreRepository(new UuidV7Generator());
+        var repo = new EventStoreRepository(new DefaultIdGenerator());
         var wfId = Guid.NewGuid();
 
         await using (var uow = await uowFactory.CreateAsync())
@@ -133,7 +133,7 @@ public sealed class EventStoreRepositoryTests
         // Arrange
         using var db = CreateDb();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new EventStoreRepository(new UuidV7Generator());
+        var repo = new EventStoreRepository(new DefaultIdGenerator());
         var wfId = Guid.NewGuid();
         await using var uow = await uowFactory.CreateAsync();
 
@@ -153,7 +153,7 @@ public sealed class EventStoreRepositoryTests
         // Arrange
         using var db = CreateDb();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new EventStoreRepository(new UuidV7Generator());
+        var repo = new EventStoreRepository(new DefaultIdGenerator());
         var wfId = Guid.NewGuid();
         await using var uow = await uowFactory.CreateAsync();
 
@@ -173,7 +173,7 @@ public sealed class EventStoreRepositoryTests
         // Arrange
         using var db = CreateDb();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new EventStoreRepository(new UuidV7Generator());
+        var repo = new EventStoreRepository(new DefaultIdGenerator());
         var wfId = Guid.NewGuid();
 
         await using (var uow = await uowFactory.CreateAsync())
@@ -200,7 +200,7 @@ public sealed class EventStoreRepositoryTests
         // Arrange
         using var db = CreateDb();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new EventStoreRepository(new UuidV7Generator());
+        var repo = new EventStoreRepository(new DefaultIdGenerator());
         var executionId = Guid.NewGuid();
         var clientEventId = Guid.Parse("6ba7b810-9dad-11d1-80b4-00c04fd430c8");
 
@@ -238,7 +238,7 @@ public sealed class EventStoreRepositoryTests
         // Arrange
         using var db = CreateDb();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
-        var repo = new EventStoreRepository(new UuidV7Generator());
+        var repo = new EventStoreRepository(new DefaultIdGenerator());
         var executionId = Guid.NewGuid();
         var clientEventId = Guid.Parse("7ba7b810-9dad-11d1-80b4-00c04fd430c8");
 

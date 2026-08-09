@@ -15,7 +15,7 @@ public sealed class PlatformDataAccessTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var tenant = await platform.FindTenantByKeyAsync("default", CancellationToken.None);
@@ -31,7 +31,7 @@ public sealed class PlatformDataAccessTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var tenant = await platform.FindTenantByKeyAsync("missing", CancellationToken.None);
@@ -46,7 +46,7 @@ public sealed class PlatformDataAccessTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var tenants = await platform.ListActiveTenantsAsync(CancellationToken.None);
@@ -64,7 +64,7 @@ public sealed class PlatformDataAccessTests
         // Arrange
         using var database = new SqliteTestDatabase();
         await SecurityTestSeed.SeedUserAsync(database, "user@example.com", "password123");
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var lookup = await platform.FindLoginCredentialAsync("default", "user@example.com", CancellationToken.None);
@@ -83,7 +83,7 @@ public sealed class PlatformDataAccessTests
         // Arrange
         using var database = new SqliteTestDatabase();
         await SecurityTestSeed.SeedUserAsync(database, "inactive@example.com", "password123", isActive: false);
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var lookup = await platform.FindLoginCredentialAsync("default", "inactive@example.com", CancellationToken.None);
@@ -99,7 +99,7 @@ public sealed class PlatformDataAccessTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var principalId = await SecurityTestSeed.SeedUserAsync(database, "me@example.com", "password123");
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var lookup = await platform.FindUserPrincipalAsync(
@@ -126,7 +126,7 @@ public sealed class PlatformDataAccessTests
             await db.SaveChangesAsync();
         }
 
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         await platform.EnsureDefaultTenantAsync(CancellationToken.None);
@@ -144,7 +144,7 @@ public sealed class PlatformDataAccessTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var (principalId, _, plainKey) = await SecurityTestSeed.SeedApiKeyAsync(database);
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var prefix = PasswordCredentialService.ApiKeyPrefix(plainKey);
         var hash = PasswordCredentialService.HashApiKey(plainKey);
 
@@ -164,7 +164,7 @@ public sealed class PlatformDataAccessTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var (_, _, plainKey) = await SecurityTestSeed.SeedApiKeyAsync(database);
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         var prefix = PasswordCredentialService.ApiKeyPrefix(plainKey);
 
         // Act
@@ -181,7 +181,7 @@ public sealed class PlatformDataAccessTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var (_, apiKeyId, _) = await SecurityTestSeed.SeedApiKeyAsync(database);
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         await platform.TouchApiKeyLastUsedAsync(apiKeyId, CancellationToken.None);
@@ -199,7 +199,7 @@ public sealed class PlatformDataAccessTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var principalId = await SecurityTestSeed.SeedUserAsync(database, "principal@example.com", "password");
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var principal = await platform.FindPrincipalAsync(principalId, CancellationToken.None);
@@ -215,7 +215,7 @@ public sealed class PlatformDataAccessTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var principal = await platform.FindPrincipalAsync(Guid.NewGuid(), CancellationToken.None);
@@ -235,7 +235,7 @@ public sealed class PlatformDataAccessTests
             "group-user@example.com",
             "password",
             [WellKnownPermissionKeys.ExecutionsRead]);
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var snapshots = await platform.GetGroupSnapshotsForPrincipalAsync(principalId, CancellationToken.None);
@@ -281,7 +281,7 @@ public sealed class PlatformDataAccessTests
             await seed.SaveChangesAsync();
         }
 
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var lookup = await platform.FindExecutionTenantAsync(executionId, CancellationToken.None);
@@ -298,7 +298,7 @@ public sealed class PlatformDataAccessTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var lookup = await platform.FindExecutionTenantAsync(Guid.NewGuid(), CancellationToken.None);
@@ -314,7 +314,7 @@ public sealed class PlatformDataAccessTests
         // Arrange
         var missingApiKeyId = Guid.NewGuid();
         using var database = new SqliteTestDatabase();
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
         var exception = await Record.ExceptionAsync(() =>

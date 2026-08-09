@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Infrastructure.Security;
@@ -20,14 +21,20 @@ internal sealed class TenantBootstrap
 {
     private readonly IDbContextFactory<CoreDbContext> _dbFactory;
     private readonly IPlatformDataAccess _platformDataAccess;
+    private readonly IIdGenerator _idGenerator;
 
     /// <summary>新しいインスタンスを初期化する。</summary>
+    /// <param name="dbFactory">DbContext 工場。</param>
+    /// <param name="platformDataAccess">Platform データアクセス。</param>
+    /// <param name="idGenerator">永続 UUID 採番。</param>
     public TenantBootstrap(
         IDbContextFactory<CoreDbContext> dbFactory,
-        IPlatformDataAccess platformDataAccess)
+        IPlatformDataAccess platformDataAccess,
+        IIdGenerator idGenerator)
     {
         _dbFactory = dbFactory;
         _platformDataAccess = platformDataAccess;
+        _idGenerator = idGenerator;
     }
 
     /// <summary>
@@ -85,7 +92,7 @@ internal sealed class TenantBootstrap
                 Created: true);
         }
 
-        var tenantId = Guid.NewGuid();
+        var tenantId = _idGenerator.NewSequentialGuid();
         var now = DateTime.UtcNow;
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);

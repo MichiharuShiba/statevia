@@ -50,7 +50,8 @@ public sealed class ExecutionServiceTests
     {
         private readonly Guid _id;
         public FixedIdGenerator(Guid id) => _id = id;
-        public Guid NewGuid() => _id;
+        public Guid NewSequentialGuid() => _id;
+        public Guid NewRandomGuid() => _id;
     }
 
     private sealed class DummyExecutorFactory : IStateExecutorFactory
@@ -4289,7 +4290,7 @@ public sealed class ExecutionServiceTests
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository(),
             new FakeEventDeliveryDedupRepository(),
-            projectAuthorization: new ProjectAuthorizationService(new ProjectRepository()));
+            projectAuthorization: new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator())));
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
@@ -4321,7 +4322,7 @@ public sealed class ExecutionServiceTests
             new FakeCommandDedupRepository(),
             new FakeEventStoreRepository(),
             new FakeEventDeliveryDedupRepository(),
-            projectAuthorization: new ProjectAuthorizationService(new ProjectRepository()));
+            projectAuthorization: new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator())));
 
         // Act
         var response = await sut.StartAsync(

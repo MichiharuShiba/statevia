@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Statevia.Core.Application.Contracts.Services;
 
 namespace Statevia.Service.Api.Hosting;
 
@@ -12,8 +13,12 @@ internal static class TraceIdResolver
     /// <summary>
     /// 優先順位: <c>traceparent</c>（有効時）→ <c>X-Trace-Id</c> → <c>X-Request-Id</c> → 生成（32 hex）。
     /// </summary>
-    public static string ResolveTraceId(HttpRequest request)
+    /// <param name="request">HTTP リクエスト。</param>
+    /// <param name="idGenerator">フォールバック用の非永続 ID 採番。</param>
+    public static string ResolveTraceId(HttpRequest request, IIdGenerator idGenerator)
     {
+        ArgumentNullException.ThrowIfNull(idGenerator);
+
         // 分散トレース標準: 有効な trace-id（32 hex）のみ採用
         var traceParent = request.Headers.TraceParent.FirstOrDefault();
         if (!string.IsNullOrEmpty(traceParent) && TryParseTraceParent(traceParent, out var fromParent))
@@ -29,7 +34,7 @@ internal static class TraceIdResolver
             return xr;
 
         // 上記が無い場合はサーバ生成（ログ上の一意性用）
-        return Guid.NewGuid().ToString("N");
+        return idGenerator.NewRandomGuid().ToString("N");
     }
 
     internal static bool TryParseTraceParent(string value, out string traceId)

@@ -157,7 +157,7 @@ internal sealed class S3ModuleSource(
     {
         Directory.CreateDirectory(artifactCacheDir);
 
-        var tempZipPath = Path.Combine(Path.GetTempPath(), $"statevia-s3-{Guid.NewGuid():N}.zip");
+        var tempZipPath = Path.Combine(Path.GetTempPath(), $"statevia-s3-{Path.GetRandomFileName()}.zip");
         try
         {
             File.WriteAllBytes(tempZipPath, zipBytes);

@@ -17,7 +17,7 @@ public sealed class ProjectRepositoryTests
         using var db = new SqliteTestDatabase();
         var ownerTenantId = Guid.NewGuid();
         var now = DateTime.UtcNow;
-        var repo = new ProjectRepository();
+        var repo = new ProjectRepository(new DefaultIdGenerator());
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
 
         await using (var seed = db.Factory.CreateDbContext())
@@ -55,7 +55,7 @@ public sealed class ProjectRepositoryTests
         using var db = new SqliteTestDatabase();
         var ownerTenantId = Guid.NewGuid();
         var projectId = Guid.NewGuid();
-        var repo = new ProjectRepository();
+        var repo = new ProjectRepository(new DefaultIdGenerator());
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
 
         await using (var seed = db.Factory.CreateDbContext())
@@ -89,7 +89,7 @@ public sealed class ProjectRepositoryTests
         using var db = new SqliteTestDatabase();
         var ownerTenantId = Guid.NewGuid();
         var projectId = Guid.NewGuid();
-        var repo = new ProjectRepository();
+        var repo = new ProjectRepository(new DefaultIdGenerator());
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         SeedOwnerProject(db, ownerTenantId, projectId);
 
@@ -110,7 +110,7 @@ public sealed class ProjectRepositoryTests
         var ownerTenantId = Guid.NewGuid();
         var granteeTenantId = Guid.NewGuid();
         var projectId = Guid.NewGuid();
-        var repo = new ProjectRepository();
+        var repo = new ProjectRepository(new DefaultIdGenerator());
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         SeedOwnerProject(db, ownerTenantId, projectId);
 
@@ -146,7 +146,7 @@ public sealed class ProjectRepositoryTests
         var ownerTenantId = Guid.NewGuid();
         var otherTenantId = Guid.NewGuid();
         var projectId = Guid.NewGuid();
-        var repo = new ProjectRepository();
+        var repo = new ProjectRepository(new DefaultIdGenerator());
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         SeedOwnerProject(db, ownerTenantId, projectId);
 

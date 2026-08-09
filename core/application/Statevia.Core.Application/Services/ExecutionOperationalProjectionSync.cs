@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Statevia.Core.Application.Contracts.Persistence;
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Infrastructure;
 using Statevia.Core.Engine.Abstractions;
 
@@ -27,6 +28,7 @@ internal static class ExecutionOperationalProjectionSync
         IExecutionCursorRepository cursors,
         IExecutionWaitRepository waits,
         ExecutionOperationalProjectionSyncRequest request,
+        IIdGenerator idGenerator,
         CancellationToken ct)
     {
         if (!string.IsNullOrWhiteSpace(request.NodeIdToClear))
@@ -61,7 +63,7 @@ internal static class ExecutionOperationalProjectionSync
 
         // Resume / Publish 直後はグラフ完了反映が遅れることがある。
         // NodeIdToClear を除外しないと、削除した wait を古いグラフから即再作成してしまう。
-        var durableWaits = ExtractDurableWaits(request.ExecutionId, request.GraphJson, now)
+        var durableWaits = ExtractDurableWaits(request.ExecutionId, request.GraphJson, now, idGenerator)
             .Where(row =>
                 string.IsNullOrWhiteSpace(request.NodeIdToClear)
                 || !string.Equals(row.NodeId, request.NodeIdToClear, StringComparison.OrdinalIgnoreCase))
@@ -117,7 +119,7 @@ internal static class ExecutionOperationalProjectionSync
     /// <param name="graphJson">実行グラフ JSON。</param>
     /// <returns>durable Wait が 1 件以上あれば <see langword="true"/>。</returns>
     internal static bool HasDurableWaits(string graphJson) =>
-        ExtractDurableWaits(Guid.Empty, graphJson, DateTime.UtcNow).Count > 0;
+        ExtractDurableWaits(Guid.Empty, graphJson, DateTime.UtcNow, PresenceCheckIdGenerator.Instance).Count > 0;
 
     /// <summary>
     /// 未完了 Wait ノードから durable wait 行を構築する。
@@ -131,7 +133,8 @@ internal static class ExecutionOperationalProjectionSync
     private static IReadOnlyList<ExecutionWaitRow> ExtractDurableWaits(
         Guid executionId,
         string graphJson,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        IIdGenerator idGenerator)
     {
         if (!TryParseGraph(graphJson, out var nodes))
             return Array.Empty<ExecutionWaitRow>();
@@ -155,7 +158,7 @@ internal static class ExecutionOperationalProjectionSync
                     AllowedEvents = allowedEvents,
                     ExpiresAt = null,
                     CreatedAt = nowUtc,
-                    Subscriptions = ExtractSubscriptions(executionId, n.NodeId!, n.Subscriptions, nowUtc)
+                    Subscriptions = ExtractSubscriptions(executionId, n.NodeId!, n.Subscriptions, nowUtc, idGenerator)
                 };
             })
             .Where(row => row is not null)
@@ -168,7 +171,8 @@ internal static class ExecutionOperationalProjectionSync
         Guid executionId,
         string nodeId,
         List<GraphSubscriptionDto>? subscriptions,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        IIdGenerator idGenerator)
     {
         if (subscriptions is null || subscriptions.Count == 0)
             return Array.Empty<ExecutionWaitSubscriptionRow>();
@@ -177,7 +181,7 @@ internal static class ExecutionOperationalProjectionSync
             .Where(s => !string.IsNullOrWhiteSpace(s.Topic) && !string.IsNullOrWhiteSpace(s.ResumeEventName))
             .Select(s => new ExecutionWaitSubscriptionRow
             {
-                SubscriptionId = Guid.NewGuid(),
+                SubscriptionId = idGenerator.NewSequentialGuid(),
                 ExecutionId = executionId,
                 NodeId = nodeId,
                 Topic = s.Topic!.Trim(),
@@ -286,5 +290,17 @@ internal static class ExecutionOperationalProjectionSync
 
         [JsonPropertyName("resumeEventName")]
         public string? ResumeEventName { get; set; }
+    }
+
+    /// <summary>
+    /// <see cref="HasDurableWaits"/> 専用。行は永続化されないため固定の空 Guid で足りる。
+    /// </summary>
+    private sealed class PresenceCheckIdGenerator : IIdGenerator
+    {
+        public static PresenceCheckIdGenerator Instance { get; } = new();
+
+        public Guid NewSequentialGuid() => Guid.Empty;
+
+        public Guid NewRandomGuid() => Guid.Empty;
     }
 }

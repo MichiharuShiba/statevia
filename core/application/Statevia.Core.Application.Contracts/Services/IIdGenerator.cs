@@ -5,7 +5,11 @@ namespace Statevia.Core.Application.Contracts.Services;
 /// </summary>
 public interface IIdGenerator
 {
-    /// <summary>新しい GUID（実装は UUID v7 等）を生成する。</summary>
+    /// <summary>永続 PK / 文書キー向けの UUID（実装は UUIDv7・時刻順）。</summary>
     /// <returns>生成された GUID。</returns>
-    Guid NewGuid();
+    Guid NewSequentialGuid();
+
+    /// <summary>非永続 ID 向けの乱数 UUID（実装は UUIDv4 相当）。</summary>
+    /// <returns>生成された GUID。</returns>
+    Guid NewRandomGuid();
 }

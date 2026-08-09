@@ -12,7 +12,8 @@ namespace Statevia.Core.Application.Services;
 internal sealed class EventIngressService(
     ICoreTransactionExecutor transactions,
     IExecutionWaitRepository waits,
-    IExecutionWorkQueue workQueue) : IEventIngressService
+    IExecutionWorkQueue workQueue,
+    IIdGenerator idGenerator) : IEventIngressService
 {
     /// <inheritdoc />
     public async Task PublishAsync(
@@ -40,7 +41,7 @@ internal sealed class EventIngressService(
         var items = matches
             .Select(match => new ExecutionWorkItemRow
             {
-                WorkItemId = Guid.NewGuid(),
+                WorkItemId = idGenerator.NewSequentialGuid(),
                 ExecutionId = match.ExecutionId,
                 Kind = ExecutionWorkItemKinds.Resume,
                 Payload = JsonSerializer.Serialize(

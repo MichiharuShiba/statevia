@@ -37,7 +37,7 @@ internal sealed class EventStoreRepository : IEventStoreRepository
 
         uow.GetDb().EventStore.Add(new EventStoreRow
         {
-            EventId = _ids.NewGuid(),
+            EventId = _ids.NewSequentialGuid(),
             ExecutionId = executionId,
             Seq = nextSeq,
             Type = eventType.ToPersistedString(),

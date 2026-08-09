@@ -17,7 +17,7 @@ public sealed class AuthServiceTests
     private static AuthService CreateAuthService(SqliteTestDatabase database)
     {
         var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
-        var platform = new PlatformDataAccess(database.Factory);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
         return new AuthService(platform, jwt, new PasswordCredentialService());
     }
 

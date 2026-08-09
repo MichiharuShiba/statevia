@@ -214,8 +214,8 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
         if (groupIds.Count > 0)
             await EnsureGroupIdsExistAsync(db, groupIds, cancellationToken).ConfigureAwait(false);
 
-        var userId = _idGenerator.NewGuid();
-        var principalId = _idGenerator.NewGuid();
+        var userId = _idGenerator.NewSequentialGuid();
+        var principalId = _idGenerator.NewSequentialGuid();
         var now = DateTime.UtcNow;
         var displayName = string.IsNullOrWhiteSpace(request.DisplayName) ? email : request.DisplayName.Trim();
 
@@ -364,7 +364,7 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
             throw new ArgumentException($"Group '{name}' already exists.", nameof(request));
 
         var now = DateTime.UtcNow;
-        var groupId = _idGenerator.NewGuid();
+        var groupId = _idGenerator.NewSequentialGuid();
         db.Groups.Add(new GroupRow
         {
             GroupId = groupId,
@@ -534,10 +534,10 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
         var allowedScopes = await NormalizeApiKeyAllowedScopesAsync(request.AllowedScopes, cancellationToken)
             .ConfigureAwait(false);
         var plainKey = PasswordCredentialService.GeneratePlainApiKey();
-        var apiKeyId = _idGenerator.NewGuid();
-        var principalId = _idGenerator.NewGuid();
-        var serviceAccountId = _idGenerator.NewGuid();
-        var groupId = _idGenerator.NewGuid();
+        var apiKeyId = _idGenerator.NewSequentialGuid();
+        var principalId = _idGenerator.NewSequentialGuid();
+        var serviceAccountId = _idGenerator.NewSequentialGuid();
+        var groupId = _idGenerator.NewSequentialGuid();
         var now = DateTime.UtcNow;
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);

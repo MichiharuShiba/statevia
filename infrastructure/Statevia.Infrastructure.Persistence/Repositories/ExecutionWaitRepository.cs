@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using Statevia.Core.Application.Contracts.Services;
 using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Infrastructure.Persistence.Repositories;
 
 /// <summary>execution_waits / execution_wait_subscriptions 永続化。</summary>
-internal sealed class ExecutionWaitRepository(IDbContextFactory<CoreDbContext> dbFactory) : IExecutionWaitRepository
+internal sealed class ExecutionWaitRepository(
+    IDbContextFactory<CoreDbContext> dbFactory,
+    IIdGenerator idGenerator) : IExecutionWaitRepository
 {
     /// <inheritdoc />
     public async Task ReplaceWaitsAsync(
@@ -57,7 +60,7 @@ internal sealed class ExecutionWaitRepository(IDbContextFactory<CoreDbContext> d
             .SelectMany(wait => wait.Subscriptions.Select(subscription => new ExecutionWaitSubscriptionRow
             {
                 SubscriptionId = subscription.SubscriptionId == Guid.Empty
-                    ? Guid.NewGuid()
+                    ? idGenerator.NewSequentialGuid()
                     : subscription.SubscriptionId,
                 ExecutionId = executionId,
                 NodeId = wait.NodeId,

@@ -1,0 +1,2 @@
+# Prefer IIdGenerator.NewSequentialGuid (persistent) or NewRandomGuid (non-persistent).
+M:System.Guid.NewGuid()

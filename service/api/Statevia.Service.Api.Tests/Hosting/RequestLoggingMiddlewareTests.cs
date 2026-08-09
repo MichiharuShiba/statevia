@@ -419,7 +419,8 @@ public sealed class RequestLoggingMiddlewareTests
             context,
             logger,
             options,
-            tenantContextAccessor ?? NullTenantContextAccessor.Instance);
+            tenantContextAccessor ?? NullTenantContextAccessor.Instance,
+            new DefaultIdGenerator());
 
     private sealed class LogCollector : ILoggerProvider, IDisposable
     {

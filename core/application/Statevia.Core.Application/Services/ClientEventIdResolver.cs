@@ -16,7 +16,7 @@ internal static class ClientEventIdResolver
     public static Guid FromIdempotencyKey(string? idempotencyKey, IIdGenerator idGenerator)
     {
         if (string.IsNullOrWhiteSpace(idempotencyKey))
-            return idGenerator.NewGuid();
+            return idGenerator.NewSequentialGuid();
 
         var trimmed = idempotencyKey.Trim();
         if (Guid.TryParse(trimmed, out var parsed))
