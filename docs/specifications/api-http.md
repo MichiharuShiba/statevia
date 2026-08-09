@@ -288,7 +288,7 @@ Response: 200 OK、Content-Type: application/json。`execution_graph_snapshots` 
 
 - JSON キー命名は **camelCase**。
 - トップレベルは **`nodes`**, **`edges`**（ExecutionGraph のシリアライズ形）。**HTTP** では `execution_graph_snapshots` の行が無い場合は **404**（`ExecutionService.GetGraphJsonAsync`）。エンジン API `ExportExecutionGraph` がメモリにインスタンスを持たないときは **`{}`** 文字列を返し得るが、それは in-process 観測用であり、Read API の正本ではない（`AGENTS.md` Read-model authority）。
-- **`nodes[*].nodeId`**: ランタイム実行ノード ID（短いランダム ID）。**定義**の `GET /v1/graphs/{graphId}` における **`nodes[*].nodeId`（状態名ベースのキャンバス ID）とは別**。
+- **`nodes[*].nodeId`**: ランタイム実行ノード ID（opaque。新規は小文字 Hex 12、既存実行は 8 桁のまま混在しうる）。**定義**の `GET /v1/graphs/{graphId}` における **`nodes[*].nodeId`（状態名ベースのキャンバス ID）とは別**。詳細は `docs/specifications/execution/execution-graph.md` §4。
 - **`nodes[*].stateName`**: 定義上の状態名。UI はマージ時に `stateName` および実行エッジで対応付ける（`docs/specifications/execution/execution-graph.md` §7）。
 - **`edges[*].from` / `edges[*].to`**: いずれも **`nodes[*].nodeId`** を指す。旧キー `fromNodeId` / `toNodeId` は用いない。
 - **`edges[*].type`**: `EdgeType` の数値（`Next` 0 など）。`Join`（2）では合流元から Join 合成ノードへ **複数辺** が立ち得る。
