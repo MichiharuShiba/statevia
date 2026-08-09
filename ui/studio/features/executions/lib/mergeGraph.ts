@@ -6,8 +6,8 @@ export type MergedGraphNode = {
   nodeId: string;
   /** ExecutionGraph のノード ID（差分ハイライト・ランタイム行と対応）。定義のみの IDLE 行では `nodeId` と同一の合成値。 */
   executionNodeId: string;
-  /** 定義グラフ・API の状態名（実行ノードに stateName があればそれを優先） */
-  stateName: string;
+  /** 定義グラフ・API の状態名（実行ノードに nodeName があればそれを優先） */
+  nodeName: string;
   nodeType: string;
   label: string;
   branch?: string;
@@ -44,11 +44,11 @@ export type MergedGraph = {
   isDefinitionBased: boolean;
 };
 
-/** 定義のみ存在するノード用。`nodeId` は定義上のノードキー、`stateName` はワークフロー状態名。 */
-function asIdleNode(nodeId: string, stateName: string, nodeType: string): ExecutionNodeDTO {
+/** 定義のみ存在するノード用。`nodeId` は定義上のノードキー、`nodeName` はワークフロー状態名。 */
+function asIdleNode(nodeId: string, nodeName: string, nodeType: string): ExecutionNodeDTO {
   return {
     executionNodeId: nodeId,
-    stateName,
+    nodeName,
     nodeType,
     status: "IDLE",
     attempt: 0,
@@ -76,21 +76,21 @@ function toEdge(edge: GraphEdgeDef, index: number): MergedGraphEdge {
 /** 実行グラフと定義グラフをマージする。 */
 export function mergeGraph(execution: ExecutionView, definition: GraphDefinition | null): MergedGraph {
   const byRuntimeId = new Map<string, ExecutionNodeDTO>();
-  const byStateNameKey = new Map<string, ExecutionNodeDTO>();
-  const stateNameByRuntimeId = new Map<string, string>();
+  const byNodeNameKey = new Map<string, ExecutionNodeDTO>();
+  const nodeNameByRuntimeId = new Map<string, string>();
   for (const n of execution.nodes) {
     byRuntimeId.set(n.executionNodeId, n);
-    const trimmed = typeof n.stateName === "string" ? n.stateName.trim() : "";
+    const trimmed = typeof n.nodeName === "string" ? n.nodeName.trim() : "";
     if (trimmed.length === 0) continue;
-    byStateNameKey.set(trimmed, n);
-    stateNameByRuntimeId.set(n.executionNodeId, trimmed);
+    byNodeNameKey.set(trimmed, n);
+    nodeNameByRuntimeId.set(n.executionNodeId, trimmed);
   }
 
   const traversedEdgeKeys = new Set(
     (execution.runtimeEdges ?? []).flatMap((edge) => {
       const directKey = `${edge.from}->${edge.to}`;
-      const fromState = stateNameByRuntimeId.get(edge.from);
-      const toState = stateNameByRuntimeId.get(edge.to);
+      const fromState = nodeNameByRuntimeId.get(edge.from);
+      const toState = nodeNameByRuntimeId.get(edge.to);
       if (fromState === undefined || toState === undefined) return [directKey];
       return [directKey, `${fromState}->${toState}`];
     })
@@ -101,7 +101,7 @@ export function mergeGraph(execution: ExecutionView, definition: GraphDefinition
       nodes: execution.nodes.map((n) => ({
         nodeId: n.executionNodeId,
         executionNodeId: n.executionNodeId,
-        stateName: n.stateName ?? "",
+        nodeName: n.nodeName ?? "",
         nodeType: n.nodeType,
         label: n.executionNodeId,
         status: n.status,
@@ -119,25 +119,25 @@ export function mergeGraph(execution: ExecutionView, definition: GraphDefinition
   }
 
   const nodes = definition.nodes.map((defNode) => {
-    const definitionStateName =
-      typeof defNode.stateName === "string" && defNode.stateName.trim().length > 0
-        ? defNode.stateName.trim()
+    const definitionNodeName =
+      typeof defNode.nodeName === "string" && defNode.nodeName.trim().length > 0
+        ? defNode.nodeName.trim()
         : defNode.nodeId;
 
     const runtimeNode =
       byRuntimeId.get(defNode.nodeId) ??
-      byStateNameKey.get(definitionStateName) ??
-      asIdleNode(defNode.nodeId, definitionStateName, defNode.nodeType);
+      byNodeNameKey.get(definitionNodeName) ??
+      asIdleNode(defNode.nodeId, definitionNodeName, defNode.nodeType);
 
-    const resolvedStateName =
-      typeof runtimeNode.stateName === "string" && runtimeNode.stateName.trim().length > 0
-        ? runtimeNode.stateName.trim()
-        : definitionStateName;
+    const resolvedNodeName =
+      typeof runtimeNode.nodeName === "string" && runtimeNode.nodeName.trim().length > 0
+        ? runtimeNode.nodeName.trim()
+        : definitionNodeName;
 
     return {
       nodeId: defNode.nodeId,
       executionNodeId: runtimeNode.executionNodeId,
-      stateName: resolvedStateName,
+      nodeName: resolvedNodeName,
       nodeType: defNode.nodeType,
       label: defNode.label ?? defNode.nodeId,
       branch: defNode.branch,

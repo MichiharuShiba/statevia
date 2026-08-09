@@ -8,7 +8,7 @@ import type { GraphDefinition } from "../types";
  * - `nodeType` … 必須。レイアウトの並び・サイズヒントに利用（Start/Task/Fork/Join/Wait/Success 等）。
  * - `label` … 任意。
  * - `branch` … 任意。並列ブランチの横オフセット（`meta.branchOrder` と併用）。
- * - `stateName` … 任意。省略時は実行マージで `nodeId` とみなす。実行グラフの `stateName` と突き合わせるときに使用。
+ * - `nodeName` … 任意。省略時は実行マージで `nodeId` とみなす。実行グラフの `nodeName` と突き合わせるときに使用。
  *
  * **エッジ (`GraphEdgeDef`)**
  * - `from` / `to` … 必須（ノードの `nodeId`）。
@@ -36,9 +36,9 @@ export const nodesFormatShowcaseGraphDefinition: GraphDefinition = {
     { nodeId: "after-join", nodeType: "Task", label: "合流後" },
     {
       nodeId: "canvas-1",
-      stateName: "state-from-engine",
+      nodeName: "state-from-engine",
       nodeType: "Task",
-      label: "nodeId≠stateName"
+      label: "nodeId≠nodeName"
     },
     { nodeId: "pre-cancel", nodeType: "Task", label: "取消分岐手前" },
     { nodeId: "end-success", nodeType: "Success", label: "成功終端" },

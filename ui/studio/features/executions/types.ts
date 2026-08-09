@@ -21,7 +21,7 @@ export type ExecutionDTO = {
  */
 export type ExecutionGraphNodeDTO = {
   nodeId?: string;
-  stateName?: string;
+  nodeName?: string;
   nodeType?: string;
   startedAt?: string;
   completedAt?: string | null;
@@ -61,7 +61,7 @@ export type ExecutionGraphDTO = {
 export type ExecutionNodeDTO = {
   /** UI 向けの実行ノード ID。永続グラフ JSON のキーは `nodeId` のまま（API／Engine は変更しない）。グラフから組み立てるときはその値と同じ。 */
   executionNodeId: string;
-  stateName?: string;
+  nodeName?: string;
   nodeType: string;
   status: NodeStatus;
   attempt: number;
@@ -99,7 +99,7 @@ export type CommandAccepted = {
 /** GraphUpdated 等のパッチ。`executionNodeId` は UI／REST 向け名（永続グラフ JSON の `nodeId` と同値）。 */
 export type GraphPatchNode = {
   executionNodeId: string;
-  stateName?: string;
+  nodeName?: string;
   nodeType?: string;
   status?: NodeStatus;
   attempt?: number;

@@ -109,13 +109,13 @@ describe("mergeGraph", () => {
     expect(taskAToFork?.traversed).toBe(false);
   });
 
-  it("runtime nodeId が実行時IDでも stateName ベースで定義ノード/エッジへマージできる", () => {
+  it("runtime nodeId が実行時IDでも nodeName ベースで定義ノード/エッジへマージできる", () => {
     const def = getGraphDefinition("hello")!;
     const exec = execution(
       [
         {
           executionNodeId: "rt-start-1",
-          stateName: "start",
+          nodeName: "start",
           nodeType: "Start",
           status: "SUCCEEDED",
           attempt: 1,
@@ -125,7 +125,7 @@ describe("mergeGraph", () => {
         },
         {
           executionNodeId: "rt-task-a-1",
-          stateName: "task-a",
+          nodeName: "task-a",
           nodeType: "Task",
           status: "RUNNING",
           attempt: 1,
@@ -150,10 +150,10 @@ describe("mergeGraph", () => {
     expect(startToTaskA?.traversed).toBe(true);
   });
 
-  it("定義で nodeId と stateName が異なるときマージ結果で両方を維持する", () => {
+  it("定義で nodeId と nodeName が異なるときマージ結果で両方を維持する", () => {
     const def: GraphDefinition = {
       graphId: "custom-split",
-      nodes: [{ nodeId: "canvas-n1", stateName: "workflowState", nodeType: "Task" }],
+      nodes: [{ nodeId: "canvas-n1", nodeName: "workflowState", nodeType: "Task" }],
       edges: []
     };
     const exec = execution([], "custom-split");
@@ -163,16 +163,16 @@ describe("mergeGraph", () => {
     expect(result.nodes).toHaveLength(1);
     expect(result.nodes[0].nodeId).toBe("canvas-n1");
     expect(result.nodes[0].executionNodeId).toBe("canvas-n1");
-    expect(result.nodes[0].stateName).toBe("workflowState");
+    expect(result.nodes[0].nodeName).toBe("workflowState");
   });
 
-  it("実行ノードに stateName があるときマージ結果の stateName に反映する", () => {
+  it("実行ノードに nodeName があるときマージ結果の nodeName に反映する", () => {
     const def = getGraphDefinition("hello")!;
     const exec = execution(
       [
         {
           executionNodeId: "start",
-          stateName: "startStateApi",
+          nodeName: "startStateApi",
           nodeType: "Start",
           status: "RUNNING",
           attempt: 1,
@@ -186,7 +186,7 @@ describe("mergeGraph", () => {
 
     const result = mergeGraph(exec, def);
     const mergedStart = result.nodes.find((n) => n.nodeId === "start");
-    expect(mergedStart?.stateName).toBe("startStateApi");
+    expect(mergedStart?.nodeName).toBe("startStateApi");
   });
 });
 

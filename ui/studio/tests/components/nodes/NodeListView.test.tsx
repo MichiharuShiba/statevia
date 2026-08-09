@@ -12,7 +12,7 @@ const node = (id: string, status: ExecutionNodeDTO["status"]): ExecutionNodeDTO 
   workerId: null,
   waitKey: null,
   canceledByExecution: false,
-  stateName: `state-${id}`
+  nodeName: `state-${id}`
 });
 
 describe("NodeListView", () => {

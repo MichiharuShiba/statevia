@@ -11,9 +11,9 @@ type NodeListViewProps = {
   onSelectNode: (nodeId: string) => void;
 };
 
-/** 一覧の「ノード名」列: `stateName` があればそのまま、なければダッシュ。 */
+/** 一覧の「ノード名」列: `nodeName` があればそのまま、なければダッシュ。 */
 function listNodeName(node: ExecutionNodeDTO): string {
-  const trimmed = typeof node.stateName === "string" ? node.stateName.trim() : "";
+  const trimmed = typeof node.nodeName === "string" ? node.nodeName.trim() : "";
   return trimmed.length > 0 ? trimmed : "—";
 }
 

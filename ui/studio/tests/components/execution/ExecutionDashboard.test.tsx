@@ -77,7 +77,7 @@ describe("ExecutionDashboard", () => {
         {
           nodeId: "n-1",
           executionNodeId: "n-1",
-          stateName: "task",
+          nodeName: "task",
           nodeType: "Task",
           label: "Task node",
           status: "RUNNING",

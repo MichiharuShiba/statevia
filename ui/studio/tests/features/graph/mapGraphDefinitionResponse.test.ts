@@ -21,16 +21,16 @@ describe("mapGraphDefinitionResponse", () => {
     expect(def.edges[0].to).toBe("b");
   });
 
-  it("node に stateName があれば GraphNodeDef に引き継ぐ", () => {
+  it("node に nodeName があれば GraphNodeDef に引き継ぐ", () => {
     const def = mapGraphDefinitionResponse(
       {
         graphId: "g",
-        nodes: [{ nodeId: "n1", stateName: "s1", nodeType: "Task" }],
+        nodes: [{ nodeId: "n1", nodeName: "s1", nodeType: "Task" }],
         edges: []
       },
       "g"
     );
-    expect(def?.nodes[0]).toMatchObject({ nodeId: "n1", stateName: "s1" });
+    expect(def?.nodes[0]).toMatchObject({ nodeId: "n1", nodeName: "s1" });
   });
 
   it("nodes が空なら null", () => {

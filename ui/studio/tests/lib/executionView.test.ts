@@ -25,7 +25,7 @@ describe("buildExecutionView", () => {
       nodes: [
         {
           nodeId: "n-1",
-          stateName: "RouteByScore",
+          nodeName: "RouteByScore",
           nodeType: "Task",
           startedAt: "2026-01-01T00:00:00Z",
           completedAt: "2026-01-01T00:00:01Z",
@@ -63,7 +63,7 @@ describe("buildExecutionView", () => {
       nodes: [
         {
           nodeId: "n-1",
-          stateName: "Task",
+          nodeName: "Task",
           completedAt: "2026-01-01T00:00:02Z",
           fact: "Completed",
           input: { payload: 1 },
@@ -105,7 +105,7 @@ describe("buildExecutionView", () => {
       nodes: [
         {
           nodeId: "wait-1",
-          stateName: "flow.approve.wait",
+          nodeName: "flow.approve.wait",
           nodeType: "Wait",
           startedAt: "2026-01-01T00:00:00Z",
           completedAt: null,

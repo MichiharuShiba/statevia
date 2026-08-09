@@ -70,7 +70,7 @@ export function useExecution(executionDisplayId: string, options: UseExecutionOp
       if (!current) return view.nodes[0]?.executionNodeId ?? null;
       const key = current.trim();
       if (view.nodes.some((node) => node.executionNodeId === key)) return current;
-      if (view.nodes.some((node) => (node.stateName?.trim() ?? "") === key)) return current;
+      if (view.nodes.some((node) => (node.nodeName?.trim() ?? "") === key)) return current;
       return view.nodes[0]?.executionNodeId ?? null;
     });
   };

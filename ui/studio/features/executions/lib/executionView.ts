@@ -10,7 +10,7 @@ import type {
 function graphNodeToExecutionNode(n: ExecutionGraphDTO["nodes"][0]): ExecutionNodeDTO {
   const executionNodeId =
     typeof n.nodeId === "string" && n.nodeId.length > 0 ? n.nodeId : "";
-  const stateName = typeof n.stateName === "string" ? n.stateName : "";
+  const nodeName = typeof n.nodeName === "string" ? n.nodeName : "";
   const nodeType = typeof n.nodeType === "string" ? n.nodeType : "";
   const fact = n.fact;
   const startedAt = typeof n.startedAt === "string" ? n.startedAt : undefined;
@@ -29,7 +29,7 @@ function graphNodeToExecutionNode(n: ExecutionGraphDTO["nodes"][0]): ExecutionNo
 
   return {
     executionNodeId,
-    stateName,
+    nodeName,
     nodeType,
     status,
     attempt,

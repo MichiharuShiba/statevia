@@ -75,7 +75,7 @@ export const executionsUiTextJa: ExecutionsFeatureUiText = {
     title: (_nodeLabel: string) => "ノード詳細",
     meta: {
       type: (nodeType: string) => `タイプ: ${nodeType}`,
-      stateName: (stateName: string) => `ノード名: ${stateName}`,
+      nodeName: (nodeName: string) => `ノード名: ${nodeName}`,
       executionNodeId: (id: string) => `実行ノードID: ${id}`,
       workerId: (workerId: string) => `ワーカーID: ${workerId}`,
       attempt: (attempt: number) => `試行回数: ${attempt}`,

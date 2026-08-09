@@ -86,10 +86,10 @@ describe("NodeDetail", () => {
     expect(screen.getByText(/"x": 1/, { exact: false })).toBeInTheDocument();
   });
 
-  it("stateName があるときメタ情報にノード名を表示する", () => {
-    const node: ExecutionNodeDTO = { ...baseNode, stateName: "MyState" };
+  it("nodeName があるときメタ情報にノード名を表示する", () => {
+    const node: ExecutionNodeDTO = { ...baseNode, nodeName: "MyState" };
     render(<NodeDetail {...defaultProps} node={node} />);
-    expect(screen.getByText(uiText.nodeDetail.meta.stateName("MyState"))).toBeInTheDocument();
+    expect(screen.getByText(uiText.nodeDetail.meta.nodeName("MyState"))).toBeInTheDocument();
   });
 
   it("input を渡すとトレース欄に入力見出しと内容を表示する", () => {

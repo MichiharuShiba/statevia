@@ -33,7 +33,7 @@ describe("getNodeWithFallback", () => {
       {
         nodeId: "n-1",
         executionNodeId: "n-1",
-        stateName: "n-1",
+        nodeName: "n-1",
         nodeType: "TASK",
         label: "n-1",
         status: "IDLE",
@@ -90,7 +90,7 @@ describe("getNodeWithFallback", () => {
       {
         nodeId: "n-2",
         executionNodeId: "n-2",
-        stateName: "n-2",
+        nodeName: "n-2",
         nodeType: "WAIT",
         label: "Wait",
         status: "IDLE" as const,
@@ -111,7 +111,7 @@ describe("getNodeWithFallback", () => {
     expect(result?.nodeType).toBe("WAIT");
     expect(result?.status).toBe("IDLE");
     expect(result?.workerId).toBeNull();
-    expect(result?.stateName).toBe("n-2");
+    expect(result?.nodeName).toBe("n-2");
   });
 
   it("nodeId が execution にも graphData にも無いとき null を返す", () => {
@@ -126,10 +126,10 @@ describe("getNodeWithFallback", () => {
     expect(result).toBeNull();
   });
 
-  it("グラフが定義ノード ID・ランタイムが UUID のとき stateName でランタイムを返す（詳細の input 等を維持）", () => {
+  it("グラフが定義ノード ID・ランタイムが UUID のとき nodeName でランタイムを返す（詳細の input 等を維持）", () => {
     const runtimeNode: ExecutionNodeDTO = {
       executionNodeId: "uuid-slow-step",
-      stateName: "slowStep",
+      nodeName: "slowStep",
       nodeType: "Task",
       status: "SUCCEEDED",
       attempt: 1,
@@ -145,7 +145,7 @@ describe("getNodeWithFallback", () => {
       {
         nodeId: "slowStep",
         executionNodeId: "uuid-slow-step",
-        stateName: "slowStep",
+        nodeName: "slowStep",
         nodeType: "Task",
         label: "slowStep",
         status: "SUCCEEDED",
@@ -171,7 +171,7 @@ describe("getNodeWithFallback", () => {
       {
         nodeId: "n-1",
         executionNodeId: "n-1",
-        stateName: "n-1",
+        nodeName: "n-1",
         nodeType: "TASK",
         label: "n-1",
         status: "IDLE",
@@ -211,7 +211,7 @@ describe("getNodeWithFallback (境界値)", () => {
       {
         nodeId: "only-in-merged",
         executionNodeId: "only-in-merged",
-        stateName: "only-in-merged",
+        nodeName: "only-in-merged",
         nodeType: "TASK",
         label: "Merged",
         status: "IDLE" as const,

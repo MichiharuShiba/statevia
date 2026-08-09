@@ -28,7 +28,7 @@ function upsertNode(nodes: ExecutionNodeDTO[], incoming: Partial<ExecutionNodeDT
       ...nodes,
       {
         executionNodeId: incoming.executionNodeId,
-        stateName: incoming.stateName ?? "",
+        nodeName: incoming.nodeName ?? "",
         nodeType: incoming.nodeType ?? "Unknown",
         status: incoming.status ?? "IDLE",
         attempt: incoming.attempt ?? 0,
@@ -58,7 +58,7 @@ function applyGraphUpdated(execution: ExecutionView, event: Extract<ExecutionStr
     const normalizedStatus = patchNode.status ? normalizeNodeStatus(patchNode.status) : null;
     return upsertNode(acc, {
       executionNodeId: patchNode.executionNodeId,
-      stateName: patchNode.stateName,
+      nodeName: patchNode.nodeName,
       status: normalizedStatus ?? undefined,
       attempt: patchNode.attempt,
       workerId: patchNode.workerId,

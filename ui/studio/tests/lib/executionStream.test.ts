@@ -188,13 +188,13 @@ describe("applyExecutionStreamEvent", () => {
     expect(next.nodes[0].attempt).toBe(1);
   });
 
-  it("GraphUpdated で stateName・workerId が無いとき既存の stateName・workerId を維持する", () => {
+  it("GraphUpdated で nodeName・workerId が無いとき既存の nodeName・workerId を維持する", () => {
     const execution: ExecutionView = {
       ...baseExecution,
       nodes: [
         {
           executionNodeId: "n-1",
-          stateName: "Alpha",
+          nodeName: "Alpha",
           nodeType: "TASK",
           status: "IDLE",
           attempt: 0,
@@ -212,17 +212,17 @@ describe("applyExecutionStreamEvent", () => {
       })
     )!;
     const next = applyExecutionStreamEvent(execution, event);
-    expect(next.nodes[0].stateName).toBe("Alpha");
+    expect(next.nodes[0].nodeName).toBe("Alpha");
     expect(next.nodes[0].workerId).toBe("old-w");
   });
 
-  it("GraphUpdated で stateName・workerId をパッチすると上書きする", () => {
+  it("GraphUpdated で nodeName・workerId をパッチすると上書きする", () => {
     const execution: ExecutionView = {
       ...baseExecution,
       nodes: [
         {
           executionNodeId: "n-1",
-          stateName: "Alpha",
+          nodeName: "Alpha",
           nodeType: "TASK",
           status: "IDLE",
           attempt: 0,
@@ -237,12 +237,12 @@ describe("applyExecutionStreamEvent", () => {
         type: "GraphUpdated",
         executionId: "ex-1",
         patch: {
-          nodes: [{ executionNodeId: "n-1", status: "RUNNING", stateName: "Beta", workerId: "new-w" }]
+          nodes: [{ executionNodeId: "n-1", status: "RUNNING", nodeName: "Beta", workerId: "new-w" }]
         }
       })
     )!;
     const next = applyExecutionStreamEvent(execution, event);
-    expect(next.nodes[0].stateName).toBe("Beta");
+    expect(next.nodes[0].nodeName).toBe("Beta");
     expect(next.nodes[0].workerId).toBe("new-w");
   });
 

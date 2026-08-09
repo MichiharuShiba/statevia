@@ -18,11 +18,11 @@ function executionDto(overrides: Partial<ExecutionDTO> = {}): ExecutionDTO {
   };
 }
 
-function graphDto(nodes: Array<{ nodeId: string; stateName: string; completedAt?: string | null }> = []): ExecutionGraphDTO {
+function graphDto(nodes: Array<{ nodeId: string; nodeName: string; completedAt?: string | null }> = []): ExecutionGraphDTO {
   return {
     nodes: nodes.map((n) => ({
       nodeId: n.nodeId,
-      stateName: n.stateName,
+      nodeName: n.nodeName,
       startedAt: "2026-01-01T00:00:00Z",
       completedAt: n.completedAt ?? null
     })),
@@ -70,7 +70,7 @@ class MinimalEventSource {
 
 describe("useExecution", () => {
   const defaultExecution = executionDto();
-  const defaultGraph = graphDto([{ nodeId: "n-1", stateName: "TASK" }]);
+  const defaultGraph = graphDto([{ nodeId: "n-1", nodeName: "TASK" }]);
 
   beforeEach(() => {
     vi.stubGlobal("EventSource", MinimalEventSource);
@@ -566,7 +566,7 @@ describe("useExecution", () => {
   it("大量ノードで loadExecution 時 selectedNodeId は先頭ノードになる", async () => {
     const manyGraphNodes = Array.from({ length: 200 }, (_, i) => ({
       nodeId: `n-${i}`,
-      stateName: "TASK" as const
+      nodeName: "TASK" as const
     }));
     mockApiGetForExecutionAndGraph(executionDto(), graphDto(manyGraphNodes));
 
@@ -604,7 +604,7 @@ describe("useExecution", () => {
   });
 
   it("applyExecutionSnapshot: 現在の selectedNodeId が response に無いとき先頭ノードに切り替わる", async () => {
-    mockApiGetForExecutionAndGraph(executionDto(), graphDto([{ nodeId: "n-1", stateName: "TASK" }]));
+    mockApiGetForExecutionAndGraph(executionDto(), graphDto([{ nodeId: "n-1", nodeName: "TASK" }]));
 
     const { result } = renderHook(() => useExecution("ex-1"));
 
@@ -619,7 +619,7 @@ describe("useExecution", () => {
 
     mockApiGetForExecutionAndGraph(
       executionDto(),
-      graphDto([{ nodeId: "n-2", stateName: "TASK" }, { nodeId: "n-3", stateName: "TASK" }])
+      graphDto([{ nodeId: "n-2", nodeName: "TASK" }, { nodeId: "n-3", nodeName: "TASK" }])
     );
     await act(async () => {
       result.current.loadExecution();

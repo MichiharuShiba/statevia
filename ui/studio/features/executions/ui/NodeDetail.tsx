@@ -29,7 +29,7 @@ type NodeDetailDerivedFields = {
   isWaiting: boolean;
   isCanceled: boolean;
   isFailed: boolean;
-  stateNameText: string;
+  nodeNameText: string;
   outputText: string;
   inputText: string;
   conditionRoutingText: string;
@@ -54,7 +54,7 @@ function deriveNodeDetailFields(
     isWaiting: node.status === "WAITING",
     isCanceled: node.status === "CANCELED",
     isFailed: node.status === "FAILED",
-    stateNameText: typeof node.stateName === "string" ? node.stateName.trim() : "",
+    nodeNameText: typeof node.nodeName === "string" ? node.nodeName.trim() : "",
     outputText: "output" in node && node.output !== undefined ? formatTracePayload(node.output) : "",
     inputText: "input" in node && node.input !== undefined ? formatTracePayload(node.input) : "",
     conditionRoutingText:
@@ -186,7 +186,7 @@ export function NodeDetail({
             <div className="font-mono">{uiText.nodeDetail.meta.workerId(node.workerId)}</div>
           )}
           <div>{uiText.nodeDetail.meta.type(node.nodeType)}</div>
-          {fields.stateNameText !== "" && <div>{uiText.nodeDetail.meta.stateName(fields.stateNameText)}</div>}
+          {fields.nodeNameText !== "" && <div>{uiText.nodeDetail.meta.nodeName(fields.nodeNameText)}</div>}
           <div>{uiText.nodeDetail.meta.attempt(node.attempt)}</div>
           <div>{uiText.nodeDetail.meta.waitKey(node.waitKey ?? "—")}</div>
           <div>{uiText.nodeDetail.meta.allowedEvents(fields.allowedEventsLabel)}</div>
