@@ -96,7 +96,7 @@
 
 | キー | 型 | 必須 | 説明 |
 | --- | --- | --- | --- |
-| `nodeId` | `string` | 必須 | **ランタイム実行ノード ID**。`Guid("N")` の先頭 8 文字。定義キャンバスの `nodeId`（状態名ベース）とは別物 |
+| `nodeId` | `string` | 必須 | **ランタイム実行ノード ID**（opaque）。新規採番は `Guid("N")` の先頭 **12** 文字（小文字 Hex）で、同一実行グラフ内の衝突時は再採番する。既存実行・checkpoint に残る **8** 桁 ID はそのまま有効（変換しない）。定義キャンバスの `nodeId`（状態名ベース）とは別物 |
 | `stateName` | `string` | 必須 | ワークフロー定義上の状態名 |
 | `nodeType` | `string` | 必須 | ノード種別（例: `Start` / `Task` / `Fork` / `Join` / `Wait` / `End`。既定は `Task`） |
 | `startedAt` | `string(date-time)` | 必須 | ノード開始 UTC 時刻 |
@@ -124,8 +124,8 @@ JSON プロパティ名は **camelCase** のため、C# の `From` / `To` は **
 
 ```json
 {
-  "from": "a1b2c3d4",
-  "to": "f0e1d2c3",
+  "from": "a1b2c3d4e5f6",
+  "to": "f0e1d2c3b4a5",
   "type": 0
 }
 ```

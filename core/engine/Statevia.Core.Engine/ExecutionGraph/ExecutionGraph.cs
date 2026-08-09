@@ -15,9 +15,26 @@ public sealed class ExecutionGraph
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
+    /// <summary>
+    /// 新規実行ノード ID の Hex 桁数（約 48 bit）。
+    /// </summary>
+    /// <remarks>
+    /// 誕生日近似で n=10^4 でも衝突前確率は ~10^-7 程度。既存実行の 8 桁 ID は変換しない。
+    /// </remarks>
+    private const int ExecutionNodeIdHexLength = 12;
+
+    /// <summary>
+    /// 同一グラフ内で衝突したときの再採番上限。
+    /// </summary>
+    /// <remarks>
+    /// 異常乱数源やテスト注入時に無限ループしないための安全弁。Hex 12 の正規運用では到達しない。
+    /// </remarks>
+    private const int ExecutionNodeIdMaxAllocationAttempts = 32;
+
     private readonly List<ExecutionNode> _nodes = [];
     private readonly List<ExecutionEdge> _edges = [];
     private readonly object _lock = new();
+    private Func<string>? _nodeIdCandidateFactory;
 
     /// <summary>ノード一覧のスナップショットを返します。</summary>
     public IReadOnlyList<ExecutionNode> GetNodesSnapshot()
@@ -38,6 +55,10 @@ public sealed class ExecutionGraph
     }
 
     /// <summary>ノードを追加し、ノード ID を返します。</summary>
+    /// <remarks>
+    /// <para>新規採番は <c>Guid("N")</c> 先頭 12 Hex。同一グラフ内で衝突したら再採番し、上限超過で失敗する。</para>
+    /// <para>既存 checkpoint の 8 桁 ID はそのまま読み取り互換とする。</para>
+    /// </remarks>
     /// <param name="stateName">状態名。</param>
     /// <param name="nodeType">ノード種別。</param>
     /// <param name="input">状態入力。</param>
@@ -45,6 +66,7 @@ public sealed class ExecutionGraph
     /// <param name="workerId">ワーカー識別子。</param>
     /// <param name="wait">Wait ノード用の観測メタデータ（任意）。</param>
     /// <returns>採番されたノード ID。</returns>
+    /// <exception cref="InvalidOperationException">再採番上限内に一意な ID を割り当てられなかったとき。</exception>
     public string AddNode(
         string stateName,
         string nodeType = "Task",
@@ -53,9 +75,9 @@ public sealed class ExecutionGraph
         string? workerId = null,
         WaitNodeGraphMetadata? wait = null)
     {
-        var nodeId = Guid.NewGuid().ToString("N")[..8];
         lock (_lock)
         {
+            var nodeId = AllocateUniqueNodeIdUnlocked();
             _nodes.Add(new ExecutionNode
             {
                 NodeId = nodeId,
@@ -69,8 +91,40 @@ public sealed class ExecutionGraph
                 AllowedEvents = wait?.AllowedEvents,
                 Subscriptions = wait?.Subscriptions
             });
+            return nodeId;
         }
-        return nodeId;
+    }
+
+    /// <summary>単体テスト用に nodeId 候補生成を差し替える。本番コードは呼び出さない。</summary>
+    /// <param name="factory">候補生成デリゲート。null で既定（Guid 先頭 12）に戻す。</param>
+    internal void SetNodeIdCandidateFactoryForTests(Func<string>? factory) =>
+        _nodeIdCandidateFactory = factory;
+
+    /// <summary>同一グラフ内で一意な実行ノード ID を割り当てる（呼び出し元が <c>_lock</c> を保持していること）。</summary>
+    private string AllocateUniqueNodeIdUnlocked()
+    {
+        for (var attempt = 0; attempt < ExecutionNodeIdMaxAllocationAttempts; attempt++)
+        {
+            var candidate = CreateNodeIdCandidate();
+            if (!_nodes.Exists(n => string.Equals(n.NodeId, candidate, StringComparison.OrdinalIgnoreCase)))
+            {
+                return candidate;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Failed to allocate a unique execution node ID within {ExecutionNodeIdMaxAllocationAttempts} attempts.");
+    }
+
+    /// <summary>実行ノード ID の候補を 1 件生成する。</summary>
+    private string CreateNodeIdCandidate()
+    {
+        if (_nodeIdCandidateFactory is not null)
+        {
+            return _nodeIdCandidateFactory();
+        }
+
+        return Guid.NewGuid().ToString("N")[..ExecutionNodeIdHexLength];
     }
 
     /// <summary>ノードを完了としてマークし、事実と出力を記録します。</summary>
