@@ -350,7 +350,7 @@ public class ExecutionEngineTests
         var routeNode = doc.RootElement.GetProperty("nodes").EnumerateArray()
             .First(node =>
             {
-                return node.TryGetProperty("stateName", out var s1)
+                return node.TryGetProperty("nodeName", out var s1)
                     && string.Equals(s1.GetString(), "Route", StringComparison.Ordinal);
             });
         Assert.False(routeNode.TryGetProperty("ConditionRouting", out _));
@@ -623,7 +623,7 @@ public class ExecutionEngineTests
         using var doc = JsonDocument.Parse(graphJson);
         var routeNode = doc.RootElement.GetProperty("nodes").EnumerateArray()
             .First(node =>
-                string.Equals(node.GetProperty("stateName").GetString(), "Route", StringComparison.Ordinal));
+                string.Equals(node.GetProperty("nodeName").GetString(), "Route", StringComparison.Ordinal));
         Assert.Equal(outputToken, routeNode.GetProperty("output").GetProperty("token").GetString());
 
         var routing = routeNode.GetProperty("conditionRouting");
@@ -676,7 +676,7 @@ public class ExecutionEngineTests
         using var doc = JsonDocument.Parse(graphJson);
         var routeNode = doc.RootElement.GetProperty("nodes").EnumerateArray()
             .First(node =>
-                string.Equals(node.GetProperty("stateName").GetString(), "Route", StringComparison.Ordinal));
+                string.Equals(node.GetProperty("nodeName").GetString(), "Route", StringComparison.Ordinal));
         var routing = routeNode.GetProperty("conditionRouting");
         Assert.Equal(ConditionRoutingResolutions.MatchedCase, routing.GetProperty("resolution").GetString());
         Assert.Equal(0, routing.GetProperty("matchedCaseIndex").GetInt32());
@@ -700,8 +700,8 @@ public class ExecutionEngineTests
         using var doc = JsonDocument.Parse(graphJson);
         var nodes = doc.RootElement.GetProperty("nodes").EnumerateArray().ToList();
         var aNodes = nodes.Where(n =>
-                n.TryGetProperty("stateName", out var stateName)
-                && string.Equals(stateName.GetString(), "A", StringComparison.Ordinal))
+                n.TryGetProperty("nodeName", out var nodeName)
+                && string.Equals(nodeName.GetString(), "A", StringComparison.Ordinal))
             .ToList();
         Assert.Equal(2, aNodes.Count);
         var attempts = aNodes.Select(n => n.GetProperty("attempt").GetInt32()).OrderBy(x => x).ToArray();
@@ -724,7 +724,7 @@ public class ExecutionEngineTests
         // Assert
         using var doc = JsonDocument.Parse(graphJson);
         var node = doc.RootElement.GetProperty("nodes").EnumerateArray()
-            .First(n => string.Equals(n.GetProperty("stateName").GetString(), "WaitState", StringComparison.Ordinal));
+            .First(n => string.Equals(n.GetProperty("nodeName").GetString(), "WaitState", StringComparison.Ordinal));
         Assert.Equal("resume", node.GetProperty("waitKey").GetString());
         var allowed = node.GetProperty("allowedEvents").EnumerateArray().Select(e => e.GetString()).ToList();
         Assert.Equal(["resume"], allowed);
@@ -771,7 +771,7 @@ public class ExecutionEngineTests
         // Assert
         using var doc = JsonDocument.Parse(graphJson);
         var node = doc.RootElement.GetProperty("nodes").EnumerateArray()
-            .First(n => string.Equals(n.GetProperty("stateName").GetString(), "ApproveTask", StringComparison.Ordinal));
+            .First(n => string.Equals(n.GetProperty("nodeName").GetString(), "ApproveTask", StringComparison.Ordinal));
         Assert.Equal(JsonValueKind.Null, node.GetProperty("waitKey").ValueKind);
         var allowed = node.GetProperty("allowedEvents").EnumerateArray().Select(e => e.GetString()).ToHashSet(StringComparer.OrdinalIgnoreCase);
         Assert.Contains("approve", allowed);

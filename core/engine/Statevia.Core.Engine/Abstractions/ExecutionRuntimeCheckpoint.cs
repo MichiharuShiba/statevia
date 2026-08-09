@@ -92,8 +92,8 @@ public sealed class CheckpointGraphNode
     /// <summary>ノード ID（復元時に維持）。</summary>
     public required string NodeId { get; init; }
 
-    /// <summary>状態名。</summary>
-    public required string StateName { get; init; }
+    /// <summary>ノード名。定義上の StateName と同値。</summary>
+    public required string NodeName { get; init; }
 
     /// <summary>ノード種別。</summary>
     public required string NodeType { get; init; }
@@ -174,8 +174,8 @@ public sealed class CheckpointPendingWait
     /// <summary>Wait ノード ID。</summary>
     public required string NodeId { get; init; }
 
-    /// <summary>状態名。</summary>
-    public required string StateName { get; init; }
+    /// <summary>ノード名。定義上の StateName と同値。</summary>
+    public required string NodeName { get; init; }
 
     /// <summary>許可イベント。</summary>
     public required IReadOnlyList<string> AllowedEvents { get; init; }

@@ -59,7 +59,7 @@ public sealed class ExecutionGraph
     /// <para>新規採番は <c>Guid("N")</c> 先頭 12 Hex。同一グラフ内で衝突したら再採番し、上限超過で失敗する。</para>
     /// <para>既存 checkpoint の 8 桁 ID はそのまま読み取り互換とする。</para>
     /// </remarks>
-    /// <param name="stateName">状態名。</param>
+    /// <param name="stateName">定義上の状態名。ノードの <see cref="ExecutionNode.NodeName"/> にそのまま入る。</param>
     /// <param name="nodeType">ノード種別。</param>
     /// <param name="input">状態入力。</param>
     /// <param name="attempt">試行回数。</param>
@@ -81,7 +81,7 @@ public sealed class ExecutionGraph
             _nodes.Add(new ExecutionNode
             {
                 NodeId = nodeId,
-                StateName = stateName,
+                NodeName = stateName,
                 NodeType = nodeType,
                 StartedAt = DateTime.UtcNow,
                 Input = input,
@@ -189,7 +189,7 @@ public sealed class ExecutionGraph
                 _nodes.Add(new ExecutionNode
                 {
                     NodeId = node.NodeId,
-                    StateName = node.StateName,
+                    NodeName = node.NodeName,
                     NodeType = node.NodeType,
                     StartedAt = node.StartedAt,
                     CompletedAt = node.CompletedAt,
@@ -227,7 +227,7 @@ public sealed class ExecutionGraph
                 Nodes = _nodes.Select(n => new CheckpointGraphNode
                 {
                     NodeId = n.NodeId,
-                    StateName = n.StateName,
+                    NodeName = n.NodeName,
                     NodeType = n.NodeType,
                     StartedAt = n.StartedAt,
                     CompletedAt = n.CompletedAt,

@@ -138,7 +138,7 @@ public sealed class ExecutionInstance
                 .Select(n => new CheckpointPendingWait
                 {
                     NodeId = n.NodeId,
-                    StateName = n.StateName,
+                    NodeName = n.NodeName,
                     AllowedEvents = n.AllowedEvents?.ToList() ?? [],
                     Subscriptions = n.Subscriptions?
                         .Select(s => new CheckpointWaitSubscription

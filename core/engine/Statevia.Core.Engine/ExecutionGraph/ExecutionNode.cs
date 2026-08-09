@@ -23,8 +23,8 @@ public sealed class ExecutionNode
 {
     /// <summary>ノード一意識別子。</summary>
     public required string NodeId { get; init; }
-    /// <summary>状態名。</summary>
-    public required string StateName { get; init; }
+    /// <summary>ノード名。定義上の StateName と同値。</summary>
+    public required string NodeName { get; init; }
     /// <summary>ノード種別（Start/Task/Fork/Join/Wait/End）。</summary>
     public string NodeType { get; set; } = "Task";
     /// <summary>開始日時。</summary>

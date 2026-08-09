@@ -35,11 +35,11 @@ public sealed class ExecutionRuntimeCheckpointTests
         Assert.NotNull(captured);
         Assert.Empty(captured!.PendingWaits);
         Assert.Contains(captured.Graph.Nodes, n =>
-            string.Equals(n.StateName, "StepA", StringComparison.OrdinalIgnoreCase)
+            string.Equals(n.NodeName, "StepA", StringComparison.OrdinalIgnoreCase)
             && n.CompletedAt is not null);
         Assert.DoesNotContain(captured.Graph.Edges, e =>
             captured.Graph.Nodes.Any(n =>
-                string.Equals(n.StateName, "StepA", StringComparison.OrdinalIgnoreCase)
+                string.Equals(n.NodeName, "StepA", StringComparison.OrdinalIgnoreCase)
                 && string.Equals(n.NodeId, e.From, StringComparison.OrdinalIgnoreCase)));
 
         // Act
