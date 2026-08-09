@@ -3,9 +3,9 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.3 |
-| 更新日 | 2026-08-03 |
-| 関連 | [fsm.md](fsm.md), [../definition.md](../definition.md), [concepts/execution-model.md](../../concepts/execution-model.md) |
+| Version | 1.4 |
+| 更新日 | 2026-08-09 |
+| 関連 | [fsm.md](fsm.md), [../definition.md](../definition.md), [fork-join.md](fork-join.md), [concepts/execution-model.md](../../concepts/execution-model.md) |
 
 ---
 
@@ -47,6 +47,10 @@ Wait は定義の許可イベントのいずれかが発生するまで状態実
 
 Fork 並列 Wait や複数イベント Wait では必ず Resume（nodeId + eventName）を使う。
 
+### Hosted 物理 Fork での配送
+
+Hosted では分岐が物理子 execution になるため、分岐上の Wait へのイベント／Resume は**子の `execution_id`** を正とする。親 ID 宛てに届いた場合は子へ解決し、解決不能なら 422。topic ingress（Subscribe）も購読行の子 `execution_id` を用いる。表示用の親イベントタイムライン合成とは別関心である（[fork-join.md](fork-join.md)）。
+
 ### Topic / key ingress（Subscribe）
 
 `POST /v1/events` は `{ topic, key?, payload? }` を受け付けます（`topic` 必須。`event` は送らない）。照合は `execution_wait_subscriptions` で、正規化後の **topic かつ key の厳密一致**です。`key` 省略・空白は `""` です。一致した各購読の `resume_event_name` で Resume ワークを投入し、対象が 0 件でも `204 No Content` を返します。`payload` は将来の Wait 入力拡張のため受理しますが、この段階では再開値に反映しません。
@@ -59,6 +63,7 @@ Wait 定義側は `wait.subscribe`（topic 必須・key 任意・next 必須）�
 - エンジンは実行中の状態を強制終了しません。
 - Cancelled は実行が実際に停止したときにのみ発行されます。
 - 依存状態は自動的にキャンセルされます。
+- Hosted で親を Cancel した場合、未終端の物理子へ Cancel work item をカスケードする（[fork-join.md](fork-join.md)）。
 
 ## 状態
 

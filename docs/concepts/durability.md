@@ -3,9 +3,9 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Concept |
-| Version | 1.3 |
-| 更新日 | 2026-08-04 |
-| 関連 | [../specifications/data-integration.md](../specifications/data-integration.md) |
+| Version | 1.4 |
+| 更新日 | 2026-08-09 |
+| 関連 | [../specifications/data-integration.md](../specifications/data-integration.md), [../specifications/execution/fork-join.md](../specifications/execution/fork-join.md) |
 
 ---
 
@@ -18,8 +18,11 @@ Statevia は実行の進行を **PostgreSQL** 上の projection と **event_stor
 - **実行の read-model**（一覧・GET execution・GET graph）: `executions` と `execution_graph_snapshots` 等の DB projection
 - **定義**: `definitions` / `definition_versions`（immutable 版）
 - **イベント履歴**: `event_store` への append（同一トランザクション内で projection と整合）
+- **Hosted Fork の親子リンク / Join 充足**: `execution_branches`（親の durable Wait ではない）
 
 in-process の `GetSnapshot` はデバッグやコールバック経路向けであり、HTTP API の正本ではありません。
+
+親の `GET …/graph` / `GET …/events` は、物理子を論理 1 実行に見せるため **GET 時合成**する。永続 snapshot / `event_store` への親への二重書き込みはしない（契約の詳細は [fork-join.md](../specifications/execution/fork-join.md)）。
 
 ## 開始とミューテーション
 
@@ -37,8 +40,15 @@ in-process の `GetSnapshot` はデバッグやコールバック経路向けで
 
 ステップ完了ごとに checkpoint を更新し、Unload は durable Wait 到達または終端に限定します。recovery で Action が再実行されうる場合、Action 側の冪等（または適用済み検知）を前提とします。
 
+## Hosted Fork と耐久
+
+- Fork 展開・子 Start・親子リンクは `execution_branches` と work item で耐久化する。展開一時失敗はリトライし、上限後に親 Failed。
+- 子終端は親向け予約 Resume（`statevia.event.child.completed`）で起こし、Join を再評価する。
+- ネスト Fork も同一経路で再帰分割する。循環再入時の Join hydrate など残課題は実装フォローアップの対象。
+
 ## 次に読むもの
 
 - データ連携契約: [specifications/data-integration.md](../specifications/data-integration.md)
+- Fork / Join（物理子・合成読みモデル）: [specifications/execution/fork-join.md](../specifications/execution/fork-join.md)
 - DB スキーマ参照: [reference/database-schema.md](../reference/database-schema.md)
 - Event Store の設計判断: [decisions/event-store.md](../decisions/event-store.md)

@@ -301,7 +301,7 @@ Wait の `subscribe` 購読（1 Wait ノードあたり 0 件以上）。`POST /
 
 ### 2.10.2c execution_branches
 
-Hosted Runtime が Fork を物理子 execution に展開したときの親子リンク正本。Join 充足判定・合成グラフの材料。
+Hosted Runtime が Fork を物理子 execution に展開したときの親子リンク正本。Join 充足判定・合成グラフの材料。振る舞い契約（展開リトライ、予約 Resume、兄弟参照不可、GET 時合成）は [fork-join.md](../specifications/execution/fork-join.md)。
 
 | カラム | 型 | 制約 | 説明 |
 | --- | --- | --- | --- |

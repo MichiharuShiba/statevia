@@ -3,9 +3,9 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Future |
-| Version | 1.0.0 |
-| 更新日 | 2026-08-08 |
-| 関連 | [platform-architecture.md](platform-architecture.md), [../architecture/overview.md](../architecture/overview.md), [../specifications/platform/audit-and-repro.md](../specifications/platform/audit-and-repro.md) |
+| Version | 1.0.1 |
+| 更新日 | 2026-08-09 |
+| 関連 | [platform-architecture.md](platform-architecture.md), [../architecture/overview.md](../architecture/overview.md), [../specifications/execution/fork-join.md](../specifications/execution/fork-join.md), [../specifications/platform/audit-and-repro.md](../specifications/platform/audit-and-repro.md) |
 
 ---
 
@@ -17,7 +17,7 @@
 
 ## 1. 現状の読み方
 
-現在の改修重心は **ワークフロー Runtime（物理 Fork・耐久・合成読取）** である。認証・テナント・Action Modules・Wait / Resume は既に厚く、運用前提で使える核が揃っている。一方、運用 KPI・監査チェーン・分析・SaaS 運用境界は仕様先行または未着手が多い。
+Hosted の **物理 Fork MVP**（親子展開・Join・合成 graph / events・公開 [fork-join.md](../specifications/execution/fork-join.md)）は一通り揃った。Near の残は循環 Join 耐久やネスト合成のエッジ、Wait UI・容量指針など。認証・テナント・Action Modules・Wait / Resume は既に厚い。運用 KPI・監査チェーン・分析・SaaS 運用境界は仕様先行または未着手が多い。
 
 判断基準の優先順は次のとおりとする。
 
@@ -45,7 +45,7 @@
 ```mermaid
 flowchart LR
   subgraph near [Near_Workflow]
-    PhysFork[PhysicalFork_仕上げ]
+    PhysFork[PhysicalFork_followups]
     WaitUI[WaitEvents_UI]
     CapDocs[容量・分離運用指針]
   end
@@ -72,8 +72,8 @@ flowchart LR
 
 | 状態 | 内容 | ギャップ / 備考 |
 | --- | --- | --- |
-| **ある** | FSM、Definition 版管理（immutable append）、Start / Cancel / Resume、Wait 複数イベント、DelayWait、checkpoint / work queue / OwnershipRecovery、論理 Fork / Join、Action Catalog / Policy、InProcess / OutOfProcess / Container、Module Source（Filesystem / OCI / S3 / Git）＋署名・TrustLevel、DB projection 正本＋ graph ＋ SSE、Studio（定義・実行・ダッシュボード）、JWT / API キー＋テナント＋ Execution Security Snapshot | 公開契約: [definition.md](../specifications/definition.md)、[api-http.md](../specifications/api-http.md)、[execution/](../specifications/execution/)、[actions/platform.md](../specifications/actions/platform.md)、[security-runtime.md](../specifications/platform/security-runtime.md) |
-| **部分** | 物理 Fork（親＋子 execution・合成 graph / events）、Scheduler / Worker の任意プロセス分離、Action-level retry（定義 parse のみ）、Module 複数版共存（設計確定・実装未）、Graph Editor の `wait.events` UI | ネスト / 循環 / recovery の仕上げ、公開 `fork-join` 契約への同期、既定分離切替の判断が残る |
+| **ある** | FSM、Definition 版管理（immutable append）、Start / Cancel / Resume、Wait 複数イベント、DelayWait、checkpoint / work queue / OwnershipRecovery、論理 Fork / Join、**Hosted 物理 Fork MVP**（`execution_branches`・予約 Resume・Join 後 Context マージ・GET 時合成 graph / events・公開 [fork-join.md](../specifications/execution/fork-join.md)）、Action Catalog / Policy、InProcess / OutOfProcess / Container、Module Source（Filesystem / OCI / S3 / Git）＋署名・TrustLevel、DB projection 正本＋ graph ＋ SSE、Studio（定義・実行・ダッシュボード）、JWT / API キー＋テナント＋ Execution Security Snapshot | 公開契約: [definition.md](../specifications/definition.md)、[api-http.md](../specifications/api-http.md)、[execution/](../specifications/execution/)、[actions/platform.md](../specifications/actions/platform.md)、[security-runtime.md](../specifications/platform/security-runtime.md) |
+| **部分** | 物理 Fork のエッジ（循環再入の Join hydrate、ネスト合成の幽霊枝）、Scheduler / Worker の任意プロセス分離、Action-level retry（定義 parse のみ）、Module 複数版共存（設計確定・実装未）、Graph Editor の `wait.events` UI | 終端時の合成固定は Mid。既定分離切替の判断が残る |
 | **ない** | Wasm ランタイム、Marketplace Module Source、Connectors 製品化、統一 WebSocket Push | [platform-architecture.md](platform-architecture.md) の到達像側 |
 
 ### 4.2 運用・監視・可観測性
@@ -122,13 +122,14 @@ flowchart LR
 
 ### 5.1 Near（信頼性クローズ）
 
-1. 物理 Fork MVP 仕上げ（ネスト / recovery、循環・幽霊枝などの follow-up、公開 [fork-join.md](../specifications/execution/fork-join.md) 契約への同期）
-2. Studio Graph Editor の `wait.events` 編集ギャップ解消（Engine / API 契約との一致）
-3. Worker / Scheduler 既定分離の判断、容量ガイドの公開置き場
+1. ~~物理 Fork MVP（親子展開・合成読取・公開 fork-join 同期）~~ → **完了**（2026-08）
+2. 物理 Fork follow-up（循環再入時の Join hydrate、ネスト合成の幽霊枝）
+3. Studio Graph Editor の `wait.events` 編集ギャップ解消（Engine / API 契約との一致）
+4. Worker / Scheduler 既定分離の判断、容量ガイドの公開置き場
 
 ### 5.2 Mid（運用・監査・分析の製品化）
 
-1. 合成 read model の終端固定（終端後の都度合成コスト削減）
+1. 合成 read model の終端固定（終端後の都度合成コスト削減。Running 中は GET 時合成のまま）
 2. 可観測性: readiness / 依存ヘルス、メトリクス、分散トレース（OpenTelemetry 方向）
 3. 監査: actor 埋込 → hash chain の段階適用（[audit-and-repro.md](../specifications/platform/audit-and-repro.md) に実装を寄せる）
 4. 実行分析 Phase 1（ノードイベント投影＋読取 API）
@@ -151,8 +152,8 @@ flowchart LR
 | --- | --- | --- |
 | Platform API（Auth・Tenants・Definitions・Executions） | **ある** | OIDC 等は将来 |
 | Definition Platform（Schema / Validate / Compile / Version / Package / Sign） | **ある**（大半） | Packaging / 版共存の一部は部分 |
-| Execution Platform（Dispatcher / Runtime / FSM / Wait / Retry / Recovery） | **部分** | FSM / Wait / Recovery はある。物理 Fork・Action retry は部分 |
-| Projection（Read Models / Timeline / Graph） | **ある**（単一実行） | 物理 Fork 合成は部分。終端固定は Mid |
+| Execution Platform（Dispatcher / Runtime / FSM / Wait / Retry / Recovery） | **ある**（中核）＋**部分**（エッジ） | 物理 Fork MVP・FSM / Wait / Recovery はある。循環 Join follow-up・Action retry は部分 |
+| Projection（Read Models / Timeline / Graph） | **ある**（GET 時合成含む） | 親 graph / events の物理 Fork 合成はある。終端固定は Mid |
 | Realtime（SSE / WebSocket） | **部分** | SSE（GraphUpdated）あり。WebSocket / 統一 Push はない |
 | Action Runtime（Builtin / Modules / Connectors） | **部分** | Builtin / Modules はある。Connectors 製品化はない |
 | Persistence（Definition / Event / Snapshot / Artifact / Read） | **ある**（中核） | Artifact / Snapshot の製品境界は運用依存 |

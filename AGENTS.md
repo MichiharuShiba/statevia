@@ -75,9 +75,9 @@ Sonar / Analyzer: [`docs/development-guidelines.md`](docs/development-guidelines
 
 ## 実装メモ（エージェント向け）
 
-- **Read-model**: `GET /v1/executions` / graph は DB projection 正本（[`data-integration.md`](docs/specifications/data-integration.md)）
+- **Read-model**: `GET /v1/executions` / graph は DB projection 正本（[`data-integration.md`](docs/specifications/data-integration.md)）。Hosted 物理 Fork の親 graph / events は **GET 時合成**（UI は分割非認知。[`fork-join.md`](docs/specifications/execution/fork-join.md)）
 - **IO-14**: 既定で `input` / `output` を一覧 GET に含めない。ログは `LogRedaction`（[`io-log-masking.md`](docs/specifications/platform/io-log-masking.md)）
-- **Engine 境界**: `ExecutionEngine` は `IStateExecutor` のみ。Catalog / Policy / ModuleHost は Service API 側
+- **Engine 境界**: `ExecutionEngine` は `IStateExecutor` のみ。Catalog / Policy / ModuleHost は Service API 側。Hosted Fork の親子協調は Application（`execution_branches`・予約 Resume）
 - **Serena MCP**: プロジェクトごとに `serena-engine` … `serena-ui` の 9 サーバー（`serena-runtime` 含む）。切替は UI トグル（同時 On は原則 1）。未起動時は停止して起動を促す。[`serena-mcp-project-toggle`](.spec/archive/specs/serena-mcp-project-toggle/requirements.md) / [`.cursor/skills/serena-mcp-project-switch/SKILL.md`](.cursor/skills/serena-mcp-project-switch/SKILL.md)
 
 ## .NET SDK
