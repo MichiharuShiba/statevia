@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Concept |
-| Version | 1.4 |
-| 更新日 | 2026-08-09 |
+| Version | 1.5 |
+| 更新日 | 2026-08-10 |
 | 関連 | [../specifications/data-integration.md](../specifications/data-integration.md), [../specifications/execution/fork-join.md](../specifications/execution/fork-join.md) |
 
 ---
@@ -38,13 +38,29 @@ in-process の `GetSnapshot` はデバッグやコールバック経路向けで
 
 実行中の所有正本は `execution_runtime_checkpoints` の `owner_worker_id` / `lease_until` / `owner_generation` です。`lease_until` は recovery 検討のトリガに過ぎず、排他は **`owner_generation` 一致更新（fencing）** で担保します。ハートビートまたは世代付き更新が失敗した Worker はローカル実行を即停止します。`ExecutionOwnershipRecoveryHostedService` は期限切れ所有を世代 +1 したうえで `Resume mode=recovery` を enqueue します（Wait イベントは消費しない）。DelayWait 期限は `DelayWaitSchedulerHostedService` が `FOR UPDATE SKIP LOCKED` で wait を排他 claim し、同一トランザクションで wait 削除と `Resume mode=event` を投入します。これらの HostedService は既定では Service API 内で動きますが、`Statevia:Runtime` で無効化し `service/runtime` の Scheduler / Worker へ分離できます。
 
-ステップ完了ごとに checkpoint を更新し、Unload は durable Wait 到達または終端に限定します。recovery で Action が再実行されうる場合、Action 側の冪等（または適用済み検知）を前提とします。
+ステップ完了ごとに checkpoint を更新し、Unload は durable Wait 到達・物理 Join 待ち解消後の不要時・または終端に限定します。recovery で Action が再実行されうる場合、Action 側の冪等（または適用済み検知）を前提とします。
+
+## runtime checkpoint 寿命表
+
+内容の保持理由は次の 2 つのみ（Application: `RuntimeCheckpointRetainReasons`）。
+
+| 保持理由 | 意味 |
+| --- | --- |
+| `PendingWaits` | グラフ上に Engine durable Wait がある |
+| `PendingPhysicalJoin` | 親に未終端の物理分岐（`execution_branches.status=Running`）がある |
+
+- **内容破棄候補**: 投影が終端、または Running かつ上記理由が空。
+- **OwnedLease（Worker 所有）は同列にしない**。内容破棄候補でも所有中は行を Delete せず runtime JSON のみ refresh する（lease / fencing 都合）。
+
+Hosted Fork の詳細は [fork-join.md](../specifications/execution/fork-join.md)。
 
 ## Hosted Fork と耐久
 
 - Fork 展開・子 Start・親子リンクは `execution_branches` と work item で耐久化する。展開一時失敗はリトライし、上限後に親 Failed。
 - 子終端は親向け予約 Resume（`statevia.event.child.completed`）で起こし、Join を再評価する。
-- ネスト Fork も同一経路で再帰分割する。循環再入時の Join hydrate など残課題は実装フォローアップの対象。
+- ネスト Fork も同一経路で再帰分割する。
+- 親の runtime checkpoint は上記寿命表に従う。`BeginOwnedSession` の seed `{}` は lease 用であり hydrate 正本にしない。
+- 合成読みモデルの辺規則（枝先頭のみ Fork、内側 Join→外側は Next）は [fork-join.md](../specifications/execution/fork-join.md) を正とする。
 
 ## 次に読むもの
 

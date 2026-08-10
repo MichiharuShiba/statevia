@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.1 |
-| 更新日 | 2026-08-09 |
+| Version | 1.3 |
+| 更新日 | 2026-08-10 |
 | 関連 | [fsm.md](fsm.md), [../definition.md](../definition.md), [wait-cancel.md](wait-cancel.md), [execution-graph.md](execution-graph.md), [../../concepts/durability.md](../../concepts/durability.md), [../../reference/database-schema.md](../../reference/database-schema.md) |
 
 ---
@@ -36,11 +36,34 @@ Hosted（Service API / Runtime Worker）では、親が Fork に到達すると 
 3. 各子へ `Start` work item を enqueue する（`InitialState` = 分岐先頭、input は定義の写像）。
 4. 親は分岐本体を自インスタンスでは走らず、Join 待ちに入る（Unload 可）。
 
-識別の軸:
+#### 識別子: `forkNodeId`（DB: `fork_node_id`）
+
+Hosted 物理 Fork では、**1 回の Fork 到達（並列エピソード）**を相関する正本キーが `forkNodeId` である。第三の宇宙を増やさず、親実行グラフに既に存在する **Fork 到達ノードの `nodeId`** をそのまま使う。
+
+| 識別子 | 何を指すか | 循環での性質 |
+| --- | --- | --- |
+| 定義の状態名（`nodeName` / `join_state` / `branch_state`） | DSL 上の Fork / Join / 枝先頭の種類 | 周回しても同じ |
+| 実行 `nodeId`（一般） | 親グラフ上の 1 訪問実体（Fork・Wait・Action 等） | 到達のたびに新規 |
+| **`forkNodeId`** | **当該並列エピソードの相関キー**＝その訪問の Fork の `nodeId` | 周回ごとに別値。枝行・Join 再評価・合成の単位 |
+| Join の実行 `nodeId` | Join がグラフに載ったあとの訪問実体 | Fork 展開時点では未作成になりうる |
+
+**役割（MUST）**
+
+- **割り当て時点**: 親 Engine が Fork ノードを実行グラフへ追加したとき。値は親グラフの Fork `nodeId`。
+- **永続**: `execution_branches` の主キー構成要素 `(parent_execution_id, fork_node_id, branch_state)`。同一親・同一 Fork 訪問の兄弟枝を束ねる。
+- **Join 集約**: 子完了 Resume（`statevia.event.child.completed`）は payload の `forkNodeId` で枝集合を引き、充足・失敗伝播・冪等判定の単位とする。
+- **未到達 Join**: Join の `nodeId` はまだ無くてよい。相関は常に `forkNodeId` 側が持つ。Join 実行後にグラフ上の Join `nodeId` へ写像する（合成・冪等投影用）。
+
+**役割に含めないもの**
+
+- 定義上の Fork / Join 状態名の代替ではない（種類の識別は `join_state` / 定義名）。
+- 子 execution の ID ではない（子は `execution_id`）。
+- Join 未到達時の「未来の Join `nodeId`」の先貸しではない。
+
+枝行のその他列:
 
 | 列 | 意味 |
 | --- | --- |
-| `fork_node_id` | 親実行グラフ上の Fork **到達**インスタンス（実行ノード ID）。循環再到達の区別に使う |
 | `join_state` / `branch_state` | 定義の状態名空間（Join 解決・子開始状態） |
 | `execution_id` | 子 execution |
 | `status` | 分岐完了事実の要約（Running / Completed / Failed / Cancelled） |
@@ -69,6 +92,16 @@ Join は複数の状態からの事実を待ってから次に進みます。
 - 子が終端すると、親向け `Resume`（`mode=event`）に予約イベント名 **`statevia.event.child.completed`** を載せて enqueue する。
 - Worker は当該予約イベントを Engine の通常 Wait Resume ではなく **Join 再評価**へ振る。
 - 全必須分岐が Completed → Join 充足。いずれかが Failed / Cancelled → 親へ失敗／キャンセル伝播。
+- 物理 Join 待ち中の親は Engine の durable Wait を持たないため、runtime checkpoint の内容保持は寿命表の **`PendingPhysicalJoin`**（未終端 `execution_branches`）による。`PendingWaits` とあわせた内容寿命の正本は [durability.md](../../concepts/durability.md)。Worker 所有 lease は保持理由と同列にしない。
+- hydrate 入力として欠落・`{}`・必須プロパティ欠落は不正とし、構造化ログのうえ一時失敗とする（lease 用 seed `{}` を Import しない）。
+- 循環で同一 Join 状態名へ戻るとき、`CompletePhysicalJoin` は前回訪問の `startedJoins` / 観測事実をクリアしてから再実行する（残ると Join が無動作のまま Unload され停滞する）。
+- Join 直後の Unload で in-process 投影が欠落しても、checkpoint に Wait / 終端が進んでいれば冪等完了。進んでいなければ一時失敗して `child.completed` を再処理する。
+- `CompletePhysicalJoin` 後は `ActiveStates==0` ですぐ投影しない。durable Wait 登録または Suspend Unload まで待ち、decide Wait 無しの古い graph snapshot を残さない。
+- `child.completed` 再送の冪等は、当該 Fork 訪問に対応する Join ノードが既に `fact=Joined`（または `completedAt`）なら Join 再実行しない。投影の `status` だけ見ると取りこぼし、同一訪問の Join が多重実行されて `pendingWaits` が積み上がる。
+- Resume（Again → Fork）後に Suspend Unload した場合、in-process 投影が欠けても SuspendHandler が書いた DB 断面を使い 500 にしない。
+- 同一実行の checkpoint Persist/Unload は直列化する。加えて、永続済みに `pendingWaits` があるのに空の Fork 待ち断面で上書きしようとした Persist は拒否する（遅延 Fork Unload が decide Wait を消す競合の防止）。
+- Fork 展開通知は非同期のため、`ExpandFork` 完了後の Persist が Join→decide より遅れることがある。その時点で Engine に `activeStates` / `pendingWaits` がある、または当該 Fork 以降の Join が既に `Joined` なら **Unload しない**（Wait Suspend 側の Persist に委ね、初回 Wait 断面の消失を防ぐ）。
+- 定義グラフ（Studio）の Join 辺は `joinTable` 依存のうち **Fork 状態を除外**する。ネストでは OuterJoin の Join.all が InnerFork を含むが、描画経路は InnerJoin→OuterJoin（transitions）とし、InnerFork→OuterJoin の幽霊辺を作らない。
 
 ### Context マージと兄弟参照
 

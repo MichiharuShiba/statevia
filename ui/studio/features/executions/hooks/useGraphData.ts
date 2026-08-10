@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { resolveGroupBounds } from "../lib/grouping";
 import { layoutGraph } from "@/shared/lib/graphLayout";
 import { mergeGraph, type MergedGraphEdge, type MergedGraphNode } from "../lib/mergeGraph";
+import { pickPreferredRuntimeNode } from "../lib/pickPreferredRuntimeNode";
 import type { ExecutionNodeDTO, ExecutionView } from "../types";
 import type { GroupBounds } from "../lib/grouping";
 import type { LayoutEdgeInput, PositionedNode } from "@/shared/lib/graphLayout";
@@ -56,6 +57,7 @@ export function useGraphData(
  * ノード詳細・Resume 用に `ExecutionNodeDTO` を解決する。
  * リストはランタイム `nodeId`（UUID）、グラフは定義の `name`（状態キー）で選択するため、
  * `nodeName` およびマージ結果の `nodeName` でランタイム行へ寄せる。
+ * 循環で同名 Wait が複数あるときは {@link pickPreferredRuntimeNode} で WAITING 行を優先する。
  */
 export function getNodeWithFallback(
   execution: ExecutionView | null,
@@ -68,12 +70,7 @@ export function getNodeWithFallback(
   const byRuntimeId = execution.nodes.find((n) => n.nodeId === key);
   if (byRuntimeId) return byRuntimeId;
 
-  const byNodeNameKey = execution.nodes.find(
-    (n) =>
-      typeof n.nodeName === "string" &&
-      n.nodeName.trim().length > 0 &&
-      n.nodeName.trim().toLowerCase() === key.toLowerCase()
-  );
+  const byNodeNameKey = pickPreferredRuntimeNode(execution.nodes, key);
   if (byNodeNameKey) return byNodeNameKey;
 
   const mergedNode = graphData?.mergedNodes.find((n) => n.name === key);
@@ -81,11 +78,7 @@ export function getNodeWithFallback(
 
   const mergedState = mergedNode.nodeName.trim();
   if (mergedState.length > 0) {
-    const byMergedNodeName = execution.nodes.find(
-      (n) =>
-        typeof n.nodeName === "string" &&
-        n.nodeName.trim().toLowerCase() === mergedState.toLowerCase()
-    );
+    const byMergedNodeName = pickPreferredRuntimeNode(execution.nodes, mergedState);
     if (byMergedNodeName) return byMergedNodeName;
   }
 

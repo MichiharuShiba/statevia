@@ -3,6 +3,8 @@
 Version: 1.17
 Project: 実行型ステートマシン
 
+**Version 1.18（2026-08-10）**: `execution_branches.fork_node_id` の役割を明確化（並列エピソードの相関キー。定義名／Join `nodeId` ではない）。
+
 **Version 1.17（2026-08-07）**: `execution_branches` に `states_json` / `vars_json` を追加（Join 後の親 Context マージ用）。
 
 **Version 1.16（2026-08-06）**: `execution_branches` 追加（Hosted Fork 物理子の親子リンク正本。`fork_node_id` は実行ノード ID、`join_state` / `branch_state` は定義の状態名空間）。
@@ -306,7 +308,7 @@ Hosted Runtime が Fork を物理子 execution に展開したときの親子リ
 | カラム | 型 | 制約 | 説明 |
 | --- | --- | --- | --- |
 | parent_execution_id | uuid | PK, FK → executions, NOT NULL | 親（ネスト時は親役）execution |
-| fork_node_id | varchar(64) | PK, NOT NULL | 親実行グラフ上の Fork 到達インスタンス（実行ノード ID） |
+| fork_node_id | varchar(64) | PK, NOT NULL | 当該並列エピソードの相関キー（親グラフ上の Fork 到達 `nodeId`。定義名／Join `nodeId` ではない） |
 | branch_state | varchar(256) | PK, NOT NULL | 分岐先頭状態名 |
 | execution_id | uuid | UNIQUE, FK → executions, NOT NULL | 子 execution |
 | join_state | varchar(256) | NOT NULL | Join 状態名 |

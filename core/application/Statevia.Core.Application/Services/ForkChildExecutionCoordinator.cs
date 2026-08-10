@@ -236,6 +236,20 @@ public sealed class ForkChildExecutionCoordinator(
     }
 
     /// <inheritdoc />
+    public async Task<bool> HasPendingPhysicalJoinBranchesAsync(
+        Guid parentExecutionId,
+        CancellationToken ct)
+    {
+        var rows = await executor.ExecuteReadOnlyAsync(
+                (uow, innerCt) => branches.ListByParentExecutionIdAsync(uow, parentExecutionId, innerCt),
+                ct)
+            .ConfigureAwait(false);
+
+        return rows.Any(r =>
+            string.Equals(r.Status, ExecutionBranchStatuses.Running, StringComparison.Ordinal));
+    }
+
+    /// <inheritdoc />
     public async Task CascadeCancelToRunningChildrenAsync(Guid parentExecutionId, CancellationToken ct)
     {
         await executor.ExecuteReadCommittedAsync(

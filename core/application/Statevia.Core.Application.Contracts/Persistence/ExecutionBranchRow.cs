@@ -27,9 +27,15 @@ public static class ExecutionBranchStatuses
 /// <remarks>
 /// <para>
 /// 一意: <c>(parent_execution_id, fork_node_id, branch_state)</c> および <c>execution_id</c>。
-/// <c>fork_node_id</c> は親実行グラフ上の Fork 到達インスタンス（実行ノード ID）。
-/// <c>join_state</c> / <c>branch_state</c> は定義の状態名空間。
 /// </para>
+/// <para>
+/// <c>fork_node_id</c>（<see cref="ForkNodeId"/>）は Hosted 物理 Fork の
+/// <b>1 回の Fork 到達（並列エピソード）の相関キー</b>である。
+/// 値は親実行グラフ上の当該 Fork 訪問の実行 <c>nodeId</c> と同一。
+/// 定義の状態名でも Join の <c>nodeId</c> でもない（Join は未到達時点で未作成になりうる）。
+/// 契約の正本は <c>docs/specifications/execution/fork-join.md</c>。
+/// </para>
+/// <para><c>join_state</c> / <c>branch_state</c> は定義の状態名空間。</para>
 /// </remarks>
 public sealed class ExecutionBranchRow
 {
@@ -39,7 +45,9 @@ public sealed class ExecutionBranchRow
     /// <summary>分岐を走らせる子 execution。</summary>
     public Guid ExecutionId { get; set; }
 
-    /// <summary>親実行グラフ上の Fork ノード ID（到達インスタンス）。</summary>
+    /// <summary>
+    /// 当該並列エピソードの相関キー（親グラフ上の Fork 到達 <c>nodeId</c>）。
+    /// </summary>
     public required string ForkNodeId { get; set; }
 
     /// <summary>Join 状態名。</summary>

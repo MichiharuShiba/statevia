@@ -1,11 +1,12 @@
 # =============================================================================
-# 公式サンプル: ネスト Fork / Join（nodes 形式・version: 1）
+# 公式サンプル: 3 重ネスト Fork / Join（nodes 形式・version: 1）
 # -----------------------------------------------------------------------------
 # 配置: docs/samples/ui-nested-fork.yaml
 #
-# 外側 Fork の一方の枝先頭が内側 Fork。内側 Join の next が外側 Join。
+# 外側 → 中間 → 最内の 3 段。各段は「即時枝 + 一段深い Fork」で分岐し、
+# 最内だけ並列タスク 2 本。各 Join の next は一段外側の Join（最外は notify）。
 # nodes 変換は「枝が Join を供給する」（直接 next、またはネスト Fork→内側 Join→外口）
-# で外側 Join と照合する。
+# で各 Join と照合する。
 #
 # 起動 input 例: {}
 # CLI の Statevia.Service.Cli は states 形式のみ。本ファイルは Service API 経由で検証してください。
@@ -17,8 +18,9 @@ workflow:
   id: sample.nested.fork
   name: NestedForkSample
   description: >
-    外側並列（即時枝 + 内側並列）→ 内側合流 → 外側合流 → 完了。
-    Hosted では外側・内側とも物理子 execution に展開される。
+    3 重ネスト並列。外側（即時 + 中間 Fork）→ 中間（即時 + 最内 Fork）→
+    最内（A/B）→ 各段の合流 → 完了。
+    Hosted では各 Fork が物理子 execution に再帰展開される。
 
 nodes:
   - name: nest.start
@@ -26,12 +28,13 @@ nodes:
     label: 開始
     next: nest.outer.fork
 
+  # --- L1 外側 ---
   - name: nest.outer.fork
     type: fork
     label: 外側並列
     branches:
       - nest.outer.fast
-      - nest.inner.fork
+      - nest.mid.fork
 
   - name: nest.outer.fast
     type: action
@@ -39,16 +42,31 @@ nodes:
     action: noop
     next: nest.outer.join
 
+  # --- L2 中間 ---
+  - name: nest.mid.fork
+    type: fork
+    label: 中間並列
+    branches:
+      - nest.mid.fast
+      - nest.inner.fork
+
+  - name: nest.mid.fast
+    type: action
+    label: 中間・即時処理
+    action: noop
+    next: nest.mid.join
+
+  # --- L3 最内 ---
   - name: nest.inner.fork
     type: fork
-    label: 内側並列
+    label: 最内並列
     branches:
       - nest.inner.a
       - nest.inner.b
 
   - name: nest.inner.a
     type: action
-    label: 内側 A
+    label: 最内 A
     action: sleep
     input:
       duration: 1s
@@ -56,7 +74,7 @@ nodes:
 
   - name: nest.inner.b
     type: action
-    label: 内側 B
+    label: 最内 B
     action: sleep
     input:
       duration: 2s
@@ -64,7 +82,13 @@ nodes:
 
   - name: nest.inner.join
     type: join
-    label: 内側合流
+    label: 最内合流
+    mode: all
+    next: nest.mid.join
+
+  - name: nest.mid.join
+    type: join
+    label: 中間合流
     mode: all
     next: nest.outer.join
 

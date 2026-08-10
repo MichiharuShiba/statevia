@@ -217,6 +217,40 @@ internal static partial class ExecutionServiceLogMessages
     public static partial void ExportCheckpointNullSkipUnload(this ILogger logger, string executionId, string nodeId);
 
     [LoggerMessage(
+        EventId = 3018,
+        Level = LogLevel.Warning,
+        Message = "Skip stale checkpoint persist that would overwrite newer Wait state. ExecutionId={executionId} NodeId={nodeId} StoredPendingWaits={storedPendingWaits} IncomingPendingWaits={incomingPendingWaits} StoredNodes={storedNodes} IncomingNodes={incomingNodes}")]
+    public static partial void SkipStaleCheckpointPersist(
+        this ILogger logger,
+        Guid executionId,
+        string nodeId,
+        int storedPendingWaits,
+        int incomingPendingWaits,
+        int storedNodes,
+        int incomingNodes);
+
+    [LoggerMessage(
+        EventId = 3019,
+        Level = LogLevel.Information,
+        Message = "Skip delayed Fork expansion unload; execution already progressed past Fork wait. ExecutionId={executionId} ForkNodeId={forkNodeId} ActiveStates={activeStates} PendingWaits={pendingWaits}")]
+    public static partial void SkipForkExpansionUnloadAlreadyProgressed(
+        this ILogger logger,
+        Guid executionId,
+        string forkNodeId,
+        int activeStates,
+        int pendingWaits);
+
+    [LoggerMessage(
+        EventId = 3020,
+        Level = LogLevel.Information,
+        Message = "Synced graph snapshot from runtime checkpoint after Join unload. ExecutionId={executionId} PendingWaits={pendingWaits} CheckpointNodes={checkpointNodes}")]
+    public static partial void SyncedGraphSnapshotFromRuntimeCheckpoint(
+        this ILogger logger,
+        Guid executionId,
+        int pendingWaits,
+        int checkpointNodes);
+
+    [LoggerMessage(
         EventId = 3015,
         Level = LogLevel.Warning,
         Message = "Unload after Wait because ownership fencing was lost. NodeId={nodeId} ExecutionId={executionId}")]

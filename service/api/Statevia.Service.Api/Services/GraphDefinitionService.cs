@@ -129,7 +129,9 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
         AddEdgesFromConditionalTransitions(edges, dto.ConditionalTransitions);
         AddEdgesFromWaitEventRouteTable(edges, dto.WaitEventRouteTable);
         AddEdgesFromStateTable(edges, dto.ForkTable);
-        AddEdgesFromJoinTable(edges, dto.JoinTable);
+        // Join.all の依存にネスト枝先頭の Fork が含まれるが、描画では内側 Join→外側の遷移辺を使う。
+        // Fork→Join を JoinTable から描くと幽霊枝になるため、Fork 依存は除外する。
+        AddEdgesFromJoinTable(edges, dto.JoinTable, dto.ForkTable);
         return edges;
     }
 
@@ -335,12 +337,24 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     /// <summary>
     /// join テーブル（joinState ← dependencies）から描画用エッジを追加する。
     /// </summary>
-    private static void AddEdgesFromJoinTable(List<GraphEdgeDefinition> edges, Dictionary<string, List<string>?>? joinTable)
+    /// <remarks>
+    /// 依存が <paramref name="forkTable"/> 上の Fork 状態のときは辺を作らない。
+    /// ネストでは OuterJoin の Join.all が InnerFork を依存に持つが、見た目の経路は
+    /// InnerJoin → OuterJoin（transitions）であり、InnerFork → OuterJoin は幽霊枝になる。
+    /// </remarks>
+    private static void AddEdgesFromJoinTable(
+        List<GraphEdgeDefinition> edges,
+        Dictionary<string, List<string>?>? joinTable,
+        Dictionary<string, List<string>?>? forkTable)
     {
         if (joinTable is null) return;
         joinTable
             .Where(pair => pair.Value is not null)
-            .SelectMany(pair => pair.Value!.Select(from => new GraphEdgeDefinition { From = from, To = pair.Key }))
+            .SelectMany(pair => pair.Value!
+                .Where(from =>
+                    !string.IsNullOrWhiteSpace(from)
+                    && (forkTable is null || !forkTable.ContainsKey(from)))
+                .Select(from => new GraphEdgeDefinition { From = from, To = pair.Key }))
             .ToList()
             .ForEach(edges.Add);
     }

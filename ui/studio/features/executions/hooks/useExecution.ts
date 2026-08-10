@@ -67,11 +67,34 @@ export function useExecution(executionDisplayId: string, options: UseExecutionOp
   const applyExecutionSnapshot = (view: ExecutionView) => {
     setExecution(view);
     setSelectedNodeId((current) => {
-      if (!current) return view.nodes[0]?.nodeId ?? null;
+      const waitingNodes = view.nodes.filter((node) => node.status === "WAITING");
+      const soleWaiting = waitingNodes.length === 1 ? waitingNodes[0] : null;
+
+      if (!current) {
+        return soleWaiting?.nodeId ?? view.nodes[0]?.nodeId ?? null;
+      }
+
       const key = current.trim();
-      if (view.nodes.some((node) => node.nodeId === key)) return current;
-      if (view.nodes.some((node) => (node.nodeName?.trim() ?? "") === key)) return current;
-      return view.nodes[0]?.nodeId ?? null;
+      const byRuntimeId = view.nodes.find((node) => node.nodeId === key);
+      if (byRuntimeId) {
+        // 循環で同名 Wait が再入場したとき、完了済みの旧 nodeId 選択を WAITING へ追従する。
+        if (
+          soleWaiting
+          && byRuntimeId.status !== "WAITING"
+          && typeof byRuntimeId.nodeName === "string"
+          && byRuntimeId.nodeName.trim().length > 0
+          && byRuntimeId.nodeName.trim().toLowerCase() === (soleWaiting.nodeName?.trim() ?? "").toLowerCase()
+        ) {
+          return soleWaiting.nodeId;
+        }
+        return key;
+      }
+
+      if (view.nodes.some((node) => (node.nodeName?.trim() ?? "") === key)) {
+        return key;
+      }
+
+      return soleWaiting?.nodeId ?? view.nodes[0]?.nodeId ?? null;
     });
   };
 

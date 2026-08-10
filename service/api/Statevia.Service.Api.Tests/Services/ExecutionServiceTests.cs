@@ -4181,6 +4181,9 @@ public sealed class ExecutionServiceTests
             CancellationToken ct) =>
             throw new NotSupportedException();
 
+        public Task<bool> HasPendingPhysicalJoinBranchesAsync(Guid parentExecutionId, CancellationToken ct) =>
+            Task.FromResult(false);
+
         public Task CascadeCancelToRunningChildrenAsync(Guid parentExecutionId, CancellationToken ct) =>
             throw new NotSupportedException();
 
