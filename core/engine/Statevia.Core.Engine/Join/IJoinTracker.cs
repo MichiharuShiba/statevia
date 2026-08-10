@@ -21,4 +21,15 @@ public interface IJoinTracker
     /// <param name="joinStateName">Join 状態名。</param>
     /// <returns>実行可能なら <see langword="true"/>。</returns>
     bool IsJoinReadyToExecute(string joinStateName);
+
+    /// <summary>
+    /// Hosted 物理 Join の再入場用に、当該 Join の開始マークと観測事実をクリアする。
+    /// </summary>
+    /// <remarks>
+    /// 循環で同一 Join 状態名へ戻るとき、前回訪問の <c>startedJoins</c> が残ると
+    /// <see cref="TryBeginJoinExecution"/> が永続的に false になるため、
+    /// <c>CompletePhysicalJoin</c> 直前に呼ぶ。
+    /// </remarks>
+    /// <param name="joinStateName">クリアする Join 状態名。</param>
+    void ResetForPhysicalJoinReentry(string joinStateName);
 }

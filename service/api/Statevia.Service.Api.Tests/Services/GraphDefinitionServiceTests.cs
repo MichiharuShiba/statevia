@@ -169,6 +169,64 @@ public sealed class GraphDefinitionServiceTests
     }
 
     /// <summary>
+    /// ネスト Fork では OuterJoin の Join.all に InnerFork が含まれても、
+    /// 定義グラフに InnerFork→OuterJoin の幽霊辺を描かない。
+    /// </summary>
+    [Fact]
+    public async Task GetByGraphIdAsync_NestedFork_DoesNotDrawJoinEdgeFromInnerForkToOuterJoin()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uuid = Guid.NewGuid();
+        var graphId = uuid.ToString("N")[..10];
+        const string compiledJson = """
+            {
+              "name": "NestedForkSample",
+              "initialState": "nest.start",
+              "transitions": {
+                "nest.start": { "Completed": { "next": "nest.outer.fork", "fork": null, "end": false } },
+                "nest.outer.fork": { "Completed": { "next": null, "fork": ["nest.outer.fast", "nest.inner.fork"], "end": false } },
+                "nest.outer.fast": { "Completed": { "next": "nest.outer.join", "fork": null, "end": false } },
+                "nest.inner.fork": { "Completed": { "next": null, "fork": ["nest.inner.a", "nest.inner.b"], "end": false } },
+                "nest.inner.a": { "Completed": { "next": "nest.inner.join", "fork": null, "end": false } },
+                "nest.inner.b": { "Completed": { "next": "nest.inner.join", "fork": null, "end": false } },
+                "nest.inner.join": { "Joined": { "next": "nest.outer.join", "fork": null, "end": false } },
+                "nest.outer.join": { "Joined": { "next": "nest.end", "fork": null, "end": false } },
+                "nest.end": { "Completed": { "next": null, "fork": null, "end": true } }
+              },
+              "forkTable": {
+                "nest.outer.fork": ["nest.outer.fast", "nest.inner.fork"],
+                "nest.inner.fork": ["nest.inner.a", "nest.inner.b"]
+              },
+              "joinTable": {
+                "nest.inner.join": ["nest.inner.a", "nest.inner.b"],
+                "nest.outer.join": ["nest.outer.fast", "nest.inner.fork"]
+              }
+            }
+            """;
+
+        var projectId = await SeedDefaultTenantAndProjectAsync(db.Options);
+
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            var now = DateTime.UtcNow;
+            DefinitionTestData.AddDefinitionWithVersion(
+                ctx, TestTenantIds.DefaultTenantId, uuid, "nested", projectId, compiledJson: compiledJson, createdAt: now);
+            await ctx.SaveChangesAsync();
+        }
+
+        var sut = CreateSut(db, new StubDisplayIdService(uuid));
+
+        // Act
+        var res = await sut.GetByGraphIdAsync(graphId, CancellationToken.None);
+
+        // Assert
+        Assert.Contains(res.Edges, e => e.From == "nest.outer.fast" && e.To == "nest.outer.join");
+        Assert.Contains(res.Edges, e => e.From == "nest.inner.join" && e.To == "nest.outer.join");
+        Assert.DoesNotContain(res.Edges, e => e.From == "nest.inner.fork" && e.To == "nest.outer.join");
+    }
+
+    /// <summary>
     /// 終端遷移がない状態を通常ノードとして組み立てる。
     /// </summary>
     [Fact]

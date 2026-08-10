@@ -177,6 +177,58 @@ public sealed class PhysicalForkGraphComposerTests
                 && e["to"]!.GetValue<string>() == "outer-join");
     }
 
+    /// <summary>
+    /// 内側合成が Fork+Join のみ（子辺なし）でも、InnerFork→OuterJoin の幽霊辺を付けない。
+    /// </summary>
+    [Fact]
+    public void Compose_WhenNestedForkChildHasNoInnerEdges_DoesNotJoinFromInnerForkToOuterJoin()
+    {
+        // Arrange: 再帰合成前の内側親スナップショット相当（edges 空）
+        const string parentJson = """
+            {
+              "nodes": [
+                {"nodeId":"outer-fork","nodeName":"OuterFork","nodeType":"Fork"},
+                {"nodeId":"outer-join","nodeName":"OuterJoin","nodeType":"Join"}
+              ],
+              "edges": []
+            }
+            """;
+        const string nestedChildWithoutInnerEdges = """
+            {
+              "nodes": [
+                {"nodeId":"inner-fork","nodeName":"InnerFork","nodeType":"Fork"},
+                {"nodeId":"inner-join","nodeName":"InnerJoin","nodeType":"Join"}
+              ],
+              "edges": []
+            }
+            """;
+        const string fastChildJson = """
+            {"nodes":[{"nodeId":"outer-fast","nodeName":"OuterFast","nodeType":"Task"}],"edges":[]}
+            """;
+
+        // Act
+        var composed = PhysicalForkGraphComposer.Compose(
+            parentJson,
+            [
+                new PhysicalForkGraphComposer.BranchGraph(
+                    "outer-fork", "outer-join", "OuterFast", fastChildJson),
+                new PhysicalForkGraphComposer.BranchGraph(
+                    "outer-fork", "outer-join", "InnerFork", nestedChildWithoutInnerEdges)
+            ]);
+
+        // Assert
+        var edges = JsonNode.Parse(composed)!["edges"]!.AsArray().OfType<JsonObject>().ToList();
+        Assert.DoesNotContain(
+            edges,
+            e => e["from"]!.GetValue<string>() == "inner-fork"
+                && e["to"]!.GetValue<string>() == "outer-join");
+        Assert.Contains(
+            edges,
+            e => e["from"]!.GetValue<string>() == "inner-join"
+                && e["to"]!.GetValue<string>() == "outer-join"
+                && e["type"]!.GetValue<int>() == (int)EdgeType.Next);
+    }
+
     /// <summary>循環で同名 Join が複数でも、各 Fork 訪問の Join nodeId に辺が付く。</summary>
     [Fact]
     public void Compose_WhenCyclicForkJoin_AttachesJoinEdgesToVisitSpecificNodeIds()
@@ -307,5 +359,112 @@ public sealed class PhysicalForkGraphComposerTests
 
         // Assert
         Assert.Equal(parentJson, composed);
+    }
+
+    /// <summary>時刻が無い循環 Fork/Join は訪問インデックスで Join を対応付ける。</summary>
+    [Fact]
+    public void ResolveJoinNodeId_WhenNoTimestamps_UsesVisitIndex()
+    {
+        // Arrange
+        const string parentJson = """
+            {
+              "nodes": [
+                {"nodeId":"fork-v1","nodeName":"Fork1","nodeType":"Fork"},
+                {"nodeId":"join-v1","nodeName":"Join1","nodeType":"Join"},
+                {"nodeId":"fork-v2","nodeName":"Fork1","nodeType":"Fork"},
+                {"nodeId":"join-v2","nodeName":"Join1","nodeType":"Join"}
+              ],
+              "edges": []
+            }
+            """;
+
+        // Act
+        var joinV1 = PhysicalForkGraphComposer.ResolveJoinNodeId(parentJson, "fork-v1", "Join1");
+        var joinV2 = PhysicalForkGraphComposer.ResolveJoinNodeId(parentJson, "fork-v2", "Join1");
+
+        // Assert
+        Assert.Equal("join-v1", joinV1);
+        Assert.Equal("join-v2", joinV2);
+    }
+
+    /// <summary>空白の joinState は未解決。</summary>
+    [Fact]
+    public void ResolveJoinNodeId_WhenJoinStateBlank_ReturnsNull()
+    {
+        // Arrange
+        const string parentJson = """
+            {"nodes":[{"nodeId":"fork1","nodeName":"Fork1","nodeType":"Fork"}],"edges":[]}
+            """;
+
+        // Act
+        var joinId = PhysicalForkGraphComposer.ResolveJoinNodeId(parentJson, "fork1", "  ");
+
+        // Assert
+        Assert.Null(joinId);
+    }
+
+    /// <summary>不明な forkNodeId は未解決。</summary>
+    [Fact]
+    public void ResolveJoinNodeId_WhenForkMissing_ReturnsNull()
+    {
+        // Arrange
+        const string parentJson = """
+            {
+              "nodes": [
+                {"nodeId":"join1","nodeName":"Join1","nodeType":"Join"}
+              ],
+              "edges": []
+            }
+            """;
+
+        // Act
+        var joinId = PhysicalForkGraphComposer.ResolveJoinNodeId(parentJson, "missing-fork", "Join1");
+
+        // Assert
+        Assert.Null(joinId);
+    }
+
+    /// <summary>同名 Join 候補が無いときは未解決。</summary>
+    [Fact]
+    public void ResolveJoinNodeId_WhenNoJoinCandidates_ReturnsNull()
+    {
+        // Arrange
+        const string parentJson = """
+            {
+              "nodes": [
+                {"nodeId":"fork1","nodeName":"Fork1","nodeType":"Fork"}
+              ],
+              "edges": []
+            }
+            """;
+
+        // Act
+        var joinId = PhysicalForkGraphComposer.ResolveJoinNodeId(parentJson, "fork1", "Join1");
+
+        // Assert
+        Assert.Null(joinId);
+    }
+
+    /// <summary>Fork の nodeName が欠けるときは先頭 Join 候補へフォールバックする。</summary>
+    [Fact]
+    public void ResolveJoinNodeId_WhenForkNodeNameMissing_ReturnsFirstJoinCandidate()
+    {
+        // Arrange
+        const string parentJson = """
+            {
+              "nodes": [
+                {"nodeId":"fork1","nodeType":"Fork"},
+                {"nodeId":"join-a","nodeName":"Join1","nodeType":"Join"},
+                {"nodeId":"join-b","nodeName":"Join1","nodeType":"Join"}
+              ],
+              "edges": []
+            }
+            """;
+
+        // Act
+        var joinId = PhysicalForkGraphComposer.ResolveJoinNodeId(parentJson, "fork1", "Join1");
+
+        // Assert
+        Assert.Equal("join-a", joinId);
     }
 }

@@ -1,5 +1,6 @@
 import type { GraphDefinition, GraphEdgeDef, GraphGroupDef, GraphDefinitionMeta } from "@/features/executions/graphs/types";
 import type { ExecutionNodeDTO, NodeStatus, ExecutionView } from "../types";
+import { pickPreferredRuntimeNode } from "./pickPreferredRuntimeNode";
 
 /** 実行＋定義をマージしたグラフノード。 */
 export type MergedGraphNode = {
@@ -83,8 +84,15 @@ export function mergeGraph(execution: ExecutionView, definition: GraphDefinition
     byRuntimeId.set(n.nodeId, n);
     const trimmed = typeof n.nodeName === "string" ? n.nodeName.trim() : "";
     if (trimmed.length === 0) continue;
-    byNodeNameKey.set(trimmed, n);
     nodeNameByRuntimeId.set(n.nodeId, trimmed);
+    // 循環で同名が複数あるときは WAITING / 最新 attempt を代表にする。
+    const existing = byNodeNameKey.get(trimmed);
+    if (!existing) {
+      byNodeNameKey.set(trimmed, n);
+      continue;
+    }
+    const preferred = pickPreferredRuntimeNode([existing, n], trimmed);
+    if (preferred) byNodeNameKey.set(trimmed, preferred);
   }
 
   const traversedEdgeKeys = new Set(

@@ -20,6 +20,11 @@ export function TenantMissingBanner() {
   const [sessionLoaded, setSessionLoaded] = useState(false);
 
   useEffect(() => {
+    // 環境変数でテナントが付いているときはセッション確認不要（無駄な setState も避ける）。
+    if (tenantId) {
+      return;
+    }
+
     let cancelled = false;
     fetch("/api/auth/session", { credentials: "same-origin" })
       .then((res) => (res.ok ? res.json() : null))
@@ -37,7 +42,7 @@ export function TenantMissingBanner() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [tenantId]);
 
   if (tenantId) return null;
   if (!sessionLoaded) return null;

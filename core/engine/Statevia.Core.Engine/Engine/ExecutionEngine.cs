@@ -828,6 +828,9 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             }
         }
 
+        // 循環再入場: 前回訪問の startedJoins / 観測事実を捨ててから物理 Join を再実行する。
+        instance.JoinTracker.ResetForPhysicalJoinReentry(joinStateName);
+
         foreach (var (branchState, branchOutput) in branchOutputs)
         {
             instance.JoinTracker.RecordFact(branchState, Fact.Completed, branchOutput);

@@ -2,6 +2,7 @@ using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Execution;
+using Statevia.Core.Engine.Join;
 using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Engine;
@@ -27,6 +28,106 @@ public sealed class ForkExpansionHandlerTests
         Assert.NotNull(snapshot);
         Assert.True(snapshot.IsCompleted);
         Assert.False(snapshot.IsFailed);
+    }
+
+    /// <summary>
+    /// checkpoint に前回の startedJoins が残っていても CompletePhysicalJoin で再入場できる。
+    /// </summary>
+    [Fact]
+    public async Task CompletePhysicalJoin_WhenStartedJoinsAlreadySet_ReentersAndCompletes()
+    {
+        // Arrange
+        var def = CreateForkDefinition();
+        var engine = ExecutionEngineTestHarness.Create(maxParallelism: 2);
+        var forked = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        engine.SetForkExpansionHandler(_ =>
+        {
+            forked.TrySetResult(true);
+            return Task.CompletedTask;
+        });
+
+        var parentId = engine.Start(def);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        await forked.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
+        await Task.Delay(50).ConfigureAwait(false);
+
+        var exported = engine.ExportCheckpoint(parentId)
+            ?? throw new InvalidOperationException("checkpoint missing");
+        engine.Unload(parentId);
+
+        // 循環 1 周目相当: Join 開始済みマークが残った断面を hydrate する。
+        var checkpoint = new ExecutionRuntimeCheckpoint
+        {
+            SchemaVersion = exported.SchemaVersion,
+            ExecutionId = exported.ExecutionId,
+            DefinitionName = exported.DefinitionName,
+            IsCompleted = exported.IsCompleted,
+            IsCancelled = exported.IsCancelled,
+            IsFailed = exported.IsFailed,
+            ActiveStates = exported.ActiveStates,
+            StateAttempts = exported.StateAttempts,
+            StateOutputs = exported.StateOutputs,
+            AppliedPublishClientEventIds = exported.AppliedPublishClientEventIds,
+            AppliedCancelClientEventIds = exported.AppliedCancelClientEventIds,
+            Context = exported.Context,
+            Graph = exported.Graph,
+            PendingWaits = exported.PendingWaits,
+            Join = new CheckpointJoinData
+            {
+                StartedJoins = ["Join1"],
+                JoinSourceNodeIds = exported.Join.JoinSourceNodeIds,
+                JoinStateResults = new Dictionary<string, IReadOnlyDictionary<string, CheckpointJoinObserved>>(
+                    StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Join1"] = new Dictionary<string, CheckpointJoinObserved>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["A"] = new CheckpointJoinObserved { Fact = "Completed", Output = null },
+                        ["B"] = new CheckpointJoinObserved { Fact = "Completed", Output = null }
+                    }
+                }
+            }
+        };
+        engine.ImportCheckpoint(def, checkpoint);
+
+        // Act
+        engine.CompletePhysicalJoin(
+            parentId,
+            "Join1",
+            new Dictionary<string, object?>
+            {
+                ["A"] = "round-2-a",
+                ["B"] = "round-2-b"
+            });
+        await Task.Delay(300).ConfigureAwait(false);
+        var snapshot = engine.GetSnapshot(parentId);
+
+        // Assert
+        Assert.NotNull(snapshot);
+        Assert.True(snapshot.IsCompleted);
+        Assert.False(snapshot.IsFailed);
+    }
+
+    /// <summary>ResetForPhysicalJoinReentry 後は同一 Join を再度 Begin できる。</summary>
+    [Fact]
+    public void JoinTracker_ResetForPhysicalJoinReentry_AllowsSecondBegin()
+    {
+        // Arrange
+        var tracker = new JoinTracker(CreateForkDefinition());
+        Assert.Null(tracker.RecordFact("A", "Completed", "a1"));
+        Assert.Equal("Join1", tracker.RecordFact("B", "Completed", "b1"));
+        Assert.True(tracker.TryBeginJoinExecution("Join1"));
+        Assert.False(tracker.TryBeginJoinExecution("Join1"));
+
+        // Act
+        tracker.ResetForPhysicalJoinReentry("Join1");
+        Assert.Null(tracker.RecordFact("A", "Completed", "a2"));
+        Assert.Equal("Join1", tracker.RecordFact("B", "Completed", "b2"));
+
+        // Assert
+        Assert.True(tracker.TryBeginJoinExecution("Join1"));
+        var inputs = tracker.GetJoinInputs("Join1");
+        Assert.Equal("a2", inputs["A"]);
+        Assert.Equal("b2", inputs["B"]);
     }
 
     /// <summary>CompletePhysicalJoin は候補 input で Join を充足し親を進める。</summary>

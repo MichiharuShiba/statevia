@@ -366,6 +366,9 @@ public sealed class ForkExpansionHostHandlerTests
             CancellationToken ct) =>
             Task.FromResult(new ForkJoinEvaluation(ForkJoinEvaluationKind.Waiting, "Join1"));
 
+        public Task<bool> HasPendingPhysicalJoinBranchesAsync(Guid parentExecutionId, CancellationToken ct) =>
+            Task.FromResult(false);
+
         public Task CascadeCancelToRunningChildrenAsync(Guid parentExecutionId, CancellationToken ct) =>
             Task.CompletedTask;
 
