@@ -361,6 +361,22 @@ public sealed class PhysicalForkGraphComposerTests
         Assert.Equal(parentJson, composed);
     }
 
+    /// <summary>不正な親 JSON は合成せずそのまま返す。</summary>
+    [Fact]
+    public void Compose_WhenParentJsonInvalid_ReturnsParentUnchanged()
+    {
+        // Arrange
+        const string parentJson = "not-json";
+
+        // Act
+        var composed = PhysicalForkGraphComposer.Compose(
+            parentJson,
+            [new PhysicalForkGraphComposer.BranchGraph("f", "j", "A", """{"nodes":[],"edges":[]}""")]);
+
+        // Assert
+        Assert.Equal(parentJson, composed);
+    }
+
     /// <summary>時刻が無い循環 Fork/Join は訪問インデックスで Join を対応付ける。</summary>
     [Fact]
     public void ResolveJoinNodeId_WhenNoTimestamps_UsesVisitIndex()
@@ -385,6 +401,32 @@ public sealed class PhysicalForkGraphComposerTests
         // Assert
         Assert.Equal("join-v1", joinV1);
         Assert.Equal("join-v2", joinV2);
+    }
+
+    /// <summary>Fork に時刻が無いとき visit index で Join を解決する。</summary>
+    [Fact]
+    public void ResolveJoinNodeId_WhenForkHasNoTime_UsesVisitIndex()
+    {
+        // Arrange
+        const string parentJson = """
+            {
+              "nodes": [
+                {"nodeId":"fork-a","nodeName":"ForkSame"},
+                {"nodeId":"fork-b","nodeName":"ForkSame"},
+                {"nodeId":"join-a","nodeName":"JoinSame","nodeType":"Join","startedAt":"2026-01-01T00:00:00Z"},
+                {"nodeId":"join-b","nodeName":"JoinSame","nodeType":"Join","startedAt":"2026-01-01T00:00:01Z"}
+              ],
+              "edges": []
+            }
+            """;
+
+        // Act
+        var joinForA = PhysicalForkGraphComposer.ResolveJoinNodeId(parentJson, "fork-a", "JoinSame");
+        var joinForB = PhysicalForkGraphComposer.ResolveJoinNodeId(parentJson, "fork-b", "JoinSame");
+
+        // Assert
+        Assert.Equal("join-a", joinForA);
+        Assert.Equal("join-b", joinForB);
     }
 
     /// <summary>空白の joinState は未解決。</summary>

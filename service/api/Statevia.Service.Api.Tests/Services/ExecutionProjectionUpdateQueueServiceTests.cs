@@ -18,6 +18,8 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
     private sealed class FakeExecutionEngine : IExecutionEngine
     {
         private Func<string, Task>? _nodeCompletedHandler;
+        private Func<string, string, Task>? _suspendHandler;
+        private Func<ForkExpansionEvent, Task>? _forkExpansionHandler;
 
         public string Start(
             CompiledWorkflowDefinition definition,
@@ -54,10 +56,12 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
 
         public void SetSuspendHandler(Func<string, string, Task>? handler)
         {
+            _suspendHandler = handler;
         }
 
         public void SetForkExpansionHandler(Func<ForkExpansionEvent, Task>? handler)
         {
+            _forkExpansionHandler = handler;
         }
 
         public void CompletePhysicalJoin(
@@ -78,6 +82,12 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
 
         internal Task EmitNodeCompletedAsync(Guid executionId) =>
             _nodeCompletedHandler?.Invoke(executionId.ToString("D")) ?? Task.CompletedTask;
+
+        internal Task EmitSuspendAsync(string executionId, string nodeId) =>
+            _suspendHandler?.Invoke(executionId, nodeId) ?? Task.CompletedTask;
+
+        internal Task EmitForkExpansionAsync(ForkExpansionEvent evt) =>
+            _forkExpansionHandler?.Invoke(evt) ?? Task.CompletedTask;
     }
 
     private sealed class FakeExecutionService : IExecutionService
@@ -118,8 +128,14 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         public Task AbandonLocalOwnedSessionAsync(Guid executionId) => Task.CompletedTask;
 
         public Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
-        public Task PersistCheckpointAndUnloadByEngineIdAsync(string engineExecutionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
 
+        internal int PersistCheckpointAndUnloadByEngineIdCallCount { get; private set; }
+
+        public Task PersistCheckpointAndUnloadByEngineIdAsync(string engineExecutionId, string nodeId, CancellationToken ct)
+        {
+            PersistCheckpointAndUnloadByEngineIdCallCount += 1;
+            return Task.CompletedTask;
+        }
 
         public Task<ExecutionResponse> StartAsync(StartExecutionRequest request, string? idempotencyKey, CommandRequestContext requestContext, CancellationToken ct) =>
             throw new NotSupportedException();
@@ -578,13 +594,246 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
     }
 
     /// <summary>投影キューが要求する Platform lookup のスタブ。</summary>
+    /// <summary>Suspend 通知で PersistCheckpointAndUnload が呼ばれる。</summary>
+    [Fact]
+    public async Task EmitSuspendAsync_WhenTenantFound_PersistsCheckpointAndUnload()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        var executionEngine = new FakeExecutionEngine();
+        var executionService = new FakeExecutionService(failuresBeforeSuccess: 0);
+        await using var serviceProvider = BuildServiceProvider(executionService);
+        var queue = BuildQueueService(executionEngine, serviceProvider, new ExecutionProjectionQueueOptions
+        {
+            MaxGlobalQueueSize = 10,
+            ProjectionFlushDebounceMs = 0,
+            MaxRetryAttempts = 3,
+            RetryBaseDelayMs = 0,
+            RetryMaxDelayMs = 0
+        });
+        await queue.StartAsync(CancellationToken.None);
+
+        try
+        {
+            // Act
+            await executionEngine.EmitSuspendAsync(executionId.ToString("D"), "wait1");
+
+            // Assert
+            Assert.Equal(1, executionService.PersistCheckpointAndUnloadByEngineIdCallCount);
+        }
+        finally
+        {
+            await queue.StopAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>不正な executionId の Suspend は checkpoint をスキップする。</summary>
+    [Fact]
+    public async Task EmitSuspendAsync_WhenExecutionIdInvalid_SkipsPersist()
+    {
+        // Arrange
+        var executionEngine = new FakeExecutionEngine();
+        var executionService = new FakeExecutionService(failuresBeforeSuccess: 0);
+        await using var serviceProvider = BuildServiceProvider(executionService);
+        var queue = BuildQueueService(executionEngine, serviceProvider, new ExecutionProjectionQueueOptions
+        {
+            MaxGlobalQueueSize = 10,
+            ProjectionFlushDebounceMs = 0,
+            MaxRetryAttempts = 1,
+            RetryBaseDelayMs = 0,
+            RetryMaxDelayMs = 0
+        });
+        await queue.StartAsync(CancellationToken.None);
+
+        try
+        {
+            // Act
+            await executionEngine.EmitSuspendAsync("not-a-guid", "wait1");
+
+            // Assert
+            Assert.Equal(0, executionService.PersistCheckpointAndUnloadByEngineIdCallCount);
+        }
+        finally
+        {
+            await queue.StopAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>テナントが無い Suspend は checkpoint をスキップする。</summary>
+    [Fact]
+    public async Task EmitSuspendAsync_WhenTenantMissing_SkipsPersist()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        var executionEngine = new FakeExecutionEngine();
+        var executionService = new FakeExecutionService(failuresBeforeSuccess: 0);
+        var platform = new StubPlatformDataAccess { TenantToReturn = null };
+        await using var serviceProvider = BuildServiceProvider(
+            executionService,
+            new TenantContextAccessor(),
+            platform);
+        var queue = BuildQueueService(executionEngine, serviceProvider, new ExecutionProjectionQueueOptions
+        {
+            MaxGlobalQueueSize = 10,
+            ProjectionFlushDebounceMs = 0,
+            MaxRetryAttempts = 1,
+            RetryBaseDelayMs = 0,
+            RetryMaxDelayMs = 0
+        });
+        await queue.StartAsync(CancellationToken.None);
+
+        try
+        {
+            // Act
+            await executionEngine.EmitSuspendAsync(executionId.ToString("D"), "wait1");
+
+            // Assert
+            Assert.Equal(0, executionService.PersistCheckpointAndUnloadByEngineIdCallCount);
+        }
+        finally
+        {
+            await queue.StopAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>ForkExpansion 通知で HostHandler が呼ばれる。</summary>
+    [Fact]
+    public async Task EmitForkExpansionAsync_WhenTenantFound_InvokesHostHandler()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        var executionEngine = new FakeExecutionEngine();
+        var executionService = new FakeExecutionService(failuresBeforeSuccess: 0);
+        var forkHandler = new RecordingForkExpansionHostHandler();
+        await using var serviceProvider = BuildServiceProvider(executionService, forkHandler: forkHandler);
+        var queue = BuildQueueService(executionEngine, serviceProvider, new ExecutionProjectionQueueOptions
+        {
+            MaxGlobalQueueSize = 10,
+            ProjectionFlushDebounceMs = 0,
+            MaxRetryAttempts = 1,
+            RetryBaseDelayMs = 0,
+            RetryMaxDelayMs = 0
+        });
+        await queue.StartAsync(CancellationToken.None);
+
+        try
+        {
+            // Act
+            await executionEngine.EmitForkExpansionAsync(new ForkExpansionEvent(
+                executionId.ToString("D"),
+                "fork1",
+                "n1",
+                [new ForkBranchExpansionPlan("branchA", null)]));
+
+            // Assert
+            Assert.Equal(1, forkHandler.HandleCallCount);
+        }
+        finally
+        {
+            await queue.StopAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>不正な executionId の ForkExpansion は HostHandler を呼ばない。</summary>
+    [Fact]
+    public async Task EmitForkExpansionAsync_WhenExecutionIdInvalid_SkipsHandler()
+    {
+        // Arrange
+        var executionEngine = new FakeExecutionEngine();
+        var executionService = new FakeExecutionService(failuresBeforeSuccess: 0);
+        var forkHandler = new RecordingForkExpansionHostHandler();
+        await using var serviceProvider = BuildServiceProvider(executionService, forkHandler: forkHandler);
+        var queue = BuildQueueService(executionEngine, serviceProvider, new ExecutionProjectionQueueOptions
+        {
+            MaxGlobalQueueSize = 10,
+            ProjectionFlushDebounceMs = 0,
+            MaxRetryAttempts = 1,
+            RetryBaseDelayMs = 0,
+            RetryMaxDelayMs = 0
+        });
+        await queue.StartAsync(CancellationToken.None);
+
+        try
+        {
+            // Act
+            await executionEngine.EmitForkExpansionAsync(new ForkExpansionEvent(
+                "bad-id",
+                "fork1",
+                "n1",
+                [new ForkBranchExpansionPlan("branchA", null)]));
+
+            // Assert
+            Assert.Equal(0, forkHandler.HandleCallCount);
+        }
+        finally
+        {
+            await queue.StopAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>テナント欠落の ForkExpansion は HostHandler を呼ばない。</summary>
+    [Fact]
+    public async Task EmitForkExpansionAsync_WhenTenantMissing_SkipsHandler()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        var executionEngine = new FakeExecutionEngine();
+        var executionService = new FakeExecutionService(failuresBeforeSuccess: 0);
+        var forkHandler = new RecordingForkExpansionHostHandler();
+        var platform = new StubPlatformDataAccess { TenantToReturn = null };
+        await using var serviceProvider = BuildServiceProvider(
+            executionService,
+            new TenantContextAccessor(),
+            platform,
+            forkHandler);
+        var queue = BuildQueueService(executionEngine, serviceProvider, new ExecutionProjectionQueueOptions
+        {
+            MaxGlobalQueueSize = 10,
+            ProjectionFlushDebounceMs = 0,
+            MaxRetryAttempts = 1,
+            RetryBaseDelayMs = 0,
+            RetryMaxDelayMs = 0
+        });
+        await queue.StartAsync(CancellationToken.None);
+
+        try
+        {
+            // Act
+            await executionEngine.EmitForkExpansionAsync(new ForkExpansionEvent(
+                executionId.ToString("D"),
+                "fork1",
+                "n1",
+                [new ForkBranchExpansionPlan("branchA", null)]));
+
+            // Assert
+            Assert.Equal(0, forkHandler.HandleCallCount);
+        }
+        finally
+        {
+            await queue.StopAsync(CancellationToken.None);
+        }
+    }
+
+    private sealed class RecordingForkExpansionHostHandler : IForkExpansionHostHandler
+    {
+        public int HandleCallCount { get; private set; }
+
+        public Task HandleAsync(ForkExpansionEvent evt, CancellationToken ct)
+        {
+            HandleCallCount += 1;
+            return Task.CompletedTask;
+        }
+    }
+
     private sealed class StubPlatformDataAccess : IPlatformDataAccess
     {
+        public ExecutionTenantLookup? TenantToReturn { get; set; } = new(
+            TestTenantIds.T1TenantId,
+            "t1",
+            TenantLifecycle.Active);
+
         public Task<ExecutionTenantLookup?> FindExecutionTenantAsync(Guid executionId, CancellationToken cancellationToken) =>
-            Task.FromResult<ExecutionTenantLookup?>(new ExecutionTenantLookup(
-                TestTenantIds.T1TenantId,
-                "t1",
-                TenantLifecycle.Active));
+            Task.FromResult(TenantToReturn);
 
         public Task<TenantRow?> FindTenantByKeyAsync(string tenantKey, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
@@ -623,24 +872,29 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
             throw new NotSupportedException();
     }
 
-    private static ServiceProvider BuildServiceProvider(IExecutionService executionService)
+    private static ServiceProvider BuildServiceProvider(
+        IExecutionService executionService,
+        IForkExpansionHostHandler? forkHandler = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
         services.AddSingleton<IPlatformDataAccess, StubPlatformDataAccess>();
         services.AddScoped<IExecutionService>(_ => executionService);
+        services.AddScoped<IForkExpansionHostHandler>(_ => forkHandler ?? new RecordingForkExpansionHostHandler());
         return services.BuildServiceProvider();
     }
 
     private static ServiceProvider BuildServiceProvider(
         IExecutionService executionService,
         ITenantContextAccessor tenantContextAccessor,
-        IPlatformDataAccess platformDataAccess)
+        IPlatformDataAccess platformDataAccess,
+        IForkExpansionHostHandler? forkHandler = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton(tenantContextAccessor);
         services.AddSingleton(platformDataAccess);
         services.AddScoped<IExecutionService>(_ => executionService);
+        services.AddScoped<IForkExpansionHostHandler>(_ => forkHandler ?? new RecordingForkExpansionHostHandler());
         return services.BuildServiceProvider();
     }
 

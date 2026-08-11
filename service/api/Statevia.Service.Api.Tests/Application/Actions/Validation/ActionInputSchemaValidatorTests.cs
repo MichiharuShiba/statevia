@@ -324,6 +324,196 @@ public sealed class ActionInputSchemaValidatorTests
         Assert.Empty(errors);
     }
 
+    /// <summary>path 専用フィールドにリテラルを渡すとエラーになる。</summary>
+    [Fact]
+    public void Validate_PathOnlyField_WithLiteral_ReturnsError()
+    {
+        // Arrange
+        var schema = ParseSchema(
+            """
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "x-statevia-valueKind": "path"
+                }
+              }
+            }
+            """);
+        var input = CreateValuesInput(("ref", "plain"));
+
+        // Act
+        var errors = ActionInputSchemaValidator.Validate(StateName, ActionId, input, schema);
+
+        // Assert
+        Assert.Contains(errors, e => e.JsonPath.Contains("ref", StringComparison.Ordinal));
+    }
+
+    /// <summary>oneOf に一致しないリテラルはエラーになる。</summary>
+    [Fact]
+    public void Validate_OneOfLiteral_WhenNoVariantMatches_ReturnsError()
+    {
+        // Arrange
+        var schema = ParseSchema(
+            """
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "mode": {
+                  "oneOf": [
+                    { "type": "string", "enum": ["a"] },
+                    { "type": "integer" }
+                  ]
+                }
+              }
+            }
+            """);
+        var input = new StateInputDefinition
+        {
+            Values = new Dictionary<string, StateInputValueDefinition>
+            {
+                ["mode"] = new() { Literal = true }
+            }
+        };
+
+        // Act
+        var errors = ActionInputSchemaValidator.Validate(StateName, ActionId, input, schema);
+
+        // Assert
+        Assert.NotEmpty(errors);
+    }
+
+    /// <summary>integer の minimum 未満はエラーになる。</summary>
+    [Fact]
+    public void Validate_IntegerBelowMinimum_ReturnsError()
+    {
+        // Arrange
+        var schema = ParseSchema(
+            """
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "count": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+            """);
+        var input = new StateInputDefinition
+        {
+            Values = new Dictionary<string, StateInputValueDefinition>
+            {
+                ["count"] = new() { Literal = 0 }
+            }
+        };
+
+        // Act
+        var errors = ActionInputSchemaValidator.Validate(StateName, ActionId, input, schema);
+
+        // Assert
+        Assert.NotEmpty(errors);
+    }
+
+    /// <summary>email format 不正は MatchesString で弾かれる。</summary>
+    [Fact]
+    public void Validate_EmailFormatInvalid_ReturnsError()
+    {
+        // Arrange
+        var schema = ParseSchema(
+            """
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "to": {
+                  "type": "string",
+                  "format": "email"
+                }
+              }
+            }
+            """);
+        var input = CreateValuesInput(("to", "@invalid"));
+
+        // Act
+        var errors = ActionInputSchemaValidator.Validate(StateName, ActionId, input, schema);
+
+        // Assert
+        Assert.NotEmpty(errors);
+    }
+
+    /// <summary>type 配列の不一致メッセージを返す。</summary>
+    [Fact]
+    public void Validate_TypeArrayMismatch_ReturnsCombinedExpectedMessage()
+    {
+        // Arrange
+        var schema = ParseSchema(
+            """
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "value": {
+                  "type": ["string", "null"]
+                }
+              }
+            }
+            """);
+        var input = new StateInputDefinition
+        {
+            Values = new Dictionary<string, StateInputValueDefinition>
+            {
+                ["value"] = new() { Literal = 42 }
+            }
+        };
+
+        // Act
+        var errors = ActionInputSchemaValidator.Validate(StateName, ActionId, input, schema);
+
+        // Assert
+        Assert.Contains(errors, e => e.Message.Contains("string", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>additionalProperties false のオブジェクトリテラルにキーがあると失敗する。</summary>
+    [Fact]
+    public void Validate_ObjectLiteral_WithDisallowedAdditionalProperties_ReturnsError()
+    {
+        // Arrange
+        var schema = ParseSchema(
+            """
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "meta": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              }
+            }
+            """);
+        var input = new StateInputDefinition
+        {
+            Values = new Dictionary<string, StateInputValueDefinition>
+            {
+                ["meta"] = new()
+                {
+                    Literal = new Dictionary<string, object?> { ["k"] = "v" }
+                }
+            }
+        };
+
+        // Act
+        var errors = ActionInputSchemaValidator.Validate(StateName, ActionId, input, schema);
+
+        // Assert
+        Assert.NotEmpty(errors);
+    }
+
     private static StateInputDefinition CreateValuesInput(params (string Key, string Value)[] entries)
     {
         var values = entries.ToDictionary(

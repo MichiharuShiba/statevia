@@ -50,4 +50,43 @@ public sealed class RestUrlValidatorTests
         Assert.Throws<ArgumentException>(() =>
             RestUrlValidator.EnsureAllowedHttpsUrl("https://127.0.0.1/hook"));
     }
+
+    /// <summary>相対 URL は拒否される。</summary>
+    [Fact]
+    public void EnsureAllowedHttpsUrl_Relative_Throws()
+    {
+        // Act + Assert
+        Assert.Throws<ArgumentException>(() =>
+            RestUrlValidator.EnsureAllowedHttpsUrl("/relative"));
+    }
+
+    /// <summary>.local / .internal ホストは拒否される。</summary>
+    [Theory]
+    [InlineData("https://svc.local/hook")]
+    [InlineData("https://svc.internal/hook")]
+    public void EnsureAllowedHttpsUrl_LocalSuffix_Throws(string url)
+    {
+        // Act + Assert
+        Assert.Throws<ArgumentException>(() => RestUrlValidator.EnsureAllowedHttpsUrl(url));
+    }
+
+    /// <summary>RFC1918 / link-local IPv4 は拒否される。</summary>
+    [Theory]
+    [InlineData("https://172.16.0.1/hook")]
+    [InlineData("https://192.168.1.1/hook")]
+    [InlineData("https://169.254.1.1/hook")]
+    public void EnsureAllowedHttpsUrl_BlockedIpv4Ranges_Throws(string url)
+    {
+        // Act + Assert
+        Assert.Throws<ArgumentException>(() => RestUrlValidator.EnsureAllowedHttpsUrl(url));
+    }
+
+    /// <summary>IPv6 link-local は拒否される。</summary>
+    [Fact]
+    public void EnsureAllowedHttpsUrl_Ipv6LinkLocal_Throws()
+    {
+        // Act + Assert
+        Assert.Throws<ArgumentException>(() =>
+            RestUrlValidator.EnsureAllowedHttpsUrl("https://[fe80::1]/hook"));
+    }
 }

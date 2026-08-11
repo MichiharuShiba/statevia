@@ -227,5 +227,31 @@ public sealed class DisplayIdServiceImplTests
         var dict = await sut.GetDisplayIdsAsync("definition", new[] { id1, id1, id2 }, CancellationToken.None);
         Assert.Equal(new Dictionary<Guid, string> { [id1] = "D1", [id2] = "D2" }, dict);
     }
+
+    /// <summary>AllocateAsync は一意な display_id を採番する。</summary>
+    [Fact]
+    public async Task AllocateAsync_ReturnsUniqueDisplayId()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var sut = new DisplayIdServiceImpl(new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)));
+        var resourceId = Guid.NewGuid();
+        string allocated;
+
+        // Act
+        await using (var ctx = await db.Factory.CreateDbContextAsync())
+        {
+            await using var uow = new CoreUnitOfWork(ctx);
+            allocated = await sut.AllocateAsync(uow, "definition", resourceId, CancellationToken.None);
+            await uow.SaveChangesAsync(CancellationToken.None);
+        }
+
+        // Assert
+        Assert.Equal(10, allocated.Length);
+        await using var verify = await db.Factory.CreateDbContextAsync();
+        var row = await verify.DisplayIds.SingleAsync(x => x.DisplayId == allocated);
+        Assert.Equal(resourceId, row.ResourceId);
+        Assert.Equal("definition", row.Kind);
+    }
 }
 

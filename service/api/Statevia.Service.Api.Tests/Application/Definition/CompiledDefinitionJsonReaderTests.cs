@@ -125,6 +125,92 @@ public sealed class CompiledDefinitionJsonReaderTests
         Assert.Throws<ArgumentNullException>(() => CompiledDefinitionJsonReader.Read(MinimalCompiledJson, null!));
     }
 
+    /// <summary>bindings 有無を判定できる。</summary>
+    [Fact]
+    public void HasStoredBindings_DetectsPresence()
+    {
+        // Arrange
+        const string withBindings = """
+            {
+              "name": "W",
+              "initialState": "A",
+              "transitions": {},
+              "stateActionBindings": {
+                "A": {
+                  "logicalActionId": "demo.echo",
+                  "resolvedModuleVersion": "1.0.0",
+                  "moduleId": "demo",
+                  "actionName": "echo"
+                }
+              }
+            }
+            """;
+
+        // Act + Assert
+        Assert.True(CompiledDefinitionJsonReader.HasStoredBindings(withBindings));
+        Assert.False(CompiledDefinitionJsonReader.HasStoredBindings(MinimalCompiledJson));
+    }
+
+    /// <summary>ReadStoredBindings は modules / bindings を返す。</summary>
+    [Fact]
+    public void ReadStoredBindings_ReturnsMaps()
+    {
+        // Arrange
+        const string json = """
+            {
+              "name": "W",
+              "initialState": "A",
+              "transitions": {},
+              "resolvedModules": {
+                "mail": { "moduleId": "demo.module", "resolvedVersion": "1.0.0" }
+              },
+              "stateActionBindings": {
+                "A": {
+                  "logicalActionId": "demo.module.echo",
+                  "resolvedModuleVersion": "1.0.0",
+                  "moduleId": "demo.module",
+                  "actionName": "echo"
+                }
+              }
+            }
+            """;
+
+        // Act
+        var (modules, bindings) = CompiledDefinitionJsonReader.ReadStoredBindings(json);
+
+        // Assert
+        Assert.Equal("demo.module", modules["mail"].ModuleId);
+        Assert.Equal("echo", bindings["A"].ActionName);
+    }
+
+    /// <summary>end 付き遷移と Wait ルートを復元する。</summary>
+    [Fact]
+    public void Read_WithEndTransitionAndWaitRoute_RestoresTables()
+    {
+        // Arrange
+        const string json = """
+            {
+              "name": "W",
+              "initialState": "A",
+              "transitions": {
+                "A": { "Ok": { "end": true } }
+              },
+              "waitEventRouteTable": {
+                "W1": {
+                  "done": { "next": "End" }
+                }
+              }
+            }
+            """;
+
+        // Act
+        var compiled = CompiledDefinitionJsonReader.Read(json, new StubExecutorFactory());
+
+        // Assert
+        Assert.True(compiled.Transitions["A"]["Ok"].End);
+        Assert.Equal("End", compiled.WaitEventRouteTable["W1"]["done"].Next);
+    }
+
     private sealed class StubExecutorFactory : IStateExecutorFactory
     {
         public IStateExecutor? GetExecutor(string stateName) => null;

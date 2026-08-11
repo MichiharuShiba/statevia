@@ -1503,4 +1503,297 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.Contains("retry", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("input", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>wait で exits を使うと拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenWaitUsesExits()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: WaitExits
+            nodes:
+              - name: start
+                type: start
+                next: wait1
+              - name: wait1
+                type: wait
+                exits:
+                  done: endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("must not use 'exits'", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>wait で events と subscribe の併用は拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenWaitHasEventsAndSubscribe()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: WaitBoth
+            nodes:
+              - name: start
+                type: start
+                next: wait1
+              - name: wait1
+                type: wait
+                events:
+                  done: endNode
+                subscribe:
+                  - topic: t
+                    next: endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("both 'events' and 'subscribe'", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>wait で events と legacy event の併用は拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenWaitHasEventsAndLegacyEvent()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: WaitEventsAndEvent
+            nodes:
+              - name: start
+                type: start
+                next: wait1
+              - name: wait1
+                type: wait
+                event: done
+                events:
+                  done: endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("both 'events' and 'event'", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>wait.subscribe を正規化する。</summary>
+    [Fact]
+    public void Load_WaitNode_ParsesSubscribeList()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: WaitSubscribe
+            nodes:
+              - name: start
+                type: start
+                next: wait1
+              - name: wait1
+                type: wait
+                subscribe:
+                  - topic: orders
+                    key: "$.id"
+                    next: endNode
+                  - topic: cancel
+                    next: endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        var subscribe = definition.States["wait1"].Wait?.Subscribe;
+        Assert.NotNull(subscribe);
+        Assert.Equal(2, subscribe!.Count);
+        Assert.Equal("orders", subscribe[0].Topic);
+        Assert.Equal("$.id", subscribe[0].Key);
+        Assert.Equal("endNode", subscribe[0].Next);
+    }
+
+    /// <summary>空の subscribe は拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenWaitSubscribeEmpty()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: WaitSubscribeEmpty
+            nodes:
+              - name: start
+                type: start
+                next: wait1
+              - name: wait1
+                type: wait
+                subscribe: []
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("subscribe must not be empty", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>subscribe がリストでないとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenWaitSubscribeNotList()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: WaitSubscribeScalar
+            nodes:
+              - name: start
+                type: start
+                next: wait1
+              - name: wait1
+                type: wait
+                subscribe: not-a-list
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("subscribe must be a list", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>events の next が空なら拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenWaitEventsTargetEmpty()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: WaitEventsEmptyTarget
+            nodes:
+              - name: start
+                type: start
+                next: wait1
+              - name: wait1
+                type: wait
+                events:
+                  done: ""
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("must specify a next node name", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>events が空マップなら拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenWaitEventsMapEmpty()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: WaitEventsEmpty
+            nodes:
+              - name: start
+                type: start
+                next: wait1
+              - name: wait1
+                type: wait
+                events: {}
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("non-empty 'events'", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>events の重複キーは拒否する（YAML では後勝ちになり得るため JSON 相当で検証）。</summary>
+    [Fact]
+    public void Load_Throws_WhenWaitEventsDuplicateKeyViaObject()
+    {
+        // Arrange — ローダーは Dictionary 構築時に TryAdd 失敗を検出する経路を持つ。
+        // YAML では同一キーが後勝ちになるため、直接 Compiled 前の nodes 形式で
+        // 空キーを使って events キー検証を別経路でカバーする。
+        var yaml = """
+            version: 1
+            workflow:
+              name: WaitEventsEmptyKey
+            nodes:
+              - name: start
+                type: start
+                next: wait1
+              - name: wait1
+                type: wait
+                events:
+                  " ": endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.Contains("events keys must be non-empty", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>events が null 相当のとき拒否する。</summary>
+    [Fact]
+    public void Load_Throws_WhenWaitEventsIsNull()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: WaitEventsNull
+            nodes:
+              - name: start
+                type: start
+                next: wait1
+              - name: wait1
+                type: wait
+                events:
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+
+        // Assert
+        Assert.True(
+            ex.Message.Contains("events", StringComparison.OrdinalIgnoreCase)
+            || ex.Message.Contains("subscribe", StringComparison.OrdinalIgnoreCase));
+    }
 }

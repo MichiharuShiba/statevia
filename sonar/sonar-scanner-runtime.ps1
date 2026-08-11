@@ -74,7 +74,7 @@ try {
     }
 
     # HostedService の単体テストは Api.Tests 側にある。
-    dotnet-coverage collect 'dotnet test Statevia.Service.Api.Tests/Statevia.Service.Api.Tests.csproj --filter FullyQualifiedName~DelayWaitSchedulerHostedServiceTests|FullyQualifiedName~OptionsValidationTests' -f xml -o "$coverageXml"
+    dotnet-coverage collect 'dotnet test Statevia.Service.Api.Tests/Statevia.Service.Api.Tests.csproj --filter FullyQualifiedName~DelayWaitSchedulerHostedServiceTests|FullyQualifiedName~OptionsValidationTests|FullyQualifiedName~ExecutionWorkItemWorkerHostedServiceTests|FullyQualifiedName~ExecutionOwnershipRecoveryHostedServiceTests|FullyQualifiedName~RuntimeServiceCollectionExtensionsTests' -f xml -o "$coverageXml"
     if ($LASTEXITCODE -ne 0) {
         Write-Error '[ERROR] test / coverage failed'
         exit 1
