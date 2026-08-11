@@ -103,6 +103,15 @@ export const definitionEditorUiTextEn: DefinitionEditorFeatureUiText = {
       actionIdNoResults: "No matching actions",
       schemaPathPlaceholder: "$.input.x or $.states.A.output.y",
       schemaLiteralOrPathPlaceholder: "literal or $.input.x",
+      waitEventsSectionTitle: "events (event → target)",
+      waitEventNameLabel: "Event name",
+      waitEventTargetLabel: "Target node name",
+      waitEventsAdd: "Add event row",
+      waitEventsRemove: "Remove row",
+      waitLegacyEventLabel: "event (legacy)",
+      waitConvertToEvents: "Convert to events",
+      waitEventsConflictHint:
+        "Cannot edit while both events and event are set. Fix YAML or convert to events.",
     },
     saved: {
       completePrefix: "Saved:",

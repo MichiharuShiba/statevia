@@ -42,4 +42,23 @@ describe("renameNodeNameInDocument", () => {
     const d = doc({ nodes: [{ name: "a", type: "start" }] });
     expect(renameNodeNameInDocument(d, "a", "a")).toBe(d);
   });
+
+  it("wait.events の遷移先ノード名を同期する", () => {
+    // Arrange
+    const before = doc({
+      nodes: [
+        { name: "w1", type: "wait", events: { approve: "done", reject: "done" } },
+        { name: "done", type: "end" }
+      ]
+    });
+
+    // Act
+    const after = renameNodeNameInDocument(before, "done", "finished");
+
+    // Assert
+    expect(after.nodes.find((node) => node.name === "w1")?.events).toEqual({
+      approve: "finished",
+      reject: "finished"
+    });
+  });
 });

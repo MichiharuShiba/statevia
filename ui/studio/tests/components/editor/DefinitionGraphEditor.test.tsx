@@ -142,7 +142,131 @@ describe("DefinitionGraphEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "wait" }));
     expect(onDocumentChange).toHaveBeenCalled();
     const nextDocument = onDocumentChange.mock.calls.at(-1)?.[0] as DefinitionGraphDocument;
-    expect(nextDocument.nodes.some((node) => node.type === "wait")).toBe(true);
+    const waitNode = nextDocument.nodes.find((node) => node.type === "wait");
+    expect(waitNode).toMatchObject({
+      type: "wait",
+      events: { resume: "" }
+    });
+    expect(waitNode?.event).toBeUndefined();
+  });
+
+  it("wait.events をインスペクタで追加・編集できる", async () => {
+    const document: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "w" },
+      nodes: [
+        { name: "s", type: "start", next: "w1" },
+        { name: "w1", type: "wait", events: { approve: "ok" } },
+        { name: "ok", type: "end" }
+      ]
+    };
+    const onDocumentChange = vi.fn();
+
+    renderWithUiText(
+      <DefinitionGraphEditor
+        document={document}
+        onDocumentChange={onDocumentChange}
+        validationMessages={[]}
+        labels={definitionGraphEditorTestLabels}
+      />
+    );
+    await settleGraphInspectorSchemaIndex();
+
+    fireEvent.click(screen.getByText("w1"));
+    expect(screen.getByText(definitionGraphEditorTestLabels.waitEventsSectionTitle)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: definitionGraphEditorTestLabels.waitEventsAdd }));
+
+    expect(onDocumentChange).toHaveBeenCalled();
+    const afterAdd = onDocumentChange.mock.calls.at(-1)?.[0] as DefinitionGraphDocument;
+    expect(afterAdd.nodes.find((node) => node.name === "w1")?.events).toEqual({
+      approve: "ok",
+      event1: ""
+    });
+
+    const eventNameInput = screen.getByDisplayValue("event1");
+    const row = eventNameInput.closest("div");
+    const targetInput = row?.querySelectorAll("input")[1];
+    expect(targetInput).toBeTruthy();
+    fireEvent.change(targetInput!, { target: { value: "ok" } });
+    fireEvent.blur(targetInput!);
+
+    const afterEdit = onDocumentChange.mock.calls.at(-1)?.[0] as DefinitionGraphDocument;
+    expect(afterEdit.nodes.find((node) => node.name === "w1")?.events).toEqual({
+      approve: "ok",
+      event1: "ok"
+    });
+  });
+
+  it("旧形式 wait を開き events へ変換できる", async () => {
+    const document: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "w" },
+      nodes: [
+        { name: "s", type: "start", next: "w1" },
+        { name: "w1", type: "wait", event: "resume", next: "ok" },
+        { name: "ok", type: "end" }
+      ]
+    };
+    const onDocumentChange = vi.fn();
+
+    renderWithUiText(
+      <DefinitionGraphEditor
+        document={document}
+        onDocumentChange={onDocumentChange}
+        validationMessages={[]}
+        labels={definitionGraphEditorTestLabels}
+      />
+    );
+    await settleGraphInspectorSchemaIndex();
+
+    fireEvent.click(screen.getByText("w1"));
+    expect(screen.getByText(definitionGraphEditorTestLabels.waitLegacyEventLabel)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: definitionGraphEditorTestLabels.waitConvertToEvents }));
+
+    const nextDocument = onDocumentChange.mock.calls.at(-1)?.[0] as DefinitionGraphDocument;
+    expect(nextDocument.nodes.find((node) => node.name === "w1")).toEqual({
+      name: "w1",
+      type: "wait",
+      events: { resume: "ok" }
+    });
+  });
+
+  it("wait.events 2 件の YAML 往復後もインスペクタに表示される", async () => {
+    const yaml = `version: 1
+workflow:
+  name: W
+nodes:
+  - name: s
+    type: start
+    next: w1
+  - name: w1
+    type: wait
+    events:
+      approve: ok
+      reject: ng
+  - name: ok
+    type: end
+  - name: ng
+    type: end
+`;
+    const parsed = parseDefinitionYaml(yaml, parseOpts);
+    expect(parsed.document).not.toBeNull();
+
+    renderWithUiText(
+      <DefinitionGraphEditor
+        document={parsed.document}
+        onDocumentChange={vi.fn()}
+        validationMessages={[]}
+        labels={definitionGraphEditorTestLabels}
+      />
+    );
+    await settleGraphInspectorSchemaIndex();
+
+    fireEvent.click(screen.getByText("w1"));
+    expect(screen.getByDisplayValue("approve")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("reject")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("ok")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("ng")).toBeInTheDocument();
   });
 
   it("action 変更時に input をクリアする", async () => {
