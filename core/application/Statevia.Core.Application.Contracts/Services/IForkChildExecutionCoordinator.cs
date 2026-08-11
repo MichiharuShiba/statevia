@@ -18,7 +18,10 @@ public sealed record ForkBranchExpansion(
 /// <param name="DefinitionDisplayId">Start の definitionId に渡す表示／UUID 文字列。</param>
 /// <param name="SecuritySnapshotJson">親から継承する security snapshot JSON。</param>
 /// <param name="CompiledDefinition">親と同じコンパイル済み定義（Join 解決用）。</param>
-/// <param name="ForkNodeId">親実行グラフ上の Fork ノード ID（到達インスタンス）。</param>
+/// <param name="ForkNodeId">
+/// 当該並列エピソードの相関キー。親実行グラフ上の Fork 到達 <c>nodeId</c>（循環再到達ごとに別値）。
+/// Join の <c>nodeId</c> や定義の状態名ではない。
+/// </param>
 /// <param name="Branches">分岐先頭と写像済み input。</param>
 public sealed record ForkExpansionRequest(
     Guid ParentExecutionId,
@@ -137,13 +140,26 @@ public interface IForkChildExecutionCoordinator
     /// 親の指定 Fork 到達について <c>execution_branches</c> から Join を再評価する。
     /// </summary>
     /// <param name="parentExecutionId">親 execution。</param>
-    /// <param name="forkNodeId">親実行グラフ上の Fork ノード ID。</param>
+    /// <param name="forkNodeId">
+    /// 当該並列エピソードの相関キー（親グラフ上の Fork 到達 <c>nodeId</c>）。
+    /// </param>
     /// <param name="ct">キャンセル トークン。</param>
     /// <returns>評価結果（Waiting / Satisfied / Failed）。</returns>
     Task<ForkJoinEvaluation> EvaluateJoinAsync(
         Guid parentExecutionId,
         string forkNodeId,
         CancellationToken ct);
+
+    /// <summary>
+    /// 親に未終端（Running）の物理分岐が残っているかを返す。
+    /// </summary>
+    /// <remarks>
+    /// durable Wait が無くても物理 Join 待ち中は runtime checkpoint を破棄してはならない判定に使う。
+    /// </remarks>
+    /// <param name="parentExecutionId">親 execution。</param>
+    /// <param name="ct">キャンセル トークン。</param>
+    /// <returns>Running の <c>execution_branches</c> が 1 件以上あるとき true。</returns>
+    Task<bool> HasPendingPhysicalJoinBranchesAsync(Guid parentExecutionId, CancellationToken ct);
 
     /// <summary>
     /// 親 Cancel 時に、未終端（Running）の子へ Cancel work item を enqueue する。

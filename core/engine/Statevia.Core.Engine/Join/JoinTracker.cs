@@ -133,6 +133,18 @@ public sealed class JoinTracker : IJoinTracker
         }
     }
 
+    /// <inheritdoc />
+    public void ResetForPhysicalJoinReentry(string joinStateName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(joinStateName);
+        lock (_lock)
+        {
+            _startedJoins.Remove(joinStateName);
+            _joinStateResults.Remove(joinStateName);
+            _joinSourceNodeIds.Remove(joinStateName);
+        }
+    }
+
     /// <summary>
     /// Join の依存事実が揃い、まだ開始されていないときに実行可能か（開始マークはしない）。
     /// </summary>

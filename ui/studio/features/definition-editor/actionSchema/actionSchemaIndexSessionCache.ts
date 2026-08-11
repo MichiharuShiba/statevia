@@ -29,3 +29,11 @@ export async function loadActionSchemaIndex(
     });
   return inflightRequest;
 }
+
+/**
+ * テスト間で index キャッシュを共有しないためのリセット。
+ */
+export function resetActionSchemaIndexSessionCacheForTests(): void {
+  cachedItems = null;
+  inflightRequest = null;
+}

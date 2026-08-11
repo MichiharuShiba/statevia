@@ -4256,6 +4256,9 @@ public sealed class ExecutionServiceTests
             return Task.FromResult(EvaluateJoinResult);
         }
 
+        public Task<bool> HasPendingPhysicalJoinBranchesAsync(Guid parentExecutionId, CancellationToken ct) =>
+            Task.FromResult(false);
+
         public Task CascadeCancelToRunningChildrenAsync(Guid parentExecutionId, CancellationToken ct) =>
             Task.CompletedTask;
 

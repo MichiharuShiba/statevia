@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
@@ -18,6 +19,12 @@ internal sealed class ExecutionService : IExecutionService
     /// <summary>Worker が 1 Load を待つときのポーリング間隔。</summary>
     private static readonly TimeSpan LocalExecutionLoadPollInterval = TimeSpan.FromMilliseconds(250);
 
+    /// <summary>
+    /// 同一実行の <see cref="PersistCheckpointAndUnloadCoreAsync"/> を直列化し、
+    /// 古い Fork Unload が新しい Wait 断面を上書きしないようにする。
+    /// </summary>
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> PersistUnloadGates = new();
+
     /// <summary><c>event_delivery_decision</c> 構造化ログの <c>decision</c> プロパティ値。</summary>
     private static class EventDeliveryLogDecisions
     {
@@ -27,6 +34,18 @@ internal sealed class ExecutionService : IExecutionService
         internal const string Retry = "retry";
         internal const string BackoffBudgetExhausted = "backoff_budget_exhausted";
         internal const string Failed = "failed";
+    }
+
+    /// <summary>実行グラフ JSON のプロパティ名（投影・Engine export 共通）。</summary>
+    private static class ExecutionGraphJsonProperties
+    {
+        internal const string Nodes = "nodes";
+        internal const string CompletedAt = "completedAt";
+        internal const string NodeId = "nodeId";
+        internal const string Fact = "fact";
+        internal const string Status = "status";
+        internal const string StartedAt = "startedAt";
+        internal const string NodeType = "nodeType";
     }
 
     /// <summary>
@@ -1062,7 +1081,7 @@ internal sealed class ExecutionService : IExecutionService
         try
         {
             using var document = JsonDocument.Parse(graphJson);
-            if (!document.RootElement.TryGetProperty("nodes", out var nodes)
+            if (!document.RootElement.TryGetProperty(ExecutionGraphJsonProperties.Nodes, out var nodes)
                 || nodes.ValueKind != JsonValueKind.Array)
             {
                 return false;
@@ -1070,7 +1089,7 @@ internal sealed class ExecutionService : IExecutionService
 
             return nodes.EnumerateArray().Any(node =>
             {
-                var nodeType = node.TryGetProperty("nodeType", out var typeEl)
+                var nodeType = node.TryGetProperty(ExecutionGraphJsonProperties.NodeType, out var typeEl)
                     ? typeEl.GetString()
                     : null;
                 if (string.Equals(nodeType, "Wait", StringComparison.OrdinalIgnoreCase)
@@ -1079,14 +1098,14 @@ internal sealed class ExecutionService : IExecutionService
                     return false;
                 }
 
-                if (node.TryGetProperty("completedAt", out var completedAt)
+                if (node.TryGetProperty(ExecutionGraphJsonProperties.CompletedAt, out var completedAt)
                     && completedAt.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
                 {
                     return false;
                 }
 
                 // startedAt があり未完了なら実行中とみなす。
-                return node.TryGetProperty("startedAt", out var startedAt)
+                return node.TryGetProperty(ExecutionGraphJsonProperties.StartedAt, out var startedAt)
                     && startedAt.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined;
             });
         }
@@ -1503,47 +1522,115 @@ internal sealed class ExecutionService : IExecutionService
         // 続けて後続 Task が落ち着くまで待つ（Wait 完了直後の RUNNING 中間像の永続化を避ける）。
         await WaitForEngineQuiescedAfterWaitAsync(engineId, ct).ConfigureAwait(false);
 
-        var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
+        // Again → Fork の Suspend Unload 後は in-process snapshot が欠ける。SuspendHandler 投影を正とする。
+        var (engineStillLoaded, pubStatus, pubCancel, pubGraphJson) =
+            await ResolveProjectionAfterWaitResumeAsync(uuid.Value, ct).ConfigureAwait(false);
+
         var publishedPayload = JsonSerializer.Serialize(
             new { tenantId, name = eventName, nodeId },
             JsonSerializerProfiles.CamelCase);
 
+        await PersistWaitResumeSideEffectsAsync(
+                new WaitResumePersistRequest(
+                    tenantId,
+                    uuid.Value,
+                    engineId,
+                    nodeId,
+                    clientEventId,
+                    dedupKey,
+                    engineStillLoaded,
+                    pubStatus,
+                    pubCancel,
+                    pubGraphJson,
+                    publishedPayload),
+                ct)
+            .ConfigureAwait(false);
+
+        // 永続化中に進んだ Engine 完了を取りこぼさない（中間 RUNNING 上書きの保険）。
+        await _projectionUpdateQueue.EnqueueAsync(uuid.Value, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Wait Resume 後の投影・checkpoint・event_store・dedup 永続化入力。</summary>
+    private readonly record struct WaitResumePersistRequest(
+        Guid TenantId,
+        Guid ExecutionId,
+        string EngineId,
+        string NodeId,
+        Guid ClientEventId,
+        CommandDedupKey? DedupKey,
+        bool EngineStillLoaded,
+        string PubStatus,
+        bool? PubCancel,
+        string PubGraphJson,
+        string PublishedPayload);
+
+    /// <summary>Wait Resume 後の投影・checkpoint・event_store・dedup を同一 tx で永続化する。</summary>
+    private async Task PersistWaitResumeSideEffectsAsync(
+        WaitResumePersistRequest request,
+        CancellationToken ct)
+    {
         await _mutationPersistence.ExecuteSerializableWithRetryAsync(
-            tenantId,
-            uuid.Value,
-            clientEventId,
+            request.TenantId,
+            request.ExecutionId,
+            request.ClientEventId,
             async (uow, ctInner) =>
             {
                 await _executions
-                    .UpdateExecutionAndSnapshotAsync(uow, uuid.Value, pubStatus, pubCancel, pubGraphJson, ctInner)
+                    .UpdateExecutionAndSnapshotAsync(
+                        uow,
+                        request.ExecutionId,
+                        request.PubStatus,
+                        request.PubCancel,
+                        request.PubGraphJson,
+                        ctInner)
                     .ConfigureAwait(false);
                 await SyncOperationalProjectionAsync(
                         uow,
-                        uuid.Value,
-                        tenantId,
-                        pubStatus,
-                        pubGraphJson,
-                        nodeIdToClear: nodeId,
+                        request.ExecutionId,
+                        request.TenantId,
+                        request.PubStatus,
+                        request.PubGraphJson,
+                        nodeIdToClear: request.NodeId,
                         ctInner)
                     .ConfigureAwait(false);
 
-                // Resume 後に durable Wait が残っていなければ checkpoint を破棄する。
-                // 所有セッション中は lease 行を消さず runtime のみ更新する。
-                if (ShouldDiscardRuntimeCheckpoint(pubStatus, pubGraphJson))
+                if (request.EngineStillLoaded)
                 {
-                    await DiscardOrRefreshRuntimeCheckpointAsync(
-                            uow,
-                            engineId,
-                            uuid.Value,
+                    if (await ShouldDiscardRuntimeCheckpointAsync(
+                            request.ExecutionId,
+                            request.PubStatus,
+                            request.PubGraphJson,
                             ctInner)
-                        .ConfigureAwait(false);
+                        .ConfigureAwait(false))
+                    {
+                        await DiscardOrRefreshRuntimeCheckpointAsync(
+                                uow,
+                                request.EngineId,
+                                request.ExecutionId,
+                                ctInner)
+                            .ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await UpsertRuntimeCheckpointAsync(
+                                uow,
+                                request.EngineId,
+                                request.ExecutionId,
+                                ctInner)
+                            .ConfigureAwait(false);
+                    }
                 }
 
                 await _eventStore
-                    .AppendAsync(uow, uuid.Value, EventStoreEventType.EventPublished, publishedPayload, ctInner)
+                    .AppendAsync(
+                        uow,
+                        request.ExecutionId,
+                        EventStoreEventType.EventPublished,
+                        request.PublishedPayload,
+                        ctInner)
                     .ConfigureAwait(false);
 
-                if (dedupKey is { } saveKey)
+                if (request.DedupKey is { } saveKey)
                 {
                     var now = DateTime.UtcNow;
                     await _dedup.SaveAsync(
@@ -1565,9 +1652,9 @@ internal sealed class ExecutionService : IExecutionService
                 var nowUtc = DateTime.UtcNow;
                 await _eventDeliveryDedup.TryUpdateStatusAsync(
                     uow,
-                    tenantId,
-                    uuid.Value,
-                    clientEventId,
+                    request.TenantId,
+                    request.ExecutionId,
+                    request.ClientEventId,
                     new EventDeliveryDedupStatusUpdate(
                         EventDeliveryDedupStatuses.Applied,
                         nowUtc,
@@ -1576,9 +1663,40 @@ internal sealed class ExecutionService : IExecutionService
                     ctInner).ConfigureAwait(false);
             },
             ct).ConfigureAwait(false);
+    }
 
-        // 永続化中に進んだ Engine 完了を取りこぼさない（中間 RUNNING 上書きの保険）。
-        await _projectionUpdateQueue.EnqueueAsync(uuid.Value, ct).ConfigureAwait(false);
+    /// <summary>
+    /// Wait Resume 後の投影断面を Engine または DB（Unload 済み）から解決する。
+    /// </summary>
+    /// <returns>
+    /// Engine がメモリ上に残っているとき <c>engineStillLoaded</c> は true。
+    /// </returns>
+    private async Task<(bool EngineStillLoaded, string Status, bool? CancelRequested, string GraphJson)>
+        ResolveProjectionAfterWaitResumeAsync(Guid executionId, CancellationToken ct)
+    {
+        var (projectedStatus, projectedCancel, projectedGraphJson) = BuildProjectionFromEngineForQueue(executionId);
+        if (projectedStatus is not null && projectedGraphJson is not null)
+        {
+            return (true, projectedStatus, projectedCancel, projectedGraphJson);
+        }
+
+        var unloadedSnapshot = await _executor.ExecuteReadOnlyAsync(
+                (uow, innerCt) => _executions.GetSnapshotByExecutionIdAsync(uow, executionId, innerCt),
+                ct)
+            .ConfigureAwait(false);
+        var unloadedRow = await _executor.ExecuteReadOnlyAsync(
+                (uow, innerCt) => _executions.GetByExecutionIdAsync(uow, executionId, innerCt),
+                ct)
+            .ConfigureAwait(false);
+        if (unloadedSnapshot is null
+            || unloadedRow is null
+            || string.IsNullOrWhiteSpace(unloadedSnapshot.GraphJson))
+        {
+            throw new InvalidOperationException(
+                $"Cannot project execution '{executionId:D}': engine snapshot is missing after Resume unload.");
+        }
+
+        return (false, unloadedRow.Status, unloadedRow.CancelRequested, unloadedSnapshot.GraphJson);
     }
 
     /// <summary>
@@ -1682,6 +1800,24 @@ internal sealed class ExecutionService : IExecutionService
                 return;
 
             case ForkJoinEvaluationKind.Satisfied:
+                // 既に当該 Fork 訪問の Join が投影上 SUCCEEDED なら再実行しない（child.completed 再送の冪等）。
+                var snapshotRow = await _executor.ExecuteReadOnlyAsync(
+                        (uow, innerCt) => _executions.GetSnapshotByExecutionIdAsync(
+                            uow,
+                            parentExecutionId,
+                            innerCt),
+                        ct)
+                    .ConfigureAwait(false);
+                if (snapshotRow is not null
+                    && IsPhysicalJoinAlreadyCompleted(
+                        snapshotRow.GraphJson,
+                        forkNodeId,
+                        evaluation.JoinState))
+                {
+                    _logger.ForkJoinAlreadyCompleted(parentExecutionId, forkNodeId, evaluation.JoinState);
+                    return;
+                }
+
                 await CompleteParentPhysicalJoinAsync(
                         parentExecutionId,
                         execution,
@@ -1693,6 +1829,95 @@ internal sealed class ExecutionService : IExecutionService
 
             default:
                 throw new InvalidOperationException($"Unknown fork join evaluation kind '{evaluation.Kind}'.");
+        }
+    }
+
+    /// <summary>
+    /// Unload 後でも、Join が進んで Wait / 終端断面が checkpoint に残っているか。
+    /// </summary>
+    private async Task<bool> HasPhysicalJoinProgressAfterUnloadAsync(
+        Guid parentExecutionId,
+        CancellationToken ct)
+    {
+        var document = await _executor.ExecuteReadOnlyAsync(
+                (uow, innerCt) => _checkpointStore.GetByExecutionIdAsync(uow, parentExecutionId, innerCt),
+                ct)
+            .ConfigureAwait(false);
+        if (document is null
+            || !TryParseRuntimeCheckpoint(document.CheckpointJson, out var checkpoint, out _))
+        {
+            return false;
+        }
+
+        if (checkpoint.IsCompleted || checkpoint.IsCancelled || checkpoint.IsFailed)
+            return true;
+
+        if (checkpoint.PendingWaits.Count > 0)
+            return true;
+
+        return checkpoint.ActiveStates.Count > 0;
+    }
+
+    /// <summary>
+    /// 親グラフ上で、当該 Fork 訪問に対応する Join が既に SUCCEEDED か。
+    /// </summary>
+    /// <remarks>単体テストから到達するため internal。</remarks>
+    internal static bool IsPhysicalJoinAlreadyCompleted(
+        string parentGraphJson,
+        string forkNodeId,
+        string joinState)
+    {
+        var joinNodeId = PhysicalForkGraphComposer.ResolveJoinNodeId(
+            parentGraphJson,
+            forkNodeId,
+            joinState);
+        if (string.IsNullOrWhiteSpace(joinNodeId))
+            return false;
+
+        try
+        {
+            using var document = JsonDocument.Parse(parentGraphJson);
+            if (!document.RootElement.TryGetProperty(ExecutionGraphJsonProperties.Nodes, out var nodes)
+                || nodes.ValueKind != JsonValueKind.Array)
+            {
+                return false;
+            }
+
+            // joinNodeId は Fork 訪問ごとに一意。一致ノードが無ければ未完了扱い。
+            var node = nodes.EnumerateArray().FirstOrDefault(candidate =>
+                candidate.TryGetProperty(ExecutionGraphJsonProperties.NodeId, out var idEl)
+                && string.Equals(idEl.GetString(), joinNodeId, StringComparison.Ordinal));
+            if (node.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            // 投影 JSON は UI 用 status ではなく fact / completedAt を持つ。
+            // 当該 Fork 訪問に紐づく Join が既に Joined なら冪等スキップ（循環の別訪問は別 Join nodeId）。
+            var fact = node.TryGetProperty(ExecutionGraphJsonProperties.Fact, out var factEl)
+                ? factEl.GetString()
+                : null;
+            if (string.Equals(fact, "Joined", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(fact, "Completed", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (node.TryGetProperty(ExecutionGraphJsonProperties.CompletedAt, out var completedAtEl)
+                && completedAtEl.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(completedAtEl.GetString()))
+            {
+                return true;
+            }
+
+            var status = node.TryGetProperty(ExecutionGraphJsonProperties.Status, out var statusEl)
+                ? statusEl.GetString()
+                : null;
+            return string.Equals(status, "SUCCEEDED", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 
@@ -1768,32 +1993,70 @@ internal sealed class ExecutionService : IExecutionService
             evaluation.JoinState,
             evaluation.CandidateInputs,
             fragments);
-        await WaitForEngineQuiescedAfterWaitAsync(engineId, ct).ConfigureAwait(false);
+        // Join は Schedule 非同期のため、ActiveStates==0 ですぐ戻ると decide Wait 前の断面を永続してしまう。
+        await WaitForPhysicalJoinSettlementAsync(
+            engineId,
+            forkNodeId,
+            evaluation.JoinState,
+            ct).ConfigureAwait(false);
 
-        var (status, cancelRequested, graphJson) = BuildProjectionFromEngine(parentExecutionId);
+        // Join 直後に Wait へ進むと SuspendHandler が PersistCheckpointAndUnload する。
+        // Unload 後は GetSnapshot が null になり得る。checkpoint に Wait / 終端が進んでいれば冪等完了。
+        // Join が startedJoins 等で無動作のまま Unload された場合は再試行する。
+        var (status, cancelRequested, graphJson) = BuildProjectionFromEngineForQueue(parentExecutionId);
+        if (status is null || graphJson is null)
+        {
+            if (!await HasPhysicalJoinProgressAfterUnloadAsync(parentExecutionId, ct).ConfigureAwait(false))
+            {
+                throw new InvalidOperationException(
+                    $"Physical join for execution '{parentExecutionId:D}' unloaded before Join advanced; will retry.");
+            }
+
+            // SuspendHandler が checkpoint だけ進めて snapshot が遅れている場合の補正。
+            await TrySyncGraphSnapshotFromRuntimeCheckpointAsync(parentExecutionId, execution, ct)
+                .ConfigureAwait(false);
+
+            _logger.ForkJoinProjectionSkippedAfterUnload(
+                parentExecutionId,
+                forkNodeId,
+                evaluation.JoinState);
+            return;
+        }
+
         await _executor.ExecuteReadCommittedAsync(
                 async (uow, innerCt) =>
                 {
+                    // Settlement 待機後〜tx 開始前に Wait Persist が進んでいることがあるので直前に再取得。
+                    var (freshStatus, freshCancel, freshGraph) = BuildProjectionFromEngineForQueue(parentExecutionId);
+                    var writeStatus = freshStatus ?? status;
+                    var writeCancel = freshCancel ?? cancelRequested;
+                    var writeGraph = freshGraph ?? graphJson;
+
                     await _executions
                         .UpdateExecutionAndSnapshotAsync(
                             uow,
                             parentExecutionId,
-                            status,
-                            cancelRequested,
-                            graphJson,
+                            writeStatus,
+                            writeCancel,
+                            writeGraph,
                             innerCt)
                         .ConfigureAwait(false);
                     await SyncOperationalProjectionAsync(
                             uow,
                             parentExecutionId,
                             execution.TenantId,
-                            status,
-                            graphJson,
+                            writeStatus,
+                            writeGraph,
                             nodeIdToClear: null,
                             innerCt)
                         .ConfigureAwait(false);
 
-                    if (ShouldDiscardRuntimeCheckpoint(status, graphJson))
+                    if (await ShouldDiscardRuntimeCheckpointAsync(
+                                parentExecutionId,
+                                writeStatus,
+                                writeGraph,
+                                innerCt)
+                            .ConfigureAwait(false))
                     {
                         await DiscardOrRefreshRuntimeCheckpointAsync(
                                 uow,
@@ -1859,13 +2122,19 @@ internal sealed class ExecutionService : IExecutionService
                         innerCt)
                     .ConfigureAwait(false);
 
-                if (ShouldDiscardRuntimeCheckpoint(status, graphJson))
+                if (await ShouldDiscardRuntimeCheckpointAsync(executionId, status, graphJson, innerCt)
+                        .ConfigureAwait(false))
                 {
                     await DiscardOrRefreshRuntimeCheckpointAsync(
                             uow,
                             engineId,
                             executionId,
                             innerCt)
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    await UpsertRuntimeCheckpointAsync(uow, engineId, executionId, innerCt)
                         .ConfigureAwait(false);
                 }
             },
@@ -1956,6 +2225,170 @@ internal sealed class ExecutionService : IExecutionService
         _logger.WaitResumeQuiesceTimedOut(engineExecutionId);
     }
 
+    /// <summary>
+    /// 物理 Join 完了後、Join ノード完了・decide Wait 登録・Unload・終端のいずれかまで待つ。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="IExecutionEngine.CompletePhysicalJoin"/> は Join を非同期 Schedule するだけなので、
+    /// 直後は <c>ActiveStates</c> が空のままである。ここで
+    /// <see cref="WaitForEngineQuiescedAfterWaitAsync"/> を使うと Join 前断面を投影してしまう。
+    /// </para>
+    /// <para>
+    /// Join 直後に長い Action が続く場合でも、Join ノード完了で抜けて投影する。
+    /// durable Wait 登録・Unload・終端も同様に出口とする。
+    /// </para>
+    /// </remarks>
+    /// <param name="engineExecutionId">Engine 辞書キー。</param>
+    /// <param name="forkNodeId">充足した物理 Fork の graph nodeId。</param>
+    /// <param name="joinState">対応する Join 状態名。</param>
+    /// <param name="ct">キャンセル。</param>
+    private async Task WaitForPhysicalJoinSettlementAsync(
+        string engineExecutionId,
+        string forkNodeId,
+        string joinState,
+        CancellationToken ct)
+    {
+        const int maxAttempts = 200;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+            var snapshot = _engine.GetSnapshot(engineExecutionId);
+            if (snapshot is null)
+                return;
+
+            if (snapshot.IsCompleted || snapshot.IsCancelled || snapshot.IsFailed)
+                return;
+
+            var graphJson = _engine.ExportExecutionGraph(engineExecutionId);
+            if (IsPhysicalJoinAlreadyCompleted(graphJson, forkNodeId, joinState))
+                return;
+
+            var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
+            if (checkpoint is { PendingWaits.Count: > 0 })
+                return;
+
+            await Task.Delay(10, ct).ConfigureAwait(false);
+        }
+
+        _logger.WaitResumeQuiesceTimedOut(engineExecutionId);
+    }
+
+    /// <summary>
+    /// Unload 後に runtime checkpoint が Wait 断面まで進んでいるとき、graph snapshot を追いつかせる。
+    /// </summary>
+    private async Task TrySyncGraphSnapshotFromRuntimeCheckpointAsync(
+        Guid executionId,
+        ExecutionRow execution,
+        CancellationToken ct)
+    {
+        await _executor.ExecuteReadCommittedAsync(
+                async (uow, innerCt) =>
+                {
+                    var runtime = await _checkpointStore
+                        .GetByExecutionIdAsync(uow, executionId, innerCt)
+                        .ConfigureAwait(false);
+                    if (runtime is null
+                        || !TryParseRuntimeCheckpoint(runtime.CheckpointJson, out var checkpoint, out _)
+                        || checkpoint.PendingWaits.Count == 0)
+                    {
+                        return;
+                    }
+
+                    var graphJson = _engine.ExportExecutionGraph(executionId.ToString());
+                    if (graphJson is "{}" || string.IsNullOrWhiteSpace(graphJson))
+                    {
+                        // Engine Unload 済みなら checkpoint 内グラフを投影 JSON へ写す。
+                        graphJson = JsonSerializer.Serialize(
+                            new
+                            {
+                                nodes = checkpoint.Graph.Nodes,
+                                edges = checkpoint.Graph.Edges
+                            },
+                            JsonSerializerProfiles.CamelCase);
+                    }
+
+                    var existingSnapshot = await _executions
+                        .GetSnapshotByExecutionIdAsync(uow, executionId, innerCt)
+                        .ConfigureAwait(false);
+                    if (existingSnapshot?.GraphJson is not null
+                        && !IsGraphSnapshotBehindCheckpoint(existingSnapshot.GraphJson, checkpoint))
+                    {
+                        return;
+                    }
+
+                    var status = execution.Status;
+                    if (string.IsNullOrWhiteSpace(status))
+                        status = "Running";
+
+                    await _executions
+                        .UpdateExecutionAndSnapshotAsync(
+                            uow,
+                            executionId,
+                            status,
+                            execution.CancelRequested,
+                            graphJson,
+                            innerCt)
+                        .ConfigureAwait(false);
+                    await SyncOperationalProjectionAsync(
+                            uow,
+                            executionId,
+                            execution.TenantId,
+                            status,
+                            graphJson,
+                            nodeIdToClear: null,
+                            innerCt)
+                        .ConfigureAwait(false);
+
+                    _logger.SyncedGraphSnapshotFromRuntimeCheckpoint(
+                        executionId,
+                        checkpoint.PendingWaits.Count,
+                        checkpoint.Graph.Nodes.Count);
+                },
+                ct)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>永続 graph snapshot が runtime checkpoint より遅れているか。</summary>
+    private static bool IsGraphSnapshotBehindCheckpoint(
+        string snapshotGraphJson,
+        ExecutionRuntimeCheckpoint checkpoint)
+    {
+        if (!TryCountGraphNodes(snapshotGraphJson, out var snapshotNodeCount))
+            return true;
+
+        if (snapshotNodeCount < checkpoint.Graph.Nodes.Count)
+            return true;
+
+        return checkpoint.PendingWaits.Count > 0
+            && !ExecutionOperationalProjectionSync.HasDurableWaits(snapshotGraphJson);
+    }
+
+    /// <summary>グラフ JSON のノード数を数える。</summary>
+    private static bool TryCountGraphNodes(string graphJson, out int count)
+    {
+        count = 0;
+        if (string.IsNullOrWhiteSpace(graphJson))
+            return false;
+
+        try
+        {
+            using var document = JsonDocument.Parse(graphJson);
+            if (!document.RootElement.TryGetProperty(ExecutionGraphJsonProperties.Nodes, out var nodes)
+                || nodes.ValueKind != JsonValueKind.Array)
+            {
+                return false;
+            }
+
+            count = nodes.GetArrayLength();
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>グラフ JSON 上の指定 nodeId の完了有無を取得する。</summary>
     /// <returns>ノードが存在するとき <see langword="true"/>。</returns>
     private static bool TryGetGraphNodeCompletion(string graphJson, string nodeId, out bool completed)
@@ -1967,7 +2400,7 @@ internal sealed class ExecutionService : IExecutionService
         try
         {
             using var document = JsonDocument.Parse(graphJson);
-            if (!document.RootElement.TryGetProperty("nodes", out var nodes)
+            if (!document.RootElement.TryGetProperty(ExecutionGraphJsonProperties.Nodes, out var nodes)
                 || nodes.ValueKind != JsonValueKind.Array)
             {
                 return false;
@@ -1975,14 +2408,14 @@ internal sealed class ExecutionService : IExecutionService
 
             foreach (var node in nodes.EnumerateArray())
             {
-                if (!node.TryGetProperty("nodeId", out var idProp)
+                if (!node.TryGetProperty(ExecutionGraphJsonProperties.NodeId, out var idProp)
                     || idProp.ValueKind != JsonValueKind.String
                     || !string.Equals(idProp.GetString(), nodeId, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
 
-                completed = node.TryGetProperty("completedAt", out var completedAt)
+                completed = node.TryGetProperty(ExecutionGraphJsonProperties.CompletedAt, out var completedAt)
                     && completedAt.ValueKind is not JsonValueKind.Null
                     && completedAt.ValueKind is not JsonValueKind.Undefined;
                 return true;
@@ -2220,21 +2653,59 @@ internal sealed class ExecutionService : IExecutionService
     private static bool IsTerminalExecutionProjectionStatus(string status) =>
         ExecutionProjectionStatuses.IsTerminal(status);
 
-    /// <summary>Running かつ durable Wait が無い／終端なら checkpoint を破棄する。</summary>
     /// <summary>
-    /// durable Wait が不要（終端、または Running だが Wait 無し）のとき checkpoint 破棄候補。
+    /// 寿命表に従い checkpoint <b>内容</b>の破棄候補か。
     /// </summary>
     /// <remarks>
-    /// 所有セッション中は <see cref="DiscardOrRefreshRuntimeCheckpointAsync"/> が削除を抑止する。
-    /// BeginOwnedSession の seed 行は Wait 到達前から lease を保持するため。
+    /// 保持理由は <see cref="RuntimeCheckpointRetainReasons"/> のみ
+    ///（PendingWaits / PendingPhysicalJoin）。
+    /// Worker 所有 lease は同列にせず、破棄候補でも
+    /// <see cref="DiscardOrRefreshRuntimeCheckpointAsync"/> が Delete を抑止する。
     /// </remarks>
-    private static bool ShouldDiscardRuntimeCheckpoint(string status, string graphJson) =>
-        !string.Equals(status, ExecutionProjectionStatuses.Running, StringComparison.Ordinal)
-        || !ExecutionOperationalProjectionSync.HasDurableWaits(graphJson);
+    private async Task<bool> ShouldDiscardRuntimeCheckpointAsync(
+        Guid executionId,
+        string status,
+        string graphJson,
+        CancellationToken ct)
+    {
+        var retainReasons = await EvaluateRuntimeCheckpointRetainReasonsAsync(
+                executionId,
+                graphJson,
+                ct)
+            .ConfigureAwait(false);
+        return RuntimeCheckpointLifetimePolicy.IsContentDiscardCandidate(status, retainReasons);
+    }
 
     /// <summary>
-    /// checkpoint を破棄するか、所有中なら runtime JSON のみ世代一致更新する。
+    /// 寿命表の内容保持理由を評価する（OwnedLease は含めない）。
     /// </summary>
+    private async Task<RuntimeCheckpointRetainReasons> EvaluateRuntimeCheckpointRetainReasonsAsync(
+        Guid executionId,
+        string graphJson,
+        CancellationToken ct)
+    {
+        var reasons = RuntimeCheckpointRetainReasons.None;
+
+        if (ExecutionOperationalProjectionSync.HasDurableWaits(graphJson))
+            reasons |= RuntimeCheckpointRetainReasons.PendingWaits;
+
+        if (_forkChildCoordinator is not null
+            && await _forkChildCoordinator
+                .HasPendingPhysicalJoinBranchesAsync(executionId, ct)
+                .ConfigureAwait(false))
+        {
+            reasons |= RuntimeCheckpointRetainReasons.PendingPhysicalJoin;
+        }
+
+        return reasons;
+    }
+
+    /// <summary>
+    /// 内容破棄候補の checkpoint を削除するか、Worker 所有中なら runtime JSON のみ更新する。
+    /// </summary>
+    /// <remarks>
+    /// 所有（OwnedLease）は寿命表の保持理由ではない。Worker 都合で行を残し refresh する別層。
+    /// </remarks>
     /// <returns>
     /// 投影同期後に Engine を Unload してよいとき <see langword="true"/>。
     /// 所有中の refresh や削除のみの場合は <see langword="false"/>。
@@ -2247,7 +2718,7 @@ internal sealed class ExecutionService : IExecutionService
     {
         if (_ownership.TryGet(executionId, out _, out _))
         {
-            // Worker が Load を保持中。lease 行は残し runtime だけ更新する（Unload しない）。
+            // Worker 所有中。寿命表上は破棄候補でも lease 行は残し runtime だけ更新する。
             _ = await UpsertRuntimeCheckpointAsync(uow, engineExecutionId, executionId, ct)
                 .ConfigureAwait(false);
             return false;
@@ -2312,10 +2783,17 @@ internal sealed class ExecutionService : IExecutionService
         }
 
         var compiled = RestoreCompiledDefinitionFromVersion(versionRow);
-        var checkpoint = JsonSerializer.Deserialize<ExecutionRuntimeCheckpoint>(
-            checkpointDocument.CheckpointJson,
-            JsonSerializerProfiles.CamelCase)
-            ?? throw new InvalidOperationException("Stored runtime checkpoint JSON is invalid.");
+        if (!TryParseRuntimeCheckpoint(checkpointDocument.CheckpointJson, out var checkpoint, out var parseError))
+        {
+            _logger.RuntimeCheckpointInvalidForHydrate(
+                executionId,
+                checkpointDocument.CheckpointJson?.Length ?? 0);
+            if (parseError is not null)
+                _logger.RuntimeCheckpointDeserializeFailed(parseError, executionId);
+
+            throw new InvalidOperationException(
+                $"Stored runtime checkpoint for execution '{executionId:D}' is empty or invalid and cannot be hydrated.");
+        }
 
         try
         {
@@ -2325,6 +2803,57 @@ internal sealed class ExecutionService : IExecutionService
         {
             // 二重 hydrate 等はクライアント向け 422（ArgumentException）へ写像する。
             throw new ArgumentException(ex.Message, ex);
+        }
+    }
+
+    /// <summary>
+    /// 永続 checkpoint JSON を hydrate 用に検証・デシリアライズする。
+    /// </summary>
+    /// <remarks>
+    /// <c>BeginOwnedSessionAsync</c> の seed <c>{}</c> や必須欠落は不正とし、Import しない。
+    /// </remarks>
+    private static bool TryParseRuntimeCheckpoint(
+        string? checkpointJson,
+        out ExecutionRuntimeCheckpoint checkpoint,
+        out Exception? parseError)
+    {
+        checkpoint = null!;
+        parseError = null;
+
+        if (string.IsNullOrWhiteSpace(checkpointJson))
+            return false;
+
+        var trimmed = checkpointJson.Trim();
+        if (trimmed is "{}" or "null")
+            return false;
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<ExecutionRuntimeCheckpoint>(
+                checkpointJson,
+                JsonSerializerProfiles.CamelCase);
+            if (parsed is null
+                || string.IsNullOrWhiteSpace(parsed.ExecutionId)
+                || string.IsNullOrWhiteSpace(parsed.DefinitionName)
+                || parsed.ActiveStates is null
+                || parsed.Graph is null
+                || parsed.Join is null
+                || parsed.Context is null
+                || parsed.PendingWaits is null)
+            {
+                return false;
+            }
+
+            // 物理 Join 待ち中は ActiveStates / PendingWaits が空の正規断面になり得る（Fork Unload 後）。
+            // 空配列だけでは破損とみなさない（seed "{}" は上で拒否済み）。
+
+            checkpoint = parsed;
+            return true;
+        }
+        catch (JsonException ex)
+        {
+            parseError = ex;
+            return false;
         }
     }
 
@@ -2366,10 +2895,42 @@ internal sealed class ExecutionService : IExecutionService
         string nodeId,
         CancellationToken ct)
     {
+        var gate = PersistUnloadGates.GetOrAdd(executionId, static _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await PersistCheckpointAndUnloadUnderGateAsync(engineExecutionId, executionId, nodeId, ct)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    /// <summary>ゲート取得後の Persist + Unload 本体。</summary>
+    private async Task PersistCheckpointAndUnloadUnderGateAsync(
+        string engineExecutionId,
+        Guid executionId,
+        string nodeId,
+        CancellationToken ct)
+    {
         var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
         if (checkpoint is null)
         {
             _logger.ExportCheckpointNullSkipUnload(engineExecutionId, nodeId);
+            return;
+        }
+
+        // ForkExpansion は fire-and-forget のため ExpandFork 完了が Join→decide より遅れることがある。
+        // その遅延 Persist が空断面で Unload すると Wait 登録前／登録直後の decide を潰す（初回 Wait 到達不能）。
+        if (IsForkExpansionUnloadObsolete(checkpoint, nodeId))
+        {
+            _logger.SkipForkExpansionUnloadAlreadyProgressed(
+                executionId,
+                nodeId,
+                checkpoint.ActiveStates.Count,
+                checkpoint.PendingWaits.Count);
             return;
         }
 
@@ -2388,79 +2949,21 @@ internal sealed class ExecutionService : IExecutionService
 
         var json = JsonSerializer.Serialize(checkpoint, JsonSerializerProfiles.CamelCase);
         var updatedAt = DateTime.UtcNow;
-        var fenceLost = await _executor.ExecuteReadCommittedAsync(
-            async (uow, innerCt) =>
-            {
-                var execution = await _executions.GetByExecutionIdAsync(uow, executionId, innerCt)
-                    .ConfigureAwait(false);
-                if (execution is not null && status is not null && graphJson is not null)
-                {
-                    await _executions
-                        .UpdateExecutionAndSnapshotAsync(
-                            uow,
-                            executionId,
-                            status,
-                            cancelRequested,
-                            graphJson,
-                            innerCt)
-                        .ConfigureAwait(false);
-                    await SyncOperationalProjectionAsync(
-                            uow,
-                            executionId,
-                            execution.TenantId,
-                            status,
-                            graphJson,
-                            nodeIdToClear: null,
-                            innerCt)
-                        .ConfigureAwait(false);
-                }
+        var (fenceLost, skippedStalePersist) = await PersistCheckpointDocumentUnderTransactionAsync(
+                new CheckpointDocumentPersistRequest(
+                    executionId,
+                    nodeId,
+                    checkpoint,
+                    json,
+                    updatedAt,
+                    status,
+                    cancelRequested,
+                    graphJson),
+                ct)
+            .ConfigureAwait(false);
 
-                if (_ownership.TryGet(executionId, out _, out var generation))
-                {
-                    var upserted = await _checkpointStore.TryUpsertRuntimeWithGenerationAsync(
-                            uow,
-                            new ExecutionCheckpointRuntimeUpsert(
-                                executionId,
-                                generation,
-                                json,
-                                checkpoint.SchemaVersion,
-                                updatedAt),
-                            innerCt)
-                        .ConfigureAwait(false);
-                    if (!upserted)
-                        return true;
-
-                    await _checkpointStore.TryClearOwnershipAsync(uow, executionId, generation, innerCt)
-                        .ConfigureAwait(false);
-                    return false;
-                }
-
-                await _checkpointStore.UpsertAsync(
-                    uow,
-                    new ExecutionCheckpointDocument
-                    {
-                        ExecutionId = executionId,
-                        CheckpointJson = json,
-                        SchemaVersion = checkpoint.SchemaVersion,
-                        UpdatedAt = updatedAt
-                    },
-                    innerCt).ConfigureAwait(false);
-
-                var existing = await _checkpointStore.GetByExecutionIdAsync(uow, executionId, innerCt)
-                    .ConfigureAwait(false);
-                if (existing?.OwnerWorkerId is not null)
-                {
-                    await _checkpointStore.TryClearOwnershipAsync(
-                            uow,
-                            executionId,
-                            existing.OwnerGeneration,
-                            innerCt)
-                        .ConfigureAwait(false);
-                }
-
-                return false;
-            },
-            ct).ConfigureAwait(false);
+        if (skippedStalePersist)
+            return;
 
         _ownership.Clear(executionId);
         _engine.Unload(engineExecutionId);
@@ -2472,6 +2975,180 @@ internal sealed class ExecutionService : IExecutionService
         }
 
         _logger.CheckpointUnloadedAfterWait(executionId, nodeId);
+    }
+
+    /// <summary>Persist ゲート内の checkpoint 文書 Upsert 入力。</summary>
+    private readonly record struct CheckpointDocumentPersistRequest(
+        Guid ExecutionId,
+        string NodeId,
+        ExecutionRuntimeCheckpoint Checkpoint,
+        string CheckpointJson,
+        DateTime UpdatedAt,
+        string? Status,
+        bool? CancelRequested,
+        string? GraphJson);
+
+    /// <summary>
+    /// Persist ゲート内トランザクション: 投影更新・checkpoint Upsert・所有クリア。
+    /// </summary>
+    /// <returns>fencing 喪失と stale skip の有無。</returns>
+    private async Task<(bool FenceLost, bool SkippedStalePersist)> PersistCheckpointDocumentUnderTransactionAsync(
+        CheckpointDocumentPersistRequest request,
+        CancellationToken ct)
+    {
+        var skippedStalePersist = false;
+        var fenceLost = await _executor.ExecuteReadCommittedAsync(
+            async (uow, innerCt) =>
+            {
+                var existingCheckpoint = await _checkpointStore
+                    .GetByExecutionIdAsync(uow, request.ExecutionId, innerCt)
+                    .ConfigureAwait(false);
+                if (existingCheckpoint is not null
+                    && TryParseRuntimeCheckpoint(existingCheckpoint.CheckpointJson, out var stored, out _)
+                    && IsRuntimeCheckpointLessAdvanced(request.Checkpoint, stored))
+                {
+                    skippedStalePersist = true;
+                    _logger.SkipStaleCheckpointPersist(
+                        request.ExecutionId,
+                        request.NodeId,
+                        stored.PendingWaits.Count,
+                        request.Checkpoint.PendingWaits.Count,
+                        stored.Graph.Nodes.Count,
+                        request.Checkpoint.Graph.Nodes.Count);
+                    return false;
+                }
+
+                var execution = await _executions.GetByExecutionIdAsync(uow, request.ExecutionId, innerCt)
+                    .ConfigureAwait(false);
+                if (execution is not null && request.Status is not null && request.GraphJson is not null)
+                {
+                    await _executions
+                        .UpdateExecutionAndSnapshotAsync(
+                            uow,
+                            request.ExecutionId,
+                            request.Status,
+                            request.CancelRequested,
+                            request.GraphJson,
+                            innerCt)
+                        .ConfigureAwait(false);
+                    await SyncOperationalProjectionAsync(
+                            uow,
+                            request.ExecutionId,
+                            execution.TenantId,
+                            request.Status,
+                            request.GraphJson,
+                            nodeIdToClear: null,
+                            innerCt)
+                        .ConfigureAwait(false);
+                }
+
+                if (_ownership.TryGet(request.ExecutionId, out _, out var generation))
+                {
+                    var upserted = await _checkpointStore.TryUpsertRuntimeWithGenerationAsync(
+                            uow,
+                            new ExecutionCheckpointRuntimeUpsert(
+                                request.ExecutionId,
+                                generation,
+                                request.CheckpointJson,
+                                request.Checkpoint.SchemaVersion,
+                                request.UpdatedAt),
+                            innerCt)
+                        .ConfigureAwait(false);
+                    if (!upserted)
+                        return true;
+
+                    await _checkpointStore.TryClearOwnershipAsync(uow, request.ExecutionId, generation, innerCt)
+                        .ConfigureAwait(false);
+                    return false;
+                }
+
+                await _checkpointStore.UpsertAsync(
+                    uow,
+                    new ExecutionCheckpointDocument
+                    {
+                        ExecutionId = request.ExecutionId,
+                        CheckpointJson = request.CheckpointJson,
+                        SchemaVersion = request.Checkpoint.SchemaVersion,
+                        UpdatedAt = request.UpdatedAt
+                    },
+                    innerCt).ConfigureAwait(false);
+
+                var existing = await _checkpointStore.GetByExecutionIdAsync(uow, request.ExecutionId, innerCt)
+                    .ConfigureAwait(false);
+                if (existing?.OwnerWorkerId is not null)
+                {
+                    await _checkpointStore.TryClearOwnershipAsync(
+                            uow,
+                            request.ExecutionId,
+                            existing.OwnerGeneration,
+                            innerCt)
+                        .ConfigureAwait(false);
+                }
+
+                return false;
+            },
+            ct).ConfigureAwait(false);
+
+        return (fenceLost, skippedStalePersist);
+    }
+
+    /// <summary>
+    /// 永続済み断面より incoming が遅れているか（古い Fork Unload の上書き防止）。
+    /// </summary>
+    /// <remarks>単体テストから到達するため internal。</remarks>
+    internal static bool IsRuntimeCheckpointLessAdvanced(
+        ExecutionRuntimeCheckpoint incoming,
+        ExecutionRuntimeCheckpoint stored)
+    {
+        if (incoming.IsCompleted || incoming.IsCancelled || incoming.IsFailed)
+            return false;
+
+        if (incoming.Graph.Nodes.Count < stored.Graph.Nodes.Count)
+            return true;
+
+        // stored に durable Wait があり、incoming が Fork 待ち相当（active/wait 空）なら古い。
+        return stored.PendingWaits.Count > 0
+            && incoming.PendingWaits.Count == 0
+            && incoming.ActiveStates.Count == 0;
+    }
+
+    /// <summary>
+    /// Fork 展開後の Persist が、当該 Fork より先の Join / Wait 進行後に遅延したか。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Hosted では <c>NotifyForkExpansion</c> が非同期のため、子完了→Join→decide が
+    /// <c>ExpandFork</c> 完了より先に進みうる。その場合の Unload は decide Wait を失わせる。
+    /// </para>
+    /// <para>
+    /// <paramref name="nodeId"/> が Fork ノードでない呼び出し（Wait Suspend）は常に false。
+    /// </para>
+    /// <para>単体テストから到達するため internal。</para>
+    /// </remarks>
+    /// <param name="checkpoint">Export 直後の断面。</param>
+    /// <param name="nodeId">Persist 要求元のノード ID（Fork 展開時は Fork ノード）。</param>
+    /// <returns>Unload をスキップすべきなら true。</returns>
+    internal static bool IsForkExpansionUnloadObsolete(
+        ExecutionRuntimeCheckpoint checkpoint,
+        string nodeId)
+    {
+        var forkNode = checkpoint.Graph.Nodes
+            .FirstOrDefault(n =>
+                string.Equals(n.NodeId, nodeId, StringComparison.Ordinal)
+                && string.Equals(n.NodeType, "Fork", StringComparison.OrdinalIgnoreCase));
+        if (forkNode is null)
+            return false;
+
+        // Join 後の decide 実行中、または durable Wait 登録済みなら SuspendHandler に委ねる。
+        if (checkpoint.ActiveStates.Count > 0 || checkpoint.PendingWaits.Count > 0)
+            return true;
+
+        // この Fork 到達以降に Join が完了していれば、子待ち Unload の窓は閉じている。
+        return checkpoint.Graph.Nodes.Any(n =>
+            string.Equals(n.NodeType, "Join", StringComparison.OrdinalIgnoreCase)
+            && n.StartedAt >= forkNode.StartedAt
+            && (string.Equals(n.Fact, "Joined", StringComparison.OrdinalIgnoreCase)
+                || n.CompletedAt is not null));
     }
 
     public async Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct)
@@ -2501,9 +3178,10 @@ internal sealed class ExecutionService : IExecutionService
                         innerCt)
                     .ConfigureAwait(false);
 
-                // durable Wait が無い／終端なら checkpoint を削除（Resume 後の残留や再 hydrate を防ぐ）。
+                // durable Wait / 物理 Join 待ちが無い／終端なら checkpoint を削除する。
                 // ただし Worker 所有中は lease / fencing 行を消さない（Heartbeat が世代不一致で落ちる）。
-                if (ShouldDiscardRuntimeCheckpoint(status, graphJson))
+                if (await ShouldDiscardRuntimeCheckpointAsync(executionId, status, graphJson, innerCt)
+                        .ConfigureAwait(false))
                 {
                     return await DiscardOrRefreshRuntimeCheckpointAsync(
                             uow,
@@ -2707,7 +3385,7 @@ internal sealed class ExecutionService : IExecutionService
         try
         {
             using var doc = JsonDocument.Parse(graphJson);
-            if (!doc.RootElement.TryGetProperty("nodes", out var nodes)
+            if (!doc.RootElement.TryGetProperty(ExecutionGraphJsonProperties.Nodes, out var nodes)
                 || nodes.ValueKind != JsonValueKind.Array)
             {
                 return null;
@@ -2747,13 +3425,13 @@ internal sealed class ExecutionService : IExecutionService
     private static bool TryGetActiveWaitNodeId(JsonElement node, out string? nodeId)
     {
         nodeId = null;
-        if (!node.TryGetProperty("nodeType", out var nodeType)
+        if (!node.TryGetProperty(ExecutionGraphJsonProperties.NodeType, out var nodeType)
             || !string.Equals(nodeType.GetString(), "Wait", StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
 
-        if (node.TryGetProperty("completedAt", out var completedAt)
+        if (node.TryGetProperty(ExecutionGraphJsonProperties.CompletedAt, out var completedAt)
             && completedAt.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
         {
             return false;
@@ -2762,7 +3440,7 @@ internal sealed class ExecutionService : IExecutionService
         if (!HasConfiguredWaitEvents(node))
             return false;
 
-        if (!node.TryGetProperty("nodeId", out var nodeIdElement))
+        if (!node.TryGetProperty(ExecutionGraphJsonProperties.NodeId, out var nodeIdElement))
             return false;
 
         var value = nodeIdElement.GetString();

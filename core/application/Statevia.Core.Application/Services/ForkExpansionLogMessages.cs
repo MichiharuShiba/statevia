@@ -80,4 +80,42 @@ internal static partial class ForkExpansionLogMessages
         Guid parentExecutionId,
         string forkNodeId,
         string failureStatus);
+
+    [LoggerMessage(
+        EventId = 3109,
+        Level = LogLevel.Warning,
+        Message = "Runtime checkpoint is empty or invalid for Join hydrate. ParentExecutionId={parentExecutionId} CheckpointLength={checkpointLength}")]
+    public static partial void RuntimeCheckpointInvalidForHydrate(
+        this ILogger logger,
+        Guid parentExecutionId,
+        int checkpointLength);
+
+    [LoggerMessage(
+        EventId = 3110,
+        Level = LogLevel.Warning,
+        Message = "Runtime checkpoint deserialize failed for Join hydrate. ParentExecutionId={parentExecutionId}")]
+    public static partial void RuntimeCheckpointDeserializeFailed(
+        this ILogger logger,
+        Exception exception,
+        Guid parentExecutionId);
+
+    [LoggerMessage(
+        EventId = 3111,
+        Level = LogLevel.Information,
+        Message = "Fork join already completed; skipping re-entry. ParentExecutionId={parentExecutionId} ForkNodeId={forkNodeId} JoinState={joinState}")]
+    public static partial void ForkJoinAlreadyCompleted(
+        this ILogger logger,
+        Guid parentExecutionId,
+        string forkNodeId,
+        string joinState);
+
+    [LoggerMessage(
+        EventId = 3112,
+        Level = LogLevel.Information,
+        Message = "Fork join projection skipped after Wait unload. ParentExecutionId={parentExecutionId} ForkNodeId={forkNodeId} JoinState={joinState}")]
+    public static partial void ForkJoinProjectionSkippedAfterUnload(
+        this ILogger logger,
+        Guid parentExecutionId,
+        string forkNodeId,
+        string joinState);
 }

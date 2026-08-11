@@ -188,6 +188,51 @@ describe("mergeGraph", () => {
     const mergedStart = result.nodes.find((n) => n.name === "start");
     expect(mergedStart?.nodeName).toBe("startStateApi");
   });
+
+  it("循環で同名 Wait が複数あるとき WAITING のランタイム行を定義ノードへマージする", () => {
+    // Arrange: 定義グラフは 1 ノードだが実行は attempt 1 完了 + attempt 2 待機
+    const def: GraphDefinition = {
+      graphId: "cyclic-wait",
+      nodes: [{ nodeName: "cycle.decide", nodeType: "Wait", label: "Decide" }],
+      edges: []
+    };
+    const exec = execution(
+      [
+        {
+          nodeId: "decide-old",
+          nodeName: "cycle.decide",
+          nodeType: "Wait",
+          status: "SUCCEEDED",
+          attempt: 1,
+          workerId: null,
+          waitKey: null,
+          allowedEvents: ["Again", "Finish"],
+          canceledByExecution: false
+        },
+        {
+          nodeId: "decide-new",
+          nodeName: "cycle.decide",
+          nodeType: "Wait",
+          status: "WAITING",
+          attempt: 2,
+          workerId: null,
+          waitKey: null,
+          allowedEvents: ["Again", "Finish"],
+          canceledByExecution: false
+        }
+      ],
+      "cyclic-wait"
+    );
+
+    // Act
+    const result = mergeGraph(exec, def);
+    const decide = result.nodes.find((n) => n.name === "cycle.decide");
+
+    // Assert
+    expect(decide?.status).toBe("WAITING");
+    expect(decide?.nodeId).toBe("decide-new");
+    expect(decide?.attempt).toBe(2);
+  });
 });
 
 describe("mergeGraph (境界値)", () => {

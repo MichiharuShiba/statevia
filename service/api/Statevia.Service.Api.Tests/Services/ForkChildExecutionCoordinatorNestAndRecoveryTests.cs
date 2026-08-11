@@ -13,7 +13,7 @@ using Statevia.Service.Api.Tests.Infrastructure;
 namespace Statevia.Service.Api.Tests.Services;
 
 /// <summary>
-/// タスク 9: ネスト Fork の基本完走と展開の一時失敗リカバリ（循環耐久・幽霊枝は follow-up）。
+/// ネスト Fork の基本完走・展開リカバリ、および物理 Join 待ち判定（checkpoint 寿命）。
 /// </summary>
 public sealed class ForkChildExecutionCoordinatorNestAndRecoveryTests
 {
@@ -173,6 +173,55 @@ public sealed class ForkChildExecutionCoordinatorNestAndRecoveryTests
         Assert.Contains(midId, ids);
         Assert.Contains(leafId, ids);
         Assert.DoesNotContain(outerId, ids);
+    }
+
+    /// <summary>Running の物理分岐がある親は pending Join ありと判定する。</summary>
+    [Fact]
+    public async Task HasPendingPhysicalJoinBranchesAsync_WhenRunningBranch_ReturnsTrue()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var parentId = Guid.NewGuid();
+        var childId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var definitionId = Guid.NewGuid();
+        var definitionVersionId = Guid.NewGuid();
+        await SeedExecutionAsync(db.Options, parentId, definitionId, definitionVersionId, now);
+        await SeedExecutionAsync(db.Options, childId, definitionId, definitionVersionId, now);
+        await SeedBranchAsync(db.Options, parentId, childId, "fork-node-1", "Join1", "A", now);
+
+        var sut = CreateSut(db, new CapturingWorkQueue(), new ForkChildExpansionOptions { MaxAttempts = 1, BaseDelayMs = 0 });
+
+        // Act
+        var pending = await sut.HasPendingPhysicalJoinBranchesAsync(parentId, CancellationToken.None);
+
+        // Assert
+        Assert.True(pending);
+    }
+
+    /// <summary>全分岐 Completed なら pending Join なしと判定する。</summary>
+    [Fact]
+    public async Task HasPendingPhysicalJoinBranchesAsync_WhenAllCompleted_ReturnsFalse()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var parentId = Guid.NewGuid();
+        var childId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var definitionId = Guid.NewGuid();
+        var definitionVersionId = Guid.NewGuid();
+        await SeedExecutionAsync(db.Options, parentId, definitionId, definitionVersionId, now);
+        await SeedExecutionAsync(db.Options, childId, definitionId, definitionVersionId, now);
+        await SeedBranchAsync(db.Options, parentId, childId, "fork-node-1", "Join1", "A", now);
+        await MarkBranchAsync(db.Options, parentId, "A", ExecutionBranchStatuses.Completed, """{"ok":true}""", now.AddSeconds(1));
+
+        var sut = CreateSut(db, new CapturingWorkQueue(), new ForkChildExpansionOptions { MaxAttempts = 1, BaseDelayMs = 0 });
+
+        // Act
+        var pending = await sut.HasPendingPhysicalJoinBranchesAsync(parentId, CancellationToken.None);
+
+        // Assert
+        Assert.False(pending);
     }
 
     private static ForkChildExecutionCoordinator CreateSut(

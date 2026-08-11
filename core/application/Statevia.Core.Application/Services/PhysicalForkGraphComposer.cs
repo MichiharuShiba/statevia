@@ -13,14 +13,16 @@ namespace Statevia.Core.Application.Services;
 /// <para>永続スナップショットは変更しない。読み取り専用の合成 JSON を返す。</para>
 /// <para>子ノードの <c>workerId</c> / <c>attempt</c> はそのまま引き継ぐ。</para>
 /// <para>
-/// Join 辺は状態名ではなく <c>joinNodeId</c>（親上の Join 到達インスタンス）に固定する。
-/// 循環で同名 Join が複数あるとき、Fork 訪問との対応は
-/// <see cref="ResolveJoinNodeId"/> が親グラフ上で解決する。
+/// <c>forkNodeId</c> は Hosted 物理 Fork の並列エピソード相関キー（親グラフの Fork 到達
+/// <c>nodeId</c>）。定義状態名でも Join <c>nodeId</c> でもない。Join 辺は状態名ではなく
+/// <c>joinNodeId</c>（親上の Join 到達インスタンス）に固定し、循環で同名 Join が複数あるとき
+/// Fork 訪問との対応は <see cref="ResolveJoinNodeId"/> が親グラフ上で解決する。
 /// </para>
 /// <para>
 /// 定義上の枝以外の見た目の合流を避けるため、親 Fork からの Fork 辺は
 /// <c>branchState</c> ノードへだけ張り、親 Join への Join 辺も枝先頭状態の終端に限る。
 /// ネスト内側 Join など枝先頭以外から親 Join への接続は <see cref="EdgeType.Next"/> とする。
+/// 枝先頭が Fork 型の terminal になった場合も親 Join へは繋がない（幽霊枝防止）。
 /// </para>
 /// </remarks>
 internal static class PhysicalForkGraphComposer
@@ -79,13 +81,14 @@ internal static class PhysicalForkGraphComposer
     /// </summary>
     /// <remarks>
     /// <para>
+    /// <paramref name="forkNodeId"/> は並列エピソードの相関キー（親グラフの Fork 到達 <c>nodeId</c>）。
     /// 循環で同名 <paramref name="joinState"/> が複数あるとき、
     /// Fork の <c>completedAt</c>（なければ <c>startedAt</c>）以降で最も早い Join を選ぶ。
     /// 時刻が欠ける場合は、同名 Fork 訪問の出現順と Join 訪問の出現順をインデックス対応する。
     /// </para>
     /// </remarks>
     /// <param name="parentGraphJson">親の永続 graph JSON。</param>
-    /// <param name="forkNodeId">親上の Fork 到達ノード ID。</param>
+    /// <param name="forkNodeId">並列エピソードの相関キー（親上の Fork 到達 <c>nodeId</c>）。</param>
     /// <param name="joinState">定義上の Join 状態名。</param>
     /// <returns>対応する Join の <c>nodeId</c>。未解決なら <see langword="null"/>。</returns>
     public static string? ResolveJoinNodeId(
@@ -201,6 +204,15 @@ internal static class PhysicalForkGraphComposer
         {
             if (!nodeById.TryGetValue(terminalId, out var terminalNode))
                 continue;
+
+            // ネスト枝先頭の Fork 自体を親 Join へ繋がない（Join.all 依存の見た目の幽霊枝）。
+            if (string.Equals(
+                    ReadString(terminalNode, NodeTypeProperty),
+                    "Fork",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
 
             var terminalState = ReadString(terminalNode, NodeNameProperty);
             // 枝先頭状態の終端だけ Join 辺。ネスト内側 Join などは Next（定義の next に相当）。

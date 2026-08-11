@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { TenantMissingBanner } from "@/shared/ui/TenantMissingBanner";
 import * as api from "@/shared/api";
 import { uiText } from "@/shared/i18n/uiText";
@@ -7,6 +7,15 @@ import { uiText } from "@/shared/i18n/uiText";
 vi.mock("@/shared/api", () => ({
   getApiConfig: vi.fn()
 }));
+
+/** session fetch の setState を act 内で完了させる。 */
+async function settleSessionFetch(): Promise<void> {
+  await act(async () => {
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+  });
+}
 
 describe("TenantMissingBanner", () => {
   beforeEach(() => {
@@ -19,6 +28,10 @@ describe("TenantMissingBanner", () => {
         } as Response)
       )
     );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("セッション確認中はバナーを表示しない", async () => {
@@ -42,7 +55,9 @@ describe("TenantMissingBanner", () => {
         ok: true,
         json: () => Promise.resolve({ authenticated: false, tenantKey: "" })
       } as Response);
-      await Promise.resolve();
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 0);
+      });
     });
 
     await waitFor(() => {
@@ -56,6 +71,7 @@ describe("TenantMissingBanner", () => {
 
     // Act
     render(<TenantMissingBanner />);
+    await settleSessionFetch();
     const noticeParts = uiText.tenantMissingBanner.noticeParts(
       uiText.actions.load,
       uiText.actions.cancel,
@@ -79,6 +95,7 @@ describe("TenantMissingBanner", () => {
 
     // Assert
     expect(container.firstChild).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("Cookie セッション時は何も表示しない", async () => {
@@ -96,6 +113,7 @@ describe("TenantMissingBanner", () => {
 
     // Act
     const { container } = render(<TenantMissingBanner />);
+    await settleSessionFetch();
 
     // Assert
     await waitFor(() => {
