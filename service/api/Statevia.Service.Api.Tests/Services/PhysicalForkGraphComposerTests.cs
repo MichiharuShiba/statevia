@@ -308,4 +308,83 @@ public sealed class PhysicalForkGraphComposerTests
         // Assert
         Assert.Equal(parentJson, composed);
     }
+
+    /// <summary>不正な親 JSON は合成せずそのまま返す。</summary>
+    [Fact]
+    public void Compose_WhenParentJsonInvalid_ReturnsParentUnchanged()
+    {
+        // Arrange
+        const string parentJson = "not-json";
+
+        // Act
+        var composed = PhysicalForkGraphComposer.Compose(
+            parentJson,
+            [new PhysicalForkGraphComposer.BranchGraph("f", "j", "A", """{"nodes":[],"edges":[]}""")]);
+
+        // Assert
+        Assert.Equal(parentJson, composed);
+    }
+
+    /// <summary>Fork に時刻が無いとき visit index で Join を解決する。</summary>
+    [Fact]
+    public void ResolveJoinNodeId_WhenForkHasNoTime_UsesVisitIndex()
+    {
+        // Arrange
+        const string parentJson = """
+            {
+              "nodes": [
+                {"nodeId":"fork-a","nodeName":"ForkSame"},
+                {"nodeId":"fork-b","nodeName":"ForkSame"},
+                {"nodeId":"join-a","nodeName":"JoinSame","nodeType":"Join","startedAt":"2026-01-01T00:00:00Z"},
+                {"nodeId":"join-b","nodeName":"JoinSame","nodeType":"Join","startedAt":"2026-01-01T00:00:01Z"}
+              ],
+              "edges": []
+            }
+            """;
+
+        // Act
+        var joinForA = PhysicalForkGraphComposer.ResolveJoinNodeId(parentJson, "fork-a", "JoinSame");
+        var joinForB = PhysicalForkGraphComposer.ResolveJoinNodeId(parentJson, "fork-b", "JoinSame");
+
+        // Assert
+        Assert.Equal("join-a", joinForA);
+        Assert.Equal("join-b", joinForB);
+    }
+
+    /// <summary>joinState が空白なら null。</summary>
+    [Fact]
+    public void ResolveJoinNodeId_WhenJoinStateBlank_ReturnsNull()
+    {
+        // Act
+        var join = PhysicalForkGraphComposer.ResolveJoinNodeId(
+            """{"nodes":[{"nodeId":"f"}],"edges":[]}""",
+            "f",
+            "  ");
+
+        // Assert
+        Assert.Null(join);
+    }
+
+    /// <summary>Fork の nodeName が空なら先頭 Join 候補を返す。</summary>
+    [Fact]
+    public void ResolveJoinNodeId_WhenForkNameMissing_ReturnsFirstJoinCandidate()
+    {
+        // Arrange
+        const string parentJson = """
+            {
+              "nodes": [
+                {"nodeId":"fork1"},
+                {"nodeId":"join1","nodeName":"J","nodeType":"Join","startedAt":"2026-01-01T00:00:00Z"},
+                {"nodeId":"join2","nodeName":"J","nodeType":"Join","startedAt":"2026-01-01T00:00:01Z"}
+              ],
+              "edges": []
+            }
+            """;
+
+        // Act
+        var join = PhysicalForkGraphComposer.ResolveJoinNodeId(parentJson, "fork1", "J");
+
+        // Assert
+        Assert.Equal("join1", join);
+    }
 }
