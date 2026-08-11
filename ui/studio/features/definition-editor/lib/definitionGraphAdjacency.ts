@@ -8,7 +8,21 @@ export type GraphAdjacencyEdge = {
 
 /**
  * 単一ノードから出る辺を adjacency リストへ追加する。
+ *
+ * @remarks wait.`events` の遷移先も含める（キャンバス辺・上流ヒント用）。
  */
+function appendWaitEventOutgoingEdges(node: DefinitionGraphNode, edges: GraphAdjacencyEdge[]): void {
+  if (node.type !== "wait" || !node.events) {
+    return;
+  }
+  for (const target of Object.values(node.events)) {
+    const trimmed = target?.trim();
+    if (trimmed) {
+      edges.push({ sourceId: node.name, targetId: trimmed });
+    }
+  }
+}
+
 function appendNodeOutgoingEdges(node: DefinitionGraphNode, edges: GraphAdjacencyEdge[]): void {
   if (node.next) {
     edges.push({ sourceId: node.name, targetId: node.next });
@@ -26,6 +40,7 @@ function appendNodeOutgoingEdges(node: DefinitionGraphNode, edges: GraphAdjacenc
       edges.push({ sourceId: node.name, targetId: branch });
     }
   }
+  appendWaitEventOutgoingEdges(node, edges);
 }
 
 /**

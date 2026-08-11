@@ -31,5 +31,13 @@ export const definitionGraphEditorTestLabels: ComponentProps<typeof DefinitionGr
   actionInputHint: "hint",
   actionInputInvalidJson: "invalid json",
   actionIdCandidatesLoading: "loading actions",
-  actionIdNoResults: "no results"
+  actionIdNoResults: "no results",
+  waitEventsSectionTitle: "events",
+  waitEventNameLabel: "event name",
+  waitEventTargetLabel: "target",
+  waitEventsAdd: "add event",
+  waitEventsRemove: "remove row",
+  waitLegacyEventLabel: "legacy event",
+  waitConvertToEvents: "convert to events",
+  waitEventsConflictHint: "events and event conflict"
 };

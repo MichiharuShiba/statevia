@@ -20,11 +20,20 @@ import type { LayoutEdgeInput, LayoutNodeInput } from "@/shared/lib/graphLayout"
 import { getNodeAppearance } from "@/shared/lib/nodeAppearance";
 import { getStatusStyle } from "@/shared/lib/statusStyle";
 import { renameNodeNameInDocument } from "../lib/renameNodeNameInDocument";
+import {
+  connectWaitEventTarget,
+  convertLegacyWaitToEvents,
+  removeWaitEvent,
+  setLegacyWaitEvent,
+  setWaitEventTarget,
+  setWaitEvents
+} from "../lib/setWaitEvents";
 import type { DefinitionGraphDocument, DefinitionGraphNode, NodeType } from "../lib/types";
 import { buildDocumentAdjacency } from "../lib/definitionGraphAdjacency";
 import { ActionInputCodeEditor } from "@/shared/ui/ActionInputCodeEditor";
 import { ActionIdCombobox } from "./ActionIdCombobox";
 import { SchemaDrivenActionInputForm } from "./SchemaDrivenActionInputForm";
+import { WaitEventsEditor } from "./WaitEventsEditor";
 import { GraphNodeShell } from "@/shared/ui/GraphNodeShell";
 import { apiGet } from "@/shared/api";
 import { collectUpstreamOutputPathHints } from "../actionSchema/outputSchemaHints";
@@ -186,7 +195,13 @@ const DEFINITION_GRAPH_EDGE_DEFAULTS = {
 
 type GraphSelection =
   | { kind: "node"; nodeName: string }
-  | { kind: "edge"; nodeName: string; edgeKind: "next" | "edge" | "error"; edgeIndex?: number }
+  | {
+      kind: "edge";
+      nodeName: string;
+      edgeKind: "next" | "edge" | "error" | "waitEvent";
+      edgeIndex?: number;
+      eventName?: string;
+    }
   | null;
 
 type AvailableNodeType = {
@@ -231,6 +246,14 @@ type DefinitionGraphEditorProps = {
     actionInputInvalidJson: string;
     actionIdCandidatesLoading: string;
     actionIdNoResults: string;
+    waitEventsSectionTitle: string;
+    waitEventNameLabel: string;
+    waitEventTargetLabel: string;
+    waitEventsAdd: string;
+    waitEventsRemove: string;
+    waitLegacyEventLabel: string;
+    waitConvertToEvents: string;
+    waitEventsConflictHint: string;
   };
 };
 
@@ -238,8 +261,9 @@ type GraphEdgeMeta = {
   id: string;
   source: string;
   target: string;
-  edgeKind: "next" | "edge" | "branch" | "error";
+  edgeKind: "next" | "edge" | "branch" | "error" | "waitEvent";
   edgeIndex?: number;
+  eventName?: string;
   parallelIndex?: number;
   parallelCount?: number;
 };
@@ -301,6 +325,29 @@ function createParallelEdgeCollector(): ParallelEdgeCollector {
   return { trackParallel, finalize };
 }
 
+function appendWaitEventGraphEdges(
+  node: DefinitionGraphNode,
+  trackParallel: (edgeMeta: GraphEdgeMeta) => void
+): void {
+  if (node.type !== "wait" || !node.events) {
+    return;
+  }
+  for (const [eventName, target] of Object.entries(node.events)) {
+    const trimmedTarget = target?.trim();
+    const trimmedEvent = eventName.trim();
+    if (!trimmedTarget || !trimmedEvent) {
+      continue;
+    }
+    trackParallel({
+      id: `waitEvent:${node.name}:${trimmedEvent}`,
+      source: node.name,
+      target: trimmedTarget,
+      edgeKind: "waitEvent",
+      eventName: trimmedEvent
+    });
+  }
+}
+
 function appendNodeGraphEdges(node: DefinitionGraphNode, trackParallel: (edgeMeta: GraphEdgeMeta) => void): void {
   if (node.type === "action" && node.error?.trim()) {
     trackParallel({
@@ -342,6 +389,7 @@ function appendNodeGraphEdges(node: DefinitionGraphNode, trackParallel: (edgeMet
       edgeIndex: index
     });
   }
+  appendWaitEventGraphEdges(node, trackParallel);
 }
 
 function toGraphEdges(document: DefinitionGraphDocument): GraphEdgeMeta[] {
@@ -409,7 +457,7 @@ function createNode(type: NodeType, name: string): DefinitionGraphNode {
     case "action":
       return { name, type: "action", action: "noop" };
     case "wait":
-      return { name, type: "wait", event: "resume" };
+      return { name, type: "wait", events: { resume: "" } };
     case "fork":
       return { name, type: "fork", branches: [] };
     case "join":
@@ -424,6 +472,32 @@ function updateNode(document: DefinitionGraphDocument, nodeName: string, updater
     ...document,
     nodes: document.nodes.map((node) => (node.name === nodeName ? updater(node) : node))
   };
+}
+
+type WaitEditMode = "events" | "legacy" | "conflict";
+
+/**
+ * Wait ノードのインスペクタ編集モードを判定する。
+ *
+ * @param node 対象ノード
+ * @returns events マップ編集 / 旧形式 / 併用衝突
+ */
+function resolveWaitEditMode(node: DefinitionGraphNode): WaitEditMode {
+  if (node.type !== "wait") {
+    return "events";
+  }
+  const hasEventsProperty = node.events !== undefined;
+  const hasLegacyEvent = Boolean(node.event?.trim());
+  if (hasEventsProperty && hasLegacyEvent) {
+    return "conflict";
+  }
+  if (hasEventsProperty) {
+    return "events";
+  }
+  if (hasLegacyEvent || node.next?.trim() || (node.edges?.length ?? 0) > 0) {
+    return "legacy";
+  }
+  return "events";
 }
 
 /** 十進・指数表記の ASCII 数値リテラル風（0x 等は含まない）。when の YAML 往復・パースで共通利用 */
@@ -532,6 +606,8 @@ export function DefinitionGraphEditor({
         label = "error";
       } else if (edge.edgeKind === "branch") {
         label = "branch";
+      } else if (edge.edgeKind === "waitEvent") {
+        label = edge.eventName ?? "event";
       }
       return {
         id: edge.id,
@@ -668,6 +744,9 @@ export function DefinitionGraphEditor({
       return;
     }
     const nextDocument = updateNode(document, sourceNode.name, (node) => {
+      if (node.type === "wait" && node.events !== undefined) {
+        return node;
+      }
       if (node.type === "fork") {
         const branches = new Set(node.branches ?? []);
         branches.add(targetNodeName);
@@ -695,7 +774,11 @@ export function DefinitionGraphEditor({
         edges: [...existing, { to: targetNodeName }]
       };
     });
-    onDocumentChange(nextDocument);
+    if (sourceNode.type === "wait" && sourceNode.events !== undefined) {
+      onDocumentChange(connectWaitEventTarget(document, sourceNode.name, targetNodeName));
+    } else {
+      onDocumentChange(nextDocument);
+    }
     setGraphMessage(null);
   };
 
@@ -767,7 +850,8 @@ export function DefinitionGraphEditor({
                 kind: "edge",
                 nodeName: meta.source,
                 edgeKind: meta.edgeKind,
-                edgeIndex: meta.edgeIndex
+                edgeIndex: meta.edgeIndex,
+                eventName: meta.eventName
               });
             }}
             onPaneClick={() => setSelection(null)}
@@ -887,6 +971,7 @@ function GraphNodeInspector({
   const [actionOrEventDraft, setActionOrEventDraft] = useState(
     () => (node.type === "action" ? node.action : node.event) ?? ""
   );
+  const waitEditMode = resolveWaitEditMode(node);
   const schemaLookupActionId = node.type === "action" ? actionOrEventDraft.trim() : "";
   const isIndexedSchemaAction = useMemo(
     () => isIndexedActionId(schemaLookupActionId, actionCandidates),
@@ -909,10 +994,10 @@ function GraphNodeInspector({
       setActionInputDraft(formatActionInputForEditor(node.input));
       setActionInputError(null);
       setActionOrEventDraft(node.action ?? "");
-    } else if (node.type === "wait") {
+    } else if (node.type === "wait" && waitEditMode === "legacy") {
       setActionOrEventDraft(node.event ?? "");
     }
-  }, [node.name, node.type, node.input, node.action, node.event, actionInputSig]);
+  }, [node.name, node.type, node.input, node.action, node.event, actionInputSig, waitEditMode]);
 
   const commitActionOrEventDraft = useCallback(() => {
     if (node.type === "action") {
@@ -930,17 +1015,22 @@ function GraphNodeInspector({
       setActionInputError(null);
       return;
     }
-    if (node.type === "wait") {
+    if (node.type === "wait" && waitEditMode === "legacy") {
       if (actionOrEventDraft === (node.event ?? "")) {
         return;
       }
-      onDocumentChange(
-        updateNode(document, node.name, (targetNode) =>
-          targetNode.type === "wait" ? { ...targetNode, event: actionOrEventDraft } : targetNode
-        )
-      );
+      onDocumentChange(setLegacyWaitEvent(document, node.name, actionOrEventDraft));
     }
-  }, [actionOrEventDraft, document, node.action, node.event, node.name, node.type, onDocumentChange]);
+  }, [
+    actionOrEventDraft,
+    document,
+    node.action,
+    node.event,
+    node.name,
+    node.type,
+    onDocumentChange,
+    waitEditMode
+  ]);
 
   useEffect(() => {
     if (node.type !== "action" || !schemaLookupActionId) {
@@ -1009,9 +1099,11 @@ function GraphNodeInspector({
           }}
         />
       </label>
-      {(node.type === "action" || node.type === "wait") && (
+      {(node.type === "action" || (node.type === "wait" && waitEditMode === "legacy")) && (
         <label className="block text-xs">
-          <span className="block">{node.type === "action" ? "action" : "event"}</span>
+          <span className="block">
+            {node.type === "action" ? "action" : labels.waitLegacyEventLabel}
+          </span>
           {node.type === "action" ? (
             <ActionIdCombobox
               value={actionOrEventDraft}
@@ -1042,6 +1134,46 @@ function GraphNodeInspector({
             />
           )}
         </label>
+      )}
+      {node.type === "wait" && waitEditMode === "legacy" && (
+        <button
+          type="button"
+          className="rounded border border-[var(--md-sys-color-outline-variant)] px-2 py-1 text-xs"
+          onClick={() => {
+            onDocumentChange(convertLegacyWaitToEvents(document, node.name));
+          }}
+        >
+          {labels.waitConvertToEvents}
+        </button>
+      )}
+      {node.type === "wait" && waitEditMode === "conflict" && (
+        <div className="space-y-2">
+          <p className="text-xs text-rose-700">{labels.waitEventsConflictHint}</p>
+          <button
+            type="button"
+            className="rounded border border-[var(--md-sys-color-outline-variant)] px-2 py-1 text-xs"
+            onClick={() => {
+              onDocumentChange(setWaitEvents(document, node.name, node.events ?? {}));
+            }}
+          >
+            {labels.waitConvertToEvents}
+          </button>
+        </div>
+      )}
+      {node.type === "wait" && waitEditMode === "events" && (
+        <WaitEventsEditor
+          events={node.events ?? {}}
+          labels={{
+            waitEventsSectionTitle: labels.waitEventsSectionTitle,
+            waitEventNameLabel: labels.waitEventNameLabel,
+            waitEventTargetLabel: labels.waitEventTargetLabel,
+            waitEventsAdd: labels.waitEventsAdd,
+            waitEventsRemove: labels.waitEventsRemove
+          }}
+          onEventsChange={(events) => {
+            onDocumentChange(setWaitEvents(document, node.name, events));
+          }}
+        />
       )}
       {node.type === "action" && (
         <label className="block text-xs">
@@ -1302,20 +1434,145 @@ function GraphInspector({
     return null;
   }
 
-  let targetEdge: NonNullable<DefinitionGraphNode["edges"]>[number] | { to: string } | undefined;
-  if (selection.edgeKind === "next") {
-    targetEdge = { to: sourceNode.next ?? "" };
-  } else if (selection.edgeKind === "error") {
-    targetEdge = { to: sourceNode.error ?? "" };
-  } else {
-    targetEdge = (sourceNode.edges ?? [])[selection.edgeIndex ?? -1];
+  return (
+    <GraphEdgeInspector
+      document={document}
+      sourceNode={sourceNode}
+      selection={selection}
+      labels={labels}
+      whenPathHints={whenPathHints}
+      onDocumentChange={onDocumentChange}
+      onClearSelection={onClearSelection}
+    />
+  );
+}
+
+type GraphEdgeSelection = Extract<NonNullable<GraphSelection>, { kind: "edge" }>;
+
+type GraphEdgeInspectorProps = {
+  document: DefinitionGraphDocument;
+  sourceNode: DefinitionGraphNode;
+  selection: GraphEdgeSelection;
+  labels: DefinitionGraphEditorProps["labels"];
+  whenPathHints: string[];
+  onDocumentChange: (nextDocument: DefinitionGraphDocument) => void;
+  onClearSelection: () => void;
+};
+
+/**
+ * 選択中の辺メタデータからインスペクタ表示用の遷移先を解決する。
+ *
+ * @param sourceNode 辺の起点ノード
+ * @param selection 辺選択
+ * @returns 遷移先オブジェクト。解決不能なら null
+ */
+function resolveSelectedEdgeTarget(
+  sourceNode: DefinitionGraphNode,
+  selection: GraphEdgeSelection
+): NonNullable<DefinitionGraphNode["edges"]>[number] | { to: string } | null {
+  switch (selection.edgeKind) {
+    case "next":
+      return { to: sourceNode.next ?? "" };
+    case "error":
+      return { to: sourceNode.error ?? "" };
+    case "waitEvent": {
+      const eventName = selection.eventName;
+      if (!eventName || !sourceNode.events) {
+        return null;
+      }
+      return { to: sourceNode.events[eventName] ?? "" };
+    }
+    default:
+      return (sourceNode.edges ?? [])[selection.edgeIndex ?? -1] ?? null;
   }
+}
+
+/**
+ * 選択辺の遷移先をドキュメントへ反映する。
+ *
+ * @param document 定義グラフ
+ * @param sourceNode 起点ノード
+ * @param selection 辺選択
+ * @param nextTarget 新しい遷移先
+ * @returns 更新後ドキュメント
+ */
+function applySelectedEdgeTarget(
+  document: DefinitionGraphDocument,
+  sourceNode: DefinitionGraphNode,
+  selection: GraphEdgeSelection,
+  nextTarget: string
+): DefinitionGraphDocument {
+  switch (selection.edgeKind) {
+    case "next":
+      return updateNode(document, sourceNode.name, (node) => ({ ...node, next: nextTarget }));
+    case "error":
+      return updateNode(document, sourceNode.name, (node) =>
+        node.type === "action" ? { ...node, error: nextTarget.trim() || undefined } : node
+      );
+    case "waitEvent":
+      if (!selection.eventName) {
+        return document;
+      }
+      return setWaitEventTarget(document, sourceNode.name, selection.eventName, nextTarget);
+    default:
+      return updateNode(document, sourceNode.name, (node) => ({
+        ...node,
+        edges: (node.edges ?? []).map((edge, index) =>
+          index === selection.edgeIndex ? { ...edge, to: nextTarget } : edge
+        )
+      }));
+  }
+}
+
+/**
+ * 選択辺をドキュメントから削除する。
+ *
+ * @param document 定義グラフ
+ * @param sourceNode 起点ノード
+ * @param selection 辺選択
+ * @returns 更新後ドキュメント
+ */
+function removeSelectedEdge(
+  document: DefinitionGraphDocument,
+  sourceNode: DefinitionGraphNode,
+  selection: GraphEdgeSelection
+): DefinitionGraphDocument {
+  switch (selection.edgeKind) {
+    case "next":
+      return updateNode(document, sourceNode.name, (node) => ({ ...node, next: undefined }));
+    case "error":
+      return updateNode(document, sourceNode.name, (node) =>
+        node.type === "action" ? { ...node, error: undefined } : node
+      );
+    case "waitEvent":
+      if (!selection.eventName) {
+        return document;
+      }
+      return removeWaitEvent(document, sourceNode.name, selection.eventName);
+    default:
+      return updateNode(document, sourceNode.name, (node) => ({
+        ...node,
+        edges: (node.edges ?? []).filter((_, index) => index !== selection.edgeIndex)
+      }));
+  }
+}
+
+function GraphEdgeInspector({
+  document,
+  sourceNode,
+  selection,
+  labels,
+  whenPathHints,
+  onDocumentChange,
+  onClearSelection
+}: Readonly<GraphEdgeInspectorProps>) {
+  const targetEdge = resolveSelectedEdgeTarget(sourceNode, selection);
   if (!targetEdge) {
     return null;
   }
 
   const conditionalEdge: NonNullable<DefinitionGraphNode["edges"]>[number] | undefined =
-    selection.edgeKind === "edge" ? (targetEdge) : undefined;
+    selection.edgeKind === "edge" ? targetEdge : undefined;
   const selectedWhenOp = (conditionalEdge?.when?.op ?? "").toUpperCase();
   const isDefaultEdge = conditionalEdge?.default === true;
   const isWhenFieldsDisabled = isDefaultEdge;
@@ -1336,26 +1593,8 @@ function GraphInspector({
           className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
           value={targetEdge.to}
           onChange={(changeEvent) => {
-            const nextTarget = changeEvent.target.value;
-            if (selection.edgeKind === "next") {
-              onDocumentChange(updateNode(document, sourceNode.name, (node) => ({ ...node, next: nextTarget })));
-              return;
-            }
-            if (selection.edgeKind === "error") {
-              onDocumentChange(
-                updateNode(document, sourceNode.name, (node) =>
-                  node.type === "action" ? { ...node, error: nextTarget.trim() || undefined } : node
-                )
-              );
-              return;
-            }
             onDocumentChange(
-              updateNode(document, sourceNode.name, (node) => ({
-                ...node,
-                edges: (node.edges ?? []).map((edge, index) =>
-                  index === selection.edgeIndex ? { ...edge, to: nextTarget } : edge
-                )
-              }))
+              applySelectedEdgeTarget(document, sourceNode, selection, changeEvent.target.value)
             );
           }}
         />
@@ -1365,7 +1604,7 @@ function GraphInspector({
           <label className="inline-flex items-center gap-2 text-xs">
             <input
               type="checkbox"
-                checked={conditionalEdge?.default === true}
+              checked={conditionalEdge?.default === true}
               onChange={(changeEvent) => {
                 const isDefault = changeEvent.target.checked;
                 onDocumentChange(
@@ -1387,109 +1626,109 @@ function GraphInspector({
             <span>default</span>
           </label>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <label className="block text-xs">
-            <span className="block">when.path</span>
-            <input
-              className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
-              value={conditionalEdge?.when?.path ?? ""}
-              placeholder={labels.whenPathPlaceholder}
-              disabled={isWhenFieldsDisabled}
-              list={whenPathHints.length > 0 ? `when-path-hints-${sourceNode.name}` : undefined}
-              onChange={(changeEvent) => {
-                const path = changeEvent.target.value;
-                onDocumentChange(
-                  updateNode(document, sourceNode.name, (node) => ({
-                    ...node,
-                    edges: (node.edges ?? []).map((edge, index) =>
-                      index === selection.edgeIndex
-                        ? { ...edge, when: { path, op: edge.when?.op ?? "eq", value: edge.when?.value ?? "" } }
-                        : edge
-                    )
-                  }))
-                );
-              }}
-            />
-            {whenPathHints.length > 0 ? (
-              <datalist id={`when-path-hints-${sourceNode.name}`}>
-                {whenPathHints.map((hint) => (
-                  <option key={hint} value={hint} />
-                ))}
-              </datalist>
-            ) : null}
-            <span className="mt-0.5 block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
-              {labels.whenPathHint}
-            </span>
-          </label>
-          <label className="block text-xs">
-            <span className="block">when.op</span>
-            <select
-              className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
-              value={selectedWhenOp}
-              disabled={isWhenFieldsDisabled}
-              onChange={(changeEvent) => {
-                const op = changeEvent.target.value.toUpperCase();
-                onDocumentChange(
-                  updateNode(document, sourceNode.name, (node) => ({
-                    ...node,
-                    edges: (node.edges ?? []).map((edge, index) =>
-                      index === selection.edgeIndex
-                        ? {
-                            ...edge,
-                            when: {
-                              path: edge.when?.path ?? "$.input.x",
-                              op,
-                              value: op === "EXISTS" ? undefined : (edge.when?.value ?? "")
+            <label className="block text-xs">
+              <span className="block">when.path</span>
+              <input
+                className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
+                value={conditionalEdge?.when?.path ?? ""}
+                placeholder={labels.whenPathPlaceholder}
+                disabled={isWhenFieldsDisabled}
+                list={whenPathHints.length > 0 ? `when-path-hints-${sourceNode.name}` : undefined}
+                onChange={(changeEvent) => {
+                  const path = changeEvent.target.value;
+                  onDocumentChange(
+                    updateNode(document, sourceNode.name, (node) => ({
+                      ...node,
+                      edges: (node.edges ?? []).map((edge, index) =>
+                        index === selection.edgeIndex
+                          ? { ...edge, when: { path, op: edge.when?.op ?? "eq", value: edge.when?.value ?? "" } }
+                          : edge
+                      )
+                    }))
+                  );
+                }}
+              />
+              {whenPathHints.length > 0 ? (
+                <datalist id={`when-path-hints-${sourceNode.name}`}>
+                  {whenPathHints.map((hint) => (
+                    <option key={hint} value={hint} />
+                  ))}
+                </datalist>
+              ) : null}
+              <span className="mt-0.5 block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                {labels.whenPathHint}
+              </span>
+            </label>
+            <label className="block text-xs">
+              <span className="block">when.op</span>
+              <select
+                className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
+                value={selectedWhenOp}
+                disabled={isWhenFieldsDisabled}
+                onChange={(changeEvent) => {
+                  const op = changeEvent.target.value.toUpperCase();
+                  onDocumentChange(
+                    updateNode(document, sourceNode.name, (node) => ({
+                      ...node,
+                      edges: (node.edges ?? []).map((edge, index) =>
+                        index === selection.edgeIndex
+                          ? {
+                              ...edge,
+                              when: {
+                                path: edge.when?.path ?? "$.input.x",
+                                op,
+                                value: op === "EXISTS" ? undefined : (edge.when?.value ?? "")
+                              }
                             }
-                          }
-                        : edge
-                    )
-                  }))
-                );
-              }}
-            >
-              <option value="" disabled>
-                {labels.whenOpPlaceholder}
-              </option>
-              {WHEN_OP_OPTIONS.map((op) => (
-                <option key={op.value} value={op.value}>
-                  {op.label}
+                          : edge
+                      )
+                    }))
+                  );
+                }}
+              >
+                <option value="" disabled>
+                  {labels.whenOpPlaceholder}
                 </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-xs">
-            <span className="block">when.value</span>
-            <input
-              className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
-              value={formatWhenValue(conditionalEdge?.when?.value)}
-              placeholder={labels.whenValuePlaceholder}
-              disabled={isWhenFieldsDisabled || isWhenValueDisabled}
-              onChange={(changeEvent) => {
-                const value = parseWhenValueInput(changeEvent.target.value, selectedWhenOp);
-                onDocumentChange(
-                  updateNode(document, sourceNode.name, (node) => ({
-                    ...node,
-                    edges: (node.edges ?? []).map((edge, index) =>
-                      index === selection.edgeIndex
-                        ? { ...edge, when: { path: edge.when?.path ?? "$.x", op: edge.when?.op ?? "eq", value } }
-                        : edge
-                    )
-                  }))
-                );
-              }}
-            />
-            {!isWhenFieldsDisabled && isWhenValueDisabled && (
-              <span className="mt-1 block text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                {labels.whenValueDisabledForExists}
-              </span>
-            )}
-            {!isWhenFieldsDisabled && !isWhenValueDisabled && whenValueHint && (
-              <span className="mt-1 block text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                {whenValueHint}
-              </span>
-            )}
-          </label>
-        </div>
+                {WHEN_OP_OPTIONS.map((op) => (
+                  <option key={op.value} value={op.value}>
+                    {op.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs">
+              <span className="block">when.value</span>
+              <input
+                className="mt-1 w-full rounded border border-[var(--md-sys-color-outline)] px-2 py-1"
+                value={formatWhenValue(conditionalEdge?.when?.value)}
+                placeholder={labels.whenValuePlaceholder}
+                disabled={isWhenFieldsDisabled || isWhenValueDisabled}
+                onChange={(changeEvent) => {
+                  const value = parseWhenValueInput(changeEvent.target.value, selectedWhenOp);
+                  onDocumentChange(
+                    updateNode(document, sourceNode.name, (node) => ({
+                      ...node,
+                      edges: (node.edges ?? []).map((edge, index) =>
+                        index === selection.edgeIndex
+                          ? { ...edge, when: { path: edge.when?.path ?? "$.x", op: edge.when?.op ?? "eq", value } }
+                          : edge
+                      )
+                    }))
+                  );
+                }}
+              />
+              {!isWhenFieldsDisabled && isWhenValueDisabled && (
+                <span className="mt-1 block text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                  {labels.whenValueDisabledForExists}
+                </span>
+              )}
+              {!isWhenFieldsDisabled && !isWhenValueDisabled && whenValueHint && (
+                <span className="mt-1 block text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                  {whenValueHint}
+                </span>
+              )}
+            </label>
+          </div>
         </div>
       )}
       <div className="flex justify-end">
@@ -1497,26 +1736,7 @@ function GraphInspector({
           type="button"
           className="rounded border border-rose-400 px-2 py-1 text-xs text-rose-700"
           onClick={() => {
-            if (selection.edgeKind === "next") {
-              onDocumentChange(updateNode(document, sourceNode.name, (node) => ({ ...node, next: undefined })));
-              onClearSelection();
-              return;
-            }
-            if (selection.edgeKind === "error") {
-              onDocumentChange(
-                updateNode(document, sourceNode.name, (node) =>
-                  node.type === "action" ? { ...node, error: undefined } : node
-                )
-              );
-              onClearSelection();
-              return;
-            }
-            onDocumentChange(
-              updateNode(document, sourceNode.name, (node) => ({
-                ...node,
-                edges: (node.edges ?? []).filter((_, index) => index !== selection.edgeIndex)
-              }))
-            );
+            onDocumentChange(removeSelectedEdge(document, sourceNode, selection));
             onClearSelection();
           }}
         >

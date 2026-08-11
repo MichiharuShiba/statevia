@@ -98,6 +98,16 @@ export const definitionEditorUiTextJa: DefinitionEditorFeatureUiText = {
       actionInputInvalidJson: "JSON の形式が正しくありません。",
       actionIdCandidatesLoading: "Action 一覧を読み込み中…",
       actionIdNoResults: "一致する Action がありません",
+      waitEventsSectionTitle: "events（イベント → 遷移先）",
+      waitEventNameLabel: "イベント名",
+      waitEventTargetLabel: "遷移先ノード名",
+      waitEventsAdd: "イベント行を追加",
+      waitEventsRemove: "行を削除",
+      waitLegacyEventLabel: "event（旧形式）",
+      waitConvertToEvents: "events 形式へ変換",
+      waitEventsConflictHint:
+        "events と event が両方あるため編集できません。YAML を修正するか events 形式へ変換してください。",
+
       schemaPathPlaceholder: "$.input.x または $.states.A.output.y",
       schemaLiteralOrPathPlaceholder: "リテラルまたは $.input.x",
     },

@@ -87,6 +87,14 @@ export type DefinitionEditorFeatureUiText = {
       actionIdNoResults: string;
       schemaPathPlaceholder: string;
       schemaLiteralOrPathPlaceholder: string;
+      waitEventsSectionTitle: string;
+      waitEventNameLabel: string;
+      waitEventTargetLabel: string;
+      waitEventsAdd: string;
+      waitEventsRemove: string;
+      waitLegacyEventLabel: string;
+      waitConvertToEvents: string;
+      waitEventsConflictHint: string;
     };
     saved: {
       completePrefix: string;
