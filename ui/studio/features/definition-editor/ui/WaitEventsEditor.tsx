@@ -46,7 +46,7 @@ export function WaitEventsEditor({
   disabled = false,
   onEventsChange
 }: Readonly<WaitEventsEditorProps>) {
-  const [rows, setRows] = useState<WaitEventRowDraft[]>(() => toRows(events));
+  const [rows, setRows] = useState<WaitEventRowDraft[]>(() => syncRowsFromEvents(events, []));
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
 
@@ -55,7 +55,8 @@ export function WaitEventsEditor({
     if (sameEventsMap(currentMap, events)) {
       return;
     }
-    setRows(toRows(events));
+    // 既存行の id をイベント名で再利用し、props 同期時の key 変化による focus 消失を防ぐ。
+    setRows(syncRowsFromEvents(events, rowsRef.current));
   }, [events]);
 
   const commitCurrentRows = () => {
@@ -190,12 +191,26 @@ function WaitEventRowEditor({
   );
 }
 
-function toRows(events: Record<string, string>): WaitEventRowDraft[] {
-  return Object.entries(events).map(([eventName, target]) => ({
-    id: `${eventName}::${createRowId()}`,
-    eventName,
-    target
-  }));
+/**
+ * `events` マップから行ドラフトを組み立てる。同名イベントの既存行があれば id を引き継ぐ。
+ *
+ * @param events イベント名 → 遷移先
+ * @param previousRows 直前の行（props 同期時の key 安定化用）
+ * @returns 行ドラフト一覧
+ */
+function syncRowsFromEvents(
+  events: Record<string, string>,
+  previousRows: readonly WaitEventRowDraft[]
+): WaitEventRowDraft[] {
+  const unusedPrevious = [...previousRows];
+  return Object.entries(events).map(([eventName, target]) => {
+    const matchIndex = unusedPrevious.findIndex((row) => row.eventName === eventName);
+    if (matchIndex >= 0) {
+      const [matched] = unusedPrevious.splice(matchIndex, 1);
+      return { id: matched.id, eventName, target };
+    }
+    return { id: createRowId(), eventName, target };
+  });
 }
 
 function toEvents(rows: WaitEventRowDraft[]): Record<string, string> {

@@ -76,7 +76,9 @@ export function convertLegacyWaitToEvents(
  * @param nodeName 対象 Wait ノード名
  * @param targetNodeName 接続先ノード名
  * @returns 更新後ドキュメント
- * @remarks 空ターゲットの行があればそれを埋め、なければ一意なイベント名を追加する。
+ * @remarks
+ * 空ターゲットの行があればそれを埋め、なければ一意なイベント名を追加する。
+ * `events` が未定義の Wait は空マップとして扱い、新規イベント行を追加する。
  */
 export function connectWaitEventTarget(
   document: DefinitionGraphDocument,
@@ -88,7 +90,8 @@ export function connectWaitEventTarget(
     return document;
   }
 
-  const current = { ...node.events };
+  const current: Record<string, string> =
+    node.events === undefined ? {} : { ...node.events };
   const emptyKey = Object.entries(current).find(([, target]) => target.trim().length === 0)?.[0];
   if (emptyKey === undefined) {
     current[allocateEventKey(current)] = targetNodeName;
@@ -185,6 +188,7 @@ export function renameWaitEventKey(
  * @param document 定義グラフドキュメント
  * @param nodeName 対象 Wait ノード名
  * @returns 更新後ドキュメント
+ * @remarks `events` が未定義の Wait は空マップとして扱い、新規行を追加する。
  */
 export function addWaitEventRow(
   document: DefinitionGraphDocument,
@@ -194,7 +198,8 @@ export function addWaitEventRow(
   if (node?.type !== "wait") {
     return document;
   }
-  const current = { ...node.events };
+  const current: Record<string, string> =
+    node.events === undefined ? {} : { ...node.events };
   current[allocateEventKey(current)] = "";
   return setWaitEvents(document, nodeName, current);
 }

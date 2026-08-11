@@ -140,6 +140,18 @@ describe("connectWaitEventTarget", () => {
     // Assert
     expect(after).toBe(before);
   });
+
+  it("events 未定義の Wait は空マップとして新規イベント行を追加する", () => {
+    // Arrange
+    const before = doc([{ name: "w1", type: "wait" }]);
+
+    // Act
+    const after = connectWaitEventTarget(before, "w1", "end");
+
+    // Assert
+    expect(after.nodes[0]?.events).toEqual({ event1: "end" });
+    expect(after.nodes[0]?.event).toBeUndefined();
+  });
 });
 
 describe("removeWaitEvent / setWaitEventTarget", () => {
@@ -211,5 +223,16 @@ describe("renameWaitEventKey / addWaitEventRow", () => {
 
     // Assert
     expect(after.nodes[0]?.events).toEqual({ event1: "a", event2: "" });
+  });
+
+  it("events 未定義の Wait にも空行を追加できる", () => {
+    // Arrange
+    const before = doc([{ name: "w1", type: "wait" }]);
+
+    // Act
+    const after = addWaitEventRow(before, "w1");
+
+    // Assert
+    expect(after.nodes[0]?.events).toEqual({ event1: "" });
   });
 });
