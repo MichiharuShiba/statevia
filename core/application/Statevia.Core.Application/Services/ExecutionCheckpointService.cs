@@ -321,6 +321,9 @@ internal sealed class ExecutionCheckpointService(
         if (skippedStalePersist)
             return;
 
+        // fencing 喪失時もローカル所有と Engine は必ず破棄する（docs/concepts/durability.md）。
+        // DB の owner 列は触らない: TryUpsert 失敗は世代不一致＝他 Worker が正本のまま残すため。
+        // メモリだけ Clear するのは「このプロセスが所有を主張しなくなる」ための意図的な非対称である。
         ownership.Clear(executionId);
         engine.Unload(engineExecutionId);
 
@@ -410,6 +413,7 @@ internal sealed class ExecutionCheckpointService(
                                 request.UpdatedAt),
                             innerCt)
                         .ConfigureAwait(false);
+                    // false = 世代不一致。DB 所有は勝者側に残し、呼び出し側でローカル Clear/Unload する。
                     if (!upserted)
                         return true;
 
