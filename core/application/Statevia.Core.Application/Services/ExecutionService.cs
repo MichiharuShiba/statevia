@@ -19,6 +19,9 @@ internal sealed class ExecutionService : IExecutionService
     /// </summary>
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> PersistUnloadGates = new();
 
+    /// <summary>HTTP 204 No Content。</summary>
+    private const int HttpStatus204NoContent = 204;
+
     /// <summary>実行グラフ JSON のプロパティ名（投影・Engine export 共通）。</summary>
     private static class ExecutionGraphJsonProperties
     {
@@ -30,12 +33,6 @@ internal sealed class ExecutionService : IExecutionService
         internal const string StartedAt = "startedAt";
         internal const string NodeType = "nodeType";
     }
-
-    /// <summary>HTTP 201 Created。</summary>
-    private const int HttpStatus201Created = 201;
-
-    /// <summary>HTTP 204 No Content。</summary>
-    private const int HttpStatus204NoContent = 204;
 
     private readonly IExecutionEngine _engine;
     private readonly IDisplayIdService _displayIds;
@@ -63,6 +60,7 @@ internal sealed class ExecutionService : IExecutionService
     private readonly ExecutionQueryService _query;
     private readonly ExecutionIdempotencyService _idempotency;
     private readonly ExecutionProjectionOrchestrator _projection;
+    private readonly ExecutionLifecycleCommandService _lifecycle;
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Major Code Smell",
@@ -92,6 +90,7 @@ internal sealed class ExecutionService : IExecutionService
         ExecutionQueryService query,
         ExecutionIdempotencyService idempotency,
         ExecutionProjectionOrchestrator projection,
+        ExecutionLifecycleCommandService lifecycle,
         IExecutionWorkQueue? workQueue = null,
         ExecutionOwnershipTracker? ownershipTracker = null,
         IForkChildExecutionCoordinator? forkChildCoordinator = null)
@@ -121,440 +120,24 @@ internal sealed class ExecutionService : IExecutionService
         _query = query;
         _idempotency = idempotency;
         _projection = projection;
+        _lifecycle = lifecycle;
         _forkChildCoordinator = forkChildCoordinator;
     }
 
-    public async Task<ExecutionResponse> StartAsync(
+    /// <inheritdoc />
+    public Task<ExecutionResponse> StartAsync(
         StartExecutionRequest request,
         string? idempotencyKey,
         CommandRequestContext requestContext,
-        CancellationToken ct)
-    {
-        ArgumentNullException.ThrowIfNull(requestContext);
-        await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
-
-        var tenantKey = _tenantContext.GetRequiredTenantKey();
-        var requestHash = ComputeStartRequestHash(request);
-        var dedupKey = _idempotency.CreateKey(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path, requestHash);
-
-        var cachedStart = await _idempotency.TryGetIdempotentStartResponseAsync(dedupKey, requestHash, ct).ConfigureAwait(false);
-        if (cachedStart is not null)
-        {
-            return cachedStart;
-        }
-
-        var defUuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, request.DefinitionId!, ct).ConfigureAwait(false);
-        if (defUuid is null)
-            throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
-
-        var tenantId = _tenantContext.GetRequiredTenantId();
-        var versionRow = await ResolveStartDefinitionVersionAsync(tenantId, defUuid.Value, request, ct).ConfigureAwait(false);
-        if (versionRow is null)
-            throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
-
-        await EnsureCanExecuteOnDefinitionAsync(tenantId, defUuid.Value, ct).ConfigureAwait(false);
-
-        // HTTP 受理経路: キューがある場合は Engine を回さず Start work item を投入する。
-        // Worker 文脈（またはテストでキュー未注入）は従来どおり同一プロセスで実行する。
-        if (_workQueue is not null
-            && !string.Equals(requestContext.Method, "WORKER", StringComparison.Ordinal))
-        {
-            return await AcceptStartAndEnqueueAsync(
-                    request,
-                    requestHash,
-                    dedupKey,
-                    tenantId,
-                    defUuid.Value,
-                    versionRow,
-                    ct)
-                .ConfigureAwait(false);
-        }
-
-        return await ExecuteStartInProcessAsync(
-                new ExecuteStartInProcessArgs(
-                    request,
-                    requestHash,
-                    dedupKey,
-                    tenantId,
-                    defUuid.Value,
-                    versionRow,
-                    ExecutionId: null),
-                ct)
-            .ConfigureAwait(false);
-    }
-
-    /// <summary>実行行を受理し <see cref="ExecutionWorkItemKinds.Start"/> を enqueue する。</summary>
-    private async Task<ExecutionResponse> AcceptStartAndEnqueueAsync(
-        StartExecutionRequest request,
-        string requestHash,
-        CommandDedupKey? dedupKey,
-        Guid tenantId,
-        Guid definitionId,
-        DefinitionVersionRow versionRow,
-        CancellationToken ct)
-    {
-        var executionId = _idGenerator.NewSequentialGuid();
-        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, definitionId.ToString("D"), ct).ConfigureAwait(false)
-            ?? definitionId.ToString("D");
-        const string emptyGraphJson = """{"nodes":[],"edges":[]}""";
-
-        var response = await _executor.ExecuteReadCommittedAsync(
-            async (uow, innerCt) =>
-            {
-                var createdAt = DateTime.UtcNow;
-                var securitySnapshot = await _snapshotFactory
-                    .CaptureForStartAsync(tenantId, definitionId, createdAt, innerCt)
-                    .ConfigureAwait(false);
-                var securitySnapshotJson = ExecutionSecuritySnapshotJson.Serialize(securitySnapshot);
-                var displayId = await _displayIdWrites
-                    .AllocateAsync(uow, DisplayIdResourceTypes.Execution, executionId, innerCt)
-                    .ConfigureAwait(false);
-
-                var executionRow = new ExecutionRow
-                {
-                    ExecutionId = executionId,
-                    TenantId = tenantId,
-                    DefinitionId = definitionId,
-                    DefinitionVersionId = versionRow.DefinitionVersionId,
-                    Status = ExecutionProjectionStatuses.Running,
-                    StartedAt = createdAt,
-                    UpdatedAt = createdAt,
-                    CancelRequested = false,
-                    RestartLost = false,
-                    SecuritySnapshotJson = securitySnapshotJson
-                };
-                var snapshotRow = new ExecutionGraphSnapshotRow
-                {
-                    ExecutionId = executionId,
-                    GraphJson = emptyGraphJson,
-                    UpdatedAt = createdAt
-                };
-                var accepted = new ExecutionResponse
-                {
-                    DisplayId = displayId,
-                    ResourceId = executionId,
-                    GraphId = graphId,
-                    Status = ExecutionProjectionStatuses.Running,
-                    StartedAt = createdAt
-                };
-
-                await _executions.AddExecutionAndSnapshotAsync(uow, executionRow, snapshotRow, innerCt).ConfigureAwait(false);
-
-                var startedPayload = JsonSerializer.Serialize(
-                    new
-                    {
-                        definitionId = definitionId.ToString(),
-                        definitionVersionId = versionRow.DefinitionVersionId.ToString(),
-                        definitionVersion = versionRow.Version,
-                        tenantId,
-                        startedByPrincipalId = securitySnapshot.StartedByPrincipalId,
-                        permissionSetHash = securitySnapshot.PermissionSetHash,
-                        securityModelVersion = securitySnapshot.SecurityModelVersion,
-                        evaluationMode = securitySnapshot.EvaluationMode.ToString()
-                    },
-                    JsonSerializerProfiles.CamelCase);
-                await _eventStore
-                    .AppendAsync(uow, executionId, EventStoreEventType.WorkflowStarted, startedPayload, innerCt)
-                    .ConfigureAwait(false);
-
-                if (dedupKey is { } saveKey)
-                {
-                    var responseJson = JsonSerializer.Serialize(accepted, JsonSerializerProfiles.CamelCase);
-                    await _dedup.SaveAsync(
-                        uow,
-                        new CommandDedupRow
-                        {
-                            DedupKey = saveKey.DedupKey,
-                            Endpoint = saveKey.Endpoint,
-                            IdempotencyKey = saveKey.IdempotencyKey,
-                            RequestHash = requestHash,
-                            StatusCode = HttpStatus201Created,
-                            ResponseBody = responseJson,
-                            CreatedAt = createdAt,
-                            ExpiresAt = createdAt.AddHours(24)
-                        },
-                        innerCt).ConfigureAwait(false);
-                }
-
-                await _workQueue!.EnqueueAsync(
-                    uow,
-                    new ExecutionWorkItemRow
-                    {
-                        WorkItemId = _idGenerator.NewSequentialGuid(),
-                        ExecutionId = executionId,
-                        Kind = ExecutionWorkItemKinds.Start,
-                        Payload = JsonSerializer.Serialize(
-                            new ExecutionStartWorkItemPayload(executionId, request),
-                            ExecutionWorkItemPayloadJson.Options),
-                        AvailableAt = createdAt,
-                        Attempts = 0,
-                        CreatedAt = createdAt
-                    },
-                    innerCt).ConfigureAwait(false);
-
-                return accepted;
-            },
-            ct).ConfigureAwait(false);
-
-        return response;
-    }
-
-    /// <summary>同一プロセス内で Engine を起動し投影する（Worker / テスト互換）。</summary>
-    private async Task<ExecutionResponse> ExecuteStartInProcessAsync(
-        ExecuteStartInProcessArgs args,
-        CancellationToken ct)
-    {
-        var compiled = RestoreCompiledDefinitionFromVersion(args.VersionRow);
-        var resolvedExecutionId = args.ExecutionId ?? _idGenerator.NewSequentialGuid();
-        var engineId = resolvedExecutionId.ToString();
-        _engine.Start(compiled, engineId, args.Request.Input, args.Request.InitialState);
-
-        var graphId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, args.DefinitionId.ToString("D"), ct).ConfigureAwait(false)
-            ?? args.DefinitionId.ToString("D");
-
-        try
-        {
-            var startResult = await _executor.ExecuteReadCommittedAsync(
-                async (uow, innerCt) =>
-                {
-                    var createdAt = DateTime.UtcNow;
-                    var startSnapshot = _engine.GetSnapshot(engineId)
-                        ?? throw new InvalidOperationException(
-                            $"Cannot project execution '{resolvedExecutionId}': engine snapshot is missing after Start.");
-                    var status = ExecutionProjectionOrchestrator.MapStatus(startSnapshot);
-                    var graphJson = _engine.ExportExecutionGraph(engineId);
-
-                    ExecutionResponse response;
-                    if (args.ExecutionId is null)
-                    {
-                        // 同一プロセス受理: セキュリティ snapshot と WorkflowStarted をここで確定する。
-                        var securitySnapshot = await _snapshotFactory
-                            .CaptureForStartAsync(args.TenantId, args.DefinitionId, createdAt, innerCt)
-                            .ConfigureAwait(false);
-                        var securitySnapshotJson = ExecutionSecuritySnapshotJson.Serialize(securitySnapshot);
-
-                        var startedPayload = JsonSerializer.Serialize(
-                            new
-                            {
-                                definitionId = args.DefinitionId.ToString(),
-                                definitionVersionId = args.VersionRow.DefinitionVersionId.ToString(),
-                                definitionVersion = args.VersionRow.Version,
-                                tenantId = args.TenantId,
-                                startedByPrincipalId = securitySnapshot.StartedByPrincipalId,
-                                permissionSetHash = securitySnapshot.PermissionSetHash,
-                                securityModelVersion = securitySnapshot.SecurityModelVersion,
-                                evaluationMode = securitySnapshot.EvaluationMode.ToString()
-                            },
-                            JsonSerializerProfiles.CamelCase);
-
-                        var displayId = await _displayIdWrites
-                            .AllocateAsync(uow, DisplayIdResourceTypes.Execution, resolvedExecutionId, innerCt)
-                            .ConfigureAwait(false);
-
-                        var executionRow = new ExecutionRow
-                        {
-                            ExecutionId = resolvedExecutionId,
-                            TenantId = args.TenantId,
-                            DefinitionId = args.DefinitionId,
-                            DefinitionVersionId = args.VersionRow.DefinitionVersionId,
-                            Status = status,
-                            StartedAt = createdAt,
-                            UpdatedAt = createdAt,
-                            CancelRequested = false,
-                            RestartLost = false,
-                            SecuritySnapshotJson = securitySnapshotJson
-                        };
-                        var snapshotRow = new ExecutionGraphSnapshotRow
-                        {
-                            ExecutionId = resolvedExecutionId,
-                            GraphJson = graphJson,
-                            UpdatedAt = createdAt
-                        };
-                        response = new ExecutionResponse
-                        {
-                            DisplayId = displayId,
-                            ResourceId = resolvedExecutionId,
-                            GraphId = graphId,
-                            Status = status,
-                            StartedAt = createdAt
-                        };
-
-                        await _executions.AddExecutionAndSnapshotAsync(uow, executionRow, snapshotRow, innerCt).ConfigureAwait(false);
-                        await _eventStore
-                            .AppendAsync(uow, resolvedExecutionId, EventStoreEventType.WorkflowStarted, startedPayload, innerCt)
-                            .ConfigureAwait(false);
-
-                        if (args.DedupKey is { } saveKey)
-                        {
-                            var responseJson = JsonSerializer.Serialize(response, JsonSerializerProfiles.CamelCase);
-                            await _dedup.SaveAsync(
-                                uow,
-                                new CommandDedupRow
-                                {
-                                    DedupKey = saveKey.DedupKey,
-                                    Endpoint = saveKey.Endpoint,
-                                    IdempotencyKey = saveKey.IdempotencyKey,
-                                    RequestHash = args.RequestHash,
-                                    StatusCode = HttpStatus201Created,
-                                    ResponseBody = responseJson,
-                                    CreatedAt = createdAt,
-                                    ExpiresAt = createdAt.AddHours(24)
-                                },
-                                innerCt).ConfigureAwait(false);
-                        }
-                    }
-                    else
-                    {
-                        // Worker: HTTP 受理時に snapshot / WorkflowStarted 済み。投影のみ更新する。
-                        var existing = await _executions.GetByIdAsync(uow, args.TenantId, resolvedExecutionId, innerCt).ConfigureAwait(false)
-                            ?? throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-                        var displayId = await _displayIds.GetDisplayIdAsync(
-                                DisplayIdResourceTypes.Execution,
-                                resolvedExecutionId.ToString("D"),
-                                innerCt)
-                            .ConfigureAwait(false)
-                            ?? resolvedExecutionId.ToString("D");
-                        response = new ExecutionResponse
-                        {
-                            DisplayId = displayId,
-                            ResourceId = resolvedExecutionId,
-                            GraphId = graphId,
-                            Status = status,
-                            StartedAt = existing.StartedAt
-                        };
-                        await _executions
-                            .UpdateExecutionAndSnapshotAsync(
-                                uow,
-                                resolvedExecutionId,
-                                status,
-                                cancelRequested: existing.CancelRequested,
-                                graphJson,
-                                innerCt)
-                            .ConfigureAwait(false);
-                    }
-
-                    await _projection.SyncOperationalProjectionAsync(
-                            uow,
-                            resolvedExecutionId,
-                            args.TenantId,
-                            status,
-                            graphJson,
-                            nodeIdToClear: null,
-                            innerCt)
-                        .ConfigureAwait(false);
-
-                    var checkpointSaved = false;
-                    if (string.Equals(status, ExecutionProjectionStatuses.Running, StringComparison.Ordinal)
-                        && ExecutionOperationalProjectionSync.HasDurableWaits(graphJson))
-                    {
-                        checkpointSaved = await UpsertRuntimeCheckpointAsync(uow, engineId, resolvedExecutionId, innerCt)
-                            .ConfigureAwait(false);
-                    }
-
-                    return (Response: response, UnloadAfterCommit: checkpointSaved);
-                },
-                ct).ConfigureAwait(false);
-
-            if (startResult.UnloadAfterCommit)
-            {
-                _engine.Unload(engineId);
-                _logger.CheckpointUnloadedAfterStartSync(resolvedExecutionId);
-            }
-
-            return startResult.Response;
-        }
-        catch
-        {
-            // DB 反映前に失敗した場合、再試行で二重 Load しないようローカル Engine を捨てる。
-            _engine.Unload(engineId);
-            throw;
-        }
-    }
+        CancellationToken ct) =>
+        _lifecycle.StartAsync(request, idempotencyKey, requestContext, ct);
 
     /// <inheritdoc />
-    public async Task<ExecutionResponse> ExecuteQueuedStartAsync(
+    public Task<ExecutionResponse> ExecuteQueuedStartAsync(
         Guid executionId,
         StartExecutionRequest request,
-        CancellationToken ct)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
-
-        var tenantId = _tenantContext.GetRequiredTenantId();
-        var execution = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _executions.GetByIdAsync(uow, tenantId, executionId, innerCt),
-            ct).ConfigureAwait(false);
-        if (execution is null)
-            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-
-        var versionRow = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _definitions.GetVersionForExecutionByIdAsync(
-                uow,
-                tenantId,
-                execution.DefinitionVersionId,
-                innerCt),
-            ct).ConfigureAwait(false);
-        if (versionRow is null)
-            throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
-
-        return await ExecuteStartInProcessAsync(
-                new ExecuteStartInProcessArgs(
-                    request,
-                    RequestHash: string.Empty,
-                    DedupKey: null,
-                    tenantId,
-                    execution.DefinitionId,
-                    versionRow,
-                    executionId),
-                ct)
-            .ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Engine から checkpoint を export し、同一 UoW へ upsert する。
-    /// </summary>
-    /// <returns>export できて upsert したとき <see langword="true"/>。</returns>
-    private async Task<bool> UpsertRuntimeCheckpointAsync(
-        ICoreUnitOfWork uow,
-        string engineExecutionId,
-        Guid executionId,
-        CancellationToken ct)
-    {
-        var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
-        if (checkpoint is null)
-        {
-            _logger.ExportCheckpointNullWithDurableWaits(engineExecutionId);
-            return false;
-        }
-
-        var json = JsonSerializer.Serialize(checkpoint, JsonSerializerProfiles.CamelCase);
-        var updatedAt = DateTime.UtcNow;
-        if (_ownership.TryGet(executionId, out _, out var generation))
-        {
-            return await _checkpointStore.TryUpsertRuntimeWithGenerationAsync(
-                    uow,
-                    new ExecutionCheckpointRuntimeUpsert(
-                        executionId,
-                        generation,
-                        json,
-                        checkpoint.SchemaVersion,
-                        updatedAt),
-                    ct)
-                .ConfigureAwait(false);
-        }
-
-        await _checkpointStore.UpsertAsync(
-            uow,
-            new ExecutionCheckpointDocument
-            {
-                ExecutionId = executionId,
-                CheckpointJson = json,
-                SchemaVersion = checkpoint.SchemaVersion,
-                UpdatedAt = updatedAt
-            },
-            ct).ConfigureAwait(false);
-        return true;
-    }
+        CancellationToken ct) =>
+        _lifecycle.ExecuteQueuedStartAsync(executionId, request, ct);
 
     public Task<PagedResult<ExecutionResponse>> ListPagedAsync(
         ExecutionListPageQuery query,
@@ -573,180 +156,13 @@ internal sealed class ExecutionService : IExecutionService
     public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
         _query.TryGetSnapshotGraphJsonByExecutionIdAsync(executionId, ct);
 
-    public async Task CancelAsync(
+    /// <inheritdoc />
+    public Task CancelAsync(
         string idOrUuid,
         string? idempotencyKey,
         CommandRequestContext requestContext,
-        CancellationToken ct)
-    {
-        ArgumentNullException.ThrowIfNull(requestContext);
-
-        var tenantKey = _tenantContext.GetRequiredTenantKey();
-        var tenantId = _tenantContext.GetRequiredTenantId();
-        var dedupKey = _idempotency.CreateKey(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path);
-
-        if (await _idempotency.HasValidCommandDedupAsync(dedupKey, ct).ConfigureAwait(false))
-            return;
-
-        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
-        if (uuid is null)
-            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-
-        var execution = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _executions.GetByIdAsync(uow, tenantId, uuid.Value, innerCt),
-            ct).ConfigureAwait(false);
-        if (execution is null)
-            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-
-        await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
-
-        // HTTP 受理経路: キューがある場合は Engine を回さず Cancel work item を投入する。
-        if (_workQueue is not null
-            && !string.Equals(requestContext.Method, "WORKER", StringComparison.Ordinal))
-        {
-            await AcceptCancelAndEnqueueAsync(uuid.Value, dedupKey, ct).ConfigureAwait(false);
-            return;
-        }
-
-        // WORKER / 同期 Cancel: 未終端子へ Cancel をカスケード（ネストは各層で再帰）。
-        if (_forkChildCoordinator is not null)
-        {
-            await _forkChildCoordinator
-                .CascadeCancelToRunningChildrenAsync(uuid.Value, ct)
-                .ConfigureAwait(false);
-        }
-
-        await _projection.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
-
-        var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
-
-        if (await _idempotency.TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
-            return;
-
-        await EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
-
-        var cancelApply = await _engine.CancelAsync(uuid.Value.ToString(), clientEventId).ConfigureAwait(false);
-        var skipCancelEventAppend = cancelApply.IsAlreadyApplied;
-
-        var (projStatus, projCancel, projGraphJson) = _projection.BuildProjectionFromEngine(uuid.Value);
-        var cancelPayload = JsonSerializer.Serialize(
-            new { tenantId },
-            JsonSerializerProfiles.CamelCase);
-
-        await _mutationPersistence.ExecuteSerializableWithRetryAsync(
-            tenantId,
-            uuid.Value,
-            clientEventId,
-            async (uow, ctInner) =>
-            {
-                await _executions
-                    .UpdateExecutionAndSnapshotAsync(uow, uuid.Value, projStatus, projCancel, projGraphJson, ctInner)
-                    .ConfigureAwait(false);
-                await _projection.SyncOperationalProjectionAsync(
-                        uow,
-                        uuid.Value,
-                        tenantId,
-                        projStatus,
-                        projGraphJson,
-                        nodeIdToClear: null,
-                        ctInner)
-                    .ConfigureAwait(false);
-                if (!skipCancelEventAppend)
-                {
-                    await _eventStore
-                        .AppendAsync(uow, uuid.Value, EventStoreEventType.WorkflowCancelled, cancelPayload, ctInner)
-                        .ConfigureAwait(false);
-                }
-                else
-                {
-                    await _eventStore.TryAppendIfAbsentByClientEventAsync(
-                        uow,
-                        uuid.Value,
-                        clientEventId,
-                        EventStoreEventType.WorkflowCancelled,
-                        cancelPayload,
-                        ctInner).ConfigureAwait(false);
-                }
-
-                if (dedupKey is { } saveKey)
-                {
-                    var now = DateTime.UtcNow;
-                    await _dedup.SaveAsync(
-                        uow,
-                        new CommandDedupRow
-                        {
-                            DedupKey = saveKey.DedupKey,
-                            Endpoint = saveKey.Endpoint,
-                            IdempotencyKey = saveKey.IdempotencyKey,
-                            RequestHash = null,
-                            StatusCode = HttpStatus204NoContent,
-                            ResponseBody = null,
-                            CreatedAt = now,
-                            ExpiresAt = now.AddHours(24)
-                        },
-                        ctInner).ConfigureAwait(false);
-                }
-
-                var nowUtc = DateTime.UtcNow;
-                await _eventDeliveryDedup.TryUpdateStatusAsync(
-                    uow,
-                    tenantId,
-                    uuid.Value,
-                    clientEventId,
-                    new EventDeliveryDedupStatusUpdate(
-                        EventDeliveryDedupStatuses.Applied,
-                        nowUtc,
-                        AppliedAt: nowUtc,
-                        ErrorCode: null),
-                    ctInner).ConfigureAwait(false);
-            },
-            ct).ConfigureAwait(false);
-    }
-
-    /// <summary>Cancel work item を enqueue し、任意で dedup を保存する。</summary>
-    private async Task AcceptCancelAndEnqueueAsync(
-        Guid executionId,
-        CommandDedupKey? dedupKey,
-        CancellationToken ct)
-    {
-        var now = DateTime.UtcNow;
-        await _executor.ExecuteReadCommittedAsync(
-            async (uow, innerCt) =>
-            {
-                if (dedupKey is { } saveKey)
-                {
-                    await _dedup.SaveAsync(
-                        uow,
-                        new CommandDedupRow
-                        {
-                            DedupKey = saveKey.DedupKey,
-                            Endpoint = saveKey.Endpoint,
-                            IdempotencyKey = saveKey.IdempotencyKey,
-                            RequestHash = null,
-                            StatusCode = HttpStatus204NoContent,
-                            ResponseBody = null,
-                            CreatedAt = now,
-                            ExpiresAt = now.AddHours(24)
-                        },
-                        innerCt).ConfigureAwait(false);
-                }
-
-                await _workQueue!.EnqueueAsync(
-                    uow,
-                    new ExecutionWorkItemRow
-                    {
-                        WorkItemId = _idGenerator.NewSequentialGuid(),
-                        ExecutionId = executionId,
-                        Kind = ExecutionWorkItemKinds.Cancel,
-                        Payload = "{}",
-                        AvailableAt = now,
-                        Attempts = 0,
-                        CreatedAt = now
-                    },
-                    innerCt).ConfigureAwait(false);
-            },
-            ct).ConfigureAwait(false);
-    }
+        CancellationToken ct) =>
+        _lifecycle.CancelAsync(idOrUuid, idempotencyKey, requestContext, ct);
 
     /// <inheritdoc />
     public async Task PersistCheckpointKeepLoadedAsync(string engineExecutionId, CancellationToken ct)
@@ -1026,7 +442,7 @@ internal sealed class ExecutionService : IExecutionService
         if (await _idempotency.TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
-        await EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
+        await _lifecycle.EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
 
         // PublishEvent 復帰時点ではグラフ上の Wait 完了が未反映になり得るため、発行前の nodeId で先行削除する。
         // グラフ解析失敗時は永続化済み wait 行からフォールバック解決する（Applied 時のみ）。
@@ -1259,7 +675,7 @@ internal sealed class ExecutionService : IExecutionService
             return;
         }
 
-        await EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
+        await _lifecycle.EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
 
         // Resume 正本: nodeId + eventName。wait 行は nodeId で先行削除する。
         // 許可外イベント・非アクティブ Wait などは 422。
@@ -1360,7 +776,7 @@ internal sealed class ExecutionService : IExecutionService
                     }
                     else
                     {
-                        await UpsertRuntimeCheckpointAsync(
+                        await _lifecycle.UpsertRuntimeCheckpointAsync(
                                 uow,
                                 request.EngineId,
                                 request.ExecutionId,
@@ -1526,7 +942,7 @@ internal sealed class ExecutionService : IExecutionService
         if (_forkChildCoordinator is null)
             return;
 
-        if (IsTerminalExecutionProjectionStatus(execution.Status))
+        if (ExecutionLifecycleCommandService.IsTerminalExecutionProjectionStatus(execution.Status))
             return;
 
         var evaluation = await _forkChildCoordinator
@@ -1592,7 +1008,7 @@ internal sealed class ExecutionService : IExecutionService
                 ct)
             .ConfigureAwait(false);
         if (document is null
-            || !TryParseRuntimeCheckpoint(document.CheckpointJson, out var checkpoint, out _))
+            || !ExecutionLifecycleCommandService.TryParseRuntimeCheckpoint(document.CheckpointJson, out var checkpoint, out _))
         {
             return false;
         }
@@ -1725,7 +1141,7 @@ internal sealed class ExecutionService : IExecutionService
         ArgumentNullException.ThrowIfNull(evaluation.CandidateInputs);
         _logger.ForkJoinSatisfied(parentExecutionId, forkNodeId, evaluation.JoinState);
 
-        await EnsureEngineRuntimeLoadedForMutationAsync(parentExecutionId, execution, ct).ConfigureAwait(false);
+        await _lifecycle.EnsureEngineRuntimeLoadedForMutationAsync(parentExecutionId, execution, ct).ConfigureAwait(false);
 
         var engineId = parentExecutionId.ToString();
         IReadOnlyList<PhysicalJoinContextFragment>? fragments = null;
@@ -1815,7 +1231,7 @@ internal sealed class ExecutionService : IExecutionService
                     }
                     else
                     {
-                        await UpsertRuntimeCheckpointAsync(uow, engineId, parentExecutionId, innerCt)
+                        await _lifecycle.UpsertRuntimeCheckpointAsync(uow, engineId, parentExecutionId, innerCt)
                             .ConfigureAwait(false);
                     }
                 },
@@ -1843,11 +1259,11 @@ internal sealed class ExecutionService : IExecutionService
 
         await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
-        if (IsTerminalExecutionProjectionStatus(execution.Status))
+        if (ExecutionLifecycleCommandService.IsTerminalExecutionProjectionStatus(execution.Status))
             return;
 
         // Worker が BeginOwnedSession 済み前提。hydrate 後、完了フロンティア／PendingWaits から継続する。
-        await EnsureEngineRuntimeLoadedForMutationAsync(executionId, execution, ct).ConfigureAwait(false);
+        await _lifecycle.EnsureEngineRuntimeLoadedForMutationAsync(executionId, execution, ct).ConfigureAwait(false);
 
         var engineId = executionId.ToString();
         // ImportCheckpoint が起動した継続（Wait 復元または完了フロンティア遷移）が落ち着くのを待つ。
@@ -1882,7 +1298,7 @@ internal sealed class ExecutionService : IExecutionService
                 }
                 else
                 {
-                    await UpsertRuntimeCheckpointAsync(uow, engineId, executionId, innerCt)
+                    await _lifecycle.UpsertRuntimeCheckpointAsync(uow, engineId, executionId, innerCt)
                         .ConfigureAwait(false);
                 }
             },
@@ -2037,7 +1453,7 @@ internal sealed class ExecutionService : IExecutionService
                         .GetByExecutionIdAsync(uow, executionId, innerCt)
                         .ConfigureAwait(false);
                     if (runtime is null
-                        || !TryParseRuntimeCheckpoint(runtime.CheckpointJson, out var checkpoint, out _)
+                        || !ExecutionLifecycleCommandService.TryParseRuntimeCheckpoint(runtime.CheckpointJson, out var checkpoint, out _)
                         || checkpoint.PendingWaits.Count == 0)
                     {
                         return;
@@ -2177,135 +1593,6 @@ internal sealed class ExecutionService : IExecutionService
         return false;
     }
 
-    private Task<DefinitionVersionRow?> ResolveStartDefinitionVersionAsync(
-        Guid tenantId,
-        Guid definitionId,
-        StartExecutionRequest request,
-        CancellationToken ct) =>
-        _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => ResolveStartDefinitionVersionInUowAsync(uow, tenantId, definitionId, request, innerCt),
-            ct);
-
-    private async Task<DefinitionVersionRow?> ResolveStartDefinitionVersionInUowAsync(
-        ICoreUnitOfWork uow,
-        Guid tenantId,
-        Guid definitionId,
-        StartExecutionRequest request,
-        CancellationToken ct)
-    {
-        if (request.DefinitionVersionId is { } versionId)
-            return await ResolveVersionByIdForAdmissionAsync(uow, tenantId, definitionId, versionId, ct)
-                .ConfigureAwait(false);
-
-        if (request.DefinitionVersion is { } versionNumber)
-            return await ResolveVersionByNumberForAdmissionAsync(uow, tenantId, definitionId, versionNumber, ct)
-                .ConfigureAwait(false);
-
-        var latest = await _definitions
-            .GetLatestForApiAsync(uow, tenantId, definitionId, ct)
-            .ConfigureAwait(false);
-        return latest?.Version;
-    }
-
-    private async Task<DefinitionVersionRow?> ResolveVersionByIdForAdmissionAsync(
-        ICoreUnitOfWork uow,
-        Guid tenantId,
-        Guid definitionId,
-        Guid versionId,
-        CancellationToken ct)
-    {
-        var byId = await _definitions
-            .GetVersionForExecutionByIdAsync(uow, tenantId, versionId, ct)
-            .ConfigureAwait(false);
-        if (byId is null || byId.DefinitionId != definitionId)
-            return null;
-
-        return await EnsureActiveParentForAdmissionAsync(uow, tenantId, definitionId, ct).ConfigureAwait(false)
-            ? byId
-            : null;
-    }
-
-    private async Task<DefinitionVersionRow?> ResolveVersionByNumberForAdmissionAsync(
-        ICoreUnitOfWork uow,
-        Guid tenantId,
-        Guid definitionId,
-        int versionNumber,
-        CancellationToken ct)
-    {
-        var byNumber = await _definitions
-            .GetVersionForExecutionAsync(uow, tenantId, definitionId, versionNumber, ct)
-            .ConfigureAwait(false);
-        if (byNumber is null)
-            return null;
-
-        return await EnsureActiveParentForAdmissionAsync(uow, tenantId, definitionId, ct).ConfigureAwait(false)
-            ? byNumber
-            : null;
-    }
-
-    private async Task<bool> EnsureActiveParentForAdmissionAsync(
-        ICoreUnitOfWork uow,
-        Guid tenantId,
-        Guid definitionId,
-        CancellationToken ct)
-    {
-        var active = await _definitions
-            .GetLatestForApiAsync(uow, tenantId, definitionId, ct)
-            .ConfigureAwait(false);
-        return active is not null;
-    }
-
-    private Task EnsureCanExecuteOnDefinitionAsync(
-        Guid tenantId,
-        Guid definitionId,
-        CancellationToken ct) =>
-        _executor.ExecuteReadOnlyAsync(
-            async (uow, innerCt) =>
-            {
-                var projectId = await _definitions
-                    .ResolveProjectIdAsync(uow, tenantId, definitionId, innerCt)
-                    .ConfigureAwait(false);
-                if (projectId is null)
-                    throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
-
-                await _projectAuth
-                    .EnsureCanExecuteAsync(uow, tenantId, projectId.Value, innerCt)
-                    .ConfigureAwait(false);
-            },
-            ct);
-
-    private CompiledWorkflowDefinition RestoreCompiledDefinitionFromVersion(DefinitionVersionRow versionRow)
-    {
-        try
-        {
-            return _compiler.RestoreFromStoredVersion(versionRow.SourceYaml, versionRow.CompiledJson);
-        }
-        catch (ArgumentException ex)
-        {
-            throw new InvalidOperationException("Stored definition version is invalid.", ex);
-        }
-    }
-
-    private static string ComputeStartRequestHash(StartExecutionRequest request)
-    {
-        var normalized = JsonSerializer.Serialize(
-            new
-            {
-                definitionId = request.DefinitionId,
-                definitionVersion = request.DefinitionVersion,
-                definitionVersionId = request.DefinitionVersionId,
-                input = request.Input
-            },
-            JsonSerializerProfiles.CamelCase);
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
-    }
-
-    /// <summary>
-    /// 投影が終了状態かどうかを、<c>executions.status</c> の文字列値から判定する。
-    /// </summary>
-    private static bool IsTerminalExecutionProjectionStatus(string status) =>
-        ExecutionProjectionStatuses.IsTerminal(status);
-
     /// <summary>
     /// 寿命表に従い checkpoint <b>内容</b>の破棄候補か。
     /// </summary>
@@ -2372,7 +1659,7 @@ internal sealed class ExecutionService : IExecutionService
         if (_ownership.TryGet(executionId, out _, out _))
         {
             // Worker 所有中。寿命表上は破棄候補でも lease 行は残し runtime だけ更新する。
-            _ = await UpsertRuntimeCheckpointAsync(uow, engineExecutionId, executionId, ct)
+            _ = await _lifecycle.UpsertRuntimeCheckpointAsync(uow, engineExecutionId, executionId, ct)
                 .ConfigureAwait(false);
             return false;
         }
@@ -2391,120 +1678,6 @@ internal sealed class ExecutionService : IExecutionService
             snapshot,
             RuntimePermissionRequirements.ExecutionsWrite,
             ct);
-    }
-
-    /// <summary>
-    /// キャンセル／イベント発行の適用直前に、エンジンへ実行をロードする（未ロードなら checkpoint から hydrate）。
-    /// </summary>
-    private async Task EnsureEngineRuntimeLoadedForMutationAsync(
-        Guid executionId,
-        ExecutionRow execution,
-        CancellationToken ct)
-    {
-        if (_engine.GetSnapshot(executionId.ToString()) is not null)
-            return;
-
-        if (IsTerminalExecutionProjectionStatus(execution.Status))
-        {
-            throw new ArgumentException(
-                "The execution is already in a terminal state in the database projection, but there is no in-memory instance in this API process. Cancel or event delivery cannot be applied.");
-        }
-
-        var checkpointDocument = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _checkpointStore.GetByExecutionIdAsync(uow, executionId, innerCt),
-            ct).ConfigureAwait(false);
-        if (checkpointDocument is null)
-        {
-            throw new ArgumentException(
-                "The execution state is not loaded in this API process and no runtime checkpoint was found.");
-        }
-
-        var versionRow = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _definitions.GetVersionForExecutionByIdAsync(
-                uow,
-                execution.TenantId,
-                execution.DefinitionVersionId,
-                innerCt),
-            ct).ConfigureAwait(false);
-        if (versionRow is null)
-        {
-            throw new InvalidOperationException(
-                $"Definition version '{execution.DefinitionVersionId}' was not found for execution '{executionId}'.");
-        }
-
-        var compiled = RestoreCompiledDefinitionFromVersion(versionRow);
-        if (!TryParseRuntimeCheckpoint(checkpointDocument.CheckpointJson, out var checkpoint, out var parseError))
-        {
-            _logger.RuntimeCheckpointInvalidForHydrate(
-                executionId,
-                checkpointDocument.CheckpointJson?.Length ?? 0);
-            if (parseError is not null)
-                _logger.RuntimeCheckpointDeserializeFailed(parseError, executionId);
-
-            throw new InvalidOperationException(
-                $"Stored runtime checkpoint for execution '{executionId:D}' is empty or invalid and cannot be hydrated.");
-        }
-
-        try
-        {
-            _engine.ImportCheckpoint(compiled, checkpoint);
-        }
-        catch (InvalidOperationException ex)
-        {
-            // 二重 hydrate 等はクライアント向け 422（ArgumentException）へ写像する。
-            throw new ArgumentException(ex.Message, ex);
-        }
-    }
-
-    /// <summary>
-    /// 永続 checkpoint JSON を hydrate 用に検証・デシリアライズする。
-    /// </summary>
-    /// <remarks>
-    /// <c>BeginOwnedSessionAsync</c> の seed <c>{}</c> や必須欠落は不正とし、Import しない。
-    /// </remarks>
-    private static bool TryParseRuntimeCheckpoint(
-        string? checkpointJson,
-        out ExecutionRuntimeCheckpoint checkpoint,
-        out Exception? parseError)
-    {
-        checkpoint = null!;
-        parseError = null;
-
-        if (string.IsNullOrWhiteSpace(checkpointJson))
-            return false;
-
-        var trimmed = checkpointJson.Trim();
-        if (trimmed is "{}" or "null")
-            return false;
-
-        try
-        {
-            var parsed = JsonSerializer.Deserialize<ExecutionRuntimeCheckpoint>(
-                checkpointJson,
-                JsonSerializerProfiles.CamelCase);
-            if (parsed is null
-                || string.IsNullOrWhiteSpace(parsed.ExecutionId)
-                || string.IsNullOrWhiteSpace(parsed.DefinitionName)
-                || parsed.ActiveStates is null
-                || parsed.Graph is null
-                || parsed.Join is null
-                || parsed.Context is null
-                || parsed.PendingWaits is null)
-            {
-                return false;
-            }
-
-            // 物理 Join 待ち中は ActiveStates / PendingWaits が空の正規断面になり得る（Fork Unload 後）。
-            // 空配列だけでは破損とみなさない（seed "{}" は上で拒否済み）。
-
-            checkpoint = parsed;
-            return true;
-        }
-        catch (JsonException ex)
-        {
-            parseError = ex;
-            return false;
-        }
     }
 
     /// <summary>
@@ -2654,7 +1827,7 @@ internal sealed class ExecutionService : IExecutionService
                     .GetByExecutionIdAsync(uow, request.ExecutionId, innerCt)
                     .ConfigureAwait(false);
                 if (existingCheckpoint is not null
-                    && TryParseRuntimeCheckpoint(existingCheckpoint.CheckpointJson, out var stored, out _)
+                    && ExecutionLifecycleCommandService.TryParseRuntimeCheckpoint(existingCheckpoint.CheckpointJson, out var stored, out _)
                     && IsRuntimeCheckpointLessAdvanced(request.Checkpoint, stored))
                 {
                     skippedStalePersist = true;
@@ -2806,7 +1979,7 @@ internal sealed class ExecutionService : IExecutionService
             executionId,
             ShouldDiscardRuntimeCheckpointAsync,
             DiscardOrRefreshRuntimeCheckpointAsync,
-            UpsertRuntimeCheckpointAsync,
+            _lifecycle.UpsertRuntimeCheckpointAsync,
             ct);
 
     /// <summary>
@@ -2989,13 +2162,4 @@ internal sealed class ExecutionService : IExecutionService
         return soleMatchingNodeId;
     }
 
-    /// <summary>同一プロセス Start の入力束。</summary>
-    private sealed record ExecuteStartInProcessArgs(
-        StartExecutionRequest Request,
-        string RequestHash,
-        CommandDedupKey? DedupKey,
-        Guid TenantId,
-        Guid DefinitionId,
-        DefinitionVersionRow VersionRow,
-        Guid? ExecutionId);
 }

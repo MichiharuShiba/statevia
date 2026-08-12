@@ -27,6 +27,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ExecutionQueryService>();
         services.AddScoped<ExecutionIdempotencyService>();
         services.AddScoped<ExecutionProjectionOrchestrator>();
+        services.AddScoped<ExecutionLifecycleCommandService>();
         services.AddScoped<IExecutionService, ExecutionService>();
         services.AddScoped<IEventIngressService, EventIngressService>();
         services.AddScoped<IForkChildExecutionCoordinator, ForkChildExecutionCoordinator>();

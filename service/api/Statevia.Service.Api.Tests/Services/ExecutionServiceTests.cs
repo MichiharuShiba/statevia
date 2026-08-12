@@ -4352,6 +4352,35 @@ public sealed class ExecutionServiceTests
             ownership,
             projectionUpdateQueue,
             forkChildCoordinator);
+        var projectAuth = projectAuthorization ?? new AllowAllProjectAuthorizationService();
+        var mutationAuth = new AllowAllExecutionMutationAuthorization();
+        var snapshotFactory = new FakeExecutionSecuritySnapshotFactory(sqlite.TenantAccessor);
+        var checkpoints = checkpointStore ?? new FakeExecutionCheckpointStore();
+        var lifecycle = new ExecutionLifecycleCommandService(
+            engine,
+            displayIds,
+            compiler,
+            idGenerator,
+            executions,
+            definitions,
+            projectAuth,
+            runtimeAuth,
+            mutationAuth,
+            snapshotFactory,
+            sqlite.TenantAccessor,
+            dedup,
+            eventStore,
+            eventDeliveryDedup,
+            displayIdWrites,
+            executor,
+            mutationPersistence,
+            NullLogger<ExecutionLifecycleCommandService>.Instance,
+            checkpoints,
+            ownership,
+            idempotency,
+            projection,
+            workQueue,
+            forkChildCoordinator);
 
         return new ExecutionService(
             engine,
@@ -4361,10 +4390,10 @@ public sealed class ExecutionServiceTests
             executions,
             waits,
             definitions,
-            projectAuthorization ?? new AllowAllProjectAuthorizationService(),
+            projectAuth,
             runtimeAuth,
-            new AllowAllExecutionMutationAuthorization(),
-            new FakeExecutionSecuritySnapshotFactory(sqlite.TenantAccessor),
+            mutationAuth,
+            snapshotFactory,
             sqlite.TenantAccessor,
             dedup,
             eventStore,
@@ -4373,10 +4402,11 @@ public sealed class ExecutionServiceTests
             executor,
             mutationPersistence,
             NullLogger<ExecutionService>.Instance,
-            checkpointStore ?? new FakeExecutionCheckpointStore(),
+            checkpoints,
             query,
             idempotency,
             projection,
+            lifecycle,
             workQueue,
             ownership,
             forkChildCoordinator: forkChildCoordinator);
