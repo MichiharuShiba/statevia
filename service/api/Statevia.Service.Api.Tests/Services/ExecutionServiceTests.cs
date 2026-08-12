@@ -2501,7 +2501,7 @@ public sealed class ExecutionServiceTests
         };
 
         // Act
-        var nodeId = ExecutionService.TryResolveWaitNodeIdToClearFromPersisted(waits, "  approve  ");
+        var nodeId = ExecutionWaitEventService.TryResolveWaitNodeIdToClearFromPersisted(waits, "  approve  ");
 
         // Assert
         Assert.Equal("wait-a", nodeId);
@@ -4381,6 +4381,24 @@ public sealed class ExecutionServiceTests
             projection,
             workQueue,
             forkChildCoordinator);
+        var waitEvents = new ExecutionWaitEventService(
+            engine,
+            displayIds,
+            idGenerator,
+            executions,
+            waits,
+            mutationAuth,
+            sqlite.TenantAccessor,
+            dedup,
+            eventStore,
+            eventDeliveryDedup,
+            executor,
+            mutationPersistence,
+            NullLogger<ExecutionWaitEventService>.Instance,
+            idempotency,
+            projection,
+            lifecycle,
+            forkChildCoordinator);
 
         return new ExecutionService(
             engine,
@@ -4407,6 +4425,7 @@ public sealed class ExecutionServiceTests
             idempotency,
             projection,
             lifecycle,
+            waitEvents,
             workQueue,
             ownership,
             forkChildCoordinator: forkChildCoordinator);
