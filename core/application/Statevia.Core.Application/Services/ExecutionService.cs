@@ -91,6 +91,7 @@ internal sealed class ExecutionService : IExecutionService
     private readonly ICorrelationIdAccessor _correlationIdAccessor;
     private readonly IExecutionProjectionUpdateQueue _projectionUpdateQueue;
     private readonly IForkChildExecutionCoordinator? _forkChildCoordinator;
+    private readonly ExecutionQueryService _query;
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Major Code Smell",
@@ -121,6 +122,7 @@ internal sealed class ExecutionService : IExecutionService
         IOptions<EventDeliveryRetryOptions> eventDeliveryRetryOptions,
         ICorrelationIdAccessor correlationIdAccessor,
         IExecutionCheckpointStore checkpointStore,
+        ExecutionQueryService query,
         IExecutionProjectionUpdateQueue? projectionUpdateQueue = null,
         IExecutionWorkQueue? workQueue = null,
         ExecutionOwnershipTracker? ownershipTracker = null,
@@ -152,6 +154,7 @@ internal sealed class ExecutionService : IExecutionService
         _logger = logger;
         _eventDeliveryRetryOptions = eventDeliveryRetryOptions;
         _correlationIdAccessor = correlationIdAccessor;
+        _query = query;
         _projectionUpdateQueue = projectionUpdateQueue ?? NoopExecutionProjectionUpdateQueue.Instance;
         _forkChildCoordinator = forkChildCoordinator;
     }
@@ -588,118 +591,22 @@ internal sealed class ExecutionService : IExecutionService
         return true;
     }
 
-    public async Task<PagedResult<ExecutionResponse>> ListPagedAsync(
+    public Task<PagedResult<ExecutionResponse>> ListPagedAsync(
         ExecutionListPageQuery query,
-        CancellationToken ct)
-    {
-        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+        CancellationToken ct) =>
+        _query.ListPagedAsync(query, ct);
 
-        var tenantId = _tenantContext.GetRequiredTenantId();
-        ArgumentNullException.ThrowIfNull(query);
+    public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
+        _query.GetExecutionResponseAsync(idOrUuid, ct);
 
-        var (total, pairs) = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _executions.ListWithDisplayIdsPageAsync(uow, tenantId, query, innerCt),
-            ct).ConfigureAwait(false);
-        var items = pairs.Select(p => new ExecutionResponse
-        {
-            DisplayId = p.DisplayId ?? p.Execution.ExecutionId.ToString(),
-            ResourceId = p.Execution.ExecutionId,
-            GraphId = p.Execution.DefinitionId.ToString("D"),
-            Status = p.Execution.Status,
-            StartedAt = p.Execution.StartedAt,
-            UpdatedAt = p.Execution.UpdatedAt,
-            CancelRequested = p.Execution.CancelRequested,
-            RestartLost = p.Execution.RestartLost
-        }).ToList();
-
-        return new PagedResult<ExecutionResponse>
-        {
-            Items = items,
-            TotalCount = total,
-            Offset = query.Page.Offset,
-            Limit = query.Page.Limit,
-            HasMore = query.Page.Offset + items.Count < total
-        };
-    }
-
-    public async Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct)
-    {
-        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
-
-        var tenantId = _tenantContext.GetRequiredTenantId();
-        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
-        if (uuid is null)
-            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-
-        return await _executor.ExecuteReadOnlyAsync(
-            async (uow, innerCt) =>
-            {
-                var execution = await _executions.GetByIdAsync(uow, tenantId, uuid.Value, innerCt).ConfigureAwait(false);
-                if (execution is null)
-                    throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-
-                var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Execution, idOrUuid, innerCt)
-                    .ConfigureAwait(false) ?? execution.ExecutionId.ToString("D");
-                var graphId = await _displayIds
-                    .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, execution.DefinitionId.ToString("D"), innerCt)
-                    .ConfigureAwait(false) ?? execution.DefinitionId.ToString("D");
-
-                return new ExecutionResponse
-                {
-                    DisplayId = displayId,
-                    ResourceId = execution.ExecutionId,
-                    GraphId = graphId,
-                    Status = execution.Status,
-                    StartedAt = execution.StartedAt,
-                    UpdatedAt = execution.UpdatedAt,
-                    CancelRequested = execution.CancelRequested,
-                    RestartLost = execution.RestartLost
-                };
-            },
-            ct).ConfigureAwait(false);
-    }
-
-    public async Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct)
-    {
-        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
-
-        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
-        if (uuid is null)
-            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-        await EnsureExecutionExistsAsync(uuid.Value, ct).ConfigureAwait(false);
-        var row = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _executions.GetSnapshotByExecutionIdAsync(uow, uuid.Value, innerCt),
-            ct).ConfigureAwait(false);
-        if (row is null)
-            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-
-        if (_forkChildCoordinator is null)
-            return row.GraphJson;
-
-        return await _forkChildCoordinator
-            .ComposeReadModelGraphJsonAsync(uuid.Value, row.GraphJson, ct)
-            .ConfigureAwait(false);
-    }
+    public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) =>
+        _query.GetGraphJsonAsync(idOrUuid, ct);
 
     public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) =>
-        _executor.ExecuteReadOnlyAsync(
-            async (uow, innerCt) =>
-            {
-                var tenantId = _tenantContext.GetRequiredTenantId();
-                var execution = await _executions.GetByIdAsync(uow, tenantId, executionId, innerCt).ConfigureAwait(false);
-                if (execution is null)
-                    throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-            },
-            ct);
+        _query.EnsureExecutionExistsAsync(executionId, ct);
 
     public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
-        _executor.ExecuteReadOnlyAsync(
-            async (uow, innerCt) =>
-            {
-                var row = await _executions.GetSnapshotByExecutionIdAsync(uow, executionId, innerCt).ConfigureAwait(false);
-                return row?.GraphJson;
-            },
-            ct);
+        _query.TryGetSnapshotGraphJsonByExecutionIdAsync(executionId, ct);
 
     public async Task CancelAsync(
         string idOrUuid,
@@ -1330,121 +1237,18 @@ internal sealed class ExecutionService : IExecutionService
             ct).ConfigureAwait(false);
     }
 
-    public async Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct)
-    {
-        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+    public Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct) =>
+        _query.GetExecutionViewAsync(idOrUuid, ct);
 
-        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
-        if (uuid is null)
-            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+    public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct) =>
+        _query.GetExecutionViewAtSeqAsync(idOrUuid, atSeq, ct);
 
-        return await BuildExecutionViewInternalAsync(uuid.Value, idOrUuid, ct).ConfigureAwait(false);
-    }
-
-    public async Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct)
-    {
-        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
-
-        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
-        if (uuid is null)
-            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-
-        var maxSeq = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _eventStore.GetMaxSeqAsync(uow, uuid.Value, innerCt),
-            ct).ConfigureAwait(false);
-        if (maxSeq == 0)
-            return await BuildExecutionViewInternalAsync(uuid.Value, idOrUuid, ct).ConfigureAwait(false);
-
-        if (atSeq > maxSeq)
-            throw new NotFoundException("atSeq out of range");
-
-        return await BuildExecutionViewInternalAsync(uuid.Value, idOrUuid, ct).ConfigureAwait(false);
-    }
-
-    public async Task<ExecutionEventsResponseDto> ListEventsAsync(
+    public Task<ExecutionEventsResponseDto> ListEventsAsync(
         string idOrUuid,
         long afterSeq,
         int limit,
-        CancellationToken ct)
-    {
-        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
-
-        var tenantId = _tenantContext.GetRequiredTenantId();
-        var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
-        if (uuid is null)
-            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-
-        var execution = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _executions.GetByIdAsync(uow, tenantId, uuid.Value, innerCt),
-            ct).ConfigureAwait(false);
-        if (execution is null)
-            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-
-        var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false) ?? execution.ExecutionId.ToString("D");
-        // D6 / D6.1: GraphUpdated patch は合成グラフ由来。
-        var graphJson = await GetGraphJsonAsync(idOrUuid, ct).ConfigureAwait(false);
-        var patchNodes = ExecutionViewMapper.MapGraphPatchNodes(graphJson);
-
-        var sourceRows = await LoadEventStoreRowsForTimelineAsync(uuid.Value, ct).ConfigureAwait(false);
-        var (events, hasMore) = PhysicalForkEventTimelineComposer.ComposePage(
-            sourceRows,
-            displayId,
-            patchNodes,
-            afterSeq,
-            limit);
-
-        return new ExecutionEventsResponseDto { Events = events, HasMore = hasMore };
-    }
-
-    /// <summary>
-    /// 親＋再帰子孫の event_store 行を読み取り合成用に集める（D6.1）。
-    /// </summary>
-    private async Task<IReadOnlyList<PhysicalForkEventTimelineComposer.SourceRow>> LoadEventStoreRowsForTimelineAsync(
-        Guid rootExecutionId,
-        CancellationToken ct)
-    {
-        var executionIds = new List<Guid> { rootExecutionId };
-        if (_forkChildCoordinator is not null)
-        {
-            var descendants = await _forkChildCoordinator
-                .ListDescendantExecutionIdsAsync(rootExecutionId, ct)
-                .ConfigureAwait(false);
-            executionIds.AddRange(descendants);
-        }
-
-        var rows = new List<PhysicalForkEventTimelineComposer.SourceRow>();
-        foreach (var executionId in executionIds)
-        {
-            var isRoot = executionId == rootExecutionId;
-            long afterSeq = 0;
-            while (true)
-            {
-                var pageAfter = afterSeq;
-                var (items, hasMore) = await _executor.ExecuteReadOnlyAsync(
-                        (uow, innerCt) => _eventStore.ListAfterSeqAsync(
-                            uow,
-                            executionId,
-                            pageAfter,
-                            limit: 500,
-                            innerCt),
-                        ct)
-                    .ConfigureAwait(false);
-
-                foreach (var item in items)
-                    rows.Add(new PhysicalForkEventTimelineComposer.SourceRow(item, isRoot));
-
-                if (!hasMore || items.Count == 0)
-                    break;
-
-                afterSeq = items[^1].Seq;
-                // 暴走防止（異常に長い event_store）。
-                if (rows.Count >= 50_000)
-                    break;
-            }
-        }
-
-        return rows;
-    }
+        CancellationToken ct) =>
+        _query.ListEventsAsync(idOrUuid, afterSeq, limit, ct);
 
     public async Task ResumeNodeAsync(
         string idOrUuid,
@@ -2429,40 +2233,6 @@ internal sealed class ExecutionService : IExecutionService
         return false;
     }
 
-    private async Task<ExecutionViewDto> BuildExecutionViewInternalAsync(Guid uuid, string idOrUuidForDisplay, CancellationToken ct)
-    {
-        var tenantId = _tenantContext.GetRequiredTenantId();
-        return await _executor.ExecuteReadOnlyAsync(
-            async (uow, innerCt) =>
-            {
-                var execution = await _executions.GetByIdAsync(uow, tenantId, uuid, innerCt).ConfigureAwait(false);
-                if (execution is null)
-                    throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-
-                var snapshot = await _executions.GetSnapshotByExecutionIdAsync(uow, uuid, innerCt).ConfigureAwait(false);
-                if (snapshot is null)
-                    throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-
-                var displayId = await _displayIds
-                    .GetDisplayIdAsync(DisplayIdResourceTypes.Execution, idOrUuidForDisplay, innerCt)
-                    .ConfigureAwait(false) ?? execution.ExecutionId.ToString("D");
-                var graphId = await _displayIds
-                    .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, execution.DefinitionId.ToString("D"), innerCt)
-                    .ConfigureAwait(false) ?? execution.DefinitionId.ToString("D");
-
-                var graphJson = snapshot.GraphJson;
-                if (_forkChildCoordinator is not null)
-                {
-                    graphJson = await _forkChildCoordinator
-                        .ComposeReadModelGraphJsonAsync(uuid, snapshot.GraphJson, innerCt)
-                        .ConfigureAwait(false);
-                }
-
-                return ExecutionViewMapper.BuildExecutionView(execution, graphJson, displayId, graphId);
-            },
-            ct).ConfigureAwait(false);
-    }
-
     private static ExecutionResponse? DeserializeCachedExecutionResponse(CommandDedupRow existing)
     {
         if (string.IsNullOrEmpty(existing.ResponseBody))
@@ -2727,9 +2497,6 @@ internal sealed class ExecutionService : IExecutionService
         await _checkpointStore.DeleteAsync(uow, executionId, ct).ConfigureAwait(false);
         return false;
     }
-
-    private Task EnsureExecutionsReadAsync(CancellationToken ct) =>
-        _runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.ExecutionsRead, ct);
 
     private Task EnsureExecutionsWriteAsync(CancellationToken ct) =>
         _runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.ExecutionsWrite, ct);

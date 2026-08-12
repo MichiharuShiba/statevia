@@ -4321,6 +4321,16 @@ public sealed class ExecutionServiceTests
             sqlite.TenantAccessor.Set(TestTenantIds.T1Context);
         }
 
+        var runtimeAuth = new AllowAllRuntimePermissionAuthorization();
+        var query = new ExecutionQueryService(
+            displayIds,
+            executions,
+            runtimeAuth,
+            sqlite.TenantAccessor,
+            eventStore,
+            executor,
+            forkChildCoordinator);
+
         return new ExecutionService(
             engine,
             displayIds,
@@ -4332,7 +4342,7 @@ public sealed class ExecutionServiceTests
             waitRepo ?? new FakeExecutionWaitRepository(),
             definitions,
             projectAuthorization ?? new AllowAllProjectAuthorizationService(),
-            new AllowAllRuntimePermissionAuthorization(),
+            runtimeAuth,
             new AllowAllExecutionMutationAuthorization(),
             new FakeExecutionSecuritySnapshotFactory(sqlite.TenantAccessor),
             sqlite.TenantAccessor,
@@ -4346,6 +4356,7 @@ public sealed class ExecutionServiceTests
             retryOptions,
             new FixedCorrelationIdAccessor(),
             checkpointStore ?? new FakeExecutionCheckpointStore(),
+            query,
             projectionUpdateQueue,
             workQueue,
             ownershipTracker,
