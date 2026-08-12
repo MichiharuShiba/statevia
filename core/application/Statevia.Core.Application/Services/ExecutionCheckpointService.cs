@@ -158,11 +158,16 @@ internal sealed class ExecutionCheckpointService(
     /// 内容破棄候補の checkpoint を削除するか、Worker 所有中なら runtime JSON のみ更新する。
     /// </summary>
     /// <remarks>
-    /// 所有（OwnedLease）は寿命表の保持理由ではない。Worker 都合で行を残し refresh する別層。
+    /// <para>所有（OwnedLease）は寿命表の保持理由ではない。Worker 都合で行を残し refresh する別層。</para>
+    /// <para>
+    /// Running 中も保持理由が空なら内容破棄候補になるが、実行中 Engine は落とさない。
+    /// 終端のときだけ <see langword="true"/> を返し、投影同期後の Unload を許可する。
+    /// </para>
     /// </remarks>
     /// <returns>
-    /// 投影同期後に Engine を Unload してよいとき <see langword="true"/>。
-    /// 所有中の refresh や削除のみの場合は <see langword="false"/>。
+    /// 投影同期後に Engine を Unload してよいとき <see langword="true"/>
+    ///（checkpoint 削除後かつ Engine が終端）。所有中 refresh や Running 中の削除のみは
+    /// <see langword="false"/>。
     /// </returns>
     public async Task<bool> DiscardOrRefreshRuntimeCheckpointAsync(
         ICoreUnitOfWork uow,
@@ -179,7 +184,10 @@ internal sealed class ExecutionCheckpointService(
         }
 
         await checkpointStore.DeleteAsync(uow, executionId, ct).ConfigureAwait(false);
-        return false;
+
+        // Running（保持理由なし）でも内容は捨てるが、進行中 Load は投影から落とさない。
+        var snapshot = engine.GetSnapshot(engineExecutionId);
+        return snapshot is { IsCompleted: true } or { IsCancelled: true } or { IsFailed: true };
     }
 
     /// <summary>
@@ -230,7 +238,30 @@ internal sealed class ExecutionCheckpointService(
         finally
         {
             gate.Release();
+            TryRemoveIdlePersistUnloadGate(executionId, gate);
         }
+    }
+
+    /// <summary>
+    /// 待ちが無い Persist+Unload ゲートを辞書から除去し Dispose する。
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ConcurrentDictionary{TKey,TValue}.TryRemove(KeyValuePair{TKey,TValue})"/> で
+    /// 値一致時のみ除去し、除去後に待ちがある場合は再登録して Dispose しない。
+    /// </remarks>
+    private static void TryRemoveIdlePersistUnloadGate(Guid executionId, SemaphoreSlim gate)
+    {
+        if (!PersistUnloadGates.TryRemove(new KeyValuePair<Guid, SemaphoreSlim>(executionId, gate)))
+            return;
+
+        // Release 後に他スレッドが同一ゲートを待ち始めた場合は戻して生きたままにする。
+        if (gate.CurrentCount != 1)
+        {
+            _ = PersistUnloadGates.TryAdd(executionId, gate);
+            return;
+        }
+
+        gate.Dispose();
     }
 
     /// <summary>ゲート取得後の Persist + Unload 本体。</summary>
