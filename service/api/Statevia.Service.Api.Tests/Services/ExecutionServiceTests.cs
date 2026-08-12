@@ -4409,6 +4409,26 @@ public sealed class ExecutionServiceTests
             lifecycle,
             NullLogger<ExecutionCheckpointService>.Instance,
             forkChildCoordinator);
+        var ownershipSessions = new ExecutionOwnershipService(
+            engine,
+            checkpointStoreResolved,
+            ownership,
+            executor,
+            projection,
+            checkpointService,
+            lifecycle,
+            NullLogger<ExecutionOwnershipService>.Instance);
+        var recovery = new ExecutionRecoveryService(
+            engine,
+            executions,
+            runtimeAuth,
+            mutationAuth,
+            sqlite.TenantAccessor,
+            executor,
+            lifecycle,
+            waitEvents,
+            projection,
+            checkpointService);
 
         return new ExecutionService(
             engine,
@@ -4437,6 +4457,8 @@ public sealed class ExecutionServiceTests
             lifecycle,
             waitEvents,
             checkpointService,
+            ownershipSessions,
+            recovery,
             workQueue,
             ownership,
             forkChildCoordinator: forkChildCoordinator);

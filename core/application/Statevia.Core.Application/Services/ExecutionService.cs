@@ -7,9 +7,6 @@ namespace Statevia.Core.Application.Services;
 
 internal sealed class ExecutionService : IExecutionService
 {
-    /// <summary>Worker が 1 Load を待つときのポーリング間隔。</summary>
-    private static readonly TimeSpan LocalExecutionLoadPollInterval = TimeSpan.FromMilliseconds(250);
-
     /// <summary>実行グラフ JSON のプロパティ名（投影・Engine export 共通）。</summary>
     private static class ExecutionGraphJsonProperties
     {
@@ -51,6 +48,8 @@ internal sealed class ExecutionService : IExecutionService
     private readonly ExecutionLifecycleCommandService _lifecycle;
     private readonly ExecutionWaitEventService _waitEvents;
     private readonly ExecutionCheckpointService _checkpoints;
+    private readonly ExecutionOwnershipService _ownershipSessions;
+    private readonly ExecutionRecoveryService _recovery;
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Major Code Smell",
@@ -83,6 +82,8 @@ internal sealed class ExecutionService : IExecutionService
         ExecutionLifecycleCommandService lifecycle,
         ExecutionWaitEventService waitEvents,
         ExecutionCheckpointService checkpoints,
+        ExecutionOwnershipService ownershipSessions,
+        ExecutionRecoveryService recovery,
         IExecutionWorkQueue? workQueue = null,
         ExecutionOwnershipTracker? ownershipTracker = null,
         IForkChildExecutionCoordinator? forkChildCoordinator = null)
@@ -115,6 +116,8 @@ internal sealed class ExecutionService : IExecutionService
         _lifecycle = lifecycle;
         _waitEvents = waitEvents;
         _checkpoints = checkpoints;
+        _ownershipSessions = ownershipSessions;
+        _recovery = recovery;
         _forkChildCoordinator = forkChildCoordinator;
     }
 
@@ -160,184 +163,28 @@ internal sealed class ExecutionService : IExecutionService
     /// <inheritdoc />
     public Task PersistCheckpointKeepLoadedAsync(string engineExecutionId, CancellationToken ct) =>
         _checkpoints.PersistCheckpointKeepLoadedAsync(engineExecutionId, ct);
-
-
     /// <inheritdoc />
-    public async Task<long?> BeginOwnedSessionAsync(
+    public Task<long?> BeginOwnedSessionAsync(
         Guid executionId,
         string workerId,
         TimeSpan leaseDuration,
-        CancellationToken ct)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(leaseDuration, TimeSpan.Zero);
-
-        var leaseUntil = DateTime.UtcNow.Add(leaseDuration);
-        var generation = await _executor.ExecuteReadCommittedAsync(
-            async (uow, innerCt) =>
-            {
-                var seed = new ExecutionCheckpointDocument
-                {
-                    ExecutionId = executionId,
-                    CheckpointJson = "{}",
-                    SchemaVersion = ExecutionRuntimeCheckpoint.CurrentSchemaVersion,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                return await _checkpointStore.TryAcquireOwnershipAsync(
-                        uow,
-                        executionId,
-                        workerId,
-                        leaseUntil,
-                        seed,
-                        innerCt)
-                    .ConfigureAwait(false);
-            },
-            ct).ConfigureAwait(false);
-
-        if (generation is long gen)
-            _ownership.Set(executionId, workerId, gen);
-
-        return generation;
-    }
-
+        CancellationToken ct) =>
+        _ownershipSessions.BeginOwnedSessionAsync(executionId, workerId, leaseDuration, ct);
     /// <inheritdoc />
-    public async Task<bool> RenewOwnedSessionLeaseAsync(
+    public Task<bool> RenewOwnedSessionLeaseAsync(
         Guid executionId,
         TimeSpan leaseDuration,
-        CancellationToken ct)
-    {
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(leaseDuration, TimeSpan.Zero);
-        // Wait Unload 済みでトラッカーが空なら延長不要（失敗扱いにすると heartbeat が誤キャンセルする）。
-        if (!_ownership.TryGet(executionId, out _, out var generation))
-            return true;
-
-        var leaseUntil = DateTime.UtcNow.Add(leaseDuration);
-        return await _executor.ExecuteReadCommittedAsync(
-            (uow, innerCt) => _checkpointStore.TryRenewOwnershipLeaseAsync(
-                uow,
-                executionId,
-                generation,
-                leaseUntil,
-                innerCt),
-            ct).ConfigureAwait(false);
-    }
-
+        CancellationToken ct) =>
+        _ownershipSessions.RenewOwnedSessionLeaseAsync(executionId, leaseDuration, ct);
     /// <inheritdoc />
-    public async Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct)
-    {
-        if (!_ownership.TryGet(executionId, out _, out var generation))
-            return;
-
-        try
-        {
-            await _executor.ExecuteReadCommittedAsync(
-                (uow, innerCt) => _checkpointStore.TryClearOwnershipAsync(
-                    uow,
-                    executionId,
-                    generation,
-                    innerCt),
-                ct).ConfigureAwait(false);
-        }
-        finally
-        {
-            _ownership.Clear(executionId);
-        }
-    }
-
+    public Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct) =>
+        _ownershipSessions.EndOwnedSessionAsync(executionId, ct);
     /// <inheritdoc />
-    public Task AbandonLocalOwnedSessionAsync(Guid executionId)
-    {
-        _ownership.Clear(executionId);
-        var engineId = executionId.ToString();
-        try
-        {
-            _engine.Unload(engineId);
-        }
-#pragma warning disable CA1031 // ローカル放棄はベストエフォート。Unload 失敗で Worker を止めない。
-        catch (Exception exception)
-#pragma warning restore CA1031
-        {
-            _logger.UnloadDuringAbandon(exception, executionId);
-        }
-
-        return Task.CompletedTask;
-    }
-
+    public Task AbandonLocalOwnedSessionAsync(Guid executionId) =>
+        _ownershipSessions.AbandonLocalOwnedSessionAsync(executionId);
     /// <inheritdoc />
-    public async Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct)
-    {
-        var engineId = executionId.ToString();
-        while (true)
-        {
-            ct.ThrowIfCancellationRequested();
-            var snapshot = _engine.GetSnapshot(engineId);
-            if (snapshot is null)
-                return;
-
-            if (snapshot.IsCompleted || snapshot.IsCancelled || snapshot.IsFailed)
-            {
-                // 終端後に Unload すると投影キューが engine 不在でスキップし、
-                // Start 直後の不完全 graph のまま Completed だけ残る。最終投影を先に確定する。
-                await _projection.DrainAsync(executionId, ct).ConfigureAwait(false);
-                await UpdateProjectionFromEngineAsync(executionId, ct).ConfigureAwait(false);
-                _engine.Unload(engineId);
-                return;
-            }
-
-            var checkpoint = _engine.ExportCheckpoint(engineId);
-            // recovery hydrate 後など、PendingWaits があるのに Unload されていない場合がある。
-            if (checkpoint is { PendingWaits.Count: > 0 }
-                && !HasRunningNonWaitNodes(_engine.ExportExecutionGraph(engineId)))
-            {
-                var waitNodeId = checkpoint.PendingWaits[0].NodeId;
-                await _checkpoints.PersistCheckpointAndUnloadByEngineIdAsync(engineId, waitNodeId, ct)
-                    .ConfigureAwait(false);
-                return;
-            }
-
-            await Task.Delay(LocalExecutionLoadPollInterval, ct).ConfigureAwait(false);
-        }
-    }
-
-    /// <summary>Wait 以外で未完了の実行中ノードがあるか。</summary>
-    private static bool HasRunningNonWaitNodes(string graphJson)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(graphJson);
-            if (!document.RootElement.TryGetProperty(ExecutionGraphJsonProperties.Nodes, out var nodes)
-                || nodes.ValueKind != JsonValueKind.Array)
-            {
-                return false;
-            }
-
-            return nodes.EnumerateArray().Any(node =>
-            {
-                var nodeType = node.TryGetProperty(ExecutionGraphJsonProperties.NodeType, out var typeEl)
-                    ? typeEl.GetString()
-                    : null;
-                if (string.Equals(nodeType, "Wait", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(nodeType, "EventWait", StringComparison.OrdinalIgnoreCase))
-                {
-                    return false;
-                }
-
-                if (node.TryGetProperty(ExecutionGraphJsonProperties.CompletedAt, out var completedAt)
-                    && completedAt.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
-                {
-                    return false;
-                }
-
-                // startedAt があり未完了なら実行中とみなす。
-                return node.TryGetProperty(ExecutionGraphJsonProperties.StartedAt, out var startedAt)
-                    && startedAt.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined;
-            });
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-    }
+    public Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct) =>
+        _ownershipSessions.AwaitLocalExecutionLoadAsync(executionId, ct);
     /// <inheritdoc />
     public Task PublishEventAsync(
         string idOrUuid,
@@ -692,79 +539,13 @@ internal sealed class ExecutionService : IExecutionService
 
         await _projection.EnqueueAsync(parentExecutionId, ct).ConfigureAwait(false);
     }
-
     /// <inheritdoc />
-    public async Task RecoverExecutionAsync(
+    public Task RecoverExecutionAsync(
         Guid executionId,
         CommandRequestContext requestContext,
-        CancellationToken ct)
-    {
-        ArgumentNullException.ThrowIfNull(requestContext);
-        await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
+        CancellationToken ct) =>
+        _recovery.RecoverExecutionAsync(executionId, requestContext, ct);
 
-        var tenantId = _tenantContext.GetRequiredTenantId();
-        var execution = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _executions.GetByIdAsync(uow, tenantId, executionId, innerCt),
-            ct).ConfigureAwait(false);
-        if (execution is null)
-            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
-
-        await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
-
-        if (ExecutionLifecycleCommandService.IsTerminalExecutionProjectionStatus(execution.Status))
-            return;
-
-        // Worker が BeginOwnedSession 済み前提。hydrate 後、完了フロンティア／PendingWaits から継続する。
-        await _lifecycle.EnsureEngineRuntimeLoadedForMutationAsync(executionId, execution, ct).ConfigureAwait(false);
-
-        var engineId = executionId.ToString();
-        // ImportCheckpoint が起動した継続（Wait 復元または完了フロンティア遷移）が落ち着くのを待つ。
-        await _waitEvents.WaitForEngineQuiescedAfterWaitAsync(engineId, ct).ConfigureAwait(false);
-
-        var (status, cancelRequested, graphJson) = _projection.BuildProjectionFromEngine(executionId);
-        await _executor.ExecuteReadCommittedAsync(
-            async (uow, innerCt) =>
-            {
-                await _executions
-                    .UpdateExecutionAndSnapshotAsync(uow, executionId, status, cancelRequested, graphJson, innerCt)
-                    .ConfigureAwait(false);
-                await _projection.SyncOperationalProjectionAsync(
-                        uow,
-                        executionId,
-                        tenantId,
-                        status,
-                        graphJson,
-                        nodeIdToClear: null,
-                        innerCt)
-                    .ConfigureAwait(false);
-
-                if (await _checkpoints.ShouldDiscardRuntimeCheckpointAsync(executionId, status, graphJson, innerCt)
-                        .ConfigureAwait(false))
-                {
-                    await _checkpoints.DiscardOrRefreshRuntimeCheckpointAsync(
-                            uow,
-                            engineId,
-                            executionId,
-                            innerCt)
-                        .ConfigureAwait(false);
-                }
-                else
-                {
-                    await _lifecycle.UpsertRuntimeCheckpointAsync(uow, engineId, executionId, innerCt)
-                        .ConfigureAwait(false);
-                }
-            },
-            ct).ConfigureAwait(false);
-
-        // Wait 復元のみで継続が無い場合、ここで Unload しないと Worker Await が解放されない。
-        var restored = _engine.ExportCheckpoint(engineId);
-        if (restored is { PendingWaits.Count: > 0 }
-            && !HasRunningNonWaitNodes(_engine.ExportExecutionGraph(engineId)))
-        {
-            await _checkpoints.PersistCheckpointAndUnloadByEngineIdAsync(engineId, restored.PendingWaits[0].NodeId, ct)
-                .ConfigureAwait(false);
-        }
-    }
 
     /// <summary>
     /// 物理 Join 完了後、Join ノード完了・decide Wait 登録・Unload・終端のいずれかまで待つ。
