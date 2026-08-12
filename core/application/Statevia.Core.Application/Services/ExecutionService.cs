@@ -1,6 +1,3 @@
-using System.Collections.Concurrent;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Statevia.Core.Application.Infrastructure;
@@ -12,15 +9,6 @@ internal sealed class ExecutionService : IExecutionService
 {
     /// <summary>Worker が 1 Load を待つときのポーリング間隔。</summary>
     private static readonly TimeSpan LocalExecutionLoadPollInterval = TimeSpan.FromMilliseconds(250);
-
-    /// <summary>
-    /// 同一実行の <see cref="PersistCheckpointAndUnloadCoreAsync"/> を直列化し、
-    /// 古い Fork Unload が新しい Wait 断面を上書きしないようにする。
-    /// </summary>
-    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> PersistUnloadGates = new();
-
-    /// <summary>HTTP 204 No Content。</summary>
-    private const int HttpStatus204NoContent = 204;
 
     /// <summary>実行グラフ JSON のプロパティ名（投影・Engine export 共通）。</summary>
     private static class ExecutionGraphJsonProperties
@@ -62,6 +50,7 @@ internal sealed class ExecutionService : IExecutionService
     private readonly ExecutionProjectionOrchestrator _projection;
     private readonly ExecutionLifecycleCommandService _lifecycle;
     private readonly ExecutionWaitEventService _waitEvents;
+    private readonly ExecutionCheckpointService _checkpoints;
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Major Code Smell",
@@ -93,6 +82,7 @@ internal sealed class ExecutionService : IExecutionService
         ExecutionProjectionOrchestrator projection,
         ExecutionLifecycleCommandService lifecycle,
         ExecutionWaitEventService waitEvents,
+        ExecutionCheckpointService checkpoints,
         IExecutionWorkQueue? workQueue = null,
         ExecutionOwnershipTracker? ownershipTracker = null,
         IForkChildExecutionCoordinator? forkChildCoordinator = null)
@@ -124,6 +114,7 @@ internal sealed class ExecutionService : IExecutionService
         _projection = projection;
         _lifecycle = lifecycle;
         _waitEvents = waitEvents;
+        _checkpoints = checkpoints;
         _forkChildCoordinator = forkChildCoordinator;
     }
 
@@ -166,61 +157,10 @@ internal sealed class ExecutionService : IExecutionService
         CommandRequestContext requestContext,
         CancellationToken ct) =>
         _lifecycle.CancelAsync(idOrUuid, idempotencyKey, requestContext, ct);
-
     /// <inheritdoc />
-    public async Task PersistCheckpointKeepLoadedAsync(string engineExecutionId, CancellationToken ct)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(engineExecutionId);
-        if (!Guid.TryParse(engineExecutionId, out var executionId))
-        {
-            _logger.SkipKeepLoadedCheckpointInvalidExecutionId(engineExecutionId);
-            return;
-        }
+    public Task PersistCheckpointKeepLoadedAsync(string engineExecutionId, CancellationToken ct) =>
+        _checkpoints.PersistCheckpointKeepLoadedAsync(engineExecutionId, ct);
 
-        var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
-        if (checkpoint is null)
-            return;
-
-        var json = JsonSerializer.Serialize(checkpoint, JsonSerializerProfiles.CamelCase);
-        var updatedAt = DateTime.UtcNow;
-
-        await _executor.ExecuteReadCommittedAsync(
-            async (uow, innerCt) =>
-            {
-                if (_ownership.TryGet(executionId, out _, out var generation))
-                {
-                    var ok = await _checkpointStore.TryUpsertRuntimeWithGenerationAsync(
-                            uow,
-                            new ExecutionCheckpointRuntimeUpsert(
-                                executionId,
-                                generation,
-                                json,
-                                checkpoint.SchemaVersion,
-                                updatedAt),
-                            innerCt)
-                        .ConfigureAwait(false);
-                    if (!ok)
-                    {
-                        _logger.KeepLoadedCheckpointRejectedByFencing(executionId);
-                    }
-
-                    return;
-                }
-
-                await _checkpointStore.UpsertAsync(
-                        uow,
-                        new ExecutionCheckpointDocument
-                        {
-                            ExecutionId = executionId,
-                            CheckpointJson = json,
-                            SchemaVersion = checkpoint.SchemaVersion,
-                            UpdatedAt = updatedAt
-                        },
-                        innerCt)
-                    .ConfigureAwait(false);
-            },
-            ct).ConfigureAwait(false);
-    }
 
     /// <inheritdoc />
     public async Task<long?> BeginOwnedSessionAsync(
@@ -350,7 +290,7 @@ internal sealed class ExecutionService : IExecutionService
                 && !HasRunningNonWaitNodes(_engine.ExportExecutionGraph(engineId)))
             {
                 var waitNodeId = checkpoint.PendingWaits[0].NodeId;
-                await PersistCheckpointAndUnloadByEngineIdAsync(engineId, waitNodeId, ct)
+                await _checkpoints.PersistCheckpointAndUnloadByEngineIdAsync(engineId, waitNodeId, ct)
                     .ConfigureAwait(false);
                 return;
             }
@@ -434,8 +374,8 @@ internal sealed class ExecutionService : IExecutionService
             idempotencyKey,
             requestContext,
             HandleChildCompletedResumeAsync,
-            ShouldDiscardRuntimeCheckpointAsync,
-            DiscardOrRefreshRuntimeCheckpointAsync,
+            _checkpoints.ShouldDiscardRuntimeCheckpointAsync,
+            _checkpoints.DiscardOrRefreshRuntimeCheckpointAsync,
             ct);
 
     /// <summary>
@@ -629,7 +569,7 @@ internal sealed class ExecutionService : IExecutionService
                             innerCt)
                         .ConfigureAwait(false);
 
-                    await DiscardOrRefreshRuntimeCheckpointAsync(
+                    await _checkpoints.DiscardOrRefreshRuntimeCheckpointAsync(
                             uow,
                             parentExecutionId.ToString(),
                             parentExecutionId,
@@ -727,14 +667,14 @@ internal sealed class ExecutionService : IExecutionService
                             innerCt)
                         .ConfigureAwait(false);
 
-                    if (await ShouldDiscardRuntimeCheckpointAsync(
+                    if (await _checkpoints.ShouldDiscardRuntimeCheckpointAsync(
                                 parentExecutionId,
                                 writeStatus,
                                 writeGraph,
                                 innerCt)
                             .ConfigureAwait(false))
                     {
-                        await DiscardOrRefreshRuntimeCheckpointAsync(
+                        await _checkpoints.DiscardOrRefreshRuntimeCheckpointAsync(
                                 uow,
                                 engineId,
                                 parentExecutionId,
@@ -798,10 +738,10 @@ internal sealed class ExecutionService : IExecutionService
                         innerCt)
                     .ConfigureAwait(false);
 
-                if (await ShouldDiscardRuntimeCheckpointAsync(executionId, status, graphJson, innerCt)
+                if (await _checkpoints.ShouldDiscardRuntimeCheckpointAsync(executionId, status, graphJson, innerCt)
                         .ConfigureAwait(false))
                 {
-                    await DiscardOrRefreshRuntimeCheckpointAsync(
+                    await _checkpoints.DiscardOrRefreshRuntimeCheckpointAsync(
                             uow,
                             engineId,
                             executionId,
@@ -821,7 +761,7 @@ internal sealed class ExecutionService : IExecutionService
         if (restored is { PendingWaits.Count: > 0 }
             && !HasRunningNonWaitNodes(_engine.ExportExecutionGraph(engineId)))
         {
-            await PersistCheckpointAndUnloadByEngineIdAsync(engineId, restored.PendingWaits[0].NodeId, ct)
+            await _checkpoints.PersistCheckpointAndUnloadByEngineIdAsync(engineId, restored.PendingWaits[0].NodeId, ct)
                 .ConfigureAwait(false);
         }
     }
@@ -990,81 +930,6 @@ internal sealed class ExecutionService : IExecutionService
         }
     }
 
-    /// <summary>
-    /// 寿命表に従い checkpoint <b>内容</b>の破棄候補か。
-    /// </summary>
-    /// <remarks>
-    /// 保持理由は <see cref="RuntimeCheckpointRetainReasons"/> のみ
-    ///（PendingWaits / PendingPhysicalJoin）。
-    /// Worker 所有 lease は同列にせず、破棄候補でも
-    /// <see cref="DiscardOrRefreshRuntimeCheckpointAsync"/> が Delete を抑止する。
-    /// </remarks>
-    private async Task<bool> ShouldDiscardRuntimeCheckpointAsync(
-        Guid executionId,
-        string status,
-        string graphJson,
-        CancellationToken ct)
-    {
-        var retainReasons = await EvaluateRuntimeCheckpointRetainReasonsAsync(
-                executionId,
-                graphJson,
-                ct)
-            .ConfigureAwait(false);
-        return RuntimeCheckpointLifetimePolicy.IsContentDiscardCandidate(status, retainReasons);
-    }
-
-    /// <summary>
-    /// 寿命表の内容保持理由を評価する（OwnedLease は含めない）。
-    /// </summary>
-    private async Task<RuntimeCheckpointRetainReasons> EvaluateRuntimeCheckpointRetainReasonsAsync(
-        Guid executionId,
-        string graphJson,
-        CancellationToken ct)
-    {
-        var reasons = RuntimeCheckpointRetainReasons.None;
-
-        if (ExecutionOperationalProjectionSync.HasDurableWaits(graphJson))
-            reasons |= RuntimeCheckpointRetainReasons.PendingWaits;
-
-        if (_forkChildCoordinator is not null
-            && await _forkChildCoordinator
-                .HasPendingPhysicalJoinBranchesAsync(executionId, ct)
-                .ConfigureAwait(false))
-        {
-            reasons |= RuntimeCheckpointRetainReasons.PendingPhysicalJoin;
-        }
-
-        return reasons;
-    }
-
-    /// <summary>
-    /// 内容破棄候補の checkpoint を削除するか、Worker 所有中なら runtime JSON のみ更新する。
-    /// </summary>
-    /// <remarks>
-    /// 所有（OwnedLease）は寿命表の保持理由ではない。Worker 都合で行を残し refresh する別層。
-    /// </remarks>
-    /// <returns>
-    /// 投影同期後に Engine を Unload してよいとき <see langword="true"/>。
-    /// 所有中の refresh や削除のみの場合は <see langword="false"/>。
-    /// </returns>
-    private async Task<bool> DiscardOrRefreshRuntimeCheckpointAsync(
-        ICoreUnitOfWork uow,
-        string engineExecutionId,
-        Guid executionId,
-        CancellationToken ct)
-    {
-        if (_ownership.TryGet(executionId, out _, out _))
-        {
-            // Worker 所有中。寿命表上は破棄候補でも lease 行は残し runtime だけ更新する。
-            _ = await _lifecycle.UpsertRuntimeCheckpointAsync(uow, engineExecutionId, executionId, ct)
-                .ConfigureAwait(false);
-            return false;
-        }
-
-        await _checkpointStore.DeleteAsync(uow, executionId, ct).ConfigureAwait(false);
-        return false;
-    }
-
     private Task EnsureExecutionsWriteAsync(CancellationToken ct) =>
         _runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.ExecutionsWrite, ct);
 
@@ -1076,306 +941,21 @@ internal sealed class ExecutionService : IExecutionService
             RuntimePermissionRequirements.ExecutionsWrite,
             ct);
     }
-
-    /// <summary>
-    /// Wait 登録直後: チェックポイントを保存して Unload する。
-    /// </summary>
-    /// <remarks>
-    /// Engine 辞書キーは <see cref="Guid.ToString()"/>（Start 時と同じ形式）を使う。
-    /// Export できない場合は Warning を出し、Unload しない（インメモリ再開を維持する）。
-    /// </remarks>
+    /// <inheritdoc />
     public Task PersistCheckpointAndUnloadAsync(Guid executionId, string nodeId, CancellationToken ct) =>
-        PersistCheckpointAndUnloadCoreAsync(executionId.ToString(), executionId, nodeId, ct);
-
-    /// <summary>
-    /// Engine 実行 ID 文字列を正としてチェックポイントを保存し Unload する。
-    /// </summary>
-    /// <param name="engineExecutionId">Engine に渡した実行 ID（辞書キー）。</param>
-    /// <param name="nodeId">Wait ノード ID（ログ用）。</param>
-    /// <param name="ct">キャンセル。</param>
+        _checkpoints.PersistCheckpointAndUnloadAsync(executionId, nodeId, ct);
+    /// <inheritdoc />
     public Task PersistCheckpointAndUnloadByEngineIdAsync(
         string engineExecutionId,
         string nodeId,
-        CancellationToken ct)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(engineExecutionId);
-        if (!Guid.TryParse(engineExecutionId, out var executionId))
-        {
-            _logger.SkipCheckpointPersistInvalidExecutionId(engineExecutionId);
-            return Task.CompletedTask;
-        }
-
-        return PersistCheckpointAndUnloadCoreAsync(engineExecutionId, executionId, nodeId, ct);
-    }
-
-    /// <summary>チェックポイント upsert ののち Engine から Unload する共通実装。</summary>
-    private async Task PersistCheckpointAndUnloadCoreAsync(
-        string engineExecutionId,
-        Guid executionId,
-        string nodeId,
-        CancellationToken ct)
-    {
-        var gate = PersistUnloadGates.GetOrAdd(executionId, static _ => new SemaphoreSlim(1, 1));
-        await gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            await PersistCheckpointAndUnloadUnderGateAsync(engineExecutionId, executionId, nodeId, ct)
-                .ConfigureAwait(false);
-        }
-        finally
-        {
-            gate.Release();
-        }
-    }
-
-    /// <summary>ゲート取得後の Persist + Unload 本体。</summary>
-    private async Task PersistCheckpointAndUnloadUnderGateAsync(
-        string engineExecutionId,
-        Guid executionId,
-        string nodeId,
-        CancellationToken ct)
-    {
-        var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
-        if (checkpoint is null)
-        {
-            _logger.ExportCheckpointNullSkipUnload(engineExecutionId, nodeId);
-            return;
-        }
-
-        // ForkExpansion は fire-and-forget のため ExpandFork 完了が Join→decide より遅れることがある。
-        // その遅延 Persist が空断面で Unload すると Wait 登録前／登録直後の decide を潰す（初回 Wait 到達不能）。
-        if (IsForkExpansionUnloadObsolete(checkpoint, nodeId))
-        {
-            _logger.SkipForkExpansionUnloadAlreadyProgressed(
-                executionId,
-                nodeId,
-                checkpoint.ActiveStates.Count,
-                checkpoint.PendingWaits.Count);
-            return;
-        }
-
-        // Unload 前に投影へ反映する（Unload 後は GetSnapshot が null になり投影キューが空振りする）。
-        // snapshot 欠落時は Unknown/`{}` を書かず checkpoint のみ残す（マルチ Worker 競合で UI を壊さない）。
-        var snapshot = _engine.GetSnapshot(engineExecutionId);
-        string? status = null;
-        bool? cancelRequested = null;
-        string? graphJson = null;
-        if (snapshot is not null)
-        {
-            status = ExecutionProjectionOrchestrator.MapStatus(snapshot);
-            cancelRequested = snapshot.IsCancelled;
-            graphJson = _engine.ExportExecutionGraph(engineExecutionId);
-        }
-
-        var json = JsonSerializer.Serialize(checkpoint, JsonSerializerProfiles.CamelCase);
-        var updatedAt = DateTime.UtcNow;
-        var (fenceLost, skippedStalePersist) = await PersistCheckpointDocumentUnderTransactionAsync(
-                new CheckpointDocumentPersistRequest(
-                    executionId,
-                    nodeId,
-                    checkpoint,
-                    json,
-                    updatedAt,
-                    status,
-                    cancelRequested,
-                    graphJson),
-                ct)
-            .ConfigureAwait(false);
-
-        if (skippedStalePersist)
-            return;
-
-        _ownership.Clear(executionId);
-        _engine.Unload(engineExecutionId);
-
-        if (fenceLost)
-        {
-            _logger.UnloadAfterWaitFencingLost(nodeId, executionId);
-            return;
-        }
-
-        _logger.CheckpointUnloadedAfterWait(executionId, nodeId);
-    }
-
-    /// <summary>Persist ゲート内の checkpoint 文書 Upsert 入力。</summary>
-    private readonly record struct CheckpointDocumentPersistRequest(
-        Guid ExecutionId,
-        string NodeId,
-        ExecutionRuntimeCheckpoint Checkpoint,
-        string CheckpointJson,
-        DateTime UpdatedAt,
-        string? Status,
-        bool? CancelRequested,
-        string? GraphJson);
-
-    /// <summary>
-    /// Persist ゲート内トランザクション: 投影更新・checkpoint Upsert・所有クリア。
-    /// </summary>
-    /// <returns>fencing 喪失と stale skip の有無。</returns>
-    private async Task<(bool FenceLost, bool SkippedStalePersist)> PersistCheckpointDocumentUnderTransactionAsync(
-        CheckpointDocumentPersistRequest request,
-        CancellationToken ct)
-    {
-        var skippedStalePersist = false;
-        var fenceLost = await _executor.ExecuteReadCommittedAsync(
-            async (uow, innerCt) =>
-            {
-                var existingCheckpoint = await _checkpointStore
-                    .GetByExecutionIdAsync(uow, request.ExecutionId, innerCt)
-                    .ConfigureAwait(false);
-                if (existingCheckpoint is not null
-                    && ExecutionLifecycleCommandService.TryParseRuntimeCheckpoint(existingCheckpoint.CheckpointJson, out var stored, out _)
-                    && IsRuntimeCheckpointLessAdvanced(request.Checkpoint, stored))
-                {
-                    skippedStalePersist = true;
-                    _logger.SkipStaleCheckpointPersist(
-                        request.ExecutionId,
-                        request.NodeId,
-                        stored.PendingWaits.Count,
-                        request.Checkpoint.PendingWaits.Count,
-                        stored.Graph.Nodes.Count,
-                        request.Checkpoint.Graph.Nodes.Count);
-                    return false;
-                }
-
-                var execution = await _executions.GetByExecutionIdAsync(uow, request.ExecutionId, innerCt)
-                    .ConfigureAwait(false);
-                if (execution is not null && request.Status is not null && request.GraphJson is not null)
-                {
-                    await _executions
-                        .UpdateExecutionAndSnapshotAsync(
-                            uow,
-                            request.ExecutionId,
-                            request.Status,
-                            request.CancelRequested,
-                            request.GraphJson,
-                            innerCt)
-                        .ConfigureAwait(false);
-                    await _projection.SyncOperationalProjectionAsync(
-                            uow,
-                            request.ExecutionId,
-                            execution.TenantId,
-                            request.Status,
-                            request.GraphJson,
-                            nodeIdToClear: null,
-                            innerCt)
-                        .ConfigureAwait(false);
-                }
-
-                if (_ownership.TryGet(request.ExecutionId, out _, out var generation))
-                {
-                    var upserted = await _checkpointStore.TryUpsertRuntimeWithGenerationAsync(
-                            uow,
-                            new ExecutionCheckpointRuntimeUpsert(
-                                request.ExecutionId,
-                                generation,
-                                request.CheckpointJson,
-                                request.Checkpoint.SchemaVersion,
-                                request.UpdatedAt),
-                            innerCt)
-                        .ConfigureAwait(false);
-                    if (!upserted)
-                        return true;
-
-                    await _checkpointStore.TryClearOwnershipAsync(uow, request.ExecutionId, generation, innerCt)
-                        .ConfigureAwait(false);
-                    return false;
-                }
-
-                await _checkpointStore.UpsertAsync(
-                    uow,
-                    new ExecutionCheckpointDocument
-                    {
-                        ExecutionId = request.ExecutionId,
-                        CheckpointJson = request.CheckpointJson,
-                        SchemaVersion = request.Checkpoint.SchemaVersion,
-                        UpdatedAt = request.UpdatedAt
-                    },
-                    innerCt).ConfigureAwait(false);
-
-                var existing = await _checkpointStore.GetByExecutionIdAsync(uow, request.ExecutionId, innerCt)
-                    .ConfigureAwait(false);
-                if (existing?.OwnerWorkerId is not null)
-                {
-                    await _checkpointStore.TryClearOwnershipAsync(
-                            uow,
-                            request.ExecutionId,
-                            existing.OwnerGeneration,
-                            innerCt)
-                        .ConfigureAwait(false);
-                }
-
-                return false;
-            },
-            ct).ConfigureAwait(false);
-
-        return (fenceLost, skippedStalePersist);
-    }
-
-    /// <summary>
-    /// 永続済み断面より incoming が遅れているか（古い Fork Unload の上書き防止）。
-    /// </summary>
-    /// <remarks>単体テストから到達するため internal。</remarks>
-    internal static bool IsRuntimeCheckpointLessAdvanced(
-        ExecutionRuntimeCheckpoint incoming,
-        ExecutionRuntimeCheckpoint stored)
-    {
-        if (incoming.IsCompleted || incoming.IsCancelled || incoming.IsFailed)
-            return false;
-
-        if (incoming.Graph.Nodes.Count < stored.Graph.Nodes.Count)
-            return true;
-
-        // stored に durable Wait があり、incoming が Fork 待ち相当（active/wait 空）なら古い。
-        return stored.PendingWaits.Count > 0
-            && incoming.PendingWaits.Count == 0
-            && incoming.ActiveStates.Count == 0;
-    }
-
-    /// <summary>
-    /// Fork 展開後の Persist が、当該 Fork より先の Join / Wait 進行後に遅延したか。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Hosted では <c>NotifyForkExpansion</c> が非同期のため、子完了→Join→decide が
-    /// <c>ExpandFork</c> 完了より先に進みうる。その場合の Unload は decide Wait を失わせる。
-    /// </para>
-    /// <para>
-    /// <paramref name="nodeId"/> が Fork ノードでない呼び出し（Wait Suspend）は常に false。
-    /// </para>
-    /// <para>単体テストから到達するため internal。</para>
-    /// </remarks>
-    /// <param name="checkpoint">Export 直後の断面。</param>
-    /// <param name="nodeId">Persist 要求元のノード ID（Fork 展開時は Fork ノード）。</param>
-    /// <returns>Unload をスキップすべきなら true。</returns>
-    internal static bool IsForkExpansionUnloadObsolete(
-        ExecutionRuntimeCheckpoint checkpoint,
-        string nodeId)
-    {
-        var forkNode = checkpoint.Graph.Nodes
-            .FirstOrDefault(n =>
-                string.Equals(n.NodeId, nodeId, StringComparison.Ordinal)
-                && string.Equals(n.NodeType, "Fork", StringComparison.OrdinalIgnoreCase));
-        if (forkNode is null)
-            return false;
-
-        // Join 後の decide 実行中、または durable Wait 登録済みなら SuspendHandler に委ねる。
-        if (checkpoint.ActiveStates.Count > 0 || checkpoint.PendingWaits.Count > 0)
-            return true;
-
-        // この Fork 到達以降に Join が完了していれば、子待ち Unload の窓は閉じている。
-        return checkpoint.Graph.Nodes.Any(n =>
-            string.Equals(n.NodeType, "Join", StringComparison.OrdinalIgnoreCase)
-            && n.StartedAt >= forkNode.StartedAt
-            && (string.Equals(n.Fact, "Joined", StringComparison.OrdinalIgnoreCase)
-                || n.CompletedAt is not null));
-    }
+        CancellationToken ct) =>
+        _checkpoints.PersistCheckpointAndUnloadByEngineIdAsync(engineExecutionId, nodeId, ct);
 
     public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) =>
         _projection.UpdateProjectionFromEngineAsync(
             executionId,
-            ShouldDiscardRuntimeCheckpointAsync,
-            DiscardOrRefreshRuntimeCheckpointAsync,
+            _checkpoints.ShouldDiscardRuntimeCheckpointAsync,
+            _checkpoints.DiscardOrRefreshRuntimeCheckpointAsync,
             _lifecycle.UpsertRuntimeCheckpointAsync,
             ct);
 

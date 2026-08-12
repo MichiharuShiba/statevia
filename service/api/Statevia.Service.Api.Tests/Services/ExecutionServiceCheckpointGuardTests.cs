@@ -26,7 +26,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
         var stored = CreateCheckpoint(nodeCount: 3);
 
         // Act
-        var lessAdvanced = ExecutionService.IsRuntimeCheckpointLessAdvanced(incoming, stored);
+        var lessAdvanced = ExecutionCheckpointService.IsRuntimeCheckpointLessAdvanced(incoming, stored);
 
         // Assert
         Assert.False(lessAdvanced);
@@ -41,7 +41,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
         var stored = CreateCheckpoint(nodeCount: 3);
 
         // Act
-        var lessAdvanced = ExecutionService.IsRuntimeCheckpointLessAdvanced(incoming, stored);
+        var lessAdvanced = ExecutionCheckpointService.IsRuntimeCheckpointLessAdvanced(incoming, stored);
 
         // Assert
         Assert.True(lessAdvanced);
@@ -66,7 +66,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             ]);
 
         // Act
-        var lessAdvanced = ExecutionService.IsRuntimeCheckpointLessAdvanced(incoming, stored);
+        var lessAdvanced = ExecutionCheckpointService.IsRuntimeCheckpointLessAdvanced(incoming, stored);
 
         // Assert
         Assert.True(lessAdvanced);
@@ -91,7 +91,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             activeStates: ["Decide1"]);
 
         // Act
-        var obsolete = ExecutionService.IsForkExpansionUnloadObsolete(checkpoint, "wait1");
+        var obsolete = ExecutionCheckpointService.IsForkExpansionUnloadObsolete(checkpoint, "wait1");
 
         // Assert
         Assert.False(obsolete);
@@ -117,7 +117,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             activeStates: ["Decide1"]);
 
         // Act
-        var obsolete = ExecutionService.IsForkExpansionUnloadObsolete(checkpoint, "fork1");
+        var obsolete = ExecutionCheckpointService.IsForkExpansionUnloadObsolete(checkpoint, "fork1");
 
         // Assert
         Assert.True(obsolete);
@@ -151,7 +151,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             ]);
 
         // Act
-        var obsolete = ExecutionService.IsForkExpansionUnloadObsolete(checkpoint, "fork1");
+        var obsolete = ExecutionCheckpointService.IsForkExpansionUnloadObsolete(checkpoint, "fork1");
 
         // Assert
         Assert.True(obsolete);

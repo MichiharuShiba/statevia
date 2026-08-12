@@ -4355,7 +4355,7 @@ public sealed class ExecutionServiceTests
         var projectAuth = projectAuthorization ?? new AllowAllProjectAuthorizationService();
         var mutationAuth = new AllowAllExecutionMutationAuthorization();
         var snapshotFactory = new FakeExecutionSecuritySnapshotFactory(sqlite.TenantAccessor);
-        var checkpoints = checkpointStore ?? new FakeExecutionCheckpointStore();
+        var checkpointStoreResolved = checkpointStore ?? new FakeExecutionCheckpointStore();
         var lifecycle = new ExecutionLifecycleCommandService(
             engine,
             displayIds,
@@ -4375,7 +4375,7 @@ public sealed class ExecutionServiceTests
             executor,
             mutationPersistence,
             NullLogger<ExecutionLifecycleCommandService>.Instance,
-            checkpoints,
+            checkpointStoreResolved,
             ownership,
             idempotency,
             projection,
@@ -4399,6 +4399,16 @@ public sealed class ExecutionServiceTests
             projection,
             lifecycle,
             forkChildCoordinator);
+        var checkpointService = new ExecutionCheckpointService(
+            engine,
+            checkpointStoreResolved,
+            ownership,
+            executor,
+            executions,
+            projection,
+            lifecycle,
+            NullLogger<ExecutionCheckpointService>.Instance,
+            forkChildCoordinator);
 
         return new ExecutionService(
             engine,
@@ -4420,12 +4430,13 @@ public sealed class ExecutionServiceTests
             executor,
             mutationPersistence,
             NullLogger<ExecutionService>.Instance,
-            checkpoints,
+            checkpointStoreResolved,
             query,
             idempotency,
             projection,
             lifecycle,
             waitEvents,
+            checkpointService,
             workQueue,
             ownership,
             forkChildCoordinator: forkChildCoordinator);
