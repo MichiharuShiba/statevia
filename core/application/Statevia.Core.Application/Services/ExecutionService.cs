@@ -1,15 +1,9 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Statevia.Core.Application.Configuration;
 using Statevia.Core.Application.Infrastructure;
-using Statevia.Core.Application.Contracts.Persistence;
-using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Core.Application.Services;
@@ -25,17 +19,6 @@ internal sealed class ExecutionService : IExecutionService
     /// </summary>
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> PersistUnloadGates = new();
 
-    /// <summary><c>event_delivery_decision</c> 構造化ログの <c>decision</c> プロパティ値。</summary>
-    private static class EventDeliveryLogDecisions
-    {
-        internal const string Inserted = "inserted";
-        internal const string DuplicateKey = "duplicate_key";
-        internal const string AbortedTimeout = "aborted_timeout";
-        internal const string Retry = "retry";
-        internal const string BackoffBudgetExhausted = "backoff_budget_exhausted";
-        internal const string Failed = "failed";
-    }
-
     /// <summary>実行グラフ JSON のプロパティ名（投影・Engine export 共通）。</summary>
     private static class ExecutionGraphJsonProperties
     {
@@ -48,15 +31,6 @@ internal sealed class ExecutionService : IExecutionService
         internal const string NodeType = "nodeType";
     }
 
-    /// <summary>
-    /// <c>event_delivery_decision</c> 構造化ログの <c>errorCode</c>、および dedup 行の既知 <c>error_code</c> 値。
-    /// </summary>
-    private static class EventDeliveryLogErrorCodes
-    {
-        internal const string None = "none";
-        internal const string UniqueViolation = "unique_violation";
-    }
-
     /// <summary>HTTP 201 Created。</summary>
     private const int HttpStatus201Created = 201;
 
@@ -67,7 +41,6 @@ internal sealed class ExecutionService : IExecutionService
     private readonly IDisplayIdService _displayIds;
     private readonly IDefinitionCompilerService _compiler;
     private readonly IIdGenerator _idGenerator;
-    private readonly ICommandDedupService _dedupService;
     private readonly IExecutionRepository _executions;
     private readonly IExecutionCursorRepository _executionCursors;
     private readonly IExecutionWaitRepository _executionWaits;
@@ -87,11 +60,10 @@ internal sealed class ExecutionService : IExecutionService
     private readonly ICoreTransactionExecutor _executor;
     private readonly IExecutionMutationPersistence _mutationPersistence;
     private readonly ILogger<ExecutionService> _logger;
-    private readonly IOptions<EventDeliveryRetryOptions> _eventDeliveryRetryOptions;
-    private readonly ICorrelationIdAccessor _correlationIdAccessor;
     private readonly IExecutionProjectionUpdateQueue _projectionUpdateQueue;
     private readonly IForkChildExecutionCoordinator? _forkChildCoordinator;
     private readonly ExecutionQueryService _query;
+    private readonly ExecutionIdempotencyService _idempotency;
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Major Code Smell",
@@ -102,7 +74,6 @@ internal sealed class ExecutionService : IExecutionService
         IDisplayIdService displayIds,
         IDefinitionCompilerService compiler,
         IIdGenerator idGenerator,
-        ICommandDedupService dedupService,
         IExecutionRepository executions,
         IExecutionCursorRepository executionCursors,
         IExecutionWaitRepository executionWaits,
@@ -119,10 +90,9 @@ internal sealed class ExecutionService : IExecutionService
         ICoreTransactionExecutor executor,
         IExecutionMutationPersistence mutationPersistence,
         ILogger<ExecutionService> logger,
-        IOptions<EventDeliveryRetryOptions> eventDeliveryRetryOptions,
-        ICorrelationIdAccessor correlationIdAccessor,
         IExecutionCheckpointStore checkpointStore,
         ExecutionQueryService query,
+        ExecutionIdempotencyService idempotency,
         IExecutionProjectionUpdateQueue? projectionUpdateQueue = null,
         IExecutionWorkQueue? workQueue = null,
         ExecutionOwnershipTracker? ownershipTracker = null,
@@ -132,7 +102,6 @@ internal sealed class ExecutionService : IExecutionService
         _displayIds = displayIds;
         _compiler = compiler;
         _idGenerator = idGenerator;
-        _dedupService = dedupService;
         _executions = executions;
         _executionCursors = executionCursors;
         _executionWaits = executionWaits;
@@ -152,9 +121,8 @@ internal sealed class ExecutionService : IExecutionService
         _executor = executor;
         _mutationPersistence = mutationPersistence;
         _logger = logger;
-        _eventDeliveryRetryOptions = eventDeliveryRetryOptions;
-        _correlationIdAccessor = correlationIdAccessor;
         _query = query;
+        _idempotency = idempotency;
         _projectionUpdateQueue = projectionUpdateQueue ?? NoopExecutionProjectionUpdateQueue.Instance;
         _forkChildCoordinator = forkChildCoordinator;
     }
@@ -170,9 +138,9 @@ internal sealed class ExecutionService : IExecutionService
 
         var tenantKey = _tenantContext.GetRequiredTenantKey();
         var requestHash = ComputeStartRequestHash(request);
-        var dedupKey = _dedupService.Create(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path, requestHash);
+        var dedupKey = _idempotency.CreateKey(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path, requestHash);
 
-        var cachedStart = await TryGetIdempotentStartResponseAsync(dedupKey, requestHash, ct).ConfigureAwait(false);
+        var cachedStart = await _idempotency.TryGetIdempotentStartResponseAsync(dedupKey, requestHash, ct).ConfigureAwait(false);
         if (cachedStart is not null)
         {
             return cachedStart;
@@ -618,17 +586,10 @@ internal sealed class ExecutionService : IExecutionService
 
         var tenantKey = _tenantContext.GetRequiredTenantKey();
         var tenantId = _tenantContext.GetRequiredTenantId();
-        var dedupKey = _dedupService.Create(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path);
+        var dedupKey = _idempotency.CreateKey(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path);
 
-        if (dedupKey is { } key)
-        {
-            var dedupCheckTime = DateTime.UtcNow;
-            var existing = await _executor.ExecuteReadOnlyAsync(
-                (uow, innerCt) => _dedup.FindValidAsync(uow, key.DedupKey, dedupCheckTime, innerCt),
-                ct).ConfigureAwait(false);
-            if (existing is not null)
-                return;
-        }
+        if (await _idempotency.HasValidCommandDedupAsync(dedupKey, ct).ConfigureAwait(false))
+            return;
 
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
@@ -662,7 +623,7 @@ internal sealed class ExecutionService : IExecutionService
 
         var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
 
-        if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
+        if (await _idempotency.TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
         await EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
@@ -1033,17 +994,10 @@ internal sealed class ExecutionService : IExecutionService
 
         var tenantKey = _tenantContext.GetRequiredTenantKey();
         var tenantId = _tenantContext.GetRequiredTenantId();
-        var dedupKey = _dedupService.Create(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path);
+        var dedupKey = _idempotency.CreateKey(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path);
 
-        if (dedupKey is { } key)
-        {
-            var dedupCheckTime = DateTime.UtcNow;
-            var existing = await _executor.ExecuteReadOnlyAsync(
-                (uow, innerCt) => _dedup.FindValidAsync(uow, key.DedupKey, dedupCheckTime, innerCt),
-                ct).ConfigureAwait(false);
-            if (existing is not null)
-                return;
-        }
+        if (await _idempotency.HasValidCommandDedupAsync(dedupKey, ct).ConfigureAwait(false))
+            return;
 
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
@@ -1072,7 +1026,7 @@ internal sealed class ExecutionService : IExecutionService
 
         var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
 
-        if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
+        if (await _idempotency.TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
         await EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
@@ -1265,17 +1219,10 @@ internal sealed class ExecutionService : IExecutionService
         var eventName = resumeKey.Trim();
         var tenantKey = _tenantContext.GetRequiredTenantKey();
         var tenantId = _tenantContext.GetRequiredTenantId();
-        var dedupKey = _dedupService.Create(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path);
+        var dedupKey = _idempotency.CreateKey(tenantKey, idempotencyKey, requestContext.Method, requestContext.Path);
 
-        if (dedupKey is { } key)
-        {
-            var dedupCheckTime = DateTime.UtcNow;
-            var existing = await _executor.ExecuteReadOnlyAsync(
-                (uow, innerCt) => _dedup.FindValidAsync(uow, key.DedupKey, dedupCheckTime, innerCt),
-                ct).ConfigureAwait(false);
-            if (existing is not null)
-                return;
-        }
+        if (await _idempotency.HasValidCommandDedupAsync(dedupKey, ct).ConfigureAwait(false))
+            return;
 
         var uuid = await _displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
@@ -1305,7 +1252,7 @@ internal sealed class ExecutionService : IExecutionService
 
         var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
 
-        if (await TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
+        if (await _idempotency.TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
         // 物理子終端の予約イベントは Wait Resume ではなく Join 再評価へ振る（D3）。
@@ -2231,58 +2178,6 @@ internal sealed class ExecutionService : IExecutionService
         }
 
         return false;
-    }
-
-    private static ExecutionResponse? DeserializeCachedExecutionResponse(CommandDedupRow existing)
-    {
-        if (string.IsNullOrEmpty(existing.ResponseBody))
-            return null;
-        return JsonDeserialize.TryDeserialize<ExecutionResponse>(existing.ResponseBody, JsonSerializerProfiles.CaseInsensitive, out var deserialized)
-            ? deserialized
-            : null;
-    }
-
-    private async Task<ExecutionResponse?> TryGetIdempotentStartResponseAsync(
-        CommandDedupKey? dedupKey,
-        string requestHash,
-        CancellationToken ct)
-    {
-        if (dedupKey is not { } key)
-        {
-            return null;
-        }
-
-        var tenantKey = _tenantContext.GetRequiredTenantKey();
-        var dedupCheckTime = DateTime.UtcNow;
-        var existing = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _dedup.FindValidAsync(uow, key.DedupKey, dedupCheckTime, innerCt),
-            ct).ConfigureAwait(false);
-        if (existing is not null)
-        {
-            var cached = DeserializeCachedExecutionResponse(existing);
-            if (cached is not null)
-            {
-                return cached;
-            }
-        }
-
-        var conflicting = await _executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => _dedup.FindValidConflictingRequestHashAsync(
-                uow,
-                tenantKey,
-                key.Endpoint,
-                key.IdempotencyKey,
-                requestHash,
-                dedupCheckTime,
-                innerCt),
-            ct).ConfigureAwait(false);
-        if (conflicting is not null)
-        {
-            throw new IdempotencyConflictException(
-                "The same X-Idempotency-Key was used with a different request body.");
-        }
-
-        return null;
     }
 
     private Task<DefinitionVersionRow?> ResolveStartDefinitionVersionAsync(
@@ -3287,229 +3182,6 @@ internal sealed class ExecutionService : IExecutionService
         public Task EnqueueAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
 
         public Task DrainAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// 現在リクエストの相関 ID（無ければ空文字）を返す。
-    /// </summary>
-    private string GetTraceIdOrEmpty() => _correlationIdAccessor.GetCorrelationId();
-
-    /// <summary>
-    /// イベント配送 dedup の観測性用に必須キーを構造化ログへ書き出す。
-    /// </summary>
-    private void LogEventDeliveryDecision(EventDeliveryDecisionDetails details, Exception? exception = null)
-    {
-        switch (details.Decision)
-        {
-            case EventDeliveryLogDecisions.Failed:
-            case EventDeliveryLogDecisions.BackoffBudgetExhausted:
-                _logger.EventDeliveryDecisionError(exception!, details);
-                break;
-            case EventDeliveryLogDecisions.Retry:
-            case EventDeliveryLogDecisions.AbortedTimeout:
-                _logger.EventDeliveryDecisionWarning(exception!, details);
-                break;
-            default:
-                _logger.EventDeliveryDecisionInformation(details);
-                break;
-        }
-    }
-
-    /// <summary>
-    /// ログ用のエラー分類コード（例外種別・SQLSTATE 等の短い識別子）。
-    /// </summary>
-    private static string MapErrorCode(Exception exception) =>
-        exception switch
-        {
-            TaskCanceledException => nameof(TaskCanceledException),
-            OperationCanceledException => nameof(OperationCanceledException),
-            TimeoutException => nameof(TimeoutException),
-            DbUpdateException dbUpdateException =>
-                dbUpdateException.InnerException?.GetType().Name ?? nameof(DbUpdateException),
-            _ => exception.GetType().Name
-        };
-
-    /// <summary>
-    /// <c>event_delivery_dedup</c> に RECEIVED を先行挿入する。一意制約違反時は既存行を読み、
-    /// 既に APPLIED なら true（呼び出し側は即 return）。それ以外は false（処理継続）。
-    /// DB 一時障害時は設定に従い段階的バックオフで再試行する（タイムアウト系は再試行しない）。
-    /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Critical Code Smell",
-        "S3776:Cognitive Complexity of methods should not be too high",
-        Justification = "イベント配送 dedup の再試行・ログ分岐を一箇所に集約している。")]
-    private async Task<bool> TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(
-        Guid executionId,
-        Guid clientEventId,
-        CancellationToken cancellationToken)
-    {
-        var retryOptions = _eventDeliveryRetryOptions.Value;
-        var traceId = GetTraceIdOrEmpty();
-        var tenantId = _tenantContext.GetRequiredTenantId();
-        var acceptedAt = DateTime.UtcNow;
-        var row = new EventDeliveryDedupRow
-        {
-            TenantId = tenantId,
-            ExecutionId = executionId,
-            ClientEventId = clientEventId,
-            BatchId = null,
-            Status = EventDeliveryDedupStatuses.Received,
-            AcceptedAt = acceptedAt,
-            AppliedAt = null,
-            ErrorCode = null,
-            UpdatedAt = acceptedAt
-        };
-
-        var totalBackoffMs = 0;
-
-        for (var attempt = 1; attempt <= retryOptions.MaxAttempts; attempt++)
-        {
-            var attemptStopwatch = Stopwatch.StartNew();
-            try
-            {
-                await _executor.ExecuteReadCommittedAsync(
-                    async (uow, innerCt) =>
-                    {
-                        await _eventDeliveryDedup.AddReceivedAsync(uow, row, innerCt).ConfigureAwait(false);
-                    },
-                    cancellationToken).ConfigureAwait(false);
-                attemptStopwatch.Stop();
-                LogEventDeliveryDecision(new EventDeliveryDecisionDetails
-                {
-                    TraceId = traceId,
-                    TenantId = tenantId,
-                    ExecutionId = executionId,
-                    ClientEventId = clientEventId,
-                    Decision = EventDeliveryLogDecisions.Inserted,
-                    Attempt = attempt,
-                    ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
-                    ErrorCode = EventDeliveryLogErrorCodes.None,
-                });
-                return false;
-            }
-            catch (DbUpdateException dbUpdateException)
-                when (EventDeliveryRetryPolicy.IsUniqueConstraintViolation(dbUpdateException))
-            {
-                attemptStopwatch.Stop();
-                LogEventDeliveryDecision(new EventDeliveryDecisionDetails
-                {
-                    TraceId = traceId,
-                    TenantId = tenantId,
-                    ExecutionId = executionId,
-                    ClientEventId = clientEventId,
-                    Decision = EventDeliveryLogDecisions.DuplicateKey,
-                    Attempt = attempt,
-                    ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
-                    ErrorCode = EventDeliveryLogErrorCodes.UniqueViolation,
-                });
-
-                var existing = await _executor.ExecuteReadOnlyAsync(
-                    (uow, innerCt) => _eventDeliveryDedup.FindAsync(uow, tenantId, executionId, clientEventId, innerCt),
-                    cancellationToken).ConfigureAwait(false);
-                if (existing is { Status: EventDeliveryDedupStatuses.Applied })
-                    return true;
-
-                if (existing is null)
-                    throw;
-
-                return false;
-            }
-            catch (Exception exception)
-                when (EventDeliveryRetryPolicy.IsNonRetryableTimeoutOrCancellation(exception))
-            {
-                attemptStopwatch.Stop();
-                LogEventDeliveryDecision(
-                    new EventDeliveryDecisionDetails
-                    {
-                        TraceId = traceId,
-                        TenantId = tenantId,
-                        ExecutionId = executionId,
-                        ClientEventId = clientEventId,
-                        Decision = EventDeliveryLogDecisions.AbortedTimeout,
-                        Attempt = attempt,
-                        ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
-                        ErrorCode = MapErrorCode(exception),
-                    },
-                    exception);
-                throw;
-            }
-            catch (Exception exception) when (
-                EventDeliveryRetryPolicy.IsTransientInfrastructureFailure(exception)
-                && attempt < retryOptions.MaxAttempts)
-            {
-                attemptStopwatch.Stop();
-                LogEventDeliveryDecision(
-                    new EventDeliveryDecisionDetails
-                    {
-                        TraceId = traceId,
-                        TenantId = tenantId,
-                        ExecutionId = executionId,
-                        ClientEventId = clientEventId,
-                        Decision = EventDeliveryLogDecisions.Retry,
-                        Attempt = attempt,
-                        ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
-                        ErrorCode = MapErrorCode(exception),
-                    },
-                    exception);
-
-                var failureIndex = attempt - 1;
-                var delayMs = EventDeliveryRetryPolicy.ComputeBackoffDelayMs(
-                    failureIndex,
-                    retryOptions,
-                    Random.Shared);
-
-                if (retryOptions.MaxTotalBackoffMs > 0)
-                {
-                    var remainingBudgetMs = retryOptions.MaxTotalBackoffMs - totalBackoffMs;
-                    if (remainingBudgetMs <= 0)
-                    {
-                        attemptStopwatch.Stop();
-                        LogEventDeliveryDecision(
-                            new EventDeliveryDecisionDetails
-                            {
-                                TraceId = traceId,
-                                TenantId = tenantId,
-                                ExecutionId = executionId,
-                                ClientEventId = clientEventId,
-                                Decision = EventDeliveryLogDecisions.BackoffBudgetExhausted,
-                                Attempt = attempt,
-                                ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
-                                ErrorCode = EventDeliveryLogDecisions.BackoffBudgetExhausted,
-                            },
-                            exception);
-                        throw new InvalidOperationException(
-                            "Event delivery insert retry stopped: total backoff budget exhausted.",
-                            exception);
-                    }
-
-                    delayMs = Math.Min(delayMs, remainingBudgetMs);
-                }
-
-                totalBackoffMs += delayMs;
-                if (delayMs > 0)
-                    await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception exception)
-            {
-                attemptStopwatch.Stop();
-                LogEventDeliveryDecision(
-                    new EventDeliveryDecisionDetails
-                    {
-                        TraceId = traceId,
-                        TenantId = tenantId,
-                        ExecutionId = executionId,
-                        ClientEventId = clientEventId,
-                        Decision = EventDeliveryLogDecisions.Failed,
-                        Attempt = attempt,
-                        ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
-                        ErrorCode = MapErrorCode(exception),
-                    },
-                    exception);
-                throw;
-            }
-        }
-
-        throw new InvalidOperationException("Event delivery insert retry loop ended unexpectedly.");
     }
 
     /// <summary>同一プロセス Start の入力束。</summary>

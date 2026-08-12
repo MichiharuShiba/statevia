@@ -4330,13 +4330,21 @@ public sealed class ExecutionServiceTests
             eventStore,
             executor,
             forkChildCoordinator);
+        var idempotency = new ExecutionIdempotencyService(
+            dedupService,
+            dedup,
+            eventDeliveryDedup,
+            sqlite.TenantAccessor,
+            executor,
+            retryOptions,
+            new FixedCorrelationIdAccessor(),
+            NullLogger<ExecutionIdempotencyService>.Instance);
 
         return new ExecutionService(
             engine,
             displayIds,
             compiler,
             idGenerator,
-            dedupService,
             executions,
             new FakeExecutionCursorRepository(),
             waitRepo ?? new FakeExecutionWaitRepository(),
@@ -4353,10 +4361,9 @@ public sealed class ExecutionServiceTests
             executor,
             mutationPersistence,
             NullLogger<ExecutionService>.Instance,
-            retryOptions,
-            new FixedCorrelationIdAccessor(),
             checkpointStore ?? new FakeExecutionCheckpointStore(),
             query,
+            idempotency,
             projectionUpdateQueue,
             workQueue,
             ownershipTracker,
