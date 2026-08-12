@@ -284,7 +284,7 @@ internal sealed class ExecutionIdempotencyService(
                                 Decision = EventDeliveryLogDecisions.BackoffBudgetExhausted,
                                 Attempt = attempt,
                                 ElapsedMs = attemptStopwatch.ElapsedMilliseconds,
-                                ErrorCode = EventDeliveryLogDecisions.BackoffBudgetExhausted,
+                                ErrorCode = MapErrorCode(exception),
                             },
                             exception);
                         throw new InvalidOperationException(
