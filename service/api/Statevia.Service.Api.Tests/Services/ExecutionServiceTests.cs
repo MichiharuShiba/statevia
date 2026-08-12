@@ -4381,6 +4381,26 @@ public sealed class ExecutionServiceTests
             projection,
             workQueue,
             forkChildCoordinator);
+        var checkpointService = new ExecutionCheckpointService(
+            engine,
+            checkpointStoreResolved,
+            ownership,
+            executor,
+            executions,
+            projection,
+            lifecycle,
+            NullLogger<ExecutionCheckpointService>.Instance,
+            forkChildCoordinator);
+        var forkJoin = new ExecutionForkJoinCoordinator(
+            engine,
+            executions,
+            checkpointStoreResolved,
+            executor,
+            lifecycle,
+            projection,
+            checkpointService,
+            NullLogger<ExecutionForkJoinCoordinator>.Instance,
+            forkChildCoordinator);
         var waitEvents = new ExecutionWaitEventService(
             engine,
             displayIds,
@@ -4398,16 +4418,8 @@ public sealed class ExecutionServiceTests
             idempotency,
             projection,
             lifecycle,
-            forkChildCoordinator);
-        var checkpointService = new ExecutionCheckpointService(
-            engine,
-            checkpointStoreResolved,
-            ownership,
-            executor,
-            executions,
-            projection,
-            lifecycle,
-            NullLogger<ExecutionCheckpointService>.Instance,
+            checkpointService,
+            forkJoin,
             forkChildCoordinator);
         var ownershipSessions = new ExecutionOwnershipService(
             engine,

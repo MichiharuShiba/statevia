@@ -173,7 +173,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             """;
 
         // Act
-        var completed = ExecutionService.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
+        var completed = ExecutionForkJoinCoordinator.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
 
         // Assert
         Assert.True(completed);
@@ -195,7 +195,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             """;
 
         // Act
-        var completed = ExecutionService.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
+        var completed = ExecutionForkJoinCoordinator.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
 
         // Assert
         Assert.True(completed);
@@ -217,7 +217,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             """;
 
         // Act
-        var completed = ExecutionService.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
+        var completed = ExecutionForkJoinCoordinator.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
 
         // Assert
         Assert.True(completed);
@@ -238,7 +238,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             """;
 
         // Act
-        var completed = ExecutionService.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
+        var completed = ExecutionForkJoinCoordinator.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
 
         // Assert
         Assert.False(completed);
@@ -249,7 +249,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
     public void IsPhysicalJoinAlreadyCompleted_WhenInvalidJson_ReturnsFalse()
     {
         // Arrange / Act
-        var completed = ExecutionService.IsPhysicalJoinAlreadyCompleted("{not-json", "fork1", "Join1");
+        var completed = ExecutionForkJoinCoordinator.IsPhysicalJoinAlreadyCompleted("{not-json", "fork1", "Join1");
 
         // Assert
         Assert.False(completed);

@@ -28,8 +28,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ExecutionIdempotencyService>();
         services.AddScoped<ExecutionProjectionOrchestrator>();
         services.AddScoped<ExecutionLifecycleCommandService>();
-        services.AddScoped<ExecutionWaitEventService>();
         services.AddScoped<ExecutionCheckpointService>();
+        services.AddScoped<ExecutionForkJoinCoordinator>();
+        services.AddScoped<ExecutionWaitEventService>();
         services.AddScoped<ExecutionOwnershipService>();
         services.AddScoped<ExecutionRecoveryService>();
         services.AddScoped<IExecutionService, ExecutionService>();

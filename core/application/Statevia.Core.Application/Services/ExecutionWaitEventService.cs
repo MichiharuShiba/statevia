@@ -10,8 +10,8 @@ namespace Statevia.Core.Application.Services;
 /// </summary>
 /// <remarks>
 /// <para><see cref="ExecutionService"/> Facade から委譲される。HTTP 契約は変更しない。</para>
-/// <para>物理子終端 <c>child.completed</c> の Join 再評価は Facade 側コールバックへ委譲する（Fork/Join 分離まで）。</para>
-/// <para>checkpoint 寿命の破棄判定は Facade フックとして Resume 永続化時に受け取る。</para>
+/// <para>物理子終端 <c>child.completed</c> の Join 再評価は <see cref="ExecutionForkJoinCoordinator"/> へ委譲する。</para>
+/// <para>checkpoint 寿命の破棄判定は <see cref="ExecutionCheckpointService"/> を利用する。</para>
 /// </remarks>
 /// <param name="engine">実行エンジン。</param>
 /// <param name="displayIds">表示 ID 解決。</param>
@@ -29,6 +29,8 @@ namespace Statevia.Core.Application.Services;
 /// <param name="idempotency">冪等サービス。</param>
 /// <param name="projection">投影オーケストレータ。</param>
 /// <param name="lifecycle">ライフサイクル（Engine hydrate / checkpoint upsert）。</param>
+/// <param name="checkpoints">checkpoint 寿命・破棄。</param>
+/// <param name="forkJoin">親 Physical Join 再評価。</param>
 /// <param name="forkChildCoordinator">Fork 子 Wait 配送（任意）。</param>
 [System.Diagnostics.CodeAnalysis.SuppressMessage(
     "Major Code Smell",
@@ -51,6 +53,8 @@ internal sealed class ExecutionWaitEventService(
     ExecutionIdempotencyService idempotency,
     ExecutionProjectionOrchestrator projection,
     ExecutionLifecycleCommandService lifecycle,
+    ExecutionCheckpointService checkpoints,
+    ExecutionForkJoinCoordinator forkJoin,
     IForkChildExecutionCoordinator? forkChildCoordinator = null)
 {
     /// <summary>HTTP 204 No Content。</summary>
@@ -289,9 +293,6 @@ internal sealed class ExecutionWaitEventService(
     /// <param name="resumeKey">Resume イベント名。</param>
     /// <param name="idempotencyKey">冪等キー（任意）。</param>
     /// <param name="requestContext">HTTP / Worker 文脈。</param>
-    /// <param name="handleChildCompletedResume">物理子終端時の Join 再評価（Facade）。</param>
-    /// <param name="shouldDiscardRuntimeCheckpoint">checkpoint 破棄候補判定（Facade）。</param>
-    /// <param name="discardOrRefreshRuntimeCheckpoint">checkpoint 破棄または所有中更新（Facade）。</param>
     /// <param name="ct">キャンセル。</param>
     public async Task ResumeNodeAsync(
         string idOrUuid,
@@ -299,15 +300,8 @@ internal sealed class ExecutionWaitEventService(
         string? resumeKey,
         string? idempotencyKey,
         CommandRequestContext requestContext,
-        Func<Guid, ExecutionRow, string, CancellationToken, Task> handleChildCompletedResume,
-        Func<Guid, string, string, CancellationToken, Task<bool>> shouldDiscardRuntimeCheckpoint,
-        Func<ICoreUnitOfWork, string, Guid, CancellationToken, Task<bool>> discardOrRefreshRuntimeCheckpoint,
         CancellationToken ct)
     {
-        ArgumentNullException.ThrowIfNull(handleChildCompletedResume);
-        ArgumentNullException.ThrowIfNull(shouldDiscardRuntimeCheckpoint);
-        ArgumentNullException.ThrowIfNull(discardOrRefreshRuntimeCheckpoint);
-
         ArgumentNullException.ThrowIfNull(requestContext);
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
         ArgumentException.ThrowIfNullOrWhiteSpace(resumeKey);
@@ -337,9 +331,6 @@ internal sealed class ExecutionWaitEventService(
                 eventName,
                 idempotencyKey,
                 requestContext,
-                handleChildCompletedResume,
-                shouldDiscardRuntimeCheckpoint,
-                discardOrRefreshRuntimeCheckpoint,
                 ct).ConfigureAwait(false))
         {
             return;
@@ -357,7 +348,7 @@ internal sealed class ExecutionWaitEventService(
         // 物理子終端の予約イベントは Wait Resume ではなく Join 再評価へ振る（D3）。
         if (string.Equals(eventName, ExecutionWaitEventNames.ChildCompleted, StringComparison.Ordinal))
         {
-            await handleChildCompletedResume(uuid.Value, execution, nodeId, ct).ConfigureAwait(false);
+            await forkJoin.HandleChildCompletedResumeAsync(uuid.Value, execution, nodeId, ct).ConfigureAwait(false);
             return;
         }
 
@@ -393,8 +384,6 @@ internal sealed class ExecutionWaitEventService(
                     pubCancel,
                     pubGraphJson,
                     publishedPayload),
-                shouldDiscardRuntimeCheckpoint,
-                discardOrRefreshRuntimeCheckpoint,
                 ct)
             .ConfigureAwait(false);
 
@@ -419,8 +408,6 @@ internal sealed class ExecutionWaitEventService(
     /// <summary>Wait Resume 後の投影・checkpoint・event_store・dedup を同一 tx で永続化する。</summary>
     private async Task PersistWaitResumeSideEffectsAsync(
         WaitResumePersistRequest request,
-        Func<Guid, string, string, CancellationToken, Task<bool>> shouldDiscardRuntimeCheckpoint,
-        Func<ICoreUnitOfWork, string, Guid, CancellationToken, Task<bool>> discardOrRefreshRuntimeCheckpoint,
         CancellationToken ct)
     {
         await mutationPersistence.ExecuteSerializableWithRetryAsync(
@@ -450,14 +437,14 @@ internal sealed class ExecutionWaitEventService(
 
                 if (request.EngineStillLoaded)
                 {
-                    if (await shouldDiscardRuntimeCheckpoint(
+                    if (await checkpoints.ShouldDiscardRuntimeCheckpointAsync(
                             request.ExecutionId,
                             request.PubStatus,
                             request.PubGraphJson,
                             ctInner)
                         .ConfigureAwait(false))
                     {
-                        await discardOrRefreshRuntimeCheckpoint(
+                        await checkpoints.DiscardOrRefreshRuntimeCheckpointAsync(
                                 uow,
                                 request.EngineId,
                                 request.ExecutionId,
@@ -562,9 +549,6 @@ internal sealed class ExecutionWaitEventService(
         string eventName,
         string? idempotencyKey,
         CommandRequestContext requestContext,
-        Func<Guid, ExecutionRow, string, CancellationToken, Task> handleChildCompletedResume,
-        Func<Guid, string, string, CancellationToken, Task<bool>> shouldDiscardRuntimeCheckpoint,
-        Func<ICoreUnitOfWork, string, Guid, CancellationToken, Task<bool>> discardOrRefreshRuntimeCheckpoint,
         CancellationToken ct)
     {
         if (forkChildCoordinator is null)
@@ -585,9 +569,6 @@ internal sealed class ExecutionWaitEventService(
                 delivery.EventName,
                 idempotencyKey,
                 requestContext,
-                handleChildCompletedResume,
-                shouldDiscardRuntimeCheckpoint,
-                discardOrRefreshRuntimeCheckpoint,
                 ct)
             .ConfigureAwait(false);
         return true;
