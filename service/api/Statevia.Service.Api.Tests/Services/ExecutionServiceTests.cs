@@ -4339,6 +4339,19 @@ public sealed class ExecutionServiceTests
             retryOptions,
             new FixedCorrelationIdAccessor(),
             NullLogger<ExecutionIdempotencyService>.Instance);
+        var ownership = ownershipTracker ?? new ExecutionOwnershipTracker();
+        var waits = waitRepo ?? new FakeExecutionWaitRepository();
+        var projection = new ExecutionProjectionOrchestrator(
+            engine,
+            executions,
+            new FakeExecutionCursorRepository(),
+            waits,
+            idGenerator,
+            executor,
+            NullLogger<ExecutionProjectionOrchestrator>.Instance,
+            ownership,
+            projectionUpdateQueue,
+            forkChildCoordinator);
 
         return new ExecutionService(
             engine,
@@ -4346,8 +4359,7 @@ public sealed class ExecutionServiceTests
             compiler,
             idGenerator,
             executions,
-            new FakeExecutionCursorRepository(),
-            waitRepo ?? new FakeExecutionWaitRepository(),
+            waits,
             definitions,
             projectAuthorization ?? new AllowAllProjectAuthorizationService(),
             runtimeAuth,
@@ -4364,9 +4376,9 @@ public sealed class ExecutionServiceTests
             checkpointStore ?? new FakeExecutionCheckpointStore(),
             query,
             idempotency,
-            projectionUpdateQueue,
+            projection,
             workQueue,
-            ownershipTracker,
+            ownership,
             forkChildCoordinator: forkChildCoordinator);
     }
 

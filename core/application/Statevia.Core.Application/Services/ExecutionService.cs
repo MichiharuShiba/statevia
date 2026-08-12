@@ -42,7 +42,6 @@ internal sealed class ExecutionService : IExecutionService
     private readonly IDefinitionCompilerService _compiler;
     private readonly IIdGenerator _idGenerator;
     private readonly IExecutionRepository _executions;
-    private readonly IExecutionCursorRepository _executionCursors;
     private readonly IExecutionWaitRepository _executionWaits;
     private readonly IExecutionCheckpointStore _checkpointStore;
     private readonly IExecutionWorkQueue? _workQueue;
@@ -60,10 +59,10 @@ internal sealed class ExecutionService : IExecutionService
     private readonly ICoreTransactionExecutor _executor;
     private readonly IExecutionMutationPersistence _mutationPersistence;
     private readonly ILogger<ExecutionService> _logger;
-    private readonly IExecutionProjectionUpdateQueue _projectionUpdateQueue;
     private readonly IForkChildExecutionCoordinator? _forkChildCoordinator;
     private readonly ExecutionQueryService _query;
     private readonly ExecutionIdempotencyService _idempotency;
+    private readonly ExecutionProjectionOrchestrator _projection;
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Major Code Smell",
@@ -75,7 +74,6 @@ internal sealed class ExecutionService : IExecutionService
         IDefinitionCompilerService compiler,
         IIdGenerator idGenerator,
         IExecutionRepository executions,
-        IExecutionCursorRepository executionCursors,
         IExecutionWaitRepository executionWaits,
         IDefinitionRepository definitions,
         IProjectAuthorizationService projectAuth,
@@ -93,7 +91,7 @@ internal sealed class ExecutionService : IExecutionService
         IExecutionCheckpointStore checkpointStore,
         ExecutionQueryService query,
         ExecutionIdempotencyService idempotency,
-        IExecutionProjectionUpdateQueue? projectionUpdateQueue = null,
+        ExecutionProjectionOrchestrator projection,
         IExecutionWorkQueue? workQueue = null,
         ExecutionOwnershipTracker? ownershipTracker = null,
         IForkChildExecutionCoordinator? forkChildCoordinator = null)
@@ -103,7 +101,6 @@ internal sealed class ExecutionService : IExecutionService
         _compiler = compiler;
         _idGenerator = idGenerator;
         _executions = executions;
-        _executionCursors = executionCursors;
         _executionWaits = executionWaits;
         _checkpointStore = checkpointStore;
         _workQueue = workQueue;
@@ -123,7 +120,7 @@ internal sealed class ExecutionService : IExecutionService
         _logger = logger;
         _query = query;
         _idempotency = idempotency;
-        _projectionUpdateQueue = projectionUpdateQueue ?? NoopExecutionProjectionUpdateQueue.Instance;
+        _projection = projection;
         _forkChildCoordinator = forkChildCoordinator;
     }
 
@@ -324,7 +321,7 @@ internal sealed class ExecutionService : IExecutionService
                     var startSnapshot = _engine.GetSnapshot(engineId)
                         ?? throw new InvalidOperationException(
                             $"Cannot project execution '{resolvedExecutionId}': engine snapshot is missing after Start.");
-                    var status = MapStatus(startSnapshot);
+                    var status = ExecutionProjectionOrchestrator.MapStatus(startSnapshot);
                     var graphJson = _engine.ExportExecutionGraph(engineId);
 
                     ExecutionResponse response;
@@ -436,7 +433,7 @@ internal sealed class ExecutionService : IExecutionService
                             .ConfigureAwait(false);
                     }
 
-                    await SyncOperationalProjectionAsync(
+                    await _projection.SyncOperationalProjectionAsync(
                             uow,
                             resolvedExecutionId,
                             args.TenantId,
@@ -619,7 +616,7 @@ internal sealed class ExecutionService : IExecutionService
                 .ConfigureAwait(false);
         }
 
-        await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
+        await _projection.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
         var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
 
@@ -631,7 +628,7 @@ internal sealed class ExecutionService : IExecutionService
         var cancelApply = await _engine.CancelAsync(uuid.Value.ToString(), clientEventId).ConfigureAwait(false);
         var skipCancelEventAppend = cancelApply.IsAlreadyApplied;
 
-        var (projStatus, projCancel, projGraphJson) = BuildProjectionFromEngine(uuid.Value);
+        var (projStatus, projCancel, projGraphJson) = _projection.BuildProjectionFromEngine(uuid.Value);
         var cancelPayload = JsonSerializer.Serialize(
             new { tenantId },
             JsonSerializerProfiles.CamelCase);
@@ -645,7 +642,7 @@ internal sealed class ExecutionService : IExecutionService
                 await _executions
                     .UpdateExecutionAndSnapshotAsync(uow, uuid.Value, projStatus, projCancel, projGraphJson, ctInner)
                     .ConfigureAwait(false);
-                await SyncOperationalProjectionAsync(
+                await _projection.SyncOperationalProjectionAsync(
                         uow,
                         uuid.Value,
                         tenantId,
@@ -922,7 +919,7 @@ internal sealed class ExecutionService : IExecutionService
             {
                 // 終端後に Unload すると投影キューが engine 不在でスキップし、
                 // Start 直後の不完全 graph のまま Completed だけ残る。最終投影を先に確定する。
-                await _projectionUpdateQueue.DrainAsync(executionId, ct).ConfigureAwait(false);
+                await _projection.DrainAsync(executionId, ct).ConfigureAwait(false);
                 await UpdateProjectionFromEngineAsync(executionId, ct).ConfigureAwait(false);
                 _engine.Unload(engineId);
                 return;
@@ -1022,7 +1019,7 @@ internal sealed class ExecutionService : IExecutionService
 
         await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
-        await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
+        await _projection.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
         var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
 
@@ -1049,7 +1046,7 @@ internal sealed class ExecutionService : IExecutionService
                 ct)
             .ConfigureAwait(false);
 
-        var (pubStatus, pubCancel, pubGraphJson) = BuildProjectionFromEngine(uuid.Value);
+        var (pubStatus, pubCancel, pubGraphJson) = _projection.BuildProjectionFromEngine(uuid.Value);
         var publishedPayload = JsonSerializer.Serialize(
             new { tenantId, name = eventName },
             JsonSerializerProfiles.CamelCase);
@@ -1072,7 +1069,7 @@ internal sealed class ExecutionService : IExecutionService
                 await _executions
                     .UpdateExecutionAndSnapshotAsync(uow, uuid.Value, pubStatus, pubCancel, pubGraphJson, ctInner)
                     .ConfigureAwait(false);
-                await SyncOperationalProjectionAsync(
+                await _projection.SyncOperationalProjectionAsync(
                         uow,
                         uuid.Value,
                         tenantId,
@@ -1126,7 +1123,7 @@ internal sealed class ExecutionService : IExecutionService
 
         // 永続化中に進んだ Engine 完了を取りこぼさない（中間 RUNNING 上書きの保険）。
         if (publishApply.IsApplied)
-            await _projectionUpdateQueue.EnqueueAsync(uuid.Value, ct).ConfigureAwait(false);
+            await _projection.EnqueueAsync(uuid.Value, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1248,7 +1245,7 @@ internal sealed class ExecutionService : IExecutionService
 
         await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
-        await _projectionUpdateQueue.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
+        await _projection.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
         var clientEventId = ClientEventIdResolver.FromIdempotencyKey(idempotencyKey, _idGenerator);
 
@@ -1298,7 +1295,7 @@ internal sealed class ExecutionService : IExecutionService
             .ConfigureAwait(false);
 
         // 永続化中に進んだ Engine 完了を取りこぼさない（中間 RUNNING 上書きの保険）。
-        await _projectionUpdateQueue.EnqueueAsync(uuid.Value, ct).ConfigureAwait(false);
+        await _projection.EnqueueAsync(uuid.Value, ct).ConfigureAwait(false);
     }
 
     /// <summary>Wait Resume 後の投影・checkpoint・event_store・dedup 永続化入力。</summary>
@@ -1335,7 +1332,7 @@ internal sealed class ExecutionService : IExecutionService
                         request.PubGraphJson,
                         ctInner)
                     .ConfigureAwait(false);
-                await SyncOperationalProjectionAsync(
+                await _projection.SyncOperationalProjectionAsync(
                         uow,
                         request.ExecutionId,
                         request.TenantId,
@@ -1425,7 +1422,7 @@ internal sealed class ExecutionService : IExecutionService
     private async Task<(bool EngineStillLoaded, string Status, bool? CancelRequested, string GraphJson)>
         ResolveProjectionAfterWaitResumeAsync(Guid executionId, CancellationToken ct)
     {
-        var (projectedStatus, projectedCancel, projectedGraphJson) = BuildProjectionFromEngineForQueue(executionId);
+        var (projectedStatus, projectedCancel, projectedGraphJson) = _projection.BuildProjectionFromEngineForQueue(executionId);
         if (projectedStatus is not null && projectedGraphJson is not null)
         {
             return (true, projectedStatus, projectedCancel, projectedGraphJson);
@@ -1754,7 +1751,7 @@ internal sealed class ExecutionService : IExecutionService
         // Join 直後に Wait へ進むと SuspendHandler が PersistCheckpointAndUnload する。
         // Unload 後は GetSnapshot が null になり得る。checkpoint に Wait / 終端が進んでいれば冪等完了。
         // Join が startedJoins 等で無動作のまま Unload された場合は再試行する。
-        var (status, cancelRequested, graphJson) = BuildProjectionFromEngineForQueue(parentExecutionId);
+        var (status, cancelRequested, graphJson) = _projection.BuildProjectionFromEngineForQueue(parentExecutionId);
         if (status is null || graphJson is null)
         {
             if (!await HasPhysicalJoinProgressAfterUnloadAsync(parentExecutionId, ct).ConfigureAwait(false))
@@ -1778,7 +1775,7 @@ internal sealed class ExecutionService : IExecutionService
                 async (uow, innerCt) =>
                 {
                     // Settlement 待機後〜tx 開始前に Wait Persist が進んでいることがあるので直前に再取得。
-                    var (freshStatus, freshCancel, freshGraph) = BuildProjectionFromEngineForQueue(parentExecutionId);
+                    var (freshStatus, freshCancel, freshGraph) = _projection.BuildProjectionFromEngineForQueue(parentExecutionId);
                     var writeStatus = freshStatus ?? status;
                     var writeCancel = freshCancel ?? cancelRequested;
                     var writeGraph = freshGraph ?? graphJson;
@@ -1792,7 +1789,7 @@ internal sealed class ExecutionService : IExecutionService
                             writeGraph,
                             innerCt)
                         .ConfigureAwait(false);
-                    await SyncOperationalProjectionAsync(
+                    await _projection.SyncOperationalProjectionAsync(
                             uow,
                             parentExecutionId,
                             execution.TenantId,
@@ -1825,7 +1822,7 @@ internal sealed class ExecutionService : IExecutionService
                 ct)
             .ConfigureAwait(false);
 
-        await _projectionUpdateQueue.EnqueueAsync(parentExecutionId, ct).ConfigureAwait(false);
+        await _projection.EnqueueAsync(parentExecutionId, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -1856,14 +1853,14 @@ internal sealed class ExecutionService : IExecutionService
         // ImportCheckpoint が起動した継続（Wait 復元または完了フロンティア遷移）が落ち着くのを待つ。
         await WaitForEngineQuiescedAfterWaitAsync(engineId, ct).ConfigureAwait(false);
 
-        var (status, cancelRequested, graphJson) = BuildProjectionFromEngine(executionId);
+        var (status, cancelRequested, graphJson) = _projection.BuildProjectionFromEngine(executionId);
         await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
             {
                 await _executions
                     .UpdateExecutionAndSnapshotAsync(uow, executionId, status, cancelRequested, graphJson, innerCt)
                     .ConfigureAwait(false);
-                await SyncOperationalProjectionAsync(
+                await _projection.SyncOperationalProjectionAsync(
                         uow,
                         executionId,
                         tenantId,
@@ -2081,7 +2078,7 @@ internal sealed class ExecutionService : IExecutionService
                             graphJson,
                             innerCt)
                         .ConfigureAwait(false);
-                    await SyncOperationalProjectionAsync(
+                    await _projection.SyncOperationalProjectionAsync(
                             uow,
                             executionId,
                             execution.TenantId,
@@ -2301,15 +2298,6 @@ internal sealed class ExecutionService : IExecutionService
             },
             JsonSerializerProfiles.CamelCase);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
-    }
-
-    private static string MapStatus(ExecutionSnapshot snapshot)
-    {
-        ArgumentNullException.ThrowIfNull(snapshot);
-        if (snapshot.IsCompleted) return ExecutionProjectionStatuses.Completed;
-        if (snapshot.IsCancelled) return ExecutionProjectionStatuses.Cancelled;
-        if (snapshot.IsFailed) return ExecutionProjectionStatuses.Failed;
-        return ExecutionProjectionStatuses.Running;
     }
 
     /// <summary>
@@ -2604,7 +2592,7 @@ internal sealed class ExecutionService : IExecutionService
         string? graphJson = null;
         if (snapshot is not null)
         {
-            status = MapStatus(snapshot);
+            status = ExecutionProjectionOrchestrator.MapStatus(snapshot);
             cancelRequested = snapshot.IsCancelled;
             graphJson = _engine.ExportExecutionGraph(engineExecutionId);
         }
@@ -2693,7 +2681,7 @@ internal sealed class ExecutionService : IExecutionService
                             request.GraphJson,
                             innerCt)
                         .ConfigureAwait(false);
-                    await SyncOperationalProjectionAsync(
+                    await _projection.SyncOperationalProjectionAsync(
                             uow,
                             request.ExecutionId,
                             execution.TenantId,
@@ -2813,187 +2801,13 @@ internal sealed class ExecutionService : IExecutionService
                 || n.CompletedAt is not null));
     }
 
-    public async Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct)
-    {
-        var (status, cancelRequested, graphJson) = BuildProjectionFromEngineForQueue(executionId);
-        if (status is null || graphJson is null)
-            return;
-
-        var engineExecutionId = executionId.ToString();
-        var shouldUnloadAfterProjection = await _executor.ExecuteReadCommittedAsync(
-            async (uow, innerCt) =>
-            {
-                var execution = await _executions.GetByExecutionIdAsync(uow, executionId, innerCt).ConfigureAwait(false);
-                if (execution is null)
-                    return false;
-
-                await _executions
-                    .UpdateExecutionAndSnapshotAsync(uow, executionId, status, cancelRequested, graphJson, innerCt)
-                    .ConfigureAwait(false);
-                await SyncOperationalProjectionAsync(
-                        uow,
-                        executionId,
-                        execution.TenantId,
-                        status,
-                        graphJson,
-                        nodeIdToClear: null,
-                        innerCt)
-                    .ConfigureAwait(false);
-
-                // durable Wait / 物理 Join 待ちが無い／終端なら checkpoint を削除する。
-                // ただし Worker 所有中は lease / fencing 行を消さない（Heartbeat が世代不一致で落ちる）。
-                if (await ShouldDiscardRuntimeCheckpointAsync(executionId, status, graphJson, innerCt)
-                        .ConfigureAwait(false))
-                {
-                    return await DiscardOrRefreshRuntimeCheckpointAsync(
-                            uow,
-                            engineExecutionId,
-                            executionId,
-                            innerCt)
-                        .ConfigureAwait(false);
-                }
-
-                var upserted = await UpsertRuntimeCheckpointAsync(uow, engineExecutionId, executionId, innerCt)
-                    .ConfigureAwait(false);
-                // 所有セッション中の Unload 境界は Worker（Await / EndOwnedSession）。投影からは落とさない。
-                return upserted && !_ownership.TryGet(executionId, out _, out _);
-            },
-            ct).ConfigureAwait(false);
-
-        string? childTerminalOutputJson = null;
-        string? childTerminalStatesJson = null;
-        string? childTerminalVarsJson = null;
-        if (ExecutionProjectionStatuses.IsTerminal(status))
-        {
-            (childTerminalOutputJson, childTerminalStatesJson, childTerminalVarsJson) =
-                TryGetChildTerminalContextJson(engineExecutionId);
-        }
-
-        if (shouldUnloadAfterProjection)
-        {
-            _engine.Unload(engineExecutionId);
-            _logger.CheckpointUnloadedAfterProjectionSync(executionId);
-        }
-
-        if (ExecutionProjectionStatuses.IsTerminal(status) && _forkChildCoordinator is not null)
-        {
-            await _forkChildCoordinator
-                .NotifyChildTerminalAsync(
-                    executionId,
-                    status,
-                    childTerminalOutputJson,
-                    childTerminalStatesJson,
-                    childTerminalVarsJson,
-                    ct)
-                .ConfigureAwait(false);
-        }
-    }
-
-    /// <summary>ロード中 Engine から終端 Context（output / states / vars）を JSON 文字列として取り出す。</summary>
-    private (string? OutputJson, string? StatesJson, string? VarsJson) TryGetChildTerminalContextJson(
-        string engineExecutionId)
-    {
-        var checkpoint = _engine.ExportCheckpoint(engineExecutionId);
-        if (checkpoint is null)
-            return (null, null, null);
-
-        var output = checkpoint.Context.WorkflowOutput;
-        string? outputJson = null;
-        if (output is not null
-            && output.Value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
-        {
-            outputJson = output.Value.GetRawText();
-        }
-
-        string? statesJson = null;
-        if (checkpoint.Context.States is { Count: > 0 })
-        {
-            statesJson = JsonSerializer.Serialize(
-                checkpoint.Context.States.ToDictionary(
-                    kv => kv.Key,
-                    kv => kv.Value,
-                    StringComparer.OrdinalIgnoreCase),
-                JsonSerializerProfiles.CamelCase);
-        }
-
-        string? varsJson = null;
-        var vars = checkpoint.Context.Vars;
-        if (vars is not null
-            && vars.Value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
-        {
-            varsJson = vars.Value.GetRawText();
-        }
-
-        return (outputJson, statesJson, varsJson);
-    }
-
-    /// <summary>
-    /// executions / snapshot 更新と同一 tx 内で operational projection（cursor / durable wait）を同期する。
-    /// </summary>
-    private async Task SyncOperationalProjectionAsync(
-        ICoreUnitOfWork uow,
-        Guid executionId,
-        Guid tenantId,
-        string status,
-        string graphJson,
-        string? nodeIdToClear,
-        CancellationToken ct)
-    {
-        var snapshot = _engine.GetSnapshot(executionId.ToString());
-        var request = new ExecutionOperationalProjectionSyncRequest(
+    public Task UpdateProjectionFromEngineAsync(Guid executionId, CancellationToken ct) =>
+        _projection.UpdateProjectionFromEngineAsync(
             executionId,
-            tenantId,
-            status,
-            snapshot,
-            graphJson,
-            nodeIdToClear);
-        await ExecutionOperationalProjectionSync.SyncAsync(
-            uow,
-            _executionCursors,
-            _executionWaits,
-            request,
-            _idGenerator,
-            ct).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Engine 上の実行から投影用 status / graph を取得する。
-    /// </summary>
-    /// <remarks>
-    /// snapshot 欠落時に <c>Unknown</c> と <c>{}</c> を永続すると一覧 UI が落ちるため、欠落は例外とする。
-    /// 呼び出し側は事前に Load / Ensure 済みであること。キュー投影は
-    /// <see cref="BuildProjectionFromEngineForQueue"/> を使い欠落をスキップする。
-    /// </remarks>
-    /// <exception cref="InvalidOperationException">Engine に snapshot が無いとき。</exception>
-    private (string Status, bool? CancelRequested, string GraphJson) BuildProjectionFromEngine(Guid executionId)
-    {
-        var engineId = executionId.ToString();
-        var snapshot = _engine.GetSnapshot(engineId);
-        if (snapshot is null)
-        {
-            throw new InvalidOperationException(
-                $"Cannot project execution '{executionId}': engine snapshot is missing.");
-        }
-
-        var graphJson = _engine.ExportExecutionGraph(engineId);
-        var status = MapStatus(snapshot);
-        return (status, snapshot.IsCancelled, graphJson);
-    }
-
-    private (string? status, bool? cancelRequested, string? graphJson) BuildProjectionFromEngineForQueue(Guid executionId)
-    {
-        var engineId = executionId.ToString();
-        var snapshot = _engine.GetSnapshot(engineId);
-        if (snapshot is null)
-        {
-            _logger.SkipProjectionQueueUpdateDebug(executionId);
-            return (null, null, null);
-        }
-
-        var graphJson = _engine.ExportExecutionGraph(engineId);
-        var status = MapStatus(snapshot);
-        return (status, snapshot.IsCancelled, graphJson);
-    }
+            ShouldDiscardRuntimeCheckpointAsync,
+            DiscardOrRefreshRuntimeCheckpointAsync,
+            UpsertRuntimeCheckpointAsync,
+            ct);
 
     /// <summary>
     /// Engine Wait 操作の <see cref="InvalidOperationException"/> を API 422 に写像する。
@@ -3173,15 +2987,6 @@ internal sealed class ExecutionService : IExecutionService
         }
 
         return soleMatchingNodeId;
-    }
-
-    private sealed class NoopExecutionProjectionUpdateQueue : IExecutionProjectionUpdateQueue
-    {
-        internal static readonly NoopExecutionProjectionUpdateQueue Instance = new();
-
-        public Task EnqueueAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
-
-        public Task DrainAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
     }
 
     /// <summary>同一プロセス Start の入力束。</summary>
