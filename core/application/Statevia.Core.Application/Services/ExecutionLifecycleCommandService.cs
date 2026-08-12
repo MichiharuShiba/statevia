@@ -13,6 +13,7 @@ namespace Statevia.Core.Application.Services;
 /// <remarks>
 /// <para><see cref="ExecutionService"/> Facade から委譲される。HTTP / Worker 契約は変更しない。</para>
 /// <para>冪等・投影は既存の <see cref="ExecutionIdempotencyService"/> / <see cref="ExecutionProjectionOrchestrator"/> を利用する。</para>
+/// <para>認可は <see cref="ExecutionAuthorizationGuard"/>、Engine hydrate は <see cref="ExecutionEngineSession"/> に委譲する。</para>
 /// </remarks>
 /// <param name="engine">実行エンジン。</param>
 /// <param name="displayIds">表示 ID 解決。</param>
@@ -20,9 +21,8 @@ namespace Statevia.Core.Application.Services;
 /// <param name="idGenerator">ID 生成。</param>
 /// <param name="executions">executions 永続化。</param>
 /// <param name="definitions">定義リポジトリ。</param>
-/// <param name="projectAuth">プロジェクト認可。</param>
-/// <param name="runtimeAuth">Runtime 権限。</param>
-/// <param name="mutationAuth">実行ミューテーション認可。</param>
+/// <param name="authorization">横断認可。</param>
+/// <param name="engineSession">Engine Load / hydrate。</param>
 /// <param name="snapshotFactory">セキュリティ snapshot。</param>
 /// <param name="tenantContext">テナント文脈。</param>
 /// <param name="dedup">command_dedup。</param>
@@ -49,9 +49,8 @@ internal sealed class ExecutionLifecycleCommandService(
     IIdGenerator idGenerator,
     IExecutionRepository executions,
     IDefinitionRepository definitions,
-    IProjectAuthorizationService projectAuth,
-    IRuntimePermissionAuthorization runtimeAuth,
-    IExecutionMutationAuthorization mutationAuth,
+    ExecutionAuthorizationGuard authorization,
+    ExecutionEngineSession engineSession,
     IExecutionSecuritySnapshotFactory snapshotFactory,
     ITenantContextAccessor tenantContext,
     ICommandDedupRepository dedup,
@@ -90,7 +89,7 @@ internal sealed class ExecutionLifecycleCommandService(
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(requestContext);
-        await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
+        await authorization.EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
 
         var tenantKey = tenantContext.GetRequiredTenantKey();
         var requestHash = ComputeStartRequestHash(request);
@@ -111,7 +110,7 @@ internal sealed class ExecutionLifecycleCommandService(
         if (versionRow is null)
             throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
 
-        await EnsureCanExecuteOnDefinitionAsync(tenantId, defUuid.Value, ct).ConfigureAwait(false);
+        await authorization.EnsureCanExecuteOnDefinitionAsync(tenantId, defUuid.Value, ct).ConfigureAwait(false);
 
         // HTTP 受理経路: キューがある場合は Engine を回さず Start work item を投入する。
         // Worker 文脈（またはテストでキュー未注入）は従来どおり同一プロセスで実行する。
@@ -463,7 +462,7 @@ internal sealed class ExecutionLifecycleCommandService(
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
-        await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
+        await authorization.EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
 
         var tenantId = tenantContext.GetRequiredTenantId();
         var execution = await executor.ExecuteReadOnlyAsync(
@@ -581,7 +580,7 @@ internal sealed class ExecutionLifecycleCommandService(
         if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-        await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
+        await authorization.EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
         // HTTP 受理経路: キューがある場合は Engine を回さず Cancel work item を投入する。
         if (workQueue is not null
@@ -606,7 +605,7 @@ internal sealed class ExecutionLifecycleCommandService(
         if (await idempotency.TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
-        await EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
+        await engineSession.EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
 
         var cancelApply = await engine.CancelAsync(uuid.Value.ToString(), clientEventId).ConfigureAwait(false);
         var skipCancelEventAppend = cancelApply.IsAlreadyApplied;
@@ -819,26 +818,6 @@ internal sealed class ExecutionLifecycleCommandService(
         return active is not null;
     }
 
-    /// <summary>定義が属するプロジェクトで Execute 権限を要求する。</summary>
-    private Task EnsureCanExecuteOnDefinitionAsync(
-        Guid tenantId,
-        Guid definitionId,
-        CancellationToken ct) =>
-        executor.ExecuteReadOnlyAsync(
-            async (uow, innerCt) =>
-            {
-                var projectId = await definitions
-                    .ResolveProjectIdAsync(uow, tenantId, definitionId, innerCt)
-                    .ConfigureAwait(false);
-                if (projectId is null)
-                    throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
-
-                await projectAuth
-                    .EnsureCanExecuteAsync(uow, tenantId, projectId.Value, innerCt)
-                    .ConfigureAwait(false);
-            },
-            ct);
-
     /// <summary>
     /// 永続化された定義バージョンからコンパイル済み定義を復元する。
     /// </summary>
@@ -877,146 +856,6 @@ internal sealed class ExecutionLifecycleCommandService(
     /// <returns>終端なら true。</returns>
     internal static bool IsTerminalExecutionProjectionStatus(string status) =>
         ExecutionProjectionStatuses.IsTerminal(status);
-
-    /// <summary>Runtime の executions:write を要求する。</summary>
-    private Task EnsureExecutionsWriteAsync(CancellationToken ct) =>
-        runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.ExecutionsWrite, ct);
-
-    /// <summary>実行行の security snapshot に基づきミューテーション権限を要求する。</summary>
-    private Task EnsureExecutionMutationWriteAsync(ExecutionRow execution, CancellationToken ct)
-    {
-        var snapshot = ExecutionSecuritySnapshotJson.TryDeserialize(execution.SecuritySnapshotJson);
-        return mutationAuth.EnsureMutationPermissionAsync(
-            snapshot,
-            RuntimePermissionRequirements.ExecutionsWrite,
-            ct);
-    }
-
-    /// <summary>
-    /// ミューテーション前に Engine インスタンスを保証する（未ロードなら checkpoint から hydrate）。
-    /// </summary>
-    /// <remarks>
-    /// 終端投影かつメモリ未ロード、または checkpoint 欠落・不正時は例外。二重 hydrate は 422 相当へ写像する。
-    /// </remarks>
-    /// <param name="executionId">実行 UUID。</param>
-    /// <param name="execution">投影行（テナント・定義バージョン・status）。</param>
-    /// <param name="ct">キャンセル。</param>
-    /// <exception cref="ArgumentException">終端未ロード、checkpoint 欠落、または二重 hydrate。</exception>
-    /// <exception cref="InvalidOperationException">定義バージョン欠落または checkpoint 不正。</exception>
-    public async Task EnsureEngineRuntimeLoadedForMutationAsync(
-        Guid executionId,
-        ExecutionRow execution,
-        CancellationToken ct)
-    {
-        if (engine.GetSnapshot(executionId.ToString()) is not null)
-            return;
-
-        if (IsTerminalExecutionProjectionStatus(execution.Status))
-        {
-            throw new ArgumentException(
-                "The execution is already in a terminal state in the database projection, but there is no in-memory instance in this API process. Cancel or event delivery cannot be applied.");
-        }
-
-        var checkpointDocument = await executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => checkpointStore.GetByExecutionIdAsync(uow, executionId, innerCt),
-            ct).ConfigureAwait(false);
-        if (checkpointDocument is null)
-        {
-            throw new ArgumentException(
-                "The execution state is not loaded in this API process and no runtime checkpoint was found.");
-        }
-
-        var versionRow = await executor.ExecuteReadOnlyAsync(
-            (uow, innerCt) => definitions.GetVersionForExecutionByIdAsync(
-                uow,
-                execution.TenantId,
-                execution.DefinitionVersionId,
-                innerCt),
-            ct).ConfigureAwait(false);
-        if (versionRow is null)
-        {
-            throw new InvalidOperationException(
-                $"Definition version '{execution.DefinitionVersionId}' was not found for execution '{executionId}'.");
-        }
-
-        var compiled = RestoreCompiledDefinitionFromVersion(versionRow);
-        if (!TryParseRuntimeCheckpoint(checkpointDocument.CheckpointJson, out var checkpoint, out var parseError))
-        {
-            logger.RuntimeCheckpointInvalidForHydrate(
-                executionId,
-                checkpointDocument.CheckpointJson?.Length ?? 0);
-            if (parseError is not null)
-                logger.RuntimeCheckpointDeserializeFailed(parseError, executionId);
-
-            throw new InvalidOperationException(
-                $"Stored runtime checkpoint for execution '{executionId:D}' is empty or invalid and cannot be hydrated.");
-        }
-
-        try
-        {
-            engine.ImportCheckpoint(compiled, checkpoint);
-        }
-        catch (InvalidOperationException ex)
-        {
-            // 二重 hydrate 等はクライアント向け 422（ArgumentException）へ写像する。
-            throw new ArgumentException(ex.Message, ex);
-        }
-    }
-
-    /// <summary>
-    /// 永続 checkpoint JSON を hydrate 用に検証・デシリアライズする。
-    /// </summary>
-    /// <remarks>
-    /// <c>BeginOwnedSessionAsync</c> の seed <c>{}</c> や必須欠落は不正とし、Import しない。
-    /// </remarks>
-    /// <param name="checkpointJson">永続化された checkpoint JSON。</param>
-    /// <param name="checkpoint">成功時のデシリアライズ結果。</param>
-    /// <param name="parseError">JSON 例外時のみ設定。形式不正（必須欠落）は null。</param>
-    /// <returns>hydrate 可能なとき true。</returns>
-    internal static bool TryParseRuntimeCheckpoint(
-        string? checkpointJson,
-        out ExecutionRuntimeCheckpoint checkpoint,
-        out Exception? parseError)
-    {
-        checkpoint = null!;
-        parseError = null;
-
-        if (string.IsNullOrWhiteSpace(checkpointJson))
-            return false;
-
-        var trimmed = checkpointJson.Trim();
-        if (trimmed is "{}" or "null")
-            return false;
-
-        try
-        {
-            var parsed = JsonSerializer.Deserialize<ExecutionRuntimeCheckpoint>(
-                checkpointJson,
-                JsonSerializerProfiles.CamelCase);
-            if (parsed is null
-                || string.IsNullOrWhiteSpace(parsed.ExecutionId)
-                || string.IsNullOrWhiteSpace(parsed.DefinitionName)
-                || parsed.ActiveStates is null
-                || parsed.Graph is null
-                || parsed.Join is null
-                || parsed.Context is null
-                || parsed.PendingWaits is null)
-            {
-                return false;
-            }
-
-            // 物理 Join 待ち中は ActiveStates / PendingWaits が空の正規断面になり得る（Fork Unload 後）。
-            // 空配列だけでは破損とみなさない（seed "{}" は上で拒否済み）。
-
-            checkpoint = parsed;
-            return true;
-        }
-        catch (JsonException ex)
-        {
-            parseError = ex;
-            return false;
-        }
-    }
 
     /// <summary>同一プロセス Start の入力束。</summary>
     private sealed record ExecuteStartInProcessArgs(

@@ -363,7 +363,7 @@ internal sealed class ExecutionCheckpointService(
                     .GetByExecutionIdAsync(uow, request.ExecutionId, innerCt)
                     .ConfigureAwait(false);
                 if (existingCheckpoint is not null
-                    && ExecutionLifecycleCommandService.TryParseRuntimeCheckpoint(existingCheckpoint.CheckpointJson, out var stored, out _)
+                    && ExecutionEngineSession.TryParseRuntimeCheckpoint(existingCheckpoint.CheckpointJson, out var stored, out _)
                     && IsRuntimeCheckpointLessAdvanced(request.Checkpoint, stored))
                 {
                     skippedStalePersist = true;

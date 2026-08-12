@@ -16,7 +16,8 @@ namespace Statevia.Core.Application.Services;
 /// <param name="executions">executions / snapshot 永続化。</param>
 /// <param name="checkpointStore">runtime checkpoint。</param>
 /// <param name="executor">トランザクション実行。</param>
-/// <param name="lifecycle">Engine hydrate / checkpoint upsert。</param>
+/// <param name="lifecycle">checkpoint upsert。</param>
+/// <param name="engineSession">Engine Load / hydrate。</param>
 /// <param name="projection">投影オーケストレータ。</param>
 /// <param name="checkpoints">checkpoint 寿命・破棄。</param>
 /// <param name="logger">構造化ログ。</param>
@@ -31,6 +32,7 @@ internal sealed class ExecutionForkJoinCoordinator(
     IExecutionCheckpointStore checkpointStore,
     ICoreTransactionExecutor executor,
     ExecutionLifecycleCommandService lifecycle,
+    ExecutionEngineSession engineSession,
     ExecutionProjectionOrchestrator projection,
     ExecutionCheckpointService checkpoints,
     ILogger<ExecutionForkJoinCoordinator> logger,
@@ -128,7 +130,7 @@ internal sealed class ExecutionForkJoinCoordinator(
                 ct)
             .ConfigureAwait(false);
         if (document is null
-            || !ExecutionLifecycleCommandService.TryParseRuntimeCheckpoint(document.CheckpointJson, out var checkpoint, out _))
+            || !ExecutionEngineSession.TryParseRuntimeCheckpoint(document.CheckpointJson, out var checkpoint, out _))
         {
             return false;
         }
@@ -261,7 +263,7 @@ internal sealed class ExecutionForkJoinCoordinator(
         ArgumentNullException.ThrowIfNull(evaluation.CandidateInputs);
         logger.ForkJoinSatisfied(parentExecutionId, forkNodeId, evaluation.JoinState);
 
-        await lifecycle.EnsureEngineRuntimeLoadedForMutationAsync(parentExecutionId, execution, ct).ConfigureAwait(false);
+        await engineSession.EnsureEngineRuntimeLoadedForMutationAsync(parentExecutionId, execution, ct).ConfigureAwait(false);
 
         var engineId = parentExecutionId.ToString();
         IReadOnlyList<PhysicalJoinContextFragment>? fragments = null;
@@ -425,7 +427,7 @@ internal sealed class ExecutionForkJoinCoordinator(
                         .GetByExecutionIdAsync(uow, executionId, innerCt)
                         .ConfigureAwait(false);
                     if (runtime is null
-                        || !ExecutionLifecycleCommandService.TryParseRuntimeCheckpoint(runtime.CheckpointJson, out var checkpoint, out _)
+                        || !ExecutionEngineSession.TryParseRuntimeCheckpoint(runtime.CheckpointJson, out var checkpoint, out _)
                         || checkpoint.PendingWaits.Count == 0)
                     {
                         return;

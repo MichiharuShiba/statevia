@@ -13,22 +13,22 @@ namespace Statevia.Core.Application.Services;
 /// </remarks>
 /// <param name="engine">実行エンジン。</param>
 /// <param name="executions">executions 永続化。</param>
-/// <param name="runtimeAuth">Runtime 権限。</param>
-/// <param name="mutationAuth">実行ミューテーション認可。</param>
+/// <param name="authorization">横断認可。</param>
 /// <param name="tenantContext">テナント文脈。</param>
 /// <param name="executor">トランザクション実行。</param>
-/// <param name="lifecycle">Engine hydrate / checkpoint upsert。</param>
+/// <param name="lifecycle">checkpoint upsert。</param>
+/// <param name="engineSession">Engine Load / hydrate。</param>
 /// <param name="waitEvents">Wait quiesce 待機。</param>
 /// <param name="projection">投影オーケストレータ。</param>
 /// <param name="checkpoints">checkpoint 寿命・Persist+Unload。</param>
 internal sealed class ExecutionRecoveryService(
     IExecutionEngine engine,
     IExecutionRepository executions,
-    IRuntimePermissionAuthorization runtimeAuth,
-    IExecutionMutationAuthorization mutationAuth,
+    ExecutionAuthorizationGuard authorization,
     ITenantContextAccessor tenantContext,
     ICoreTransactionExecutor executor,
     ExecutionLifecycleCommandService lifecycle,
+    ExecutionEngineSession engineSession,
     ExecutionWaitEventService waitEvents,
     ExecutionProjectionOrchestrator projection,
     ExecutionCheckpointService checkpoints)
@@ -46,7 +46,7 @@ internal sealed class ExecutionRecoveryService(
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(requestContext);
-        await EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
+        await authorization.EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
 
         var tenantId = tenantContext.GetRequiredTenantId();
         var execution = await executor.ExecuteReadOnlyAsync(
@@ -55,13 +55,13 @@ internal sealed class ExecutionRecoveryService(
         if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-        await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
+        await authorization.EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
         if (ExecutionLifecycleCommandService.IsTerminalExecutionProjectionStatus(execution.Status))
             return;
 
         // Worker が BeginOwnedSession 済み前提。hydrate 後、完了フロンティア／PendingWaits から継続する。
-        await lifecycle.EnsureEngineRuntimeLoadedForMutationAsync(executionId, execution, ct).ConfigureAwait(false);
+        await engineSession.EnsureEngineRuntimeLoadedForMutationAsync(executionId, execution, ct).ConfigureAwait(false);
 
         var engineId = executionId.ToString();
         // ImportCheckpoint が起動した継続（Wait 復元または完了フロンティア遷移）が落ち着くのを待つ。
@@ -110,17 +110,5 @@ internal sealed class ExecutionRecoveryService(
             await checkpoints.PersistCheckpointAndUnloadByEngineIdAsync(engineId, restored.PendingWaits[0].NodeId, ct)
                 .ConfigureAwait(false);
         }
-    }
-
-    private Task EnsureExecutionsWriteAsync(CancellationToken ct) =>
-        runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.ExecutionsWrite, ct);
-
-    private Task EnsureExecutionMutationWriteAsync(ExecutionRow execution, CancellationToken ct)
-    {
-        var snapshot = ExecutionSecuritySnapshotJson.TryDeserialize(execution.SecuritySnapshotJson);
-        return mutationAuth.EnsureMutationPermissionAsync(
-            snapshot,
-            RuntimePermissionRequirements.ExecutionsWrite,
-            ct);
     }
 }

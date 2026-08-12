@@ -4322,10 +4322,26 @@ public sealed class ExecutionServiceTests
         }
 
         var runtimeAuth = new AllowAllRuntimePermissionAuthorization();
+        var projectAuth = projectAuthorization ?? new AllowAllProjectAuthorizationService();
+        var mutationAuth = new AllowAllExecutionMutationAuthorization();
+        var authorization = new ExecutionAuthorizationGuard(
+            runtimeAuth,
+            mutationAuth,
+            projectAuth,
+            definitions,
+            executor);
+        var checkpointStoreResolved = checkpointStore ?? new FakeExecutionCheckpointStore();
+        var engineSession = new ExecutionEngineSession(
+            engine,
+            compiler,
+            definitions,
+            checkpointStoreResolved,
+            executor,
+            NullLogger<ExecutionEngineSession>.Instance);
         var query = new ExecutionQueryService(
             displayIds,
             executions,
-            runtimeAuth,
+            authorization,
             sqlite.TenantAccessor,
             eventStore,
             executor,
@@ -4352,10 +4368,7 @@ public sealed class ExecutionServiceTests
             ownership,
             projectionUpdateQueue,
             forkChildCoordinator);
-        var projectAuth = projectAuthorization ?? new AllowAllProjectAuthorizationService();
-        var mutationAuth = new AllowAllExecutionMutationAuthorization();
         var snapshotFactory = new FakeExecutionSecuritySnapshotFactory(sqlite.TenantAccessor);
-        var checkpointStoreResolved = checkpointStore ?? new FakeExecutionCheckpointStore();
         var lifecycle = new ExecutionLifecycleCommandService(
             engine,
             displayIds,
@@ -4363,9 +4376,8 @@ public sealed class ExecutionServiceTests
             idGenerator,
             executions,
             definitions,
-            projectAuth,
-            runtimeAuth,
-            mutationAuth,
+            authorization,
+            engineSession,
             snapshotFactory,
             sqlite.TenantAccessor,
             dedup,
@@ -4397,6 +4409,7 @@ public sealed class ExecutionServiceTests
             checkpointStoreResolved,
             executor,
             lifecycle,
+            engineSession,
             projection,
             checkpointService,
             NullLogger<ExecutionForkJoinCoordinator>.Instance,
@@ -4407,7 +4420,7 @@ public sealed class ExecutionServiceTests
             idGenerator,
             executions,
             waits,
-            mutationAuth,
+            authorization,
             sqlite.TenantAccessor,
             dedup,
             eventStore,
@@ -4418,6 +4431,7 @@ public sealed class ExecutionServiceTests
             idempotency,
             projection,
             lifecycle,
+            engineSession,
             checkpointService,
             forkJoin,
             forkChildCoordinator);
@@ -4433,11 +4447,11 @@ public sealed class ExecutionServiceTests
         var recovery = new ExecutionRecoveryService(
             engine,
             executions,
-            runtimeAuth,
-            mutationAuth,
+            authorization,
             sqlite.TenantAccessor,
             executor,
             lifecycle,
+            engineSession,
             waitEvents,
             projection,
             checkpointService);

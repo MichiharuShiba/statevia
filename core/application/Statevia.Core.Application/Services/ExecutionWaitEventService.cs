@@ -18,7 +18,7 @@ namespace Statevia.Core.Application.Services;
 /// <param name="idGenerator">ID 生成。</param>
 /// <param name="executions">executions 永続化。</param>
 /// <param name="executionWaits">wait 行。</param>
-/// <param name="mutationAuth">実行ミューテーション認可。</param>
+/// <param name="authorization">横断認可。</param>
 /// <param name="tenantContext">テナント文脈。</param>
 /// <param name="dedup">command_dedup。</param>
 /// <param name="eventStore">event_store。</param>
@@ -28,7 +28,8 @@ namespace Statevia.Core.Application.Services;
 /// <param name="logger">構造化ログ。</param>
 /// <param name="idempotency">冪等サービス。</param>
 /// <param name="projection">投影オーケストレータ。</param>
-/// <param name="lifecycle">ライフサイクル（Engine hydrate / checkpoint upsert）。</param>
+/// <param name="lifecycle">ライフサイクル（checkpoint upsert）。</param>
+/// <param name="engineSession">Engine Load / hydrate。</param>
 /// <param name="checkpoints">checkpoint 寿命・破棄。</param>
 /// <param name="forkJoin">親 Physical Join 再評価。</param>
 /// <param name="forkChildCoordinator">Fork 子 Wait 配送（任意）。</param>
@@ -42,7 +43,7 @@ internal sealed class ExecutionWaitEventService(
     IIdGenerator idGenerator,
     IExecutionRepository executions,
     IExecutionWaitRepository executionWaits,
-    IExecutionMutationAuthorization mutationAuth,
+    ExecutionAuthorizationGuard authorization,
     ITenantContextAccessor tenantContext,
     ICommandDedupRepository dedup,
     IEventStoreRepository eventStore,
@@ -53,6 +54,7 @@ internal sealed class ExecutionWaitEventService(
     ExecutionIdempotencyService idempotency,
     ExecutionProjectionOrchestrator projection,
     ExecutionLifecycleCommandService lifecycle,
+    ExecutionEngineSession engineSession,
     ExecutionCheckpointService checkpoints,
     ExecutionForkJoinCoordinator forkJoin,
     IForkChildExecutionCoordinator? forkChildCoordinator = null)
@@ -114,7 +116,7 @@ internal sealed class ExecutionWaitEventService(
             return;
         }
 
-        await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
+        await authorization.EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
         await projection.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
@@ -123,7 +125,7 @@ internal sealed class ExecutionWaitEventService(
         if (await idempotency.TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
-        await lifecycle.EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
+        await engineSession.EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
 
         // PublishEvent 復帰時点ではグラフ上の Wait 完了が未反映になり得るため、発行前の nodeId で先行削除する。
         // グラフ解析失敗時は永続化済み wait 行からフォールバック解決する（Applied 時のみ）。
@@ -336,7 +338,7 @@ internal sealed class ExecutionWaitEventService(
             return;
         }
 
-        await EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
+        await authorization.EnsureExecutionMutationWriteAsync(execution, ct).ConfigureAwait(false);
 
         await projection.DrainAsync(uuid.Value, ct).ConfigureAwait(false);
 
@@ -352,7 +354,7 @@ internal sealed class ExecutionWaitEventService(
             return;
         }
 
-        await lifecycle.EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
+        await engineSession.EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
 
         // Resume 正本: nodeId + eventName。wait 行は nodeId で先行削除する。
         // 許可外イベント・非アクティブ Wait などは 422。
@@ -896,15 +898,6 @@ internal sealed class ExecutionWaitEventService(
         }
 
         return soleMatchingNodeId;
-    }
-
-    private Task EnsureExecutionMutationWriteAsync(ExecutionRow execution, CancellationToken ct)
-    {
-        var snapshot = ExecutionSecuritySnapshotJson.TryDeserialize(execution.SecuritySnapshotJson);
-        return mutationAuth.EnsureMutationPermissionAsync(
-            snapshot,
-            RuntimePermissionRequirements.ExecutionsWrite,
-            ct);
     }
 
 }

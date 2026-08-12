@@ -9,7 +9,7 @@ namespace Statevia.Core.Application.Services;
 /// </remarks>
 /// <param name="displayIds">表示 ID 解決。</param>
 /// <param name="executions">executions / snapshot 永続化。</param>
-/// <param name="runtimeAuth">Runtime 権限（read）。</param>
+/// <param name="authorization">横断認可（read）。</param>
 /// <param name="tenantContext">テナント文脈。</param>
 /// <param name="eventStore">event_store 読み取り。</param>
 /// <param name="executor">読み取りトランザクション実行。</param>
@@ -17,7 +17,7 @@ namespace Statevia.Core.Application.Services;
 internal sealed class ExecutionQueryService(
     IDisplayIdService displayIds,
     IExecutionRepository executions,
-    IRuntimePermissionAuthorization runtimeAuth,
+    ExecutionAuthorizationGuard authorization,
     ITenantContextAccessor tenantContext,
     IEventStoreRepository eventStore,
     ICoreTransactionExecutor executor,
@@ -31,7 +31,7 @@ internal sealed class ExecutionQueryService(
         ExecutionListPageQuery query,
         CancellationToken ct)
     {
-        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+        await authorization.EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
 
         var tenantId = tenantContext.GetRequiredTenantId();
         ArgumentNullException.ThrowIfNull(query);
@@ -67,7 +67,7 @@ internal sealed class ExecutionQueryService(
     /// <returns>実行応答。</returns>
     public async Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct)
     {
-        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+        await authorization.EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
 
         var tenantId = tenantContext.GetRequiredTenantId();
         var uuid = await displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
@@ -108,7 +108,7 @@ internal sealed class ExecutionQueryService(
     /// <returns>グラフ JSON。</returns>
     public async Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct)
     {
-        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+        await authorization.EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
 
         var uuid = await displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
@@ -161,7 +161,7 @@ internal sealed class ExecutionQueryService(
     /// <returns>実行ビュー。</returns>
     public async Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct)
     {
-        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+        await authorization.EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
 
         var uuid = await displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
@@ -177,7 +177,7 @@ internal sealed class ExecutionQueryService(
     /// <returns>実行ビュー。</returns>
     public async Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct)
     {
-        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+        await authorization.EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
 
         var uuid = await displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
         if (uuid is null)
@@ -207,7 +207,7 @@ internal sealed class ExecutionQueryService(
         int limit,
         CancellationToken ct)
     {
-        await EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
+        await authorization.EnsureExecutionsReadAsync(ct).ConfigureAwait(false);
 
         var tenantId = tenantContext.GetRequiredTenantId();
         var uuid = await displayIds.ResolveAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false);
@@ -320,7 +320,4 @@ internal sealed class ExecutionQueryService(
             },
             ct).ConfigureAwait(false);
     }
-
-    private Task EnsureExecutionsReadAsync(CancellationToken ct) =>
-        runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.ExecutionsRead, ct);
 }
