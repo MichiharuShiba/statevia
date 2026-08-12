@@ -4457,37 +4457,13 @@ public sealed class ExecutionServiceTests
             checkpointService);
 
         return new ExecutionService(
-            engine,
-            displayIds,
-            compiler,
-            idGenerator,
-            executions,
-            waits,
-            definitions,
-            projectAuth,
-            runtimeAuth,
-            mutationAuth,
-            snapshotFactory,
-            sqlite.TenantAccessor,
-            dedup,
-            eventStore,
-            eventDeliveryDedup,
-            displayIdWrites,
-            executor,
-            mutationPersistence,
-            NullLogger<ExecutionService>.Instance,
-            checkpointStoreResolved,
             query,
-            idempotency,
             projection,
             lifecycle,
             waitEvents,
             checkpointService,
             ownershipSessions,
-            recovery,
-            workQueue,
-            ownership,
-            forkChildCoordinator: forkChildCoordinator);
+            recovery);
     }
 
     /// <summary>Reader 付与テナントは Start（Executor）が 403。</summary>
