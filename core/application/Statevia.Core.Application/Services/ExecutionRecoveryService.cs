@@ -21,6 +21,10 @@ namespace Statevia.Core.Application.Services;
 /// <param name="waitEvents">Wait quiesce 待機。</param>
 /// <param name="projection">投影オーケストレータ。</param>
 /// <param name="checkpoints">checkpoint 寿命・Persist+Unload。</param>
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Major Code Smell",
+    "S107:Methods should not have too many parameters",
+    Justification = "DI による明示的コンストラクタ注入。")]
 internal sealed class ExecutionRecoveryService(
     IExecutionEngine engine,
     IExecutionRepository executions,

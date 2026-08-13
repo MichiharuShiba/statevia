@@ -22,6 +22,10 @@ namespace Statevia.Core.Application.Services;
 /// <param name="eventDeliveryRetryOptions">イベント配送挿入の再試行設定。</param>
 /// <param name="correlationIdAccessor">相関 ID。</param>
 /// <param name="logger">構造化ログ。</param>
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Major Code Smell",
+    "S107:Methods should not have too many parameters",
+    Justification = "DI による明示的コンストラクタ注入。")]
 internal sealed class ExecutionIdempotencyService(
     ICommandDedupService dedupService,
     ICommandDedupRepository commandDedup,

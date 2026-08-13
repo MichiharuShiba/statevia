@@ -7,7 +7,7 @@ namespace Statevia.Core.Application.Services;
 /// <para>HTTP / Worker 契約の入口。ビジネス分岐は持たず、各ドメインサービスに委譲する。</para>
 /// <para>Repository / Auth / Engine への直接依存は持たない（最終形）。</para>
 /// </remarks>
-/// <param name="query">Read-model 取得。</param>
+/// <param name="queryService">Read-model 取得。</param>
 /// <param name="projection">投影オーケストレータ。</param>
 /// <param name="lifecycle">Start / Cancel / QueuedStart。</param>
 /// <param name="waitEvents">Publish / Resume。</param>
@@ -15,7 +15,7 @@ namespace Statevia.Core.Application.Services;
 /// <param name="ownershipSessions">Worker 所有セッション。</param>
 /// <param name="recovery">Recover。</param>
 internal sealed class ExecutionService(
-    ExecutionQueryService query,
+    ExecutionQueryService queryService,
     ExecutionProjectionOrchestrator projection,
     ExecutionLifecycleCommandService lifecycle,
     ExecutionWaitEventService waitEvents,
@@ -40,25 +40,25 @@ internal sealed class ExecutionService(
 
     /// <inheritdoc />
     public Task<PagedResult<ExecutionResponse>> ListPagedAsync(
-        ExecutionListPageQuery listQuery,
+        ExecutionListPageQuery query,
         CancellationToken ct) =>
-        query.ListPagedAsync(listQuery, ct);
+        queryService.ListPagedAsync(query, ct);
 
     /// <inheritdoc />
     public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
-        query.GetExecutionResponseAsync(idOrUuid, ct);
+        queryService.GetExecutionResponseAsync(idOrUuid, ct);
 
     /// <inheritdoc />
     public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) =>
-        query.GetGraphJsonAsync(idOrUuid, ct);
+        queryService.GetGraphJsonAsync(idOrUuid, ct);
 
     /// <inheritdoc />
     public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) =>
-        query.EnsureExecutionExistsAsync(executionId, ct);
+        queryService.EnsureExecutionExistsAsync(executionId, ct);
 
     /// <inheritdoc />
     public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
-        query.TryGetSnapshotGraphJsonByExecutionIdAsync(executionId, ct);
+        queryService.TryGetSnapshotGraphJsonByExecutionIdAsync(executionId, ct);
 
     /// <inheritdoc />
     public Task CancelAsync(
@@ -110,11 +110,11 @@ internal sealed class ExecutionService(
 
     /// <inheritdoc />
     public Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct) =>
-        query.GetExecutionViewAsync(idOrUuid, ct);
+        queryService.GetExecutionViewAsync(idOrUuid, ct);
 
     /// <inheritdoc />
     public Task<ExecutionViewDto> GetExecutionViewAtSeqAsync(string idOrUuid, long atSeq, CancellationToken ct) =>
-        query.GetExecutionViewAtSeqAsync(idOrUuid, atSeq, ct);
+        queryService.GetExecutionViewAtSeqAsync(idOrUuid, atSeq, ct);
 
     /// <inheritdoc />
     public Task<ExecutionEventsResponseDto> ListEventsAsync(
@@ -122,7 +122,7 @@ internal sealed class ExecutionService(
         long afterSeq,
         int limit,
         CancellationToken ct) =>
-        query.ListEventsAsync(idOrUuid, afterSeq, limit, ct);
+        queryService.ListEventsAsync(idOrUuid, afterSeq, limit, ct);
 
     /// <inheritdoc />
     public Task ResumeNodeAsync(

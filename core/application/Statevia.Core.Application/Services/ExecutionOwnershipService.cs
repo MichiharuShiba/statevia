@@ -20,6 +20,10 @@ namespace Statevia.Core.Application.Services;
 /// <param name="checkpoints">checkpoint 寿命・Persist+Unload。</param>
 /// <param name="lifecycle">checkpoint upsert。</param>
 /// <param name="logger">構造化ログ。</param>
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Major Code Smell",
+    "S107:Methods should not have too many parameters",
+    Justification = "DI による明示的コンストラクタ注入。")]
 internal sealed class ExecutionOwnershipService(
     IExecutionEngine engine,
     IExecutionCheckpointStore checkpointStore,

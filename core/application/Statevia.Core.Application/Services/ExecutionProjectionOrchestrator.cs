@@ -22,6 +22,10 @@ namespace Statevia.Core.Application.Services;
 /// <param name="ownership">Worker 所有トラッカー（投影後 Unload 判定）。</param>
 /// <param name="projectionUpdateQueue">投影更新キュー。未注入時は no-op。</param>
 /// <param name="forkChildCoordinator">子終端通知（任意）。</param>
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Major Code Smell",
+    "S107:Methods should not have too many parameters",
+    Justification = "DI による明示的コンストラクタ注入。")]
 internal sealed class ExecutionProjectionOrchestrator(
     IExecutionEngine engine,
     IExecutionRepository executions,
