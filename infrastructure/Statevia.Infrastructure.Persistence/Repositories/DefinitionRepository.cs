@@ -246,7 +246,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
                      && x.DeletedAt == null,
                 ct);
 
-    private async Task<DefinitionDetail?> GetLatestDetailAsync(
+    private static async Task<DefinitionDetail?> GetLatestDetailAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,
         Guid definitionId,
@@ -279,7 +279,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         return new DefinitionDetail { Definition = definition, Version = version };
     }
 
-    private async Task<DefinitionVersionRow?> GetVersionInternalAsync(
+    private static async Task<DefinitionVersionRow?> GetVersionInternalAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,
         Guid definitionId,
