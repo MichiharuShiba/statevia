@@ -1,8 +1,21 @@
 # ドメインモデル関連図（境界付き）
 
+| 項目 | 値 |
+| --- | --- |
+| 種別 | Architecture |
+| Version | 1.1 |
+| 更新日 | 2026-08-13 |
+| 関連 | [overview.md](overview.md), [data-integration.md](../specifications/data-integration.md) |
+
+**Version 1.1（2026-08-13）**: Execution を `IExecutionService` Facade とドメインサービスへ分割した境界を反映。投影キューを実装済みとして実線化する。
+
+---
+
 関連する概念が増えてきたため、Statevia の主要ドメインモデルを「どの境界に属するか」と「どこが正本か」を含めて俯瞰できるように整理する。
 
 ## 1. ドメイン境界と関連
+
+HTTP / Worker は `IExecutionService` のみを見る。実処理は Core-Application のドメインサービスが担い、Facade は Repository / Engine を直接持たない。
 
 ```mermaid
 flowchart LR
@@ -16,13 +29,15 @@ flowchart LR
     UIQuery["Read表示<br/>Executions一覧・詳細・Graph"]
   end
 
-  subgraph API["Service API境界 (Integration/Application)"]
-    ExecutionService["ExecutionService<br/>ユースケース統合"]
-    ProjectionSync["ExecutionOperationalProjectionSync<br/>投影同期"]
-    EngineCallback["Engine観測コールバック<br/>（目標）"]
-    ProjectionQueue["API内 Projection キュー<br/>（目標）"]
-    DefinitionService["DefinitionService<br/>定義版管理"]
+  subgraph API["Service API / Application 境界"]
     ApiContract["HTTP契約<br/>/v1/definitions /v1/executions"]
+    Facade["ExecutionService<br/>IExecutionService Facade"]
+    ExecDomains["Execution ドメインサービス<br/>Query / Lifecycle / WaitEvent / Checkpoint<br/>Ownership / Recovery / Projection"]
+    CrossCut["横断<br/>AuthorizationGuard / EngineSession"]
+    ProjectionSync["ExecutionOperationalProjectionSync<br/>投影同期"]
+    ProjectionQueue["IExecutionProjectionUpdateQueue"]
+    EngineCallback["Engine観測コールバック<br/>（目標）"]
+    DefinitionService["DefinitionService<br/>定義版管理"]
   end
 
   subgraph Engine["Core-Engine境界 (Domain Kernel)"]
@@ -43,19 +58,22 @@ flowchart LR
   UICommand --> ApiContract
   UIQuery --> ApiContract
 
-  ApiContract --> ExecutionService
+  ApiContract --> Facade
   ApiContract --> DefinitionService
-  ExecutionService --> ExecutionModel
-  ExecutionService --> GraphModel
-  ExecutionService --> ProjectionSync
+  Facade --> ExecDomains
+  ExecDomains --> CrossCut
+  ExecDomains --> ExecutionModel
+  ExecDomains --> GraphModel
+  ExecDomains --> ProjectionQueue
+  ExecDomains --> ProjectionSync
   DefinitionService --> DefinitionModel
 
   DefinitionService --> DefinitionTables
-  ExecutionService --> ExecutionTables
+  ExecDomains --> ExecutionTables
   ProjectionSync --> ExecutionTables
   ProjectionSync --> CursorTables
-  ExecutionService --> EventStore
-  ExecutionService --> Dedup
+  ExecDomains --> EventStore
+  ExecDomains --> Dedup
 
   ExecutionModel --> WaitModel
   ExecutionModel -.状態変化通知（目標）.-> EngineCallback
@@ -63,23 +81,46 @@ flowchart LR
   ProjectionQueue --> ProjectionSync
 
   class DefinitionModel,ExecutionModel,GraphModel,WaitModel domain;
-  class ExecutionService,ProjectionSync,EngineCallback,ProjectionQueue,DefinitionService,ApiContract integration;
+  class Facade,ExecDomains,CrossCut,ProjectionSync,EngineCallback,ProjectionQueue,DefinitionService,ApiContract integration;
   class DefinitionTables,ExecutionTables,CursorTables,EventStore,Dedup storage;
   class UICommand,UIQuery external;
 ```
 
+### 1.1 Execution ドメインサービス（Core-Application）
+
+実装パスは `core/application/Statevia.Core.Application/Services/`。Worker / Controller の公開契約は `IExecutionService` のままである。
+
+| 型 | 責務 |
+| --- | --- |
+| `ExecutionService` | `IExecutionService` の薄い Facade。ドメインサービスへ委譲するだけ |
+| `ExecutionQueryService` | 一覧・単体・graph・view・events の read-model |
+| `ExecutionLifecycleCommandService` | Start / Cancel / QueuedStart |
+| `ExecutionWaitEventService` | Publish / Resume、子 Wait リダイレクト入口 |
+| `ExecutionCheckpointService` | Persist+Unload / KeepLoaded、Unload ゲート、世代フェンス |
+| `ExecutionOwnershipService` | Worker 所有セッションとローカル Load 待機 |
+| `ExecutionRecoveryService` | 所有喪失後の hydrate 再開（Wait 非消費） |
+| `ExecutionProjectionOrchestrator` | 投影更新の単一窓口（既存 queue を含む） |
+| `ExecutionIdempotencyService` | command_dedup / event_delivery_dedup |
+| `ExecutionForkJoinCoordinator` | 親 Physical Join 完了/失敗と子完了 Resume。Facade からは見えない |
+| `ExecutionAuthorizationGuard` | 実行系入口の認可（read / write / mutation / 定義 Execute） |
+| `ExecutionEngineSession` | ミューテーション前の Engine hydrate。Unload ゲートは持たない |
+
+`IForkChildExecutionCoordinator` は Fork 展開・親 Cancel カスケード・配送先解決を担う既存資産である。Join 再評価は `ExecutionForkJoinCoordinator` が呼び出す。
+
 ## 2. 読み方（要点）
 
 - `Core-Engine` は純粋ドメインロジック（定義解釈、遷移、グラフ生成）を担当し、I/O は持たない。
-- `Service API` はユースケース実行とトランザクション境界を担当し、Engine 結果を永続化モデルへ写像する。
+- `Service API` は HTTP アダプタと Composition Root である。Execution のユースケースとトランザクション境界は `core/application` が担い、Engine 結果を永続化モデルへ写像する。
+- HTTP / Worker 入口は `IExecutionService` Facade のみ。Repository / Auth / Engine は Facade が直接持たない。
+- 投影更新の窓口は `ExecutionProjectionOrchestrator` である。operational sync の実処理は `ExecutionOperationalProjectionSync`。
 - UI の正本は `GET /v1/executions*` が返す Read Model（`executions` / `execution_graph_snapshots`）である。
 - `execution_cursors` / `execution_waits` は運用用投影であり、Read API 正本とは分離される。
 - `event_store` は外部可視イベント履歴、`command_dedup` / `event_delivery_dedup` は冪等制御の責務を持つ。
 
 ## 3. 現状と目標の切り分け
 
-- **現状（実装済み）**: 永続化テーブル更新は `Service API` からのみ実行される。`UI` や `Core-Engine` が DB に直接書き込む経路は持たない。
-- **目標（仕様記載あり）**: Engine の状態変化を API 側へ観測コールバックし、API 内キューで execution 単位に併合しつつ `ProjectionSync` で DB 反映する流れを想定する。
+- **現状（実装済み）**: 永続化テーブル更新は Application（Service API プロセス内）からのみ実行される。`UI` や `Core-Engine` が DB に直接書き込む経路は持たない。`IExecutionProjectionUpdateQueue` は実装済みで、`ExecutionProjectionOrchestrator` が窓口になる。
+- **目標（未導入）**: Engine の状態変化を API 側へ観測コールバックする経路。現状は Application が Engine スナップショットを読んで投影する。
 - **図の凡例**: 破線は「目標/導入予定」の経路、実線は「現状の責務境界で成立している経路」を示す。
 
 ## 4. 参照元ドキュメント

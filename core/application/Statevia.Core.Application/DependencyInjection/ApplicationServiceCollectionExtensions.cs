@@ -24,6 +24,17 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IActionSchemaService, ActionSchemaService>();
         services.AddSingleton<IDefinitionSchemaService, DefinitionSchemaService>();
         services.AddSingleton<ExecutionOwnershipTracker>();
+        services.AddScoped<ExecutionAuthorizationGuard>();
+        services.AddScoped<ExecutionEngineSession>();
+        services.AddScoped<ExecutionQueryService>();
+        services.AddScoped<ExecutionIdempotencyService>();
+        services.AddScoped<ExecutionProjectionOrchestrator>();
+        services.AddScoped<ExecutionLifecycleCommandService>();
+        services.AddScoped<ExecutionCheckpointService>();
+        services.AddScoped<ExecutionForkJoinCoordinator>();
+        services.AddScoped<ExecutionWaitEventService>();
+        services.AddScoped<ExecutionOwnershipService>();
+        services.AddScoped<ExecutionRecoveryService>();
         services.AddScoped<IExecutionService, ExecutionService>();
         services.AddScoped<IEventIngressService, EventIngressService>();
         services.AddScoped<IForkChildExecutionCoordinator, ForkChildExecutionCoordinator>();

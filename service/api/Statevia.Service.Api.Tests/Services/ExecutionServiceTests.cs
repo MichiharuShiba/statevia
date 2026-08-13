@@ -2501,7 +2501,7 @@ public sealed class ExecutionServiceTests
         };
 
         // Act
-        var nodeId = ExecutionService.TryResolveWaitNodeIdToClearFromPersisted(waits, "  approve  ");
+        var nodeId = ExecutionWaitEventService.TryResolveWaitNodeIdToClearFromPersisted(waits, "  approve  ");
 
         // Assert
         Assert.Equal("wait-a", nodeId);
@@ -4321,20 +4321,64 @@ public sealed class ExecutionServiceTests
             sqlite.TenantAccessor.Set(TestTenantIds.T1Context);
         }
 
-        return new ExecutionService(
+        var runtimeAuth = new AllowAllRuntimePermissionAuthorization();
+        var projectAuth = projectAuthorization ?? new AllowAllProjectAuthorizationService();
+        var mutationAuth = new AllowAllExecutionMutationAuthorization();
+        var authorization = new ExecutionAuthorizationGuard(
+            runtimeAuth,
+            mutationAuth,
+            projectAuth,
+            definitions,
+            executor);
+        var checkpointStoreResolved = checkpointStore ?? new FakeExecutionCheckpointStore();
+        var engineSession = new ExecutionEngineSession(
+            engine,
+            compiler,
+            definitions,
+            checkpointStoreResolved,
+            executor,
+            NullLogger<ExecutionEngineSession>.Instance);
+        var query = new ExecutionQueryService(
+            displayIds,
+            executions,
+            authorization,
+            sqlite.TenantAccessor,
+            eventStore,
+            executor,
+            forkChildCoordinator);
+        var idempotency = new ExecutionIdempotencyService(
+            dedupService,
+            dedup,
+            eventDeliveryDedup,
+            sqlite.TenantAccessor,
+            executor,
+            retryOptions,
+            new FixedCorrelationIdAccessor(),
+            NullLogger<ExecutionIdempotencyService>.Instance);
+        var ownership = ownershipTracker ?? new ExecutionOwnershipTracker();
+        var waits = waitRepo ?? new FakeExecutionWaitRepository();
+        var projection = new ExecutionProjectionOrchestrator(
+            engine,
+            executions,
+            new FakeExecutionCursorRepository(),
+            waits,
+            idGenerator,
+            executor,
+            NullLogger<ExecutionProjectionOrchestrator>.Instance,
+            ownership,
+            projectionUpdateQueue,
+            forkChildCoordinator);
+        var snapshotFactory = new FakeExecutionSecuritySnapshotFactory(sqlite.TenantAccessor);
+        var lifecycle = new ExecutionLifecycleCommandService(
             engine,
             displayIds,
             compiler,
             idGenerator,
-            dedupService,
             executions,
-            new FakeExecutionCursorRepository(),
-            waitRepo ?? new FakeExecutionWaitRepository(),
             definitions,
-            projectAuthorization ?? new AllowAllProjectAuthorizationService(),
-            new AllowAllRuntimePermissionAuthorization(),
-            new AllowAllExecutionMutationAuthorization(),
-            new FakeExecutionSecuritySnapshotFactory(sqlite.TenantAccessor),
+            authorization,
+            engineSession,
+            snapshotFactory,
             sqlite.TenantAccessor,
             dedup,
             eventStore,
@@ -4342,14 +4386,84 @@ public sealed class ExecutionServiceTests
             displayIdWrites,
             executor,
             mutationPersistence,
-            NullLogger<ExecutionService>.Instance,
-            retryOptions,
-            new FixedCorrelationIdAccessor(),
-            checkpointStore ?? new FakeExecutionCheckpointStore(),
-            projectionUpdateQueue,
+            NullLogger<ExecutionLifecycleCommandService>.Instance,
+            checkpointStoreResolved,
+            ownership,
+            idempotency,
+            projection,
             workQueue,
-            ownershipTracker,
-            forkChildCoordinator: forkChildCoordinator);
+            forkChildCoordinator);
+        var checkpointService = new ExecutionCheckpointService(
+            engine,
+            checkpointStoreResolved,
+            ownership,
+            executor,
+            executions,
+            projection,
+            lifecycle,
+            NullLogger<ExecutionCheckpointService>.Instance,
+            forkChildCoordinator);
+        var forkJoin = new ExecutionForkJoinCoordinator(
+            engine,
+            executions,
+            checkpointStoreResolved,
+            executor,
+            lifecycle,
+            engineSession,
+            projection,
+            checkpointService,
+            NullLogger<ExecutionForkJoinCoordinator>.Instance,
+            forkChildCoordinator);
+        var waitEvents = new ExecutionWaitEventService(
+            engine,
+            displayIds,
+            idGenerator,
+            executions,
+            waits,
+            authorization,
+            sqlite.TenantAccessor,
+            dedup,
+            eventStore,
+            eventDeliveryDedup,
+            executor,
+            mutationPersistence,
+            NullLogger<ExecutionWaitEventService>.Instance,
+            idempotency,
+            projection,
+            lifecycle,
+            engineSession,
+            checkpointService,
+            forkJoin,
+            forkChildCoordinator);
+        var ownershipSessions = new ExecutionOwnershipService(
+            engine,
+            checkpointStoreResolved,
+            ownership,
+            executor,
+            projection,
+            checkpointService,
+            lifecycle,
+            NullLogger<ExecutionOwnershipService>.Instance);
+        var recovery = new ExecutionRecoveryService(
+            engine,
+            executions,
+            authorization,
+            sqlite.TenantAccessor,
+            executor,
+            lifecycle,
+            engineSession,
+            waitEvents,
+            projection,
+            checkpointService);
+
+        return new ExecutionService(
+            query,
+            projection,
+            lifecycle,
+            waitEvents,
+            checkpointService,
+            ownershipSessions,
+            recovery);
     }
 
     /// <summary>Reader 付与テナントは Start（Executor）が 403。</summary>

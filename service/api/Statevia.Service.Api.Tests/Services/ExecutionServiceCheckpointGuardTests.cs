@@ -4,7 +4,7 @@ using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Service.Api.Tests.Services;
 
-/// <summary>ExecutionService の checkpoint / Join ガード静的ヘルパー。</summary>
+/// <summary>Checkpoint / ForkJoin の静的ガードヘルパー（ドメインサービス）。</summary>
 public sealed class ExecutionServiceCheckpointGuardTests
 {
     /// <summary>終端 incoming は遅れ判定しない。</summary>
@@ -26,7 +26,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
         var stored = CreateCheckpoint(nodeCount: 3);
 
         // Act
-        var lessAdvanced = ExecutionService.IsRuntimeCheckpointLessAdvanced(incoming, stored);
+        var lessAdvanced = ExecutionCheckpointService.IsRuntimeCheckpointLessAdvanced(incoming, stored);
 
         // Assert
         Assert.False(lessAdvanced);
@@ -41,7 +41,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
         var stored = CreateCheckpoint(nodeCount: 3);
 
         // Act
-        var lessAdvanced = ExecutionService.IsRuntimeCheckpointLessAdvanced(incoming, stored);
+        var lessAdvanced = ExecutionCheckpointService.IsRuntimeCheckpointLessAdvanced(incoming, stored);
 
         // Assert
         Assert.True(lessAdvanced);
@@ -66,7 +66,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             ]);
 
         // Act
-        var lessAdvanced = ExecutionService.IsRuntimeCheckpointLessAdvanced(incoming, stored);
+        var lessAdvanced = ExecutionCheckpointService.IsRuntimeCheckpointLessAdvanced(incoming, stored);
 
         // Assert
         Assert.True(lessAdvanced);
@@ -91,7 +91,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             activeStates: ["Decide1"]);
 
         // Act
-        var obsolete = ExecutionService.IsForkExpansionUnloadObsolete(checkpoint, "wait1");
+        var obsolete = ExecutionCheckpointService.IsForkExpansionUnloadObsolete(checkpoint, "wait1");
 
         // Assert
         Assert.False(obsolete);
@@ -117,7 +117,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             activeStates: ["Decide1"]);
 
         // Act
-        var obsolete = ExecutionService.IsForkExpansionUnloadObsolete(checkpoint, "fork1");
+        var obsolete = ExecutionCheckpointService.IsForkExpansionUnloadObsolete(checkpoint, "fork1");
 
         // Assert
         Assert.True(obsolete);
@@ -151,7 +151,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             ]);
 
         // Act
-        var obsolete = ExecutionService.IsForkExpansionUnloadObsolete(checkpoint, "fork1");
+        var obsolete = ExecutionCheckpointService.IsForkExpansionUnloadObsolete(checkpoint, "fork1");
 
         // Assert
         Assert.True(obsolete);
@@ -173,7 +173,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             """;
 
         // Act
-        var completed = ExecutionService.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
+        var completed = ExecutionForkJoinCoordinator.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
 
         // Assert
         Assert.True(completed);
@@ -195,7 +195,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             """;
 
         // Act
-        var completed = ExecutionService.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
+        var completed = ExecutionForkJoinCoordinator.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
 
         // Assert
         Assert.True(completed);
@@ -217,7 +217,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             """;
 
         // Act
-        var completed = ExecutionService.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
+        var completed = ExecutionForkJoinCoordinator.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
 
         // Assert
         Assert.True(completed);
@@ -238,7 +238,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
             """;
 
         // Act
-        var completed = ExecutionService.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
+        var completed = ExecutionForkJoinCoordinator.IsPhysicalJoinAlreadyCompleted(graphJson, "fork1", "Join1");
 
         // Assert
         Assert.False(completed);
@@ -249,7 +249,7 @@ public sealed class ExecutionServiceCheckpointGuardTests
     public void IsPhysicalJoinAlreadyCompleted_WhenInvalidJson_ReturnsFalse()
     {
         // Arrange / Act
-        var completed = ExecutionService.IsPhysicalJoinAlreadyCompleted("{not-json", "fork1", "Join1");
+        var completed = ExecutionForkJoinCoordinator.IsPhysicalJoinAlreadyCompleted("{not-json", "fork1", "Join1");
 
         // Assert
         Assert.False(completed);
