@@ -32,10 +32,10 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 
 ## 3. コンポーネント別
 
-### 3.1 Service API（`service/api/`）
+### 3.1 Service API（`service/api/`）と Application（`core/application/`）
 
-- **Controller**: ルーティング・バインディング・ヘッダ・HTTP ステータスのみ。ビジネスロジックは Service へ。
-- **Service**: ユースケース境界。`ICoreTransactionExecutor` / `IExecutionMutationPersistence` 経由でコミット境界を決め、Repository・DisplayId・command dedup・`IExecutionEngine` を組み合わせる。Service から `IDbContextFactory` を直接使わない。
+- **Controller**: ルーティング・バインディング・ヘッダ・HTTP ステータスのみ。ビジネスロジックは Application へ。
+- **ユースケース（`core/application/`）**: `IExecutionService` は薄い Facade でドメインサービスへ委譲する。コミット境界は `ICoreTransactionExecutor` / `IExecutionMutationPersistence`。Facade は Repository / Engine を直接持たない。`IDbContextFactory` をユースケースから直接使わない。境界の正本は [`architecture/domain-model-boundaries.md`](architecture/domain-model-boundaries.md)。
 - **Repository**: 永続化のみ。書き込み API の第一引数は常に `ICoreUnitOfWork`。`SaveChanges` / `BeginTransaction` / `IDbContextFactory` を Repository 内に持たない。
 - **UoW**: `IDbContextFactory<CoreDbContext>` は `CoreUnitOfWork` 実装内に閉じる。
 - **例外**: `ApiExceptionFilter` と契約に沿ったエラー JSON（404 / 422 / 500）。
@@ -251,6 +251,7 @@ npx --yes sonar-scanner "-Dsonar.token=$($env:SONAR_TOKEN)"
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-13 | §3.1 を Execution Facade / ドメインサービス分割後の責務に合わせて更新 |
 | 2026-07-07 | §1 / §4 / §7 を Git 上の正本として自己完結化（`.cursor` パス参照を廃止） |
 | 2026-05-19 | §4.3 / §5 に UI の ESLint・`StateviaUIStudio` Sonar 手順（§5.2・`sonar-scanner-ui.ps1`）を追記 |
 | 2026-05-17 | §4.3 / §5.1 に Service API 厳格ビルド・coverlet runsettings・`sonar-scanner-api.ps1` 手順を追記 |

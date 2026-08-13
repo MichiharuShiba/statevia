@@ -1,7 +1,15 @@
 # アーキテクチャ
 
-Version: 2.0
+| 項目 | 値 |
+| --- | --- |
+| 種別 | Architecture |
+| Version | 2.1 |
+| 更新日 | 2026-08-13 |
+| 関連 | [domain-model-boundaries.md](domain-model-boundaries.md), [repository-layout.md](repository-layout.md) |
+
 Project: Statevia — 実行型ステートマシン
+
+**Version 2.1（2026-08-13）**: Execution ユースケースを `IExecutionService` Facade とドメインサービスへ分割した責務を反映。
 
 **Version 2.0（2026-07-04）**: 4 カテゴリ構成（core / infrastructure / service / ui）とクリーン・アーキテクチャ準拠を反映。
 
@@ -97,10 +105,11 @@ flowchart LR
 ### 2.2 Core-Application（ユースケース）
 
 - 定義の登録・publish・一覧・取得
-- 実行の開始・キャンセル・イベント発行
-- コマンド重複排除（dedup）
-- セキュリティスナップショット・認可判定
-- Action スキーマ検証
+- 実行系は `IExecutionService` の薄い Facade。HTTP / Worker は Facade のみを見る
+- 実処理はドメインサービスへ委譲する（Query / Lifecycle / WaitEvent / Checkpoint / Ownership / Recovery / Projection）。冪等は `ExecutionIdempotencyService`、親 Physical Join は `ExecutionForkJoinCoordinator`
+- 横断: `ExecutionAuthorizationGuard`（認可）、`ExecutionEngineSession`（hydrate）。Unload ゲートは Checkpoint 側
+- Facade は Repository / Auth / Engine を直接持たない
+- セキュリティスナップショット・Action スキーマ検証
 
 ### 2.3 Infrastructure
 

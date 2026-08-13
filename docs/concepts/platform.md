@@ -3,9 +3,13 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Concept |
-| Version | 1.0 |
-| 更新日 | 2026-07-07 |
+| Version | 1.1 |
+| 更新日 | 2026-08-13 |
 | 関連 | [../specifications/platform/](../specifications/platform/) |
+
+---
+
+**Version 1.1（2026-08-13）**: Application 層を Execution Facade とドメインサービスとして記述。
 
 ---
 
@@ -16,8 +20,8 @@ Statevia プラットフォームは **Service API** を境界として、認証
 | 層 | 役割 |
 | --- | --- |
 | UI | 表示と Command 発行。`/api/core/*` で Service API にプロキシ |
-| Service API | HTTP 契約、認可、UoW、Engine 起動、Module ホスト |
-| Application | ユースケースの orchestration |
+| Service API | HTTP 契約、Composition Root、Module ホスト |
+| Application | `IExecutionService` Facade とドメインサービスによるユースケース |
 | Engine | 純粋な状態遷移ロジック |
 | Infrastructure | EF Core、JWT、Module Source、Action 実行バックエンド |
 
