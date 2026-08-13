@@ -20,19 +20,22 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     private readonly IDefinitionRepository _definitions;
     private readonly ITenantContextAccessor _tenantContext;
     private readonly IRuntimePermissionAuthorization _runtimeAuth;
+    private readonly IProjectAuthorizationService _projectAuth;
 
     public GraphDefinitionService(
         ICoreTransactionExecutor executor,
         IDisplayIdService displayIds,
         IDefinitionRepository definitions,
         ITenantContextAccessor tenantContext,
-        IRuntimePermissionAuthorization runtimeAuth)
+        IRuntimePermissionAuthorization runtimeAuth,
+        IProjectAuthorizationService projectAuth)
     {
         _executor = executor;
         _displayIds = displayIds;
         _definitions = definitions;
         _tenantContext = tenantContext;
         _runtimeAuth = runtimeAuth;
+        _projectAuth = projectAuth;
     }
 
     public async Task<GraphDefinitionResponse> GetByGraphIdAsync(string graphId, CancellationToken ct = default)
@@ -53,6 +56,10 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
                     .ConfigureAwait(false);
                 if (detail is null)
                     throw new NotFoundException("Graph not found");
+
+                await _projectAuth
+                    .EnsureCanReadAsync(uow, tenantId, detail.Definition.ProjectId, innerCt)
+                    .ConfigureAwait(false);
 
                 return BuildFromCompiledJson(graphId, detail.Definition.Name, detail.Version.CompiledJson);
             },

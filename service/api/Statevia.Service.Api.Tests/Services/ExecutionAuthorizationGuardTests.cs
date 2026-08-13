@@ -2,6 +2,7 @@ using Statevia.Core.Application.Contracts.Persistence;
 using Statevia.Core.Application.Contracts.Security;
 using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Services;
+using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Services;
@@ -110,6 +111,40 @@ public sealed class ExecutionAuthorizationGuardTests
         Assert.Single(projectAuth.ExecuteCalls);
         Assert.Equal(tenantId, projectAuth.ExecuteCalls[0].TenantId);
         Assert.Equal(projectId, projectAuth.ExecuteCalls[0].ProjectId);
+    }
+
+    /// <summary>論理削除済み定義は EnsureCanExecute せず NotFound。</summary>
+    [Fact]
+    public async Task EnsureCanExecuteOnDefinitionAsync_WhenDefinitionSoftDeleted_ThrowsNotFoundWithoutExecute()
+    {
+        // Arrange
+        using var db = new SqliteTestDatabase();
+        var projectId = Guid.NewGuid();
+        var definitionId = Guid.NewGuid();
+        var tenantId = TestTenantIds.DefaultTenantId;
+        var deletedAt = DateTime.UtcNow;
+
+        await using (var seed = db.Factory.CreateDbContext())
+        {
+            ProjectTestData.AddDefaultProject(seed, tenantId, "default", projectId);
+            DefinitionTestData.AddDefinitionWithVersion(seed, tenantId, definitionId, "def", projectId);
+            var definition = await seed.Definitions.FindAsync(definitionId);
+            definition!.DeletedAt = deletedAt;
+            await seed.SaveChangesAsync();
+        }
+
+        var projectAuth = new RecordingProjectAuthorizationService();
+        var sut = new ExecutionAuthorizationGuard(
+            new AllowAllRuntimePermissionAuthorization(),
+            new AllowAllExecutionMutationAuthorization(),
+            projectAuth,
+            TestRepositoryFactory.CreateDefinitionRepository(),
+            new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(db.Factory)));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            sut.EnsureCanExecuteOnDefinitionAsync(tenantId, definitionId, CancellationToken.None));
+        Assert.Empty(projectAuth.ExecuteCalls);
     }
 
     private static ExecutionAuthorizationGuard CreateSut(

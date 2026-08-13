@@ -20,7 +20,6 @@ using Statevia.Infrastructure.Persistence.DependencyInjection;
 using Statevia.Infrastructure.Security.DependencyInjection;
 using Statevia.Service.Api.Abstractions.Services;
 using Statevia.Service.Api.Persistence;
-using Statevia.Service.Api.Persistence.Repositories;
 using Statevia.Core.Application.DependencyInjection;
 using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Engine.Abstractions;
@@ -100,7 +99,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IExecutionIdGenerator>(
             sp => new DelegateExecutionIdGenerator(() => sp.GetRequiredService<IIdGenerator>().NewSequentialGuid().ToString()));
         services.AddStateviaExecutionEngine();
-        services.AddScoped<IDefinitionRepository, DefinitionRepository>();
         AddExecutionProjectionQueueOptions(services, configuration);
         services.AddSingleton<ExecutionProjectionUpdateQueueService>();
         services.AddSingleton<IExecutionProjectionUpdateQueue>(sp => sp.GetRequiredService<ExecutionProjectionUpdateQueueService>());

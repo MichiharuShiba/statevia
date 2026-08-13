@@ -130,10 +130,10 @@ public sealed class DefinitionRepositoryTests
     }
 
     /// <summary>
-    /// 他テナントの版は取得できない。
+    /// 他テナントで呼んでも永続化は版行を返す（認可は Repository の責務ではない）。
     /// </summary>
     [Fact]
-    public async Task GetVersionForExecutionByIdAsync_ReturnsNull_ForOtherTenant()
+    public async Task GetVersionForExecutionByIdAsync_ReturnsVersion_ForOtherTenantCaller()
     {
         // Arrange
         using var db = new SqliteTestDatabase();
@@ -173,11 +173,11 @@ public sealed class DefinitionRepositoryTests
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        var ex = await Assert.ThrowsAsync<NotFoundException>(() =>
-            repo.GetVersionForExecutionByIdAsync(uow, otherTenantId, versionId, default));
+        var version = await repo.GetVersionForExecutionByIdAsync(uow, otherTenantId, versionId, default);
 
         // Assert
-        Assert.NotNull(ex);
+        Assert.NotNull(version);
+        Assert.Equal(defId, version!.DefinitionId);
     }
 
     /// <summary>
@@ -306,6 +306,67 @@ public sealed class DefinitionRepositoryTests
         Assert.Null(apiDetail);
         Assert.NotNull(executionVersion);
         Assert.Equal(1, executionVersion!.Version);
+    }
+
+    /// <summary>
+    /// 論理削除済み定義の project_id は解決しない（Start 認可は NotFound になる）。
+    /// </summary>
+    [Fact]
+    public async Task ResolveProjectIdAsync_ReturnsNull_WhenSoftDeleted()
+    {
+        // Arrange
+        using var db = new SqliteTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = TestRepositoryFactory.CreateDefinitionRepository();
+        var defId = Guid.NewGuid();
+        var created = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var projectId = Guid.NewGuid();
+        var deletedAt = new DateTime(2020, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        await using (var seed = db.Factory.CreateDbContext())
+        {
+            ProjectTestData.AddDefaultProject(seed, OwnerTenantId, OwnerTenantKey, projectId);
+            DefinitionTestData.AddDefinitionWithVersion(
+                seed, OwnerTenantId, defId, "def-1", projectId, createdAt: created);
+            var definition = await seed.Definitions.FindAsync(defId);
+            definition!.DeletedAt = deletedAt;
+            await seed.SaveChangesAsync();
+        }
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var resolved = await repo.ResolveProjectIdAsync(uow, OwnerTenantId, defId, default);
+
+        // Assert
+        Assert.Null(resolved);
+    }
+
+    /// <summary>
+    /// active catalog の project_id を返す。
+    /// </summary>
+    [Fact]
+    public async Task ResolveProjectIdAsync_ReturnsProjectId_WhenActive()
+    {
+        // Arrange
+        using var db = new SqliteTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = TestRepositoryFactory.CreateDefinitionRepository();
+        var defId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+
+        await using (var seed = db.Factory.CreateDbContext())
+        {
+            ProjectTestData.AddDefaultProject(seed, OwnerTenantId, OwnerTenantKey, projectId);
+            DefinitionTestData.AddDefinitionWithVersion(seed, OwnerTenantId, defId, "def-1", projectId);
+            await seed.SaveChangesAsync();
+        }
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var resolved = await repo.ResolveProjectIdAsync(uow, OwnerTenantId, defId, default);
+
+        // Assert
+        Assert.Equal(projectId, resolved);
     }
 
     /// <summary>

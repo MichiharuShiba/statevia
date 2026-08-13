@@ -3,9 +3,11 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Architecture |
-| Version | 1.1 |
+| Version | 1.2 |
 | 更新日 | 2026-08-13 |
 | 関連 | [overview.md](overview.md), [data-integration.md](../specifications/data-integration.md) |
+
+**Version 1.2（2026-08-13）**: Definition の project 認可は `DefinitionService`、永続化は Infrastructure の `IDefinitionRepository`。
 
 **Version 1.1（2026-08-13）**: Execution を `IExecutionService` Facade とドメインサービスへ分割した境界を反映。投影キューを実装済みとして実線化する。
 
@@ -37,7 +39,7 @@ flowchart LR
     ProjectionSync["ExecutionOperationalProjectionSync<br/>投影同期"]
     ProjectionQueue["IExecutionProjectionUpdateQueue"]
     EngineCallback["Engine観測コールバック<br/>（目標）"]
-    DefinitionService["DefinitionService<br/>定義版管理"]
+    DefinitionService["DefinitionService<br/>定義版管理 + project 認可"]
   end
 
   subgraph Engine["Core-Engine境界 (Domain Kernel)"]
