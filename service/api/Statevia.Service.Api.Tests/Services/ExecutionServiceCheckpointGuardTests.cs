@@ -4,7 +4,7 @@ using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Service.Api.Tests.Services;
 
-/// <summary>ExecutionService の checkpoint / Join ガード静的ヘルパー。</summary>
+/// <summary>Checkpoint / ForkJoin の静的ガードヘルパー（ドメインサービス）。</summary>
 public sealed class ExecutionServiceCheckpointGuardTests
 {
     /// <summary>終端 incoming は遅れ判定しない。</summary>

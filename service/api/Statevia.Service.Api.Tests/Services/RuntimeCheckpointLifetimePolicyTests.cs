@@ -3,31 +3,28 @@ using Statevia.Core.Application.Services;
 
 namespace Statevia.Service.Api.Tests.Services;
 
-/// <summary>runtime checkpoint 内容寿命表（PendingWaits / PendingPhysicalJoin）の単体。</summary>
+/// <summary><see cref="RuntimeCheckpointLifetimePolicy"/> の寿命表破棄候補判定。</summary>
 public sealed class RuntimeCheckpointLifetimePolicyTests
 {
-    /// <summary>終端は保持理由があっても内容破棄候補。</summary>
+    /// <summary>終端 status は保持理由に関わらず破棄候補。</summary>
     [Theory]
     [InlineData(ExecutionProjectionStatuses.Completed)]
     [InlineData(ExecutionProjectionStatuses.Failed)]
     [InlineData(ExecutionProjectionStatuses.Cancelled)]
-    public void IsContentDiscardCandidate_WhenTerminal_ReturnsTrue(
-        string status)
+    public void IsContentDiscardCandidate_WhenTerminal_ReturnsTrue(string status)
     {
-        // Arrange
-        var reasons = RuntimeCheckpointRetainReasons.PendingWaits
-            | RuntimeCheckpointRetainReasons.PendingPhysicalJoin;
-
-        // Act
-        var discard = RuntimeCheckpointLifetimePolicy.IsContentDiscardCandidate(status, reasons);
+        // Arrange / Act
+        var discard = RuntimeCheckpointLifetimePolicy.IsContentDiscardCandidate(
+            status,
+            RuntimeCheckpointRetainReasons.PendingWaits | RuntimeCheckpointRetainReasons.PendingPhysicalJoin);
 
         // Assert
         Assert.True(discard);
     }
 
-    /// <summary>Running かつ保持理由なしは内容破棄候補。</summary>
+    /// <summary>Running で保持理由なしは破棄候補。</summary>
     [Fact]
-    public void IsContentDiscardCandidate_WhenRunningWithoutReasons_ReturnsTrue()
+    public void IsContentDiscardCandidate_WhenRunningWithoutRetainReasons_ReturnsTrue()
     {
         // Arrange / Act
         var discard = RuntimeCheckpointLifetimePolicy.IsContentDiscardCandidate(
@@ -38,9 +35,9 @@ public sealed class RuntimeCheckpointLifetimePolicyTests
         Assert.True(discard);
     }
 
-    /// <summary>PendingWaits がある Running は保持。</summary>
+    /// <summary>Running で Wait 保持は破棄しない。</summary>
     [Fact]
-    public void IsContentDiscardCandidate_WhenPendingWaits_ReturnsFalse()
+    public void IsContentDiscardCandidate_WhenRunningWithPendingWaits_ReturnsFalse()
     {
         // Arrange / Act
         var discard = RuntimeCheckpointLifetimePolicy.IsContentDiscardCandidate(
@@ -51,18 +48,14 @@ public sealed class RuntimeCheckpointLifetimePolicyTests
         Assert.False(discard);
     }
 
-    /// <summary>両方の保持理由がある Running も内容破棄しない。</summary>
+    /// <summary>Running で物理 Join 保持は破棄しない。</summary>
     [Fact]
-    public void IsContentDiscardCandidate_WhenBothRetainReasons_ReturnsFalse()
+    public void IsContentDiscardCandidate_WhenRunningWithPendingPhysicalJoin_ReturnsFalse()
     {
-        // Arrange
-        var reasons = RuntimeCheckpointRetainReasons.PendingWaits
-            | RuntimeCheckpointRetainReasons.PendingPhysicalJoin;
-
-        // Act
+        // Arrange / Act
         var discard = RuntimeCheckpointLifetimePolicy.IsContentDiscardCandidate(
             ExecutionProjectionStatuses.Running,
-            reasons);
+            RuntimeCheckpointRetainReasons.PendingPhysicalJoin);
 
         // Assert
         Assert.False(discard);
