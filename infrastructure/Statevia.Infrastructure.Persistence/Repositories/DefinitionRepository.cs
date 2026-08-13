@@ -1,9 +1,13 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Infrastructure.Persistence;
-using Statevia.Service.Api.Abstractions.Services;
 
-namespace Statevia.Service.Api.Persistence.Repositories;
+namespace Statevia.Infrastructure.Persistence.Repositories;
 
+/// <summary>definitions / definition_versions の EF 永続化。project 認可は行わない。</summary>
+/// <remarks>
+/// <para>呼び出し元（Application / Graph ユースケース）が <see cref="IProjectAuthorizationService"/> でゲートする。</para>
+/// <para>一覧のみ <see cref="ProjectAccessQueries"/> で Reader 以上の project 可視性を DB 側に残す（D2-A）。</para>
+/// <para>単体取得は definitionId / versionId で引き、呼び出し元 tenant の行一致では絞らない（project 共有）。</para>
+/// </remarks>
 internal sealed class DefinitionRepository : IDefinitionRepository
 {
     private sealed class DefinitionWithDisplay
@@ -12,12 +16,6 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         public required DefinitionVersionRow Version { get; init; }
         public string? DisplayId { get; init; }
     }
-
-    private readonly IProjectAuthorizationService _projectAuth;
-
-    /// <summary>新しいインスタンスを初期化する。</summary>
-    public DefinitionRepository(IProjectAuthorizationService projectAuth) =>
-        _projectAuth = projectAuth;
 
     /// <inheritdoc />
     public Task<DefinitionDetail?> GetLatestForApiAsync(
@@ -34,17 +32,10 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         Guid definitionId,
         CancellationToken ct)
     {
-        var definition = await uow.GetDb().Definitions
+        _ = tenantId;
+        return await uow.GetDb().Definitions
             .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.DeletedAt == null, ct)
             .ConfigureAwait(false);
-        if (definition is null)
-            return null;
-
-        await _projectAuth
-            .EnsureCanPublishAsync(uow, tenantId, definition.ProjectId, ct)
-            .ConfigureAwait(false);
-
-        return definition;
     }
 
     /// <inheritdoc />
@@ -63,23 +54,17 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         Guid definitionVersionId,
         CancellationToken ct)
     {
+        _ = tenantId;
         var version = await uow.GetDb().DefinitionVersions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.DefinitionVersionId == definitionVersionId, ct)
             .ConfigureAwait(false);
         if (version is null)
             return null;
 
-        var definition = await uow.GetDb().Definitions.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.DefinitionId == version.DefinitionId, ct)
+        var definitionExists = await uow.GetDb().Definitions.AsNoTracking()
+            .AnyAsync(x => x.DefinitionId == version.DefinitionId, ct)
             .ConfigureAwait(false);
-        if (definition is null)
-            return null;
-
-        await _projectAuth
-            .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
-            .ConfigureAwait(false);
-
-        return version;
+        return definitionExists ? version : null;
     }
 
     /// <inheritdoc />
@@ -92,23 +77,15 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         GetVersionInternalAsync(uow, tenantId, definitionId, version, activeParentOnly: true, ct);
 
     /// <inheritdoc />
-    public async Task<DefinitionRow?> GetDeletedCatalogEntryAsync(
+    public Task<DefinitionRow?> GetDeletedCatalogEntryAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,
         Guid definitionId,
         CancellationToken ct)
     {
-        var definition = await uow.GetDb().Definitions.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.DeletedAt != null, ct)
-            .ConfigureAwait(false);
-        if (definition is null)
-            return null;
-
-        await _projectAuth
-            .EnsureCanPublishAsync(uow, tenantId, definition.ProjectId, ct)
-            .ConfigureAwait(false);
-
-        return definition;
+        _ = tenantId;
+        return uow.GetDb().Definitions.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.DeletedAt != null, ct);
     }
 
     /// <inheritdoc />
@@ -118,18 +95,11 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         Guid definitionId,
         CancellationToken ct)
     {
+        _ = tenantId;
         var definition = await uow.GetDb().Definitions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.DefinitionId == definitionId, ct)
             .ConfigureAwait(false);
-
-        if (definition is null)
-            return null;
-
-        await _projectAuth
-            .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
-            .ConfigureAwait(false);
-
-        return definition.ProjectId;
+        return definition?.ProjectId;
     }
 
     /// <inheritdoc />
@@ -157,10 +127,6 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             .ConfigureAwait(false);
         if (definition is null)
             return null;
-
-        await _projectAuth
-            .EnsureCanPublishAsync(uow, command.TenantId, definition.ProjectId, ct)
-            .ConfigureAwait(false);
 
         var nextVersion = definition.LatestVersion + 1;
         var now = DateTime.UtcNow;
@@ -219,15 +185,12 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         DateTime deletedAt,
         CancellationToken ct)
     {
+        _ = tenantId;
         var definition = await uow.GetDb().Definitions
             .FirstOrDefaultAsync(x => x.DefinitionId == definitionId, ct)
             .ConfigureAwait(false);
         if (definition is null)
             return DefinitionSoftDeleteOutcome.NotFound;
-
-        await _projectAuth
-            .EnsureCanPublishAsync(uow, tenantId, definition.ProjectId, ct)
-            .ConfigureAwait(false);
 
         if (definition.DeletedAt is not null)
             return DefinitionSoftDeleteOutcome.AlreadyDeleted;
@@ -244,15 +207,12 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         Guid definitionId,
         CancellationToken ct)
     {
+        _ = tenantId;
         var definition = await uow.GetDb().Definitions
             .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.DeletedAt != null, ct)
             .ConfigureAwait(false);
         if (definition is null)
             return null;
-
-        await _projectAuth
-            .EnsureCanPublishAsync(uow, tenantId, definition.ProjectId, ct)
-            .ConfigureAwait(false);
 
         var now = DateTime.UtcNow;
         definition.DeletedAt = null;
@@ -293,6 +253,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         bool tracked,
         CancellationToken ct)
     {
+        _ = tenantId;
         var query = tracked
             ? uow.GetDb().Definitions.AsQueryable()
             : uow.GetDb().Definitions.AsNoTracking();
@@ -305,10 +266,6 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             .ConfigureAwait(false);
         if (definition is null)
             return null;
-
-        await _projectAuth
-            .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
-            .ConfigureAwait(false);
 
         var version = await uow.GetDb().DefinitionVersions.AsNoTracking()
             .FirstOrDefaultAsync(
@@ -329,6 +286,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         bool activeParentOnly,
         CancellationToken ct)
     {
+        _ = tenantId;
         var definitionQuery = uow.GetDb().Definitions.AsNoTracking()
             .Where(x => x.DefinitionId == definitionId);
         if (activeParentOnly)
@@ -339,10 +297,6 @@ internal sealed class DefinitionRepository : IDefinitionRepository
             .ConfigureAwait(false);
         if (definition is null)
             return null;
-
-        await _projectAuth
-            .EnsureCanReadAsync(uow, tenantId, definition.ProjectId, ct)
-            .ConfigureAwait(false);
 
         return await uow.GetDb().DefinitionVersions.AsNoTracking()
             .FirstOrDefaultAsync(
@@ -401,6 +355,10 @@ internal sealed class DefinitionRepository : IDefinitionRepository
 internal static class ProjectAccessQueries
 {
     /// <summary>指定最小ロール以上でアクセス可能な project_id 集合。</summary>
+    /// <param name="db">EF コンテキスト。</param>
+    /// <param name="tenantId">呼び出し元テナント。</param>
+    /// <param name="minimumRole">一覧に含める最小ロール。</param>
+    /// <returns>アクセス可能な project_id。</returns>
     public static IQueryable<Guid> AccessibleProjectIds(
         CoreDbContext db,
         Guid tenantId,

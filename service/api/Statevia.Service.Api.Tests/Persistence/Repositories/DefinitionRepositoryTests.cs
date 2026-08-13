@@ -130,10 +130,10 @@ public sealed class DefinitionRepositoryTests
     }
 
     /// <summary>
-    /// 他テナントの版は取得できない。
+    /// 他テナントで呼んでも永続化は版行を返す（認可は Repository の責務ではない）。
     /// </summary>
     [Fact]
-    public async Task GetVersionForExecutionByIdAsync_ReturnsNull_ForOtherTenant()
+    public async Task GetVersionForExecutionByIdAsync_ReturnsVersion_ForOtherTenantCaller()
     {
         // Arrange
         using var db = new SqliteTestDatabase();
@@ -173,11 +173,11 @@ public sealed class DefinitionRepositoryTests
 
         // Act
         await using var uow = await uowFactory.CreateAsync();
-        var ex = await Assert.ThrowsAsync<NotFoundException>(() =>
-            repo.GetVersionForExecutionByIdAsync(uow, otherTenantId, versionId, default));
+        var version = await repo.GetVersionForExecutionByIdAsync(uow, otherTenantId, versionId, default);
 
         // Assert
-        Assert.NotNull(ex);
+        Assert.NotNull(version);
+        Assert.Equal(defId, version!.DefinitionId);
     }
 
     /// <summary>

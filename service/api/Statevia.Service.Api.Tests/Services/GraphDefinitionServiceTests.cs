@@ -16,7 +16,8 @@ public sealed class GraphDefinitionServiceTests
             display,
             TestRepositoryFactory.CreateDefinitionRepository(),
             new FixedTenantContextAccessor(TestTenantIds.DefaultContext),
-            new AllowAllRuntimePermissionAuthorization());
+            new AllowAllRuntimePermissionAuthorization(),
+            new AllowAllProjectAuthorizationService());
 
     private static async Task<Guid> SeedDefaultTenantAndProjectAsync(DbContextOptions<CoreDbContext> options)
     {

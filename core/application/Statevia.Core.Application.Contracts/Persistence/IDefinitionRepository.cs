@@ -1,9 +1,9 @@
 namespace Statevia.Core.Application.Contracts.Persistence;
 
-/// <summary>definitions / definition_versions 永続化。</summary>
+/// <summary>definitions / definition_versions の素の永続化ポート。project 認可は呼び出し元の責任である。</summary>
 public interface IDefinitionRepository
 {
-    /// <summary>Active catalog の最新版を取得する（GET / Graph 用）。</summary>
+    /// <summary>Active catalog の最新版を取得する（GET / Graph 用）。認可しない。</summary>
     Task<DefinitionDetail?> GetLatestForApiAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,
@@ -47,6 +47,7 @@ public interface IDefinitionRepository
         Guid definitionId,
         CancellationToken ct);
 
+    /// <summary>definition の project_id を返す。存在しなければ null。認可しない。</summary>
     Task<Guid?> ResolveProjectIdAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,

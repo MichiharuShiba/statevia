@@ -106,11 +106,11 @@ internal sealed class ExecutionLifecycleCommandService(
             throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
 
         var tenantId = tenantContext.GetRequiredTenantId();
+        await authorization.EnsureCanExecuteOnDefinitionAsync(tenantId, defUuid.Value, ct).ConfigureAwait(false);
+
         var versionRow = await ResolveStartDefinitionVersionAsync(tenantId, defUuid.Value, request, ct).ConfigureAwait(false);
         if (versionRow is null)
             throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
-
-        await authorization.EnsureCanExecuteOnDefinitionAsync(tenantId, defUuid.Value, ct).ConfigureAwait(false);
 
         // HTTP 受理経路: キューがある場合は Engine を回さず Start work item を投入する。
         // Worker 文脈（またはテストでキュー未注入）は従来どおり同一プロセスで実行する。

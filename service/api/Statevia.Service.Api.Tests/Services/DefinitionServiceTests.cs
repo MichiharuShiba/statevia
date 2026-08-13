@@ -21,17 +21,19 @@ public sealed class DefinitionServiceTests
         StubDisplayIdService display,
         IDefinitionCompilerService compiler,
         IDefinitionRepository definitionsRepo,
-        IIdGenerator idGen)
+        IIdGenerator idGen,
+        IProjectAuthorizationService? projectAuth = null,
+        ITenantContextAccessor? tenantAccessor = null)
     {
         var executor = new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(inDb.Factory));
         var projectRepo = new ProjectRepository(new DefaultIdGenerator());
-        var tenantAccessor = new FixedTenantContextAccessor(TestTenantIds.DefaultContext);
         return new DefinitionService(
             display,
             compiler,
             definitionsRepo,
             projectRepo,
-            tenantAccessor,
+            projectAuth ?? new AllowAllProjectAuthorizationService(),
+            tenantAccessor ?? new FixedTenantContextAccessor(TestTenantIds.DefaultContext),
             new AllowAllRuntimePermissionAuthorization(),
             idGen,
             executor);
@@ -361,6 +363,41 @@ public sealed class DefinitionServiceTests
         var compiler = new StubCompiler("{}");
         var idGen = new FixedIdGenerator(Guid.NewGuid());
         var sut = CreateDefinitionService(inDb, display, compiler, definitionsRepo, idGen);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NotFoundException>(() => sut.GetAsync(guid.ToString(), CancellationToken.None));
+    }
+
+    /// <summary>
+    /// project 権限がない呼び出し元は定義 GET で未検出になる。
+    /// </summary>
+    [Fact]
+    public async Task GetAsync_ThrowsNotFound_WhenCallerLacksProjectRead()
+    {
+        // Arrange
+        using var inDb = new InMemoryTestDatabase();
+        var projectId = await SeedDefaultTenantAndProjectAsync(inDb.Options);
+        var guid = Guid.NewGuid();
+        await using (var ctx = new CoreDbContext(inDb.Options))
+        {
+            DefinitionTestData.AddDefinitionWithVersion(ctx, TestTenantIds.DefaultTenantId, guid, "def", projectId);
+            await ctx.SaveChangesAsync();
+        }
+
+        var display = new StubDisplayIdService();
+        display.ResolveMap["definition|" + guid] = guid;
+        var sut = CreateDefinitionService(
+            inDb,
+            display,
+            new StubCompiler("{}"),
+            TestRepositoryFactory.CreateDefinitionRepository(),
+            new FixedIdGenerator(Guid.NewGuid()),
+            new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator())),
+            new FixedTenantContextAccessor(new TenantContextState(
+                TestTenantIds.OtherTenantId,
+                "other",
+                null,
+                TenantLifecycle.Active)));
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() => sut.GetAsync(guid.ToString(), CancellationToken.None));

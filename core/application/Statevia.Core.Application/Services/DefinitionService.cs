@@ -4,6 +4,10 @@ using Statevia.Core.Application.Infrastructure;
 namespace Statevia.Core.Application.Services;
 
 /// <summary>ワークフロー定義の登録・更新・一覧・取得。</summary>
+/// <remarks>
+/// <para>Runtime 権限に加え、project ロールは <see cref="IProjectAuthorizationService"/> で明示する。</para>
+/// <para>一覧の project 可視性は Repository の DB フィルタ（Reader）に委譲する。</para>
+/// </remarks>
 internal sealed class DefinitionService : IDefinitionService
 {
     private readonly IDisplayIdService _displayIds;
@@ -11,6 +15,7 @@ internal sealed class DefinitionService : IDefinitionService
     private readonly IDefinitionCompilerService _compiler;
     private readonly IDefinitionRepository _definitions;
     private readonly IProjectRepository _projects;
+    private readonly IProjectAuthorizationService _projectAuth;
     private readonly ITenantContextAccessor _tenantContext;
     private readonly IRuntimePermissionAuthorization _runtimeAuth;
     private readonly IIdGenerator _idGenerator;
@@ -25,6 +30,7 @@ internal sealed class DefinitionService : IDefinitionService
         IDefinitionCompilerService compiler,
         IDefinitionRepository definitions,
         IProjectRepository projects,
+        IProjectAuthorizationService projectAuth,
         ITenantContextAccessor tenantContext,
         IRuntimePermissionAuthorization runtimeAuth,
         IIdGenerator idGenerator,
@@ -36,6 +42,7 @@ internal sealed class DefinitionService : IDefinitionService
         _compiler = compiler;
         _definitions = definitions;
         _projects = projects;
+        _projectAuth = projectAuth;
         _tenantContext = tenantContext;
         _runtimeAuth = runtimeAuth;
         _idGenerator = idGenerator;
@@ -168,6 +175,10 @@ internal sealed class DefinitionService : IDefinitionService
                 if (detail is null)
                     throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
+                await _projectAuth
+                    .EnsureCanReadAsync(uow, tenantId, detail.Definition.ProjectId, innerCt)
+                    .ConfigureAwait(false);
+
                 var displayId = await _displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, idOrUuid, innerCt)
                     .ConfigureAwait(false);
                 return ToResponse(detail, displayId, includeYaml: true);
@@ -212,7 +223,10 @@ internal sealed class DefinitionService : IDefinitionService
         return await _executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
             {
-                await RequireActiveDefinitionAsync(uow, tenantId, uuid.Value, innerCt).ConfigureAwait(false);
+                var active = await RequireActiveDefinitionAsync(uow, tenantId, uuid.Value, innerCt).ConfigureAwait(false);
+                await _projectAuth
+                    .EnsureCanPublishAsync(uow, tenantId, active.ProjectId, innerCt)
+                    .ConfigureAwait(false);
 
                 var detail = await _definitions
                     .PublishVersionAsync(
@@ -248,7 +262,12 @@ internal sealed class DefinitionService : IDefinitionService
         var deletedAt = DateTime.UtcNow;
 
         var outcome = await _executor.ExecuteReadCommittedAsync(
-            (uow, innerCt) => _definitions.SoftDeleteAsync(uow, tenantId, uuid.Value, deletedAt, innerCt),
+            async (uow, innerCt) =>
+            {
+                await EnsureCanPublishOnDefinitionAsync(uow, tenantId, uuid.Value, innerCt).ConfigureAwait(false);
+                return await _definitions.SoftDeleteAsync(uow, tenantId, uuid.Value, deletedAt, innerCt)
+                    .ConfigureAwait(false);
+            },
             ct).ConfigureAwait(false);
 
         if (outcome == DefinitionSoftDeleteOutcome.NotFound)
@@ -272,6 +291,9 @@ internal sealed class DefinitionService : IDefinitionService
             return await _executor.ExecuteReadCommittedAsync(
                 async (uow, innerCt) =>
                 {
+                    await EnsureCanPublishOnDefinitionAsync(uow, tenantId, uuid.Value, innerCt)
+                        .ConfigureAwait(false);
+
                     var deleted = await RequireDeletedDefinitionAsync(uow, tenantId, uuid.Value, innerCt)
                         .ConfigureAwait(false);
 
@@ -321,6 +343,21 @@ internal sealed class DefinitionService : IDefinitionService
             throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
         return definition;
+    }
+
+    /// <summary>definition の project に Publisher 以上を要求する。無ければ NotFound。</summary>
+    private async Task EnsureCanPublishOnDefinitionAsync(
+        ICoreUnitOfWork uow,
+        Guid tenantId,
+        Guid definitionId,
+        CancellationToken ct)
+    {
+        var projectId = await _definitions.ResolveProjectIdAsync(uow, tenantId, definitionId, ct)
+            .ConfigureAwait(false);
+        if (projectId is null)
+            throw new NotFoundException(DefinitionValidationMessages.NotFound);
+
+        await _projectAuth.EnsureCanPublishAsync(uow, tenantId, projectId.Value, ct).ConfigureAwait(false);
     }
 
     private async Task<DefinitionRow> RequireDeletedDefinitionAsync(
