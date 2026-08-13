@@ -47,7 +47,7 @@ public interface IDefinitionRepository
         Guid definitionId,
         CancellationToken ct);
 
-    /// <summary>definition の project_id を返す。存在しなければ null。認可しない。</summary>
+    /// <summary>active catalog の project_id を返す。論理削除済みまたは無ければ null。認可しない。</summary>
     Task<Guid?> ResolveProjectIdAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,

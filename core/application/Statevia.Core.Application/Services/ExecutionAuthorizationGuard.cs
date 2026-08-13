@@ -48,7 +48,7 @@ internal sealed class ExecutionAuthorizationGuard(
     /// <param name="tenantId">テナント ID。</param>
     /// <param name="definitionId">定義 ID。</param>
     /// <param name="ct">キャンセル。</param>
-    /// <exception cref="NotFoundException">定義が見つからないとき。</exception>
+    /// <exception cref="NotFoundException">定義が見つからない、または論理削除済みのとき。</exception>
     public Task EnsureCanExecuteOnDefinitionAsync(
         Guid tenantId,
         Guid definitionId,

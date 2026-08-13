@@ -183,7 +183,9 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
         _ = uow;
         _ = tenantId;
         _ = ct;
-        if (LatestDetail is null || LatestDetail.Definition.DefinitionId != definitionId)
+        if (LatestDetail is null
+            || LatestDetail.Definition.DefinitionId != definitionId
+            || LatestDetail.Definition.DeletedAt is not null)
             return Task.FromResult<Guid?>(null);
 
         return Task.FromResult<Guid?>(LatestDetail.Definition.ProjectId);

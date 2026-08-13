@@ -96,10 +96,11 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         CancellationToken ct)
     {
         _ = tenantId;
-        var definition = await uow.GetDb().Definitions.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.DefinitionId == definitionId, ct)
+        return await uow.GetDb().Definitions.AsNoTracking()
+            .Where(x => x.DefinitionId == definitionId && x.DeletedAt == null)
+            .Select(x => (Guid?)x.ProjectId)
+            .FirstOrDefaultAsync(ct)
             .ConfigureAwait(false);
-        return definition?.ProjectId;
     }
 
     /// <inheritdoc />

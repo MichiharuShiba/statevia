@@ -345,7 +345,7 @@ internal sealed class DefinitionService : IDefinitionService
         return definition;
     }
 
-    /// <summary>definition の project に Publisher 以上を要求する。無ければ NotFound。</summary>
+    /// <summary>definition の project に Publisher 以上を要求する。論理削除済みも含む。無ければ NotFound。</summary>
     private async Task EnsureCanPublishOnDefinitionAsync(
         ICoreUnitOfWork uow,
         Guid tenantId,
@@ -354,6 +354,13 @@ internal sealed class DefinitionService : IDefinitionService
     {
         var projectId = await _definitions.ResolveProjectIdAsync(uow, tenantId, definitionId, ct)
             .ConfigureAwait(false);
+        if (projectId is null)
+        {
+            var deleted = await _definitions.GetDeletedCatalogEntryAsync(uow, tenantId, definitionId, ct)
+                .ConfigureAwait(false);
+            projectId = deleted?.ProjectId;
+        }
+
         if (projectId is null)
             throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
