@@ -3,14 +3,15 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.3 |
-| 更新日 | 2026-08-10 |
+| Version | 1.3.1 |
+| 更新日 | 2026-08-14 |
 | 関連 | [fsm.md](fsm.md), [../definition.md](../definition.md), [wait-cancel.md](wait-cancel.md), [execution-graph.md](execution-graph.md), [../../concepts/durability.md](../../concepts/durability.md), [../../reference/database-schema.md](../../reference/database-schema.md) |
 
 ---
 
 ## Normative 要約
 
+- **MUST**: 定義時、各 Fork 枝は **Fork（Start）–任意ノード–Join（End）の単一 Definition** である。兄弟 Body は互いに素。Join 供給は `next` / `wait.events` / `edges` の 1 経路（`error` は供給に数えない）。詳細は [definition.md](../definition.md) §2.2 / §4。
 - **MUST**: Fork / Join は**制御ノード**であり、通常の状態（State）ではない。
 - **MUST**: Join は依存する全分岐から所定の事実が揃うまで次へ進んではならない。
 - **MUST**: **Hosted Runtime** では Fork 到達時に各分岐を**物理子 execution** として展開する（論理 Fork 互換フラグは設けない）。
@@ -120,6 +121,7 @@ Join は複数の状態からの事実を待ってから次に進みます。
 - Fork と Join は状態ではありません。
 - Join は依存状態が事実を生成するたびに評価されます。
 - 必須状態のいずれかが失敗またはキャンセルされた場合、Join は失敗します。
+- **定義時の領域**: 枝は単一 Definition。Join 後の Again で同じ Fork に戻る循環は合法。枝内から Join 以外へ出る遷移、領域外からの侵入、兄弟 Body の共有は拒否する。`error` は枝内または当該 Join へ戻し、領域外へ出してはならない。
 - Fork は実行順序を保証しません。
 - 親 Cancel は未終端の物理子へ Cancel をカスケードする（[wait-cancel.md](wait-cancel.md)）。
 - 分岐上の Wait へのイベント配送は**子 execution** を正とする（親 ID への誤配送を解決または拒否する）。

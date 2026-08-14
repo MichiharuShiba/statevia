@@ -96,6 +96,44 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.DoesNotContain("innerA", outer.All, StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>action.error だけの経路は Join 供給に数えず、Fork とペアにならない。</summary>
+    [Fact]
+    public void Load_ActionErrorOnlyToJoin_DoesNotTreatErrorAsJoinSupply()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: ErrorNotSupply
+            nodes:
+              - name: start
+                type: start
+                next: fork1
+              - name: fork1
+                type: fork
+                branches: [left, work]
+              - name: left
+                type: action
+                action: noop
+                next: join1
+              - name: work
+                type: action
+                action: noop
+                next: endNode
+                error: join1
+              - name: join1
+                type: join
+                mode: all
+                next: endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+        Assert.Contains("no matching fork", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>fork / join（mode: all）から Join.All が構築される。</summary>
     [Fact]
     public void Load_ForkJoin_BuildsJoinAll()
@@ -138,6 +176,95 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.Contains("b1", join.All, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("b2", join.All, StringComparer.OrdinalIgnoreCase);
         Assert.True(definition.States["join1"].On!.ContainsKey(Fact.Joined));
+    }
+
+    /// <summary>枝先頭 Wait の events 経由で Join に着く定義は Load できる（E1）。</summary>
+    [Fact]
+    public void Load_WaitEventsFeedJoin_BuildsJoinAll()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: E1
+            nodes:
+              - name: start
+                type: start
+                next: fork1
+              - name: fork1
+                type: fork
+                branches: [left, wait2]
+              - name: left
+                type: action
+                action: noop
+                next: join1
+              - name: wait2
+                type: wait
+                events:
+                  Resume: right
+              - name: right
+                type: action
+                action: noop
+                next: join1
+              - name: join1
+                type: join
+                mode: all
+                next: endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        var join = definition.States["join1"].Join;
+        Assert.NotNull(join);
+        Assert.Contains("left", join.All, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("wait2", join.All, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>枝先頭の edges 経由で Join に着く定義は Load できる。</summary>
+    [Fact]
+    public void Load_EdgesFeedJoin_BuildsJoinAll()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: EdgesSupply
+            nodes:
+              - name: start
+                type: start
+                next: fork1
+              - name: fork1
+                type: fork
+                branches: [left, chooser]
+              - name: left
+                type: action
+                action: noop
+                next: join1
+              - name: chooser
+                type: action
+                action: noop
+                edges:
+                  - to: join1
+              - name: join1
+                type: join
+                mode: all
+                next: endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        var join = definition.States["join1"].Join;
+        Assert.NotNull(join);
+        Assert.Contains("left", join.All, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("chooser", join.All, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>action.error は on.Failed 遷移として正規化される。</summary>

@@ -508,6 +508,29 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         }
 
         /// <summary>
+        /// Join 供給に使う後続。Fork 枝と <c>error</c> は含めない。
+        /// </summary>
+        public IEnumerable<string> SupplyNeighborNames()
+        {
+            if (Kind is NodeKind.Fork or NodeKind.End)
+            {
+                yield break;
+            }
+
+            foreach (var neighbor in OutNeighborNames())
+            {
+                if (Kind == NodeKind.Action
+                    && !string.IsNullOrWhiteSpace(Error)
+                    && string.Equals(neighbor, Error, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                yield return neighbor;
+            }
+        }
+
+        /// <summary>
         /// MVP で未対応のノード属性を拒否する。
         /// </summary>
         public void ValidateForbiddenMvp()
@@ -781,8 +804,9 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         /// <remarks>
         /// <para>
         /// 各枝先頭が当該 Join を「供給」する一意の Fork を選ぶ。
-        /// 供給とは (1) <c>next</c> が直接 Join、または (2) 枝先頭が内側 Fork で、
-        /// その内側 Join の出口（<c>next</c> 連鎖）が当該 Join に到達すること。
+        /// 供給は (1) <c>next</c> / <c>wait.events</c> / <c>edges</c> の 1 経路、または
+        /// (2) 枝先頭が内側 Fork で、その内側 Join の出口連鎖が当該 Join に到達すること。
+        /// <c>error</c> は供給に数えない。
         /// </para>
         /// </remarks>
         [System.Diagnostics.CodeAnalysis.SuppressMessage(
@@ -792,6 +816,11 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         private IReadOnlyList<string> ResolveJoinAll(IReadOnlyDictionary<string, ParsedNode> byName)
         {
             var joinName = Name;
+            var supplySuccessors = BuildSupplySuccessors(byName);
+            var joinBarriers = byName.Values
+                .Where(static n => n.Kind == NodeKind.Join)
+                .Select(static n => n.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
             var candidates = new List<(string ForkName, IReadOnlyList<string> Branches)>();
 
             foreach (var n in byName.Values)
@@ -801,7 +830,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                     continue;
                 }
 
-                if (ForkFeedsJoin(n, joinName, byName, []))
+                if (ForkFeedsJoin(n, joinName, byName, supplySuccessors, joinBarriers, []))
                 {
                     candidates.Add((n.Name, n.Branches));
                 }
@@ -811,7 +840,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             {
                 throw new ArgumentException(
                     $"Join '{joinName}' has no matching fork whose branches feed this join " +
-                    "(direct next, or nested fork whose inner join exits to this join).");
+                    "(next, wait.events, or edges; or nested fork whose inner join exits to this join).");
             }
 
             if (candidates.Count > 1)
@@ -829,6 +858,8 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             ParsedNode fork,
             string joinName,
             IReadOnlyDictionary<string, ParsedNode> byName,
+            Dictionary<string, IReadOnlyList<string>> supplySuccessors,
+            IReadOnlySet<string> joinBarriers,
             HashSet<string> visitingForks)
         {
             if (fork.Branches is null || fork.Branches.Count < 2)
@@ -839,7 +870,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                 if (!byName.TryGetValue(branchName, out var branchHead) || branchHead.Kind == NodeKind.Join)
                     return false;
 
-                if (!BranchFeedsJoin(branchHead, joinName, byName, visitingForks))
+                if (!BranchFeedsJoin(branchHead, joinName, byName, supplySuccessors, joinBarriers, visitingForks))
                     return false;
             }
 
@@ -847,15 +878,18 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         }
 
         /// <summary>
-        /// 枝先頭が Join を供給するか（直接 <c>next</c>、またはネスト Fork → 内側 Join → 出口連鎖）。
+        /// 枝先頭が Join を供給するか（<c>next</c> / <c>wait.events</c> / <c>edges</c>、
+        /// またはネスト Fork → 内側 Join → 出口連鎖）。
         /// </summary>
         private static bool BranchFeedsJoin(
             ParsedNode branchHead,
             string joinName,
             IReadOnlyDictionary<string, ParsedNode> byName,
+            Dictionary<string, IReadOnlyList<string>> supplySuccessors,
+            IReadOnlySet<string> joinBarriers,
             HashSet<string> visitingForks)
         {
-            if (string.Equals(branchHead.Next, joinName, StringComparison.OrdinalIgnoreCase))
+            if (JoinSupply.Reaches(supplySuccessors, branchHead.Name, joinName, joinBarriers))
                 return true;
 
             if (branchHead.Kind != NodeKind.Fork || branchHead.Branches is null)
@@ -864,18 +898,23 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             if (!visitingForks.Add(branchHead.Name))
                 return false;
 
-            var pairedInnerJoin = TryFindUniqueJoinPairedWithFork(branchHead, byName, visitingForks);
+            var pairedInnerJoin = TryFindUniqueJoinPairedWithFork(
+                branchHead, byName, supplySuccessors, joinBarriers, visitingForks);
             if (pairedInnerJoin is null)
                 return false;
 
-            // 内側 Join 完了後の next 連鎖が外側 Join に到達すればネスト供給とみなす。
-            return PathReachesNode(pairedInnerJoin.Next, joinName, byName, maxSteps: byName.Count + 1);
+            if (string.IsNullOrWhiteSpace(pairedInnerJoin.Next))
+                return JoinSupply.Reaches(supplySuccessors, pairedInnerJoin.Name, joinName, joinBarriers);
+
+            return JoinSupply.Reaches(supplySuccessors, pairedInnerJoin.Next, joinName, joinBarriers);
         }
 
         /// <summary>指定 Fork と一意にペアになる Join（全枝が当該 Join を供給）を探す。</summary>
         private static ParsedNode? TryFindUniqueJoinPairedWithFork(
             ParsedNode fork,
             IReadOnlyDictionary<string, ParsedNode> byName,
+            Dictionary<string, IReadOnlyList<string>> supplySuccessors,
+            IReadOnlySet<string> joinBarriers,
             HashSet<string> visitingForks)
         {
             ParsedNode? found = null;
@@ -884,7 +923,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
                 if (candidate.Kind != NodeKind.Join)
                     continue;
 
-                if (!ForkFeedsJoin(fork, candidate.Name, byName, visitingForks))
+                if (!ForkFeedsJoin(fork, candidate.Name, byName, supplySuccessors, joinBarriers, visitingForks))
                     continue;
 
                 if (found is not null)
@@ -896,30 +935,22 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             return found;
         }
 
-        /// <summary><paramref name="fromNodeName"/> から <c>next</c> だけを辿り <paramref name="targetName"/> に達するか。</summary>
-        private static bool PathReachesNode(
-            string? fromNodeName,
-            string targetName,
-            IReadOnlyDictionary<string, ParsedNode> byName,
-            int maxSteps)
+        /// <summary>
+        /// Join 供給用の後続マップ。<c>error</c> と Fork 枝は含めない（ネストは内側 Join 出口で辿る）。
+        /// </summary>
+        private static Dictionary<string, IReadOnlyList<string>> BuildSupplySuccessors(
+            IReadOnlyDictionary<string, ParsedNode> byName)
         {
-            var current = fromNodeName;
-            for (var step = 0; step < maxSteps && !string.IsNullOrWhiteSpace(current); step++)
+            var map = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (name, node) in byName)
             {
-                if (string.Equals(current, targetName, StringComparison.OrdinalIgnoreCase))
-                    return true;
-
-                if (!byName.TryGetValue(current, out var node))
-                    return false;
-
-                // Fork に入ったらネスト解決側に任せ、直線追跡は打ち切る。
-                if (node.Kind is NodeKind.Fork or NodeKind.End)
-                    return false;
-
-                current = node.Next;
+                map[name] = node.SupplyNeighborNames()
+                    .Where(static n => !string.IsNullOrWhiteSpace(n))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
             }
 
-            return false;
+            return map;
         }
 
         /// <summary>

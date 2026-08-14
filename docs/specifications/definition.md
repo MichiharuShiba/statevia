@@ -3,14 +3,16 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.5.1 |
-| 更新日 | 2026-08-09 |
+| Version | 1.5.2 |
+| 更新日 | 2026-08-14 |
 | 関連 | [concepts/definition.md](../concepts/definition.md), [execution/wait-cancel.md](execution/wait-cancel.md), [execution/fork-join.md](execution/fork-join.md) |
 
 ---
 
 ## Normative 要約
 
+- **MUST**: Fork の各枝は **Fork（Start）–任意ノード–Join（End）の単一 Definition** である。兄弟枝 Body は互いに素。領域外への出入は拒否する。
+- **MUST**: Join 供給は `next` / `wait.events` / `edges` の **1 経路**で足りる。`error` / `on.Failed` は供給に数えない。
 - **MUST**: publish 時に参照する `action` ID は Catalog に存在すること。未登録はエラー。
 - **MUST**: `wait` または `join` を持つ状態に `action` を併記してはならない。
 - **MUST**: Wait の正本は `wait.events`（イベント名 → 遷移先）。`events` は非空で、遷移先が定義内に存在すること。
@@ -562,7 +564,8 @@ Service API の **`GET /v1/definitions/schema/nodes`** が返すスキーマに�
 - **wait**: 正本は **`events`**（イベント名 → 次ノード名）。単一イベントの旧形式 `event` + `next` も受理し、Loader が `events` へ正規化する。`timeout`（ISO 8601 duration）は現行変換では未使用。
 - **fork**: `branches` に並列ブランチのノード名の配列。
 - **join**: すべてのブランチの完了を待ち、`next` へ進む。
-  - Join と Fork の対応: 各枝先頭が当該 Join を**供給**する一意の Fork を選ぶ。供給は (1) 枝の `next` が直接 Join、または (2) 枝先頭が内側 Fork で、その内側 Join の `next` 連鎖が当該 Join に到達すること（ネスト）。`Join.all` は外側 Fork の枝先頭集合になる。例: [`docs/samples/ui-nested-fork.yaml`](../samples/ui-nested-fork.yaml)。Fork 再到達（循環）の例: [`docs/samples/ui-cyclic-fork.yaml`](../samples/ui-cyclic-fork.yaml)。
+  - Join と Fork の対応: 各枝先頭が当該 Join を**供給**する一意の Fork を選ぶ。供給は **1 経路**で足り、次を含む。(1) 枝の `next` が直接 Join。(2) `wait.events` または `edges` を辿って Join に着く。(3) 枝先頭が内側 Fork で、その内側 Join の出口連鎖が当該 Join に到達する（ネスト）。`error` は供給に数えない。`Join.all` は外側 Fork の枝先頭集合になる。例: [`docs/samples/ui-nested-fork.yaml`](../samples/ui-nested-fork.yaml)。Fork 再到達（循環）の例: [`docs/samples/ui-cyclic-fork.yaml`](../samples/ui-cyclic-fork.yaml)。
+  - 枝 Body は互いに素。Join 前の兄弟 `$.states…` 参照、領域外への出入（`wait.events` の一部が領域外を含む場合を含む）は拒否する。`error` は枝内または当該 Join へ戻す（領域外へ出してはならない）。
 
 ### 2.3 例（Nodes 形式・抜粋）
 
@@ -735,20 +738,28 @@ Nodes 形式は、実行前に **states 形式の CompiledWorkflowDefinition に
 
 ## 4. 検証レベル（States 形式）
 
-エンジンが States 形式に対して行う検証の目安。
+エンジンが States 形式に対して行う検証。`DefinitionValidator` はフェーズ順に実行し、各ルールが安定 `code`（`RuleId`）を持つ。HTTP 422 の details はルール単位の `code` を載せる。
 
-**LEVEL 1**
+**Structural（旧 LEVEL 1）**
 
 - 構文・参照整合性
 - 自己遷移の禁止
+- 失敗時は Reachability / ForkRegion を実行しない
 
-**LEVEL 2**
+**Reachability（旧 LEVEL 2）**
 
 - 開始状態からの到達可能性
 - 循環 Join の禁止
-- 明示的依存関係の強制
+- 失敗時は ForkRegion を実行しない
 
-Nodes 形式の検証は、変換後の states に対して同様のレベルを適用するか、変換前の nodes 用ルールを別途定義する。
+**ForkRegion**
+
+- 枝＝単一 Definition（侵入・脱出・兄弟横断・ネスト横断）
+- Join 供給（`next` / `wait.events` / `edges` の 1 経路。`error` は供給に数えない）
+- 禁止パターン（他枝 `$.states`、領域外 `wait.events`）
+- フェーズ内は **Weight 昇順**のうえ **全件収集**
+
+Nodes 形式は変換後の states に対して同じ検証を適用する。Loader の Join 照合も同じ供給定義（`JoinSupply`）を使う。
 
 ---
 

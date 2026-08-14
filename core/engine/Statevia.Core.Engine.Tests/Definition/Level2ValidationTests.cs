@@ -228,4 +228,24 @@ public class Level2ValidationTests
         // Assert
         Assert.True(result.IsValid);
     }
+
+    /// <summary>状態が空のときは初期状態を決められず Reachability が失敗する。</summary>
+    [Fact]
+    public void Validate_WhenNoStates_FailsToDetermineInitialState()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "Empty",
+            States = new Dictionary<string, StateDefinition>()
+        };
+
+        // Act
+        var result = Level2Validator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, i => i.RuleId == "Reachability.UnreachableStates");
+        Assert.Contains("initial state", result.Errors[0], StringComparison.OrdinalIgnoreCase);
+    }
 }
