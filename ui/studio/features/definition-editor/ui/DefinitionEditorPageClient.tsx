@@ -166,7 +166,10 @@ export function DefinitionEditorPageClient({ definitionId }: Readonly<Definition
       edgeWhenValueBetweenInvalid: uiText.definitionEditor.graph.edgeWhenValueBetweenInvalid,
       edgeDefaultMultiple: uiText.definitionEditor.graph.edgeDefaultMultiple,
       selfReferenceEdge: uiText.definitionEditor.graph.selfReferenceEdge,
-      missingTargetNode: uiText.definitionEditor.graph.missingTargetNode
+      missingTargetNode: uiText.definitionEditor.graph.missingTargetNode,
+      forkRegionIngressFromOutside: uiText.definitionEditor.graph.forkRegionIngressFromOutside,
+      forkRegionEgressWithoutJoin: uiText.definitionEditor.graph.forkRegionEgressWithoutJoin,
+      forkRegionWaitTargetOutside: uiText.definitionEditor.graph.forkRegionWaitTargetOutside
     }),
     [uiText.definitionEditor.graph]
   );
