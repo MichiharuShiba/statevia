@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.11 |
-| 更新日 | 2026-08-09 |
+| Version | 1.12 |
+| 更新日 | 2026-08-15 |
 | 関連 | [reference/api-openapi.md](../reference/api-openapi.md), [concepts/platform.md](../concepts/platform.md), [execution/wait-cancel.md](execution/wait-cancel.md) |
 
 ---
@@ -430,15 +430,15 @@ Request:
 | PUT | `/groups/{groupId}/members` | メンバー置換（`userIds`） |
 | PUT | `/groups/{groupId}/permissions` | 権限置換（`permissionKeys`。`tenant.admin` は不可） |
 | GET | `/api-keys` | API キー一覧（平文なし。`keyPrefix` / `allowedScopes` / `expiresAt` / `lastUsedAt`） |
-| POST | `/api-keys` | API キー発行（`name`, `allowedScopes`, `expiresAt?`）。応答の `plainKey` は **一度だけ** |
+| POST | `/api-keys` | API キー発行（`name`, `allowedScopes`, `expiresAt?`）。`allowedScopes` は catalog の assignable key（`tenant.admin` 除外。`modules.reload` / `modules.read` を含む）。応答の `plainKey` は **一度だけ** |
 | DELETE | `/api-keys/{apiKeyId}` | API キー失効（紐づく Principal を無効化） |
-| GET | `/modules` | Action Module の load catalog 一覧（`AdminModuleListItemDto[]`） |
+| GET | `/modules` | Action Module の load catalog 一覧（`AdminModuleListItemDto[]`）。テナント管理者 JWT **または** `modules.read` |
 
 JWT クレーム: `tenant_id`（内部 UUID）、`tenant_key`、`principal_id` / `sub`。詳細は `docs/specifications/platform/security-runtime.md`。
 
 ### 4.1.4 内部向け Module API（運用）
 
-テナント管理者 JWT 必須（403 `FORBIDDEN`）。HTTP からの module 配置は想定しない（filesystem 信頼境界）。reload は **CLI install 後の明示反映**用。
+テナント管理者 JWT、またはスコープ **`modules.reload`** の API キー（403 `PERMISSION_DENIED` / `FORBIDDEN`）。HTTP からの module 配置は想定しない（filesystem 信頼境界）。reload は **CLI install 後の明示反映**用。
 
 | メソッド | パス | 概要 |
 | --- | --- | --- |

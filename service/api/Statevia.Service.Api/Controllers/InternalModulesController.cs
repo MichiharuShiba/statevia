@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Statevia.Service.Api.Abstractions.Services;
-using Statevia.Infrastructure.Security;
 
 namespace Statevia.Service.Api.Controllers;
 
@@ -10,18 +9,17 @@ namespace Statevia.Service.Api.Controllers;
 public sealed class InternalModulesController : ControllerBase
 {
     private readonly IModuleManagementService _moduleManagement;
-    private readonly ITenantAdminAuthorization _tenantAdminAuthorization;
-    private readonly ITenantContextAccessor _tenantContext;
+    private readonly IModuleManagementAuthorization _moduleManagementAuthorization;
 
     /// <summary>新しいインスタンスを初期化する。</summary>
+    /// <param name="moduleManagement">Module の discover / load 操作。</param>
+    /// <param name="moduleManagementAuthorization">reload 認可。</param>
     public InternalModulesController(
         IModuleManagementService moduleManagement,
-        ITenantAdminAuthorization tenantAdminAuthorization,
-        ITenantContextAccessor tenantContext)
+        IModuleManagementAuthorization moduleManagementAuthorization)
     {
         _moduleManagement = moduleManagement;
-        _tenantAdminAuthorization = tenantAdminAuthorization;
-        _tenantContext = tenantContext;
+        _moduleManagementAuthorization = moduleManagementAuthorization;
     }
 
     /// <summary>POST /internal/modules/reload — discover / load を明示実行する。</summary>
@@ -29,8 +27,7 @@ public sealed class InternalModulesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ReloadModules(CancellationToken ct)
     {
-        await TenantAdminAuthorizationGate.EnsureTenantAdminAsync(_tenantContext, _tenantAdminAuthorization, ct)
-            .ConfigureAwait(false);
+        await _moduleManagementAuthorization.EnsureReloadAllowedAsync(ct).ConfigureAwait(false);
         await _moduleManagement.ReloadAsync(ct).ConfigureAwait(false);
         return NoContent();
     }

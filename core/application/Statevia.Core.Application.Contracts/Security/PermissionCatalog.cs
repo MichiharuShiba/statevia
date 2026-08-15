@@ -19,6 +19,8 @@ public static class PermissionCatalog
         new(WellKnownPermissionKeys.DefinitionsWrite, "Write definitions", "permissions.definitionsWrite"),
         new(WellKnownPermissionKeys.ExecutionsRead, "Read executions", "permissions.executionsRead"),
         new(WellKnownPermissionKeys.ExecutionsWrite, "Write executions", "permissions.executionsWrite"),
-        new(WellKnownPermissionKeys.TenantAdmin, "Tenant administration", "permissions.tenantAdmin")
+        new(WellKnownPermissionKeys.TenantAdmin, "Tenant administration", "permissions.tenantAdmin"),
+        new(WellKnownPermissionKeys.ModulesReload, "Reload action modules", "permissions.modulesReload"),
+        new(WellKnownPermissionKeys.ModulesRead, "Read action modules", "permissions.modulesRead")
     ];
 }

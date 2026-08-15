@@ -120,6 +120,7 @@ internal static class SecurityTestSeed
     /// <param name="expiresAt">有効期限（任意）。</param>
     /// <param name="principalIsActive">Principal をアクティブにするか。</param>
     /// <param name="principalDeletedAt">Principal の論理削除日時（任意）。</param>
+    /// <param name="permissionKeys">サービスアカウントのグループ権限。省略時は <c>executions.read</c>。</param>
     /// <returns>Principal ID、API キー ID、平文キー。</returns>
     public static async Task<(Guid PrincipalId, Guid ApiKeyId, string PlainKey)> SeedApiKeyAsync(
         SqliteTestDatabase database,
@@ -127,7 +128,8 @@ internal static class SecurityTestSeed
         string allowedScopesJson = "[\"executions.read\"]",
         DateTime? expiresAt = null,
         bool principalIsActive = true,
-        DateTime? principalDeletedAt = null)
+        DateTime? principalDeletedAt = null,
+        IReadOnlyList<string>? permissionKeys = null)
     {
         var serviceAccountId = Guid.NewGuid();
         var principalId = Guid.NewGuid();
@@ -162,16 +164,22 @@ internal static class SecurityTestSeed
         {
             GroupId = groupId,
             TenantId = TestTenantIds.DefaultTenantId,
-            Name = "ci-runners",
+            Name = $"ci-runners-{groupId:N}",
             IsSystem = true,
             CreatedAt = now,
             UpdatedAt = now
         });
-        db.GroupPermissions.Add(new GroupPermissionRow
+        var groupKeys = permissionKeys is { Count: > 0 }
+            ? permissionKeys
+            : [WellKnownPermissionKeys.ExecutionsRead];
+        foreach (var permissionKey in groupKeys)
         {
-            GroupId = groupId,
-            PermissionKey = WellKnownPermissionKeys.ExecutionsRead
-        });
+            db.GroupPermissions.Add(new GroupPermissionRow
+            {
+                GroupId = groupId,
+                PermissionKey = permissionKey
+            });
+        }
         db.ServiceAccountGroupMembers.Add(new ServiceAccountGroupMemberRow
         {
             ServiceAccountId = serviceAccountId,
