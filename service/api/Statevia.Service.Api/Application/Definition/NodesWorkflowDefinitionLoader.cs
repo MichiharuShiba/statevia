@@ -966,13 +966,14 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             if (!supplySuccessors.TryGetValue(currentName, out var nexts))
                 return;
 
-            foreach (var next in nexts.Where(n =>
-                         !string.IsNullOrWhiteSpace(n)
-                         && !string.Equals(n, joinName, StringComparison.OrdinalIgnoreCase)
-                         && !joinBarriers.Contains(n)))
+            foreach (var next in nexts
+                         .Where(n =>
+                             !string.IsNullOrWhiteSpace(n)
+                             && !string.Equals(n, joinName, StringComparison.OrdinalIgnoreCase)
+                             && !joinBarriers.Contains(n))
+                         .Where(visited.Add))
             {
-                if (visited.Add(next))
-                    queue.Enqueue(next);
+                queue.Enqueue(next);
             }
         }
 
