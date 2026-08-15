@@ -564,7 +564,7 @@ Service API の **`GET /v1/definitions/schema/nodes`** が返すスキーマに�
 - **wait**: 正本は **`events`**（イベント名 → 次ノード名）。単一イベントの旧形式 `event` + `next` も受理し、Loader が `events` へ正規化する。`timeout`（ISO 8601 duration）は現行変換では未使用。
 - **fork**: `branches` に並列ブランチのノード名の配列。
 - **join**: すべてのブランチの完了を待ち、`next` へ進む。
-  - Join と Fork の対応: 各枝先頭が当該 Join を**供給**する一意の Fork を選ぶ。供給は **1 経路**で足り、次を含む。(1) 枝の `next` が直接 Join。(2) `wait.events` または `edges` を辿って Join に着く。(3) 枝先頭が内側 Fork で、その内側 Join の出口連鎖が当該 Join に到達する（ネスト）。`error` は供給に数えない。`Join.all` は外側 Fork の枝先頭集合になる。例: [`docs/samples/ui-nested-fork.yaml`](../samples/ui-nested-fork.yaml)。Fork 再到達（循環）の例: [`docs/samples/ui-cyclic-fork.yaml`](../samples/ui-cyclic-fork.yaml)。
+  - Join と Fork の対応: 各枝先頭が当該 Join を**供給**する一意の Fork を選ぶ。供給は **1 経路**で足り、次を含む。(1) 枝の `next` が直接 Join。(2) `wait.events` または `edges` を辿って Join に着く。(3) 枝先頭または枝内の内側 Fork で、その内側 Join の出口が当該 Join に到達する（ネスト。出口が他 Join のときは、その Join とペアの Fork が一段外側への供給を担う。3 段以上も各段が直近のペアだけを見る）。`error` は供給に数えない。`Join.all` は外側 Fork の枝先頭集合になる。例: [`docs/samples/ui-nested-fork.yaml`](../samples/ui-nested-fork.yaml)。Fork 再到達（循環）の例: [`docs/samples/ui-cyclic-fork.yaml`](../samples/ui-cyclic-fork.yaml)。
   - 枝 Body は互いに素。Join 前の兄弟 `$.states…` 参照、領域外への出入（`wait.events` の一部が領域外を含む場合を含む）は拒否する。`error` は枝内または当該 Join へ戻す（領域外へ出してはならない）。
 
 ### 2.3 例（Nodes 形式・抜粋）

@@ -102,7 +102,7 @@ Join は複数の状態からの事実を待ってから次に進みます。
 - Resume（Again → Fork）後に Suspend Unload した場合、in-process 投影が欠けても SuspendHandler が書いた DB 断面を使い 500 にしない。
 - 同一実行の checkpoint Persist/Unload は直列化する。加えて、永続済みに `pendingWaits` があるのに空の Fork 待ち断面で上書きしようとした Persist は拒否する（遅延 Fork Unload が decide Wait を消す競合の防止）。
 - Fork 展開通知は非同期のため、`ExpandFork` 完了後の Persist が Join→decide より遅れることがある。その時点で Engine に `activeStates` / `pendingWaits` がある、または当該 Fork 以降の Join が既に `Joined` なら **Unload しない**（Wait Suspend 側の Persist に委ね、初回 Wait 断面の消失を防ぐ）。
-- 定義グラフ（Studio）の Join 辺は `joinTable` 依存のうち **Fork 状態を除外**する。ネストでは OuterJoin の Join.all が InnerFork を含むが、描画経路は InnerJoin→OuterJoin（transitions）とし、InnerFork→OuterJoin の幽霊辺を作らない。
+- 定義グラフ（Studio）の Join 辺は `joinTable` 依存のうち、当該 Join へ**直接**着くものだけを描く。Fork 状態、および枝内の内側 Fork へ進む action（`mid → inner.fork` など）は除外する。ネストの描画経路は InnerJoin→OuterJoin（transitions）とし、枝先頭→OuterJoin の幽霊辺を作らない。
 
 ### Context マージと兄弟参照
 

@@ -805,7 +805,8 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
         /// <para>
         /// 各枝先頭が当該 Join を「供給」する一意の Fork を選ぶ。
         /// 供給は (1) <c>next</c> / <c>wait.events</c> / <c>edges</c> の 1 経路、または
-        /// (2) 枝先頭が内側 Fork で、その内側 Join の出口連鎖が当該 Join に到達すること。
+        /// (2) 枝先頭または枝内の内側 Fork で、その内側 Join の出口（他 Join を跨がない）が当該 Join に到達すること。
+        /// 3 段以上のネストでは、一段外側の Join への供給は「その段のペア Join の出口」だけが担う。
         /// <c>error</c> は供給に数えない。
         /// </para>
         /// </remarks>
@@ -879,7 +880,7 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
 
         /// <summary>
         /// 枝先頭が Join を供給するか（<c>next</c> / <c>wait.events</c> / <c>edges</c>、
-        /// またはネスト Fork → 内側 Join → 出口連鎖）。
+        /// または枝先頭・枝内のネスト Fork → 内側 Join の出口）。
         /// </summary>
         private static bool BranchFeedsJoin(
             ParsedNode branchHead,
@@ -892,21 +893,116 @@ internal sealed class NodesWorkflowDefinitionLoader : WorkflowDefinitionLoaderBa
             if (JoinSupply.Reaches(supplySuccessors, branchHead.Name, joinName, joinBarriers))
                 return true;
 
-            if (branchHead.Kind != NodeKind.Fork || branchHead.Branches is null)
+            return ForkOnSupplyPathExitsTo(
+                branchHead, joinName, byName, supplySuccessors, joinBarriers, visitingForks);
+        }
+
+        /// <summary>
+        /// 供給経路上（Join 障壁まで）の内側 Fork が、ペア Join の出口で <paramref name="joinName"/> を供給するか。
+        /// </summary>
+        /// <remarks>
+        /// 枝先頭が Fork のネストに加え、action 等の後に内側 Fork がある形
+        ///（<c>mid → inner.fork → inner.join → outer.join</c>）も外側 Join の供給とみなす。
+        /// Fork の枝は線形供給に含めない（内側 Join 出口で正規化する）。
+        /// </remarks>
+        private static bool ForkOnSupplyPathExitsTo(
+            ParsedNode start,
+            string joinName,
+            IReadOnlyDictionary<string, ParsedNode> byName,
+            Dictionary<string, IReadOnlyList<string>> supplySuccessors,
+            IReadOnlySet<string> joinBarriers,
+            HashSet<string> visitingForks)
+        {
+            var comparer = StringComparer.OrdinalIgnoreCase;
+            var visited = new HashSet<string>(comparer) { start.Name };
+            var queue = new Queue<string>();
+            queue.Enqueue(start.Name);
+
+            while (queue.Count > 0)
+            {
+                var currentName = queue.Dequeue();
+                if (!byName.TryGetValue(currentName, out var current))
+                    continue;
+
+                if (TryNestedForkExit(current, joinName, byName, supplySuccessors, joinBarriers, visitingForks))
+                    return true;
+
+                EnqueueSupplyNeighbors(currentName, joinName, supplySuccessors, joinBarriers, visited, queue);
+            }
+
+            return false;
+        }
+
+        /// <summary>現在ノードが Fork なら、ペア Join の出口が対象 Join に着くか。</summary>
+        private static bool TryNestedForkExit(
+            ParsedNode current,
+            string joinName,
+            IReadOnlyDictionary<string, ParsedNode> byName,
+            Dictionary<string, IReadOnlyList<string>> supplySuccessors,
+            IReadOnlySet<string> joinBarriers,
+            HashSet<string> visitingForks)
+        {
+            if (current.Kind != NodeKind.Fork || current.Branches is null)
                 return false;
 
-            if (!visitingForks.Add(branchHead.Name))
+            if (!visitingForks.Add(current.Name))
                 return false;
 
             var pairedInnerJoin = TryFindUniqueJoinPairedWithFork(
-                branchHead, byName, supplySuccessors, joinBarriers, visitingForks);
-            if (pairedInnerJoin is null)
+                current, byName, supplySuccessors, joinBarriers, visitingForks);
+            return pairedInnerJoin is not null
+                && InnerJoinExitsTo(pairedInnerJoin, joinName, supplySuccessors, joinBarriers);
+        }
+
+        /// <summary>Join 障壁と対象 Join を除いた供給後続を走査キューへ載せる。</summary>
+        private static void EnqueueSupplyNeighbors(
+            string currentName,
+            string joinName,
+            Dictionary<string, IReadOnlyList<string>> supplySuccessors,
+            IReadOnlySet<string> joinBarriers,
+            HashSet<string> visited,
+            Queue<string> queue)
+        {
+            if (!supplySuccessors.TryGetValue(currentName, out var nexts))
+                return;
+
+            foreach (var next in nexts.Where(n =>
+                         !string.IsNullOrWhiteSpace(n)
+                         && !string.Equals(n, joinName, StringComparison.OrdinalIgnoreCase)
+                         && !joinBarriers.Contains(n)))
+            {
+                if (visited.Add(next))
+                    queue.Enqueue(next);
+            }
+        }
+
+        /// <summary>
+        /// 内側 Join の出口が <paramref name="joinName"/> に着くか。
+        /// </summary>
+        /// <remarks>
+        /// 出口が他 Join のときは、その Join とペアの Fork が外側への供給を担う。
+        /// ここから他 Join の <c>next</c> を辿ると、3 段ネストで中間 Fork が外側 Join にも
+        /// 供給していると誤判定し、ペアが一意でなくなって <c>outer.join</c> が解決できない。
+        /// 非 Join ノード（通知 action など）経由の到達は従来どおり許す。
+        /// </remarks>
+        /// <param name="innerJoin">ネスト Fork とペアの内側 Join。</param>
+        /// <param name="joinName">供給先として判定する Join 名。</param>
+        /// <param name="supplySuccessors">Join 供給用の後続マップ。</param>
+        /// <param name="joinBarriers">他 Join 名の集合（横断禁止）。</param>
+        /// <returns>出口が <paramref name="joinName"/> に着くとき true。</returns>
+        private static bool InnerJoinExitsTo(
+            ParsedNode innerJoin,
+            string joinName,
+            Dictionary<string, IReadOnlyList<string>> supplySuccessors,
+            IReadOnlySet<string> joinBarriers)
+        {
+            if (!supplySuccessors.TryGetValue(innerJoin.Name, out var exits) || exits.Count == 0)
                 return false;
 
-            if (string.IsNullOrWhiteSpace(pairedInnerJoin.Next))
-                return JoinSupply.Reaches(supplySuccessors, pairedInnerJoin.Name, joinName, joinBarriers);
-
-            return JoinSupply.Reaches(supplySuccessors, pairedInnerJoin.Next, joinName, joinBarriers);
+            return exits.Any(exit =>
+                string.Equals(exit, joinName, StringComparison.OrdinalIgnoreCase)
+                || (!joinBarriers.Contains(exit)
+                    && JoinSupply.Reaches(supplySuccessors, exit, joinName, joinBarriers)));
         }
 
         /// <summary>指定 Fork と一意にペアになる Join（全枝が当該 Join を供給）を探す。</summary>

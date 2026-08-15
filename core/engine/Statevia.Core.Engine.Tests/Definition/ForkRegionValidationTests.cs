@@ -313,6 +313,36 @@ public class ForkRegionValidationTests
         Assert.True(result.IsValid, string.Join("; ", result.Errors));
     }
 
+    /// <summary>枝先頭 action の先に内側 Fork があるネストは合法（D3）。</summary>
+    [Fact]
+    public void Validate_InnerForkAfterMidAction_Passes()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "D3InnerForkFromMidBranch",
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["start"] = Next("outer.fork"),
+                ["outer.fork"] = Fork("outer.fast", "mid"),
+                ["outer.fast"] = Next("outer.join"),
+                ["mid"] = Next("inner.fork"),
+                ["inner.fork"] = Fork("inner.a", "inner.b"),
+                ["inner.a"] = Next("inner.join"),
+                ["inner.b"] = Next("inner.join"),
+                ["inner.join"] = Join(["inner.a", "inner.b"], "outer.join"),
+                ["outer.join"] = Join(["outer.fast", "mid"], "end"),
+                ["end"] = End()
+            }
+        };
+
+        // Act
+        var result = DefinitionValidator.Validate(def);
+
+        // Assert
+        Assert.True(result.IsValid, string.Join("; ", result.Errors));
+    }
+
     /// <summary>条件遷移（cases/default）経由の Join 供給は合法（D9）。</summary>
     [Fact]
     public void Validate_ConditionalEdgesFeedJoin_Passes()

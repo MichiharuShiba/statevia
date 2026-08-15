@@ -228,6 +228,67 @@ public sealed class GraphDefinitionServiceTests
     }
 
     /// <summary>
+    /// 枝先頭 action の先に内側 Fork があるとき、mid→outer.join の幽霊辺を描かない。
+    /// </summary>
+    [Fact]
+    public async Task GetByGraphIdAsync_InnerForkAfterMidAction_DoesNotDrawJoinEdgeFromMidToOuterJoin()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uuid = Guid.NewGuid();
+        var graphId = uuid.ToString("N")[..10];
+        const string compiledJson = """
+            {
+              "name": "D3InnerForkFromMidBranch",
+              "initialState": "start",
+              "transitions": {
+                "start": { "Completed": { "next": "outer.fork", "fork": null, "end": false } },
+                "outer.fork": { "Completed": { "next": null, "fork": ["outer.fast", "mid"], "end": false } },
+                "outer.fast": { "Completed": { "next": "outer.join", "fork": null, "end": false } },
+                "mid": { "Completed": { "next": "inner.fork", "fork": null, "end": false } },
+                "inner.fork": { "Completed": { "next": null, "fork": ["inner.a", "inner.b"], "end": false } },
+                "inner.a": { "Completed": { "next": "inner.join", "fork": null, "end": false } },
+                "inner.b": { "Completed": { "next": "inner.join", "fork": null, "end": false } },
+                "inner.join": { "Joined": { "next": "outer.join", "fork": null, "end": false } },
+                "outer.join": { "Joined": { "next": "end", "fork": null, "end": false } },
+                "end": { "Completed": { "next": null, "fork": null, "end": true } }
+              },
+              "forkTable": {
+                "outer.fork": ["outer.fast", "mid"],
+                "inner.fork": ["inner.a", "inner.b"]
+              },
+              "joinTable": {
+                "inner.join": ["inner.a", "inner.b"],
+                "outer.join": ["outer.fast", "mid"]
+              }
+            }
+            """;
+
+        var projectId = await SeedDefaultTenantAndProjectAsync(db.Options);
+
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            var now = DateTime.UtcNow;
+            DefinitionTestData.AddDefinitionWithVersion(
+                ctx, TestTenantIds.DefaultTenantId, uuid, "d3-mid", projectId, compiledJson: compiledJson, createdAt: now);
+            await ctx.SaveChangesAsync();
+        }
+
+        var sut = CreateSut(db, new StubDisplayIdService(uuid));
+
+        // Act
+        var res = await sut.GetByGraphIdAsync(graphId, CancellationToken.None);
+
+        // Assert
+        Assert.Contains(res.Edges, e => e.From == "outer.fast" && e.To == "outer.join");
+        Assert.Contains(res.Edges, e => e.From == "inner.join" && e.To == "outer.join");
+        Assert.Contains(res.Edges, e => e.From == "mid" && e.To == "inner.fork");
+        Assert.DoesNotContain(res.Edges, e => e.From == "mid" && e.To == "outer.join");
+        Assert.DoesNotContain(res.Edges, e => e.From == "inner.fork" && e.To == "outer.join");
+        Assert.DoesNotContain(res.Edges, e => e.From == "inner.a" && e.To == "outer.join");
+    }
+
+    /// <summary>
     /// 終端遷移がない状態を通常ノードとして組み立てる。
     /// </summary>
     [Fact]
