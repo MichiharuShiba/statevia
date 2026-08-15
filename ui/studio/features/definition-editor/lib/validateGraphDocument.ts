@@ -4,6 +4,7 @@ import type {
   DefinitionGraphNode,
   ValidateGraphDocumentResult
 } from "./types";
+import { validateForkRegionLight } from "./validateForkRegionLight";
 
 /** グラフ検証メッセージのオプション。 */
 export type ValidateGraphDocumentMessageOptions = {
@@ -33,6 +34,9 @@ export type ValidateGraphDocumentMessageOptions = {
   edgeDefaultMultiple: (nodeName: string) => string;
   selfReferenceEdge: (nodeName: string) => string;
   missingTargetNode: (nodeName: string, targetName: string) => string;
+  forkRegionIngressFromOutside: (fromName: string, toName: string) => string;
+  forkRegionEgressWithoutJoin: (fromName: string, toName: string, joinName: string) => string;
+  forkRegionWaitTargetOutside: (nodeName: string, toName: string) => string;
 };
 
 function collectConfiguredEdgeTargets(node: DefinitionGraphNode): string[] {
@@ -380,7 +384,9 @@ function validateNode(
 
 /**
  * Graph編集用ドキュメントのクライアント側整合性を検証する。
- * 保存前に弾ける構造不整合（自己参照、重複名、必須項目不足）を返す。
+ * 保存前に弾ける構造不整合（自己参照、重複名、必須項目不足）と、
+ * Fork 領域の安いチェック（領域外侵入・Join なし脱出・Wait 領域外）を返す。
+ * Engine 検証の正本は共有しない。
  */
 export function validateGraphDocument(
   document: DefinitionGraphDocument,
@@ -399,6 +405,7 @@ export function validateGraphDocument(
   for (const node of document.nodes) {
     validateNode(node, byName, messages, options);
   }
+  validateForkRegionLight(byName, messages, options);
 
   return {
     isValid: messages.length === 0,

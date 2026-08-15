@@ -67,6 +67,9 @@ export type DefinitionEditorFeatureUiText = {
       edgeDefaultMultiple: (nodeName: string) => string;
       selfReferenceEdge: (nodeName: string) => string;
       missingTargetNode: (nodeName: string, targetName: string) => string;
+      forkRegionIngressFromOutside: (fromName: string, toName: string) => string;
+      forkRegionEgressWithoutJoin: (fromName: string, toName: string, joinName: string) => string;
+      forkRegionWaitTargetOutside: (nodeName: string, toName: string) => string;
       selfReferenceRejected: string;
       whenOpPlaceholder: string;
       whenPathPlaceholder: string;

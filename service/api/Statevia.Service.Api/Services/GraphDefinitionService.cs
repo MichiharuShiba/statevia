@@ -136,9 +136,9 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
         AddEdgesFromConditionalTransitions(edges, dto.ConditionalTransitions);
         AddEdgesFromWaitEventRouteTable(edges, dto.WaitEventRouteTable);
         AddEdgesFromStateTable(edges, dto.ForkTable);
-        // Join.all の依存にネスト枝先頭の Fork が含まれるが、描画では内側 Join→外側の遷移辺を使う。
-        // Fork→Join を JoinTable から描くと幽霊枝になるため、Fork 依存は除外する。
-        AddEdgesFromJoinTable(edges, dto.JoinTable, dto.ForkTable);
+        // Join.all の依存がネスト枝先頭（Fork または内側へ進む action）のとき、
+        // JoinTable から描くと幽霊枝になる。直接当該 Join へ着く依存だけ辺にする。
+        AddEdgesFromJoinTable(edges, dto);
         return edges;
     }
 
@@ -345,26 +345,70 @@ internal sealed class GraphDefinitionService : IGraphDefinitionService
     /// join テーブル（joinState ← dependencies）から描画用エッジを追加する。
     /// </summary>
     /// <remarks>
-    /// 依存が <paramref name="forkTable"/> 上の Fork 状態のときは辺を作らない。
-    /// ネストでは OuterJoin の Join.all が InnerFork を依存に持つが、見た目の経路は
-    /// InnerJoin → OuterJoin（transitions）であり、InnerFork → OuterJoin は幽霊枝になる。
+    /// 依存が Fork 状態、または当該 Join へ直接着かない（枝内の内側 Fork へ進む action など）ときは辺を作らない。
+    /// ネストの見た目の経路は内側 Join→外側 Join（transitions）であり、枝先頭→OuterJoin は幽霊枝になる。
     /// </remarks>
-    private static void AddEdgesFromJoinTable(
-        List<GraphEdgeDefinition> edges,
-        Dictionary<string, List<string>?>? joinTable,
-        Dictionary<string, List<string>?>? forkTable)
+    private static void AddEdgesFromJoinTable(List<GraphEdgeDefinition> edges, CompiledDefinitionDto dto)
     {
-        if (joinTable is null) return;
+        var joinTable = dto.JoinTable;
+        if (joinTable is null)
+            return;
+
+        var forkTable = dto.ForkTable;
         joinTable
             .Where(pair => pair.Value is not null)
             .SelectMany(pair => pair.Value!
-                .Where(from =>
-                    !string.IsNullOrWhiteSpace(from)
-                    && (forkTable is null || !forkTable.ContainsKey(from)))
+                .Where(from => ShouldDrawJoinTableEdge(from, pair.Key, dto, forkTable))
                 .Select(from => new GraphEdgeDefinition { From = from, To = pair.Key }))
             .ToList()
             .ForEach(edges.Add);
     }
+
+    /// <summary>
+    /// Join.all 依存から Join への描画辺を付けるか。
+    /// Fork 依存と、Join へ直接着かない枝先頭（ネスト途中の action）は付けない。
+    /// </summary>
+    private static bool ShouldDrawJoinTableEdge(
+        string from,
+        string joinState,
+        CompiledDefinitionDto dto,
+        Dictionary<string, List<string>?>? forkTable) =>
+        !string.IsNullOrWhiteSpace(from)
+        && (forkTable is null || !forkTable.ContainsKey(from))
+        && DirectlyTargetsJoin(from, joinState, dto);
+
+    /// <summary>遷移・Wait・条件辺のいずれかが <paramref name="joinState"/> を直接指すか。</summary>
+    private static bool DirectlyTargetsJoin(string from, string joinState, CompiledDefinitionDto dto) =>
+        TransitionMapTargetsJoin(dto.Transitions?.GetValueOrDefault(from), joinState)
+        || WaitRoutesTargetJoin(dto.WaitEventRouteTable?.GetValueOrDefault(from), joinState)
+        || ConditionalMapTargetsJoin(dto.ConditionalTransitions?.GetValueOrDefault(from), joinState);
+
+    private static bool TransitionMapTargetsJoin(
+        Dictionary<string, TransitionTargetDto>? map,
+        string joinState) =>
+        map is not null
+        && map.Values.Any(target => TargetNextIsJoin(target, joinState));
+
+    private static bool WaitRoutesTargetJoin(
+        Dictionary<string, WaitEventRouteDto>? routes,
+        string joinState) =>
+        routes is not null
+        && routes.Values.Any(route =>
+            !string.IsNullOrWhiteSpace(route?.Next)
+            && string.Equals(route.Next, joinState, StringComparison.OrdinalIgnoreCase));
+
+    private static bool ConditionalMapTargetsJoin(
+        Dictionary<string, CompiledFactTransitionDto>? map,
+        string joinState) =>
+        map is not null
+        && map.Values.Any(transition =>
+            TargetNextIsJoin(transition?.LinearTarget, joinState)
+            || TargetNextIsJoin(transition?.DefaultTarget, joinState)
+            || (transition?.Cases?.Any(c => TargetNextIsJoin(c?.Target, joinState)) ?? false));
+
+    private static bool TargetNextIsJoin(TransitionTargetDto? target, string joinState) =>
+        !string.IsNullOrWhiteSpace(target?.Next)
+        && string.Equals(target.Next, joinState, StringComparison.OrdinalIgnoreCase);
 
     private sealed class CompiledDefinitionDto
     {

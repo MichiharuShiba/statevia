@@ -13,6 +13,7 @@ using Statevia.Service.Api.Application.Definition;
 using Statevia.Service.Api.Hosting;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
+using Statevia.Core.Engine.Definition.Validation;
 using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Execution;
 using Statevia.Core.Engine.Infrastructure;
@@ -98,7 +99,7 @@ public sealed class DefinitionCompilerServiceTests
             """;
 
         // Act & Assert
-        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
+        var ex = Assert.ThrowsAny<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
 
         Assert.Contains("Unknown action 'my.vendor.missing'", ex.Message, StringComparison.Ordinal);
         Assert.Contains("state 'A'", ex.Message, StringComparison.Ordinal);
@@ -126,7 +127,7 @@ public sealed class DefinitionCompilerServiceTests
             """;
 
         // Act & Assert
-        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
+        var ex = Assert.ThrowsAny<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
 
         Assert.Contains("Level 1 validation failed", ex.Message, StringComparison.Ordinal);
     }
@@ -154,7 +155,7 @@ public sealed class DefinitionCompilerServiceTests
             """;
 
         // Act & Assert
-        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
+        var ex = Assert.ThrowsAny<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
 
         Assert.Contains("duplicate alias 'mail'", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -185,7 +186,7 @@ public sealed class DefinitionCompilerServiceTests
             """;
 
         // Act & Assert
-        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
+        var ex = Assert.ThrowsAny<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
 
         Assert.Contains("Level 1 validation failed", ex.Message, StringComparison.Ordinal);
     }
@@ -295,7 +296,7 @@ public sealed class DefinitionCompilerServiceTests
             """;
 
         // Act / Assert
-        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
+        var ex = Assert.ThrowsAny<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
         Assert.Contains("delay5s", ex.Message, StringComparison.Ordinal);
     }
 
@@ -545,9 +546,96 @@ public sealed class DefinitionCompilerServiceTests
             """;
 
         // Act & Assert
-        var ex = Assert.Throws<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
+        var ex = Assert.ThrowsAny<ArgumentException>(() => svc.ValidateAndCompile("W", yaml));
 
         Assert.Contains("Level 2 validation failed", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Wait events 経由で Join を供給する定義はコンパイルできる（E1）。</summary>
+    [Fact]
+    public void ValidateAndCompile_WaitEventsFeedJoin_Succeeds()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: E1
+            states:
+              Start:
+                on:
+                  Completed:
+                    fork: [Left, Wait2]
+              Left:
+                on:
+                  Completed:
+                    next: Join
+              Wait2:
+                wait:
+                  events:
+                    Resume: Right
+              Right:
+                on:
+                  Completed:
+                    next: Join
+              Join:
+                join:
+                  all: [Left, Wait2]
+                on:
+                  Joined:
+                    next: End
+              End:
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var (compiled, _) = svc.ValidateAndCompile("E1", yaml);
+
+        // Assert
+        Assert.Equal("Start", compiled.InitialState);
+        Assert.Contains("Join", compiled.JoinTable.Keys, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>領域外へ出る Fork 枝は ForkRegion code 付きで失敗する。</summary>
+    [Fact]
+    public void ValidateAndCompile_EgressWithoutJoin_ThrowsForkRegionCode()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: A2
+            states:
+              Start:
+                on:
+                  Completed:
+                    fork: [Left, Right]
+              Left:
+                on:
+                  Completed:
+                    next: End
+              Right:
+                on:
+                  Completed:
+                    next: Join
+              Join:
+                join:
+                  all: [Left, Right]
+                on:
+                  Joined:
+                    next: End
+              End:
+                on:
+                  Completed:
+                    end: true
+            """;
+
+        // Act
+        var ex = Assert.Throws<DefinitionValidationException>(() => svc.ValidateAndCompile("A2", yaml));
+
+        // Assert
+        Assert.Contains(ex.Issues, i => i.RuleId == "ForkRegion.EgressWithoutJoin");
     }
 
     /// <summary>

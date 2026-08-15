@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Statevia.Service.Api.Application.Actions;
 using Statevia.Service.Api.Application.Actions.Validation;
 using Statevia.Core.Engine.Abstractions;
+using Statevia.Core.Engine.Definition.Validation;
 using Statevia.Service.Api.Abstractions.Services;
 
 using Statevia.Service.Api.Contracts;
@@ -460,6 +461,33 @@ public sealed class DefinitionServiceTests
         Assert.IsType<ArgumentException>(ex.InnerException);
     }
 
+    /// <summary>Engine 検証失敗時は details にルール単位 code を載せる。</summary>
+    [Fact]
+    public async Task CreateAsync_WhenCompilerThrowsDefinitionValidationException_IncludesRuleCode()
+    {
+        // Arrange
+        using var inDb = new InMemoryTestDatabase();
+        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
+        var display = new StubDisplayIdService();
+        var compiler = new ThrowingCompiler(new DefinitionValidationException(
+            new ValidationResult(
+            [
+                new ValidationIssue("ForkRegion.EgressWithoutJoin", "egress", "Left")
+            ])));
+        var idGen = new FixedIdGenerator(Guid.NewGuid());
+        var sut = CreateDefinitionService(inDb, display, compiler, definitionsRepo, idGen);
+        var request = new CreateDefinitionRequest { Name = "def", Yaml = "workflow:\n  name: A2" };
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() => sut.CreateAsync(request, CancellationToken.None));
+
+        // Assert
+        Assert.Equal(DefinitionValidationMessages.ValidationFailed, ex.Message);
+        var detailsJson = System.Text.Json.JsonSerializer.Serialize(ex.Details);
+        Assert.Contains("ForkRegion.EgressWithoutJoin", detailsJson, StringComparison.Ordinal);
+        Assert.Contains("Left", detailsJson, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// 既存定義を更新し、yaml と compiled_json が反映される。
     /// </summary>
@@ -551,6 +579,47 @@ public sealed class DefinitionServiceTests
         // Assert
         Assert.Equal(DefinitionValidationMessages.ValidationFailed, ex.Message);
         Assert.IsType<ArgumentException>(ex.InnerException);
+    }
+
+    /// <summary>更新時の Engine 検証失敗は details にルール単位 code を載せる。</summary>
+    [Fact]
+    public async Task UpdateAsync_WhenCompilerThrowsDefinitionValidationException_IncludesRuleCode()
+    {
+        // Arrange
+        using var inDb = new InMemoryTestDatabase();
+        var projectId = await SeedDefaultTenantAndProjectAsync(inDb.Options);
+        var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
+        var guid = Guid.NewGuid();
+        await using (var ctx = new CoreDbContext(inDb.Options))
+        {
+            DefinitionTestData.AddDefinitionWithVersion(ctx, TestTenantIds.DefaultTenantId,
+                guid,
+                "old",
+                projectId,
+                sourceYaml: "workflow:\n  name: old",
+                createdAt: DateTime.UtcNow);
+            await ctx.SaveChangesAsync();
+        }
+
+        var display = new StubDisplayIdService();
+        display.ResolveMap["definition|DEF-1"] = guid;
+        var compiler = new ThrowingCompiler(new DefinitionValidationException(
+            new ValidationResult(
+            [
+                new ValidationIssue("ForkRegion.JoinNotFed", "not fed", "Join")
+            ])));
+        var sut = CreateDefinitionService(inDb, display, compiler, definitionsRepo, new FixedIdGenerator(Guid.NewGuid()));
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() =>
+            sut.UpdateAsync("DEF-1", new UpdateDefinitionRequest { Name = "n", Yaml = "bad" }, CancellationToken.None));
+
+        // Assert
+        Assert.Equal(DefinitionValidationMessages.ValidationFailed, ex.Message);
+        var detailsJson = System.Text.Json.JsonSerializer.Serialize(ex.Details);
+        Assert.Contains("ForkRegion.JoinNotFed", detailsJson, StringComparison.Ordinal);
+        Assert.Contains("Join", detailsJson, StringComparison.Ordinal);
+        Assert.IsType<DefinitionValidationException>(ex.InnerException);
     }
 
     /// <summary>action input schema 検証失敗時に state / actionId / jsonPath を details に含める。</summary>

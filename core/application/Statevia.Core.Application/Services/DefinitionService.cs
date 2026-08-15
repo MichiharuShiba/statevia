@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Application.Infrastructure;
+using Statevia.Core.Engine.Definition.Validation;
 
 namespace Statevia.Core.Application.Services;
 
@@ -65,6 +66,13 @@ internal sealed class DefinitionService : IDefinitionService
             throw new ApiValidationException(
                 DefinitionValidationMessages.ValidationFailed,
                 MapActionInputValidationDetails(ex),
+                ex);
+        }
+        catch (DefinitionValidationException ex)
+        {
+            throw new ApiValidationException(
+                DefinitionValidationMessages.ValidationFailed,
+                MapDefinitionValidationDetails(ex),
                 ex);
         }
         catch (ArgumentException ex)
@@ -209,6 +217,13 @@ internal sealed class DefinitionService : IDefinitionService
             throw new ApiValidationException(
                 DefinitionValidationMessages.ValidationFailed,
                 MapActionInputValidationDetails(ex),
+                ex);
+        }
+        catch (DefinitionValidationException ex)
+        {
+            throw new ApiValidationException(
+                DefinitionValidationMessages.ValidationFailed,
+                MapDefinitionValidationDetails(ex),
                 ex);
         }
         catch (ArgumentException ex)
@@ -403,6 +418,20 @@ internal sealed class DefinitionService : IDefinitionService
                 state = error.State,
                 actionId = error.ActionId,
                 jsonPath = error.JsonPath,
+            })
+            .ToArray();
+
+    /// <summary>Engine 検証のルール単位 <c>code</c> を 422 details へ写す。</summary>
+    /// <param name="ex">定義検証例外。</param>
+    /// <returns>details 配列。</returns>
+    private static object[] MapDefinitionValidationDetails(DefinitionValidationException ex) =>
+        ex.Issues
+            .Select(issue => (object)new
+            {
+                code = issue.RuleId,
+                message = issue.Message,
+                field = "yaml",
+                state = issue.StateName,
             })
             .ToArray();
 

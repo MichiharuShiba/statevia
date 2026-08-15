@@ -70,6 +70,50 @@ public class DefinitionValidatorTests
         Assert.Empty(result.Errors);
     }
 
+    /// <summary>
+    /// Structural 失敗時は Reachability を実行せず、指摘に RuleId が付くことを検証する。
+    /// </summary>
+    [Fact]
+    public void Validate_WhenStructuralFails_SkipsReachabilityAndSetsRuleId()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "Test",
+            States = new Dictionary<string, StateDefinition>()
+        };
+
+        // Act
+        var result = DefinitionValidator.Validate(def);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Single(result.Issues);
+        Assert.Equal("Structural.AtLeastOneState", result.Issues[0].RuleId);
+        Assert.DoesNotContain(result.Issues, i => i.RuleId.StartsWith("Reachability.", StringComparison.Ordinal));
+    }
+
+    /// <summary>パイプラインに Structural と Reachability の細ルールが登録されていることを検証する。</summary>
+    [Fact]
+    public void Pipeline_RegistersFineGrainedRulesByPhase()
+    {
+        // Arrange
+        var rules = ValidationPipeline.Rules;
+
+        // Act
+        var structural = rules.Where(r => r.Phase == ValidationPhase.Structural).Select(r => r.RuleId).ToArray();
+        var reachability = rules.Where(r => r.Phase == ValidationPhase.Reachability).Select(r => r.RuleId).ToArray();
+
+        // Assert
+        Assert.Contains("Structural.AtLeastOneState", structural);
+        Assert.Contains("Structural.StateGraph", structural);
+        Assert.Contains("Reachability.UnreachableStates", reachability);
+        Assert.Contains("Reachability.CircularJoin", reachability);
+        var forkRegion = rules.Where(r => r.Phase == ValidationPhase.ForkRegion).Select(r => r.RuleId).ToArray();
+        Assert.Contains("ForkRegion.Snapshot", forkRegion);
+        Assert.Contains("ForkRegion.NestedCrossBranch", forkRegion);
+    }
+
     /// <summary>定義が null のとき ArgumentNullException が発生することを検証する。</summary>
     [Fact]
     public void Validate_WhenDefinitionIsNull_ThrowsArgumentNullException()

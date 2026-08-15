@@ -10,17 +10,20 @@ namespace Statevia.Core.Engine.Definition.Validation;
 /// </summary>
 public static class Level1Validator
 {
-    /// <summary>ワークフロー定義を検証し、エラー一覧を返します。</summary>
+    /// <summary>ワークフロー定義を検証し、エラー一覧を返します（Structural フェーズのみ）。</summary>
     public static ValidationResult Validate(WorkflowDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        var errors = new List<string>();
-        if (definition.States.Count == 0)
-        {
-            errors.Add("At least one state is required.");
-            return new ValidationResult(errors);
-        }
+        return ValidationPipeline.Run(definition, ValidationPhase.Structural);
+    }
 
+    /// <summary>
+    /// 空でない定義に対する状態グラフ検査（名前・遷移・Wait・Join・input/output・終端）。
+    /// </summary>
+    /// <param name="definition">検証対象（状態 1 件以上）。</param>
+    /// <param name="errors">検出したエラーメッセージの蓄積先。</param>
+    internal static void CollectStateGraphErrors(WorkflowDefinition definition, List<string> errors)
+    {
         var stateNames = new HashSet<string>(definition.States.Keys, StringComparer.OrdinalIgnoreCase);
         var terminalTransitionCount = 0;
 
@@ -41,7 +44,6 @@ public static class Level1Validator
             errors.Add("At least one terminal transition (end: true) is required.");
         }
 
-        return new ValidationResult(errors);
     }
 
     /// <summary>状態名が空でないことを検証する。</summary>
@@ -601,19 +603,4 @@ public static class Level1Validator
         }
     }
 
-}
-
-/// <summary>検証結果。エラー一覧と有効フラグを保持します。</summary>
-public sealed class ValidationResult
-{
-    /// <summary>検出されたエラーメッセージの一覧。</summary>
-    public IReadOnlyList<string> Errors { get; }
-    /// <summary>エラーが 0 件の場合 true。</summary>
-    public bool IsValid => Errors.Count == 0;
-
-    /// <summary>
-    /// 検証で収集したエラーメッセージで結果を構築する。
-    /// </summary>
-    /// <param name="errors">エラーメッセージの一覧。</param>
-    public ValidationResult(IReadOnlyList<string> errors) => Errors = errors;
 }

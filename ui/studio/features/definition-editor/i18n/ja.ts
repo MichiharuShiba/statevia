@@ -77,6 +77,12 @@ export const definitionEditorUiTextJa: DefinitionEditorFeatureUiText = {
         `Node '${nodeName}': default=true の edge は 1 つまでです。`,
       selfReferenceEdge: (nodeName: string) => `Node '${nodeName}': 自己参照エッジは許可されません。`,
       missingTargetNode: (nodeName: string, targetName: string) => `Node '${nodeName}': 参照先 '${targetName}' が存在しません。`,
+      forkRegionIngressFromOutside: (fromName: string, toName: string) =>
+        `Node '${fromName}': Fork 領域外から枝内の '${toName}' へ入れません。`,
+      forkRegionEgressWithoutJoin: (fromName: string, toName: string, joinName: string) =>
+        `Node '${fromName}': Join '${joinName}' を経由せず '${toName}' へ出られません。`,
+      forkRegionWaitTargetOutside: (nodeName: string, toName: string) =>
+        `Node '${nodeName}': wait の遷移先 '${toName}' は Fork 領域外です。`,
       selfReferenceRejected: "自己参照エッジは作成できません。",
       whenOpPlaceholder: "演算子を選択",
       whenPathPlaceholder: "$.states.Fetch.output.amount",

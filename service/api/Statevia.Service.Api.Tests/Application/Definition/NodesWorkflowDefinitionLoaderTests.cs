@@ -1,5 +1,6 @@
 using Statevia.Service.Api.Application.Definition;
 using Statevia.Core.Engine.Definition;
+using Statevia.Core.Engine.Definition.Validation;
 using Statevia.Core.Engine.FSM;
 
 namespace Statevia.Service.Api.Tests.Application.Definition;
@@ -96,6 +97,254 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.DoesNotContain("innerA", outer.All, StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// 3 段ネストでも各 Join が直近の Fork とだけペアになり、外側 Join が解決できる。
+    /// </summary>
+    [Fact]
+    public void Load_TripleNestedForkJoin_PairsEachJoinWithImmediateFork()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: TripleNested
+            nodes:
+              - name: start
+                type: start
+                next: outer.fork
+              - name: outer.fork
+                type: fork
+                branches: [outer.fast, mid.fork]
+              - name: outer.fast
+                type: action
+                action: noop
+                next: outer.join
+              - name: mid.fork
+                type: fork
+                branches: [mid.fast, inner.fork]
+              - name: mid.fast
+                type: action
+                action: noop
+                next: mid.join
+              - name: inner.fork
+                type: fork
+                branches: [inner.a, inner.b]
+              - name: inner.a
+                type: action
+                action: noop
+                next: inner.join
+              - name: inner.b
+                type: action
+                action: noop
+                next: inner.join
+              - name: inner.join
+                type: join
+                mode: all
+                next: mid.join
+              - name: mid.join
+                type: join
+                mode: all
+                next: outer.join
+              - name: outer.join
+                type: join
+                mode: all
+                next: endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        var inner = definition.States["inner.join"].Join;
+        Assert.NotNull(inner);
+        Assert.Equal(2, inner.All.Count);
+        Assert.Contains("inner.a", inner.All, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("inner.b", inner.All, StringComparer.OrdinalIgnoreCase);
+
+        var mid = definition.States["mid.join"].Join;
+        Assert.NotNull(mid);
+        Assert.Equal(2, mid.All.Count);
+        Assert.Contains("mid.fast", mid.All, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("inner.fork", mid.All, StringComparer.OrdinalIgnoreCase);
+
+        var outer = definition.States["outer.join"].Join;
+        Assert.NotNull(outer);
+        Assert.Equal(2, outer.All.Count);
+        Assert.Contains("outer.fast", outer.All, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("mid.fork", outer.All, StringComparer.OrdinalIgnoreCase);
+        Assert.DoesNotContain("inner.fork", outer.All, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>内側 Join の出口が非 Join を経由して外側 Join に着く定義も合法。</summary>
+    [Fact]
+    public void Load_NestedJoinExitViaAction_StillFeedsOuterJoin()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: NestedExitViaAction
+            nodes:
+              - name: start
+                type: start
+                next: outerFork
+              - name: outerFork
+                type: fork
+                branches: [outerFast, innerFork]
+              - name: outerFast
+                type: action
+                action: noop
+                next: outerJoin
+              - name: innerFork
+                type: fork
+                branches: [innerA, innerB]
+              - name: innerA
+                type: action
+                action: noop
+                next: innerJoin
+              - name: innerB
+                type: action
+                action: noop
+                next: innerJoin
+              - name: innerJoin
+                type: join
+                mode: all
+                next: afterInner
+              - name: afterInner
+                type: action
+                action: noop
+                next: outerJoin
+              - name: outerJoin
+                type: join
+                mode: all
+                next: endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        var outer = definition.States["outerJoin"].Join;
+        Assert.NotNull(outer);
+        Assert.Contains("outerFast", outer.All, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("innerFork", outer.All, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// 枝先頭が action で、その先に内側 Fork がある定義でも外側 Join が解決できる。
+    /// </summary>
+    [Fact]
+    public void Load_InnerForkAfterMidAction_PairsOuterJoinWithOuterBranchHeads()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: D3InnerForkFromMidBranch
+            nodes:
+              - name: start
+                type: start
+                next: outer.fork
+              - name: outer.fork
+                type: fork
+                branches:
+                  - outer.fast
+                  - mid
+              - name: outer.fast
+                type: action
+                action: noop
+                next: outer.join
+              - name: mid
+                type: action
+                action: noop
+                next: inner.fork
+              - name: inner.fork
+                type: fork
+                branches:
+                  - inner.a
+                  - inner.b
+              - name: inner.a
+                type: action
+                action: noop
+                next: inner.join
+              - name: inner.b
+                type: action
+                action: noop
+                next: inner.join
+              - name: inner.join
+                type: join
+                mode: all
+                next: outer.join
+              - name: outer.join
+                type: join
+                mode: all
+                next: end
+              - name: end
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        var inner = definition.States["inner.join"].Join;
+        Assert.NotNull(inner);
+        Assert.Contains("inner.a", inner.All, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("inner.b", inner.All, StringComparer.OrdinalIgnoreCase);
+
+        var outer = definition.States["outer.join"].Join;
+        Assert.NotNull(outer);
+        Assert.Equal(2, outer.All.Count);
+        Assert.Contains("outer.fast", outer.All, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("mid", outer.All, StringComparer.OrdinalIgnoreCase);
+        Assert.DoesNotContain("inner.fork", outer.All, StringComparer.OrdinalIgnoreCase);
+
+        var validation = DefinitionValidator.Validate(definition);
+        Assert.True(validation.IsValid, string.Join("; ", validation.Errors));
+    }
+
+    /// <summary>action.error だけの経路は Join 供給に数えず、Fork とペアにならない。</summary>
+    [Fact]
+    public void Load_ActionErrorOnlyToJoin_DoesNotTreatErrorAsJoinSupply()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: ErrorNotSupply
+            nodes:
+              - name: start
+                type: start
+                next: fork1
+              - name: fork1
+                type: fork
+                branches: [left, work]
+              - name: left
+                type: action
+                action: noop
+                next: join1
+              - name: work
+                type: action
+                action: noop
+                next: endNode
+                error: join1
+              - name: join1
+                type: join
+                mode: all
+                next: endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => _loader.Load(yaml));
+        Assert.Contains("no matching fork", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>fork / join（mode: all）から Join.All が構築される。</summary>
     [Fact]
     public void Load_ForkJoin_BuildsJoinAll()
@@ -138,6 +387,95 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.Contains("b1", join.All, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("b2", join.All, StringComparer.OrdinalIgnoreCase);
         Assert.True(definition.States["join1"].On!.ContainsKey(Fact.Joined));
+    }
+
+    /// <summary>枝先頭 Wait の events 経由で Join に着く定義は Load できる（E1）。</summary>
+    [Fact]
+    public void Load_WaitEventsFeedJoin_BuildsJoinAll()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: E1
+            nodes:
+              - name: start
+                type: start
+                next: fork1
+              - name: fork1
+                type: fork
+                branches: [left, wait2]
+              - name: left
+                type: action
+                action: noop
+                next: join1
+              - name: wait2
+                type: wait
+                events:
+                  Resume: right
+              - name: right
+                type: action
+                action: noop
+                next: join1
+              - name: join1
+                type: join
+                mode: all
+                next: endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        var join = definition.States["join1"].Join;
+        Assert.NotNull(join);
+        Assert.Contains("left", join.All, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("wait2", join.All, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>枝先頭の edges 経由で Join に着く定義は Load できる。</summary>
+    [Fact]
+    public void Load_EdgesFeedJoin_BuildsJoinAll()
+    {
+        // Arrange
+        var yaml = """
+            version: 1
+            workflow:
+              name: EdgesSupply
+            nodes:
+              - name: start
+                type: start
+                next: fork1
+              - name: fork1
+                type: fork
+                branches: [left, chooser]
+              - name: left
+                type: action
+                action: noop
+                next: join1
+              - name: chooser
+                type: action
+                action: noop
+                edges:
+                  - to: join1
+              - name: join1
+                type: join
+                mode: all
+                next: endNode
+              - name: endNode
+                type: end
+            """;
+
+        // Act
+        var definition = _loader.Load(yaml);
+
+        // Assert
+        var join = definition.States["join1"].Join;
+        Assert.NotNull(join);
+        Assert.Contains("left", join.All, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("chooser", join.All, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>action.error は on.Failed 遷移として正規化される。</summary>

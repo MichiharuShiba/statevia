@@ -80,6 +80,12 @@ export const definitionEditorUiTextEn: DefinitionEditorFeatureUiText = {
         `Node '${nodeName}': only one edge can have default=true.`,
       selfReferenceEdge: (nodeName: string) => `Node '${nodeName}': self-referencing edge is not allowed.`,
       missingTargetNode: (nodeName: string, targetName: string) => `Node '${nodeName}': target '${targetName}' does not exist.`,
+      forkRegionIngressFromOutside: (fromName: string, toName: string) =>
+        `Node '${fromName}': cannot enter branch '${toName}' from outside the fork region.`,
+      forkRegionEgressWithoutJoin: (fromName: string, toName: string, joinName: string) =>
+        `Node '${fromName}': cannot leave to '${toName}' without join '${joinName}'.`,
+      forkRegionWaitTargetOutside: (nodeName: string, toName: string) =>
+        `Node '${nodeName}': wait target '${toName}' is outside the fork region.`,
       selfReferenceRejected: "Self-referencing edges are not allowed.",
       whenOpPlaceholder: "Select operator",
       whenPathPlaceholder: "$.states.Fetch.output.amount",

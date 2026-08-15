@@ -178,6 +178,80 @@ public sealed class PhysicalForkGraphComposerTests
     }
 
     /// <summary>
+    /// 枝先頭が action でその先に内側 Fork があるとき、親 Fork は mid だけへ張り inner.a を幽霊枝にしない。
+    /// </summary>
+    [Fact]
+    public void Compose_WhenInnerForkAfterMidAction_DoesNotAttachInnerLeavesToOuterForkOrJoin()
+    {
+        // Arrange
+        const string parentJson = """
+            {
+              "nodes": [
+                {"nodeId":"outer-fork","nodeName":"outer.fork","nodeType":"Fork"},
+                {"nodeId":"outer-join","nodeName":"outer.join","nodeType":"Join"}
+              ],
+              "edges": []
+            }
+            """;
+        const string midChildJson = """
+            {
+              "nodes": [
+                {"nodeId":"mid-1","nodeName":"mid","nodeType":"Task"},
+                {"nodeId":"inner-fork","nodeName":"inner.fork","nodeType":"Fork"},
+                {"nodeId":"inner-a","nodeName":"inner.a","nodeType":"Task"},
+                {"nodeId":"inner-b","nodeName":"inner.b","nodeType":"Task"},
+                {"nodeId":"inner-join","nodeName":"inner.join","nodeType":"Join"}
+              ],
+              "edges": [
+                {"from":"mid-1","to":"inner-fork","type":0},
+                {"from":"inner-fork","to":"inner-a","type":1},
+                {"from":"inner-fork","to":"inner-b","type":1},
+                {"from":"inner-a","to":"inner-join","type":2},
+                {"from":"inner-b","to":"inner-join","type":2}
+              ]
+            }
+            """;
+        const string fastChildJson = """
+            {"nodes":[{"nodeId":"outer-fast","nodeName":"outer.fast","nodeType":"Task"}],"edges":[]}
+            """;
+
+        // Act
+        var composed = PhysicalForkGraphComposer.Compose(
+            parentJson,
+            [
+                new PhysicalForkGraphComposer.BranchGraph(
+                    "outer-fork", "outer-join", "outer.fast", fastChildJson),
+                new PhysicalForkGraphComposer.BranchGraph(
+                    "outer-fork", "outer-join", "mid", midChildJson)
+            ]);
+
+        // Assert
+        var edges = JsonNode.Parse(composed)!["edges"]!.AsArray().OfType<JsonObject>().ToList();
+        Assert.Contains(
+            edges,
+            e => e["from"]!.GetValue<string>() == "outer-fork"
+                && e["to"]!.GetValue<string>() == "mid-1"
+                && e["type"]!.GetValue<int>() == (int)EdgeType.Fork);
+        Assert.DoesNotContain(
+            edges,
+            e => e["from"]!.GetValue<string>() == "outer-fork"
+                && e["to"]!.GetValue<string>() == "inner-a");
+        Assert.DoesNotContain(
+            edges,
+            e => e["from"]!.GetValue<string>() == "mid-1"
+                && e["to"]!.GetValue<string>() == "outer-join");
+        Assert.Contains(
+            edges,
+            e => e["from"]!.GetValue<string>() == "inner-join"
+                && e["to"]!.GetValue<string>() == "outer-join"
+                && e["type"]!.GetValue<int>() == (int)EdgeType.Next);
+        Assert.DoesNotContain(
+            edges,
+            e => e["from"]!.GetValue<string>() == "inner-a"
+                && e["to"]!.GetValue<string>() == "outer-join");
+    }
+
+    /// <summary>
     /// 内側合成が Fork+Join のみ（子辺なし）でも、InnerFork→OuterJoin の幽霊辺を付けない。
     /// </summary>
     [Fact]

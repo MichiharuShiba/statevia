@@ -31,7 +31,10 @@ function opts(): ValidateGraphDocumentMessageOptions {
     edgeWhenValueBetweenInvalid: m("whenBetween"),
     edgeDefaultMultiple: m("defaultMulti"),
     selfReferenceEdge: m("selfRef"),
-    missingTargetNode: m2("missing")
+    missingTargetNode: m2("missing"),
+    forkRegionIngressFromOutside: m2("ingress"),
+    forkRegionEgressWithoutJoin: (fromName, toName, joinName) => `egress:${fromName}:${toName}:${joinName}`,
+    forkRegionWaitTargetOutside: m2("waitOutside")
   };
 }
 
@@ -295,5 +298,183 @@ describe("validateGraphDocument / wait.events", () => {
     const r = validateGraphDocument(doc, opts());
     expect(r.isValid).toBe(false);
     expect(r.messages).toContain("missing:w1:unknown");
+  });
+});
+
+describe("validateGraphDocument / fork region light", () => {
+  it("標準 Fork-Join は有効", () => {
+    // Arrange
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "simple" },
+      nodes: [
+        { name: "s", type: "start", next: "fork1" },
+        { name: "fork1", type: "fork", branches: ["left", "right"] },
+        { name: "left", type: "action", action: "noop", next: "join1" },
+        { name: "right", type: "action", action: "noop", next: "join1" },
+        { name: "join1", type: "join", next: "e" },
+        { name: "e", type: "end" }
+      ]
+    };
+
+    // Act
+    const r = validateGraphDocument(doc, opts());
+
+    // Assert
+    expect(r.isValid).toBe(true);
+  });
+
+  it("枝から Join を経由せず end へ出ると egress", () => {
+    // Arrange
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "A2" },
+      nodes: [
+        { name: "s", type: "start", next: "fork1" },
+        { name: "fork1", type: "fork", branches: ["left", "right"] },
+        { name: "left", type: "action", action: "noop", next: "e" },
+        { name: "right", type: "action", action: "noop", next: "join1" },
+        { name: "join1", type: "join", next: "e" },
+        { name: "e", type: "end" }
+      ]
+    };
+
+    // Act
+    const r = validateGraphDocument(doc, opts());
+
+    // Assert
+    expect(r.isValid).toBe(false);
+    expect(r.messages).toContain("egress:left:e:join1");
+  });
+
+  it("Join 後から枝先頭へ戻ると ingress", () => {
+    // Arrange
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "A1" },
+      nodes: [
+        { name: "s", type: "start", next: "fork1" },
+        { name: "fork1", type: "fork", branches: ["left", "right"] },
+        { name: "left", type: "action", action: "noop", next: "join1" },
+        { name: "right", type: "action", action: "noop", next: "join1" },
+        { name: "join1", type: "join", next: "decide" },
+        {
+          name: "decide",
+          type: "wait",
+          events: { Finish: "e", Rogue: "left" }
+        },
+        { name: "e", type: "end" }
+      ]
+    };
+
+    // Act
+    const r = validateGraphDocument(doc, opts());
+
+    // Assert
+    expect(r.isValid).toBe(false);
+    expect(r.messages).toContain("ingress:decide:left");
+  });
+
+  it("枝内 Wait の一方が領域外なら waitOutside", () => {
+    // Arrange
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "D2" },
+      nodes: [
+        { name: "s", type: "start", next: "fork1" },
+        { name: "fork1", type: "fork", branches: ["left", "wait2"] },
+        { name: "left", type: "action", action: "noop", next: "join1" },
+        {
+          name: "wait2",
+          type: "wait",
+          events: { Resume: "join1", Timeout: "e" }
+        },
+        { name: "join1", type: "join", next: "e" },
+        { name: "e", type: "end" }
+      ]
+    };
+
+    // Act
+    const r = validateGraphDocument(doc, opts());
+
+    // Assert
+    expect(r.isValid).toBe(false);
+    expect(r.messages).toContain("waitOutside:wait2:e");
+    expect(r.messages).toContain("egress:wait2:e:join1");
+  });
+
+  it("Join 後に同一 Fork へ戻る循環は有効", () => {
+    // Arrange
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "cyclic" },
+      nodes: [
+        { name: "s", type: "start", next: "fork1" },
+        { name: "fork1", type: "fork", branches: ["a", "b"] },
+        { name: "a", type: "action", action: "noop", next: "join1" },
+        { name: "b", type: "action", action: "noop", next: "join1" },
+        { name: "join1", type: "join", next: "decide" },
+        {
+          name: "decide",
+          type: "wait",
+          events: { Again: "fork1", Finish: "e" }
+        },
+        { name: "e", type: "end" }
+      ]
+    };
+
+    // Act
+    const r = validateGraphDocument(doc, opts());
+
+    // Assert
+    expect(r.isValid).toBe(true);
+  });
+
+  it("ネスト Fork-Join は有効", () => {
+    // Arrange
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "nested" },
+      nodes: [
+        { name: "s", type: "start", next: "outerFork" },
+        { name: "outerFork", type: "fork", branches: ["outerFast", "innerFork"] },
+        { name: "outerFast", type: "action", action: "noop", next: "outerJoin" },
+        { name: "innerFork", type: "fork", branches: ["innerA", "innerB"] },
+        { name: "innerA", type: "action", action: "noop", next: "innerJoin" },
+        { name: "innerB", type: "action", action: "noop", next: "innerJoin" },
+        { name: "innerJoin", type: "join", next: "outerJoin" },
+        { name: "outerJoin", type: "join", next: "e" },
+        { name: "e", type: "end" }
+      ]
+    };
+
+    // Act
+    const r = validateGraphDocument(doc, opts());
+
+    // Assert
+    expect(r.isValid).toBe(true);
+  });
+
+  it("枝先頭 Wait が events で Join を供給する定義は有効", () => {
+    // Arrange
+    const doc: DefinitionGraphDocument = {
+      version: 1,
+      workflow: { name: "E1" },
+      nodes: [
+        { name: "s", type: "start", next: "fork1" },
+        { name: "fork1", type: "fork", branches: ["left", "wait2"] },
+        { name: "left", type: "action", action: "noop", next: "join1" },
+        { name: "wait2", type: "wait", events: { Resume: "right" } },
+        { name: "right", type: "action", action: "noop", next: "join1" },
+        { name: "join1", type: "join", next: "e" },
+        { name: "e", type: "end" }
+      ]
+    };
+
+    // Act
+    const r = validateGraphDocument(doc, opts());
+
+    // Assert
+    expect(r.isValid).toBe(true);
   });
 });

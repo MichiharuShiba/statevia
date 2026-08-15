@@ -63,16 +63,10 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
         var def = _definitionLoadStrategy.Load(yaml);
         var compileBindings = ModuleActionCompileBinder.Bind(def, _actionCatalog);
         def = ResolveActionNames(def);
-        var l1 = Level1Validator.Validate(def);
-        if (!l1.IsValid)
+        var validation = DefinitionValidator.Validate(def);
+        if (!validation.IsValid)
         {
-            throw new ArgumentException("Level 1 validation failed: " + string.Join("; ", l1.Errors));
-        }
-
-        var l2 = Level2Validator.Validate(def);
-        if (!l2.IsValid)
-        {
-            throw new ArgumentException("Level 2 validation failed: " + string.Join("; ", l2.Errors));
+            throw new DefinitionValidationException(validation);
         }
 
         ValidateRegisteredActions(compileBindings.StateActionBindings, tenantId);
