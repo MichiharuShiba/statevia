@@ -26,6 +26,7 @@ public static class SecurityServiceCollectionExtensions
         services.AddScoped<IApiKeyAuthenticationService, ApiKeyAuthenticationService>();
         services.AddScoped<ITenantAdminAuthorization, TenantAdminAuthorization>();
         services.AddScoped<IRuntimePermissionAuthorization, RuntimePermissionAuthorization>();
+        services.AddScoped<IModuleManagementAuthorization, ModuleManagementAuthorization>();
         services.AddScoped<IExecutionMutationAuthorization, ExecutionMutationAuthorization>();
         services.AddScoped<TenantAdminBootstrap>();
 

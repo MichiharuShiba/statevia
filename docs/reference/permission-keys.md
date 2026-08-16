@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Reference |
-| Version | 1.0 |
-| 更新日 | 2026-07-08 |
+| Version | 1.1 |
+| 更新日 | 2026-08-15 |
 
 ---
 
@@ -21,9 +21,12 @@ Runtime API の **semantic permission key** の調べ物。Normative 契約は [
 | `executions.read` | Read executions | `permissions.executionsRead` |
 | `executions.write` | Write executions | `permissions.executionsWrite` |
 | `tenant.admin` | Tenant administration | `permissions.tenantAdmin` |
+| `modules.reload` | Reload action modules | `permissions.modulesReload` |
+| `modules.read` | Read action modules | `permissions.modulesRead` |
 
-- DB の `permissions` テーブルへ `EnsurePermissionCatalogAsync` で seed される。
+- DB の `permission_definitions` テーブルへ `EnsurePermissionCatalogAsync` で seed される。
 - **`tenant.admin`**: テナント管理者（`/v1/admin/*`）。JWT で `is_tenant_admin` の Principal は **全 catalog key** を Live 展開で持つ。
+- **`modules.reload` / `modules.read`**: API キーの `allowed_scopes` およびグループ権限として発行可能（`tenant.admin` は発行対象外）。Module 管理 API での評価は `is_tenant_admin` **または** 当該 key。
 
 ## Runtime API との対応
 
@@ -33,6 +36,8 @@ Runtime API の **semantic permission key** の調べ物。Normative 契約は [
 | POST / PUT `/v1/definitions` | `definitions.write` |
 | GET `/v1/executions*`（一覧・詳細・graph・state・events・stream） | `executions.read` |
 | POST start / cancel / publish event / resume | `executions.write` |
+| POST `/internal/modules/reload` | `modules.reload`（または `is_tenant_admin`） |
+| GET `/v1/admin/modules` | `modules.read`（または `is_tenant_admin`） |
 
 不足時: **403**、`error.code = PERMISSION_DENIED`（[error-codes.md](error-codes.md)）。
 

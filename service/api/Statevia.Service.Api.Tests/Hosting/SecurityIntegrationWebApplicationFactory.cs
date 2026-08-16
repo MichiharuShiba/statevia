@@ -81,6 +81,28 @@ public sealed class SecurityIntegrationWebApplicationFactory : WebApplicationFac
         return plainKey;
     }
 
+    /// <summary>指定 permission の API キーをシードし平文を返す（キャッシュしない）。</summary>
+    /// <param name="permissionKeys">グループ権限かつ allowed_scopes。</param>
+    /// <returns>平文 API キー。</returns>
+    public async Task<string> SeedApiKeyWithPermissionsAsync(params string[] permissionKeys)
+    {
+        ArgumentNullException.ThrowIfNull(permissionKeys);
+        if (permissionKeys.Length == 0)
+            throw new ArgumentException("permissionKeys must contain at least one key.", nameof(permissionKeys));
+
+        await using var scope = Services.CreateAsyncScope();
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDataAccess>();
+        await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
+        var plainKey = $"statevia-test-key-{Guid.NewGuid():N}";
+        var allowedScopesJson = System.Text.Json.JsonSerializer.Serialize(permissionKeys);
+        var (_, _, created) = await SecurityTestSeed.SeedApiKeyAsync(
+            _database,
+            plainKey,
+            allowedScopesJson,
+            permissionKeys: permissionKeys);
+        return created;
+    }
+
     /// <summary>テスト用 JWT を発行する。</summary>
     /// <param name="principalId">Principal ID。</param>
     /// <returns>Bearer トークン文字列。</returns>

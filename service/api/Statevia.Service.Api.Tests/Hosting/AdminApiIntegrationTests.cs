@@ -136,6 +136,30 @@ public sealed class AdminApiIntegrationTests : IClassFixture<SecurityIntegration
         Assert.Equal(HttpStatusCode.NoContent, revokeResponse.StatusCode);
     }
 
+    /// <summary>API キー発行で modules.reload を allowedScopes に指定できる。</summary>
+    [Fact]
+    public async Task CreateApiKey_ModulesReloadScope_ReturnsCreated()
+    {
+        // Arrange
+        var adminPrincipalId = await _factory.SeedUserPrincipalAsync("admin-modules-scope@example.com", "password", isTenantAdmin: true);
+        using var client = CreateAuthenticatedClient(adminPrincipalId);
+
+        // Act
+        var createResponse = await client.PostAsJsonAsync(
+            new Uri("/v1/admin/api-keys", UriKind.Relative),
+            new CreateAdminApiKeyRequest
+            {
+                Name = "modules-reload-key",
+                AllowedScopes = ["modules.reload"]
+            });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        var created = await createResponse.Content.ReadFromJsonAsync<CreatedAdminApiKeyDto>();
+        Assert.NotNull(created);
+        Assert.Contains("modules.reload", created!.AllowedScopes);
+    }
+
     private HttpClient CreateAuthenticatedClient(Guid principalId)
     {
         var client = _factory.CreateClient();

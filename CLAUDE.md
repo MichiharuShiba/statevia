@@ -190,7 +190,7 @@
 
 Plan の設計を `.spec/specs/` に書き起こすチャットコマンド: `/spec-from-plan-design`（`.cursor/commands/spec-from-plan-design.md`）。
 
-完了した仕様セットを `.spec/archive/specs/` へ移すチャットコマンド: `/spec-archive`（`.cursor/commands/spec-archive.md`）。
+完了した仕様セットを `.spec/archive/specs/` へ移すチャットコマンド: `/spec-archive`（`.cursor/commands/spec-archive.md`）。却下した仕様は `.spec/reject/specs/` へ移す（同コマンド）。
 
 常時原則としては次を維持する。
 

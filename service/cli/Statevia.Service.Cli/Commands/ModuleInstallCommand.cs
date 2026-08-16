@@ -1,6 +1,6 @@
 using System.CommandLine;
-using System.Net.Http.Headers;
 using Statevia.Infrastructure.Modules;
+using Statevia.Service.Cli.Infrastructure;
 
 namespace Statevia.Service.Cli.Commands;
 
@@ -17,9 +17,12 @@ public static class ModuleInstallCommand
         var apiBaseOption = new Option<string?>(
             aliases: ["--api-base", "-a"],
             description: "Service API base URL for optional reload (e.g. http://localhost:8080)");
+        var apiKeyOption = new Option<string?>(
+            aliases: ["--api-key"],
+            description: "API key for reload (X-Api-Key). Overrides STATEVIA_API_KEY");
         var bearerTokenOption = new Option<string?>(
             aliases: ["--token", "-t"],
-            description: "Bearer token for reload API (tenant admin)");
+            description: "Deprecated. Bearer token for reload. Prefer auth login or --api-key");
         var tenantKeyOption = new Option<string>(
             aliases: ["--tenant", "-T"],
             description: "Tenant key (required). Installs under {modulesRoot}/{tenantKey}/ and sets X-Tenant-Id on reload")
@@ -36,6 +39,7 @@ public static class ModuleInstallCommand
             zipArgument,
             modulesPathOption,
             apiBaseOption,
+            apiKeyOption,
             bearerTokenOption,
             tenantKeyOption,
             skipReloadOption,
@@ -45,6 +49,7 @@ public static class ModuleInstallCommand
             zipArgument,
             modulesPathOption,
             apiBaseOption,
+            apiKeyOption,
             bearerTokenOption,
             tenantKeyOption,
             skipReloadOption);
@@ -56,6 +61,7 @@ public static class ModuleInstallCommand
         FileInfo zipFile,
         string? modulesPath,
         string? apiBase,
+        string? apiKey,
         string? bearerToken,
         string tenantKey,
         bool skipReload)
@@ -110,7 +116,8 @@ public static class ModuleInstallCommand
                 return 0;
             }
 
-            return await ReloadModulesAsync(apiBase, bearerToken, normalizedTenantKey).ConfigureAwait(false);
+            return await ReloadModulesAsync(apiBase, apiKey, bearerToken, normalizedTenantKey)
+                .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
@@ -119,13 +126,26 @@ public static class ModuleInstallCommand
         }
     }
 
-    private static async Task<int> ReloadModulesAsync(string apiBase, string? bearerToken, string tenantKey)
+    private static async Task<int> ReloadModulesAsync(
+        string apiBase,
+        string? apiKey,
+        string? bearerToken,
+        string tenantKey)
     {
-        if (string.IsNullOrWhiteSpace(bearerToken))
+        var store = new CliCredentialsStore();
+        var auth = CliReloadAuthentication.Resolve(apiKey, bearerToken, store, out var error);
+        if (auth is null)
         {
-            await Console.Error.WriteLineAsync("Reload requires --token (tenant admin bearer token).")
+            await Console.Error.WriteLineAsync(error ?? "Reload authentication failed.")
                 .ConfigureAwait(false);
             return 1;
+        }
+
+        if (auth.WarnTokenDeprecated)
+        {
+            await Console.Error.WriteLineAsync(
+                    "Warning: --token is deprecated. Use 'statevia auth login' or --api-key / STATEVIA_API_KEY.")
+                .ConfigureAwait(false);
         }
 
         if (!Uri.TryCreate(apiBase, UriKind.Absolute, out var apiBaseUri))
@@ -136,7 +156,7 @@ public static class ModuleInstallCommand
 
         var reloadUri = new Uri(apiBaseUri, "internal/modules/reload");
         using var client = new HttpClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken.Trim());
+        CliReloadAuthentication.Apply(client, auth);
         client.DefaultRequestHeaders.Add("X-Tenant-Id", tenantKey);
 
         using var response = await client.PostAsync(reloadUri, content: null).ConfigureAwait(false);

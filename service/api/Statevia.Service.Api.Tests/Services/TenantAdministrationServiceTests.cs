@@ -159,6 +159,32 @@ public sealed class TenantAdministrationServiceTests
         Assert.DoesNotContain(list, item => item.AllowedScopes.Contains(WellKnownPermissionKeys.TenantAdmin));
     }
 
+    /// <summary>API キーに modules.reload を allowed_scopes で指定できる。</summary>
+    [Fact]
+    public async Task CreateApiKeyAsync_ModulesReloadScope_Succeeds()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
+        await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
+        var adminId = await SecurityTestSeed.SeedUserAsync(database, "admin-modules-scope@example.com", "password", isTenantAdmin: true);
+        var tenantContext = new SettableTenantContextAccessor();
+        var service = CreateService(database, tenantContext, adminId);
+
+        // Act
+        var created = await service.CreateApiKeyAsync(
+            adminId,
+            new CreateAdminApiKeyRequest
+            {
+                Name = "Module Reloader",
+                AllowedScopes = [WellKnownPermissionKeys.ModulesReload]
+            },
+            CancellationToken.None);
+
+        // Assert
+        Assert.Equal(WellKnownPermissionKeys.ModulesReload, Assert.Single(created.AllowedScopes));
+    }
+
     /// <summary>管理者は API キーを失効できる。</summary>
     [Fact]
     public async Task RevokeApiKeyAsync_Admin_DeactivatesPrincipal()

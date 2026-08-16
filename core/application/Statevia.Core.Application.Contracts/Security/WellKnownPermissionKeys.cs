@@ -17,4 +17,10 @@ public static class WellKnownPermissionKeys
 
     /// <summary>テナント管理（ユーザー・グループ・API キー発行）。</summary>
     public const string TenantAdmin = "tenant.admin";
+
+    /// <summary>Action Module の再スキャン / 再ロード（<c>POST /internal/modules/reload</c>）。</summary>
+    public const string ModulesReload = "modules.reload";
+
+    /// <summary>Action Module の load catalog 一覧（<c>GET /v1/admin/modules</c>）。</summary>
+    public const string ModulesRead = "modules.read";
 }

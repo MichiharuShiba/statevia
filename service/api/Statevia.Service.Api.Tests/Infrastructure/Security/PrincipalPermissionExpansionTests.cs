@@ -38,6 +38,8 @@ public sealed class PrincipalPermissionExpansionTests
         // Assert
         Assert.Contains(WellKnownPermissionKeys.ExecutionsRead, keys);
         Assert.Contains(WellKnownPermissionKeys.TenantAdmin, keys);
+        Assert.Contains(WellKnownPermissionKeys.ModulesReload, keys);
+        Assert.Contains(WellKnownPermissionKeys.ModulesRead, keys);
     }
 
     /// <summary>非管理者はグループ付与分のみ展開する。</summary>
@@ -96,6 +98,27 @@ public sealed class PrincipalPermissionExpansionTests
             .IgnoreQueryFilters()
             .CountAsync();
         Assert.Equal(PermissionCatalog.Entries.Count, count);
+    }
+
+    /// <summary>シード後の catalog に modules.reload / modules.read が含まれる。</summary>
+    [Fact]
+    public async Task EnsurePermissionCatalogAsync_SeedsModulesReloadAndRead()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
+
+        // Act
+        await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
+
+        // Assert
+        await using var db = database.Factory.CreateDbContext();
+        var keys = await db.PermissionDefinitions
+            .IgnoreQueryFilters()
+            .Select(p => p.PermissionKey)
+            .ToListAsync();
+        Assert.Contains(WellKnownPermissionKeys.ModulesReload, keys);
+        Assert.Contains(WellKnownPermissionKeys.ModulesRead, keys);
     }
 
     /// <summary>ServiceAccount でグループ未所属の Principal は展開できない。</summary>

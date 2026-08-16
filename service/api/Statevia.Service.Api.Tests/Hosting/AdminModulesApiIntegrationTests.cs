@@ -106,6 +106,54 @@ public sealed class AdminModulesApiIntegrationTests : IClassFixture<SecurityInte
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    /// <summary>modules.reload のみの API キーで reload できる。</summary>
+    [Fact]
+    public async Task ReloadModules_ApiKeyWithModulesReload_ReturnsNoContent()
+    {
+        // Arrange
+        var plainKey = await _factory.SeedApiKeyWithPermissionsAsync(WellKnownPermissionKeys.ModulesReload);
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", plainKey);
+
+        // Act
+        var response = await client.PostAsync(new Uri("/internal/modules/reload", UriKind.Relative), content: null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    /// <summary>executions.read のみの API キーは reload で 403。</summary>
+    [Fact]
+    public async Task ReloadModules_ApiKeyWithoutModulesReload_ReturnsForbidden()
+    {
+        // Arrange
+        var plainKey = await _factory.SeedApiKeyPlainTextAsync();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", plainKey);
+
+        // Act
+        var response = await client.PostAsync(new Uri("/internal/modules/reload", UriKind.Relative), content: null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    /// <summary>modules.read のみの API キーで module 一覧を取得できる。</summary>
+    [Fact]
+    public async Task ListModules_ApiKeyWithModulesRead_ReturnsOk()
+    {
+        // Arrange
+        var plainKey = await _factory.SeedApiKeyWithPermissionsAsync(WellKnownPermissionKeys.ModulesRead);
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", plainKey);
+
+        // Act
+        var response = await client.GetAsync(new Uri("/v1/admin/modules", UriKind.Relative));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     private HttpClient CreateAuthenticatedClient(Guid principalId)
     {
         var client = _factory.CreateClient();
