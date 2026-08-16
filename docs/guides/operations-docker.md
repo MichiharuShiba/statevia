@@ -94,16 +94,21 @@ Service API は起動時に **modules ルート**（`STATEVIA_MODULES_PATH` ま�
 
 ```bash
 dotnet build service/cli/statevia-cli.sln
+dotnet run --project service/cli/Statevia.Service.Cli -- auth login \
+  --api-base http://localhost:8080 \
+  --tenant default \
+  --email ops@example.com
 dotnet run --project service/cli/Statevia.Service.Cli -- module install ./my-module.zip \
   --modules-path ./modules \
   --tenant default \
-  --api-base http://localhost:8080 \
-  --token "<tenant-admin-jwt>"
+  --api-base http://localhost:8080
 ```
+
+CI ではスコープ `modules.reload` の API キーを `--api-key` または `STATEVIA_API_KEY` に渡します。
 
 - 展開先は **`{modulesRoot}/{tenantKey}/`**（`--tenant` 必須。例: `./modules/default/...`）。
 - `--skip-reload` で filesystem 配置のみ。
-- reload の `X-Tenant-Id` は install の `--tenant` と一致する。認証はテナント管理者 JWT、またはスコープ `modules.reload` の API キー。
+- reload の `X-Tenant-Id` は install の `--tenant` と一致する。認証は `statevia auth login` の資格情報、またはスコープ `modules.reload` の API キー（`--token` は非推奨）。
 - **セキュリティ**: modules ルートへの書き込みは運用者・デプロイの信頼境界とする（テナントが HTTP から任意配置できない）。
 
 ### 運用確認

@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.1 |
-| 更新日 | 2026-07-18 |
+| Version | 1.2 |
+| 更新日 | 2026-08-15 |
 | 関連 | [platform.md](platform.md), [guides/operations-docker.md](../../guides/operations-docker.md) |
 
 ---
@@ -219,7 +219,8 @@ Module ディレクトリ直下に detached 署名ファイル `{moduleDirectory
 # publish 成果物から zip を作る例（ディレクトリ名 = my.module）
 dotnet publish path/to/MyModule.csproj -c Release -o ./publish/my.module
 cd ./publish && zip -r ../my.module.zip my.module
-statevia module install ../my.module.zip --modules-path ./modules --api-base http://localhost:8080 --token "<jwt>"
+statevia auth login --api-base http://localhost:8080 --tenant default --email ops@example.com
+statevia module install ../my.module.zip --modules-path ./modules --api-base http://localhost:8080
 ```
 
 Windows で zip ツールが無い場合は、エクスプローラで `my.module` フォルダを右クリック圧縮し、**ルートが `my.module/` 1 本**になるよう調整する。

@@ -105,9 +105,9 @@ openssl pkey -in signer-public.pem -pubin -pubout -outform DER | openssl dgst -s
 4. **配置と反映**:
 
 ```bash
-statevia module install ./order.module.zip --modules-path ./modules --api-base http://localhost:8080 --token "<jwt>"
+statevia auth login --api-base http://localhost:8080 --tenant default --email ops@example.com
+statevia module install ./order.module.zip --modules-path ./modules --api-base http://localhost:8080
 # 反映には Service API 再起動、または内部 reload が必要
-curl -X POST http://localhost:8080/internal/modules/reload -H "Authorization: Bearer <jwt>"
 ```
 
 5. **確認**: `GET /admin/modules`（認可必須）で `Status` / `TrustLevel` を確認する。
