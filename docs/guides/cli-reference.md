@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.1 |
-| 更新日 | 2026-08-15 |
+| Version | 1.3 |
+| 更新日 | 2026-08-16 |
 | 関連 | [../../service/cli/Statevia.Service.Cli/](../../service/cli/Statevia.Service.Cli/) |
 
 ---
@@ -13,19 +13,36 @@
 
 ## 実行方法
 
+本ガイドの例は、PATH 上の **`statevia`** を前提にします。
+
+```bash
+statevia <subcommand> [options]
+```
+
+ランタイム同梱の単一ファイルは、リポジトリルートから次で出力します。Windows（x64）の例です。
+
+```powershell
+dotnet publish service/cli/Statevia.Service.Cli/Statevia.Service.Cli.csproj `
+  -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o .\artifacts\statevia
+```
+
+成果物は `artifacts/statevia/statevia.exe` です。このフォルダを PATH に入れるか、フルパスで実行します。Linux / macOS では `-r` を `linux-x64` または `osx-arm64` に変えます（ファイル名は `statevia`）。
+
+exe を使わない場合は `dotnet run` でも同じサブコマンドを呼べます。`--` 以降が CLI 引数です。
+
 ```bash
 cd service/cli
 dotnet run --project Statevia.Service.Cli -- <subcommand> [options]
 ```
 
-ビルド後の実行ファイルを PATH に置いても同様です。
+`dotnet build -c Release` だけでも `bin/Release/net8.0/statevia.exe` は出ますが、同じフォルダの DLL と **.NET 8 ランタイム**が必要です。
 
 ## `definition validate`
 
 ワークフロー定義 YAML を Engine Loader で読み込み、検証します。
 
 ```bash
-dotnet run --project Statevia.Service.Cli -- definition validate path/to/workflow.yaml
+statevia definition validate path/to/workflow.yaml
 ```
 
 | 引数 | 説明 |
@@ -39,13 +56,13 @@ dotnet run --project Statevia.Service.Cli -- definition validate path/to/workflo
 Service API にログインし、資格情報を **`~/.statevia/credentials`**（環境変数 `STATEVIA_CREDENTIALS_FILE` で上書き可）へ保存します。Unix ではファイル権限を所有者読み書き（0600）にします。トークンは標準出力に出しません。
 
 ```bash
-dotnet run --project Statevia.Service.Cli -- auth login \
+statevia auth login \
   --api-base http://localhost:8080 \
   --tenant default \
   --email ops@example.com
 # --password を省略するとプロンプトで入力する
 
-dotnet run --project Statevia.Service.Cli -- auth logout
+statevia auth logout
 ```
 
 | オプション（login） | 説明 |
@@ -64,12 +81,12 @@ Action Module zip を **テナント別** modules ディレクトリへ安全に
 reload する場合は、先に `auth login` するか、スコープ `modules.reload` の API キーを使います。
 
 ```bash
-dotnet run --project Statevia.Service.Cli -- auth login \
+statevia auth login \
   --api-base http://localhost:8080 \
   --tenant default \
   --email ops@example.com
 
-dotnet run --project Statevia.Service.Cli -- module install ./my-module.zip \
+statevia module install ./my-module.zip \
   --modules-path ./modules \
   --tenant default \
   --api-base http://localhost:8080
@@ -78,7 +95,7 @@ dotnet run --project Statevia.Service.Cli -- module install ./my-module.zip \
 API キー（CI 向け）:
 
 ```bash
-dotnet run --project Statevia.Service.Cli -- module install ./my-module.zip \
+statevia module install ./my-module.zip \
   --modules-path ./modules \
   --tenant default \
   --api-base http://localhost:8080 \
