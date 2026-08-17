@@ -21,18 +21,12 @@ public static class AuthCommand
 
     private static Command CreateLogin()
     {
-        var apiBaseOption = new Option<string>(
+        var apiBaseOption = new Option<string?>(
             aliases: ["--api-base", "-a"],
-            description: "Service API base URL (e.g. http://localhost:8080)")
-        {
-            IsRequired = true,
-        };
-        var tenantKeyOption = new Option<string>(
+            description: "Service API base URL (e.g. http://localhost:8080). Falls back to STATEVIA_API_BASE or home config");
+        var tenantKeyOption = new Option<string?>(
             aliases: ["--tenant", "-T"],
-            description: "Tenant key")
-        {
-            IsRequired = true,
-        };
+            description: "Tenant key. Falls back to STATEVIA_TENANT or home config");
         var emailOption = new Option<string>(
             aliases: ["--email", "-e"],
             description: "Login email")
@@ -62,15 +56,47 @@ public static class AuthCommand
     }
 
     private static async Task<int> LoginAsync(
-        string apiBase,
-        string tenantKey,
+        string? apiBase,
+        string? tenantKey,
         string email,
         string? password)
     {
+        string resolvedApiBase;
+        string resolvedTenantKey;
+        try
+        {
+            var resolver = new CliSettingsResolver();
+            resolvedApiBase = resolver.ResolveApiBase(apiBase) ?? string.Empty;
+            resolvedTenantKey = resolver.ResolveTenant(tenantKey) ?? string.Empty;
+        }
+        catch (CliHomeFileException ex)
+        {
+            await Console.Error.WriteLineAsync(ex.Message).ConfigureAwait(false);
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(resolvedApiBase))
+        {
+            await Console.Error.WriteLineAsync(
+                    "--api-base is required (or STATEVIA_API_BASE / home config apiBase).")
+                .ConfigureAwait(false);
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(resolvedTenantKey))
+        {
+            await Console.Error.WriteLineAsync(
+                    "--tenant is required (or STATEVIA_TENANT / home config tenant).")
+                .ConfigureAwait(false);
+            return 1;
+        }
+
+        apiBase = resolvedApiBase;
+        tenantKey = resolvedTenantKey;
+
         if (string.IsNullOrWhiteSpace(password))
         {
-            await Console.Out.WriteAsync("Password: ").ConfigureAwait(false);
-            password = await Console.In.ReadLineAsync().ConfigureAwait(false);
+            password = await CliConsolePrompt.ReadSecretAsync("Password").ConfigureAwait(false);
         }
 
         if (string.IsNullOrWhiteSpace(password))
@@ -135,6 +161,22 @@ public static class AuthCommand
             payload.AccessToken,
             payload.ExpiresAt,
             apiBaseUri.ToString()));
+
+        try
+        {
+            var configStore = new CliConfigStore();
+            var currentConfig = configStore.TryLoad() ?? new CliConfigFile();
+            configStore.Save(currentConfig with
+            {
+                ApiBase = apiBaseUri.ToString(),
+                Tenant = savedTenantKey,
+            });
+        }
+        catch (CliHomeFileException ex)
+        {
+            await Console.Error.WriteLineAsync(ex.Message).ConfigureAwait(false);
+            return 1;
+        }
 
         await Console.Out.WriteLineAsync($"Logged in. Credentials saved to {store.FilePath}.").ConfigureAwait(false);
         return 0;

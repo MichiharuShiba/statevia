@@ -23,12 +23,9 @@ public static class ModuleInstallCommand
         var bearerTokenOption = new Option<string?>(
             aliases: ["--token", "-t"],
             description: "Deprecated. Bearer token for reload. Prefer auth login or --api-key");
-        var tenantKeyOption = new Option<string>(
+        var tenantKeyOption = new Option<string?>(
             aliases: ["--tenant", "-T"],
-            description: "Tenant key (required). Installs under {modulesRoot}/{tenantKey}/ and sets X-Tenant-Id on reload")
-        {
-            IsRequired = true,
-        };
+            description: "Tenant key. Falls back to STATEVIA_TENANT or home config. Installs under {modulesRoot}/{tenantKey}/ and sets X-Tenant-Id on reload");
         var skipReloadOption = new Option<bool>(
             aliases: ["--skip-reload"],
             description: "Skip POST /internal/modules/reload after install");
@@ -63,7 +60,7 @@ public static class ModuleInstallCommand
         string? apiBase,
         string? apiKey,
         string? bearerToken,
-        string tenantKey,
+        string? tenantKey,
         bool skipReload)
     {
         if (!zipFile.Exists)
@@ -72,22 +69,45 @@ public static class ModuleInstallCommand
             return 1;
         }
 
+        string resolvedModulesPath;
+        string resolvedApiBase;
+        string resolvedTenantKey;
+        try
+        {
+            var resolver = new CliSettingsResolver();
+            resolvedModulesPath = resolver.ResolveModulesPath(modulesPath) ?? string.Empty;
+            resolvedApiBase = resolver.ResolveApiBase(apiBase) ?? string.Empty;
+            resolvedTenantKey = resolver.ResolveTenant(tenantKey) ?? string.Empty;
+        }
+        catch (CliHomeFileException ex)
+        {
+            await Console.Error.WriteLineAsync(ex.Message).ConfigureAwait(false);
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(resolvedTenantKey))
+        {
+            await Console.Error.WriteLineAsync(
+                    "--tenant is required (or STATEVIA_TENANT / home config tenant).")
+                .ConfigureAwait(false);
+            return 1;
+        }
+
         string normalizedTenantKey;
         string tenantModulesRoot;
         try
         {
-            normalizedTenantKey = TenantModulePath.NormalizeTenantKey(tenantKey);
+            normalizedTenantKey = TenantModulePath.NormalizeTenantKey(resolvedTenantKey);
             var contentRoot = Directory.GetCurrentDirectory();
-            // CLI の明示 --modules-path を環境変数より優先する。
-            var modulesRoot = string.IsNullOrWhiteSpace(modulesPath)
+            var modulesRoot = string.IsNullOrWhiteSpace(resolvedModulesPath)
                 ? ModulePathResolver.Resolve(
                     contentRoot,
-                    Environment.GetEnvironmentVariable(ModulePathResolver.EnvironmentVariable),
+                    environmentPath: null,
                     configurationPath: null)
                 : ModulePathResolver.Resolve(
                     contentRoot,
                     environmentPath: null,
-                    configurationPath: modulesPath);
+                    configurationPath: resolvedModulesPath);
             tenantModulesRoot = TenantModulePath.ResolveTenantModulesRoot(modulesRoot, normalizedTenantKey);
         }
         catch (ArgumentException ex)
@@ -108,7 +128,7 @@ public static class ModuleInstallCommand
                 return 0;
             }
 
-            if (string.IsNullOrWhiteSpace(apiBase))
+            if (string.IsNullOrWhiteSpace(resolvedApiBase))
             {
                 await Console.Out.WriteLineAsync(
                         "Reload skipped: specify --api-base to call POST /internal/modules/reload.")
@@ -116,7 +136,7 @@ public static class ModuleInstallCommand
                 return 0;
             }
 
-            return await ReloadModulesAsync(apiBase, apiKey, bearerToken, normalizedTenantKey)
+            return await ReloadModulesAsync(resolvedApiBase, apiKey, bearerToken, normalizedTenantKey)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
@@ -133,11 +153,20 @@ public static class ModuleInstallCommand
         string tenantKey)
     {
         var store = new CliCredentialsStore();
-        var auth = CliReloadAuthentication.Resolve(apiKey, bearerToken, store, out var error);
-        if (auth is null)
+        CliReloadAuth? auth;
+        try
         {
-            await Console.Error.WriteLineAsync(error ?? "Reload authentication failed.")
-                .ConfigureAwait(false);
+            auth = CliReloadAuthentication.Resolve(apiKey, bearerToken, store, out var error);
+            if (auth is null)
+            {
+                await Console.Error.WriteLineAsync(error ?? "Reload authentication failed.")
+                    .ConfigureAwait(false);
+                return 1;
+            }
+        }
+        catch (CliHomeFileException ex)
+        {
+            await Console.Error.WriteLineAsync(ex.Message).ConfigureAwait(false);
             return 1;
         }
 

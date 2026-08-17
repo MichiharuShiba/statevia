@@ -4,7 +4,7 @@ namespace Statevia.Service.Cli.Infrastructure;
 
 /// <summary>CLI 資格情報ファイル（<c>~/.statevia/credentials</c>）の読み書き。</summary>
 /// <remarks>
-/// <para>既定パスはユーザープロファイル配下。環境変数 <c>STATEVIA_CREDENTIALS_FILE</c> で上書きできる。</para>
+/// <para>既定パスは <see cref="CliHomePaths.CredentialsPath"/>。<c>STATEVIA_CREDENTIALS_FILE</c> は絶対パス上書きとして残す。</para>
 /// <para>Unix ではファイル権限を所有者読み書き（0600）にする。Windows はユーザープロファイル配下への配置で代替する。</para>
 /// </remarks>
 public sealed class CliCredentialsStore
@@ -28,17 +28,14 @@ public sealed class CliCredentialsStore
             : Path.GetFullPath(filePath);
     }
 
-    /// <summary>環境変数またはユーザープロファイルから既定パスを解決する。</summary>
+    /// <summary>環境変数または <see cref="CliHomePaths"/> から既定パスを解決する。</summary>
     public static string ResolveDefaultPath()
     {
         var overridePath = Environment.GetEnvironmentVariable(CredentialsFileEnvironmentVariable);
         if (!string.IsNullOrWhiteSpace(overridePath))
             return Path.GetFullPath(overridePath);
 
-        return Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".statevia",
-            "credentials");
+        return new CliHomePaths().CredentialsPath;
     }
 
     /// <summary>ファイルがあれば読み取る。欠落・不正 JSON は <see langword="null"/>。</summary>
@@ -109,13 +106,8 @@ public sealed class CliCredentialsStore
             File.Delete(FilePath);
     }
 
-    private static void RestrictToOwner(string path)
-    {
-        if (OperatingSystem.IsWindows())
-            return;
-
-        File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
-    }
+    private static void RestrictToOwner(string path) =>
+        CliHomePaths.RestrictSecretFileToOwner(path);
 }
 
 /// <summary>CLI 資格情報ファイルの JSON 契約。</summary>
