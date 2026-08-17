@@ -13,6 +13,7 @@ public static class Program
         var root = new RootCommand("Statevia platform CLI");
         root.AddCommand(DefinitionValidateCommand.Create());
         root.AddCommand(AuthCommand.Create());
+        root.AddCommand(ConfigCommand.Create());
         root.AddCommand(ModuleInstallCommand.Create());
         return root.InvokeAsync(args);
     }

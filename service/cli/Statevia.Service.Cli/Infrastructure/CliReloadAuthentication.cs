@@ -14,7 +14,7 @@ internal static class CliReloadAuthentication
     internal const string ApiKeyEnvironmentVariable = "STATEVIA_API_KEY";
 
     /// <summary>
-    /// 優先順位: <c>--api-key</c> / <c>STATEVIA_API_KEY</c> → 資格情報ファイル → <c>--token</c>（非推奨）。
+    /// 優先順位: <c>--api-key</c> / <c>STATEVIA_API_KEY</c> → ホーム secrets → 資格情報 JWT → <c>--token</c>（非推奨）。
     /// </summary>
     /// <param name="apiKeyOption"><c>--api-key</c>。</param>
     /// <param name="bearerTokenOption"><c>--token</c>。</param>
@@ -32,6 +32,10 @@ internal static class CliReloadAuthentication
         if (!string.IsNullOrWhiteSpace(apiKey))
             return new CliReloadAuth(BearerToken: null, ApiKey: apiKey.Trim(), WarnTokenDeprecated: false);
 
+        var homeApiKey = new CliSecretsStore().TryGetApiKey();
+        if (!string.IsNullOrWhiteSpace(homeApiKey))
+            return new CliReloadAuth(BearerToken: null, ApiKey: homeApiKey, WarnTokenDeprecated: false);
+
         if (store.TryGetValidAccessToken(out var accessToken) && !string.IsNullOrWhiteSpace(accessToken))
             return new CliReloadAuth(accessToken, ApiKey: null, WarnTokenDeprecated: false);
 
@@ -40,7 +44,7 @@ internal static class CliReloadAuthentication
 
         error = store.HasExpiredAccessToken()
             ? "Credentials expired. Run 'statevia auth login'."
-            : "Reload requires --api-key (or STATEVIA_API_KEY), a saved login (statevia auth login), or --token (deprecated).";
+            : "Reload requires --api-key (or STATEVIA_API_KEY), home secrets, a saved login (statevia auth login), or --token (deprecated).";
         return null;
     }
 

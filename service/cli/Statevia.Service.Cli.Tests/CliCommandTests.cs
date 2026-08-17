@@ -12,19 +12,31 @@ public sealed class CliCommandTests : IDisposable
 {
     private readonly string? _previousCredentialsFile;
     private readonly string? _previousApiKey;
+    private readonly string? _previousHome;
+    private readonly string? _previousApiBase;
+    private readonly string? _previousTenant;
+    private readonly string? _previousModulesPath;
+    private readonly string _isolatedHome;
 
-    /// <summary>資格情報ファイルと API キー環境変数をテストごとに隔離する。</summary>
+    /// <summary>ホーム・資格情報・関連環境変数をテストごとに隔離する。</summary>
     public CliCommandTests()
     {
         _previousCredentialsFile = Environment.GetEnvironmentVariable("STATEVIA_CREDENTIALS_FILE");
         _previousApiKey = Environment.GetEnvironmentVariable("STATEVIA_API_KEY");
-        var isolatedCredentialsFile = Path.Combine(
-            Path.GetTempPath(),
-            "statevia-cli-test",
-            Guid.NewGuid().ToString("N"),
-            "credentials");
-        Environment.SetEnvironmentVariable("STATEVIA_CREDENTIALS_FILE", isolatedCredentialsFile);
+        _previousHome = Environment.GetEnvironmentVariable("STATEVIA_HOME");
+        _previousApiBase = Environment.GetEnvironmentVariable("STATEVIA_API_BASE");
+        _previousTenant = Environment.GetEnvironmentVariable("STATEVIA_TENANT");
+        _previousModulesPath = Environment.GetEnvironmentVariable("STATEVIA_MODULES_PATH");
+        _isolatedHome = Path.Combine(Path.GetTempPath(), "statevia-cli-test", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_isolatedHome);
+        Environment.SetEnvironmentVariable("STATEVIA_HOME", _isolatedHome);
+        Environment.SetEnvironmentVariable(
+            "STATEVIA_CREDENTIALS_FILE",
+            Path.Combine(_isolatedHome, "credentials"));
         Environment.SetEnvironmentVariable("STATEVIA_API_KEY", null);
+        Environment.SetEnvironmentVariable("STATEVIA_API_BASE", null);
+        Environment.SetEnvironmentVariable("STATEVIA_TENANT", null);
+        Environment.SetEnvironmentVariable("STATEVIA_MODULES_PATH", null);
     }
 
     /// <inheritdoc />
@@ -32,6 +44,19 @@ public sealed class CliCommandTests : IDisposable
     {
         Environment.SetEnvironmentVariable("STATEVIA_CREDENTIALS_FILE", _previousCredentialsFile);
         Environment.SetEnvironmentVariable("STATEVIA_API_KEY", _previousApiKey);
+        Environment.SetEnvironmentVariable("STATEVIA_HOME", _previousHome);
+        Environment.SetEnvironmentVariable("STATEVIA_API_BASE", _previousApiBase);
+        Environment.SetEnvironmentVariable("STATEVIA_TENANT", _previousTenant);
+        Environment.SetEnvironmentVariable("STATEVIA_MODULES_PATH", _previousModulesPath);
+        try
+        {
+            if (Directory.Exists(_isolatedHome))
+                Directory.Delete(_isolatedHome, recursive: true);
+        }
+        catch (IOException)
+        {
+            // テスト隔離用ディレクトリの削除失敗は無視する。
+        }
     }
 
     /// <summary>definition validate が有効 YAML で成功する。</summary>
@@ -777,7 +802,10 @@ public sealed class CliCommandTests : IDisposable
             HttpStatusCode.OK,
             """{"accessToken":"prompted-token","expiresAt":"2099-12-31T00:00:00Z","tenantId":"11111111-1111-1111-1111-111111111111","tenantKey":"acme-corp","principalId":"22222222-2222-2222-2222-222222222222"}""");
         var previousIn = Console.In;
+        var previousOut = Console.Out;
         Console.SetIn(new StringReader("prompted-secret"));
+        using var outWriter = new StringWriter();
+        Console.SetOut(outWriter);
 
         int exitCode;
         try
@@ -797,12 +825,14 @@ public sealed class CliCommandTests : IDisposable
         finally
         {
             Console.SetIn(previousIn);
+            Console.SetOut(previousOut);
         }
 
         // Assert
         await listenerTask.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.Equal(0, exitCode);
         Assert.Equal("prompted-token", new CliCredentialsStore().TryLoad()?.AccessToken);
+        Assert.DoesNotContain("prompted-secret", outWriter.ToString(), StringComparison.Ordinal);
     }
 
     /// <summary>不正な --api-base は失敗する。</summary>
@@ -1107,6 +1137,514 @@ public sealed class CliCommandTests : IDisposable
             // Assert
             Assert.Equal(1, exitCode);
         }
+    }
+
+    /// <summary>STATEVIA_HOME が credentials 既定パスをホーム配下へ寄せる。</summary>
+    [Fact]
+    public void CliHomePaths_StateviaHome_OverridesCredentialsDefaultPath()
+    {
+        // Arrange
+        Environment.SetEnvironmentVariable("STATEVIA_CREDENTIALS_FILE", null);
+
+        // Act
+        var home = new CliHomePaths();
+        var credentialsPath = CliCredentialsStore.ResolveDefaultPath();
+
+        // Assert
+        Assert.Equal(_isolatedHome, home.HomeDirectory);
+        Assert.Equal(Path.Combine(_isolatedHome, "credentials"), credentialsPath);
+        Assert.Equal(Path.Combine(_isolatedHome, "config"), home.ConfigPath);
+        Assert.Equal(Path.Combine(_isolatedHome, "secrets"), home.SecretsPath);
+    }
+
+    /// <summary>設定解決はフラグが環境変数とホームより勝つ。</summary>
+    [Fact]
+    public void CliSettingsResolver_Flag_BeatsEnvironmentAndHome()
+    {
+        // Arrange
+        new CliConfigStore().Save(new CliConfigFile("http://home.example/", "home-tenant", "./home-modules"));
+        Environment.SetEnvironmentVariable("STATEVIA_API_BASE", "http://env.example/");
+        Environment.SetEnvironmentVariable("STATEVIA_TENANT", "env-tenant");
+        Environment.SetEnvironmentVariable("STATEVIA_MODULES_PATH", "./env-modules");
+        var resolver = new CliSettingsResolver();
+
+        // Act / Assert
+        Assert.Equal("http://flag.example/", resolver.ResolveApiBase("http://flag.example/"));
+        Assert.Equal("flag-tenant", resolver.ResolveTenant("flag-tenant"));
+        Assert.Equal("./flag-modules", resolver.ResolveModulesPath("./flag-modules"));
+    }
+
+    /// <summary>設定解決は環境変数がホームより勝つ。</summary>
+    [Fact]
+    public void CliSettingsResolver_Environment_BeatsHome()
+    {
+        // Arrange
+        new CliConfigStore().Save(new CliConfigFile("http://home.example/", "home-tenant", "./home-modules"));
+        Environment.SetEnvironmentVariable("STATEVIA_API_BASE", "http://env.example/");
+        Environment.SetEnvironmentVariable("STATEVIA_TENANT", "env-tenant");
+        Environment.SetEnvironmentVariable("STATEVIA_MODULES_PATH", "./env-modules");
+        var resolver = new CliSettingsResolver();
+
+        // Act / Assert
+        Assert.Equal("http://env.example/", resolver.ResolveApiBase(null));
+        Assert.Equal("env-tenant", resolver.ResolveTenant(null));
+        Assert.Equal("./env-modules", resolver.ResolveModulesPath(null));
+    }
+
+    /// <summary>フラグと環境変数が無いときホーム config を使う。</summary>
+    [Fact]
+    public void CliSettingsResolver_HomeConfig_UsedWhenFlagAndEnvironmentMissing()
+    {
+        // Arrange
+        new CliConfigStore().Save(new CliConfigFile("http://home.example/", "home-tenant", "./home-modules"));
+        var resolver = new CliSettingsResolver();
+
+        // Act / Assert
+        Assert.Equal("http://home.example/", resolver.ResolveApiBase(null));
+        Assert.Equal("home-tenant", resolver.ResolveTenant(null));
+        Assert.Equal("./home-modules", resolver.ResolveModulesPath(null));
+    }
+
+    /// <summary>API キー解決はフラグが環境変数とホーム secrets より勝つ。</summary>
+    [Fact]
+    public void CliSettingsResolver_ApiKeyFlag_BeatsEnvironmentAndHome()
+    {
+        // Arrange
+        new CliSecretsStore().SaveApiKey("home-secret-key");
+        Environment.SetEnvironmentVariable("STATEVIA_API_KEY", "env-secret-key");
+        var resolver = new CliSettingsResolver();
+
+        // Act / Assert
+        Assert.Equal("flag-secret-key", resolver.ResolveApiKey("flag-secret-key"));
+        Assert.Equal("env-secret-key", resolver.ResolveApiKey(null));
+
+        Environment.SetEnvironmentVariable("STATEVIA_API_KEY", null);
+        Assert.Equal("home-secret-key", resolver.ResolveApiKey(null));
+    }
+
+    /// <summary>config set/get/unset がホームに書き、未設定は (unset) になる。</summary>
+    [Fact]
+    public async Task ConfigSetGetUnset_WritesHomeAndPrintsUnset()
+    {
+        // Arrange
+        var previousOut = Console.Out;
+        using var outWriter = new StringWriter();
+        Console.SetOut(outWriter);
+
+        try
+        {
+            // Act
+            var setCode = await Program.Main(["config", "set", "tenant", "acme-corp"]);
+            var getSetCode = await Program.Main(["config", "get", "tenant"]);
+            var unsetCode = await Program.Main(["config", "unset", "tenant"]);
+            var getUnsetCode = await Program.Main(["config", "get", "tenant"]);
+
+            // Assert
+            Assert.Equal(0, setCode);
+            Assert.Equal(0, getSetCode);
+            Assert.Equal(0, unsetCode);
+            Assert.Equal(0, getUnsetCode);
+            Assert.Contains("acme-corp", outWriter.ToString(), StringComparison.Ordinal);
+            Assert.Contains("(unset)", outWriter.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetOut(previousOut);
+        }
+    }
+
+    /// <summary>config set の引数省略は各項目を尋ね、初期値を示して上書きできる。</summary>
+    [Fact]
+    public async Task ConfigSet_NoArgs_PromptsEachFieldAndOverwrites()
+    {
+        // Arrange
+        new CliConfigStore().Save(new CliConfigFile("http://localhost:8080/", "old-tenant", "./old-modules"));
+        new CliSecretsStore().SaveApiKey("old-secret-key");
+        var previousIn = Console.In;
+        var previousOut = Console.Out;
+        Console.SetIn(new StringReader(
+            "http://127.0.0.1:9090/\nnew-tenant\n./new-modules\nnew-secret-key\n"));
+        using var outWriter = new StringWriter();
+        Console.SetOut(outWriter);
+
+        try
+        {
+            // Act
+            var exitCode = await Program.Main(["config", "set"]);
+
+            // Assert
+            Assert.Equal(0, exitCode);
+            var loaded = new CliConfigStore().TryLoad();
+            Assert.NotNull(loaded);
+            Assert.Equal("http://127.0.0.1:9090/", loaded.ApiBase);
+            Assert.Equal("new-tenant", loaded.Tenant);
+            Assert.Equal("./new-modules", loaded.ModulesPath);
+            Assert.Equal("new-secret-key", new CliSecretsStore().TryGetApiKey());
+            Assert.Contains("old-tenant", outWriter.ToString(), StringComparison.Ordinal);
+            Assert.Contains("********", outWriter.ToString(), StringComparison.Ordinal);
+            Assert.DoesNotContain("old-secret-key", outWriter.ToString(), StringComparison.Ordinal);
+            Assert.DoesNotContain("new-secret-key", outWriter.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetIn(previousIn);
+            Console.SetOut(previousOut);
+        }
+    }
+
+    /// <summary>対話の空入力は既存値を維持する。</summary>
+    [Fact]
+    public async Task ConfigSet_NoArgs_EmptyInputKeepsExisting()
+    {
+        // Arrange
+        new CliConfigStore().Save(new CliConfigFile("http://localhost:8080/", "keep-tenant", "./keep-modules"));
+        new CliSecretsStore().SaveApiKey("keep-secret-key");
+        var previousIn = Console.In;
+        Console.SetIn(new StringReader("\n\n\n\n"));
+
+        try
+        {
+            // Act
+            var exitCode = await Program.Main(["config", "set"]);
+
+            // Assert
+            Assert.Equal(0, exitCode);
+            var loaded = new CliConfigStore().TryLoad();
+            Assert.NotNull(loaded);
+            Assert.Equal("http://localhost:8080/", loaded.ApiBase);
+            Assert.Equal("keep-tenant", loaded.Tenant);
+            Assert.Equal("./keep-modules", loaded.ModulesPath);
+            Assert.Equal("keep-secret-key", new CliSecretsStore().TryGetApiKey());
+        }
+        finally
+        {
+            Console.SetIn(previousIn);
+        }
+    }
+
+    /// <summary>キーだけ指定した set は現在値を初期値として尋ねる。</summary>
+    [Fact]
+    public async Task ConfigSet_KeyOnly_PromptsWithCurrentValue()
+    {
+        // Arrange
+        new CliConfigStore().Save(new CliConfigFile(Tenant: "old-tenant"));
+        var previousIn = Console.In;
+        var previousOut = Console.Out;
+        Console.SetIn(new StringReader("new-tenant\n"));
+        using var outWriter = new StringWriter();
+        Console.SetOut(outWriter);
+
+        try
+        {
+            // Act
+            var exitCode = await Program.Main(["config", "set", "tenant"]);
+
+            // Assert
+            Assert.Equal(0, exitCode);
+            Assert.Equal("new-tenant", new CliConfigStore().TryLoad()?.Tenant);
+            Assert.Contains("old-tenant", outWriter.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetIn(previousIn);
+            Console.SetOut(previousOut);
+        }
+    }
+
+    /// <summary>config set の API キー対話は平文を標準出力に出さない。</summary>
+    [Fact]
+    public async Task ConfigSet_ApiKeyPrompt_DoesNotPrintSecret()
+    {
+        // Arrange
+        const string apiKey = "typed-secret-api-key";
+        var previousIn = Console.In;
+        var previousOut = Console.Out;
+        Console.SetIn(new StringReader(apiKey + "\n"));
+        using var outWriter = new StringWriter();
+        Console.SetOut(outWriter);
+
+        try
+        {
+            // Act
+            var exitCode = await Program.Main(["config", "set", "api-key"]);
+
+            // Assert
+            Assert.Equal(0, exitCode);
+            Assert.Equal(apiKey, new CliSecretsStore().TryGetApiKey());
+            Assert.DoesNotContain(apiKey, outWriter.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetIn(previousIn);
+            Console.SetOut(previousOut);
+        }
+    }
+
+    /// <summary>未知キーの set/get/unset は失敗する。</summary>
+    [Fact]
+    public async Task Config_UnknownKey_ReturnsFailure()
+    {
+        // Arrange
+        var previousError = Console.Error;
+        using var errorWriter = new StringWriter();
+        Console.SetError(errorWriter);
+
+        try
+        {
+            // Act
+            var setCode = await Program.Main(["config", "set", "unknown-key", "value"]);
+            var getCode = await Program.Main(["config", "get", "unknown-key"]);
+            var unsetCode = await Program.Main(["config", "unset", "unknown-key"]);
+
+            // Assert
+            Assert.Equal(1, setCode);
+            Assert.Equal(1, getCode);
+            Assert.Equal(1, unsetCode);
+            Assert.Contains("Unknown key", errorWriter.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetError(previousError);
+        }
+    }
+
+    /// <summary>不正な api-base は書き込まない。</summary>
+    [Fact]
+    public async Task ConfigSet_InvalidApiBase_ReturnsFailure()
+    {
+        // Arrange
+        var previousError = Console.Error;
+        using var errorWriter = new StringWriter();
+        Console.SetError(errorWriter);
+
+        try
+        {
+            // Act
+            var exitCode = await Program.Main(["config", "set", "api-base", "not-a-url"]);
+
+            // Assert
+            Assert.Equal(1, exitCode);
+            Assert.Contains("Invalid api-base URL", errorWriter.ToString(), StringComparison.Ordinal);
+            Assert.Null(new CliConfigStore().TryLoad()?.ApiBase);
+        }
+        finally
+        {
+            Console.SetError(previousError);
+        }
+    }
+
+    /// <summary>対話の不正 api-base は既存値を残して失敗する。</summary>
+    [Fact]
+    public async Task ConfigSet_NoArgs_InvalidApiBase_KeepsExisting()
+    {
+        // Arrange
+        new CliConfigStore().Save(new CliConfigFile("http://localhost:8080/", "keep-tenant", null));
+        var previousIn = Console.In;
+        var previousError = Console.Error;
+        Console.SetIn(new StringReader("not-a-url\n"));
+        using var errorWriter = new StringWriter();
+        Console.SetError(errorWriter);
+
+        try
+        {
+            // Act
+            var exitCode = await Program.Main(["config", "set"]);
+
+            // Assert
+            Assert.Equal(1, exitCode);
+            Assert.Equal("keep-tenant", new CliConfigStore().TryLoad()?.Tenant);
+        }
+        finally
+        {
+            Console.SetIn(previousIn);
+            Console.SetError(previousError);
+        }
+    }
+
+    /// <summary>config unset api-key は secrets を削除する。</summary>
+    [Fact]
+    public async Task ConfigUnset_ApiKey_RemovesSecrets()
+    {
+        // Arrange
+        new CliSecretsStore().SaveApiKey("to-unset");
+
+        // Act
+        var exitCode = await Program.Main(["config", "unset", "api-key"]);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Null(new CliSecretsStore().TryGetApiKey());
+    }
+
+    /// <summary>config get は API キーをマスクし、トークンを出さない。</summary>
+    [Fact]
+    public async Task ConfigGet_MasksApiKeyAndDoesNotPrintJwt()
+    {
+        // Arrange
+        const string apiKey = "super-secret-api-key";
+        new CliSecretsStore().SaveApiKey(apiKey);
+        new CliCredentialsStore().Save(new CliCredentials(
+            "acme-corp",
+            "jwt-should-not-print",
+            DateTimeOffset.UtcNow.AddHours(1),
+            "http://localhost:8080/"));
+        var previousOut = Console.Out;
+        using var outWriter = new StringWriter();
+        Console.SetOut(outWriter);
+
+        try
+        {
+            // Act
+            var exitCode = await Program.Main(["config", "get"]);
+
+            // Assert
+            Assert.Equal(0, exitCode);
+            Assert.Contains("********", outWriter.ToString(), StringComparison.Ordinal);
+            Assert.DoesNotContain(apiKey, outWriter.ToString(), StringComparison.Ordinal);
+            Assert.DoesNotContain("jwt-should-not-print", outWriter.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetOut(previousOut);
+        }
+    }
+
+    /// <summary>不正なホーム config は非ゼロで、中身を出さない。</summary>
+    [Fact]
+    public async Task ConfigGet_InvalidJson_ReturnsFailureWithoutContents()
+    {
+        // Arrange
+        File.WriteAllText(new CliHomePaths().ConfigPath, "{not-json");
+        var previousError = Console.Error;
+        using var errorWriter = new StringWriter();
+        Console.SetError(errorWriter);
+
+        try
+        {
+            // Act
+            var exitCode = await Program.Main(["config", "get", "tenant"]);
+
+            // Assert
+            Assert.Equal(1, exitCode);
+            Assert.Contains("invalid JSON", errorWriter.ToString(), StringComparison.Ordinal);
+            Assert.DoesNotContain("{not-json", errorWriter.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetError(previousError);
+        }
+    }
+
+    /// <summary>auth login はフラグ省略時にホーム config を使い、成功時に書き戻す。</summary>
+    [Fact]
+    public async Task AuthLogin_WithoutApiBaseAndTenant_UsesHomeConfigAndWritesBack()
+    {
+        // Arrange
+        const string accessToken = "login-from-home-config";
+        var port = GetFreeTcpPort();
+        new CliConfigStore().Save(new CliConfigFile($"http://127.0.0.1:{port}/", "acme-corp", null));
+        using var listener = new HttpListener();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+        var listenerTask = Task.Run(async () =>
+        {
+            var context = await listener.GetContextAsync().ConfigureAwait(false);
+            using var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8);
+            var requestBody = await reader.ReadToEndAsync().ConfigureAwait(false);
+            Assert.Contains("acme-corp", requestBody, StringComparison.Ordinal);
+            var responseJson =
+                $$"""{"accessToken":"{{accessToken}}","expiresAt":"2099-12-31T00:00:00Z","tenantId":"11111111-1111-1111-1111-111111111111","tenantKey":"acme-corp","principalId":"22222222-2222-2222-2222-222222222222"}""";
+            var responseBytes = Encoding.UTF8.GetBytes(responseJson);
+            context.Response.StatusCode = (int)HttpStatusCode.OK;
+            context.Response.ContentType = "application/json";
+            await context.Response.OutputStream.WriteAsync(responseBytes).ConfigureAwait(false);
+            context.Response.Close();
+        });
+
+        // Act
+        var exitCode = await Program.Main([
+            "auth",
+            "login",
+            "--email",
+            "ops@example.com",
+            "--password",
+            "secret-password",
+        ]);
+
+        // Assert
+        await listenerTask.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(0, exitCode);
+        var loaded = new CliConfigStore().TryLoad();
+        Assert.NotNull(loaded);
+        Assert.Equal("acme-corp", loaded.Tenant);
+        Assert.StartsWith($"http://127.0.0.1:{port}/", loaded.ApiBase, StringComparison.Ordinal);
+    }
+
+    /// <summary>module install は --tenant 省略時にホーム config を使う。</summary>
+    [Fact]
+    public async Task ModuleInstall_WithoutTenantFlag_UsesHomeConfig()
+    {
+        // Arrange
+        var modulesRoot = CreateTempDirectory();
+        var zipPath = Path.Combine(CreateTempDirectory(), "test.module.zip");
+        CreateZip(zipPath, ("test.module/test.module.dll", "MZ"u8.ToArray()));
+        new CliConfigStore().Save(new CliConfigFile(Tenant: "acme-corp"));
+
+        // Act
+        var exitCode = await Program.Main([
+            "module",
+            "install",
+            zipPath,
+            "--modules-path",
+            modulesRoot,
+            "--skip-reload",
+        ]);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(Path.Combine(modulesRoot, "acme-corp", "test.module", "test.module.dll")));
+    }
+
+    /// <summary>ホーム secrets の API キーで reload できる。</summary>
+    [Fact]
+    public async Task ModuleInstall_ReloadWithHomeSecrets_SendsXApiKeyHeader()
+    {
+        // Arrange
+        const string apiKey = "home-secrets-api-key";
+        new CliSecretsStore().SaveApiKey(apiKey);
+        var modulesRoot = CreateTempDirectory();
+        var zipPath = Path.Combine(CreateTempDirectory(), "test.module.zip");
+        CreateZip(zipPath, ("test.module/test.module.dll", "MZ"u8.ToArray()));
+        var port = GetFreeTcpPort();
+        using var listener = new HttpListener();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+        string? receivedApiKey = null;
+        var listenerTask = Task.Run(async () =>
+        {
+            var context = await listener.GetContextAsync().ConfigureAwait(false);
+            receivedApiKey = context.Request.Headers["X-Api-Key"];
+            context.Response.StatusCode = (int)HttpStatusCode.NoContent;
+            context.Response.Close();
+        });
+
+        // Act
+        var exitCode = await Program.Main([
+            "module",
+            "install",
+            zipPath,
+            "--modules-path",
+            modulesRoot,
+            "--tenant",
+            "acme-corp",
+            "--api-base",
+            $"http://127.0.0.1:{port}",
+        ]);
+
+        // Assert
+        await listenerTask.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(0, exitCode);
+        Assert.Equal(apiKey, receivedApiKey);
     }
 
     private static async Task<string> WriteTempYamlAsync(string content)
