@@ -112,7 +112,7 @@ Development では API 起動時に `admin` / `admin` が自動作成される�
 ```bash
 curl -s -X POST http://localhost:8080/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"tenantKey":"default","email":"admin","password":"admin"}'
+  -d '{"tenantKey":"default","username":"admin","password":"admin"}'
 ```
 
 ## 次に読むもの

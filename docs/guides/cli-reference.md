@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.5 |
-| 更新日 | 2026-08-16 |
+| Version | 1.6 |
+| 更新日 | 2026-08-18 |
 | 関連 | [../../service/cli/Statevia.Service.Cli/](../../service/cli/Statevia.Service.Cli/) |
 
 ---
@@ -115,7 +115,7 @@ Service API にログインし、資格情報を **`{STATEVIA_HOME}/credentials`
 statevia auth login \
   --api-base http://localhost:8080 \
   --tenant default \
-  --email ops@example.com
+  --username ops
 # --password を省略するとプロンプトで入力する
 
 statevia auth logout
@@ -124,8 +124,8 @@ statevia auth logout
 | オプション（login） | 説明 |
 | --- | --- |
 | `--api-base`, `-a` | Service API の基底 URL。省略時は `STATEVIA_API_BASE` またはホーム `config` |
-| `--tenant`, `-T` | テナントキー。省略時は `STATEVIA_TENANT` またはホーム `config` |
-| `--email`, `-e` | **必須**。ログインメール |
+| `--tenant`, `-t` | テナントキー。省略時は `STATEVIA_TENANT` またはホーム `config` |
+| `--username`, `-u` | **必須**。ログインユーザー名（1〜64 文字。先頭・末尾は英数字。途中のみハイフン・アンダースコア・ドット） |
 | `--password`, `-p` | パスワード（省略時はプロンプト。TTY では入力中を `*` でマスク） |
 
 どの源泉にも `api-base` / `tenant` が無いときは従来どおり必須エラーです。期限切れの JWT では `module install` の reload が失敗し、再ログインを促します。
@@ -139,7 +139,7 @@ reload する場合は、先に `auth login` するか、スコープ `modules.r
 ```bash
 statevia config set api-base http://localhost:8080
 statevia config set tenant default
-statevia auth login --email ops@example.com
+statevia auth login --username ops
 
 statevia module install ./my-module.zip \
   --modules-path ./modules \
@@ -159,11 +159,11 @@ statevia module install ./my-module.zip \
 | オプション | 説明 |
 | --- | --- |
 | `zip-file` | インストールする zip |
-| `--tenant`, `-T` | 展開先 `{modulesRoot}/{tenantKey}/` と reload の `X-Tenant-Id`。省略時は `STATEVIA_TENANT` またはホーム `config` |
+| `--tenant`, `-t` | 展開先 `{modulesRoot}/{tenantKey}/` と reload の `X-Tenant-Id`。省略時は `STATEVIA_TENANT` またはホーム `config` |
 | `--modules-path`, `-m` | modules ルート（既定: フラグ / `STATEVIA_MODULES_PATH` / ホーム `config` / `./modules`） |
 | `--api-base`, `-a` | 任意。指定時（またはホーム `config` / `STATEVIA_API_BASE`）は install 後に reload API を呼ぶ |
 | `--api-key` | reload 用 API キー（`X-Api-Key`）。`STATEVIA_API_KEY` およびホーム `secrets` でも可 |
-| `--token`, `-t` | **非推奨**。reload 用 Bearer トークン。このリリースでは動作する |
+| `--token` | **非推奨**。reload 用 Bearer トークン。このリリースでは動作する（短い別名なし） |
 | `--skip-reload` | reload をスキップ |
 
 - `--tenant` がどの源泉にも無い・不正キー（`..` 等）は非ゼロ終了。ルート直下への展開はしない。

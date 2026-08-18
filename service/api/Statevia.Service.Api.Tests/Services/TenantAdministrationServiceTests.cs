@@ -14,9 +14,10 @@ public sealed class TenantAdministrationServiceTests
     private static TenantAdministrationService CreateService(
         SqliteTestDatabase database,
         SettableTenantContextAccessor tenantContext,
-        Guid callerPrincipalId)
+        Guid callerPrincipalId,
+        TenantContextState? tenant = null)
     {
-        tenantContext.Set(TestTenantIds.DefaultContext with { PrincipalId = callerPrincipalId });
+        tenantContext.Set((tenant ?? TestTenantIds.DefaultContext) with { PrincipalId = callerPrincipalId });
         return new TenantAdministrationService(
             database.Factory,
             tenantContext,
@@ -55,6 +56,7 @@ public sealed class TenantAdministrationServiceTests
             adminId,
             new CreateAdminUserRequest
             {
+                Username = "new-user",
                 Email = "new-user@example.com",
                 Password = "initial-password",
                 DisplayName = "New User"
@@ -62,6 +64,7 @@ public sealed class TenantAdministrationServiceTests
             CancellationToken.None);
 
         // Assert
+        Assert.Equal("new-user", created.Username);
         Assert.Equal("new-user@example.com", created.Email);
         Assert.Equal("New User", created.DisplayName);
         Assert.True(created.IsActive);
@@ -81,6 +84,7 @@ public sealed class TenantAdministrationServiceTests
             adminId,
             new CreateAdminUserRequest
             {
+                Username = "disable-me",
                 Email = "disable-me@example.com",
                 Password = "initial-password"
             },
@@ -212,5 +216,101 @@ public sealed class TenantAdministrationServiceTests
         // Assert
         var revoked = Assert.Single(list, item => item.ApiKeyId == created.ApiKeyId);
         Assert.False(revoked.IsActive);
+    }
+
+    /// <summary>メールなしでユーザーを作成できる。</summary>
+    [Fact]
+    public async Task CreateUserAsync_WithoutEmail_Succeeds()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var adminId = await SecurityTestSeed.SeedUserAsync(database, "admin@example.com", "password", isTenantAdmin: true);
+        var tenantContext = new SettableTenantContextAccessor();
+        var service = CreateService(database, tenantContext, adminId);
+
+        // Act
+        var created = await service.CreateUserAsync(
+            adminId,
+            new CreateAdminUserRequest
+            {
+                Username = "no-mail",
+                Password = "initial-password"
+            },
+            CancellationToken.None);
+
+        // Assert
+        Assert.Equal("no-mail", created.Username);
+        Assert.Null(created.Email);
+    }
+
+    /// <summary>テナントが違えば同一 username を作成できる。</summary>
+    [Fact]
+    public async Task CreateUserAsync_SameUsernameDifferentTenant_Succeeds()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var defaultAdminId = await SecurityTestSeed.SeedUserAsync(
+            database, "admin@example.com", "password", isTenantAdmin: true);
+        var t1AdminId = await SecurityTestSeed.SeedUserAsync(
+            database, "t1-admin", "password", isTenantAdmin: true, tenantId: TestTenantIds.T1TenantId);
+        var defaultContext = new SettableTenantContextAccessor();
+        var defaultService = CreateService(database, defaultContext, defaultAdminId);
+        var t1Context = new SettableTenantContextAccessor();
+        var t1Service = CreateService(database, t1Context, t1AdminId, TestTenantIds.T1Context);
+
+        // Act
+        var defaultUser = await defaultService.CreateUserAsync(
+            defaultAdminId,
+            new CreateAdminUserRequest { Username = "shared", Password = "initial-password" },
+            CancellationToken.None);
+        var t1User = await t1Service.CreateUserAsync(
+            t1AdminId,
+            new CreateAdminUserRequest { Username = "shared", Password = "initial-password" },
+            CancellationToken.None);
+
+        // Assert
+        Assert.Equal("shared", defaultUser.Username);
+        Assert.Equal("shared", t1User.Username);
+        Assert.NotEqual(defaultUser.UserId, t1User.UserId);
+    }
+
+    /// <summary>テナントが違えば同一メールを付けられる。</summary>
+    [Fact]
+    public async Task CreateUserAsync_SameEmailDifferentTenant_Succeeds()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var defaultAdminId = await SecurityTestSeed.SeedUserAsync(
+            database, "admin@example.com", "password", isTenantAdmin: true);
+        var t1AdminId = await SecurityTestSeed.SeedUserAsync(
+            database, "t1-admin", "password", isTenantAdmin: true, tenantId: TestTenantIds.T1TenantId);
+        var defaultContext = new SettableTenantContextAccessor();
+        var defaultService = CreateService(database, defaultContext, defaultAdminId);
+        var t1Context = new SettableTenantContextAccessor();
+        var t1Service = CreateService(database, t1Context, t1AdminId, TestTenantIds.T1Context);
+
+        // Act
+        var defaultUser = await defaultService.CreateUserAsync(
+            defaultAdminId,
+            new CreateAdminUserRequest
+            {
+                Username = "ops-a",
+                Email = "ops@example.com",
+                Password = "initial-password"
+            },
+            CancellationToken.None);
+        var t1User = await t1Service.CreateUserAsync(
+            t1AdminId,
+            new CreateAdminUserRequest
+            {
+                Username = "ops-b",
+                Email = "ops@example.com",
+                Password = "initial-password"
+            },
+            CancellationToken.None);
+
+        // Assert
+        Assert.Equal("ops@example.com", defaultUser.Email);
+        Assert.Equal("ops@example.com", t1User.Email);
     }
 }

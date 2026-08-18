@@ -29,7 +29,7 @@ public sealed class AuthControllerTests
         var result = await controller.Login(new LoginRequest
         {
             TenantKey = "default",
-            Email = "user@example.com",
+            Username = "user",
             Password = "secret"
         }, CancellationToken.None);
 
@@ -65,6 +65,7 @@ public sealed class AuthControllerTests
             TenantId = TestTenantIds.DefaultTenantId,
             TenantKey = "default",
             PrincipalId = principalId,
+            Username = "user",
             Email = "user@example.com",
             IsTenantAdmin = true
         };

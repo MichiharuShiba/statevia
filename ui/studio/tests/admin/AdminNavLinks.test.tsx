@@ -21,6 +21,7 @@ describe("AdminNavLinks", () => {
       tenantId: "tenant",
       tenantKey: "default",
       principalId: "principal",
+      username: "admin",
       email: "admin@example.com",
       isTenantAdmin: true
     });
@@ -39,6 +40,7 @@ describe("AdminNavLinks", () => {
       tenantId: "tenant",
       tenantKey: "default",
       principalId: "principal",
+      username: "member",
       email: "member@example.com",
       isTenantAdmin: false
     });

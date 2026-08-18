@@ -40,7 +40,7 @@ describe("auth login route", () => {
 
     const req = new NextRequest("http://localhost/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({ tenantKey: "default", email: "u@example.com", password: "secret" })
+      body: JSON.stringify({ tenantKey: "default", username: "user", password: "secret" })
     });
     const res = await POST(req);
 
@@ -67,7 +67,7 @@ describe("auth login route", () => {
   it("必須項目欠落は 422", async () => {
     const req = new NextRequest("http://localhost/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({ tenantKey: "", email: "u@example.com", password: "" })
+      body: JSON.stringify({ tenantKey: "", username: "user", password: "" })
     });
     const res = await POST(req);
     expect(res.status).toBe(422);
@@ -87,7 +87,7 @@ describe("auth login route", () => {
 
     const req = new NextRequest("http://localhost/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({ tenantKey: "default", email: "u@example.com", password: "x" })
+      body: JSON.stringify({ tenantKey: "default", username: "user", password: "x" })
     });
     const res = await POST(req);
     expect(res.status).toBe(401);
@@ -107,7 +107,7 @@ describe("auth login route", () => {
 
     const req = new NextRequest("http://localhost/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({ tenantKey: "default", email: "u@example.com", password: "x" })
+      body: JSON.stringify({ tenantKey: "default", username: "user", password: "x" })
     });
     const res = await POST(req);
     expect(res.status).toBe(502);
@@ -127,7 +127,7 @@ describe("auth login route", () => {
 
     const req = new NextRequest("http://localhost/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({ tenantKey: "default", email: "u@example.com", password: "x" })
+      body: JSON.stringify({ tenantKey: "default", username: "user", password: "x" })
     });
     const res = await POST(req);
     expect(res.status).toBe(500);

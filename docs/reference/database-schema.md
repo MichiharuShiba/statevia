@@ -1,7 +1,11 @@
 # スキーマ定義
 
-Version: 1.17
+Version: 1.20
 Project: 実行型ステートマシン
+
+**Version 1.20（2026-08-18）**: `users.username` を varchar(64)（英数字・ハイフン・アンダースコア・ドット）、`users.email` を varchar(256) に制限。
+
+**Version 1.19（2026-08-17）**: `users.username` を追加（ログイン識別子、テナント内一意）。`email` は任意連絡先（NULL 可、非 NULL のみテナント内一意）。
 
 **Version 1.18（2026-08-10）**: `execution_branches.fork_node_id` の役割を明確化（並列エピソードの相関キー。定義名／Join `nodeId` ではない）。
 
@@ -78,7 +82,7 @@ Service API（C#）の EF Core マイグレーションで管理する PostgreSQ
 | tenants | Platform | テナントの truth（内部 UUID・外部 `tenant_key`・ライフサイクル） |
 | permission_definitions | Platform | グローバル権限定義（キー・表示ラベル） |
 | principals | Platform | 実行主体（User / ServiceAccount / System の共通行） |
-| users | Platform | 人間ユーザー（メール・パスワードハッシュ・管理者フラグ） |
+| users | Platform | 人間ユーザー（ユーザー名・任意メール・パスワードハッシュ・管理者フラグ） |
 | user_principals | Platform | User ↔ Principal の 1:1 対応 |
 | groups | Platform | テナント内グループ（権限付与の単位） |
 | group_permissions | Platform | グループに付与された権限キー |
@@ -437,13 +441,14 @@ Hosted Runtime が Fork を物理子 execution に展開したときの親子リ
 
 ### 2.16 users
 
-人間ユーザー。パスワードは **平文を保存せず** `password_hash` のみ保持する。
+人間ユーザー。ログイン識別子は **`username`**（テナント内一意）。許可は英大文字・小文字・数字と、途中のみのハイフン・アンダースコア・ドット。先頭・末尾の記号は不可。`email` は任意の連絡先であり、認証には使わない。パスワードは **平文を保存せず** `password_hash` のみ保持する。
 
 | カラム | 型 | 制約 | 説明 |
 | --- | --- | --- | --- |
 | user_id | uuid | PK, NOT NULL | ユーザー ID |
 | tenant_id | uuid | NOT NULL | 所属テナント（論理 FK → `tenants.tenant_id`） |
-| email | varchar(320) | NOT NULL | メールアドレス（テナント内一意） |
+| username | varchar(64) | NOT NULL | ログインユーザー名（テナント内一意。英数字で始まり終わる。途中のみ `-` `_` `.`） |
+| email | varchar(256) | NULL | 任意の連絡先メール（非 NULL のみテナント内一意） |
 | password_hash | text | NOT NULL | パスワードハッシュ |
 | is_tenant_admin | boolean | NOT NULL | テナント管理者か |
 | is_platform_admin | boolean | NOT NULL | プラットフォーム管理者か |
@@ -452,7 +457,7 @@ Hosted Runtime が Fork を物理子 execution に展開したときの親子リ
 | created_at | timestamptz | NOT NULL | 作成日時 |
 | updated_at | timestamptz | NOT NULL | 更新日時 |
 
-**インデックス:** `UNIQUE(tenant_id, email)`
+**インデックス:** `UNIQUE(tenant_id, username)`、`UNIQUE(tenant_id, email) WHERE email IS NOT NULL`
 
 ### 2.17 user_principals
 
@@ -688,6 +693,7 @@ erDiagram
   users {
     uuid user_id PK
     uuid tenant_id
+    string username
     string email
     text password_hash
     boolean is_tenant_admin
@@ -914,7 +920,8 @@ erDiagram
 | event_delivery_dedup | (tenant_id, execution_id, batch_id) | INDEX |
 | tenants | tenant_key | UNIQUE |
 | permission_definitions | permission_key | UNIQUE |
-| users | (tenant_id, email) | UNIQUE |
+| users | (tenant_id, username) | UNIQUE |
+| users | (tenant_id, email) WHERE email IS NOT NULL | UNIQUE |
 | groups | (tenant_id, name) | UNIQUE |
 | api_keys | (tenant_id, key_prefix) | INDEX |
 
@@ -937,6 +944,7 @@ erDiagram
 | `20260729153444_AddExecutionWorkItemsAndWaitRouting` | `execution_work_items` と `execution_waits` の topic / correlation routing 列を追加 |
 | `20260801112928_AddExecutionWaitSubscriptions` | `execution_wait_subscriptions` 追加、`execution_waits` の routing 列削除 |
 | `20260802173232_AddExecutionCheckpointOwnership` | `execution_runtime_checkpoints` に `owner_worker_id` / `lease_until` / `owner_generation` と `lease_until` インデックスを追加 |
+| `20260817140816_AddUserUsername` | `users.username` 追加（varchar(64)）と既存 `email` からのバックフィル。`email` を NULL 可の varchar(256) にし、非 NULL のみテナント内一意 |
 
 適用: `cd service/api && dotnet ef database update --project Statevia.Service.Api`
 

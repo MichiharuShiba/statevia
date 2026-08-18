@@ -3,9 +3,11 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.2 |
-| 更新日 | 2026-07-26 |
+| Version | 1.3 |
+| 更新日 | 2026-08-17 |
 | 関連 | [../specifications/ui/visual.md](../specifications/ui/visual.md)、[../specifications/api-http.md](../specifications/api-http.md) §2.1.2–2.2、[../architecture/ui-studio-structure.md](../architecture/ui-studio-structure.md) |
+
+**Version 1.3（2026-08-17）**: サインイン識別子をメールからユーザー名へ変更。
 
 **Version 1.2（2026-07-26）**: Studio 内部の feature-first 構成へのリンクを追加。利用者向け操作と HTTP 契約は変更なし。
 
@@ -26,7 +28,7 @@ SERVICE_API_INTERNAL_BASE="http://localhost:8080" npm run dev
 
 ## サインイン
 
-`/login` からテナントキー・メール・パスワードでサインインします。初回管理者の作成は [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md)。環境変数とテナント設定は [ui-auth-tenant-config.md](ui-auth-tenant-config.md)。
+`/login` からテナントキー・ユーザー名・パスワードでサインインします。初回管理者の作成は [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md)。環境変数とテナント設定は [ui-auth-tenant-config.md](ui-auth-tenant-config.md)。
 
 ## 主な画面（概要）
 

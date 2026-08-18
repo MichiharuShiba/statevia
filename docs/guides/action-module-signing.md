@@ -105,7 +105,7 @@ openssl pkey -in signer-public.pem -pubin -pubout -outform DER | openssl dgst -s
 4. **配置と反映**:
 
 ```bash
-statevia auth login --api-base http://localhost:8080 --tenant default --email ops@example.com
+statevia auth login --api-base http://localhost:8080 --tenant default --username ops
 statevia module install ./order.module.zip --modules-path ./modules --api-base http://localhost:8080
 # 反映には Service API 再起動、または内部 reload が必要
 ```

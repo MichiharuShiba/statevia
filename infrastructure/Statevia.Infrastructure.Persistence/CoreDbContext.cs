@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Statevia.Core.Application.Contracts.Persistence;
+using Statevia.Core.Application.Contracts.Validation;
 
 namespace Statevia.Infrastructure.Persistence;
 
@@ -57,6 +58,7 @@ internal class CoreDbContext : DbContext, ICoreDatabase
         public const string DisplayName = "display_name";
         public const string Lifecycle = "lifecycle";
         public const string Email = "email";
+        public const string Username = "username";
         public const string PasswordHash = "password_hash";
         public const string IsTenantAdmin = "is_tenant_admin";
         public const string IsPlatformAdmin = "is_platform_admin";
@@ -631,8 +633,12 @@ internal class CoreDbContext : DbContext, ICoreDatabase
             e.HasKey(x => x.UserId);
             e.Property(x => x.UserId).HasColumnName(Columns.UserId);
             e.Property(x => x.TenantId).HasColumnName(Columns.TenantId);
-            e.Property(x => x.Email).HasMaxLength(320).HasColumnName(Columns.Email);
-            e.HasIndex(x => new { x.TenantId, x.Email }).IsUnique();
+            e.Property(x => x.Username).HasMaxLength(UsernameConstraints.MaxLength).HasColumnName(Columns.Username);
+            e.HasIndex(x => new { x.TenantId, x.Username }).IsUnique();
+            e.Property(x => x.Email).HasMaxLength(UserEmailConstraints.MaxLength).HasColumnName(Columns.Email);
+            e.HasIndex(x => new { x.TenantId, x.Email })
+                .IsUnique()
+                .HasFilter("\"email\" IS NOT NULL");
             e.Property(x => x.PasswordHash).HasColumnName(Columns.PasswordHash);
             e.Property(x => x.IsTenantAdmin).HasColumnName(Columns.IsTenantAdmin);
             e.Property(x => x.IsPlatformAdmin).HasColumnName(Columns.IsPlatformAdmin);

@@ -16,7 +16,7 @@ export type LoginResponseBody = {
 /** UI ログイン API 要求 body。 */
 export type LoginRequestBody = {
   tenantKey: string;
-  email: string;
+  username: string;
   password: string;
 };
 

@@ -219,7 +219,7 @@ Module ディレクトリ直下に detached 署名ファイル `{moduleDirectory
 # publish 成果物から zip を作る例（ディレクトリ名 = my.module）
 dotnet publish path/to/MyModule.csproj -c Release -o ./publish/my.module
 cd ./publish && zip -r ../my.module.zip my.module
-statevia auth login --api-base http://localhost:8080 --tenant default --email ops@example.com
+statevia auth login --api-base http://localhost:8080 --tenant default --username ops
 statevia module install ../my.module.zip --modules-path ./modules --api-base http://localhost:8080
 ```
 

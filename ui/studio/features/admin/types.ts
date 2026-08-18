@@ -15,7 +15,8 @@ export type PermissionDefinitionDto = {
 export type AdminUserListItem = {
   userId: string;
   principalId: string;
-  email: string;
+  username: string;
+  email: string | null;
   displayName: string;
   isTenantAdmin: boolean;
   isActive: boolean;

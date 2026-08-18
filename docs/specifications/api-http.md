@@ -401,18 +401,18 @@ Request:
 ```json
 {
   "tenantKey": "default",
-  "email": "user@example.com",
+  "username": "user",
   "password": "string"
 }
 ```
 
 - Response: 200 OK、`{ "accessToken", "expiresAt", "tenantId", "tenantKey", "principalId" }`
-- 失敗: 401（資格情報不正）、403（テナント停止）
+- 失敗: 401（資格情報不正）、403（テナント停止）。`username` は 1〜64 文字。英数字で始まり終わり、途中のみハイフン・アンダースコア・ドット可。違反は 422。
 
 **GET /v1/auth/me**
 
 - **Authorization** 必須。
-- Response: 200 OK、`{ "tenantId", "tenantKey", "principalId", "email", "isTenantAdmin" }`
+- Response: 200 OK、`{ "tenantId", "tenantKey", "principalId", "username", "email", "isTenantAdmin" }`（`email` は任意連絡先で null 可）
 
 ### 4.1.3 テナント管理者 API（初版）
 
@@ -422,7 +422,7 @@ Request:
 | --- | --- | --- |
 | GET | `/permissions` | 権限カタログ（`permission_definitions`） |
 | GET | `/users` | ユーザー一覧 |
-| POST | `/users` | ユーザー作成（`email`, `password`, `displayName?`, `isTenantAdmin`, `groupIds?`） |
+| POST | `/users` | ユーザー作成（`username` 1〜64 文字・先頭末尾は英数字、`password`、`email?` 最大 256、`displayName?`, `isTenantAdmin`, `groupIds?`） |
 | PATCH | `/users/{userId}` | 有効化/無効化・管理者フラグ（`isActive?`, `isTenantAdmin?`） |
 | GET | `/groups` | グループ一覧 |
 | POST | `/groups` | グループ作成（`name`） |

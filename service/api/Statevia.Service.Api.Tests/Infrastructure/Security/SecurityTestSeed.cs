@@ -11,40 +11,45 @@ internal static class SecurityTestSeed
 {
     /// <summary>テスト用ユーザーを投入し Principal ID を返す。</summary>
     /// <param name="database">テスト DB。</param>
-    /// <param name="email">メールアドレス。</param>
+    /// <param name="loginIdentifier">ログイン識別子（@ ありならメール、なしなら username のみ）。</param>
     /// <param name="password">平文パスワード。</param>
     /// <param name="isActive">ユーザーと Principal をアクティブにするか。</param>
     /// <param name="isTenantAdmin">テナント管理者フラグ。</param>
+    /// <param name="tenantId">投入先テナント。省略時は default。</param>
     /// <returns>作成した Principal ID。</returns>
     public static async Task<Guid> SeedUserAsync(
         SqliteTestDatabase database,
-        string email,
+        string loginIdentifier,
         string password,
         bool isActive = true,
-        bool isTenantAdmin = true)
+        bool isTenantAdmin = true,
+        Guid? tenantId = null)
     {
         var passwordHasher = new PasswordCredentialService();
         var userId = Guid.NewGuid();
         var principalId = Guid.NewGuid();
         var now = DateTime.UtcNow;
+        var resolvedTenantId = tenantId ?? TestTenantIds.DefaultTenantId;
 
         await using var db = database.Factory.CreateDbContext();
         db.Principals.Add(new PrincipalRow
         {
             PrincipalId = principalId,
-            TenantId = TestTenantIds.DefaultTenantId,
+            TenantId = resolvedTenantId,
             PrincipalScope = PrincipalScope.Tenant,
             PrincipalType = PrincipalType.User,
-            DisplayName = email,
+            DisplayName = loginIdentifier,
             IsActive = isActive,
             CreatedAt = now,
             UpdatedAt = now
         });
+        var (username, storedEmail) = SplitLoginIdentifier(loginIdentifier);
         db.Users.Add(new UserRow
         {
             UserId = userId,
-            TenantId = TestTenantIds.DefaultTenantId,
-            Email = email,
+            TenantId = resolvedTenantId,
+            Username = username,
+            Email = storedEmail,
             PasswordHash = passwordHasher.HashPassword(password),
             IsTenantAdmin = isTenantAdmin,
             IsActive = isActive,
@@ -59,19 +64,19 @@ internal static class SecurityTestSeed
 
     /// <summary>グループ権限付きテストユーザーを投入し Principal ID を返す。</summary>
     /// <param name="database">テスト DB。</param>
-    /// <param name="email">メールアドレス。</param>
+    /// <param name="loginIdentifier">ログイン識別子（@ ありならメール、なしなら username のみ）。</param>
     /// <param name="password">平文パスワード。</param>
     /// <param name="permissionKeys">付与する semantic permission key。</param>
     /// <returns>作成した Principal ID。</returns>
     public static async Task<Guid> SeedUserWithGroupPermissionsAsync(
         SqliteTestDatabase database,
-        string email,
+        string loginIdentifier,
         string password,
         IReadOnlyList<string> permissionKeys)
     {
         var principalId = await SeedUserAsync(
             database,
-            email,
+            loginIdentifier,
             password,
             isActive: true,
             isTenantAdmin: false).ConfigureAwait(false);
@@ -92,7 +97,7 @@ internal static class SecurityTestSeed
         {
             GroupId = groupId,
             TenantId = TestTenantIds.DefaultTenantId,
-            Name = $"test-{email}",
+            Name = $"test-{loginIdentifier}",
             IsSystem = false,
             CreatedAt = now,
             UpdatedAt = now
@@ -199,6 +204,16 @@ internal static class SecurityTestSeed
         await db.SaveChangesAsync();
 
         return (principalId, apiKeyId, plainKey);
+    }
+
+    /// <summary>テスト識別子を username / 任意メールへ分解する（@ なしはメール未設定）。</summary>
+    internal static (string Username, string? Email) SplitLoginIdentifier(string identifier)
+    {
+        var trimmed = identifier.Trim();
+        var at = trimmed.IndexOf('@', StringComparison.Ordinal);
+        if (at < 0)
+            return (trimmed, null);
+        return (trimmed[..at], trimmed);
     }
 
     private static Task EnsurePermissionCatalogAsync(

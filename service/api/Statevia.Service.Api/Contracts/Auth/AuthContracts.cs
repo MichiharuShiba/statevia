@@ -11,10 +11,12 @@ public sealed class LoginRequest
     [NotWhitespace(ErrorMessage = "tenantKey is required")]
     public string TenantKey { get; set; } = "";
 
-    /// <summary>メールアドレス。</summary>
-    [Required(ErrorMessage = "email is required")]
-    [NotWhitespace(ErrorMessage = "email is required")]
-    public string Email { get; set; } = "";
+    /// <summary>テナント内ログインユーザー名。</summary>
+    [Required(ErrorMessage = "username is required")]
+    [NotWhitespace(ErrorMessage = "username is required")]
+    [MaxLength(UsernameConstraints.MaxLength)]
+    [RegularExpression(UsernameConstraints.AllowedPattern, ErrorMessage = UsernameConstraints.FormatErrorMessage)]
+    public string Username { get; set; } = "";
 
     /// <summary>平文パスワード。</summary>
     [Required(ErrorMessage = "password is required")]
@@ -53,8 +55,11 @@ public sealed class AuthMeResponse
     /// <summary>Principal ID。</summary>
     public Guid PrincipalId { get; set; }
 
-    /// <summary>メールアドレス。</summary>
-    public string Email { get; set; } = "";
+    /// <summary>ログインユーザー名。</summary>
+    public string Username { get; set; } = "";
+
+    /// <summary>任意の連絡先メール。</summary>
+    public string? Email { get; set; }
 
     /// <summary>テナント管理者か。</summary>
     public bool IsTenantAdmin { get; set; }

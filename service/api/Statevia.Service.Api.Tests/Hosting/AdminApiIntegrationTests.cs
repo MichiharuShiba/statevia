@@ -47,9 +47,9 @@ public sealed class AdminApiIntegrationTests : IClassFixture<SecurityIntegration
         Assert.NotEmpty(users);
     }
 
-    /// <summary>ユーザー作成で email 未指定は 422。</summary>
+    /// <summary>ユーザー作成で username 未指定は 422。</summary>
     [Fact]
-    public async Task CreateUser_MissingEmail_ReturnsUnprocessableEntity()
+    public async Task CreateUser_MissingUsername_ReturnsUnprocessableEntity()
     {
         // Arrange
         var principalId = await _factory.SeedUserPrincipalAsync("admin-create@example.com", "password", isTenantAdmin: true);
@@ -62,6 +62,28 @@ public sealed class AdminApiIntegrationTests : IClassFixture<SecurityIntegration
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    /// <summary>ユーザー作成で email 未指定は 201 になる。</summary>
+    [Fact]
+    public async Task CreateUser_WithoutEmail_ReturnsCreated()
+    {
+        // Arrange
+        var principalId = await _factory.SeedUserPrincipalAsync("admin-create-nomail@example.com", "password", isTenantAdmin: true);
+        using var client = CreateAuthenticatedClient(principalId);
+        var username = $"nomail-{Guid.NewGuid():N}";
+
+        // Act
+        var response = await client.PostAsJsonAsync(
+            new Uri("/v1/admin/users", UriKind.Relative),
+            new { username, password = "password" });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<AdminUserListItemDto>();
+        Assert.NotNull(created);
+        Assert.Equal(username, created!.Username);
+        Assert.Null(created.Email);
     }
 
     /// <summary>管理者はグループを作成しメンバー・権限を設定できる。</summary>

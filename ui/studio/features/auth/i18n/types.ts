@@ -8,7 +8,7 @@ export type AuthFeatureUiText = {
       title: string;
       description: string;
       tenantKeyLabel: string;
-      emailLabel: string;
+      usernameLabel: string;
       passwordLabel: string;
       showPassword: string;
       hidePassword: string;

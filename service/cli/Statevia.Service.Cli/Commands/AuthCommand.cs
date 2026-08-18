@@ -25,11 +25,11 @@ public static class AuthCommand
             aliases: ["--api-base", "-a"],
             description: "Service API base URL (e.g. http://localhost:8080). Falls back to STATEVIA_API_BASE or home config");
         var tenantKeyOption = new Option<string?>(
-            aliases: ["--tenant", "-T"],
+            aliases: ["--tenant", "-t"],
             description: "Tenant key. Falls back to STATEVIA_TENANT or home config");
-        var emailOption = new Option<string>(
-            aliases: ["--email", "-e"],
-            description: "Login email")
+        var usernameOption = new Option<string>(
+            aliases: ["--username", "-u"],
+            description: "Login username")
         {
             IsRequired = true,
         };
@@ -41,10 +41,10 @@ public static class AuthCommand
         {
             apiBaseOption,
             tenantKeyOption,
-            emailOption,
+            usernameOption,
             passwordOption,
         };
-        login.SetHandler(LoginAsync, apiBaseOption, tenantKeyOption, emailOption, passwordOption);
+        login.SetHandler(LoginAsync, apiBaseOption, tenantKeyOption, usernameOption, passwordOption);
         return login;
     }
 
@@ -58,7 +58,7 @@ public static class AuthCommand
     private static async Task<int> LoginAsync(
         string? apiBase,
         string? tenantKey,
-        string email,
+        string username,
         string? password)
     {
         string resolvedApiBase;
@@ -113,7 +113,7 @@ public static class AuthCommand
 
         var loginUri = new Uri(apiBaseUri, "v1/auth/login");
         var requestJson = JsonSerializer.Serialize(
-            new LoginRequestBody(tenantKey.Trim(), email.Trim(), password),
+            new LoginRequestBody(tenantKey.Trim(), username.Trim(), password),
             JsonOptions);
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         using var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
@@ -189,7 +189,7 @@ public static class AuthCommand
         return Console.Out.WriteLineAsync($"Credentials removed ({store.FilePath}).");
     }
 
-    private sealed record LoginRequestBody(string TenantKey, string Email, string Password);
+    private sealed record LoginRequestBody(string TenantKey, string Username, string Password);
 
     private sealed record LoginResponseBody(
         string AccessToken,

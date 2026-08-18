@@ -13,7 +13,7 @@ public sealed class CreateAdminCliOptionsTests
         // Act
         var options = CreateAdminCliOptions.Parse([
             "--tenant-key", "acme",
-            "--email", "admin@acme.example",
+            "--username", "admin",
             "--password", "secret",
             "--display-name", "Admin",
             "--skip-if-exists"]);
@@ -21,15 +21,15 @@ public sealed class CreateAdminCliOptionsTests
         // Assert
         Assert.False(options.ShowHelp);
         Assert.Equal("acme", options.TenantKey);
-        Assert.Equal("admin@acme.example", options.Email);
+        Assert.Equal("admin", options.Username);
         Assert.Equal("secret", options.Password);
         Assert.Equal("Admin", options.DisplayName);
         Assert.True(options.SkipIfExists);
     }
 
-    /// <summary>メール未指定はヘルプ表示。</summary>
+    /// <summary>ユーザー名未指定はヘルプ表示。</summary>
     [Fact]
-    public void Parse_MissingEmail_ShowsHelp()
+    public void Parse_MissingUsername_ShowsHelp()
     {
         // Act
         var options = CreateAdminCliOptions.Parse(["--password", "secret"]);
@@ -43,7 +43,7 @@ public sealed class CreateAdminCliOptionsTests
     public void Parse_OmitsTenantKey_UsesDefault()
     {
         // Act
-        var options = CreateAdminCliOptions.Parse(["--email", "a@b.c", "--password", "p"]);
+        var options = CreateAdminCliOptions.Parse(["--username", "admin", "--password", "p"]);
 
         // Assert
         Assert.Equal(TenantRequestHeaders.DefaultTenantId, options.TenantKey);

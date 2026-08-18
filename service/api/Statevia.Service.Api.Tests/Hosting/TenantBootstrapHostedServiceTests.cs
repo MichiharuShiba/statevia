@@ -80,7 +80,7 @@ public sealed class TenantBootstrapHostedServiceTests
             {
                 Enabled = devAdminEnabled,
                 TenantKey = "default",
-                Email = "admin",
+                Username = "admin",
                 Password = "admin",
                 DisplayName = "admin"
             }));

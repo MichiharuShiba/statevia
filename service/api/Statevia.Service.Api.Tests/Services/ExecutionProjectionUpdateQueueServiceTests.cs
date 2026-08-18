@@ -841,7 +841,7 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         public Task<IReadOnlyList<TenantRow>> ListActiveTenantsAsync(CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task<LoginCredentialLookup?> FindLoginCredentialAsync(string tenantKey, string email, CancellationToken cancellationToken) =>
+        public Task<LoginCredentialLookup?> FindLoginCredentialAsync(string tenantKey, string username, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
         public Task<LoginCredentialLookup?> FindUserPrincipalAsync(Guid tenantId, Guid principalId, CancellationToken cancellationToken) =>

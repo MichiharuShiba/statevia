@@ -15,12 +15,12 @@ public sealed class DevAdminBootstrapOptions
     /// <summary>外部テナントキー。</summary>
     public string TenantKey { get; set; } = "default";
 
-    /// <summary>ログイン ID（Users.Email 列。開発用の簡易 ID 可）。</summary>
-    public string Email { get; set; } = "admin";
+    /// <summary>ログインユーザー名。</summary>
+    public string Username { get; set; } = "admin";
 
     /// <summary>平文パスワード（開発専用。ログに出力しないこと）。</summary>
     public string Password { get; set; } = "admin";
 
-    /// <summary>Principal 表示名（未指定時は <see cref="Email"/>）。</summary>
+    /// <summary>Principal 表示名（未指定時は <see cref="Username"/>）。</summary>
     public string? DisplayName { get; set; } = "admin";
 }

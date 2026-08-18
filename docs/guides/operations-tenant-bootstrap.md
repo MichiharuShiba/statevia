@@ -84,7 +84,7 @@ VALUES (
 
 ## 3. 初回テナント管理者（Principal 整合）
 
-**Development（docker compose 既定）** では Service API 起動時に `tenant_key = default` 向けの管理者が自動作成される（`email = admin`、パスワード `admin`）。既にいる場合はスキップする。
+**Development（docker compose 既定）** では Service API 起動時に `tenant_key = default` 向けの管理者が自動作成される（`username = admin`、パスワード `admin`）。既にいる場合はスキップする。
 
 本番・追加テナント・カスタム資格情報は以下の手動手順を使う。
 
@@ -103,7 +103,7 @@ VALUES (
 ```powershell
 $env:DATABASE_URL = "postgres://statevia:statevia@localhost:5432/statevia"
 $env:STATEVIA_BOOTSTRAP_PASSWORD = "<plain-for-dev-only>"
-.\scripts\bootstrap-tenant-admin.ps1 -Email "admin@example.com"
+.\scripts\bootstrap-tenant-admin.ps1 -Username "admin"
 ```
 
 **dotnet のみ:**
@@ -115,17 +115,17 @@ export STATEVIA_BOOTSTRAP_PASSWORD="<plain-for-dev-only>"
 dotnet run --project Statevia.Service.Api.Bootstrap -- \
   create-admin \
   --tenant-key default \
-  --email admin@example.com \
+  --username admin \
   --password "$STATEVIA_BOOTSTRAP_PASSWORD"
 ```
 
 | オプション | 説明 |
 | --- | --- |
 | `--tenant-key` | 外部キー（既定 `default`） |
-| `--email` | 管理者メール（必須） |
+| `--username` | 管理者ユーザー名（必須。1〜64 文字。先頭・末尾は英数字。途中のみハイフン・アンダースコア・ドット） |
 | `--password` | 平文（省略時は `STATEVIA_BOOTSTRAP_PASSWORD`） |
-| `--display-name` | Principal 表示名（省略時は email） |
-| `--skip-if-exists` | ログイン可能な同一メールが既にいれば何もしない |
+| `--display-name` | Principal 表示名（省略時は username） |
+| `--skip-if-exists` | ログイン可能な同一ユーザー名が既にいれば何もしない |
 
 成功時は `tenantId` / `userId` / `principalId` を標準出力する。パスワードはログに出さないこと。
 
@@ -134,7 +134,7 @@ dotnet run --project Statevia.Service.Api.Bootstrap -- \
 ```bash
 curl -s -X POST http://localhost:8080/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"tenantKey":"default","email":"admin","password":"admin"}'
+  -d '{"tenantKey":"default","username":"admin","password":"admin"}'
 ```
 
 UI では `/login` から同じ資格情報でサインインできる（`ui/studio`）。

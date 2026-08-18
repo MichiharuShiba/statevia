@@ -48,6 +48,7 @@ describe("fetchAuthMeServer", () => {
         tenantId: "tenant",
         tenantKey: "default",
         principalId: "principal",
+        username: "admin",
         email: "admin@example.com",
         isTenantAdmin: true
       })
@@ -55,6 +56,7 @@ describe("fetchAuthMeServer", () => {
 
     const me = await fetchAuthMeServer();
 
+    expect(me?.username).toBe("admin");
     expect(me?.email).toBe("admin@example.com");
     expect(fetch).toHaveBeenCalledWith(
       "http://core-api.test/v1/auth/me",

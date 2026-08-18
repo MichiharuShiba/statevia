@@ -148,10 +148,11 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
             join link in db.UserPrincipals.AsNoTracking() on user.UserId equals link.UserId
             join principal in db.Principals.AsNoTracking() on link.PrincipalId equals principal.PrincipalId into principals
             from principal in principals.DefaultIfEmpty()
-            orderby user.Email
+            orderby user.Username
             select new
             {
                 user.UserId,
+                user.Username,
                 user.Email,
                 user.IsTenantAdmin,
                 user.IsActive,
@@ -182,8 +183,9 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
                 {
                     UserId = row.UserId,
                     PrincipalId = row.PrincipalId,
+                    Username = row.Username,
                     Email = row.Email,
-                    DisplayName = row.PrincipalDisplayName ?? row.Email,
+                    DisplayName = row.PrincipalDisplayName ?? row.Username,
                     IsTenantAdmin = row.IsTenantAdmin,
                     IsActive = row.IsActive,
                     GroupIds = groupIds is null ? Array.Empty<Guid>() : groupIds,
@@ -203,12 +205,24 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
         await EnsureTenantAdminAsync(callerPrincipalId, cancellationToken).ConfigureAwait(false);
 
         var tenantId = RequireTenantId();
-        var email = request.Email.Trim();
+        var username = request.Username.Trim();
+        var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
-        var emailTaken = await db.Users.AnyAsync(u => u.Email == email, cancellationToken).ConfigureAwait(false);
-        if (emailTaken)
-            throw new ArgumentException($"User '{email}' already exists.", nameof(request));
+        var usernameTaken = await db.Users
+            .AnyAsync(u => u.TenantId == tenantId && u.Username == username, cancellationToken)
+            .ConfigureAwait(false);
+        if (usernameTaken)
+            throw new ArgumentException($"User '{username}' already exists.", nameof(request));
+
+        if (email is not null)
+        {
+            var emailTaken = await db.Users
+                .AnyAsync(u => u.TenantId == tenantId && u.Email == email, cancellationToken)
+                .ConfigureAwait(false);
+            if (emailTaken)
+                throw new ArgumentException($"Email '{email}' already exists.", nameof(request));
+        }
 
         var groupIds = request.GroupIds ?? Array.Empty<Guid>();
         if (groupIds.Count > 0)
@@ -217,7 +231,7 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
         var userId = _idGenerator.NewSequentialGuid();
         var principalId = _idGenerator.NewSequentialGuid();
         var now = DateTime.UtcNow;
-        var displayName = string.IsNullOrWhiteSpace(request.DisplayName) ? email : request.DisplayName.Trim();
+        var displayName = string.IsNullOrWhiteSpace(request.DisplayName) ? username : request.DisplayName.Trim();
 
         db.Principals.Add(new PrincipalRow
         {
@@ -234,6 +248,7 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
         {
             UserId = userId,
             TenantId = tenantId,
+            Username = username,
             Email = email,
             PasswordHash = _passwordCredentialService.HashPassword(request.Password),
             IsTenantAdmin = request.IsTenantAdmin ?? false,
@@ -251,6 +266,7 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
         {
             UserId = userId,
             PrincipalId = principalId,
+            Username = username,
             Email = email,
             DisplayName = displayName,
             IsTenantAdmin = request.IsTenantAdmin ?? false,
@@ -313,6 +329,7 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
         {
             UserId = user.UserId,
             PrincipalId = link.PrincipalId,
+            Username = user.Username,
             Email = user.Email,
             DisplayName = principal.DisplayName,
             IsTenantAdmin = user.IsTenantAdmin,

@@ -104,7 +104,7 @@ Service API のテナント・Principal・認証・認可の境界を定義す�
 
 | 種別 | 初版 |
 | --- | --- |
-| Password + JWT | 実装（`POST /v1/auth/login`） |
+| Password + JWT | 実装（`POST /v1/auth/login`。識別子は `tenantKey` + `username` + `password`。メールは任意連絡先でテナント内一意） |
 | API キー | 実装（`X-Api-Key`、prefix + SHA-256 hash 検証、`last_used_at` 更新） |
 | OIDC / PAT | 設計余地のみ（未実装） |
 

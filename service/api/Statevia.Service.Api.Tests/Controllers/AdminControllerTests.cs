@@ -20,6 +20,7 @@ public sealed class AdminControllerTests
             {
                 UserId = Guid.NewGuid(),
                 PrincipalId = Guid.NewGuid(),
+                Username = "admin",
                 Email = "admin@example.com",
                 DisplayName = "Admin",
                 IsTenantAdmin = true,

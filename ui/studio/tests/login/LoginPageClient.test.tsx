@@ -31,7 +31,7 @@ describe("LoginPageClient", () => {
     renderWithUiText(<LoginPageClient />);
     expect(screen.getByRole("heading", { name: "ログイン" })).toBeInTheDocument();
     expect(screen.getByLabelText("テナントキー")).toBeInTheDocument();
-    expect(screen.getByLabelText("メールアドレス")).toBeInTheDocument();
+    expect(screen.getByLabelText("ユーザー名")).toHaveAttribute("type", "text");
     expect(screen.getByLabelText("パスワード")).toBeInTheDocument();
   });
 
@@ -61,7 +61,7 @@ describe("LoginPageClient", () => {
     );
 
     renderWithUiText(<LoginPageClient />);
-    fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: "user@example.com" } });
+    fireEvent.change(screen.getByLabelText("ユーザー名"), { target: { value: "user" } });
     fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: "wrong" } });
     fireEvent.click(screen.getByRole("button", { name: "ログイン" }));
 
@@ -82,7 +82,7 @@ describe("LoginPageClient", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     renderWithUiText(<LoginPageClient />);
-    fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: "user@example.com" } });
+    fireEvent.change(screen.getByLabelText("ユーザー名"), { target: { value: "user" } });
     fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: "secret" } });
 
     fireEvent.click(screen.getByRole("button", { name: "ログイン" }));
@@ -100,7 +100,7 @@ describe("LoginPageClient", () => {
 
   it("成功時に from クエリ先へ遷移する", async () => {
     renderWithUiText(<LoginPageClient />);
-    fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: "user@example.com" } });
+    fireEvent.change(screen.getByLabelText("ユーザー名"), { target: { value: "user" } });
     fireEvent.change(screen.getByLabelText("パスワード"), { target: { value: "secret" } });
     fireEvent.click(screen.getByRole("button", { name: "ログイン" }));
 

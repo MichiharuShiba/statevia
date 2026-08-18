@@ -35,9 +35,9 @@ public sealed class BootstrapHelpTests
         Assert.Contains("--tenant-key", writer.ToString(), StringComparison.Ordinal);
     }
 
-    /// <summary>create-admin ヘルプに email が含まれる。</summary>
+    /// <summary>create-admin ヘルプに username が含まれる。</summary>
     [Fact]
-    public async Task WriteCreateAdminAsync_IncludesEmailOption()
+    public async Task WriteCreateAdminAsync_IncludesUsernameOption()
     {
         // Arrange
         using var writer = new StringWriter();
@@ -46,6 +46,6 @@ public sealed class BootstrapHelpTests
         await BootstrapHelp.WriteCreateAdminAsync(writer);
 
         // Assert
-        Assert.Contains("--email", writer.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--username", writer.ToString(), StringComparison.Ordinal);
     }
 }

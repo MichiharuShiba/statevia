@@ -1,14 +1,14 @@
 # 初回テナント管理者を DB に作成する（Principal + User + user_principals）。
 # 用法: リポジトリルートから
 #   $env:STATEVIA_BOOTSTRAP_PASSWORD = "dev-only-password"
-#   .\scripts\bootstrap-tenant-admin.ps1 -Email "admin@example.com"
+#   .\scripts\bootstrap-tenant-admin.ps1 -Username "admin"
 # または
-#   .\scripts\bootstrap-tenant-admin.ps1 -Email "admin@example.com" -Password "dev-only-password"
+#   .\scripts\bootstrap-tenant-admin.ps1 -Username "admin" -Password "dev-only-password"
 
 param(
     [string]$TenantKey = "default",
     [Parameter(Mandatory = $true)]
-    [string]$Email,
+    [string]$Username,
     [string]$Password = $env:STATEVIA_BOOTSTRAP_PASSWORD,
     [string]$DisplayName = "",
     [string]$DatabaseUrl = "",
@@ -41,7 +41,7 @@ if (-not [string]::IsNullOrWhiteSpace($Config)) {
 $dotnetArgs += @(
     "create-admin",
     "--tenant-key", $TenantKey,
-    "--email", $Email,
+    "--username", $Username,
     "--password", $Password
 )
 

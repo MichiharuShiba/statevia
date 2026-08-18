@@ -25,7 +25,7 @@ function checkboxInputId(prefix: string, key: string): string {
  * ユーザー行の表示ラベル（無効ユーザーは inactive 表記を付与）。
  */
 function memberCheckboxLabel(user: AdminUserListItem, inactiveLabel: string): string {
-  return user.isActive ? user.email : `${user.email} (${inactiveLabel})`;
+  return user.isActive ? user.username : `${user.username} (${inactiveLabel})`;
 }
 
 /**
