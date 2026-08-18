@@ -36,8 +36,12 @@ public sealed class SecurityIntegrationWebApplicationFactory : WebApplicationFac
     }
 
     /// <summary>統合テスト DB にユーザーをシードする。</summary>
+    /// <param name="loginIdentifier">ログイン識別子（@ ありならメール、なしなら username のみ）。</param>
+    /// <param name="password">平文パスワード。</param>
+    /// <param name="isTenantAdmin">テナント管理者フラグ。</param>
+    /// <returns>作成した Principal ID。</returns>
     public async Task<Guid> SeedUserPrincipalAsync(
-        string email,
+        string loginIdentifier,
         string password,
         bool isTenantAdmin = false)
     {
@@ -46,14 +50,18 @@ public sealed class SecurityIntegrationWebApplicationFactory : WebApplicationFac
         await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
         return await SecurityTestSeed.SeedUserAsync(
             _database,
-            email,
+            loginIdentifier,
             password,
             isTenantAdmin: isTenantAdmin);
     }
 
     /// <summary>統合テスト DB にグループ権限付きユーザーをシードする。</summary>
+    /// <param name="loginIdentifier">ログイン識別子（@ ありならメール、なしなら username のみ）。</param>
+    /// <param name="password">平文パスワード。</param>
+    /// <param name="permissionKeys">付与する semantic permission key。</param>
+    /// <returns>作成した Principal ID。</returns>
     public async Task<Guid> SeedUserWithPermissionsAsync(
-        string email,
+        string loginIdentifier,
         string password,
         params string[] permissionKeys)
     {
@@ -62,7 +70,7 @@ public sealed class SecurityIntegrationWebApplicationFactory : WebApplicationFac
         await platform.EnsurePermissionCatalogAsync(CancellationToken.None);
         return await SecurityTestSeed.SeedUserWithGroupPermissionsAsync(
             _database,
-            email,
+            loginIdentifier,
             password,
             permissionKeys);
     }

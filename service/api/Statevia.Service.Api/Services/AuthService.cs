@@ -41,7 +41,7 @@ internal sealed class AuthService : IAuthService
         ArgumentNullException.ThrowIfNull(request);
 
         var lookup = await _platformDataAccess
-            .FindLoginCredentialAsync(request.TenantKey, request.Email, cancellationToken)
+            .FindLoginCredentialAsync(request.TenantKey, request.Username, cancellationToken)
             .ConfigureAwait(false);
 
         if (lookup is null)
@@ -84,6 +84,7 @@ internal sealed class AuthService : IAuthService
             TenantId = lookup.Tenant.TenantId,
             TenantKey = lookup.Tenant.TenantKey,
             PrincipalId = principalId,
+            Username = lookup.User.Username,
             Email = lookup.User.Email,
             IsTenantAdmin = lookup.User.IsTenantAdmin
         };

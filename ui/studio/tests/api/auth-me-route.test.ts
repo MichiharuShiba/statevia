@@ -15,6 +15,7 @@ describe("GET /api/auth/me", () => {
           tenantId: "00000000-0000-4000-8000-000000000001",
           tenantKey: "default",
           principalId: "00000000-0000-4000-8000-000000000099",
+          username: "admin",
           email: "admin@example.com",
           isTenantAdmin: true
         })

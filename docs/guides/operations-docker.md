@@ -97,7 +97,7 @@ dotnet build service/cli/statevia-cli.sln
 dotnet run --project service/cli/Statevia.Service.Cli -- auth login \
   --api-base http://localhost:8080 \
   --tenant default \
-  --email ops@example.com
+  --username ops
 dotnet run --project service/cli/Statevia.Service.Cli -- module install ./my-module.zip \
   --modules-path ./modules \
   --tenant default \

@@ -9,7 +9,7 @@ export const authUiTextEn: AuthFeatureUiText = {
       title: "Sign in",
       description: "Sign in with your tenant key and account credentials.",
       tenantKeyLabel: "Tenant key",
-      emailLabel: "Email",
+      usernameLabel: "Username",
       passwordLabel: "Password",
       showPassword: "Show password",
       hidePassword: "Hide password",

@@ -8,6 +8,7 @@ export type AdminFeatureUiText = {
       title: string;
       description: string;
       createTitle: string;
+      usernameLabel: string;
       emailLabel: string;
       passwordLabel: string;
       displayNameLabel: string;

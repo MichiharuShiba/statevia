@@ -19,6 +19,7 @@ import { apiGet, apiPatch, apiPost } from "@/shared/api";
 const sampleUser = {
   userId: "user-1",
   principalId: "principal-1",
+  username: "admin",
   email: "admin@example.com",
   displayName: "Admin",
   isTenantAdmin: true,
@@ -43,14 +44,17 @@ describe("AdminUsersPageClient", () => {
     await waitFor(() => {
       expect(apiGet).toHaveBeenCalledWith("/admin/users");
     });
-    expect(await screen.findByText("admin@example.com")).toBeInTheDocument();
+    expect(await screen.findByText("admin")).toBeInTheDocument();
   });
 
   it("ユーザーを作成して一覧を再読み込みする", async () => {
     renderWithUiText(<AdminUsersPageClient />);
-    await screen.findByText("admin@example.com");
+    await screen.findByText("admin");
 
-    fireEvent.change(screen.getByLabelText("メールアドレス"), {
+    fireEvent.change(screen.getByLabelText("ユーザー名"), {
+      target: { value: "new-user" }
+    });
+    fireEvent.change(screen.getByLabelText("メールアドレス（任意）"), {
       target: { value: "new@example.com" }
     });
     fireEvent.change(screen.getByLabelText("初期パスワード"), {
@@ -63,6 +67,7 @@ describe("AdminUsersPageClient", () => {
 
     await waitFor(() => {
       expect(apiPost).toHaveBeenCalledWith("/admin/users", {
+        username: "new-user",
         email: "new@example.com",
         password: "password123",
         displayName: "New User",
@@ -74,7 +79,7 @@ describe("AdminUsersPageClient", () => {
 
   it("有効ユーザーを無効化する", async () => {
     renderWithUiText(<AdminUsersPageClient />);
-    await screen.findByText("admin@example.com");
+    await screen.findByText("admin");
 
     fireEvent.click(screen.getByRole("button", { name: "無効化" }));
 

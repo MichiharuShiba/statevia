@@ -146,16 +146,17 @@ internal static class BootstrapApp
         {
             var result = await bootstrap.CreateTenantAdminAsync(
                 options.TenantKey,
-                options.Email,
+                options.Username,
                 password,
                 options.DisplayName,
                 options.SkipIfExists,
+                email: null,
                 CancellationToken.None).ConfigureAwait(false);
 
             if (result.Created)
             {
                 await Console.Out.WriteLineAsync(
-                    $"Created tenant admin: tenantKey={result.TenantKey} email={result.Email}")
+                    $"Created tenant admin: tenantKey={result.TenantKey} username={result.Username}")
                     .ConfigureAwait(false);
                 await Console.Out.WriteLineAsync($"  tenantId={result.TenantId}").ConfigureAwait(false);
                 await Console.Out.WriteLineAsync($"  userId={result.UserId}").ConfigureAwait(false);
@@ -164,7 +165,7 @@ internal static class BootstrapApp
             else
             {
                 await Console.Out.WriteLineAsync(
-                    $"Skipped (already exists): tenantKey={result.TenantKey} email={result.Email} principalId={result.PrincipalId}")
+                    $"Skipped (already exists): tenantKey={result.TenantKey} username={result.Username} principalId={result.PrincipalId}")
                     .ConfigureAwait(false);
             }
 

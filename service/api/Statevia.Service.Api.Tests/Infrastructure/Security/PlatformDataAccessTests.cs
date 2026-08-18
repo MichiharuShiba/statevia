@@ -67,10 +67,11 @@ public sealed class PlatformDataAccessTests
         var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
-        var lookup = await platform.FindLoginCredentialAsync("default", "user@example.com", CancellationToken.None);
+        var lookup = await platform.FindLoginCredentialAsync("default", "user", CancellationToken.None);
 
         // Assert
         Assert.NotNull(lookup);
+        Assert.Equal("user", lookup.User.Username);
         Assert.Equal("user@example.com", lookup.User.Email);
         Assert.Equal(TestTenantIds.DefaultTenantId, lookup.Tenant.TenantId);
         Assert.True(lookup.Principal.IsActive);
@@ -86,7 +87,7 @@ public sealed class PlatformDataAccessTests
         var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
 
         // Act
-        var lookup = await platform.FindLoginCredentialAsync("default", "inactive@example.com", CancellationToken.None);
+        var lookup = await platform.FindLoginCredentialAsync("default", "inactive", CancellationToken.None);
 
         // Assert
         Assert.Null(lookup);
@@ -109,6 +110,7 @@ public sealed class PlatformDataAccessTests
 
         // Assert
         Assert.NotNull(lookup);
+        Assert.Equal("me", lookup.User.Username);
         Assert.Equal("me@example.com", lookup.User.Email);
         Assert.Equal(principalId, lookup.Principal.PrincipalId);
     }

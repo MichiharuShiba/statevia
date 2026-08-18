@@ -35,7 +35,7 @@ public sealed class AuthServiceTests
         var response = await auth.LoginAsync(new LoginRequest
         {
             TenantKey = "default",
-            Email = "admin@example.com",
+            Username = "admin",
             Password = "password123"
         }, CancellationToken.None);
 
@@ -57,7 +57,7 @@ public sealed class AuthServiceTests
         await Assert.ThrowsAsync<UnauthorizedException>(() => auth.LoginAsync(new LoginRequest
         {
             TenantKey = "",
-            Email = "admin@example.com",
+            Username = "admin",
             Password = "password123"
         }, CancellationToken.None));
     }
@@ -75,7 +75,7 @@ public sealed class AuthServiceTests
         await Assert.ThrowsAsync<UnauthorizedException>(() => auth.LoginAsync(new LoginRequest
         {
             TenantKey = "default",
-            Email = "admin@example.com",
+            Username = "admin",
             Password = "wrong"
         }, CancellationToken.None));
     }
@@ -92,7 +92,7 @@ public sealed class AuthServiceTests
         await Assert.ThrowsAsync<UnauthorizedException>(() => auth.LoginAsync(new LoginRequest
         {
             TenantKey = "default",
-            Email = "missing@example.com",
+            Username = "missing",
             Password = "password123"
         }, CancellationToken.None));
     }
@@ -118,7 +118,7 @@ public sealed class AuthServiceTests
         var ex = await Assert.ThrowsAsync<ForbiddenException>(() => auth.LoginAsync(new LoginRequest
         {
             TenantKey = "default",
-            Email = "admin@example.com",
+            Username = "admin",
             Password = "password123"
         }, CancellationToken.None));
 
@@ -146,7 +146,7 @@ public sealed class AuthServiceTests
         var ex = await Assert.ThrowsAsync<ForbiddenException>(() => auth.LoginAsync(new LoginRequest
         {
             TenantKey = "default",
-            Email = "admin@example.com",
+            Username = "admin",
             Password = "password123"
         }, CancellationToken.None));
 
@@ -166,6 +166,7 @@ public sealed class AuthServiceTests
         var response = await auth.GetMeAsync(TestTenantIds.DefaultTenantId, principalId, CancellationToken.None);
 
         // Assert
+        Assert.Equal("me", response.Username);
         Assert.Equal("me@example.com", response.Email);
         Assert.Equal("default", response.TenantKey);
         Assert.Equal(principalId, response.PrincipalId);

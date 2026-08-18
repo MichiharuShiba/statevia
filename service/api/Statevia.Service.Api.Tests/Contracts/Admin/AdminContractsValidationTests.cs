@@ -6,20 +6,71 @@ namespace Statevia.Service.Api.Tests.Contracts.Admin;
 /// <summary>AdminContracts の IValidatableObject 検証。</summary>
 public sealed class AdminContractsValidationTests
 {
-    /// <summary>CreateAdminUserRequest は email / password 必須。</summary>
+    /// <summary>CreateAdminUserRequest は username / password 必須。</summary>
     [Fact]
-    public void CreateAdminUserRequest_Validate_RequiresEmailAndPassword()
+    public void CreateAdminUserRequest_Validate_RequiresUsernameAndPassword()
     {
         // Arrange
-        var request = new CreateAdminUserRequest { Email = " ", Password = "" };
+        var request = new CreateAdminUserRequest { Username = " ", Password = "" };
         var context = new ValidationContext(request);
 
         // Act
         var results = request.Validate(context).ToList();
 
         // Assert
-        Assert.Contains(results, r => r.MemberNames.Contains(nameof(CreateAdminUserRequest.Email)));
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(CreateAdminUserRequest.Username)));
         Assert.Contains(results, r => r.MemberNames.Contains(nameof(CreateAdminUserRequest.Password)));
+    }
+
+    /// <summary>CreateAdminUserRequest は許可文字以外の username を拒否する。</summary>
+    [Fact]
+    public void CreateAdminUserRequest_Validate_RejectsUsernameWithAt()
+    {
+        // Arrange
+        var request = new CreateAdminUserRequest { Username = "user@example.com", Password = "secret" };
+        var context = new ValidationContext(request);
+
+        // Act
+        var results = request.Validate(context).ToList();
+
+        // Assert
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(CreateAdminUserRequest.Username)));
+    }
+
+    /// <summary>CreateAdminUserRequest は 65 文字の username を拒否する。</summary>
+    [Fact]
+    public void CreateAdminUserRequest_Validate_RejectsUsernameLongerThan64()
+    {
+        // Arrange
+        var request = new CreateAdminUserRequest { Username = new string('a', 65), Password = "secret" };
+        var context = new ValidationContext(request);
+
+        // Act
+        var results = request.Validate(context).ToList();
+
+        // Assert
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(CreateAdminUserRequest.Username)));
+    }
+
+    /// <summary>CreateAdminUserRequest は 257 文字の email を拒否する。</summary>
+    [Fact]
+    public void CreateAdminUserRequest_Validate_RejectsEmailLongerThan256()
+    {
+        // Arrange
+        var request = new CreateAdminUserRequest
+        {
+            Username = "ops",
+            Email = $"{new string('a', 64)}@{new string('b', 190)}.com",
+            Password = "secret"
+        };
+        var context = new ValidationContext(request);
+
+        // Act
+        var results = request.Validate(context).ToList();
+
+        // Assert
+        Assert.True(request.Email!.Length > 256);
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(CreateAdminUserRequest.Email)));
     }
 
     /// <summary>CreateAdminApiKeyRequest の name / scopes / expiresAt を検証する。</summary>

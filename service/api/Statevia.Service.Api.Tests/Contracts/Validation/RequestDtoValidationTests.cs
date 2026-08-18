@@ -34,8 +34,65 @@ public sealed class RequestDtoValidationTests
 
         // Assert
         Assert.Contains(results, r => r.MemberNames.Contains(nameof(LoginRequest.TenantKey)));
-        Assert.Contains(results, r => r.MemberNames.Contains(nameof(LoginRequest.Email)));
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(LoginRequest.Username)));
         Assert.Contains(results, r => r.MemberNames.Contains(nameof(LoginRequest.Password)));
+    }
+
+    /// <summary>username に @ が含まれると検証失敗する。</summary>
+    [Fact]
+    public void LoginRequest_WhenUsernameContainsAt_FailsValidation()
+    {
+        // Arrange
+        var request = new LoginRequest
+        {
+            TenantKey = "default",
+            Username = "user@example.com",
+            Password = "secret"
+        };
+
+        // Act
+        var results = Validate(request);
+
+        // Assert
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(LoginRequest.Username)));
+    }
+
+    /// <summary>username が 65 文字だと検証失敗する。</summary>
+    [Fact]
+    public void LoginRequest_WhenUsernameLongerThan64_FailsValidation()
+    {
+        // Arrange
+        var request = new LoginRequest
+        {
+            TenantKey = "default",
+            Username = new string('a', 65),
+            Password = "secret"
+        };
+
+        // Act
+        var results = Validate(request);
+
+        // Assert
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(LoginRequest.Username)));
+    }
+
+    /// <summary>許可文字の username は検証成功する。</summary>
+    [Fact]
+    public void LoginRequest_WhenUsernameUsesAllowedCharset_PassesValidation()
+    {
+        // Arrange
+        var request = new LoginRequest
+        {
+            TenantKey = "default",
+            Username = "Ops.user_1-test",
+            Password = "secret"
+        };
+
+        // Act
+        var results = Validate(request);
+
+        // Assert
+        Assert.Empty(results);
     }
 
     /// <summary>state atSeq が 0 のとき検証失敗する。</summary>

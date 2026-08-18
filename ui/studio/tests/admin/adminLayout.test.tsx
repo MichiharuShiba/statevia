@@ -32,6 +32,7 @@ describe("AdminLayout", () => {
       tenantId: "tenant",
       tenantKey: "default",
       principalId: "principal",
+      username: "user",
       email: "user@example.com",
       isTenantAdmin: false
     });
@@ -45,6 +46,7 @@ describe("AdminLayout", () => {
       tenantId: "tenant",
       tenantKey: "default",
       principalId: "principal",
+      username: "admin",
       email: "admin@example.com",
       isTenantAdmin: true
     });

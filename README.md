@@ -56,7 +56,7 @@ docker compose up -d
 | 項目 | 値 |
 | --- | --- |
 | テナント | `default` |
-| ユーザー（email） | `admin` |
+| ユーザー（username） | `admin` |
 | パスワード | `admin` |
 
 **1 回実行する**（ログイン → 定義登録 → 実行）:
@@ -65,7 +65,7 @@ docker compose up -d
 # トークン取得
 TOKEN=$(curl -s -X POST http://localhost:8080/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"tenantKey":"default","email":"admin","password":"admin"}' | jq -r .accessToken)
+  -d '{"tenantKey":"default","username":"admin","password":"admin"}' | jq -r .accessToken)
 
 # 定義を初回登録（POST。PUT は既存定義への版追加のみ）
 DEF_ID=$(curl -s -X POST "http://localhost:8080/v1/definitions" \

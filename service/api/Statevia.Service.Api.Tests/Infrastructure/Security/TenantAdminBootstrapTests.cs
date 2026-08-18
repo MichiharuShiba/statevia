@@ -15,21 +15,23 @@ public sealed class TenantAdminBootstrapTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var bootstrap = CreateBootstrap(database);
-        const string email = "bootstrap-admin@example.com";
+        const string username = "bootstrap-admin";
         const string password = "bootstrap-test-password";
 
         // Act
         var result = await bootstrap.CreateTenantAdminAsync(
             "default",
-            email,
+            username,
             password,
             displayName: null,
             skipIfExists: false,
+            email: null,
             CancellationToken.None);
 
         // Assert
         Assert.True(result.Created);
-        Assert.Equal(email, result.Email);
+        Assert.Equal(username, result.Username);
+        Assert.Null(result.Email);
 
         var auth = new AuthService(
             new PlatformDataAccess(database.Factory, new DefaultIdGenerator()),
@@ -39,7 +41,7 @@ public sealed class TenantAdminBootstrapTests
             new LoginRequest
             {
                 TenantKey = "default",
-                Email = email,
+                Username = username,
                 Password = password
             },
             CancellationToken.None);
@@ -56,16 +58,17 @@ public sealed class TenantAdminBootstrapTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var bootstrap = CreateBootstrap(database);
-        const string email = "existing@example.com";
-        await SecurityTestSeed.SeedUserAsync(database, email, "seed-password", isTenantAdmin: true);
+        const string username = "existing";
+        await SecurityTestSeed.SeedUserAsync(database, username, "seed-password", isTenantAdmin: true);
 
         // Act
         var result = await bootstrap.CreateTenantAdminAsync(
             "default",
-            email,
+            username,
             "other-password",
             displayName: null,
             skipIfExists: true,
+            email: null,
             CancellationToken.None);
 
         // Assert
@@ -84,10 +87,11 @@ public sealed class TenantAdminBootstrapTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             bootstrap.CreateTenantAdminAsync(
                 "missing-tenant",
-                "admin@example.com",
+                "admin",
                 "password",
                 displayName: null,
                 skipIfExists: false,
+                email: null,
                 CancellationToken.None));
         Assert.Contains("missing-tenant", ex.Message, StringComparison.Ordinal);
     }
@@ -99,18 +103,87 @@ public sealed class TenantAdminBootstrapTests
         // Arrange
         using var database = new SqliteTestDatabase();
         var bootstrap = CreateBootstrap(database);
-        const string email = "dup@example.com";
-        await SecurityTestSeed.SeedUserAsync(database, email, "seed-password", isTenantAdmin: true);
+        const string username = "dup";
+        await SecurityTestSeed.SeedUserAsync(database, username, "seed-password", isTenantAdmin: true);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             bootstrap.CreateTenantAdminAsync(
                 "default",
-                email,
+                username,
                 "other-password",
                 displayName: null,
                 skipIfExists: false,
+                email: null,
                 CancellationToken.None));
+    }
+
+    /// <summary>許可文字以外のユーザー名は拒否する。</summary>
+    [Fact]
+    public async Task CreateTenantAdminAsync_UsernameContainsAt_Throws()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var bootstrap = CreateBootstrap(database);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            bootstrap.CreateTenantAdminAsync(
+                "default",
+                "admin@example.com",
+                "password",
+                displayName: null,
+                skipIfExists: false,
+                email: null,
+                CancellationToken.None));
+    }
+
+    /// <summary>連絡先メールを指定すると結果に保持する。</summary>
+    [Fact]
+    public async Task CreateTenantAdminAsync_WithEmail_PersistsEmail()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var bootstrap = CreateBootstrap(database);
+        const string username = "mail-admin";
+        const string email = "mail-admin@example.com";
+
+        // Act
+        var result = await bootstrap.CreateTenantAdminAsync(
+            "default",
+            username,
+            "bootstrap-test-password",
+            displayName: null,
+            skipIfExists: false,
+            email,
+            CancellationToken.None);
+
+        // Assert
+        Assert.True(result.Created);
+        Assert.Equal(email, result.Email);
+    }
+
+    /// <summary>同一テナントで連絡先メールが重複すると例外。</summary>
+    [Fact]
+    public async Task CreateTenantAdminAsync_DuplicateEmail_Throws()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var bootstrap = CreateBootstrap(database);
+        const string email = "ops@example.com";
+        await SecurityTestSeed.SeedUserAsync(database, email, "seed-password", isTenantAdmin: true);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            bootstrap.CreateTenantAdminAsync(
+                "default",
+                "other-admin",
+                "password",
+                displayName: null,
+                skipIfExists: false,
+                email,
+                CancellationToken.None));
+        Assert.Contains("Email already exists", ex.Message, StringComparison.Ordinal);
     }
 
     private static TenantAdminBootstrap CreateBootstrap(SqliteTestDatabase database) =>

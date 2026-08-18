@@ -56,9 +56,9 @@ internal static class BootstrapHelp
 
             Options:
               --tenant-key <key>      Tenant key (required)
-              --email <email>         Admin email (required)
+              --username <name>       Admin username (required, 1-64, start/end alphanumeric)
               --password <plain>      Password (prefer STATEVIA_BOOTSTRAP_PASSWORD)
-              --display-name <name>   Principal display name (default: email)
+              --display-name <name>   Principal display name (default: username)
               --skip-if-exists        No-op when login-ready user already exists
               -h, --help              Show help
 

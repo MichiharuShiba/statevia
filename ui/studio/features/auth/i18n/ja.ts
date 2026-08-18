@@ -9,7 +9,7 @@ export const authUiTextJa: AuthFeatureUiText = {
       title: "ログイン",
       description: "テナントキーとアカウントでサインインしてください。",
       tenantKeyLabel: "テナントキー",
-      emailLabel: "メールアドレス",
+      usernameLabel: "ユーザー名",
       passwordLabel: "パスワード",
       showPassword: "パスワードを表示",
       hidePassword: "パスワードを非表示",

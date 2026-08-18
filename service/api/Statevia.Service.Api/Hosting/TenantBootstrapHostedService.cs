@@ -42,7 +42,7 @@ internal sealed class TenantBootstrapHostedService : IHostedService
         if (!_environment.IsDevelopment() || !_devAdminOptions.Enabled)
             return;
 
-        if (string.IsNullOrWhiteSpace(_devAdminOptions.Email)
+        if (string.IsNullOrWhiteSpace(_devAdminOptions.Username)
             || string.IsNullOrWhiteSpace(_devAdminOptions.Password)
             || string.IsNullOrWhiteSpace(_devAdminOptions.TenantKey))
         {
@@ -53,15 +53,16 @@ internal sealed class TenantBootstrapHostedService : IHostedService
         var tenantAdminBootstrap = scope.ServiceProvider.GetRequiredService<TenantAdminBootstrap>();
         var result = await tenantAdminBootstrap.CreateTenantAdminAsync(
             _devAdminOptions.TenantKey,
-            _devAdminOptions.Email,
+            _devAdminOptions.Username,
             _devAdminOptions.Password,
             _devAdminOptions.DisplayName,
             skipIfExists: true,
+            email: null,
             cancellationToken).ConfigureAwait(false);
 
         if (result.Created)
         {
-            _logger.DevAdminUserCreated(result.TenantKey, result.Email);
+            _logger.DevAdminUserCreated(result.TenantKey, result.Username);
         }
     }
 

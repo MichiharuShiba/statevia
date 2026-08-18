@@ -34,7 +34,7 @@ internal interface IPlatformDataAccess
     /// <summary>ログイン用の tenant / user / principal を検索する。</summary>
     Task<LoginCredentialLookup?> FindLoginCredentialAsync(
         string tenantKey,
-        string email,
+        string username,
         CancellationToken cancellationToken);
 
     /// <summary>Principal ID とテナント内部 ID でユーザー情報を取得する。</summary>
@@ -124,7 +124,7 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
     /// <inheritdoc />
     public async Task<LoginCredentialLookup?> FindLoginCredentialAsync(
         string tenantKey,
-        string email,
+        string username,
         CancellationToken cancellationToken)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
@@ -141,7 +141,7 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
         var user = await db.Users
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.TenantId == tenant.TenantId && u.Email == email, cancellationToken)
+            .FirstOrDefaultAsync(u => u.TenantId == tenant.TenantId && u.Username == username, cancellationToken)
             .ConfigureAwait(false);
 
         if (user is null || !user.IsActive)

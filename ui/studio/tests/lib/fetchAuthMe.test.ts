@@ -13,6 +13,7 @@ describe("fetchAuthMe", () => {
               tenantId: "tenant",
               tenantKey: "default",
               principalId: "principal",
+              username: "admin",
               email: "admin@example.com",
               isTenantAdmin: true
             })
@@ -23,6 +24,7 @@ describe("fetchAuthMe", () => {
 
   it("認証済み Principal 情報を返す", async () => {
     const me = await fetchAuthMe();
+    expect(me?.username).toBe("admin");
     expect(me?.email).toBe("admin@example.com");
     expect(me?.isTenantAdmin).toBe(true);
   });

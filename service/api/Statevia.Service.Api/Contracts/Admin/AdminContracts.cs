@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Statevia.Core.Application.Contracts.Validation;
 
 namespace Statevia.Service.Api.Contracts.Admin;
 
@@ -30,8 +31,11 @@ public sealed class AdminUserListItemDto
     /// <summary>Principal ID。</summary>
     public Guid PrincipalId { get; set; }
 
-    /// <summary>メールアドレス。</summary>
-    public string Email { get; set; } = "";
+    /// <summary>ログインユーザー名。</summary>
+    public string Username { get; set; } = "";
+
+    /// <summary>任意の連絡先メール。</summary>
+    public string? Email { get; set; }
 
     /// <summary>Principal 表示名。</summary>
     public string DisplayName { get; set; } = "";
@@ -52,15 +56,21 @@ public sealed class AdminUserListItemDto
 /// <summary>ユーザー作成要求。</summary>
 public sealed class CreateAdminUserRequest : IValidatableObject
 {
-    /// <summary>メールアドレス。</summary>
+    /// <summary>ログインユーザー名。</summary>
     [Required]
-    public string Email { get; set; } = "";
+    [MaxLength(UsernameConstraints.MaxLength)]
+    [RegularExpression(UsernameConstraints.AllowedPattern, ErrorMessage = UsernameConstraints.FormatErrorMessage)]
+    public string Username { get; set; } = "";
+
+    /// <summary>任意の連絡先メール。</summary>
+    [MaxLength(UserEmailConstraints.MaxLength)]
+    public string? Email { get; set; }
 
     /// <summary>平文パスワード。</summary>
     [Required]
     public string Password { get; set; } = "";
 
-    /// <summary>Principal 表示名（未指定時は email）。</summary>
+    /// <summary>Principal 表示名（未指定時は username）。</summary>
     public string? DisplayName { get; set; }
 
     /// <summary>テナント管理者にするか（未指定時は false）。</summary>
@@ -72,10 +82,20 @@ public sealed class CreateAdminUserRequest : IValidatableObject
     /// <inheritdoc />
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (string.IsNullOrWhiteSpace(Email))
-            yield return new ValidationResult("email is required.", [nameof(Email)]);
+        if (string.IsNullOrWhiteSpace(Username))
+            yield return new ValidationResult("username is required.", [nameof(Username)]);
+        else if (!UsernameConstraints.IsValid(Username))
+            yield return new ValidationResult(UsernameConstraints.FormatErrorMessage, [nameof(Username)]);
         if (string.IsNullOrWhiteSpace(Password))
             yield return new ValidationResult("password is required.", [nameof(Password)]);
+        if (!string.IsNullOrWhiteSpace(Email))
+        {
+            var trimmedEmail = Email.Trim();
+            if (trimmedEmail.Length > UserEmailConstraints.MaxLength)
+                yield return new ValidationResult($"email must be at most {UserEmailConstraints.MaxLength} characters.", [nameof(Email)]);
+            else if (!new EmailAddressAttribute().IsValid(trimmedEmail))
+                yield return new ValidationResult("email must be a valid email address.", [nameof(Email)]);
+        }
     }
 }
 

@@ -6,11 +6,13 @@ import { PageState } from "@/shared/ui/PageState";
 import { Toast } from "@/shared/ui/Toast";
 import { apiGet, apiPatch, apiPost } from "@/shared/api";
 import type { AdminUserListItem } from "../types";
+import { USER_EMAIL_MAX_LENGTH, USERNAME_MAX_LENGTH, USERNAME_PATTERN } from "@/shared/auth/userIdentity";
 import { toToastError, type ToastState } from "@/shared/lib/errors";
 import { useUiText } from "@/shared/i18n/uiTextContext";
 
 type CreateUserBody = {
-  email: string;
+  username: string;
+  email?: string;
   password: string;
   displayName?: string;
   isTenantAdmin: boolean;
@@ -25,6 +27,7 @@ export function AdminUsersPageClient() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -52,16 +55,19 @@ export function AdminUsersPageClient() {
     event.preventDefault();
     setSubmitting(true);
     setToast(null);
+    const trimmedEmail = email.trim();
     const body: CreateUserBody = {
-      email: email.trim(),
+      username: username.trim(),
       password,
       isTenantAdmin
     };
+    if (trimmedEmail) body.email = trimmedEmail;
     const trimmedDisplay = displayName.trim();
     if (trimmedDisplay) body.displayName = trimmedDisplay;
 
     try {
       await apiPost<AdminUserListItem>("/admin/users", body);
+      setUsername("");
       setEmail("");
       setPassword("");
       setDisplayName("");
@@ -97,13 +103,29 @@ export function AdminUsersPageClient() {
         <h2 className="mb-3 text-lg font-medium">{uiText.admin.users.createTitle}</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
+            <label htmlFor="admin-user-username" className="mb-1 block text-sm font-medium">
+              {uiText.admin.users.usernameLabel}
+            </label>
+            <input
+              id="admin-user-username"
+              type="text"
+              autoComplete="username"
+              required
+              maxLength={USERNAME_MAX_LENGTH}
+              pattern={USERNAME_PATTERN}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full rounded-lg border border-[var(--md-sys-color-outline)] px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
             <label htmlFor="admin-user-email" className="mb-1 block text-sm font-medium">
               {uiText.admin.users.emailLabel}
             </label>
             <input
               id="admin-user-email"
               type="email"
-              required
+              maxLength={USER_EMAIL_MAX_LENGTH}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-[var(--md-sys-color-outline)] px-3 py-2 text-sm"
@@ -170,8 +192,10 @@ export function AdminUsersPageClient() {
             className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm"
           >
             <div className="min-w-0">
-              <p className="font-medium text-[var(--md-sys-color-on-surface)]">{user.email}</p>
-              <p className="text-[var(--md-sys-color-on-surface-variant)]">{user.displayName}</p>
+              <p className="font-medium text-[var(--md-sys-color-on-surface)]">{user.username}</p>
+              <p className="text-[var(--md-sys-color-on-surface-variant)]">
+                {user.email ? `${user.displayName} · ${user.email}` : user.displayName}
+              </p>
               <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
                 {user.isActive ? uiText.admin.users.active : uiText.admin.users.inactive}
                 {user.isTenantAdmin ? ` · ${uiText.admin.users.adminBadge}` : ""}

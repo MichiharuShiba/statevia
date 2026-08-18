@@ -38,11 +38,11 @@ export async function POST(req: NextRequest) {
   }
 
   const tenantKey = body.tenantKey?.trim() ?? "";
-  const email = body.email?.trim() ?? "";
+  const username = body.username?.trim() ?? "";
   const password = body.password ?? "";
-  if (!tenantKey || !email || !password) {
+  if (!tenantKey || !username || !password) {
     return NextResponse.json(
-      { error: { code: "INVALID_INPUT", message: "tenantKey, email, and password are required." } },
+      { error: { code: "INVALID_INPUT", message: "tenantKey, username, and password are required." } },
       { status: 422 }
     );
   }
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   const upstream = await fetch(`${coreApiBase()}/v1/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ tenantKey, email, password }),
+    body: JSON.stringify({ tenantKey, username, password }),
     cache: "no-store"
   });
 

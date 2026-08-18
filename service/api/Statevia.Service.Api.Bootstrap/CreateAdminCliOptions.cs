@@ -14,8 +14,8 @@ internal sealed class CreateAdminCliOptions
     /// <summary>テナントキー。</summary>
     public string TenantKey { get; init; } = TenantRequestHeaders.DefaultTenantId;
 
-    /// <summary>メールアドレス。</summary>
-    public string Email { get; init; } = "";
+    /// <summary>ログインユーザー名。</summary>
+    public string Username { get; init; } = "";
 
     /// <summary>平文パスワード。</summary>
     public string? Password { get; init; }
@@ -30,7 +30,7 @@ internal sealed class CreateAdminCliOptions
     public static CreateAdminCliOptions Parse(string[] args)
     {
         var tenantKey = TenantRequestHeaders.DefaultTenantId;
-        var email = "";
+        var username = "";
         string? password = null;
         string? displayName = null;
         var skipIfExists = false;
@@ -50,8 +50,8 @@ internal sealed class CreateAdminCliOptions
                 case "--tenant-key":
                     tenantKey = CliArgReader.RequireValue(args, ref index, arg);
                     break;
-                case "--email":
-                    email = CliArgReader.RequireValue(args, ref index, arg);
+                case "--username":
+                    username = CliArgReader.RequireValue(args, ref index, arg);
                     break;
                 case "--password":
                     password = CliArgReader.RequireValue(args, ref index, arg);
@@ -68,7 +68,7 @@ internal sealed class CreateAdminCliOptions
             }
         }
 
-        if (!showHelp && string.IsNullOrWhiteSpace(email))
+        if (!showHelp && string.IsNullOrWhiteSpace(username))
             showHelp = true;
 
         return new CreateAdminCliOptions
@@ -76,7 +76,7 @@ internal sealed class CreateAdminCliOptions
             ShowHelp = showHelp,
             IsHelpOnly = isHelpOnly,
             TenantKey = tenantKey,
-            Email = email,
+            Username = username,
             Password = password,
             DisplayName = displayName,
             SkipIfExists = skipIfExists

@@ -21,10 +21,10 @@ public static class ModuleInstallCommand
             aliases: ["--api-key"],
             description: "API key for reload (X-Api-Key). Overrides STATEVIA_API_KEY");
         var bearerTokenOption = new Option<string?>(
-            aliases: ["--token", "-t"],
+            "--token",
             description: "Deprecated. Bearer token for reload. Prefer auth login or --api-key");
         var tenantKeyOption = new Option<string?>(
-            aliases: ["--tenant", "-T"],
+            aliases: ["--tenant", "-t"],
             description: "Tenant key. Falls back to STATEVIA_TENANT or home config. Installs under {modulesRoot}/{tenantKey}/ and sets X-Tenant-Id on reload");
         var skipReloadOption = new Option<bool>(
             aliases: ["--skip-reload"],

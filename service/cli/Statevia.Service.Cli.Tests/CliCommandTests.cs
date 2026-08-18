@@ -161,6 +161,32 @@ public sealed class CliCommandTests : IDisposable
         Assert.False(File.Exists(Path.Combine(modulesRoot, "test.module", "test.module.dll")));
     }
 
+    /// <summary>-t は --tenant の短い別名として展開先に使う。</summary>
+    [Fact]
+    public async Task ModuleInstall_ShortTenantAlias_InstallsUnderTenantDirectory()
+    {
+        // Arrange
+        var modulesRoot = CreateTempDirectory();
+        var zipPath = Path.Combine(CreateTempDirectory(), "test.module.zip");
+        CreateZip(zipPath, ("test.module/test.module.dll", "MZ"u8.ToArray()));
+
+        // Act
+        var exitCode = await Program.Main([
+            "module",
+            "install",
+            zipPath,
+            "--modules-path",
+            modulesRoot,
+            "-t",
+            "acme-corp",
+            "--skip-reload",
+        ]);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(Path.Combine(modulesRoot, "acme-corp", "test.module", "test.module.dll")));
+    }
+
     /// <summary>--tenant 省略時は失敗する。</summary>
     [Fact]
     public async Task ModuleInstall_WithoutTenant_ReturnsFailure()
@@ -651,7 +677,7 @@ public sealed class CliCommandTests : IDisposable
             using var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8);
             var requestBody = await reader.ReadToEndAsync().ConfigureAwait(false);
             Assert.Contains("acme-corp", requestBody, StringComparison.Ordinal);
-            Assert.Contains("ops@example.com", requestBody, StringComparison.Ordinal);
+            Assert.Contains("ops", requestBody, StringComparison.Ordinal);
             var responseJson =
                 $$"""{"accessToken":"{{accessToken}}","expiresAt":"2099-12-31T00:00:00Z","tenantId":"11111111-1111-1111-1111-111111111111","tenantKey":"acme-corp","principalId":"22222222-2222-2222-2222-222222222222"}""";
             var responseBytes = Encoding.UTF8.GetBytes(responseJson);
@@ -675,8 +701,8 @@ public sealed class CliCommandTests : IDisposable
                 $"http://127.0.0.1:{port}",
                 "--tenant",
                 "acme-corp",
-                "--email",
-                "ops@example.com",
+                "--username",
+                "ops",
                 "--password",
                 "secret-password",
             ]);
@@ -744,8 +770,8 @@ public sealed class CliCommandTests : IDisposable
             $"http://127.0.0.1:{port}",
             "--tenant",
             "acme-corp",
-            "--email",
-            "ops@example.com",
+            "--username",
+            "ops",
             "--password",
             "wrong-password",
         ]);
@@ -775,8 +801,8 @@ public sealed class CliCommandTests : IDisposable
                 "http://127.0.0.1:1",
                 "--tenant",
                 "acme-corp",
-                "--email",
-                "ops@example.com",
+                "--username",
+                "ops",
             ]);
         }
         finally
@@ -818,8 +844,8 @@ public sealed class CliCommandTests : IDisposable
                 $"http://127.0.0.1:{port}",
                 "--tenant",
                 "acme-corp",
-                "--email",
-                "ops@example.com",
+                "--username",
+                "ops",
             ]);
         }
         finally
@@ -847,8 +873,8 @@ public sealed class CliCommandTests : IDisposable
             "not-a-valid-uri",
             "--tenant",
             "acme-corp",
-            "--email",
-            "ops@example.com",
+            "--username",
+            "ops",
             "--password",
             "secret",
         ]);
@@ -876,8 +902,8 @@ public sealed class CliCommandTests : IDisposable
             $"http://127.0.0.1:{port}",
             "--tenant",
             "acme-corp",
-            "--email",
-            "ops@example.com",
+            "--username",
+            "ops",
             "--password",
             "secret",
         ]);
@@ -909,8 +935,8 @@ public sealed class CliCommandTests : IDisposable
             $"http://127.0.0.1:{port}",
             "--tenant",
             "acme-corp",
-            "--email",
-            "ops@example.com",
+            "--username",
+            "ops",
             "--password",
             "secret",
         ]);
@@ -942,8 +968,8 @@ public sealed class CliCommandTests : IDisposable
             $"http://127.0.0.1:{port}",
             "--tenant",
             "acme-corp",
-            "--email",
-            "ops@example.com",
+            "--username",
+            "ops",
             "--password",
             "secret",
         ]);
@@ -976,8 +1002,8 @@ public sealed class CliCommandTests : IDisposable
             $"http://127.0.0.1:{port}",
             "--tenant",
             "acme-corp",
-            "--email",
-            "ops@example.com",
+            "--username",
+            "ops",
             "--password",
             "secret",
         ]);
@@ -1565,8 +1591,8 @@ public sealed class CliCommandTests : IDisposable
         var exitCode = await Program.Main([
             "auth",
             "login",
-            "--email",
-            "ops@example.com",
+            "--username",
+            "ops",
             "--password",
             "secret-password",
         ]);

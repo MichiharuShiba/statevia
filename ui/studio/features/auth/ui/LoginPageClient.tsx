@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toToastError } from "@/shared/lib/errors";
 import type { LoginRequestBody } from "@/shared/auth/authSession";
+import { USERNAME_MAX_LENGTH, USERNAME_PATTERN } from "@/shared/auth/userIdentity";
 import type { ApiError } from "@/shared/api/apiError";
 import { resolveSafeInternalRedirectPath } from "@/shared/auth/safeInternalRedirect";
 import { useUiText } from "@/shared/i18n/uiTextContext";
@@ -56,14 +57,14 @@ function PasswordVisibilityIcon({ visible }: PasswordVisibilityIconProps) {
 }
 
 /**
- * テナントキー + メール + パスワードでログインし、セッション Cookie を設定する。
+ * テナントキー + ユーザー名 + パスワードでログインし、セッション Cookie を設定する。
  */
 export function LoginPageClient() {
   const uiText = useUiText();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [tenantKey, setTenantKey] = useState("default");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -78,7 +79,7 @@ export function LoginPageClient() {
 
     const body: LoginRequestBody = {
       tenantKey: tenantKey.trim(),
-      email: email.trim(),
+      username: username.trim(),
       password
     };
 
@@ -147,17 +148,19 @@ export function LoginPageClient() {
         </div>
 
         <div>
-          <label htmlFor="login-email" className="mb-1 block text-sm font-medium">
-            {uiText.auth.login.emailLabel}
+          <label htmlFor="login-username" className="mb-1 block text-sm font-medium">
+            {uiText.auth.login.usernameLabel}
           </label>
           <input
-            id="login-email"
-            name="email"
-            type="email"
+            id="login-username"
+            name="username"
+            type="text"
             autoComplete="username"
             required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            maxLength={USERNAME_MAX_LENGTH}
+            pattern={USERNAME_PATTERN}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             className="w-full rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] px-3 py-2 text-sm"
           />
         </div>

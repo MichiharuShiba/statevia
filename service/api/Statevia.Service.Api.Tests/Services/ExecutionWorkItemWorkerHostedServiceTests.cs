@@ -719,7 +719,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
 
         public Task<LoginCredentialLookup?> FindLoginCredentialAsync(
             string tenantKey,
-            string email,
+            string username,
             CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 

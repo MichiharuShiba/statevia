@@ -53,7 +53,8 @@ internal sealed class UserRow
 {
     public Guid UserId { get; set; }
     public Guid TenantId { get; set; }
-    public string Email { get; set; } = "";
+    public string Username { get; set; } = "";
+    public string? Email { get; set; }
     public string PasswordHash { get; set; } = "";
     public bool IsTenantAdmin { get; set; }
     public bool IsPlatformAdmin { get; set; }

@@ -38,6 +38,7 @@ describe("AdminGroupDetailPageClient", () => {
           {
             userId: "user-1",
             principalId: "principal-1",
+            username: "member",
             email: "member@example.com",
             displayName: "Member",
             isTenantAdmin: false,
@@ -48,6 +49,7 @@ describe("AdminGroupDetailPageClient", () => {
           {
             userId: "user-2",
             principalId: "principal-2",
+            username: "inactive",
             email: "inactive@example.com",
             displayName: "Inactive",
             isTenantAdmin: false,
@@ -97,7 +99,7 @@ describe("AdminGroupDetailPageClient", () => {
       expect(apiGet).toHaveBeenCalledWith("/admin/groups/group-1");
     });
     expect(await screen.findByRole("heading", { name: "Operators" })).toBeInTheDocument();
-    expect(screen.getByText("member@example.com")).toBeInTheDocument();
+    expect(screen.getByText("member")).toBeInTheDocument();
     expect(screen.getByLabelText("Read definitions (definitions.read)")).toBeInTheDocument();
     expect(screen.queryByLabelText(/tenant\.admin/)).toBeNull();
   });
@@ -106,7 +108,7 @@ describe("AdminGroupDetailPageClient", () => {
     renderWithUiText(<AdminGroupDetailPageClient groupId="group-1" />);
 
     expect(
-      await screen.findByText(`inactive@example.com (${uiText.admin.users.inactive})`)
+      await screen.findByText(`inactive (${uiText.admin.users.inactive})`)
     ).toBeInTheDocument();
   });
 
@@ -114,7 +116,7 @@ describe("AdminGroupDetailPageClient", () => {
     renderWithUiText(<AdminGroupDetailPageClient groupId="group-1" />);
     await screen.findByRole("heading", { name: "Operators" });
 
-    fireEvent.click(screen.getByLabelText(`inactive@example.com (${uiText.admin.users.inactive})`));
+    fireEvent.click(screen.getByLabelText(`inactive (${uiText.admin.users.inactive})`));
     fireEvent.click(screen.getByRole("button", { name: "メンバーを保存" }));
 
     await waitFor(() => {
