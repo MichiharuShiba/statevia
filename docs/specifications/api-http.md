@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.12 |
-| 更新日 | 2026-08-15 |
+| Version | 1.14 |
+| 更新日 | 2026-08-19 |
 | 関連 | [reference/api-openapi.md](../reference/api-openapi.md), [concepts/platform.md](../concepts/platform.md), [execution/wait-cancel.md](execution/wait-cancel.md) |
 
 ---
@@ -23,6 +23,10 @@
 ---
 
 Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
+
+**Version 1.14（2026-08-19）**: 新規・更新パスワードは 8〜128 文字・空白なし（記号可。大文字小文字の混在は必須にしない）。ログイン時の現行パスワードには適用しない。
+
+**Version 1.13（2026-08-19）**: パスワード更新を専用 PUT として追加（本人 `PUT /v1/auth/me/password`、管理者 `PUT /v1/admin/users/{userId}/password`）。`PATCH /v1/admin/users/{userId}` には載せない。忘れたフローと JWT 即時失効は対象外。
 
 **Version 1.11（2026-08-09）**: Nodes YAML のキャンバスキーを `name` に、Graph Definition を `nodeName` に、実行グラフ／View の状態名を `nodeName` に揃える。実行 View の短名 UUID は `nodeId`（旧 `executionNodeId` は廃止）。定義 YAML の `name` と実行 `nodeId` は別物。
 
@@ -408,11 +412,22 @@ Request:
 
 - Response: 200 OK、`{ "accessToken", "expiresAt", "tenantId", "tenantKey", "principalId" }`
 - 失敗: 401（資格情報不正）、403（テナント停止）。`username` は 1〜64 文字。英数字で始まり終わり、途中のみハイフン・アンダースコア・ドット可。違反は 422。
+- ログインの `password` は非空白のみ（既存ハッシュ互換。新規・更新時の 8〜128 文字ポリシーは適用しない）
 
 **GET /v1/auth/me**
 
 - **Authorization** 必須。
 - Response: 200 OK、`{ "tenantId", "tenantKey", "principalId", "username", "email", "isTenantAdmin" }`（`email` は任意連絡先で null 可）
+
+**PUT /v1/auth/me/password**
+
+- **Authorization** 必須。人間ユーザー JWT のみ（API キーは 401）。
+- Request: `{ "currentPassword": "string", "newPassword": "string" }`（`currentPassword` は必須・非空白。`newPassword` は 8〜128 文字・空白なし。記号可。短すぎ・空白は 422）
+- 成功: **204**（応答ボディなし）
+- 失敗: 現行パスワード不一致・無効ユーザー・非ユーザーはいずれも **401** `UNAUTHORIZED`（区別しない）。テナント停止はログインと同様 **403**
+- 確認用パスワードはサーバーへ送らない（UI のみ）
+- パスワード更新後も **既存 JWT は期限まで有効**（即時失効しない）
+- メールトークンによる「忘れた」再設定は提供しない
 
 ### 4.1.3 テナント管理者 API（初版）
 
@@ -422,8 +437,9 @@ Request:
 | --- | --- | --- |
 | GET | `/permissions` | 権限カタログ（`permission_definitions`） |
 | GET | `/users` | ユーザー一覧 |
-| POST | `/users` | ユーザー作成（`username` 1〜64 文字・先頭末尾は英数字、`password`、`email?` 最大 256、`displayName?`, `isTenantAdmin`, `groupIds?`） |
-| PATCH | `/users/{userId}` | 有効化/無効化・管理者フラグ（`isActive?`, `isTenantAdmin?`） |
+| POST | `/users` | ユーザー作成（`username` 1〜64 文字・先頭末尾は英数字、`password` は 8〜128 文字・空白なし（記号可）、`email?` 最大 256、`displayName?`, `isTenantAdmin`, `groupIds?`） |
+| PATCH | `/users/{userId}` | 有効化/無効化・管理者フラグ（`isActive?`, `isTenantAdmin?`）。パスワードは含めない |
+| PUT | `/users/{userId}/password` | パスワード上書き（`newPassword` は 8〜128 文字・空白なし。記号可。現行パスワード不要。無効ユーザーも可。対象なし 404。成功 204） |
 | GET | `/groups` | グループ一覧 |
 | POST | `/groups` | グループ作成（`name`） |
 | GET | `/groups/{groupId}` | グループ詳細（メンバー・権限キー） |
@@ -433,6 +449,8 @@ Request:
 | POST | `/api-keys` | API キー発行（`name`, `allowedScopes`, `expiresAt?`）。`allowedScopes` は catalog の assignable key（`tenant.admin` 除外。`modules.reload` / `modules.read` を含む）。応答の `plainKey` は **一度だけ** |
 | DELETE | `/api-keys/{apiKeyId}` | API キー失効（紐づく Principal を無効化） |
 | GET | `/modules` | Action Module の load catalog 一覧（`AdminModuleListItemDto[]`）。テナント管理者 JWT **または** `modules.read` |
+
+管理者パスワード更新の成功も **204**（応答ボディなし）。平文・ハッシュはログに出さない。更新後も **既存 JWT は期限まで有効**。
 
 JWT クレーム: `tenant_id`（内部 UUID）、`tenant_key`、`principal_id` / `sub`。詳細は `docs/specifications/platform/security-runtime.md`。
 

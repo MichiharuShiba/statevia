@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Statevia.Service.Api.Abstractions.Services;
 
 using Statevia.Service.Api.Contracts;
@@ -33,6 +34,13 @@ public interface ITenantAdministrationService
         Guid callerPrincipalId,
         Guid userId,
         UpdateAdminUserRequest request,
+        CancellationToken cancellationToken);
+
+    /// <summary>ユーザーのパスワードを上書きする。</summary>
+    Task UpdateUserPasswordAsync(
+        Guid callerPrincipalId,
+        Guid userId,
+        UpdateAdminUserPasswordRequest request,
         CancellationToken cancellationToken);
 
     /// <summary>グループを一覧する。</summary>
@@ -96,6 +104,7 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
     private readonly ITenantAdminAuthorization _tenantAdminAuthorization;
     private readonly PasswordCredentialService _passwordCredentialService;
     private readonly IIdGenerator _idGenerator;
+    private readonly ILogger<TenantAdministrationService> _logger;
 
     /// <summary>新しいインスタンスを初期化する。</summary>
     public TenantAdministrationService(
@@ -103,13 +112,15 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
         ITenantContextAccessor tenantContext,
         ITenantAdminAuthorization tenantAdminAuthorization,
         PasswordCredentialService passwordCredentialService,
-        IIdGenerator idGenerator)
+        IIdGenerator idGenerator,
+        ILogger<TenantAdministrationService> logger)
     {
         _dbFactory = dbFactory;
         _tenantContext = tenantContext;
         _tenantAdminAuthorization = tenantAdminAuthorization;
         _passwordCredentialService = passwordCredentialService;
         _idGenerator = idGenerator;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -337,6 +348,28 @@ internal sealed class TenantAdministrationService : ITenantAdministrationService
             GroupIds = groupIds,
             CreatedAt = user.CreatedAt
         };
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateUserPasswordAsync(
+        Guid callerPrincipalId,
+        Guid userId,
+        UpdateAdminUserPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await EnsureTenantAdminAsync(callerPrincipalId, cancellationToken).ConfigureAwait(false);
+
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            throw new NotFoundException("User not found.");
+
+        user.PasswordHash = _passwordCredentialService.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        _logger.UserPasswordUpdatedByAdmin(callerPrincipalId, userId);
     }
 
     /// <inheritdoc />

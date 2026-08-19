@@ -13,12 +13,20 @@ public interface IAuthService
 
     /// <summary>認証済み Principal の情報を返す。</summary>
     Task<AuthMeResponse> GetMeAsync(Guid tenantId, Guid principalId, CancellationToken cancellationToken);
+
+    /// <summary>本人が現行パスワード確認付きで自分のハッシュを更新する。</summary>
+    Task ChangeOwnPasswordAsync(
+        Guid tenantId,
+        Guid principalId,
+        ChangeOwnPasswordRequest request,
+        CancellationToken cancellationToken);
 }
 
 /// <inheritdoc />
 internal sealed class AuthService : IAuthService
 {
     private const string UnauthorizedCode = "UNAUTHORIZED";
+    private const string InvalidCredentialsMessage = "Invalid credentials.";
 
     private readonly IPlatformDataAccess _platformDataAccess;
     private readonly JwtTokenService _jwtTokenService;
@@ -45,12 +53,12 @@ internal sealed class AuthService : IAuthService
             .ConfigureAwait(false);
 
         if (lookup is null)
-            throw new UnauthorizedException("Invalid credentials.", UnauthorizedCode);
+            throw new UnauthorizedException(InvalidCredentialsMessage, UnauthorizedCode);
 
         EnsureTenantActive(lookup.Tenant.Lifecycle);
 
         if (!_passwordCredentialService.VerifyPassword(request.Password, lookup.User.PasswordHash))
-            throw new UnauthorizedException("Invalid credentials.", UnauthorizedCode);
+            throw new UnauthorizedException(InvalidCredentialsMessage, UnauthorizedCode);
 
         var (token, expiresAt) = _jwtTokenService.IssueAccessToken(
             lookup.Tenant.TenantId,
@@ -88,6 +96,35 @@ internal sealed class AuthService : IAuthService
             Email = lookup.User.Email,
             IsTenantAdmin = lookup.User.IsTenantAdmin
         };
+    }
+
+    /// <inheritdoc />
+    public async Task ChangeOwnPasswordAsync(
+        Guid tenantId,
+        Guid principalId,
+        ChangeOwnPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var lookup = await _platformDataAccess
+            .FindUserPrincipalAsync(tenantId, principalId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (lookup is null)
+            throw new UnauthorizedException(InvalidCredentialsMessage, UnauthorizedCode);
+
+        EnsureTenantActive(lookup.Tenant.Lifecycle);
+
+        if (!_passwordCredentialService.VerifyPassword(request.CurrentPassword, lookup.User.PasswordHash))
+            throw new UnauthorizedException(InvalidCredentialsMessage, UnauthorizedCode);
+
+        var passwordHash = _passwordCredentialService.HashPassword(request.NewPassword);
+        var updated = await _platformDataAccess
+            .TryUpdateUserPasswordHashAsync(tenantId, lookup.User.UserId, passwordHash, cancellationToken)
+            .ConfigureAwait(false);
+        if (!updated)
+            throw new UnauthorizedException(InvalidCredentialsMessage, UnauthorizedCode);
     }
 
     private static void EnsureTenantActive(TenantLifecycle lifecycle)

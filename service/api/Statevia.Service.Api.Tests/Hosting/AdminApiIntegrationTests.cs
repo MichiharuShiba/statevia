@@ -182,6 +182,122 @@ public sealed class AdminApiIntegrationTests : IClassFixture<SecurityIntegration
         Assert.Contains("modules.reload", created!.AllowedScopes);
     }
 
+    /// <summary>管理者は対象ユーザーのパスワードを上書きできる。</summary>
+    [Fact]
+    public async Task UpdateUserPassword_TenantAdmin_ReturnsNoContent()
+    {
+        // Arrange
+        var adminPrincipalId = await _factory.SeedUserPrincipalAsync("admin-password@example.com", "password", isTenantAdmin: true);
+        using var client = CreateAuthenticatedClient(adminPrincipalId);
+        var createResponse = await client.PostAsJsonAsync(
+            new Uri("/v1/admin/users", UriKind.Relative),
+            new { username = $"reset-{Guid.NewGuid():N}"[..20], password = "initialpw1" });
+        var created = await createResponse.Content.ReadFromJsonAsync<AdminUserListItemDto>();
+        Assert.NotNull(created);
+
+        // Act
+        var response = await client.PutAsJsonAsync(
+            new Uri($"/v1/admin/users/{created!.UserId}/password", UriKind.Relative),
+            new { newPassword = "replacement1" });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    /// <summary>非管理者のパスワード更新は 403。</summary>
+    [Fact]
+    public async Task UpdateUserPassword_NonAdmin_ReturnsForbidden()
+    {
+        // Arrange
+        var memberPrincipalId = await _factory.SeedUserPrincipalAsync("member-password@example.com", "password", isTenantAdmin: false);
+        using var client = CreateAuthenticatedClient(memberPrincipalId);
+
+        // Act
+        var response = await client.PutAsJsonAsync(
+            new Uri($"/v1/admin/users/{Guid.NewGuid()}/password", UriKind.Relative),
+            new { newPassword = "replacement1" });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    /// <summary>存在しない userId のパスワード更新は 404。</summary>
+    [Fact]
+    public async Task UpdateUserPassword_MissingUser_ReturnsNotFound()
+    {
+        // Arrange
+        var adminPrincipalId = await _factory.SeedUserPrincipalAsync("admin-password-404@example.com", "password", isTenantAdmin: true);
+        using var client = CreateAuthenticatedClient(adminPrincipalId);
+
+        // Act
+        var response = await client.PutAsJsonAsync(
+            new Uri($"/v1/admin/users/{Guid.NewGuid()}/password", UriKind.Relative),
+            new { newPassword = "replacement1" });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    /// <summary>空白の新パスワードは 422。</summary>
+    [Fact]
+    public async Task UpdateUserPassword_WhitespacePassword_ReturnsUnprocessableEntity()
+    {
+        // Arrange
+        var adminPrincipalId = await _factory.SeedUserPrincipalAsync("admin-password-422@example.com", "password", isTenantAdmin: true);
+        using var client = CreateAuthenticatedClient(adminPrincipalId);
+
+        // Act
+        var response = await client.PutAsJsonAsync(
+            new Uri($"/v1/admin/users/{Guid.NewGuid()}/password", UriKind.Relative),
+            new { newPassword = "   " });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    /// <summary>記号を含む新パスワードは受け付ける。</summary>
+    [Fact]
+    public async Task UpdateUserPassword_SymbolPassword_ReturnsNoContent()
+    {
+        // Arrange
+        var adminPrincipalId = await _factory.SeedUserPrincipalAsync("admin-password-policy@example.com", "password", isTenantAdmin: true);
+        using var client = CreateAuthenticatedClient(adminPrincipalId);
+        var createResponse = await client.PostAsJsonAsync(
+            new Uri("/v1/admin/users", UriKind.Relative),
+            new { username = $"sym-{Guid.NewGuid():N}"[..20], password = "initialpw1" });
+        var created = await createResponse.Content.ReadFromJsonAsync<AdminUserListItemDto>();
+        Assert.NotNull(created);
+
+        // Act
+        var response = await client.PutAsJsonAsync(
+            new Uri($"/v1/admin/users/{created!.UserId}/password", UriKind.Relative),
+            new { newPassword = "pass-word" });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    /// <summary>ユーザー PATCH にパスワード欄は無い。</summary>
+    [Fact]
+    public async Task UpdateUser_PatchDoesNotAcceptPassword()
+    {
+        // Arrange
+        var adminPrincipalId = await _factory.SeedUserPrincipalAsync("admin-patch-password@example.com", "password", isTenantAdmin: true);
+        using var client = CreateAuthenticatedClient(adminPrincipalId);
+        var users = await (await client.GetAsync(new Uri("/v1/admin/users", UriKind.Relative)))
+            .Content.ReadFromJsonAsync<List<AdminUserListItemDto>>();
+        Assert.NotNull(users);
+        var target = Assert.Single(users!, item => item.PrincipalId == adminPrincipalId);
+
+        // Act
+        var response = await client.PatchAsJsonAsync(
+            new Uri($"/v1/admin/users/{target.UserId}", UriKind.Relative),
+            new { isTenantAdmin = true, password = "should-be-ignored" });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     private HttpClient CreateAuthenticatedClient(Guid principalId)
     {
         var client = _factory.CreateClient();

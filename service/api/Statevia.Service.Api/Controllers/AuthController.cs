@@ -41,4 +41,19 @@ public sealed class AuthController : ControllerBase
         var response = await _authService.GetMeAsync(tenantId, principalId, ct).ConfigureAwait(false);
         return Ok(response);
     }
+
+    /// <summary>PUT /v1/auth/me/password — 本人パスワード更新。</summary>
+    [HttpPut("me/password")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ChangeOwnPassword(
+        [FromBody] ChangeOwnPasswordRequest request,
+        CancellationToken ct)
+    {
+        if (!_tenantContext.IsResolved || _tenantContext.TenantId is not { } tenantId ||
+            _tenantContext.PrincipalId is not { } principalId)
+            throw new UnauthorizedException("Authentication required.", "UNAUTHORIZED");
+
+        await _authService.ChangeOwnPasswordAsync(tenantId, principalId, request, ct).ConfigureAwait(false);
+        return NoContent();
+    }
 }

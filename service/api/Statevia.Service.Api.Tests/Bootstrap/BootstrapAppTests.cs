@@ -140,7 +140,7 @@ public sealed class BootstrapAppTests : IDisposable
         var exitCode = await BootstrapApp.RunAsync([
             "create-admin",
             "--username", "cli-admin",
-            "--password", "cli-test-password-32chars!!"]);
+            "--password", "clitestpw1"]);
 
         // Assert
         Assert.Equal(0, exitCode);

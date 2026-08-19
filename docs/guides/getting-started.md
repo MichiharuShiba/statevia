@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.0 |
-| 更新日 | 2026-07-07 |
+| Version | 1.1 |
+| 更新日 | 2026-08-19 |
 | 関連 | [operations-docker.md](operations-docker.md), [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md), [api-http.md](../specifications/api-http.md) |
 
 ---
@@ -71,12 +71,12 @@ docker compose up -d
 | --- | --- |
 | テナント | `default` |
 | ユーザー（username） | `admin` |
-| パスワード | `admin` |
+| パスワード | `admin123` |
 
 ```bash
 curl -s -X POST http://localhost:8080/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"tenantKey":"default","username":"admin","password":"admin"}'
+  -d '{"tenantKey":"default","username":"admin","password":"admin123"}'
 ```
 
 応答の `accessToken` を `Authorization: Bearer <token>` に設定する。本番・追加テナントの手動作成は [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md) を参照。
@@ -90,7 +90,7 @@ curl -s -X POST http://localhost:8080/v1/auth/login \
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:8080/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"tenantKey":"default","username":"admin","password":"admin"}' | jq -r .accessToken)
+  -d '{"tenantKey":"default","username":"admin","password":"admin123"}' | jq -r .accessToken)
 
 DEF_ID=$(curl -s -X POST "http://localhost:8080/v1/definitions" \
   -H "Content-Type: application/json" \

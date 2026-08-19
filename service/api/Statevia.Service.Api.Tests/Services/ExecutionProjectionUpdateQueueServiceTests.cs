@@ -847,6 +847,13 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
         public Task<LoginCredentialLookup?> FindUserPrincipalAsync(Guid tenantId, Guid principalId, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
+        public Task<bool> TryUpdateUserPasswordHashAsync(
+            Guid tenantId,
+            Guid userId,
+            string passwordHash,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
         public Task<ApiKeyCredentialLookup?> FindApiKeyCredentialAsync(string keyPrefix, string keyHash, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 

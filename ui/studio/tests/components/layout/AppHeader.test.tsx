@@ -1,8 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { uiText } from "@/shared/i18n/uiText";
 import { UiTextProvider } from "@/shared/i18n/uiTextContext";
+import { clearSessionAndRedirectToLogin } from "@/shared/auth/authRedirect";
 
 const usePathname = vi.fn();
 
@@ -26,6 +27,10 @@ vi.mock("@/shared/ui/LanguageToggle", () => ({
   LanguageToggle: () => <span data-testid="language-toggle">lang</span>
 }));
 
+vi.mock("@/shared/auth/authRedirect", () => ({
+  clearSessionAndRedirectToLogin: vi.fn()
+}));
+
 function renderHeader(pathname: string) {
   usePathname.mockReturnValue(pathname);
   return render(
@@ -38,6 +43,7 @@ function renderHeader(pathname: string) {
 describe("AppHeader", () => {
   beforeEach(() => {
     usePathname.mockReset();
+    vi.mocked(clearSessionAndRedirectToLogin).mockClear();
   });
 
   it("通常画面ではアプリ内ナビを表示する", () => {
@@ -48,6 +54,11 @@ describe("AppHeader", () => {
       "/dashboard"
     );
     expect(screen.getByRole("link", { name: uiText.navigation.definitions })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: uiText.navigation.account })).toHaveAttribute(
+      "href",
+      "/account"
+    );
+    expect(screen.getByRole("button", { name: uiText.navigation.logout })).toBeInTheDocument();
     expect(screen.getByTestId("admin-nav")).toBeInTheDocument();
   });
 
@@ -57,7 +68,17 @@ describe("AppHeader", () => {
     expect(screen.queryByRole("link", { name: uiText.navigation.dashboard })).toBeNull();
     expect(screen.queryByRole("link", { name: uiText.navigation.definitions })).toBeNull();
     expect(screen.queryByRole("link", { name: uiText.navigation.executions })).toBeNull();
+    expect(screen.queryByRole("link", { name: uiText.navigation.account })).toBeNull();
+    expect(screen.queryByRole("button", { name: uiText.navigation.logout })).toBeNull();
     expect(screen.queryByTestId("admin-nav")).toBeNull();
     expect(document.querySelector('header a[href="/login"]')).not.toBeNull();
+  });
+
+  it("ログアウト押下でセッション破棄を from なしで呼ぶ", () => {
+    renderHeader("/dashboard");
+
+    fireEvent.click(screen.getByRole("button", { name: uiText.navigation.logout }));
+
+    expect(clearSessionAndRedirectToLogin).toHaveBeenCalledWith({ includeFrom: false });
   });
 });

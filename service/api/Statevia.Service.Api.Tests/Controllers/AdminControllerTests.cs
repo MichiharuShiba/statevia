@@ -67,6 +67,13 @@ public sealed class AdminControllerTests
             CancellationToken cancellationToken) =>
             throw new NotImplementedException();
 
+        public Task UpdateUserPasswordAsync(
+            Guid callerPrincipalId,
+            Guid userId,
+            UpdateAdminUserPasswordRequest request,
+            CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
         public Task<IReadOnlyList<AdminGroupListItemDto>> ListGroupsAsync(
             Guid callerPrincipalId,
             CancellationToken cancellationToken) =>

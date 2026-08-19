@@ -81,6 +81,26 @@ public sealed class AuthControllerTests
         Assert.True(payload.IsTenantAdmin);
     }
 
+    /// <summary>ChangeOwnPassword は未認証文脈で UnauthorizedException を送出する。</summary>
+    [Fact]
+    public async Task ChangeOwnPassword_UnresolvedTenantContext_ThrowsUnauthorized()
+    {
+        // Arrange
+        var accessor = new SettableTenantContextAccessor();
+        accessor.Set(null);
+        var controller = new AuthController(new FakeAuthService(), accessor);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedException>(() =>
+            controller.ChangeOwnPassword(
+                new ChangeOwnPasswordRequest
+                {
+                    CurrentPassword = "old",
+                    NewPassword = "nextpass1"
+                },
+                CancellationToken.None));
+    }
+
     private sealed class FakeAuthService : IAuthService
     {
         public LoginResponse? LoginResult { get; init; }
@@ -92,5 +112,12 @@ public sealed class AuthControllerTests
 
         public Task<AuthMeResponse> GetMeAsync(Guid tenantId, Guid principalId, CancellationToken cancellationToken) =>
             Task.FromResult(MeResult ?? throw new InvalidOperationException("MeResult not set"));
+
+        public Task ChangeOwnPasswordAsync(
+            Guid tenantId,
+            Guid principalId,
+            ChangeOwnPasswordRequest request,
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 }

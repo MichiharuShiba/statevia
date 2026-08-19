@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.2.1 |
-| 更新日 | 2026-06-08 |
+| Version | 1.2.2 |
+| 更新日 | 2026-08-19 |
 | 関連 | [decisions/action-module-signing.md](../../decisions/action-module-signing.md), [actions/platform.md](../actions/platform.md) |
 
 ---
@@ -108,7 +108,7 @@ Service API のテナント・Principal・認証・認可の境界を定義す�
 | API キー | 実装（`X-Api-Key`、prefix + SHA-256 hash 検証、`last_used_at` 更新） |
 | OIDC / PAT | 設計余地のみ（未実装） |
 
-パスワードは ASP.NET Core `PasswordHasher` で保存する。API キーは **平文非保存**（prefix + SHA-256 ハッシュ）。有効スコープは **`effective = expanded_permissions ∩ allowed_scopes`**（deny リストなし）とする。
+パスワードは ASP.NET Core `PasswordHasher` で保存する。新規・更新時の平文は **8〜128 文字・空白なし**（記号可。大文字小文字の混在は必須にしない。履歴照合なし）。ログイン時の現行パスワードにはこの制約をかけない。API キーは **平文非保存**（prefix + SHA-256 ハッシュ）。有効スコープは **`effective = expanded_permissions ∩ allowed_scopes`**（deny リストなし）とする。
 
 ## ログのテナント識別子
 

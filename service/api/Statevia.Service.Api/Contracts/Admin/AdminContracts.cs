@@ -66,8 +66,11 @@ public sealed class CreateAdminUserRequest : IValidatableObject
     [MaxLength(UserEmailConstraints.MaxLength)]
     public string? Email { get; set; }
 
-    /// <summary>平文パスワード。</summary>
+    /// <summary>平文パスワード（8〜128 文字、空白なし。記号可）。</summary>
     [Required]
+    [MinLength(PasswordConstraints.MinLength, ErrorMessage = PasswordConstraints.FormatErrorMessage)]
+    [MaxLength(PasswordConstraints.MaxLength, ErrorMessage = PasswordConstraints.FormatErrorMessage)]
+    [RegularExpression(PasswordConstraints.AllowedPattern, ErrorMessage = PasswordConstraints.FormatErrorMessage)]
     public string Password { get; set; } = "";
 
     /// <summary>Principal 表示名（未指定時は username）。</summary>
@@ -88,6 +91,8 @@ public sealed class CreateAdminUserRequest : IValidatableObject
             yield return new ValidationResult(UsernameConstraints.FormatErrorMessage, [nameof(Username)]);
         if (string.IsNullOrWhiteSpace(Password))
             yield return new ValidationResult("password is required.", [nameof(Password)]);
+        else if (!PasswordConstraints.IsValid(Password))
+            yield return new ValidationResult(PasswordConstraints.FormatErrorMessage, [nameof(Password)]);
         if (!string.IsNullOrWhiteSpace(Email))
         {
             var trimmedEmail = Email.Trim();
@@ -107,6 +112,18 @@ public sealed class UpdateAdminUserRequest
 
     /// <summary>テナント管理者フラグ。</summary>
     public bool? IsTenantAdmin { get; set; }
+}
+
+/// <summary>管理者によるパスワード上書き要求。</summary>
+public sealed class UpdateAdminUserPasswordRequest
+{
+    /// <summary>新しい平文パスワード（8〜128 文字、空白なし。記号可）。</summary>
+    [Required(ErrorMessage = "newPassword is required")]
+    [NotWhitespace(ErrorMessage = "newPassword is required")]
+    [MinLength(PasswordConstraints.MinLength, ErrorMessage = PasswordConstraints.FormatErrorMessage)]
+    [MaxLength(PasswordConstraints.MaxLength, ErrorMessage = PasswordConstraints.FormatErrorMessage)]
+    [RegularExpression(PasswordConstraints.AllowedPattern, ErrorMessage = PasswordConstraints.FormatErrorMessage)]
+    public string NewPassword { get; set; } = "";
 }
 
 /// <summary>グループ一覧項目。</summary>

@@ -1,7 +1,7 @@
 # テナント・初回管理者ブートストラップ
 
-- Version: 1.2.0
-- 更新日: 2026-07-07
+- Version: 1.3.0
+- 更新日: 2026-08-19
 - 関連: [security-runtime.md](../specifications/platform/security-runtime.md), [operations-docker.md](operations-docker.md)
 
 ---
@@ -10,7 +10,7 @@
 
 - **テナント発行 UI はスコープ外**。本手順は運用者・DB 管理者向け。
 - マイグレーション適用時に **`tenant_key = default`** のテナントがシードされる（既存 `"default"` ヘッダ互換）。
-- **Development**（`ASPNETCORE_ENVIRONMENT=Development`）では Service API 起動時に既定管理者も自動作成される（`admin` / `admin`、設定は `appsettings.Development.json` の `Statevia:Bootstrap:DevAdmin`）。本番では無効。
+- **Development**（`ASPNETCORE_ENVIRONMENT=Development`）では Service API 起動時に既定管理者も自動作成される（`admin` / `admin123`、設定は `appsettings.Development.json` の `Statevia:Bootstrap:DevAdmin`）。本番では無効。
 - 追加テナントは SQL または将来の platform ツールで作成する。
 
 ## 1. マイグレーション適用
@@ -123,7 +123,7 @@ dotnet run --project Statevia.Service.Api.Bootstrap -- \
 | --- | --- |
 | `--tenant-key` | 外部キー（既定 `default`） |
 | `--username` | 管理者ユーザー名（必須。1〜64 文字。先頭・末尾は英数字。途中のみハイフン・アンダースコア・ドット） |
-| `--password` | 平文（省略時は `STATEVIA_BOOTSTRAP_PASSWORD`） |
+| `--password` | 平文（省略時は `STATEVIA_BOOTSTRAP_PASSWORD`）。8〜128 文字・空白なし（記号可） |
 | `--display-name` | Principal 表示名（省略時は username） |
 | `--skip-if-exists` | ログイン可能な同一ユーザー名が既にいれば何もしない |
 
@@ -134,7 +134,7 @@ dotnet run --project Statevia.Service.Api.Bootstrap -- \
 ```bash
 curl -s -X POST http://localhost:8080/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"tenantKey":"default","username":"admin","password":"admin"}'
+  -d '{"tenantKey":"default","username":"admin","password":"admin123"}'
 ```
 
 UI では `/login` から同じ資格情報でサインインできる（`ui/studio`）。

@@ -185,4 +185,112 @@ public sealed class AuthServiceTests
         await Assert.ThrowsAsync<UnauthorizedException>(() =>
             auth.GetMeAsync(TestTenantIds.DefaultTenantId, Guid.NewGuid(), CancellationToken.None));
     }
+
+    /// <summary>現行パスワード一致で本人ハッシュを更新できる。</summary>
+    [Fact]
+    public async Task ChangeOwnPasswordAsync_CurrentMatches_ReplacesHash()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var principalId = await SecurityTestSeed.SeedUserAsync(database, "me@example.com", "password123");
+        var auth = CreateAuthService(database);
+        var hasher = new PasswordCredentialService();
+
+        // Act
+        await auth.ChangeOwnPasswordAsync(
+            TestTenantIds.DefaultTenantId,
+            principalId,
+            new ChangeOwnPasswordRequest
+            {
+                CurrentPassword = "password123",
+                NewPassword = "nextpass01"
+            },
+            CancellationToken.None);
+
+        // Assert
+        await using var db = database.Factory.CreateDbContext();
+        var user = await db.Users.SingleAsync(row => row.Username == "me");
+        Assert.True(hasher.VerifyPassword("nextpass01", user.PasswordHash));
+        Assert.False(hasher.VerifyPassword("password123", user.PasswordHash));
+    }
+
+    /// <summary>現行パスワード不一致は 401 でハッシュは変わらない。</summary>
+    [Fact]
+    public async Task ChangeOwnPasswordAsync_WrongCurrent_ThrowsUnauthorized()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var principalId = await SecurityTestSeed.SeedUserAsync(database, "me@example.com", "password123");
+        var auth = CreateAuthService(database);
+        var hasher = new PasswordCredentialService();
+        string originalHash;
+        await using (var db = database.Factory.CreateDbContext())
+        {
+            originalHash = (await db.Users.SingleAsync(row => row.Username == "me")).PasswordHash;
+        }
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedException>(() =>
+            auth.ChangeOwnPasswordAsync(
+                TestTenantIds.DefaultTenantId,
+                principalId,
+                new ChangeOwnPasswordRequest
+                {
+                    CurrentPassword = "wrong",
+                    NewPassword = "nextpass01"
+                },
+                CancellationToken.None));
+
+        await using (var db = database.Factory.CreateDbContext())
+        {
+            var user = await db.Users.SingleAsync(row => row.Username == "me");
+            Assert.Equal(originalHash, user.PasswordHash);
+            Assert.True(hasher.VerifyPassword("password123", user.PasswordHash));
+        }
+    }
+
+    /// <summary>無効ユーザーの残 JWT では本人更新できない。</summary>
+    [Fact]
+    public async Task ChangeOwnPasswordAsync_InactiveUser_ThrowsUnauthorized()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var principalId = await SecurityTestSeed.SeedUserAsync(
+            database, "me@example.com", "password123", isActive: false);
+        var auth = CreateAuthService(database);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedException>(() =>
+            auth.ChangeOwnPasswordAsync(
+                TestTenantIds.DefaultTenantId,
+                principalId,
+                new ChangeOwnPasswordRequest
+                {
+                    CurrentPassword = "password123",
+                    NewPassword = "nextpass01"
+                },
+                CancellationToken.None));
+    }
+
+    /// <summary>API キー Principal の本人更新は 401。</summary>
+    [Fact]
+    public async Task ChangeOwnPasswordAsync_ApiKeyPrincipal_ThrowsUnauthorized()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var (principalId, _, _) = await SecurityTestSeed.SeedApiKeyAsync(database);
+        var auth = CreateAuthService(database);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedException>(() =>
+            auth.ChangeOwnPasswordAsync(
+                TestTenantIds.DefaultTenantId,
+                principalId,
+                new ChangeOwnPasswordRequest
+                {
+                    CurrentPassword = "password123",
+                    NewPassword = "nextpass01"
+                },
+                CancellationToken.None));
+    }
 }

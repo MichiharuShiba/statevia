@@ -52,6 +52,18 @@ public sealed class AdminController : ControllerBase
         CancellationToken ct) =>
         Ok(await _administration.UpdateUserAsync(RequirePrincipalId(), userId, request, ct).ConfigureAwait(false));
 
+    /// <summary>PUT /v1/admin/users/{userId}/password — パスワード上書き。</summary>
+    [HttpPut("users/{userId:guid}/password")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> UpdateUserPassword(
+        Guid userId,
+        [FromBody] UpdateAdminUserPasswordRequest request,
+        CancellationToken ct)
+    {
+        await _administration.UpdateUserPasswordAsync(RequirePrincipalId(), userId, request, ct).ConfigureAwait(false);
+        return NoContent();
+    }
+
     /// <summary>GET /v1/admin/groups — グループ一覧。</summary>
     [HttpGet("groups")]
     [ProducesResponseType(typeof(IReadOnlyList<AdminGroupListItemDto>), StatusCodes.Status200OK)]

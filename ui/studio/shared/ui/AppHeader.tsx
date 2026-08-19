@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Locale } from "@/shared/i18n/i18n";
 import type { Theme } from "@/shared/lib/theme";
+import { clearSessionAndRedirectToLogin } from "@/shared/auth/authRedirect";
 import { useUiText } from "@/shared/i18n/uiTextContext";
 import { AdminNavLinks } from "./AdminNavLinks";
 import { LanguageToggle } from "./LanguageToggle";
@@ -16,7 +17,7 @@ type AppHeaderProps = Readonly<{
 }>;
 
 /**
- * 共通ヘッダー。ログイン画面ではアプリ内ナビを表示しない。
+ * 共通ヘッダー。ログイン画面ではアプリ内ナビとログアウトを表示しない。
  */
 export function AppHeader({ theme, locale }: AppHeaderProps) {
   const pathname = usePathname();
@@ -53,7 +54,19 @@ export function AppHeader({ theme, locale }: AppHeaderProps) {
               <Link href="/executions" className="hover:text-[var(--brand-header-fg)] hover:underline">
                 {uiText.navigation.executions}
               </Link>
+              <Link href="/account" className="hover:text-[var(--brand-header-fg)] hover:underline">
+                {uiText.navigation.account}
+              </Link>
               <AdminNavLinks />
+              <button
+                type="button"
+                onClick={() => {
+                  void clearSessionAndRedirectToLogin({ includeFrom: false });
+                }}
+                className="hover:text-[var(--brand-header-fg)] hover:underline"
+              >
+                {uiText.navigation.logout}
+              </button>
             </nav>
           )}
           <ThemeToggle theme={theme} />

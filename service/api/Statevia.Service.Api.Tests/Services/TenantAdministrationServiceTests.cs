@@ -1,6 +1,9 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Contracts.Admin;
+using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
@@ -23,7 +26,8 @@ public sealed class TenantAdministrationServiceTests
             tenantContext,
             new TenantAdminAuthorization(new PlatformDataAccess(database.Factory, new DefaultIdGenerator())),
             new PasswordCredentialService(),
-            new DefaultIdGenerator());
+            new DefaultIdGenerator(),
+            NullLogger<TenantAdministrationService>.Instance);
     }
 
     /// <summary>非管理者はユーザー一覧を拒否される。</summary>
@@ -58,7 +62,7 @@ public sealed class TenantAdministrationServiceTests
             {
                 Username = "new-user",
                 Email = "new-user@example.com",
-                Password = "initial-password",
+                Password = "initialpw1",
                 DisplayName = "New User"
             },
             CancellationToken.None);
@@ -86,7 +90,7 @@ public sealed class TenantAdministrationServiceTests
             {
                 Username = "disable-me",
                 Email = "disable-me@example.com",
-                Password = "initial-password"
+                Password = "initialpw1"
             },
             CancellationToken.None);
 
@@ -99,6 +103,115 @@ public sealed class TenantAdministrationServiceTests
 
         // Assert
         Assert.False(updated.IsActive);
+    }
+
+    /// <summary>管理者は対象ユーザーのパスワードを現行確認なしで上書きできる。</summary>
+    [Fact]
+    public async Task UpdateUserPasswordAsync_Admin_ReplacesHash()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var adminId = await SecurityTestSeed.SeedUserAsync(database, "admin@example.com", "password", isTenantAdmin: true);
+        var tenantContext = new SettableTenantContextAccessor();
+        var service = CreateService(database, tenantContext, adminId);
+        var created = await service.CreateUserAsync(
+            adminId,
+            new CreateAdminUserRequest
+            {
+                Username = "reset-me",
+                Password = "initialpw1"
+            },
+            CancellationToken.None);
+        var hasher = new PasswordCredentialService();
+
+        // Act
+        await service.UpdateUserPasswordAsync(
+            adminId,
+            created.UserId,
+            new UpdateAdminUserPasswordRequest { NewPassword = "replacement1" },
+            CancellationToken.None);
+
+        // Assert
+        await using var db = database.Factory.CreateDbContext();
+        var user = await db.Users.SingleAsync(row => row.UserId == created.UserId);
+        Assert.True(hasher.VerifyPassword("replacement1", user.PasswordHash));
+        Assert.False(hasher.VerifyPassword("initialpw1", user.PasswordHash));
+    }
+
+    /// <summary>管理者は無効ユーザーのパスワードも更新できる。</summary>
+    [Fact]
+    public async Task UpdateUserPasswordAsync_InactiveUser_Succeeds()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var adminId = await SecurityTestSeed.SeedUserAsync(database, "admin@example.com", "password", isTenantAdmin: true);
+        var tenantContext = new SettableTenantContextAccessor();
+        var service = CreateService(database, tenantContext, adminId);
+        var created = await service.CreateUserAsync(
+            adminId,
+            new CreateAdminUserRequest
+            {
+                Username = "inactive-reset",
+                Password = "initialpw1"
+            },
+            CancellationToken.None);
+        await service.UpdateUserAsync(
+            adminId,
+            created.UserId,
+            new UpdateAdminUserRequest { IsActive = false },
+            CancellationToken.None);
+        var hasher = new PasswordCredentialService();
+
+        // Act
+        await service.UpdateUserPasswordAsync(
+            adminId,
+            created.UserId,
+            new UpdateAdminUserPasswordRequest { NewPassword = "afterdisable1" },
+            CancellationToken.None);
+
+        // Assert
+        await using var db = database.Factory.CreateDbContext();
+        var user = await db.Users.SingleAsync(row => row.UserId == created.UserId);
+        Assert.False(user.IsActive);
+        Assert.True(hasher.VerifyPassword("afterdisable1", user.PasswordHash));
+    }
+
+    /// <summary>非管理者のパスワード更新は 403。</summary>
+    [Fact]
+    public async Task UpdateUserPasswordAsync_NonAdmin_ThrowsForbidden()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var memberId = await SecurityTestSeed.SeedUserAsync(database, "member@example.com", "password", isTenantAdmin: false);
+        var tenantContext = new SettableTenantContextAccessor();
+        var service = CreateService(database, tenantContext, memberId);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
+            service.UpdateUserPasswordAsync(
+                memberId,
+                Guid.NewGuid(),
+                new UpdateAdminUserPasswordRequest { NewPassword = "replacement1" },
+                CancellationToken.None));
+    }
+
+    /// <summary>存在しない userId は 404。</summary>
+    [Fact]
+    public async Task UpdateUserPasswordAsync_MissingUser_ThrowsNotFound()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var adminId = await SecurityTestSeed.SeedUserAsync(database, "admin@example.com", "password", isTenantAdmin: true);
+        var tenantContext = new SettableTenantContextAccessor();
+        var service = CreateService(database, tenantContext, adminId);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            service.UpdateUserPasswordAsync(
+                adminId,
+                Guid.NewGuid(),
+                new UpdateAdminUserPasswordRequest { NewPassword = "replacement1" },
+                CancellationToken.None));
     }
 
     /// <summary>グループ権限から tenant.admin は除外される。</summary>
@@ -234,7 +347,7 @@ public sealed class TenantAdministrationServiceTests
             new CreateAdminUserRequest
             {
                 Username = "no-mail",
-                Password = "initial-password"
+                Password = "initialpw1"
             },
             CancellationToken.None);
 
@@ -261,11 +374,11 @@ public sealed class TenantAdministrationServiceTests
         // Act
         var defaultUser = await defaultService.CreateUserAsync(
             defaultAdminId,
-            new CreateAdminUserRequest { Username = "shared", Password = "initial-password" },
+            new CreateAdminUserRequest { Username = "shared", Password = "initialpw1" },
             CancellationToken.None);
         var t1User = await t1Service.CreateUserAsync(
             t1AdminId,
-            new CreateAdminUserRequest { Username = "shared", Password = "initial-password" },
+            new CreateAdminUserRequest { Username = "shared", Password = "initialpw1" },
             CancellationToken.None);
 
         // Assert
@@ -296,7 +409,7 @@ public sealed class TenantAdministrationServiceTests
             {
                 Username = "ops-a",
                 Email = "ops@example.com",
-                Password = "initial-password"
+                Password = "initialpw1"
             },
             CancellationToken.None);
         var t1User = await t1Service.CreateUserAsync(
@@ -305,7 +418,7 @@ public sealed class TenantAdministrationServiceTests
             {
                 Username = "ops-b",
                 Email = "ops@example.com",
-                Password = "initial-password"
+                Password = "initialpw1"
             },
             CancellationToken.None);
 
