@@ -35,14 +35,26 @@ function resolveBrowserOrigin(): string | undefined {
   return globalThis.location.origin;
 }
 
+type ClearSessionRedirectOptions = {
+  /**
+   * 真のとき現在パスをログインの `from` に付ける（401 再認証向け）。
+   * 明示ログアウトでは付けない。
+   */
+  includeFrom?: boolean;
+};
+
 /**
  * セッション Cookie を破棄してログイン画面へ遷移する（クライアント専用）。
+ * @param options 遷移時に元パスを残すかどうか。省略時は残す
  */
-export async function clearSessionAndRedirectToLogin(): Promise<void> {
+export async function clearSessionAndRedirectToLogin(
+  options?: ClearSessionRedirectOptions
+): Promise<void> {
   if (!hasBrowserLocation(globalThis)) {
     return;
   }
-  const from = `${globalThis.location.pathname}${globalThis.location.search}`;
+  const includeFrom = options?.includeFrom !== false;
+  const from = includeFrom ? `${globalThis.location.pathname}${globalThis.location.search}` : "";
   try {
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
   } catch {

@@ -95,6 +95,42 @@ public sealed class RequestDtoValidationTests
         Assert.Empty(results);
     }
 
+    /// <summary>本人パスワード更新の新パスワードが短いと検証失敗する。</summary>
+    [Fact]
+    public void ChangeOwnPasswordRequest_WhenNewPasswordShort_FailsValidation()
+    {
+        // Arrange
+        var request = new ChangeOwnPasswordRequest
+        {
+            CurrentPassword = "password1",
+            NewPassword = "short"
+        };
+
+        // Act
+        var results = Validate(request);
+
+        // Assert
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(ChangeOwnPasswordRequest.NewPassword)));
+    }
+
+    /// <summary>本人パスワード更新の新パスワードが 8 文字なら検証成功する。</summary>
+    [Fact]
+    public void ChangeOwnPasswordRequest_WhenNewPasswordAlphanumeric8_PassesValidation()
+    {
+        // Arrange
+        var request = new ChangeOwnPasswordRequest
+        {
+            CurrentPassword = "oldpass1",
+            NewPassword = "password"
+        };
+
+        // Act
+        var results = Validate(request);
+
+        // Assert
+        Assert.Empty(results);
+    }
+
     /// <summary>state atSeq が 0 のとき検証失敗する。</summary>
     [Fact]
     public void ExecutionStateQuery_WhenAtSeqZero_FailsValidation()

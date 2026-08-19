@@ -43,6 +43,18 @@ internal interface IPlatformDataAccess
         Guid principalId,
         CancellationToken cancellationToken);
 
+    /// <summary>テナント内ユーザーの <c>password_hash</c> を上書きする。該当なしは false。</summary>
+    /// <param name="tenantId">対象テナント。</param>
+    /// <param name="userId">対象ユーザー。</param>
+    /// <param name="passwordHash">新しいハッシュ（平文ではない）。</param>
+    /// <param name="cancellationToken">キャンセル トークン。</param>
+    /// <returns>更新できたとき true。</returns>
+    Task<bool> TryUpdateUserPasswordHashAsync(
+        Guid tenantId,
+        Guid userId,
+        string passwordHash,
+        CancellationToken cancellationToken);
+
     /// <summary>API キー（prefix + hash）から資格情報を検索する。</summary>
     Task<ApiKeyCredentialLookup?> FindApiKeyCredentialAsync(
         string keyPrefix,
@@ -207,6 +219,29 @@ internal sealed class PlatformDataAccess : IPlatformDataAccess
             return null;
 
         return new LoginCredentialLookup(tenant, userPrincipal.u, principal);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> TryUpdateUserPasswordHashAsync(
+        Guid tenantId,
+        Guid userId,
+        string passwordHash,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
+
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var user = await db.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.UserId == userId && u.TenantId == tenantId, cancellationToken)
+            .ConfigureAwait(false);
+        if (user is null)
+            return false;
+
+        user.PasswordHash = passwordHash;
+        user.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
     /// <inheritdoc />

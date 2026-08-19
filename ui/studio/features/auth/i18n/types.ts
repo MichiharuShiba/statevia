@@ -20,6 +20,18 @@ export type AuthFeatureUiText = {
       network: string;
       unexpectedResponse: string;
     };
+    account: {
+      title: string;
+      description: string;
+      currentPasswordLabel: string;
+      newPasswordLabel: string;
+      passwordPolicyHint: string;
+      confirmPasswordLabel: string;
+      passwordMismatch: string;
+      submit: string;
+      submitting: string;
+      success: string;
+    };
 
   };
 };

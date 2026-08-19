@@ -56,7 +56,7 @@ internal sealed class TenantAdminBootstrap
     /// </summary>
     /// <param name="tenantKey">外部テナントキー。</param>
     /// <param name="username">ログインユーザー名（テナント内一意。先頭・末尾は英数字。途中のみハイフン・アンダースコア・ドット。最大 64 文字）。</param>
-    /// <param name="password">平文パスワード（ログに出力しないこと）。</param>
+    /// <param name="password">平文パスワード（8〜128 文字。空白なし。記号可。ログに出力しないこと）。</param>
     /// <param name="displayName">Principal 表示名（未指定時は username）。</param>
     /// <param name="skipIfExists">同一テナント・ユーザー名が既にいる場合は何もしない。</param>
     /// <param name="email">任意の連絡先メール（テナント内一意）。</param>
@@ -123,6 +123,8 @@ internal sealed class TenantAdminBootstrap
             throw new ArgumentException(UsernameConstraints.FormatErrorMessage, nameof(username));
         if (string.IsNullOrWhiteSpace(password))
             throw new ArgumentException("password is required.", nameof(password));
+        if (!PasswordConstraints.IsValid(password))
+            throw new ArgumentException(PasswordConstraints.FormatErrorMessage, nameof(password));
         if (normalizedEmail is { Length: > UserEmailConstraints.MaxLength })
             throw new ArgumentException($"email must be at most {UserEmailConstraints.MaxLength} characters.", nameof(email));
 

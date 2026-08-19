@@ -16,7 +16,7 @@ public sealed class TenantAdminBootstrapTests
         using var database = new SqliteTestDatabase();
         var bootstrap = CreateBootstrap(database);
         const string username = "bootstrap-admin";
-        const string password = "bootstrap-test-password";
+        const string password = "bootstrap1";
 
         // Act
         var result = await bootstrap.CreateTenantAdminAsync(
@@ -65,7 +65,7 @@ public sealed class TenantAdminBootstrapTests
         var result = await bootstrap.CreateTenantAdminAsync(
             "default",
             username,
-            "other-password",
+            "otherpass1",
             displayName: null,
             skipIfExists: true,
             email: null,
@@ -111,11 +111,32 @@ public sealed class TenantAdminBootstrapTests
             bootstrap.CreateTenantAdminAsync(
                 "default",
                 username,
-                "other-password",
+                "otherpass1",
                 displayName: null,
                 skipIfExists: false,
                 email: null,
                 CancellationToken.None));
+    }
+
+    /// <summary>8 文字未満のパスワードは拒否する。</summary>
+    [Fact]
+    public async Task CreateTenantAdminAsync_PasswordTooShort_Throws()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var bootstrap = CreateBootstrap(database);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            bootstrap.CreateTenantAdminAsync(
+                "default",
+                "opsadmin",
+                "short",
+                displayName: null,
+                skipIfExists: false,
+                email: null,
+                CancellationToken.None));
+        Assert.Contains("8", ex.Message, StringComparison.Ordinal);
     }
 
     /// <summary>許可文字以外のユーザー名は拒否する。</summary>
@@ -152,7 +173,7 @@ public sealed class TenantAdminBootstrapTests
         var result = await bootstrap.CreateTenantAdminAsync(
             "default",
             username,
-            "bootstrap-test-password",
+            "bootstrap1",
             displayName: null,
             skipIfExists: false,
             email,

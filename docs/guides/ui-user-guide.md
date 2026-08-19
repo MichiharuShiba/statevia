@@ -3,9 +3,15 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.3 |
-| 更新日 | 2026-08-17 |
+| Version | 1.6 |
+| 更新日 | 2026-08-19 |
 | 関連 | [../specifications/ui/visual.md](../specifications/ui/visual.md)、[../specifications/api-http.md](../specifications/api-http.md) §2.1.2–2.2、[../architecture/ui-studio-structure.md](../architecture/ui-studio-structure.md) |
+
+**Version 1.6（2026-08-19）**: 新規・更新パスワードは 8〜128 文字・空白なし（記号可。大文字小文字の混在は不要）。
+
+**Version 1.5（2026-08-19）**: ヘッダーからログアウトできる（Studio のセッション Cookie を削除して `/login` へ戻る）。
+
+**Version 1.4（2026-08-19）**: `/account` で本人パスワード更新。ユーザー管理から管理者が対象ユーザーのパスワードを更新できる。
 
 **Version 1.3（2026-08-17）**: サインイン識別子をメールからユーザー名へ変更。
 
@@ -30,13 +36,28 @@ SERVICE_API_INTERNAL_BASE="http://localhost:8080" npm run dev
 
 `/login` からテナントキー・ユーザー名・パスワードでサインインします。初回管理者の作成は [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md)。環境変数とテナント設定は [ui-auth-tenant-config.md](ui-auth-tenant-config.md)。
 
+ログイン後はヘッダーの「ログアウト」で Studio のセッション Cookie を消し、`/login` へ戻ります（ログイン画面では出しません）。Service API の JWT をサーバー側で即時失効はしません。ブラウザからセッションが無くなれば Studio は再ログインが必要です。
+
+パスワードを忘れた場合のメール再設定は提供しません。管理者がユーザー管理から上書きするか、本人が `/account` で現行パスワードを確認して更新します。更新後も既存セッション（JWT）は期限まで有効です。
+
 ## 主な画面（概要）
 
 | 画面 | 目的 |
 | --- | --- |
+| アカウント (`/account`) | 現行パスワード確認付きで自分のパスワードを更新 |
+| ユーザー管理 | テナント管理者向け。作成・有効化/無効化・パスワード上書き |
 | 定義一覧 / エディタ | ワークフロー定義の閲覧・編集（nodes 形式） |
 | 実行一覧 | テナント内の実行インスタンス |
 | 実行詳細 / グラフ | 状態・エッジ・進行の可視化 |
+
+### パスワード更新
+
+| 操作 | 画面 | 備考 |
+| --- | --- | --- |
+| 本人更新 | ヘッダー「アカウント」→ `/account` | 現行・新規・確認。確認不一致では送信しない。管理者以外も利用可。新規は 8〜128 文字・空白なし（記号可） |
+| 管理者更新 | ユーザー管理の各行 | ダイアログで新規と確認。現行パスワードは不要。新規は 8〜128 文字・空白なし（記号可） |
+
+HTTP 契約の正本は [api-http.md](../specifications/api-http.md) §4.1.1 / §4.1.3。
 
 ### 定義 catalog の論理削除・復元
 

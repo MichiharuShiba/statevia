@@ -327,4 +327,75 @@ public sealed class PlatformDataAccessTests
         await using var db = database.Factory.CreateDbContext();
         Assert.False(await db.ApiKeys.IgnoreQueryFilters().AnyAsync(k => k.ApiKeyId == missingApiKeyId));
     }
+
+    /// <summary>同一テナントのユーザーハッシュを更新できる。</summary>
+    [Fact]
+    public async Task TryUpdateUserPasswordHashAsync_SameTenant_UpdatesHash()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var principalId = await SecurityTestSeed.SeedUserAsync(database, "hash@example.com", "old-password");
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
+        Guid userId;
+        await using (var db = database.Factory.CreateDbContext())
+        {
+            userId = await db.UserPrincipals
+                .Where(link => link.PrincipalId == principalId)
+                .Select(link => link.UserId)
+                .SingleAsync();
+        }
+
+        // Act
+        var updated = await platform.TryUpdateUserPasswordHashAsync(
+            TestTenantIds.DefaultTenantId,
+            userId,
+            "replacement-hash",
+            CancellationToken.None);
+
+        // Assert
+        Assert.True(updated);
+        await using (var db = database.Factory.CreateDbContext())
+        {
+            var user = await db.Users.SingleAsync(row => row.UserId == userId);
+            Assert.Equal("replacement-hash", user.PasswordHash);
+        }
+    }
+
+    /// <summary>他テナントの userId は更新しない。</summary>
+    [Fact]
+    public async Task TryUpdateUserPasswordHashAsync_OtherTenant_ReturnsFalse()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var principalId = await SecurityTestSeed.SeedUserAsync(database, "hash@example.com", "old-password");
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
+        Guid userId;
+        string originalHash;
+        await using (var db = database.Factory.CreateDbContext())
+        {
+            userId = await db.UserPrincipals
+                .Where(link => link.PrincipalId == principalId)
+                .Select(link => link.UserId)
+                .SingleAsync();
+            originalHash = await db.Users
+                .Where(row => row.UserId == userId)
+                .Select(row => row.PasswordHash)
+                .SingleAsync();
+        }
+
+        // Act
+        var updated = await platform.TryUpdateUserPasswordHashAsync(
+            TestTenantIds.T1TenantId,
+            userId,
+            "replacement-hash",
+            CancellationToken.None);
+
+        // Assert
+        Assert.False(updated);
+        await using (var db = database.Factory.CreateDbContext())
+        {
+            var user = await db.Users.SingleAsync(row => row.UserId == userId);
+            Assert.Equal(originalHash, user.PasswordHash);
+        }
+    }
 }

@@ -11,6 +11,7 @@ export type AdminFeatureUiText = {
       usernameLabel: string;
       emailLabel: string;
       passwordLabel: string;
+      passwordPolicyHint: string;
       displayNameLabel: string;
       isTenantAdminLabel: string;
       createSubmit: string;
@@ -22,6 +23,14 @@ export type AdminFeatureUiText = {
       adminBadge: string;
       groupCount: (count: number) => string;
       forbidden: string;
+      updatePassword: string;
+      updatePasswordTitle: string;
+      newPasswordLabel: string;
+      confirmPasswordLabel: string;
+      passwordMismatch: string;
+      updatePasswordSubmit: string;
+      updatingPassword: string;
+      cancel: string;
     };
     groupManagement: {
       title: string;

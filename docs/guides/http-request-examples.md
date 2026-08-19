@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.0 |
-| 更新日 | 2026-07-07 |
+| Version | 1.1 |
+| 更新日 | 2026-08-19 |
 | 関連 | [getting-started.md](getting-started.md), [../specifications/api-http.md](../specifications/api-http.md) |
 
 ---
@@ -107,12 +107,12 @@ UI からは同一オリジンの `/api/core/executions/{id}/stream` 経由で�
 
 ## ログイン（開発）
 
-Development では API 起動時に `admin` / `admin` が自動作成される（`tenant_key = default`）。
+Development では API 起動時に `admin` / `admin123` が自動作成される（`tenant_key = default`）。
 
 ```bash
 curl -s -X POST http://localhost:8080/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"tenantKey":"default","username":"admin","password":"admin"}'
+  -d '{"tenantKey":"default","username":"admin","password":"admin123"}'
 ```
 
 ## 次に読むもの

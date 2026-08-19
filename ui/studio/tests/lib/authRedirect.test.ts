@@ -75,4 +75,14 @@ describe("clearSessionAndRedirectToLogin", () => {
     });
     expect(assign).toHaveBeenCalledWith("http://localhost:3000/login?from=%2Fdashboard%3Ftab%3D1");
   });
+
+  it("明示ログアウトでは from を付けずにログインへ遷移する", async () => {
+    await clearSessionAndRedirectToLogin({ includeFrom: false });
+
+    expect(fetch).toHaveBeenCalledWith("/api/auth/logout", {
+      method: "POST",
+      credentials: "same-origin"
+    });
+    expect(assign).toHaveBeenCalledWith("http://localhost:3000/login");
+  });
 });

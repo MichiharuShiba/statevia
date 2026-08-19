@@ -729,6 +729,13 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
             CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
+        public Task<bool> TryUpdateUserPasswordHashAsync(
+            Guid tenantId,
+            Guid userId,
+            string passwordHash,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
         public Task<ApiKeyCredentialLookup?> FindApiKeyCredentialAsync(
             string keyPrefix,
             string keyHash,

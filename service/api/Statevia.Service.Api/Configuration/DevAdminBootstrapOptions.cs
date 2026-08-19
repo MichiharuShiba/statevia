@@ -18,8 +18,8 @@ public sealed class DevAdminBootstrapOptions
     /// <summary>ログインユーザー名。</summary>
     public string Username { get; set; } = "admin";
 
-    /// <summary>平文パスワード（開発専用。ログに出力しないこと）。</summary>
-    public string Password { get; set; } = "admin";
+    /// <summary>平文パスワード（開発専用。8〜128 文字。空白なし。記号可。ログに出力しないこと）。</summary>
+    public string Password { get; set; } = "admin123";
 
     /// <summary>Principal 表示名（未指定時は <see cref="Username"/>）。</summary>
     public string? DisplayName { get; set; } = "admin";

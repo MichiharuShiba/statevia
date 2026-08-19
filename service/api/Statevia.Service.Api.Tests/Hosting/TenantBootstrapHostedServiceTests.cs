@@ -81,7 +81,7 @@ public sealed class TenantBootstrapHostedServiceTests
                 Enabled = devAdminEnabled,
                 TenantKey = "default",
                 Username = "admin",
-                Password = "admin",
+                Password = "admin123",
                 DisplayName = "admin"
             }));
         services.AddSingleton<TenantBootstrapHostedService>();

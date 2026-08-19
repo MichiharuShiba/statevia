@@ -35,6 +35,8 @@ Service API と Engine の構造化ログで、同じ概念に同じキー名を
 | ステータス | `StatusCode` | API | - |
 | 経過時間 | `ElapsedMs` | API / Engine | ミリ秒 |
 | 例外型 | `ExceptionType` / `ErrorType` | API / Engine | - |
+| 操作主体 Principal | `ActorPrincipalId` | 管理者パスワード更新 | 監査。平文・ハッシュは出さない |
+| 操作対象ユーザー | `TargetUserId` | 管理者パスワード更新 | `users.user_id` |
 
 ## Engine
 

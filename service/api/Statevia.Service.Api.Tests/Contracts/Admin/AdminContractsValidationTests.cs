@@ -27,7 +27,7 @@ public sealed class AdminContractsValidationTests
     public void CreateAdminUserRequest_Validate_RejectsUsernameWithAt()
     {
         // Arrange
-        var request = new CreateAdminUserRequest { Username = "user@example.com", Password = "secret" };
+        var request = new CreateAdminUserRequest { Username = "user@example.com", Password = "password1" };
         var context = new ValidationContext(request);
 
         // Act
@@ -42,7 +42,7 @@ public sealed class AdminContractsValidationTests
     public void CreateAdminUserRequest_Validate_RejectsUsernameLongerThan64()
     {
         // Arrange
-        var request = new CreateAdminUserRequest { Username = new string('a', 65), Password = "secret" };
+        var request = new CreateAdminUserRequest { Username = new string('a', 65), Password = "password1" };
         var context = new ValidationContext(request);
 
         // Act
@@ -61,7 +61,7 @@ public sealed class AdminContractsValidationTests
         {
             Username = "ops",
             Email = $"{new string('a', 64)}@{new string('b', 190)}.com",
-            Password = "secret"
+            Password = "password1"
         };
         var context = new ValidationContext(request);
 
@@ -71,6 +71,21 @@ public sealed class AdminContractsValidationTests
         // Assert
         Assert.True(request.Email!.Length > 256);
         Assert.Contains(results, r => r.MemberNames.Contains(nameof(CreateAdminUserRequest.Email)));
+    }
+
+    /// <summary>CreateAdminUserRequest は短いパスワードを拒否する。</summary>
+    [Fact]
+    public void CreateAdminUserRequest_Validate_RejectsShortPassword()
+    {
+        // Arrange
+        var request = new CreateAdminUserRequest { Username = "ops", Password = "short" };
+        var context = new ValidationContext(request);
+
+        // Act
+        var results = request.Validate(context).ToList();
+
+        // Assert
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(CreateAdminUserRequest.Password)));
     }
 
     /// <summary>CreateAdminApiKeyRequest の name / scopes / expiresAt を検証する。</summary>

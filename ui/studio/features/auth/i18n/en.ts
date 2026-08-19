@@ -21,6 +21,18 @@ export const authUiTextEn: AuthFeatureUiText = {
       network: "A network error occurred. Check your connection and try again.",
       unexpectedResponse: "The sign-in response was invalid. Contact your administrator.",
     },
+    account: {
+      title: "Account",
+      description: "Confirm your current password, then update it.",
+      currentPasswordLabel: "Current password",
+      newPasswordLabel: "New password",
+      passwordPolicyHint: "8–128 characters with no whitespace (symbols allowed; mixed case is not required)",
+      confirmPasswordLabel: "Confirm new password",
+      passwordMismatch: "The new passwords do not match.",
+      submit: "Update",
+      submitting: "Updating…",
+      success: "Password updated.",
+    },
 
   },
 };

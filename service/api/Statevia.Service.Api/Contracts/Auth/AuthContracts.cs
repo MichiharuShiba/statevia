@@ -64,3 +64,20 @@ public sealed class AuthMeResponse
     /// <summary>テナント管理者か。</summary>
     public bool IsTenantAdmin { get; set; }
 }
+
+/// <summary>本人によるパスワード更新要求。</summary>
+public sealed class ChangeOwnPasswordRequest
+{
+    /// <summary>現行の平文パスワード。</summary>
+    [Required(ErrorMessage = "currentPassword is required")]
+    [NotWhitespace(ErrorMessage = "currentPassword is required")]
+    public string CurrentPassword { get; set; } = "";
+
+    /// <summary>新しい平文パスワード（8〜128 文字、空白なし。記号可）。</summary>
+    [Required(ErrorMessage = "newPassword is required")]
+    [NotWhitespace(ErrorMessage = "newPassword is required")]
+    [MinLength(PasswordConstraints.MinLength, ErrorMessage = PasswordConstraints.FormatErrorMessage)]
+    [MaxLength(PasswordConstraints.MaxLength, ErrorMessage = PasswordConstraints.FormatErrorMessage)]
+    [RegularExpression(PasswordConstraints.AllowedPattern, ErrorMessage = PasswordConstraints.FormatErrorMessage)]
+    public string NewPassword { get; set; } = "";
+}
