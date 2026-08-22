@@ -11,7 +11,8 @@ public static class Program
     public static Task<int> Main(string[] args)
     {
         var root = new RootCommand("Statevia platform CLI");
-        root.AddCommand(DefinitionValidateCommand.Create());
+        root.AddCommand(DefCommand.Create());
+        root.AddCommand(ExecCommand.Create());
         root.AddCommand(AuthCommand.Create());
         root.AddCommand(ConfigCommand.Create());
         root.AddCommand(ModuleInstallCommand.Create());

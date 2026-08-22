@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.6 |
-| 更新日 | 2026-08-18 |
+| Version | 1.9 |
+| 更新日 | 2026-08-22 |
 | 関連 | [../../service/cli/Statevia.Service.Cli/](../../service/cli/Statevia.Service.Cli/) |
 
 ---
@@ -61,19 +61,69 @@ CLI の非秘密設定・JWT・API キーは **`{UserProfile}/.statevia`** に�
 | `STATEVIA_API_KEY` | API キー（ホーム `secrets` より優先） |
 | `STATEVIA_CREDENTIALS_FILE` | JWT ファイルの絶対パス上書き（移行用） |
 
-## `definition validate`
+## `def validate`
 
-ワークフロー定義 YAML を Engine Loader で読み込み、検証します。
+ワークフロー定義 YAML を Engine Loader で読み込み、検証します。API は呼びません。
 
 ```bash
-statevia definition validate path/to/workflow.yaml
+statevia def validate path/to/workflow.yaml
 ```
 
 | 引数 | 説明 |
 | --- | --- |
 | `yaml-file` | 検証対象の YAML ファイル |
 
-終了コード `0` で成功。構文・セマンティクスエラーは stderr に出力されます。
+終了コード `0` で成功。構文・セマンティクスエラーは stderr に出力されます。親コマンドは **`def` のみ**です（`definition` エイリアスはありません）。
+
+## `def`（定義 catalog）
+
+Service API の定義運用コアを呼びます。認証は `auth login` または `--api-key` / ホーム `secrets` です。`--api-base` / `--tenant` はフラグ > 環境変数 > ホーム `config` です。
+
+```bash
+statevia def create --file path/to/workflow.yaml
+# --name 省略時は YAML の workflow 名。両方あるときは --name 優先
+
+statevia def publish <id> --file path/to/workflow.yaml
+statevia def list
+statevia def get <id>
+statevia def delete <id>
+# 確認プロンプトなし。catalog の論理削除（204 は stdout 空）
+
+statevia def restore <id>
+```
+
+| サブコマンド | HTTP |
+| --- | --- |
+| `create --file [--name]` | `POST /v1/definitions` |
+| `publish <id> --file [--name]` | `PUT /v1/definitions/{id}`（版追加） |
+| `list` | `GET /v1/definitions`（`--limit` 既定 50、`--offset` 既定 0） |
+| `get <id>` | `GET /v1/definitions/{id}` |
+| `delete <id>` | `DELETE /v1/definitions/{id}` |
+| `restore <id>` | `POST /v1/definitions/{id}/restore` |
+
+`list` の任意フィルタ: `--name` / `--sort-by` / `--sort-order` / `--include-deleted`。ミューテーションには任意 `--idempotency-key`（未指定時は自動生成しない）。成功時は API JSON を stdout へ（204 は空）。graph / SSE は対象外です。パスの `id` は 1 セグメントだけを許し、`/` や `..` は拒否します。
+
+## `exec`（実行）
+
+```bash
+statevia exec start <definition-id> [--version N] [--version-id <uuid>] [--input input.json]
+statevia exec list
+statevia exec get <id>
+statevia exec cancel <id>
+statevia exec resume <id> --node <nodeId> --event <resumeKey>
+```
+
+| サブコマンド | HTTP |
+| --- | --- |
+| `start <definition-id>` | `POST /v1/executions` |
+| `list` | `GET /v1/executions`（`--limit` 既定 50） |
+| `get <id>` | `GET /v1/executions/{id}` |
+| `cancel <id>` | `POST /v1/executions/{id}/cancel` |
+| `resume <id> --node --event` | `POST /v1/executions/{id}/nodes/{nodeId}/resume`（body `resumeKey`） |
+
+`list` の任意フィルタ: `--status` / `--name` / `--definition-id` / `--sort-by` / `--sort-order`。Wait 再開の正本は `resume` のみです（`POST .../events` は呼びません）。`--wait` や graph / events / SSE は対象外です。パスに載せる `id` と `--node` は 1 セグメントだけを許し、`/` や `..` は拒否します。
+
+認証が無いときは非ゼロで `statevia auth login` を案内します。
 
 ## `config set` / `config get` / `config unset`
 
@@ -163,12 +213,11 @@ statevia module install ./my-module.zip \
 | `--modules-path`, `-m` | modules ルート（既定: フラグ / `STATEVIA_MODULES_PATH` / ホーム `config` / `./modules`） |
 | `--api-base`, `-a` | 任意。指定時（またはホーム `config` / `STATEVIA_API_BASE`）は install 後に reload API を呼ぶ |
 | `--api-key` | reload 用 API キー（`X-Api-Key`）。`STATEVIA_API_KEY` およびホーム `secrets` でも可 |
-| `--token` | **非推奨**。reload 用 Bearer トークン。このリリースでは動作する（短い別名なし） |
 | `--skip-reload` | reload をスキップ |
 
 - `--tenant` がどの源泉にも無い・不正キー（`..` 等）は非ゼロ終了。ルート直下への展開はしない。
 - reload のテナントは install で解決したテナントのみ（別フラグなし）。非 2xx は非ゼロ。トークンと API キーは標準出力に出さない。
-- reload 認証の優先順位: `--api-key` / `STATEVIA_API_KEY` → ホーム `secrets` → `auth login` の資格情報 → `--token`（非推奨）。
+- reload 認証の優先順位: `--api-key` / `STATEVIA_API_KEY` → ホーム `secrets` → `auth login` の資格情報。
 - 本コマンドは **運用者／デプロイ向け**（modules 書き込み＝ホスト信頼境界）。テナント存在確認や容量上限は未実装。SaaS 向け強化は別途。
 - Git / S3 / OCI からの取得 CLI は未対応（プロセスグローバル Source 設定とは別）。
 

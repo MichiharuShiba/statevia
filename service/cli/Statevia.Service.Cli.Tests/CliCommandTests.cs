@@ -76,7 +76,7 @@ public sealed class CliCommandTests : IDisposable
             """);
 
         // Act
-        var exitCode = await Program.Main(["definition", "validate", yamlPath]);
+        var exitCode = await Program.Main(["def", "validate", yamlPath]);
 
         // Assert
         Assert.Equal(0, exitCode);
@@ -88,7 +88,7 @@ public sealed class CliCommandTests : IDisposable
     {
         // Act
         var exitCode = await Program.Main([
-            "definition",
+            "def",
             "validate",
             Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.yaml"),
         ]);
@@ -105,7 +105,7 @@ public sealed class CliCommandTests : IDisposable
         var yamlPath = await WriteTempYamlAsync("::::not-yaml::::");
 
         // Act
-        var exitCode = await Program.Main(["definition", "validate", yamlPath]);
+        var exitCode = await Program.Main(["def", "validate", yamlPath]);
 
         // Assert
         Assert.Equal(1, exitCode);
@@ -128,7 +128,7 @@ public sealed class CliCommandTests : IDisposable
             """);
 
         // Act
-        var exitCode = await Program.Main(["definition", "validate", yamlPath]);
+        var exitCode = await Program.Main(["def", "validate", yamlPath]);
 
         // Assert
         Assert.Equal(1, exitCode);
@@ -302,9 +302,9 @@ public sealed class CliCommandTests : IDisposable
         Assert.Equal(0, exitCode);
     }
 
-    /// <summary>reload には API キー・資格情報・非推奨 --token のいずれかが必要。</summary>
+    /// <summary>reload には API キーまたは資格情報が必要。</summary>
     [Fact]
-    public async Task ModuleInstall_ReloadWithoutToken_ReturnsFailure()
+    public async Task ModuleInstall_ReloadWithoutAuth_ReturnsFailure()
     {
         // Arrange
         var modulesRoot = CreateTempDirectory();
@@ -361,8 +361,8 @@ public sealed class CliCommandTests : IDisposable
             "acme-corp",
             "--api-base",
             $"http://127.0.0.1:{port}",
-            "--token",
-            "test-token",
+            "--api-key",
+            "test-api-key",
         ]);
 
         // Assert
@@ -400,8 +400,8 @@ public sealed class CliCommandTests : IDisposable
             "default",
             "--api-base",
             $"http://127.0.0.1:{port}",
-            "--token",
-            "test-token",
+            "--api-key",
+            "test-api-key",
         ]);
 
         // Assert
@@ -429,35 +429,27 @@ public sealed class CliCommandTests : IDisposable
             "default",
             "--api-base",
             "not-a-valid-uri",
-            "--token",
-            "test-token",
+            "--api-key",
+            "test-api-key",
         ]);
 
         // Assert
         Assert.Equal(1, exitCode);
     }
 
-    /// <summary>reload 成功時、非推奨の --token でも Bearer を送り警告を出す。</summary>
+    /// <summary>--token は未知オプションとして拒否する。</summary>
     [Fact]
-    public async Task ModuleInstall_ReloadWithDeprecatedToken_WritesWarning()
+    public async Task ModuleInstall_TokenOption_IsUnrecognized()
     {
         // Arrange
         var modulesRoot = CreateTempDirectory();
         var zipPath = Path.Combine(CreateTempDirectory(), "test.module.zip");
         CreateZip(zipPath, ("test.module/test.module.dll", "MZ"u8.ToArray()));
-        var port = GetFreeTcpPort();
-        using var listener = new HttpListener();
-        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
-        listener.Start();
-        var listenerTask = Task.Run(async () =>
-        {
-            var context = await listener.GetContextAsync().ConfigureAwait(false);
-            Assert.Equal("Bearer test-token", context.Request.Headers["Authorization"]);
-            context.Response.StatusCode = (int)HttpStatusCode.NoContent;
-            context.Response.Close();
-        });
+        var previousOut = Console.Out;
         var previousError = Console.Error;
+        using var outWriter = new StringWriter();
         using var errorWriter = new StringWriter();
+        Console.SetOut(outWriter);
         Console.SetError(errorWriter);
 
         int exitCode;
@@ -473,20 +465,20 @@ public sealed class CliCommandTests : IDisposable
                 "--tenant",
                 "default",
                 "--api-base",
-                $"http://127.0.0.1:{port}",
+                "http://127.0.0.1:1",
                 "--token",
                 "test-token",
             ]);
         }
         finally
         {
+            Console.SetOut(previousOut);
             Console.SetError(previousError);
         }
 
         // Assert
-        await listenerTask.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.Equal(0, exitCode);
-        Assert.Contains("deprecated", errorWriter.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(1, exitCode);
+        Assert.Contains("--token", outWriter.ToString() + errorWriter.ToString(), StringComparison.Ordinal);
     }
 
     /// <summary>--api-key 指定時は X-Api-Key で reload する。</summary>
@@ -1101,7 +1093,7 @@ public sealed class CliCommandTests : IDisposable
         var directoryPath = CreateTempDirectory();
 
         // Act
-        var exitCode = await Program.Main(["definition", "validate", directoryPath]);
+        var exitCode = await Program.Main(["def", "validate", directoryPath]);
 
         // Assert
         Assert.Equal(1, exitCode);
@@ -1115,7 +1107,7 @@ public sealed class CliCommandTests : IDisposable
         var yamlPath = await WriteTempYamlAsync(string.Empty);
 
         // Act
-        var exitCode = await Program.Main(["definition", "validate", yamlPath]);
+        var exitCode = await Program.Main(["def", "validate", yamlPath]);
 
         // Assert
         Assert.Equal(1, exitCode);
@@ -1158,7 +1150,7 @@ public sealed class CliCommandTests : IDisposable
             await stream.WriteAsync("workflow:\n  name: locked\n"u8.ToArray());
 
             // Act
-            var exitCode = await Program.Main(["definition", "validate", yamlPath]);
+            var exitCode = await Program.Main(["def", "validate", yamlPath]);
 
             // Assert
             Assert.Equal(1, exitCode);

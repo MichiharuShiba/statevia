@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.1 |
-| 更新日 | 2026-08-19 |
+| Version | 1.2 |
+| 更新日 | 2026-08-20 |
 | 関連 | [getting-started.md](getting-started.md), [../specifications/api-http.md](../specifications/api-http.md) |
 
 ---
@@ -17,7 +17,7 @@ Service API（`http://localhost:8080`）への代表的な HTTP 呼び出し例�
 - Runtime API には `Authorization: Bearer <token>` または `X-Api-Key`（将来）
 - ミューテーションには `X-Idempotency-Key` を付与（推奨）
 
-トークン取得は [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md) を参照。
+トークン取得は [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md) を参照。定義・実行の運用コアは CLI の `statevia def` / `statevia exec` からも呼べます（手順は [cli-reference.md](cli-reference.md)）。
 
 ## ヘルス
 

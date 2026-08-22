@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.0 |
-| 更新日 | 2026-07-07 |
+| Version | 1.1 |
+| 更新日 | 2026-08-20 |
 | 関連 | [../../core/engine/samples/hello-statevia/README.md](../../core/engine/samples/hello-statevia/README.md) |
 
 ---
@@ -26,7 +26,7 @@ dotnet run
 
 ```bash
 cd service/cli
-dotnet run --project Statevia.Service.Cli -- definition validate path/to/workflow.yaml
+dotnet run --project Statevia.Service.Cli -- def validate path/to/workflow.yaml
 ```
 
 成功時はワークフロー名と状態一覧を出力します。詳細は [cli-reference.md](cli-reference.md)。
