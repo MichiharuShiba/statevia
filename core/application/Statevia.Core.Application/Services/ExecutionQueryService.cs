@@ -1,7 +1,7 @@
 namespace Statevia.Core.Application.Services;
 
 /// <summary>
-/// 実行の read-model（一覧・単体・graph・view・events）取得。
+/// 実行の read-model（一覧・単体・graph・waits・view・events）取得。
 /// </summary>
 /// <remarks>
 /// <para><see cref="ExecutionService"/> Facade から委譲される。HTTP 契約は変更しない。</para>
@@ -126,6 +126,19 @@ internal sealed class ExecutionQueryService(
         return await forkChildCoordinator
             .ComposeReadModelGraphJsonAsync(uuid.Value, row.GraphJson, ct)
             .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 未完了 Wait の再開キー一覧を返す。正本は graph スナップショット（Hosted 親は GET 時合成後）。
+    /// </summary>
+    /// <param name="idOrUuid">表示 ID または UUID。</param>
+    /// <param name="ct">キャンセル。</param>
+    /// <returns>Wait 一覧。0 件でも空配列。</returns>
+    /// <exception cref="NotFoundException">実行または graph スナップショットが無いとき（<see cref="GetGraphJsonAsync"/> と同じ）。</exception>
+    public async Task<ExecutionWaitsResponse> GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct)
+    {
+        var graphJson = await GetGraphJsonAsync(idOrUuid, ct).ConfigureAwait(false);
+        return ExecutionViewMapper.MapActiveWaits(graphJson);
     }
 
     /// <summary>指定 execution がテナントに存在することを検証する。</summary>

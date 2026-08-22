@@ -6,7 +6,7 @@ using Statevia.Core.Engine.FSM;
 namespace Statevia.Core.Application.Services;
 
 /// <summary>
-/// 実行グラフ JSON と DB 行から UI 向け ExecutionView / Graph パッチを組み立てる。
+/// 実行グラフ JSON と DB 行から UI 向け ExecutionView / Graph パッチ、および未完了 Wait の再開キー一覧を組み立てる。
 /// </summary>
 internal static class ExecutionViewMapper
 {
@@ -67,6 +67,33 @@ internal static class ExecutionViewMapper
         }
 
         return list;
+    }
+
+    /// <summary>
+    /// graph スナップショット JSON から未完了 Wait だけを再開キーとして射影する。
+    /// </summary>
+    /// <param name="graphJson"><see cref="IExecutionService.GetGraphJsonAsync"/> と同じグラフ JSON。</param>
+    /// <returns>WAITING かつ NodeType が Wait の要素。順序は <c>nodes</c> 配列順。0 件でも空の <see cref="ExecutionWaitsResponse"/>。</returns>
+    /// <remarks>
+    /// IO-14: <c>input</c> / <c>output</c> は載せない。<c>allowedEvents</c> が null のときは空配列にする。
+    /// </remarks>
+    public static ExecutionWaitsResponse MapActiveWaits(string graphJson)
+    {
+        var waits = MapNodes(graphJson)
+            .Where(node =>
+                string.Equals(node.Status, "WAITING", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(node.NodeType, "Wait", StringComparison.OrdinalIgnoreCase))
+            .Select(node => new ExecutionWaitItemDto
+            {
+                NodeId = node.NodeId,
+                NodeName = node.NodeName,
+                AllowedEvents = node.AllowedEvents is { Count: > 0 }
+                    ? node.AllowedEvents
+                    : Array.Empty<string>()
+            })
+            .ToList();
+
+        return new ExecutionWaitsResponse { Waits = waits };
     }
 
     public static IReadOnlyList<GraphPatchNodeDto> MapGraphPatchNodes(string graphJson)

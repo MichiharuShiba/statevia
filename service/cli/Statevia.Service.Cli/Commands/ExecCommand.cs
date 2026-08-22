@@ -14,10 +14,11 @@ public static class ExecCommand
     /// <returns>親 <c>exec</c>。</returns>
     public static Command Create()
     {
-        var command = new Command("exec", "Execution start, inspect, cancel, and resume");
+        var command = new Command("exec", "Execution start, inspect, waits, cancel, and resume");
         command.AddCommand(CreateStart());
         command.AddCommand(CreateList());
         command.AddCommand(CreateGet());
+        command.AddCommand(CreateWaits());
         command.AddCommand(CreateCancel());
         command.AddCommand(CreateResume());
         return command;
@@ -118,6 +119,29 @@ public static class ExecCommand
             IdempotencyKey: null));
         get.SetHandler(GetAsync, binder);
         return get;
+    }
+
+    private static Command CreateWaits()
+    {
+        var idArgument = new Argument<string>("id", ExecutionIdDescription);
+        var apiBaseOption = CliRuntimeCommandSupport.CreateApiBaseOption();
+        var tenantOption = CliRuntimeCommandSupport.CreateTenantOption();
+        var apiKeyOption = CliRuntimeCommandSupport.CreateApiKeyOption();
+        var waits = new Command("waits", "List active waits (GET /v1/executions/{id}/waits)")
+        {
+            idArgument,
+            apiBaseOption,
+            tenantOption,
+            apiKeyOption,
+        };
+        var binder = new CliValueBinder<IdArgs>(ctx => new IdArgs(
+            ctx.ParseResult.GetValueForArgument(idArgument),
+            ctx.ParseResult.GetValueForOption(apiBaseOption),
+            ctx.ParseResult.GetValueForOption(tenantOption),
+            ctx.ParseResult.GetValueForOption(apiKeyOption),
+            IdempotencyKey: null));
+        waits.SetHandler(WaitsAsync, binder);
+        return waits;
     }
 
     private static Command CreateCancel()
@@ -256,6 +280,9 @@ public static class ExecCommand
 
     private static async Task<int> GetAsync(IdArgs args) =>
         await SendIdAsync(HttpMethod.Get, args, "v1/executions/{0}", mutation: false).ConfigureAwait(false);
+
+    private static async Task<int> WaitsAsync(IdArgs args) =>
+        await SendIdAsync(HttpMethod.Get, args, "v1/executions/{0}/waits", mutation: false).ConfigureAwait(false);
 
     private static async Task<int> CancelAsync(IdArgs args) =>
         await SendIdAsync(HttpMethod.Post, args, "v1/executions/{0}/cancel", mutation: true).ConfigureAwait(false);

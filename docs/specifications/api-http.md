@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.14 |
-| 更新日 | 2026-08-19 |
+| Version | 1.15 |
+| 更新日 | 2026-08-22 |
 | 関連 | [reference/api-openapi.md](../reference/api-openapi.md), [concepts/platform.md](../concepts/platform.md), [execution/wait-cancel.md](execution/wait-cancel.md) |
 
 ---
@@ -23,6 +23,8 @@
 ---
 
 Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
+
+**Version 1.15（2026-08-22）**: `GET /v1/executions/{id}/waits` を追加。未完了 Wait の `nodeId` / `nodeName` / `allowedEvents` だけを返す（IO-14: `input` / `output` なし）。CLI は `exec waits`。
 
 **Version 1.14（2026-08-19）**: 新規・更新パスワードは 8〜128 文字・空白なし（記号可。大文字小文字の混在は必須にしない）。ログイン時の現行パスワードには適用しない。
 
@@ -110,6 +112,7 @@ Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 | GET      | /v1/executions             | 実行一覧                      |
 | GET      | /v1/executions/{id}        | 実行取得                      |
 | GET      | /v1/executions/{id}/graph  | 実行グラフ（JSON）取得        |
+| GET      | /v1/executions/{id}/waits  | 未完了 Wait の再開キー一覧    |
 | GET      | /v1/executions/{id}/state  | 状態ビュー（`atSeq` クエリ必須） |
 | GET      | /v1/executions/{id}/events  | event_store タイムライン（`afterSeq`, `limit`） |
 | GET      | /v1/executions/{id}/stream  | SSE（グラフ変化を `GraphUpdated` で送出） |
@@ -305,6 +308,20 @@ Response: 200 OK、Content-Type: application/json。`execution_graph_snapshots` 
 
 **IO-14**: グラフ JSON に含まれる `input` / `output` は機微情報になり得る。一覧 `GET /v1/executions` 等では既定で返さない方針は `AGENTS.md` の Input/Output exposure policy に従う。
 
+### 3.4.1 未完了 Wait 一覧（再開キー）
+
+**GET /v1/executions/{id}/waits**
+
+- Response: 200 OK、`ExecutionWaitsResponse`（`{ "waits": [ … ] }`）。Wait が無いときは空配列。
+- 404 は実行未存在、または `GET …/graph` と同じく graph スナップショットが無いとき。
+- 各要素は `nodeId`（実行グラフの opaque ID）、`nodeName`（定義上の状態名）、`allowedEvents`（文字列配列。null は出さない。0 件は `[]`）。
+- 対象はスナップショット上の **WAITING かつ nodeType=Wait** のみ。完了済みや Task/Start は含めない。順序は graph `nodes` 配列順。
+- Hosted 物理 Fork の親 ID では `GET …/graph` と同じ合成後グラフから射影する。子実行の Wait は子の `{id}` で取る。
+- `waitKey` は応答に出さない（値は `allowedEvents` に含まれる）。
+- 正本は graph スナップショット（Hosted 親は GET 時合成後）。`execution_waits` テーブルは読まない。
+- **IO-14**: `input` / `output` は返さない。
+- 権限は `executions.read`。CLI は `statevia exec waits <id>`。`exec resume --node` / `--event` の入力取得に使う。
+
 ### 3.5 状態ビュー（UI）
 
 **GET /v1/executions/{id}/state?atSeq={seq}**
@@ -479,7 +496,7 @@ Principal 解決後、サービス層で **semantic permission key** を評価�
 | --- | --- |
 | GET `/v1/definitions*`、`/v1/graphs/*`、`/v1/definitions/schema/nodes`、`/v1/actions/schema*` | `definitions.read` |
 | POST/PUT `/v1/definitions` | `definitions.write` |
-| GET `/v1/executions*`（一覧・詳細・graph・state・events・stream） | `executions.read` |
+| GET `/v1/executions*`（一覧・詳細・graph・waits・state・events・stream） | `executions.read` |
 | POST start / cancel / publish / resume | `executions.write` |
 
 - **JWT**: グループ権限を Live 展開（`ExpandPrincipalPermissionKeysAsync`）。`is_tenant_admin` は全 catalog key を持つ。

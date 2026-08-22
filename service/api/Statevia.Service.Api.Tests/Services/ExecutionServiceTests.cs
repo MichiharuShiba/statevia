@@ -3098,6 +3098,101 @@ public sealed class ExecutionServiceTests
         Assert.Equal("{\"nodes\":[],\"edges\":[{\"from\":\"a1\",\"to\":\"b1\",\"type\":0}]}", graphJson);
     }
 
+    /// <summary>Wait 一覧は graph と同じ未検出条件で例外を投げる。</summary>
+    [Fact]
+    public async Task GetExecutionWaitsAsync_WhenSnapshotMissing_ThrowsNotFoundException()
+    {
+        // Arrange
+        var engine = new FakeExecutionEngine();
+        var uuid = Guid.NewGuid();
+        var display = new FakeDisplayIdService { ResolveResultExecution = uuid };
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = uuid,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = Guid.NewGuid(),
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            }
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository(),
+            engine: engine,
+            display: display,
+            executionRepo: executionRepo,
+            eventStore: new FakeEventStoreRepository());
+
+        // Act / Assert
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            sut.GetExecutionWaitsAsync(idOrUuid: "X", CancellationToken.None));
+    }
+
+    /// <summary>Wait 一覧は graph JSON から未完了 Wait だけを射影する。</summary>
+    [Fact]
+    public async Task GetExecutionWaitsAsync_MapsActiveWaitsFromGraphJson()
+    {
+        // Arrange
+        var uuid = Guid.NewGuid();
+        var display = new FakeDisplayIdService { ResolveResultExecution = uuid };
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = uuid,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = Guid.NewGuid(),
+                Status = "Waiting",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false
+            },
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
+            {
+                ExecutionId = uuid,
+                GraphJson =
+                    """
+                    {
+                      "nodes": [
+                        {
+                          "nodeId": "wait-1",
+                          "nodeName": "Hold",
+                          "nodeType": "Wait",
+                          "startedAt": "2020-01-01T00:00:00Z",
+                          "completedAt": null,
+                          "fact": null,
+                          "allowedEvents": ["go"]
+                        }
+                      ]
+                    }
+                    """
+            }
+        };
+
+        var sut = MakeSut(
+            dedupService: new FakeCommandDedupService(null),
+            dedupRepo: new FakeCommandDedupRepository(),
+            engine: new FakeExecutionEngine(),
+            display: display,
+            executionRepo: executionRepo,
+            eventStore: new FakeEventStoreRepository());
+
+        // Act
+        var response = await sut.GetExecutionWaitsAsync(idOrUuid: "X", CancellationToken.None);
+
+        // Assert
+        Assert.Single(response.Waits);
+        Assert.Equal("wait-1", response.Waits[0].NodeId);
+        Assert.Equal(["go"], response.Waits[0].AllowedEvents);
+    }
+
     /// <summary>有効なノード識別子と再開キーで ResumeWaitNode と投影更新を実施する。</summary>
     [Fact]
     public async Task ResumeNodeAsync_WhenValidNodeAndResumeKey_ResumesWaitNodeAndUpdatesExecution()

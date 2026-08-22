@@ -53,6 +53,10 @@ internal sealed class ExecutionService(
         queryService.GetGraphJsonAsync(idOrUuid, ct);
 
     /// <inheritdoc />
+    public Task<ExecutionWaitsResponse> GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct) =>
+        queryService.GetExecutionWaitsAsync(idOrUuid, ct);
+
+    /// <inheritdoc />
     public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) =>
         queryService.EnsureExecutionExistsAsync(executionId, ct);
 
