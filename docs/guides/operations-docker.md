@@ -108,7 +108,7 @@ CI ではスコープ `modules.reload` の API キーを `--api-key` または `
 
 - 展開先は **`{modulesRoot}/{tenantKey}/`**（`--tenant` 必須。例: `./modules/default/...`）。
 - `--skip-reload` で filesystem 配置のみ。
-- reload の `X-Tenant-Id` は install の `--tenant` と一致する。認証は `statevia auth login` の資格情報、またはスコープ `modules.reload` の API キー（`--token` は非推奨）。
+- reload の `X-Tenant-Id` は install の `--tenant` と一致する。認証は `statevia auth login` の資格情報、またはスコープ `modules.reload` の API キー。
 - **セキュリティ**: modules ルートへの書き込みは運用者・デプロイの信頼境界とする（テナントが HTTP から任意配置できない）。
 
 ### 運用確認

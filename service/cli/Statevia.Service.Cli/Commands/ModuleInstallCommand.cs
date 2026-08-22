@@ -20,9 +20,6 @@ public static class ModuleInstallCommand
         var apiKeyOption = new Option<string?>(
             aliases: ["--api-key"],
             description: "API key for reload (X-Api-Key). Overrides STATEVIA_API_KEY");
-        var bearerTokenOption = new Option<string?>(
-            "--token",
-            description: "Deprecated. Bearer token for reload. Prefer auth login or --api-key");
         var tenantKeyOption = new Option<string?>(
             aliases: ["--tenant", "-t"],
             description: "Tenant key. Falls back to STATEVIA_TENANT or home config. Installs under {modulesRoot}/{tenantKey}/ and sets X-Tenant-Id on reload");
@@ -37,7 +34,6 @@ public static class ModuleInstallCommand
             modulesPathOption,
             apiBaseOption,
             apiKeyOption,
-            bearerTokenOption,
             tenantKeyOption,
             skipReloadOption,
         };
@@ -47,7 +43,6 @@ public static class ModuleInstallCommand
             modulesPathOption,
             apiBaseOption,
             apiKeyOption,
-            bearerTokenOption,
             tenantKeyOption,
             skipReloadOption);
         command.AddCommand(install);
@@ -59,7 +54,6 @@ public static class ModuleInstallCommand
         string? modulesPath,
         string? apiBase,
         string? apiKey,
-        string? bearerToken,
         string? tenantKey,
         bool skipReload)
     {
@@ -136,7 +130,7 @@ public static class ModuleInstallCommand
                 return 0;
             }
 
-            return await ReloadModulesAsync(resolvedApiBase, apiKey, bearerToken, normalizedTenantKey)
+            return await ReloadModulesAsync(resolvedApiBase, apiKey, normalizedTenantKey)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
@@ -149,14 +143,13 @@ public static class ModuleInstallCommand
     private static async Task<int> ReloadModulesAsync(
         string apiBase,
         string? apiKey,
-        string? bearerToken,
         string tenantKey)
     {
         var store = new CliCredentialsStore();
-        CliReloadAuth? auth;
+        CliApiAuth? auth;
         try
         {
-            auth = CliReloadAuthentication.Resolve(apiKey, bearerToken, store, out var error);
+            auth = CliApiAuthentication.Resolve(apiKey, store, out var error);
             if (auth is null)
             {
                 await Console.Error.WriteLineAsync(error ?? "Reload authentication failed.")
@@ -170,13 +163,6 @@ public static class ModuleInstallCommand
             return 1;
         }
 
-        if (auth.WarnTokenDeprecated)
-        {
-            await Console.Error.WriteLineAsync(
-                    "Warning: --token is deprecated. Use 'statevia auth login' or --api-key / STATEVIA_API_KEY.")
-                .ConfigureAwait(false);
-        }
-
         if (!Uri.TryCreate(apiBase, UriKind.Absolute, out var apiBaseUri))
         {
             await Console.Error.WriteLineAsync("Invalid --api-base URL.").ConfigureAwait(false);
@@ -185,7 +171,7 @@ public static class ModuleInstallCommand
 
         var reloadUri = new Uri(apiBaseUri, "internal/modules/reload");
         using var client = new HttpClient();
-        CliReloadAuthentication.Apply(client, auth);
+        CliApiAuthentication.Apply(client, auth);
         client.DefaultRequestHeaders.Add("X-Tenant-Id", tenantKey);
 
         using var response = await client.PostAsync(reloadUri, content: null).ConfigureAwait(false);

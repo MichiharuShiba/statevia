@@ -46,7 +46,7 @@ public sealed class CliSettingsResolver(
     public string? ResolveApiKey(string? flag) =>
         FirstNonEmpty(
             flag,
-            Environment.GetEnvironmentVariable(CliReloadAuthentication.ApiKeyEnvironmentVariable),
+            Environment.GetEnvironmentVariable(CliApiAuthentication.ApiKeyEnvironmentVariable),
             _secretsStore.TryGetApiKey());
 
     private CliConfigFile? LoadConfig() => _configStore.TryLoad();

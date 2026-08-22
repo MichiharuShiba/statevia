@@ -2,54 +2,55 @@ using System.Net.Http.Headers;
 
 namespace Statevia.Service.Cli.Infrastructure;
 
-/// <summary>module reload に使う認証ヘッダの解決結果。</summary>
+/// <summary>Runtime API 呼び出しに使う認証ヘッダの解決結果。</summary>
 /// <param name="BearerToken">Bearer トークン。API キー経路では <see langword="null"/>。</param>
 /// <param name="ApiKey">API キー。Bearer 経路では <see langword="null"/>。</param>
-/// <param name="WarnTokenDeprecated"><c>--token</c> を使ったとき true。</param>
-internal sealed record CliReloadAuth(string? BearerToken, string? ApiKey, bool WarnTokenDeprecated);
+internal sealed record CliApiAuth(string? BearerToken, string? ApiKey);
 
-/// <summary>module reload の認証を CLI オプションと資格情報ファイルから解決する。</summary>
-internal static class CliReloadAuthentication
+/// <summary>Runtime API 用の認証を CLI オプションとホーム資格情報から解決する。</summary>
+/// <remarks>
+/// <para>優先順位: <c>--api-key</c> / <c>STATEVIA_API_KEY</c> → ホーム secrets → 資格情報 JWT。</para>
+/// <para><c>def</c> / <c>exec</c> と <c>module install</c> の reload で共用する。<c>--token</c> は無い。</para>
+/// </remarks>
+internal static class CliApiAuthentication
 {
+    /// <summary>API キーを上書きする環境変数。</summary>
     internal const string ApiKeyEnvironmentVariable = "STATEVIA_API_KEY";
 
     /// <summary>
-    /// 優先順位: <c>--api-key</c> / <c>STATEVIA_API_KEY</c> → ホーム secrets → 資格情報 JWT → <c>--token</c>（非推奨）。
+    /// 優先順位: <c>--api-key</c> / <c>STATEVIA_API_KEY</c> → ホーム secrets → 資格情報 JWT。
     /// </summary>
     /// <param name="apiKeyOption"><c>--api-key</c>。</param>
-    /// <param name="bearerTokenOption"><c>--token</c>。</param>
     /// <param name="store">資格情報ストア。</param>
     /// <param name="error">失敗時の利用者向けメッセージ。</param>
     /// <returns>解決できた認証。失敗時は <see langword="null"/>。</returns>
-    public static CliReloadAuth? Resolve(
+    public static CliApiAuth? Resolve(
         string? apiKeyOption,
-        string? bearerTokenOption,
         CliCredentialsStore store,
         out string? error)
     {
         error = null;
         var apiKey = FirstNonEmpty(apiKeyOption, Environment.GetEnvironmentVariable(ApiKeyEnvironmentVariable));
         if (!string.IsNullOrWhiteSpace(apiKey))
-            return new CliReloadAuth(BearerToken: null, ApiKey: apiKey.Trim(), WarnTokenDeprecated: false);
+            return new CliApiAuth(BearerToken: null, ApiKey: apiKey.Trim());
 
         var homeApiKey = new CliSecretsStore().TryGetApiKey();
         if (!string.IsNullOrWhiteSpace(homeApiKey))
-            return new CliReloadAuth(BearerToken: null, ApiKey: homeApiKey, WarnTokenDeprecated: false);
+            return new CliApiAuth(BearerToken: null, ApiKey: homeApiKey);
 
         if (store.TryGetValidAccessToken(out var accessToken) && !string.IsNullOrWhiteSpace(accessToken))
-            return new CliReloadAuth(accessToken, ApiKey: null, WarnTokenDeprecated: false);
-
-        if (!string.IsNullOrWhiteSpace(bearerTokenOption))
-            return new CliReloadAuth(bearerTokenOption.Trim(), ApiKey: null, WarnTokenDeprecated: true);
+            return new CliApiAuth(accessToken, ApiKey: null);
 
         error = store.HasExpiredAccessToken()
             ? "Credentials expired. Run 'statevia auth login'."
-            : "Reload requires --api-key (or STATEVIA_API_KEY), home secrets, a saved login (statevia auth login), or --token (deprecated).";
+            : "API calls require --api-key (or STATEVIA_API_KEY), home secrets, or a saved login (statevia auth login).";
         return null;
     }
 
     /// <summary>解決済み認証を <see cref="HttpClient"/> へ載せる。</summary>
-    public static void Apply(HttpClient client, CliReloadAuth auth)
+    /// <param name="client">送信に使うクライアント。</param>
+    /// <param name="auth">解決済み認証。</param>
+    public static void Apply(HttpClient client, CliApiAuth auth)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(auth);
