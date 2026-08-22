@@ -3,7 +3,7 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.9 |
+| Version | 1.10 |
 | 更新日 | 2026-08-22 |
 | 関連 | [../../service/cli/Statevia.Service.Cli/](../../service/cli/Statevia.Service.Cli/) |
 
@@ -109,6 +109,7 @@ statevia def restore <id>
 statevia exec start <definition-id> [--version N] [--version-id <uuid>] [--input input.json]
 statevia exec list
 statevia exec get <id>
+statevia exec waits <id>
 statevia exec cancel <id>
 statevia exec resume <id> --node <nodeId> --event <resumeKey>
 ```
@@ -118,10 +119,11 @@ statevia exec resume <id> --node <nodeId> --event <resumeKey>
 | `start <definition-id>` | `POST /v1/executions` |
 | `list` | `GET /v1/executions`（`--limit` 既定 50） |
 | `get <id>` | `GET /v1/executions/{id}` |
+| `waits <id>` | `GET /v1/executions/{id}/waits`（未完了 Wait の `nodeId` / `nodeName` / `allowedEvents`。`input` / `output` なし） |
 | `cancel <id>` | `POST /v1/executions/{id}/cancel` |
 | `resume <id> --node --event` | `POST /v1/executions/{id}/nodes/{nodeId}/resume`（body `resumeKey`） |
 
-`list` の任意フィルタ: `--status` / `--name` / `--definition-id` / `--sort-by` / `--sort-order`。Wait 再開の正本は `resume` のみです（`POST .../events` は呼びません）。`--wait` や graph / events / SSE は対象外です。パスに載せる `id` と `--node` は 1 セグメントだけを許し、`/` や `..` は拒否します。
+`list` の任意フィルタ: `--status` / `--name` / `--definition-id` / `--sort-by` / `--sort-order`。Wait 再開の正本は `resume` のみです（`POST .../events` は呼びません）。再開キーは `exec waits` で取ります。`--wait` や graph / events / SSE は対象外です。パスに載せる `id` と `--node` は 1 セグメントだけを許し、`/` や `..` は拒否します。
 
 認証が無いときは非ゼロで `statevia auth login` を案内します。
 

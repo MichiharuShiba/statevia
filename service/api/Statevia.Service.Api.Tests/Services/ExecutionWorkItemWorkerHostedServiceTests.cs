@@ -973,6 +973,9 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) =>
             throw new NotImplementedException();
 
+        public Task<ExecutionWaitsResponse> GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct) =>
+            throw new NotImplementedException();
+
         public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
             throw new NotImplementedException();
 

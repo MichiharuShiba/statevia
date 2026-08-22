@@ -150,6 +150,10 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
 
         public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
+
+        public Task<ExecutionWaitsResponse> GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct) =>
+            throw new NotSupportedException();
+
         public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
             throw new NotSupportedException();
 
@@ -217,6 +221,10 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
 
         public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
+
+        public Task<ExecutionWaitsResponse> GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct) =>
+            throw new NotSupportedException();
+
         public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
             throw new NotSupportedException();
 
@@ -282,6 +290,10 @@ public sealed class ExecutionProjectionUpdateQueueServiceTests
 
         public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) =>
             throw new NotSupportedException();
+
+        public Task<ExecutionWaitsResponse> GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct) =>
+            throw new NotSupportedException();
+
         public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
             throw new NotSupportedException();
 

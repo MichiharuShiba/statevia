@@ -64,6 +64,7 @@ public sealed class ExecutionsControllerTests
         public PagedResult<ExecutionResponse> ListPagedResult { get; set; } = new() { Items = [], TotalCount = 0, Offset = 0, Limit = 0, HasMore = false };
         public ExecutionResponse GetResult { get; set; } = new ExecutionResponse();
         public string GraphJsonResult { get; set; } = "{\"nodes\":[]}";
+        public ExecutionWaitsResponse WaitsResult { get; set; } = new ExecutionWaitsResponse();
         public ExecutionViewDto ViewResult { get; set; } = new ExecutionViewDto();
         public ExecutionEventsResponseDto EventsResult { get; set; } = new ExecutionEventsResponseDto();
 
@@ -109,6 +110,14 @@ public sealed class ExecutionsControllerTests
             if (ExceptionToThrow is { } ex) throw ex;
             return GraphJsonResult;
         }
+
+        async Task<ExecutionWaitsResponse> IExecutionService.GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct)
+        {
+            await Task.Yield(); // async boundary for coverage
+            if (ExceptionToThrow is { } ex) throw ex;
+            return WaitsResult;
+        }
+
         public async Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct)
         {
             await Task.Yield(); // async boundary for coverage
@@ -420,6 +429,45 @@ public sealed class ExecutionsControllerTests
         var content = Assert.IsType<ContentResult>(result.Result);
         Assert.Equal("application/json", content.ContentType);
         Assert.Equal("{\"nodes\":[]}", content.Content);
+    }
+
+    /// <summary>
+    /// 未完了 Wait 一覧で DTO を 200 として返す。
+    /// </summary>
+    [Fact]
+    public async Task GetWaits_ReturnsOkDto()
+    {
+        // Arrange
+        var http = new DefaultHttpContext();
+        http.Request.Headers["X-Tenant-Id"] = "t1";
+        var executions = new FakeExecutionService
+        {
+            WaitsResult = new ExecutionWaitsResponse
+            {
+                Waits =
+                [
+                    new ExecutionWaitItemDto
+                    {
+                        NodeId = "wait-1",
+                        NodeName = "Hold",
+                        AllowedEvents = ["go"]
+                    }
+                ]
+            }
+        };
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
+
+        // Act
+        var result = await controller.GetWaits("X", ct: CancellationToken.None);
+
+        // Assert
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var body = Assert.IsType<ExecutionWaitsResponse>(ok.Value);
+        Assert.Single(body.Waits);
+        Assert.Equal("wait-1", body.Waits[0].NodeId);
+        Assert.Equal("Hold", body.Waits[0].NodeName);
+        Assert.Equal(["go"], body.Waits[0].AllowedEvents);
     }
 
     /// <summary>
@@ -868,6 +916,23 @@ public sealed class ExecutionsControllerTests
         var controller = CreateController(http, executions, stream);
 
         await Assert.ThrowsAsync<NotFoundException>(() => controller.GetGraph("X", ct: CancellationToken.None));
+    }
+
+    /// <summary>
+    /// Wait 一覧で未検出例外をそのまま返す。
+    /// </summary>
+    [Fact]
+    public async Task GetWaits_WhenServiceThrowsNotFoundException_ThrowsNotFoundException()
+    {
+        // Arrange
+        var http = new DefaultHttpContext();
+        http.Request.Headers["X-Tenant-Id"] = "t1";
+        var executions = new FakeExecutionService { ExceptionToThrow = new NotFoundException("no wf") };
+        var stream = new ExecutionStreamService(executions, new FakeDisplayIdService { ResolveResult = null });
+        var controller = CreateController(http, executions, stream);
+
+        // Act / Assert
+        await Assert.ThrowsAsync<NotFoundException>(() => controller.GetWaits("X", ct: CancellationToken.None));
     }
 
     /// <summary>

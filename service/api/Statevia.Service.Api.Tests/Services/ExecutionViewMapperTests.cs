@@ -7,7 +7,8 @@ namespace Statevia.Service.Api.Tests.Services;
 
 /// <summary>
 /// <see cref="ExecutionViewMapper"/> が、DB 等に残る実行グラフ JSON（camelCase、ノードキーは <c>nodeId</c>）を
-/// <see cref="ExecutionViewNodeDto"/> および <see cref="GraphPatchNodeDto"/> に正しく射影することを検証する。
+/// <see cref="ExecutionViewNodeDto"/>、<see cref="GraphPatchNodeDto"/>、および
+/// <see cref="ExecutionWaitsResponse"/> に正しく射影することを検証する。
 /// </summary>
 public sealed class ExecutionViewMapperTests
 {
@@ -132,5 +133,177 @@ public sealed class ExecutionViewMapperTests
         Assert.Single(nodes);
         Assert.Equal(["approve", "reject"], nodes[0].AllowedEvents);
         Assert.Null(nodes[0].WaitKey);
+    }
+
+    /// <summary>
+    /// 未完了の複数イベント Wait が <see cref="ExecutionWaitItemDto"/> の
+    /// <c>nodeId</c> / <c>nodeName</c> / <c>allowedEvents</c> になることを検証する。
+    /// </summary>
+    [Fact]
+    public void MapActiveWaits_projects_multi_event_waiting_wait()
+    {
+        // Arrange
+        const string json =
+            """
+            {
+              "nodes": [
+                {
+                  "nodeId": "wait-1",
+                  "nodeName": "ApproveTask",
+                  "nodeType": "Wait",
+                  "startedAt": "2020-01-01T00:00:00Z",
+                  "completedAt": null,
+                  "fact": null,
+                  "allowedEvents": ["approve", "reject"]
+                }
+              ]
+            }
+            """;
+
+        // Act
+        var response = ExecutionViewMapper.MapActiveWaits(json);
+
+        // Assert
+        Assert.Single(response.Waits);
+        Assert.Equal("wait-1", response.Waits[0].NodeId);
+        Assert.Equal("ApproveTask", response.Waits[0].NodeName);
+        Assert.Equal(["approve", "reject"], response.Waits[0].AllowedEvents);
+    }
+
+    /// <summary>
+    /// 単一イベント Wait は <c>allowedEvents</c> に 1 件だけ入り、<c>waitKey</c> キーは応答に出ないことを検証する。
+    /// </summary>
+    [Fact]
+    public void MapActiveWaits_uses_allowedEvents_for_single_event_wait()
+    {
+        // Arrange
+        const string json =
+            """
+            {
+              "nodes": [
+                {
+                  "nodeId": "wait-1",
+                  "nodeName": "Hold",
+                  "nodeType": "Wait",
+                  "startedAt": "2020-01-01T00:00:00Z",
+                  "completedAt": null,
+                  "fact": null,
+                  "waitKey": "go",
+                  "allowedEvents": ["go"]
+                }
+              ]
+            }
+            """;
+
+        // Act
+        var response = ExecutionViewMapper.MapActiveWaits(json);
+        var jsonText = JsonSerializer.Serialize(response);
+
+        // Assert
+        Assert.Single(response.Waits);
+        Assert.Equal(["go"], response.Waits[0].AllowedEvents);
+        Assert.DoesNotContain("waitKey", jsonText, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// 完了済み Wait と Task / Start は未完了 Wait 一覧に含まれないことを検証する。
+    /// </summary>
+    [Fact]
+    public void MapActiveWaits_excludes_completed_wait_and_non_wait_nodes()
+    {
+        // Arrange
+        const string json =
+            """
+            {
+              "nodes": [
+                {
+                  "nodeId": "start-1",
+                  "nodeName": "Start",
+                  "nodeType": "Start",
+                  "startedAt": "2020-01-01T00:00:00Z",
+                  "completedAt": "2020-01-01T00:00:01Z",
+                  "fact": "Completed"
+                },
+                {
+                  "nodeId": "task-1",
+                  "nodeName": "Work",
+                  "nodeType": "Task",
+                  "startedAt": "2020-01-01T00:00:01Z",
+                  "completedAt": null,
+                  "fact": null
+                },
+                {
+                  "nodeId": "wait-done",
+                  "nodeName": "DoneWait",
+                  "nodeType": "Wait",
+                  "startedAt": "2020-01-01T00:00:02Z",
+                  "completedAt": "2020-01-01T00:00:03Z",
+                  "fact": "Completed",
+                  "allowedEvents": ["go"]
+                },
+                {
+                  "nodeId": "wait-open",
+                  "nodeName": "OpenWait",
+                  "nodeType": "Wait",
+                  "startedAt": "2020-01-01T00:00:04Z",
+                  "completedAt": null,
+                  "fact": null,
+                  "allowedEvents": ["resume"]
+                }
+              ]
+            }
+            """;
+
+        // Act
+        var response = ExecutionViewMapper.MapActiveWaits(json);
+
+        // Assert
+        Assert.Single(response.Waits);
+        Assert.Equal("wait-open", response.Waits[0].NodeId);
+        Assert.Equal(["resume"], response.Waits[0].AllowedEvents);
+    }
+
+    /// <summary>
+    /// Wait が無いグラフ、空オブジェクト、空 nodes は空配列になることを検証する。
+    /// </summary>
+    [Fact]
+    public void MapActiveWaits_returns_empty_when_no_active_waits()
+    {
+        // Arrange / Act / Assert
+        Assert.Empty(ExecutionViewMapper.MapActiveWaits("""{"nodes":[]}""").Waits);
+        Assert.Empty(ExecutionViewMapper.MapActiveWaits("{}").Waits);
+        Assert.Empty(ExecutionViewMapper.MapActiveWaits("").Waits);
+    }
+
+    /// <summary>
+    /// allowedEvents 欠落または空の未完了 Wait は空配列を返し、null にしないことを検証する。
+    /// </summary>
+    [Fact]
+    public void MapActiveWaits_normalizes_missing_allowedEvents_to_empty_array()
+    {
+        // Arrange
+        const string json =
+            """
+            {
+              "nodes": [
+                {
+                  "nodeId": "wait-1",
+                  "nodeName": "Hold",
+                  "nodeType": "Wait",
+                  "startedAt": "2020-01-01T00:00:00Z",
+                  "completedAt": null,
+                  "fact": null
+                }
+              ]
+            }
+            """;
+
+        // Act
+        var response = ExecutionViewMapper.MapActiveWaits(json);
+
+        // Assert
+        Assert.Single(response.Waits);
+        Assert.NotNull(response.Waits[0].AllowedEvents);
+        Assert.Empty(response.Waits[0].AllowedEvents);
     }
 }

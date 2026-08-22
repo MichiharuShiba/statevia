@@ -117,6 +117,21 @@ public class ExecutionsController : ControllerBase
         return Content(graphJson, "application/json");
     }
 
+    /// <summary>
+    /// GET /v1/executions/{id}/waits — 未完了 Wait の再開キー。正本は graph スナップショット。X-Tenant-Id でスコープ。
+    /// </summary>
+    /// <remarks>IO-14: <c>input</c> / <c>output</c> は返さない。権限は既存 executions GET と同じ <c>executions.read</c>。</remarks>
+    [HttpGet("{id}/waits")]
+    [ProducesResponseType(typeof(ExecutionWaitsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ExecutionWaitsResponse>> GetWaits(
+        string id,
+        CancellationToken ct = default)
+    {
+        var waits = await _executions.GetExecutionWaitsAsync(id, ct).ConfigureAwait(false);
+        return Ok(waits);
+    }
+
     /// <summary>GET /v1/executions/{id}/state?atSeq= — UI 用 ExecutionView（リプレイは現状スナップショット近似）。</summary>
     [HttpGet("{id}/state")]
     [ProducesResponseType(typeof(ExecutionViewDto), StatusCodes.Status200OK)]

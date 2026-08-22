@@ -164,6 +164,59 @@ public sealed class CliExecCommandTests : IDisposable
         Assert.Contains("\"resumeKey\":\"Approved\"", captured.Body, StringComparison.Ordinal);
     }
 
+    /// <summary>waits は GET .../waits を呼び、成功 JSON を stdout に出す。</summary>
+    [Fact]
+    public async Task ExecWaits_GetsPathAndWritesJson()
+    {
+        // Arrange
+        CliCommandTestSupport.SaveValidCredentials();
+        var port = CliCommandTestSupport.GetFreeTcpPort();
+        using var listener = new HttpListener();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+        var listenerTask = CliCommandTestSupport.RespondOnceAsync(
+            listener,
+            HttpStatusCode.OK,
+            """{"waits":[{"nodeId":"wait-1","nodeName":"Hold","allowedEvents":["go"]}]}""");
+
+        // Act
+        var (exitCode, stdout, _) = await CliCommandTestSupport.RunAsync(
+            "exec",
+            "waits",
+            "ex-1",
+            "--api-base",
+            $"http://127.0.0.1:{port}",
+            "--tenant",
+            "acme-corp");
+        var captured = await listenerTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Equal("GET", captured.Method);
+        Assert.Equal("/v1/executions/ex-1/waits", captured.Path);
+        Assert.Contains("wait-1", stdout, StringComparison.Ordinal);
+        Assert.Contains("go", stdout, StringComparison.Ordinal);
+    }
+
+    /// <summary>認証が無い waits は login 案内で失敗する。</summary>
+    [Fact]
+    public async Task ExecWaits_WithoutAuth_ReturnsFailureWithLoginHint()
+    {
+        // Act
+        var (exitCode, _, stderr) = await CliCommandTestSupport.RunAsync(
+            "exec",
+            "waits",
+            "ex-1",
+            "--api-base",
+            "http://127.0.0.1:8080",
+            "--tenant",
+            "acme-corp");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("auth login", stderr, StringComparison.Ordinal);
+    }
+
     /// <summary>--node が .. のとき HTTP せず拒否する。</summary>
     [Fact]
     public async Task ExecResume_DotDotNode_ReturnsFailureWithoutHttp()

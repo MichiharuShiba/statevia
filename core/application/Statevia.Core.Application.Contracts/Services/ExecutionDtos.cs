@@ -155,6 +155,37 @@ public sealed class ExecutionViewNodeDto
     public JsonElement? ConditionRouting { get; init; }
 }
 
+/// <summary>
+/// 未完了 Wait の再開キー一覧。
+/// </summary>
+/// <remarks>
+/// <para><c>GET /v1/executions/{id}/waits</c> の本文。正本は graph スナップショット射影。</para>
+/// <para>IO-14: <c>input</c> / <c>output</c> は含めない。</para>
+/// </remarks>
+public sealed class ExecutionWaitsResponse
+{
+    /// <summary>未完了 Wait の列。0 件のときは空配列。</summary>
+    public IReadOnlyList<ExecutionWaitItemDto> Waits { get; init; } = Array.Empty<ExecutionWaitItemDto>();
+}
+
+/// <summary>
+/// 1 件の未完了 Wait。
+/// </summary>
+/// <remarks>
+/// <c>exec resume --node</c> には <see cref="NodeId"/>、<c>--event</c> には <see cref="AllowedEvents"/> を使う。
+/// </remarks>
+public sealed class ExecutionWaitItemDto
+{
+    /// <summary>実行グラフの opaque ノード ID。</summary>
+    public string NodeId { get; init; } = string.Empty;
+
+    /// <summary>定義上の状態名。欠落時は空文字。</summary>
+    public string NodeName { get; init; } = string.Empty;
+
+    /// <summary>許可イベント名。null にはしない。0 件は空配列。</summary>
+    public IReadOnlyList<string> AllowedEvents { get; init; } = Array.Empty<string>();
+}
+
 /// <summary>GET …/events のレスポンス（UI <c>ExecutionEventsResponse</c>）。</summary>
 public sealed class ExecutionEventsResponseDto
 {

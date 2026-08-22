@@ -416,6 +416,8 @@ public sealed class ForkExpansionHostHandlerTests
             throw new NotImplementedException();
         public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) => throw new NotImplementedException();
         public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) => throw new NotImplementedException();
+        public Task<ExecutionWaitsResponse> GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct) =>
+            throw new NotImplementedException();
         public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) =>
             throw new NotImplementedException();
         public Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct) =>

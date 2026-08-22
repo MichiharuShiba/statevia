@@ -26,6 +26,8 @@ public sealed class ExecutionStreamServiceTests
         public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = _status });
         public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
+        public Task<ExecutionWaitsResponse> GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct) =>
+            Task.FromResult(new ExecutionWaitsResponse());
         public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct)
         {
             GetGraphJsonCalls++;
@@ -74,6 +76,8 @@ public sealed class ExecutionStreamServiceTests
         public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = "Running" });
         public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
+        public Task<ExecutionWaitsResponse> GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct) =>
+            Task.FromResult(new ExecutionWaitsResponse());
         public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct)
         {
             return Task.FromResult(_stableJson);
@@ -129,6 +133,8 @@ public sealed class ExecutionStreamServiceTests
         public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = "Running" });
         public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
+        public Task<ExecutionWaitsResponse> GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct) =>
+            Task.FromResult(new ExecutionWaitsResponse());
         public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct)
         {
             return Task.FromResult(_stableJson);
@@ -189,6 +195,8 @@ public sealed class ExecutionStreamServiceTests
         public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = "Running" });
         public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ExecutionWaitsResponse> GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct) =>
+            Task.FromResult(new ExecutionWaitsResponse());
         public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) => Task.FromResult("{\"nodes\":[]}");
         public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct) => throw new NotSupportedException();
         public Task<ExecutionViewDto> GetExecutionViewAsync(string idOrUuid, CancellationToken ct) => throw new NotSupportedException();
@@ -225,6 +233,8 @@ public sealed class ExecutionStreamServiceTests
         public Task<ExecutionResponse> GetExecutionResponseAsync(string idOrUuid, CancellationToken ct) =>
             Task.FromResult(new ExecutionResponse { Status = "Running" });
         public Task EnsureExecutionExistsAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
+        public Task<ExecutionWaitsResponse> GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct) =>
+            Task.FromResult(new ExecutionWaitsResponse());
         public Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct) => Task.FromResult("{\"nodes\":[]}");
         public Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct)
         {

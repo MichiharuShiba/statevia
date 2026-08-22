@@ -38,6 +38,14 @@ public interface IExecutionService
     /// <summary>投影済み実行グラフ JSON を返す。</summary>
     Task<string> GetGraphJsonAsync(string idOrUuid, CancellationToken ct);
 
+    /// <summary>
+    /// 未完了 Wait の再開キー一覧を返す。正本は graph スナップショット（Hosted 親は GET 時合成後）。
+    /// </summary>
+    /// <param name="idOrUuid">表示 ID または UUID。</param>
+    /// <param name="ct">キャンセル。</param>
+    /// <returns>Wait 一覧。0 件でも空配列。</returns>
+    Task<ExecutionWaitsResponse> GetExecutionWaitsAsync(string idOrUuid, CancellationToken ct);
+
     /// <summary>スナップショット行からグラフ JSON を取得する。無ければ <see langword="null"/>。</summary>
     Task<string?> TryGetSnapshotGraphJsonByExecutionIdAsync(Guid executionId, CancellationToken ct);
 

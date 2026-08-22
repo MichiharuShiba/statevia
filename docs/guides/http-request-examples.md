@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.2 |
-| 更新日 | 2026-08-20 |
+| Version | 1.3 |
+| 更新日 | 2026-08-22 |
 | 関連 | [getting-started.md](getting-started.md), [../specifications/api-http.md](../specifications/api-http.md) |
 
 ---
@@ -80,6 +80,10 @@ curl -s "http://localhost:8080/v1/executions/${EXEC_ID}" \
   -H "Authorization: Bearer <token>"
 
 curl -s "http://localhost:8080/v1/executions/${EXEC_ID}/graph" \
+  -H "X-Tenant-Id: default" \
+  -H "Authorization: Bearer <token>"
+
+curl -s "http://localhost:8080/v1/executions/${EXEC_ID}/waits" \
   -H "X-Tenant-Id: default" \
   -H "Authorization: Bearer <token>"
 ```
