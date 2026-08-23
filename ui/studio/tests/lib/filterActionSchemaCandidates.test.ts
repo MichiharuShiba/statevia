@@ -4,17 +4,17 @@ import type { ActionSchemaIndexItem } from "@/features/definition-editor/actionS
 
 const candidates: ActionSchemaIndexItem[] = [
   {
-    actionId: "statevia.action.builtin.rest",
+    actionId: "statevia.action.reference.http.request",
     displayName: "REST",
     version: "1.0.0"
   },
   {
-    actionId: "statevia.action.builtin.noop",
+    actionId: "statevia.action.builtin.execution.noop",
     displayName: "No-op",
     version: "1.0.0"
   },
   {
-    actionId: "statevia.action.builtin.sleep",
+    actionId: "statevia.action.builtin.execution.sleep",
     displayName: "Sleep",
     version: "1.0.0"
   }
@@ -27,10 +27,10 @@ describe("filterActionSchemaCandidates", () => {
 
   it("actionId / displayName で部分一致絞り込みする", () => {
     expect(filterActionSchemaCandidates(candidates, "rest").map((item) => item.actionId)).toEqual([
-      "statevia.action.builtin.rest"
+      "statevia.action.reference.http.request"
     ]);
     expect(filterActionSchemaCandidates(candidates, "no-op").map((item) => item.actionId)).toEqual([
-      "statevia.action.builtin.noop"
+      "statevia.action.builtin.execution.noop"
     ]);
   });
 

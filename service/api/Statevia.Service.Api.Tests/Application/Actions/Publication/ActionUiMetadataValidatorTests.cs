@@ -7,7 +7,7 @@ namespace Statevia.Service.Api.Tests.Application.Actions.Publication;
 /// <summary><see cref="ActionUiMetadataValidator"/> の labelKey プレフィックス検証。</summary>
 public sealed class ActionUiMetadataValidatorTests
 {
-    private const string ActionId = "statevia.action.builtin.rest";
+    private const string ActionId = "statevia.action.reference.http.request";
 
     /// <summary>canonical actionId 根の labelKey は検証を通過する。</summary>
     [Fact]

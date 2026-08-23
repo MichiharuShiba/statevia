@@ -61,7 +61,7 @@ states:
 - **workflow.name**: ワークフロー名（任意、デフォルト "Unnamed"）。
 - **workflow.modules**: 任意。module alias（キー）→ ModuleId（値）のマップ。`action: mail.send` のように alias 付き action 参照を解決する。alias は **大文字小文字を区別せず一意**（重複・空キー・空 ModuleId は Loader 構文エラー）。現状 ModuleId に version 指定はできない（同一 moduleId の複数版共存・版レンジ解決は**未実装**）。
 - **states**: 状態名 → 状態定義のマップ。各状態は `on`（遷移）、`wait`（待機）、`join`（合流）のいずれかまたは組み合わせを持つ。
-- **action**: 任意。定義登録時に Service API が Catalog へ照合し、未登録の ID はエラーになる。**省略時**は implicit noop（canonical: `statevia.action.builtin.noop`、即時完了）と同等。Builtin 短名・module alias・FQCN のいずれでも記述できる（§1.1.1）。**`wait` または `join` を指定する状態では `action` と併記できない**。
+- **action**: 任意。定義登録時に Service API が Catalog へ照合し、未登録の ID はエラーになる。**省略時**は implicit noop（canonical: `statevia.action.builtin.execution.noop`、即時完了）と同等。**FQCN** または `workflow.modules` の alias 参照のみを記述する（§1.1.1）。短名（`noop` / `sleep` / `rest` 等）は受理しない。**`wait` または `join` を指定する状態では `action` と併記できない**。
 
 ### 1.1.1 Action ID（canonical 形式と解決）
 
@@ -69,29 +69,48 @@ YAML 上の `action` 参照は syntax parse のあと、Service API Compiler（`
 
 | 記法（YAML） | 正規化後（canonical） | 例 |
 | --- | --- | --- |
-| 省略 | `statevia.action.builtin.noop` | action 未指定 |
-| Builtin 短名 | `statevia.action.builtin.{name}` | `noop` → `statevia.action.builtin.noop` |
-| FQCN（Builtin） | そのまま | `statevia.action.builtin.rest` |
-| `{alias}.{actionName}` + `workflow.modules` | `{ModuleId}.{actionName}` | `mail.send` + `mail: com.company.mail` → `com.company.mail.send` |
+| 省略 | `statevia.action.builtin.execution.noop` | action 未指定 |
+| FQCN（Builtin / Module） | そのまま | `statevia.action.builtin.execution.sleep` |
+| `{alias}.{actionName}` + `workflow.modules` | `{ModuleId}.{actionName}` | `http.request` + `http: statevia.action.reference.http` → `statevia.action.reference.http.request` |
 | 多段 FQCN（alias 未登録） | そのまま | `com.vendor.pkg.actionName` |
+| ドットなし短名 | **エラー（HTTP 422）** | `sleep` / `rest` / `noop` |
 
-Builtin 短名（MVP）:
+残す Builtin（canonical）:
 
-| 短名 | canonical ID | 概要 |
+| Action | canonical ID | 概要 |
 | --- | --- | --- |
-| `noop` | `statevia.action.builtin.noop` | 即時完了（入力をそのまま出力） |
-| `sleep` | `statevia.action.builtin.sleep` | `input.duration` で待機 |
-| `rest` | `statevia.action.builtin.rest` | HTTPS REST 呼び出し |
-| `notify` | `statevia.action.builtin.notify` | email 通知（MVP） |
-| `signal` | `statevia.action.builtin.signal` | 実行スコープ内シグナル発行 |
-| `publish` | `statevia.action.builtin.publish` | システムトピック発行（MVP stub） |
-| `workflow` | `statevia.action.builtin.workflow` | 子ワークフロー起動（開始直後に status を返す。終端待ちは wait / resume） |
+| execution.noop | `statevia.action.builtin.execution.noop` | 即時完了（入力をそのまま出力）。省略時もこれ |
+| execution.sleep | `statevia.action.builtin.execution.sleep` | `input.duration` で待機 |
+| execution.signal | `statevia.action.builtin.execution.signal` | 実行スコープ内シグナル発行 |
+| event.publish | `statevia.action.builtin.event.publish` | システムトピック発行（MVP stub） |
+| workflow.invoke | `statevia.action.builtin.workflow.invoke` | 子ワークフロー起動（開始直後に status を返す。終端待ちは wait / resume） |
+
+Builtin の Catalog `ModuleId` は `statevia.action.builtin`。旧 canonical（例: `statevia.action.builtin.sleep`）と短名は解決しない。
+
+first-party リファレンス Module（ソースは `modules/reference/`。API ビルド時に `modules/default/` へ copy。未署名は Community）:
+
+| Action | ModuleId | canonical ID |
+| --- | --- | --- |
+| HTTPS リクエスト | `statevia.action.reference.http` | `statevia.action.reference.http.request` |
+| email 通知 | `statevia.action.reference.notification` | `statevia.action.reference.notification.send` |
+
+テナントへ載せるには当該 Module の配置が必要。Builtin へは落とさない。alias 例:
+
+```yaml
+workflow:
+  modules:
+    http: statevia.action.reference.http
+states:
+  Call:
+    action: http.request
+```
 
 廃止:
 
-- **`delay5s`** は削除済み。`sleep` + `input.duration`（例: `5s`）へ移行する。
+- **`delay5s`** は削除済み。`execution.sleep` + `input.duration`（例: `5s`）へ移行する。
+- **短名**（`noop` / `sleep` / `rest` / `notify` / `signal` / `publish` / `workflow`）は削除済み。
 
-解決に失敗した参照（未知の Builtin 短名・未登録 module alias・Catalog 未登録 ID）はコンパイルエラー（HTTP 422）となる。
+解決に失敗した参照（短名・未登録 module alias・一段のみの未知 alias・Catalog 未登録 ID）はコンパイルエラー（HTTP 422）となる。
 
 **TrustLevel と実行モード（Service API Policy）:** Catalog の `ActionDescriptor.TrustLevel` と実行環境（`ASPNETCORE_ENVIRONMENT` / `Statevia:ExecutionPolicy:DeploymentProfile`）から `ConfigurableExecutionPolicy` が最終 `ActionExecutionMode` を決定する。Builtin は `Trusted`（InProcess）。filesystem Module は既定 `Community`（本番は OutOfProcess 想定 — Phase 3 Action Host まで実行は `UnsupportedExecutionMode`）。Policy は TrustLevel 下限を緩和できない。
 
@@ -114,7 +133,7 @@ action 状態（`action` を指定する状態 / nodes の `type: action`）で�
 ```yaml
 states:
   CallApi:
-    action: rest
+    action: statevia.action.reference.http.request
     retry:
       limit: 3
       backoff: exponential
@@ -138,21 +157,21 @@ states:
 - `retry` を `input` マップ内に書くことは **不可**（Loader 構文エラー）。
 - `wait` / `join` 状態では `retry` と `action` を併記できない（Level 1 検証エラー）。
 
-### 1.1.4 Builtin action の input / output（MVP）
+### 1.1.4 Builtin / リファレンス action の input / output（MVP）
 
 各 Builtin の `input` は §1.1.2 の action パラメータとして状態 YAML の `input:` に記述する。`output` は状態完了時に Engine が次状態へ渡す候補 input の元になる（§1.6）。**IO-14**: rest レスポンス body、notify 本文、子 workflow の input 等はログ・一覧 GET に載せない方針とする。
 
-#### noop（`statevia.action.builtin.noop`）
+#### noop（`statevia.action.builtin.execution.noop`）
 
 - **input**: 任意（状態 input マッピングの結果をそのまま受け取る）
 - **output**: 入力を **そのまま**返す（pass-through）
 
-#### sleep（`statevia.action.builtin.sleep`）
+#### sleep（`statevia.action.builtin.execution.sleep`）
 
 - **input**: `{ duration }` — 必須。`5s` / `500ms` / 数値（ミリ秒）を受理
 - **output**: 意味のない完了（`Unit`）。**直前 payload は次状態へ引き継がれない**（pass-through しない）
 
-#### rest（`statevia.action.builtin.rest`）
+#### http.request（`statevia.action.reference.http.request`）— リファレンス Module
 
 - **input**:
 
@@ -167,7 +186,7 @@ states:
 
 - **output**: `{ statusCode, headers, body }` — `body` は文字列（上限 1 MiB で切り詰め）
 
-#### notify（`statevia.action.builtin.notify`）
+#### notification.send（`statevia.action.reference.notification.send`）— リファレンス Module
 
 - **input**:
 
@@ -180,19 +199,19 @@ states:
   | `from` | いいえ | 差出人。省略時はプラットフォーム既定 |
 
 - **output**: `{ channel, messageId? }`
-- **接続設定（SMTP 等）**: workflow `input` には含めない。Platform 設定（環境変数 `STATEVIA_SMTP_*` / `Notification:SmtpSettingsSource` 等）で解決する。
+- **接続設定（SMTP 等）**: workflow `input` には含めない。モジュールが環境変数 `STATEVIA_SMTP_HOST` / `STATEVIA_SMTP_PORT` / `STATEVIA_SMTP_USER` / `STATEVIA_SMTP_PASSWORD` / `STATEVIA_SMTP_FROM` を読む。ホストの `Infrastructure.Notification` には依存しない。未署名リファレンスの TrustLevel は Community。
 
-#### signal（`statevia.action.builtin.signal`）
+#### signal（`statevia.action.builtin.execution.signal`）
 
 - **input**: `{ signal, target? }` — `signal` 必須。`target` は MVP で `current` のみ（省略時 `current`）
 - **output**: 意味のない完了（`Unit`）。同一実行内の wait 再開用に `IEventProvider.Signal` を発行する（許可イベント名と一致させる）
 
-#### publish（`statevia.action.builtin.publish`）
+#### publish（`statevia.action.builtin.event.publish`）
 
 - **input**: `{ topic, payload? }` — `topic` 必須。`payload` は任意（MVP では dispatch ログの要約のみ）
 - **output**: `{ topic, dispatched: true }` — 外部 bus には未接続（stub）
 
-#### workflow（`statevia.action.builtin.workflow`）
+#### workflow（`statevia.action.builtin.workflow.invoke`）
 
 - **input**:
 
@@ -216,7 +235,7 @@ workflow:
 
 states:
   StartChild:
-    action: workflow
+    action: statevia.action.builtin.workflow.invoke
     input:
       definitionId: $.input.childDefinitionId
     on:
@@ -601,7 +620,7 @@ Service API の **`GET /v1/definitions/schema/nodes`** が返すスキーマに�
 
 - **start**: `next` で次ノード名。
 - **end**: `next` なし。
-- **action**: `action` はアクション参照（§1.1.1。例: `mail.send`、`statevia.action.builtin.noop`）。`next` で通常遷移先、`error` で失敗時遷移先（action のみ）。`input` で入力マップ（§1.1.2）。
+- **action**: `action` はアクション参照（§1.1.1。例: `mail.send`、`statevia.action.builtin.execution.noop`）。`next` で通常遷移先、`error` で失敗時遷移先（action のみ）。`input` で入力マップ（§1.1.2）。
 - **wait**: 正本は **`events`**（イベント名 → 次ノード名）。単一イベントの旧形式 `event` + `next` も受理し、Loader が `events` へ正規化する。`timeout`（ISO 8601 duration）は現行変換では未使用。
 - **fork**: `branches` に並列ブランチのノード名の配列。
 - **join**: すべてのブランチの完了を待ち、`next` へ進む。

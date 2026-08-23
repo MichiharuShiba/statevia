@@ -41,7 +41,7 @@ nodes:
   - name: nest.start.child
     type: action
     label: 子ワークフロー開始
-    action: workflow
+    action: statevia.action.builtin.workflow.invoke
     input:
       definitionId: $.input.childDefinitionId
       input.note: $.input.note
@@ -58,7 +58,7 @@ nodes:
   - name: nest.after.ok
     type: action
     label: 子完了後
-    action: noop
+    action: statevia.action.builtin.execution.noop
     input:
       result: child_completed
       childWorkflowId: $.states['nest.start.child'].output.workflowId
@@ -67,7 +67,7 @@ nodes:
   - name: nest.after.fail
     type: action
     label: 子失敗後
-    action: noop
+    action: statevia.action.builtin.execution.noop
     input:
       result: child_failed
       childWorkflowId: $.states['nest.start.child'].output.workflowId
@@ -76,7 +76,7 @@ nodes:
   - name: nest.start.failed
     type: action
     label: 子開始失敗
-    action: noop
+    action: statevia.action.builtin.execution.noop
     input:
       result: start_failed
     next: nest.end

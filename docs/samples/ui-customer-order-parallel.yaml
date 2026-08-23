@@ -42,7 +42,7 @@ nodes:
   - name: order.preflight
     type: action
     label: 受付ゲート
-    action: noop
+    action: statevia.action.builtin.execution.noop
     edges:
       - to: order.validate
         when:
@@ -55,14 +55,14 @@ nodes:
   - name: order.validate
     type: action
     label: 受注検証
-    action: noop
+    action: statevia.action.builtin.execution.noop
     next: order.split
     error: order.reject.notify
 
   - name: order.reject.notify
     type: action
     label: 却下・検証失敗の通知
-    action: noop
+    action: statevia.action.builtin.execution.noop
     input:
       reason: validation_failed
       stage: pre_fulfillment
@@ -78,7 +78,7 @@ nodes:
   - name: order.ship.east
     type: action
     label: 東倉から即出荷（遅延シミュレート）
-    action: sleep
+    action: statevia.action.builtin.execution.sleep
     input:
       duration: 5s
     next: order.merge
@@ -98,7 +98,7 @@ nodes:
   - name: order.notify.customer
     type: action
     label: 顧客へ発送通知
-    action: noop
+    action: statevia.action.builtin.execution.noop
     input:
       channel: email
       template: order.shipped

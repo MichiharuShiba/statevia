@@ -33,7 +33,7 @@ nodes:
   - name: flow.prepare
     type: action
     label: 準備（noop）
-    action: noop
+    action: statevia.action.builtin.execution.noop
     next: flow.approve.wait
 
   - name: flow.approve.wait
@@ -46,7 +46,7 @@ nodes:
   - name: flow.approved
     type: action
     label: 承認後処理
-    action: noop
+    action: statevia.action.builtin.execution.noop
     input:
       result: approved
     next: flow.end
@@ -54,7 +54,7 @@ nodes:
   - name: flow.rejected
     type: action
     label: 却下後処理
-    action: noop
+    action: statevia.action.builtin.execution.noop
     input:
       result: rejected
     next: flow.end

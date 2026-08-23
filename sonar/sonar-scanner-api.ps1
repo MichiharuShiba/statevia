@@ -7,7 +7,7 @@
   スクリプト配置（リポジトリの sonar/）から api とカバレッジ出力パスを解決する。
   カレントディレクトリに依存しない。
   解析・カバレッジ除外は service/api/coverage.runsettings の意図（Engine / Program / Migrations）に合わせる。
-  誤ってリポジトリルート等から実行した場合に UI / engine が混ざらないよう、ui/studio と core/engine も除外する。
+  誤ってリポジトリルート等から実行した場合に UI / engine / リファレンス Module が混ざらないよう、ui/studio・core/engine・modules/reference も除外する。
 
 .NOTES
   環境変数 SONAR_TOKEN を事前に設定すること。
@@ -26,6 +26,7 @@ $sonarAnalysisExclusions = @(
     '**/service/cli/**',
     '**/service/action-host/**',
     '**/service/runtime/**',
+    '**/modules/reference/**',
     '**/Statevia.Core.Engine/**',
     '**/Migrations/**',
     '**/Program.cs',

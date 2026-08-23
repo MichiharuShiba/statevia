@@ -87,3 +87,6 @@ audit.log
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# ビルド生成のリファレンス Module DLL
+modules/default/statevia.action.reference.*/

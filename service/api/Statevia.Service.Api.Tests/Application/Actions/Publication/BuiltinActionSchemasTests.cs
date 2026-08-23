@@ -26,12 +26,12 @@ public sealed class BuiltinActionSchemasTests
         AssertSchemaId(publication.SchemaBundle.OutputSchema.RootElement, actionId, isOutput: true);
     }
 
-    /// <summary>rest input schema は url と method を必須とする。</summary>
+    /// <summary>sleep input schema は duration を必須とする。</summary>
     [Fact]
-    public void Rest_InputSchema_RequiresUrlAndMethod()
+    public void Sleep_InputSchema_RequiresDuration()
     {
         // Arrange
-        var publication = BuiltinActionSchemas.Rest(WellKnownActionIds.Rest);
+        var publication = BuiltinActionSchemas.Sleep(WellKnownActionIds.Sleep);
         var root = publication.SchemaBundle.InputSchema.RootElement;
 
         // Act
@@ -41,8 +41,7 @@ public sealed class BuiltinActionSchemasTests
             .ToArray();
 
         // Assert
-        Assert.Contains("url", required);
-        Assert.Contains("method", required);
+        Assert.Contains("duration", required);
         Assert.False(root.GetProperty("additionalProperties").GetBoolean());
     }
 
@@ -75,8 +74,6 @@ public sealed class BuiltinActionSchemasTests
         {
             { WellKnownActionIds.NoOpCanonical, BuiltinActionSchemas.NoOp },
             { WellKnownActionIds.Sleep, BuiltinActionSchemas.Sleep },
-            { WellKnownActionIds.Rest, BuiltinActionSchemas.Rest },
-            { WellKnownActionIds.Notify, BuiltinActionSchemas.Notify },
             { WellKnownActionIds.Signal, BuiltinActionSchemas.Signal },
             { WellKnownActionIds.Publish, BuiltinActionSchemas.Publish },
             { WellKnownActionIds.Workflow, BuiltinActionSchemas.Workflow },

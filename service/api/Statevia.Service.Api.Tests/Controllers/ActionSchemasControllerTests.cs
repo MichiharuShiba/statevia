@@ -19,7 +19,7 @@ public sealed class ActionSchemasControllerTests
                 [
                     new ActionSchemaListItemDto
                     {
-                        ActionId = "statevia.action.builtin.rest",
+                        ActionId = "statevia.action.reference.http.request",
                         DisplayName = "REST",
                         Version = "1.0.0",
                         HasSchema = true,
@@ -34,7 +34,7 @@ public sealed class ActionSchemasControllerTests
                 [
                     new ActionSchemaIndexItemDto
                     {
-                        ActionId = "statevia.action.builtin.rest",
+                        ActionId = "statevia.action.reference.http.request",
                         DisplayName = "REST",
                         Version = "1.0.0",
                     },
@@ -106,12 +106,12 @@ public sealed class ActionSchemasControllerTests
             new AllowAllRuntimePermissionAuthorization());
 
         // Act
-        var res = await controller.GetDetail("statevia.action.builtin.rest", CancellationToken.None);
+        var res = await controller.GetDetail("statevia.action.reference.http.request", CancellationToken.None);
 
         // Assert
         var ok = Assert.IsType<OkObjectResult>(res.Result);
         var body = Assert.IsType<ActionSchemaDetailResponse>(ok.Value);
-        Assert.Equal("statevia.action.builtin.rest", body.Descriptor.ActionId);
+        Assert.Equal("statevia.action.reference.http.request", body.Descriptor.ActionId);
     }
 
     /// <summary>未登録 actionId は NotFoundException を伝播する。</summary>

@@ -37,18 +37,27 @@ public sealed class ActionNameResolverTests
             entry => ModuleImportReference.ParseImportValue(entry.Value),
             StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>builtin 短名 noop は canonical FQCN に正規化される。</summary>
+    /// <summary>builtin 短名 noop は受理せず例外になる。</summary>
     [Fact]
-    public void Resolve_BuiltinShortNameNoop_NormalizesToCanonical()
+    public void Resolve_BuiltinShortNameNoop_Throws()
     {
         // Arrange
         var def = CreateDefinition(null, ("A", "noop"));
 
-        // Act
-        var resolved = ActionNameResolver.Resolve(def);
+        // Act / Assert
+        var ex = Assert.Throws<ArgumentException>(() => ActionNameResolver.Resolve(def));
+        Assert.Contains("short names are not supported", ex.Message, StringComparison.Ordinal);
+    }
 
-        // Assert
-        Assert.Equal(WellKnownActionIds.NoOpCanonical, resolved.States["A"].Action);
+    /// <summary>短名 rest は受理しない。</summary>
+    [Fact]
+    public void Resolve_RestShortName_Throws()
+    {
+        // Arrange
+        var def = CreateDefinition(null, ("A", "rest"));
+
+        // Act / Assert
+        Assert.Throws<ArgumentException>(() => ActionNameResolver.Resolve(def));
     }
 
     /// <summary>既に FQCN の action はそのまま保持される。</summary>
@@ -56,7 +65,7 @@ public sealed class ActionNameResolverTests
     public void Resolve_FullyQualifiedAction_KeepsAsIs()
     {
         // Arrange
-        const string fqcn = "statevia.action.builtin.rest";
+        const string fqcn = "statevia.action.reference.http.request";
         var def = CreateDefinition(null, ("A", fqcn));
 
         // Act

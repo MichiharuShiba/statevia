@@ -6,12 +6,12 @@ import type { ActionSchemaIndexItem } from "@/features/definition-editor/actionS
 
 const candidates: ActionSchemaIndexItem[] = [
   {
-    actionId: "statevia.action.builtin.rest",
+    actionId: "statevia.action.reference.http.request",
     displayName: "REST",
     version: "1.0.0"
   },
   {
-    actionId: "statevia.action.builtin.noop",
+    actionId: "statevia.action.builtin.execution.noop",
     displayName: "No-op",
     version: "1.0.0"
   }
@@ -54,13 +54,13 @@ describe("ActionIdCombobox", () => {
     const input = screen.getByRole<HTMLInputElement>("combobox");
     const allOptions = getDatalistOptions(input);
     expect(allOptions.map((option) => option.value)).toEqual([
-      "statevia.action.builtin.rest",
-      "statevia.action.builtin.noop"
+      "statevia.action.reference.http.request",
+      "statevia.action.builtin.execution.noop"
     ]);
 
     fireEvent.change(input, { target: { value: "rest" } });
     const filteredOptions = getDatalistOptions(input);
-    expect(filteredOptions.map((option) => option.value)).toEqual(["statevia.action.builtin.rest"]);
+    expect(filteredOptions.map((option) => option.value)).toEqual(["statevia.action.reference.http.request"]);
   });
 
   it("候補選択で actionId を確定する", () => {
@@ -68,10 +68,10 @@ describe("ActionIdCombobox", () => {
     render(<StatefulActionIdCombobox onCommit={onCommit} />);
 
     const input = screen.getByRole("combobox");
-    fireEvent.change(input, { target: { value: "statevia.action.builtin.rest" } });
+    fireEvent.change(input, { target: { value: "statevia.action.reference.http.request" } });
 
     expect(onCommit).toHaveBeenCalled();
-    expect(input).toHaveValue("statevia.action.builtin.rest");
+    expect(input).toHaveValue("statevia.action.reference.http.request");
   });
 
   it("一覧にない文字列もフリー入力で確定できる", () => {

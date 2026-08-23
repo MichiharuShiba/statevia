@@ -1,5 +1,6 @@
 /**
  * Builtin action の actionCatalog i18n 正本（canonical actionId 根）。
+ * rest / notify の固定辞書は持たない（Module Publication の UiMetadata を正とする）。
  * labelKey 形式: `{actionId}.ui.fields.{field}.label`
  */
 export type ActionCatalogFieldUiText = {
@@ -22,38 +23,15 @@ const builtinPrefix = "statevia.action.builtin.";
 
 /** Builtin action の日本語 actionCatalog 文言。 */
 export const actionCatalogUiTextJa: ActionCatalogUiText = {
-  [`${builtinPrefix}noop`]: { ui: { fields: {} } },
-  [`${builtinPrefix}sleep`]: {
+  [`${builtinPrefix}execution.noop`]: { ui: { fields: {} } },
+  [`${builtinPrefix}execution.sleep`]: {
     ui: {
       fields: {
         duration: { label: "待機時間" },
       },
     },
   },
-  [`${builtinPrefix}rest`]: {
-    ui: {
-      fields: {
-        url: { label: "URL" },
-        method: { label: "HTTP メソッド" },
-        headers: { label: "ヘッダー" },
-        body: { label: "リクエスト本文" },
-        timeout: { label: "タイムアウト（秒）" },
-        idempotencyKey: { label: "冪等キー" },
-      },
-    },
-  },
-  [`${builtinPrefix}notify`]: {
-    ui: {
-      fields: {
-        channel: { label: "チャネル" },
-        to: { label: "宛先" },
-        subject: { label: "件名" },
-        body: { label: "本文" },
-        from: { label: "送信元" },
-      },
-    },
-  },
-  [`${builtinPrefix}signal`]: {
+  [`${builtinPrefix}execution.signal`]: {
     ui: {
       fields: {
         target: { label: "ターゲット" },
@@ -61,7 +39,7 @@ export const actionCatalogUiTextJa: ActionCatalogUiText = {
       },
     },
   },
-  [`${builtinPrefix}publish`]: {
+  [`${builtinPrefix}event.publish`]: {
     ui: {
       fields: {
         topic: { label: "トピック" },
@@ -69,7 +47,7 @@ export const actionCatalogUiTextJa: ActionCatalogUiText = {
       },
     },
   },
-  [`${builtinPrefix}workflow`]: {
+  [`${builtinPrefix}workflow.invoke`]: {
     ui: {
       fields: {
         definitionId: { label: "定義 ID" },
@@ -81,37 +59,14 @@ export const actionCatalogUiTextJa: ActionCatalogUiText = {
 
 /** Builtin action の英語 actionCatalog 上書き。 */
 export const actionCatalogUiTextEnOverrides: ActionCatalogUiText = {
-  [`${builtinPrefix}sleep`]: {
+  [`${builtinPrefix}execution.sleep`]: {
     ui: {
       fields: {
         duration: { label: "Duration" },
       },
     },
   },
-  [`${builtinPrefix}rest`]: {
-    ui: {
-      fields: {
-        url: { label: "URL" },
-        method: { label: "HTTP method" },
-        headers: { label: "Headers" },
-        body: { label: "Request body" },
-        timeout: { label: "Timeout (seconds)" },
-        idempotencyKey: { label: "Idempotency key" },
-      },
-    },
-  },
-  [`${builtinPrefix}notify`]: {
-    ui: {
-      fields: {
-        channel: { label: "Channel" },
-        to: { label: "To" },
-        subject: { label: "Subject" },
-        body: { label: "Body" },
-        from: { label: "From" },
-      },
-    },
-  },
-  [`${builtinPrefix}signal`]: {
+  [`${builtinPrefix}execution.signal`]: {
     ui: {
       fields: {
         target: { label: "Target" },
@@ -119,7 +74,7 @@ export const actionCatalogUiTextEnOverrides: ActionCatalogUiText = {
       },
     },
   },
-  [`${builtinPrefix}publish`]: {
+  [`${builtinPrefix}event.publish`]: {
     ui: {
       fields: {
         topic: { label: "Topic" },
@@ -127,7 +82,7 @@ export const actionCatalogUiTextEnOverrides: ActionCatalogUiText = {
       },
     },
   },
-  [`${builtinPrefix}workflow`]: {
+  [`${builtinPrefix}workflow.invoke`]: {
     ui: {
       fields: {
         definitionId: { label: "Definition ID" },

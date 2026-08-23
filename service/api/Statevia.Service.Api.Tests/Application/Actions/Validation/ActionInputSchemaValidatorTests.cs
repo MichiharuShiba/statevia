@@ -11,7 +11,7 @@ namespace Statevia.Service.Api.Tests.Application.Actions.Validation;
 public sealed class ActionInputSchemaValidatorTests
 {
     private const string StateName = "Send";
-    private const string ActionId = WellKnownActionIds.Rest;
+    private const string ActionId = WellKnownActionIds.Sleep;
 
     /// <summary>literalOrPath フィールドにリテラル文字列を指定すると型検証が適用される。</summary>
     [Fact]
@@ -131,7 +131,7 @@ public sealed class ActionInputSchemaValidatorTests
     public void Validate_MissingRequiredField_ReturnsError()
     {
         // Arrange
-        var schema = BuiltinActionSchemas.Rest(ActionId).SchemaBundle.InputSchema.RootElement;
+        var schema = RestLikeSchema();
         var input = CreateValuesInput(("method", "GET"));
 
         // Act
@@ -146,7 +146,7 @@ public sealed class ActionInputSchemaValidatorTests
     public void Validate_UnknownProperty_WhenAdditionalPropertiesFalse_ReturnsError()
     {
         // Arrange
-        var schema = BuiltinActionSchemas.Rest(ActionId).SchemaBundle.InputSchema.RootElement;
+        var schema = RestLikeSchema();
         var input = CreateValuesInput(
             ("url", "https://example.test"),
             ("method", "GET"),
@@ -164,7 +164,7 @@ public sealed class ActionInputSchemaValidatorTests
     public void Validate_PathOnlyInput_SkipsSchemaValidation()
     {
         // Arrange
-        var schema = BuiltinActionSchemas.Rest(ActionId).SchemaBundle.InputSchema.RootElement;
+        var schema = RestLikeSchema();
         var input = new StateInputDefinition { Path = "$.payload" };
 
         // Act
@@ -200,7 +200,7 @@ public sealed class ActionInputSchemaValidatorTests
     public void Validate_InvalidEnumValue_ReturnsTypeError()
     {
         // Arrange
-        var schema = BuiltinActionSchemas.Rest(ActionId).SchemaBundle.InputSchema.RootElement;
+        var schema = RestLikeSchema();
         var input = CreateValuesInput(
             ("url", "https://example.test"),
             ("method", "INVALID"));
@@ -217,7 +217,7 @@ public sealed class ActionInputSchemaValidatorTests
     public void Validate_InvalidUriFormat_ReturnsTypeError()
     {
         // Arrange
-        var schema = BuiltinActionSchemas.Rest(ActionId).SchemaBundle.InputSchema.RootElement;
+        var schema = RestLikeSchema();
         var input = CreateValuesInput(
             ("url", "not-a-uri"),
             ("method", "GET"));
@@ -234,7 +234,7 @@ public sealed class ActionInputSchemaValidatorTests
     public void Validate_IntegerBelowMinimum_ReturnsTypeError()
     {
         // Arrange
-        var schema = BuiltinActionSchemas.Rest(ActionId).SchemaBundle.InputSchema.RootElement;
+        var schema = RestLikeSchema();
         var input = new StateInputDefinition
         {
             Values = new Dictionary<string, StateInputValueDefinition>
@@ -285,7 +285,7 @@ public sealed class ActionInputSchemaValidatorTests
     public void Validate_ObjectLiteralHeaders_Passes()
     {
         // Arrange
-        var schema = BuiltinActionSchemas.Rest(ActionId).SchemaBundle.InputSchema.RootElement;
+        var schema = RestLikeSchema();
         var input = new StateInputDefinition
         {
             Values = new Dictionary<string, StateInputValueDefinition>
@@ -530,6 +530,22 @@ public sealed class ActionInputSchemaValidatorTests
             StringComparer.OrdinalIgnoreCase);
         return new StateInputDefinition { Values = values };
     }
+
+    private static JsonElement RestLikeSchema() =>
+        ParseSchema(
+            """
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["url", "method"],
+              "properties": {
+                "url": { "type": "string", "format": "uri" },
+                "method": { "type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] },
+                "headers": { "type": "object", "additionalProperties": { "type": "string" } },
+                "timeout": { "type": "integer", "minimum": 1 }
+              }
+            }
+            """);
 
     private static JsonElement ParseSchema(string json) =>
         JsonDocument.Parse(json).RootElement;

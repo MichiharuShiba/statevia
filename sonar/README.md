@@ -36,13 +36,14 @@ dotnet build-server shutdown
 & .\sonar\sonar-scanner-runtime.ps1
 & .\sonar\sonar-scanner-cli.ps1
 & .\sonar\sonar-scanner-action-host.ps1
+& .\sonar\sonar-scanner-reference.ps1
 & .\sonar\sonar-scanner-ui.ps1
 ```
 
-- **engine / api / runtime / cli / action-host**: `dotnet sonarscanner begin` → `build` → `dotnet-coverage` → `end` の順で、`sonar/*-coverage.xml` にカバレッジを出力します（XML は git 管理外）。
+- **engine / api / runtime / cli / action-host / reference**: `dotnet sonarscanner begin` → `build` → `dotnet-coverage` → `end` の順で、`sonar/*-coverage.xml` にカバレッジを出力します（XML は git 管理外）。
 - **ui**: `npm run test:coverage` で `ui/studio/coverage/lcov.info` を生成したあと、`npx sonar-scanner` で `ui/studio/sonar-project.properties` を読み込んで送信します。
 
-C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定し、Phase 0 以降のパス（`core/engine` 等）でも除外設定が効くようにしています。**テストプロジェクト**（`*.Tests`）は `sonar.dotnet.excludeTestProjects=true` で各コンポーネントの projectKey から除外します（品質ゲートの対象はプロダクションコード）。`Statevia.Runtime` は **`StateviaServiceRuntime`** で解析し、API スキャナからは `service/runtime` を除外して二重計上を避けます。
+C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定し、Phase 0 以降のパス（`core/engine` 等）でも除外設定が効くようにしています。**テストプロジェクト**（`*.Tests`）は `sonar.dotnet.excludeTestProjects=true` で各コンポーネントの projectKey から除外します（品質ゲートの対象はプロダクションコード）。`Statevia.Runtime` は **`StateviaServiceRuntime`** で解析し、API スキャナからは `service/runtime` を除外して二重計上を避けます。first-party リファレンス Module は **`StateviaModulesReference`** で解析し、API スキャナからは `modules/reference` を除外します。
 
 ### SonarQube 側の既定 URL
 
@@ -57,6 +58,7 @@ C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定�
 | Runtime        | `StateviaServiceRuntime` |
 | CLI            | `StateviaServiceCLI`   |
 | Action Host    | `StateviaServiceActionHost` |
+| Reference Modules | `StateviaModulesReference` |
 | UI Studio      | `StateviaUIStudio`     |
 
 ## 手動実行（リポジトリルートをカレントに）
@@ -109,6 +111,13 @@ dotnet sonarscanner end /d:sonar.token="$($env:SONAR_TOKEN)"
 Set-Location $repoRoot
 ```
 
+### Reference Modules
+
+```powershell
+$env:SONAR_TOKEN = "（トークン）"
+& .\sonar\sonar-scanner-reference.ps1
+```
+
 ### Service UI（手動）
 
 ```powershell
@@ -121,7 +130,7 @@ Set-Location ..\..
 
 ## 行数集計（`measure-loc.ps1`）
 
-現行リポジトリ構成（`core/` / `infrastructure/` / `service/` / `ui/studio` / `tests/`）のソース行数を、**プロダクト**と**テスト**に分けて集計します。SonarQube の分析とは独立しており、**`SONAR_TOKEN` は不要**です。
+現行リポジトリ構成（`core/` / `infrastructure/` / `service/` / `modules/reference/` / `ui/studio` / `tests/`）のソース行数を、**プロダクト**と**テスト**に分けて集計します。SonarQube の分析とは独立しており、**`SONAR_TOKEN` は不要**です。
 
 ```powershell
 .\sonar\measure-loc.ps1
@@ -140,6 +149,7 @@ Set-Location ..\..
 | runtime | `Statevia.Runtime`, `Statevia.Service.Runtime.Scheduler`, `Statevia.Service.Runtime.Worker` | （なし。HostedService テストは Api.Tests） |
 | cli | `Statevia.Service.Cli` | `Statevia.Service.Cli.Tests` |
 | action-host | `Statevia.Service.ActionHost` | `Statevia.Service.ActionHost.Tests` |
+| reference | `Statevia.Reference.Http`, `Statevia.Reference.Notification` | `Statevia.Reference.Http.Tests`, `Statevia.Reference.Notification.Tests` |
 | ui | `ui/studio`（`tests/`・`e2e/`・`*.test.*` を除く `*.ts` / `*.tsx`） | `tests/`、`*.test.*`、`*.spec.*`、`e2e/` |
 | architecture | （なし） | `Statevia.Architecture.Tests` |
 
@@ -155,6 +165,7 @@ Set-Location ..\..
 | `sonar-scanner-runtime.ps1` | Runtime（HostedService / Scheduler / Worker）向け一括分析 |
 | `sonar-scanner-cli.ps1` | CLI 向け一括分析 |
 | `sonar-scanner-action-host.ps1` | Action Host 向け一括分析 |
+| `sonar-scanner-reference.ps1` | リファレンス Module（Http / Notification）向け一括分析 |
 | `sonar-scanner-ui.ps1` | UI 向け一括分析 |
 | `measure-loc.ps1` | 行数集計（プロダクト・テスト別） |
 | `core-*-coverage.xml` | C# カバレッジ（**生成物・git 管理外**） |

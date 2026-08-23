@@ -8,7 +8,7 @@ nodes:
     next: slowStep
   - name: slowStep
     type: action
-    action: sleep
+    action: statevia.action.builtin.execution.sleep
     input:
       duration: 5s
     next: fork1
@@ -17,11 +17,11 @@ nodes:
     branches: [branchLeft, branchRight]
   - name: branchLeft
     type: action
-    action: noop
+    action: statevia.action.builtin.execution.noop
     next: join1
   - name: branchRight
     type: action
-    action: sleep
+    action: statevia.action.builtin.execution.sleep
     input:
       duration: 5s
     next: join1

@@ -158,20 +158,16 @@ public sealed class ModuleActionCompileBinderTests
         Assert.Empty(result.ResolvedModules);
     }
 
-    /// <summary>builtin 短名は canonical ID にバインドし、版ピンは不要。</summary>
+    /// <summary>builtin 短名は受理せず例外になる。</summary>
     [Fact]
-    public void Bind_WhenBuiltinShortName_BindsWithoutModuleVersion()
+    public void Bind_WhenBuiltinShortName_Throws()
     {
         // Arrange
         var catalog = new InMemoryActionCatalog();
         var definition = CreateDefinition(null, ("A", ActionState("rest")));
 
-        // Act
-        var result = ModuleActionCompileBinder.Bind(definition, catalog);
-
-        // Assert
-        Assert.Equal(WellKnownActionIds.Rest, result.StateActionBindings["A"].LogicalActionId);
-        Assert.Null(result.StateActionBindings["A"].ResolvedModuleVersion);
+        // Act / Assert
+        Assert.Throws<ArgumentException>(() => ModuleActionCompileBinder.Bind(definition, catalog));
     }
 
     /// <summary>builtin FQCN はそのままバインドし、版ピンは不要。</summary>
@@ -180,13 +176,13 @@ public sealed class ModuleActionCompileBinderTests
     {
         // Arrange
         var catalog = new InMemoryActionCatalog();
-        var definition = CreateDefinition(null, ("A", ActionState(WellKnownActionIds.Rest)));
+        var definition = CreateDefinition(null, ("A", ActionState(WellKnownActionIds.Sleep)));
 
         // Act
         var result = ModuleActionCompileBinder.Bind(definition, catalog);
 
         // Assert
-        Assert.Equal(WellKnownActionIds.Rest, result.StateActionBindings["A"].LogicalActionId);
+        Assert.Equal(WellKnownActionIds.Sleep, result.StateActionBindings["A"].LogicalActionId);
         Assert.Null(result.StateActionBindings["A"].ResolvedModuleVersion);
     }
 
@@ -359,7 +355,7 @@ public sealed class ModuleActionCompileBinderTests
             },
             ("Send", ActionState("mail.send")),
             ("Sync", ActionState("crm.sync")),
-            ("Noop", ActionState("noop")));
+            ("Noop", ActionState(WellKnownActionIds.NoOpCanonical)));
 
         // Act
         var result = ModuleActionCompileBinder.Bind(definition, catalog);

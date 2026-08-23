@@ -42,13 +42,13 @@ nodes:
   - name: cycle.work.a
     type: action
     label: 作業 A
-    action: noop
+    action: statevia.action.builtin.execution.noop
     next: cycle.join
 
   - name: cycle.work.b
     type: action
     label: 作業 B
-    action: sleep
+    action: statevia.action.builtin.execution.sleep
     input:
       duration: 1s
     next: cycle.join

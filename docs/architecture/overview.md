@@ -78,6 +78,7 @@ flowchart LR
 | Core-Application | `core/application/Statevia.Core.Application/` |
 | Application Contracts | `core/application/Statevia.Core.Application.Contracts/` |
 | Actions Abstractions | `core/actions/Statevia.Core.Actions.Abstractions/` |
+| Reference Modules | `modules/reference/`（実行時は `modules/default/`） |
 | Persistence | `infrastructure/Statevia.Infrastructure.Persistence/` |
 | Security | `infrastructure/Statevia.Infrastructure.Security/` |
 | Service API | `service/api/Statevia.Service.Api/` |

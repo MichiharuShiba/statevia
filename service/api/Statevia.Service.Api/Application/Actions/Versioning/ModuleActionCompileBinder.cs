@@ -93,12 +93,6 @@ internal static class ModuleActionCompileBinder
         IReadOnlyDictionary<string, ResolvedModuleBinding> resolvedModules,
         IActionCatalog catalog)
     {
-        if (WellKnownActionIds.IsBuiltinShortName(actionRef))
-        {
-            var logical = WellKnownActionIds.ToCanonicalActionId(actionRef);
-            return new StateActionBinding(logical, ResolvedModuleVersion: null);
-        }
-
         if (string.Equals(actionRef, WellKnownActionIds.NoOpCanonical, StringComparison.Ordinal))
         {
             return new StateActionBinding(WellKnownActionIds.NoOpCanonical, ResolvedModuleVersion: null);
@@ -108,7 +102,7 @@ internal static class ModuleActionCompileBinder
         if (dotIndex < 0)
         {
             throw new ArgumentException(
-                $"Unknown action '{actionRef}': not a builtin short name, moduleAlias.actionName, or FQCN.");
+                $"Unknown action '{actionRef}': short names are not supported; use FQCN or moduleAlias.actionName.");
         }
 
         var prefix = actionRef[..dotIndex];

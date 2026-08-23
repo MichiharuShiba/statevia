@@ -7,18 +7,18 @@ import {
 } from "@/features/definition-editor/actionSchema/resolveSchemaUiText";
 import { getUiText } from "@/shared/i18n/uiTextLocale";
 
-const restActionId = "statevia.action.builtin.rest";
-const restUrlLabelKey = `${restActionId}.ui.fields.url.label`;
+const sleepActionId = "statevia.action.builtin.execution.sleep";
+const sleepDurationLabelKey = `${sleepActionId}.ui.fields.duration.label`;
 
 describe("resolveSchemaUiText", () => {
   it("ja ロケールで uiText.ts の labelKey を解決する", () => {
     const uiText = getUiText("ja");
-    expect(resolveSchemaUiText(uiText, restUrlLabelKey)).toBe("URL");
+    expect(resolveSchemaUiText(uiText, sleepDurationLabelKey)).toBe("待機時間");
   });
 
   it("en ロケールで uiText.en.ts の上書きを解決する", () => {
     const uiText = getUiText("en");
-    expect(resolveSchemaUiText(uiText, restUrlLabelKey)).toBe("URL");
+    expect(resolveSchemaUiText(uiText, sleepDurationLabelKey)).toBe("Duration");
   });
 
   it("en のみ定義の labelKey を ja では Schema フォールバックする", () => {
@@ -45,13 +45,12 @@ describe("resolveSchemaUiText", () => {
 
 describe("resolveLabelKeyFromActionCatalog", () => {
   it("actionCatalog 辞書から label / description / placeholder を解決する", () => {
-    expect(resolveLabelKeyFromActionCatalog(actionCatalogUiTextJa, restUrlLabelKey)).toBe("URL");
+    expect(resolveLabelKeyFromActionCatalog(actionCatalogUiTextJa, sleepDurationLabelKey)).toBe(
+      "待機時間"
+    );
     expect(
-      resolveLabelKeyFromActionCatalog(
-        actionCatalogUiTextEnOverrides,
-        `${restActionId}.ui.fields.method.label`
-      )
-    ).toBe("HTTP method");
+      resolveLabelKeyFromActionCatalog(actionCatalogUiTextEnOverrides, sleepDurationLabelKey)
+    ).toBe("Duration");
   });
 
   it("論理パス付き labelKey（ship.address）を解決する", () => {

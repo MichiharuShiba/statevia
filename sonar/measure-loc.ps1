@@ -380,6 +380,16 @@ $architectureTestDefs = @(
     @{ Name = 'Statevia.Architecture.Tests'; RelativePath = 'tests\Statevia.Architecture.Tests' }
 )
 
+$referenceProductDefs = @(
+    @{ Name = 'Statevia.Reference.Http'; RelativePath = 'modules\reference\Statevia.Reference.Http' }
+    @{ Name = 'Statevia.Reference.Notification'; RelativePath = 'modules\reference\Statevia.Reference.Notification' }
+)
+
+$referenceTestDefs = @(
+    @{ Name = 'Statevia.Reference.Http.Tests'; RelativePath = 'modules\reference\Statevia.Reference.Http.Tests' }
+    @{ Name = 'Statevia.Reference.Notification.Tests'; RelativePath = 'modules\reference\Statevia.Reference.Notification.Tests' }
+)
+
 $engineProduct = Measure-DefinitionGroup -Definitions $engineProductDefs -Extensions @('.cs') -Language 'csharp'
 $engineTest = Measure-DefinitionGroup -Definitions $engineTestDefs -Extensions @('.cs') -Language 'csharp'
 $applicationProduct = Measure-DefinitionGroup -Definitions $applicationProductDefs -Extensions @('.cs') -Language 'csharp'
@@ -393,6 +403,8 @@ $cliTest = Measure-DefinitionGroup -Definitions $cliTestDefs -Extensions @('.cs'
 $actionHostProduct = Measure-DefinitionGroup -Definitions $actionHostProductDefs -Extensions @('.cs') -Language 'csharp'
 $actionHostTest = Measure-DefinitionGroup -Definitions $actionHostTestDefs -Extensions @('.cs') -Language 'csharp'
 $architectureTest = Measure-DefinitionGroup -Definitions $architectureTestDefs -Extensions @('.cs') -Language 'csharp'
+$referenceProduct = Measure-DefinitionGroup -Definitions $referenceProductDefs -Extensions @('.cs') -Language 'csharp'
+$referenceTest = Measure-DefinitionGroup -Definitions $referenceTestDefs -Extensions @('.cs') -Language 'csharp'
 
 $uiRoot = Join-Path $RepoRoot 'ui\studio'
 $uiProduct = Measure-PathGroup -RootPath $uiRoot -Extensions @('.ts', '.tsx') -Language 'typescript' -IncludeFile {
@@ -454,6 +466,7 @@ $measuredComponents = @(
     @{ Name = 'action-host'; Product = $actionHostProduct; Test = $actionHostTest }
     @{ Name = 'ui'; Product = $uiProduct; Test = $uiTest }
     @{ Name = 'architecture'; Product = $null; Test = $architectureTest }
+    @{ Name = 'reference'; Product = $referenceProduct; Test = $referenceTest }
 )
 
 $summaryRows = [System.Collections.Generic.List[object]]::new()
@@ -547,6 +560,10 @@ $report = [ordered]@{
         architecture = [ordered]@{
             test = $architectureTest
         }
+        reference = [ordered]@{
+            product = $referenceProduct
+            test    = $referenceTest
+        }
     }
 }
 
@@ -614,6 +631,7 @@ Write-CsharpComponentDetails -Title 'api' -Product $apiProduct -Test $apiTest
 Write-CsharpComponentDetails -Title 'cli' -Product $cliProduct -Test $cliTest
 Write-CsharpComponentDetails -Title 'action-host' -Product $actionHostProduct -Test $actionHostTest
 Write-CsharpComponentDetails -Title 'architecture' -Product $null -Test $architectureTest
+Write-CsharpComponentDetails -Title 'reference' -Product $referenceProduct -Test $referenceTest
 
 Write-Output ''
 Write-Output '=== ui 内訳 ==='
@@ -636,6 +654,8 @@ $languageRows = @(
     @{ Component = 'action-host'; Category = 'product'; Map = $actionHostProduct.ByLanguage }
     @{ Component = 'action-host'; Category = 'test'; Map = $actionHostTest.ByLanguage }
     @{ Component = 'architecture'; Category = 'test'; Map = $architectureTest.ByLanguage }
+    @{ Component = 'reference'; Category = 'product'; Map = $referenceProduct.ByLanguage }
+    @{ Component = 'reference'; Category = 'test'; Map = $referenceTest.ByLanguage }
     @{ Component = 'ui'; Category = 'product'; Map = $uiProduct.ByLanguage }
     @{ Component = 'ui'; Category = 'test'; Map = $uiTest.ByLanguage }
 )

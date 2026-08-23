@@ -626,11 +626,11 @@ public sealed class NodesWorkflowDefinitionLoaderTests
                   reject: rejected
               - name: approved
                 type: action
-                action: statevia.action.builtin.noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
               - name: rejected
                 type: action
-                action: statevia.action.builtin.noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
               - name: endNode
                 type: end

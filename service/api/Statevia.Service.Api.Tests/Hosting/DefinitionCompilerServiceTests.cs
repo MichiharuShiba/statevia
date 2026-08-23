@@ -118,7 +118,7 @@ public sealed class DefinitionCompilerServiceTests
               name: W
             states:
               A:
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 wait:
                   event: E
                 on:
@@ -148,7 +148,7 @@ public sealed class DefinitionCompilerServiceTests
                 Mail: com.company.other
             states:
               A:
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 on:
                   Completed:
                     end: true
@@ -173,7 +173,7 @@ public sealed class DefinitionCompilerServiceTests
               name: W
             states:
               A:
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 join:
                   all: [B]
                 on:
@@ -263,7 +263,7 @@ public sealed class DefinitionCompilerServiceTests
               name: W
             states:
               A:
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 on:
                   Completed:
                     end: true
@@ -313,7 +313,7 @@ public sealed class DefinitionCompilerServiceTests
               name: W
             states:
               Slow:
-                action: sleep
+                action: statevia.action.builtin.execution.sleep
                 input:
                   duration: 5s
                 on:
@@ -408,7 +408,7 @@ public sealed class DefinitionCompilerServiceTests
               name: W
             states:
               A:
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 on:
                   Completed:
                     end: true
@@ -749,11 +749,11 @@ public sealed class DefinitionCompilerServiceTests
                 branches: [b1, b2]
               - name: b1
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: join1
               - name: b2
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: join1
               - name: join1
                 type: join
@@ -789,7 +789,7 @@ public sealed class DefinitionCompilerServiceTests
                 next: a
               - name: a
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
                 edges:
                   - to: endNode
@@ -823,7 +823,7 @@ public sealed class DefinitionCompilerServiceTests
                   - to: a
               - name: a
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
               - name: endNode
                 type: end
@@ -855,13 +855,13 @@ public sealed class DefinitionCompilerServiceTests
                 next: a
               - name: a
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
                 edges:
                   - to: b
               - name: b
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
               - name: endNode
                 type: end
@@ -891,7 +891,7 @@ public sealed class DefinitionCompilerServiceTests
                 next: a
               - name: a
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 edges:
                   - to: high
                     when:
@@ -908,11 +908,11 @@ public sealed class DefinitionCompilerServiceTests
                   - to: low
               - name: high
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
               - name: low
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
               - name: endNode
                 type: end
@@ -943,12 +943,12 @@ public sealed class DefinitionCompilerServiceTests
                 next: a
               - name: a
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
                 error: failedHandler
               - name: failedHandler
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
               - name: endNode
                 type: end
@@ -981,13 +981,13 @@ public sealed class DefinitionCompilerServiceTests
                 next: a
               - name: a
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
                 error:
                   name: failedHandler
               - name: failedHandler
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
               - name: endNode
                 type: end
@@ -1049,7 +1049,7 @@ public sealed class DefinitionCompilerServiceTests
                 next: a
               - name: a
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
                 error: a
               - name: endNode
@@ -1079,7 +1079,7 @@ public sealed class DefinitionCompilerServiceTests
                 next: a
               - name: a
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
                 error: missing
               - name: endNode
@@ -1109,7 +1109,7 @@ public sealed class DefinitionCompilerServiceTests
                 next: a
               - name: a
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 edges:
                   - to: high
                     when:
@@ -1126,11 +1126,11 @@ public sealed class DefinitionCompilerServiceTests
                   - to: low
               - name: high
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
               - name: low
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: endNode
               - name: endNode
                 type: end
@@ -1176,7 +1176,7 @@ public sealed class DefinitionCompilerServiceTests
                 next: order.preflight
               - name: order.preflight
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 edges:
                   - to: order.validate
                     when:
@@ -1187,11 +1187,11 @@ public sealed class DefinitionCompilerServiceTests
                   - to: order.reject.notify
               - name: order.validate
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: order.end
               - name: order.reject.notify
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 next: order.end
               - name: order.end
                 type: end
@@ -1254,7 +1254,7 @@ public sealed class DefinitionCompilerServiceTests
               name: S
             states:
               A:
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 input: ${input.orderId}
                 on:
                   Completed:
@@ -1282,7 +1282,7 @@ public sealed class DefinitionCompilerServiceTests
                 next: act
               - name: act
                 type: action
-                action: noop
+                action: statevia.action.builtin.execution.noop
                 input:
                   orderId: $.input.-orderId
                 next: endNode
@@ -1294,9 +1294,9 @@ public sealed class DefinitionCompilerServiceTests
         Assert.Contains("invalid input path", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>rest action の必須 input 欠落は schema 検証で失敗する。</summary>
+    /// <summary>sleep action の必須 input 欠落は schema 検証で失敗する。</summary>
     [Fact]
-    public void ValidateAndCompile_RestMissingRequiredInput_ThrowsSchemaValidationException()
+    public void ValidateAndCompile_SleepMissingRequiredInput_ThrowsSchemaValidationException()
     {
         // Arrange
         var svc = CreateSut();
@@ -1305,9 +1305,9 @@ public sealed class DefinitionCompilerServiceTests
               name: W
             states:
               Call:
-                action: rest
+                action: statevia.action.builtin.execution.sleep
                 input:
-                  method: GET
+                  extra: true
                 on:
                   Completed:
                     end: true
@@ -1317,14 +1317,14 @@ public sealed class DefinitionCompilerServiceTests
         var ex = Assert.Throws<ActionInputSchemaValidationException>(() => svc.ValidateAndCompile("W", yaml));
 
         // Assert
-        Assert.Contains(ex.Errors, error => error.JsonPath == "$.input.url");
-        Assert.Contains(ex.Errors, error => error.ActionId == WellKnownActionIds.Rest);
+        Assert.Contains(ex.Errors, error => error.JsonPath == "$.input.duration");
+        Assert.Contains(ex.Errors, error => error.ActionId == WellKnownActionIds.Sleep);
         Assert.Contains(ex.Errors, error => error.State == "Call");
     }
 
-    /// <summary>rest action の未知 input プロパティは schema 検証で失敗する。</summary>
+    /// <summary>sleep action の未知 input プロパティは schema 検証で失敗する。</summary>
     [Fact]
-    public void ValidateAndCompile_RestUnknownInputProperty_ThrowsSchemaValidationException()
+    public void ValidateAndCompile_SleepUnknownInputProperty_ThrowsSchemaValidationException()
     {
         // Arrange
         var svc = CreateSut();
@@ -1333,10 +1333,9 @@ public sealed class DefinitionCompilerServiceTests
               name: W
             states:
               Call:
-                action: rest
+                action: statevia.action.builtin.execution.sleep
                 input:
-                  url: https://example.test
-                  method: GET
+                  duration: 1s
                   extra: true
                 on:
                   Completed:
@@ -1465,7 +1464,7 @@ public sealed class DefinitionCompilerServiceTests
               name: W
             states:
               A:
-                action: statevia.action.builtin.noop
+                action: statevia.action.builtin.execution.noop
                 on:
                   Completed:
                     end: true

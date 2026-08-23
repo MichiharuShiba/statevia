@@ -1,17 +1,19 @@
-using Statevia.Service.Api.Application.Actions.Builtins;
+using Statevia.Reference.Http;
 
-namespace Statevia.Service.Api.Tests.Application.Actions.Builtins;
+namespace Statevia.Reference.Http.Tests;
 
-/// <summary><see cref="RestUrlValidator"/> の SSRF / HTTPS 検証テスト。</summary>
-public sealed class RestUrlValidatorTests
+/// <summary><see cref="HttpUrlValidator"/> の SSRF / HTTPS 検証。</summary>
+public sealed class HttpUrlValidatorTests
 {
     /// <summary>公開 HTTPS URL は許可される。</summary>
     [Fact]
     public void EnsureAllowedHttpsUrl_PublicHttps_DoesNotThrow()
     {
-        // Act / Assert
+        // Arrange / Act
         var exception = Record.Exception(() =>
-            RestUrlValidator.EnsureAllowedHttpsUrl("https://example.com/hook"));
+            HttpUrlValidator.EnsureAllowedHttpsUrl("https://example.com/hook"));
+
+        // Assert
         Assert.Null(exception);
     }
 
@@ -21,7 +23,7 @@ public sealed class RestUrlValidatorTests
     {
         // Act / Assert
         Assert.Throws<ArgumentException>(() =>
-            RestUrlValidator.EnsureAllowedHttpsUrl("http://example.com/hook"));
+            HttpUrlValidator.EnsureAllowedHttpsUrl("http://example.com/hook"));
     }
 
     /// <summary>localhost は拒否される。</summary>
@@ -30,7 +32,7 @@ public sealed class RestUrlValidatorTests
     {
         // Act / Assert
         Assert.Throws<ArgumentException>(() =>
-            RestUrlValidator.EnsureAllowedHttpsUrl("https://localhost/hook"));
+            HttpUrlValidator.EnsureAllowedHttpsUrl("https://localhost/hook"));
     }
 
     /// <summary>プライベート IPv4 は拒否される。</summary>
@@ -39,7 +41,7 @@ public sealed class RestUrlValidatorTests
     {
         // Act / Assert
         Assert.Throws<ArgumentException>(() =>
-            RestUrlValidator.EnsureAllowedHttpsUrl("https://10.0.0.1/hook"));
+            HttpUrlValidator.EnsureAllowedHttpsUrl("https://10.0.0.1/hook"));
     }
 
     /// <summary>ループバック IPv4 は拒否される。</summary>
@@ -48,16 +50,16 @@ public sealed class RestUrlValidatorTests
     {
         // Act / Assert
         Assert.Throws<ArgumentException>(() =>
-            RestUrlValidator.EnsureAllowedHttpsUrl("https://127.0.0.1/hook"));
+            HttpUrlValidator.EnsureAllowedHttpsUrl("https://127.0.0.1/hook"));
     }
 
     /// <summary>相対 URL は拒否される。</summary>
     [Fact]
     public void EnsureAllowedHttpsUrl_Relative_Throws()
     {
-        // Act + Assert
+        // Act / Assert
         Assert.Throws<ArgumentException>(() =>
-            RestUrlValidator.EnsureAllowedHttpsUrl("/relative"));
+            HttpUrlValidator.EnsureAllowedHttpsUrl("/relative"));
     }
 
     /// <summary>.local / .internal ホストは拒否される。</summary>
@@ -66,8 +68,8 @@ public sealed class RestUrlValidatorTests
     [InlineData("https://svc.internal/hook")]
     public void EnsureAllowedHttpsUrl_LocalSuffix_Throws(string url)
     {
-        // Act + Assert
-        Assert.Throws<ArgumentException>(() => RestUrlValidator.EnsureAllowedHttpsUrl(url));
+        // Act / Assert
+        Assert.Throws<ArgumentException>(() => HttpUrlValidator.EnsureAllowedHttpsUrl(url));
     }
 
     /// <summary>RFC1918 / link-local IPv4 は拒否される。</summary>
@@ -77,16 +79,16 @@ public sealed class RestUrlValidatorTests
     [InlineData("https://169.254.1.1/hook")]
     public void EnsureAllowedHttpsUrl_BlockedIpv4Ranges_Throws(string url)
     {
-        // Act + Assert
-        Assert.Throws<ArgumentException>(() => RestUrlValidator.EnsureAllowedHttpsUrl(url));
+        // Act / Assert
+        Assert.Throws<ArgumentException>(() => HttpUrlValidator.EnsureAllowedHttpsUrl(url));
     }
 
     /// <summary>IPv6 link-local は拒否される。</summary>
     [Fact]
     public void EnsureAllowedHttpsUrl_Ipv6LinkLocal_Throws()
     {
-        // Act + Assert
+        // Act / Assert
         Assert.Throws<ArgumentException>(() =>
-            RestUrlValidator.EnsureAllowedHttpsUrl("https://[fe80::1]/hook"));
+            HttpUrlValidator.EnsureAllowedHttpsUrl("https://[fe80::1]/hook"));
     }
 }

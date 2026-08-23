@@ -1,10 +1,13 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace Statevia.Service.Api.Application.Actions.Builtins;
+namespace Statevia.Reference.Http;
 
-/// <summary>rest action の URL 検証（HTTPS 制約・SSRF 拒否）。</summary>
-internal static class RestUrlValidator
+/// <summary>HTTP リファレンス Action の URL 検証（HTTPS 制約・SSRF 拒否）。</summary>
+/// <remarks>
+/// loopback / プライベート IP / localhost を拒否する。利用者がソースを改変すれば外せることは意図どおりである。
+/// </remarks>
+public static class HttpUrlValidator
 {
     /// <summary>HTTPS の公開到達可能 URL か検証する。</summary>
     /// <param name="url">検証対象 URL。</param>
@@ -13,27 +16,27 @@ internal static class RestUrlValidator
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
         {
-            throw new ArgumentException("rest action requires an absolute URL.");
+            throw new ArgumentException("http.request action requires an absolute URL.");
         }
 
         if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
         {
-            throw new ArgumentException("rest action requires an HTTPS URL.");
+            throw new ArgumentException("http.request action requires an HTTPS URL.");
         }
 
         if (string.IsNullOrWhiteSpace(uri.Host))
         {
-            throw new ArgumentException("rest action URL host is required.");
+            throw new ArgumentException("http.request action URL host is required.");
         }
 
         if (IsBlockedHost(uri.Host))
         {
-            throw new ArgumentException("rest action URL host is not allowed.");
+            throw new ArgumentException("http.request action URL host is not allowed.");
         }
 
         if (IPAddress.TryParse(uri.Host, out var literalAddress) && IsBlockedAddress(literalAddress))
         {
-            throw new ArgumentException("rest action URL host is not allowed.");
+            throw new ArgumentException("http.request action URL host is not allowed.");
         }
     }
 

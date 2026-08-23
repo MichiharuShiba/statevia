@@ -8,5 +8,8 @@ describe("defaultDefinitionYaml", () => {
     expect(defaultDefinitionYaml).toContain("type: end");
     expect(defaultDefinitionYaml).toContain("fork1");
     expect(defaultDefinitionYaml).toContain("join1");
+    expect(defaultDefinitionYaml).toContain("statevia.action.builtin.execution.sleep");
+    expect(defaultDefinitionYaml).toContain("statevia.action.builtin.execution.noop");
+    expect(defaultDefinitionYaml).not.toMatch(/action: (noop|sleep)\b/);
   });
 });

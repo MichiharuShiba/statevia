@@ -17,7 +17,7 @@ public sealed class DefaultActionVisibilityResolverTests
         var sut = new DefaultActionVisibilityResolver();
         var descriptor = new ActionDescriptor
         {
-            ActionId = "statevia.action.builtin.noop",
+            ActionId = "statevia.action.builtin.execution.noop",
             ModuleId = "statevia.builtin",
             Version = "1.0.0",
             Visibility = ActionVisibility.Builtin,
