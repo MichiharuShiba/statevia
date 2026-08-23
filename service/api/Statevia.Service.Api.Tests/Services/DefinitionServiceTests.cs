@@ -634,9 +634,9 @@ public sealed class DefinitionServiceTests
         {
             new ActionInputValidationError(
                 "Call",
-                WellKnownActionIds.Rest,
-                "$.input.url",
-                "Required input property 'url' is missing."),
+                WellKnownActionIds.Sleep,
+                "$.input.duration",
+                "Required input property 'duration' is missing."),
         };
         var compiler = new ThrowingCompiler(new ActionInputSchemaValidationException(errors));
         var sut = CreateDefinitionService(
@@ -653,7 +653,7 @@ public sealed class DefinitionServiceTests
                   name: W
                 states:
                   Call:
-                    action: rest
+                    action: statevia.action.builtin.execution.sleep
                     input:
                       method: GET
                     on:
@@ -671,8 +671,8 @@ public sealed class DefinitionServiceTests
         Assert.NotNull(ex.Details);
         var detailsJson = System.Text.Json.JsonSerializer.Serialize(ex.Details);
         Assert.Contains("Call", detailsJson, StringComparison.Ordinal);
-        Assert.Contains(WellKnownActionIds.Rest, detailsJson, StringComparison.Ordinal);
-        Assert.Contains("$.input.url", detailsJson, StringComparison.Ordinal);
+        Assert.Contains(WellKnownActionIds.Sleep, detailsJson, StringComparison.Ordinal);
+        Assert.Contains("$.input.duration", detailsJson, StringComparison.Ordinal);
         Assert.DoesNotContain("GET", detailsJson, StringComparison.Ordinal);
     }
 

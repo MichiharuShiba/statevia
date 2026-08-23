@@ -59,12 +59,12 @@ describe("DefinitionGraphEditor", () => {
         return {
           items: [
             {
-              actionId: "statevia.action.builtin.noop",
+              actionId: "statevia.action.builtin.execution.noop",
               displayName: "No-op",
               version: "1.0.0"
             },
             {
-              actionId: "statevia.action.builtin.rest",
+              actionId: "statevia.action.reference.http.request",
               displayName: "REST",
               version: "1.0.0"
             }
@@ -300,11 +300,11 @@ nodes:
 
     fireEvent.click(screen.getByText("slowStep"));
     await waitFor(() => {
-      expect(screen.getByDisplayValue("sleep")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("statevia.action.builtin.execution.sleep")).toBeInTheDocument();
     });
-    const actionInput = screen.getByDisplayValue("sleep");
+    const actionInput = screen.getByDisplayValue("statevia.action.builtin.execution.sleep");
     await act(async () => {
-      fireEvent.change(actionInput, { target: { value: "statevia.action.builtin.noop" } });
+      fireEvent.change(actionInput, { target: { value: "statevia.action.builtin.execution.noop" } });
       fireEvent.blur(actionInput);
       await new Promise<void>((resolve) => {
         setTimeout(resolve, 0);
@@ -315,7 +315,7 @@ nodes:
     const updatedNode = nextDocument.nodes.find((entry) => entry.name === "slowStep");
     expect(updatedNode?.type).toBe("action");
     if (updatedNode?.type === "action") {
-      expect(updatedNode.action).toBe("statevia.action.builtin.noop");
+      expect(updatedNode.action).toBe("statevia.action.builtin.execution.noop");
       expect(updatedNode.input).toBeUndefined();
     }
   });
@@ -341,8 +341,8 @@ nodes:
         setTimeout(resolve, 0);
       });
     });
-    const actionInput = screen.getByDisplayValue("sleep");
-    fireEvent.change(actionInput, { target: { value: "noop" } });
+    const actionInput = screen.getByDisplayValue("statevia.action.builtin.execution.sleep");
+    fireEvent.change(actionInput, { target: { value: "statevia.action.builtin.execution.noop" } });
     fireEvent.blur(actionInput);
     expect(onDocumentChange).toHaveBeenCalled();
   });
@@ -356,7 +356,7 @@ nodes:
 
     fireEvent.click(screen.getByText("slowStep"));
     await waitFor(() => {
-      expect(screen.getByDisplayValue("sleep")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("statevia.action.builtin.execution.sleep")).toBeInTheDocument();
     });
 
     const detailCalls = vi
@@ -364,7 +364,7 @@ nodes:
       .mock.calls.filter((call) => String(call[0]).startsWith("/actions/schema/") && call[0] !== "/actions/schema/index");
     expect(detailCalls).toHaveLength(0);
 
-    fireEvent.change(screen.getByDisplayValue("sleep"), { target: { value: "custom.action" } });
+    fireEvent.change(screen.getByDisplayValue("statevia.action.builtin.execution.sleep"), { target: { value: "custom.action" } });
     fireEvent.blur(screen.getByDisplayValue("custom.action"));
 
     const afterBlurCalls = vi
@@ -381,12 +381,12 @@ nodes:
         return {
           items: [
             {
-              actionId: "statevia.action.builtin.noop",
+              actionId: "statevia.action.builtin.execution.noop",
               displayName: "No-op",
               version: "1.0.0"
             },
             {
-              actionId: "statevia.action.builtin.rest",
+              actionId: "statevia.action.reference.http.request",
               displayName: "REST",
               version: "1.0.0"
             }
@@ -395,7 +395,7 @@ nodes:
       }
       if (path.startsWith("/actions/schema/")) {
         return {
-          descriptor: { actionId: "statevia.action.builtin.noop", version: "1.0.0", displayName: "Noop" },
+          descriptor: { actionId: "statevia.action.builtin.execution.noop", version: "1.0.0", displayName: "Noop" },
           schema: {
             schemaVersion: "2020-12",
             inputSchema: { type: "object", properties: {} },
@@ -411,13 +411,13 @@ nodes:
 
     fireEvent.click(screen.getByText("slowStep"));
     await waitFor(() => {
-      expect(screen.getByDisplayValue("sleep")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("statevia.action.builtin.execution.sleep")).toBeInTheDocument();
     });
     vi.mocked(apiGet).mockClear();
     vi.mocked(apiGet).mockImplementation(async (path: string) => {
       if (path.startsWith("/actions/schema/")) {
         return {
-          descriptor: { actionId: "statevia.action.builtin.rest", version: "1.0.0", displayName: "REST" },
+          descriptor: { actionId: "statevia.action.reference.http.request", version: "1.0.0", displayName: "REST" },
           schema: {
             schemaVersion: "2020-12",
             inputSchema: { type: "object", properties: {} },
@@ -428,17 +428,17 @@ nodes:
       throw new Error(`unexpected path: ${path}`);
     });
 
-    const actionInput = screen.getByDisplayValue("sleep");
+    const actionInput = screen.getByDisplayValue("statevia.action.builtin.execution.sleep");
     const detailPathCalls = (calls: unknown[][]) =>
       calls.filter((call) => String(call[0]).startsWith("/actions/schema/") && call[0] !== "/actions/schema/index");
 
     fireEvent.change(actionInput, { target: { value: "statevia.action.builtin.r" } });
     expect(detailPathCalls(vi.mocked(apiGet).mock.calls)).toHaveLength(0);
 
-    fireEvent.change(actionInput, { target: { value: "statevia.action.builtin.rest" } });
+    fireEvent.change(actionInput, { target: { value: "statevia.action.reference.http.request" } });
     await waitFor(() => {
       expect(
-        vi.mocked(apiGet).mock.calls.filter((call) => call[0] === "/actions/schema/statevia.action.builtin.rest")
+        vi.mocked(apiGet).mock.calls.filter((call) => call[0] === "/actions/schema/statevia.action.reference.http.request")
       ).toHaveLength(1);
     });
     await act(async () => {

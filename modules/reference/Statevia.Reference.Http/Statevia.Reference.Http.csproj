@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Statevia.Reference.Http</RootNamespace>
+    <AssemblyName>Statevia.Reference.Http</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <ReferenceModuleId>statevia.action.reference.http</ReferenceModuleId>
+    <DefaultTenantModulesDir>$(MSBuildThisFileDirectory)..\..\..\modules\default\$(ReferenceModuleId)\</DefaultTenantModulesDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Statevia.Reference.Http.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\core\actions\Statevia.Core.Actions.Abstractions\Statevia.Core.Actions.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\core\engine\Statevia.Core.Engine\Statevia.Core.Engine.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyToDefaultTenantModules" AfterTargets="Build">
+    <MakeDir Directories="$(DefaultTenantModulesDir)" />
+    <Copy
+      SourceFiles="$(TargetPath)"
+      DestinationFiles="$(DefaultTenantModulesDir)$(ReferenceModuleId).dll"
+      SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

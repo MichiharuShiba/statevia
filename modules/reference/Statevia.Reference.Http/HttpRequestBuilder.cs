@@ -1,11 +1,12 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Statevia.Core.Actions.Abstractions.Execution;
 
-namespace Statevia.Service.Api.Application.Actions.Builtins;
+namespace Statevia.Reference.Http;
 
-/// <summary>rest action の HTTP リクエスト組み立て。</summary>
-internal static class RestHttpRequestBuilder
+/// <summary>http.request action の HTTP リクエスト組み立て。</summary>
+internal static class HttpRequestBuilder
 {
     private const int MaxBodyBytes = 1_048_576;
 
@@ -65,7 +66,7 @@ internal static class RestHttpRequestBuilder
             : bodyElement.GetRawText();
         if (Encoding.UTF8.GetByteCount(bodyText) > MaxBodyBytes)
         {
-            throw new ArgumentException("rest action body exceeds the maximum allowed size.");
+            throw new ArgumentException("http.request action body exceeds the maximum allowed size.");
         }
 
         request.Content = new StringContent(bodyText, Encoding.UTF8);

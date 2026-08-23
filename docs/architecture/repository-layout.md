@@ -52,6 +52,10 @@ statevia/
 │  └─ actions/
 │     └─ Statevia.Core.Actions.Abstractions/  # Action / Module SPI
 │
+├─ modules/                      # Action Module（ソースと実行時配置）
+│  ├─ reference/                 # first-party リファレンス（Http / Notification）
+│  └─ default/                   # テナント実行時 DLL（ビルドで copy、gitignore）
+│
 ├─ infrastructure/               # 技術実装（差し替え可能・最外殻）
 │  ├─ statevia-infrastructure.sln
 │  ├─ Statevia.Infrastructure.Persistence/    # EF Core + Migrations
@@ -95,6 +99,7 @@ statevia/
 ```
 
 - **core/**: ドメインと契約。Engine は HTTP/DB に非依存。Application がユースケースを実装し、Contracts が DDD ポートを定義。
+- **modules/reference/**: ユーザー Module と同じ SPI の first-party 実装。実行時 DLL は `modules/default/`。
 - **infrastructure/**: core の契約の技術実装。DB、認証、通知、Module ホスト等。
 - **service/**: HTTP / gRPC / CLI のアダプタ。Composition Root として DI を組み立てる。
 - **ui/studio/**: Next.js（`@statevia/studio`）。`/api/core/*` で Service API にプロキシ。内部構成（`app` / `features` / `shared`）の正本は [ui-studio-structure.md](ui-studio-structure.md)。

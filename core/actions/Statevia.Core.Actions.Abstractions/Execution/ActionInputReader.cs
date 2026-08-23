@@ -1,19 +1,30 @@
 using System.Globalization;
 using System.Text.Json;
 
-namespace Statevia.Service.Api.Application.Actions.Builtins;
+namespace Statevia.Core.Actions.Abstractions.Execution;
 
-/// <summary>Engine から渡される action 入力を Builtin 向けに読み取る。</summary>
-internal static class ActionInputReader
+/// <summary>Engine から渡される Action 入力を JSON オブジェクトとして読み取る。</summary>
+/// <remarks>
+/// <para>
+/// Builtin と Action Module の双方が同じ契約で入力を解釈する。ホストは
+/// <c>Statevia.Core.Actions.Abstractions</c> を共有するため、Module 側に同等実装をコピーしない。
+/// </para>
+/// <para>フィールド名は大文字小文字を無視する。JSON 以外の CLR オブジェクトは camelCase で直列化する。</para>
+/// </remarks>
+public static class ActionInputReader
 {
     private static readonly JsonSerializerOptions s_serializeOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
+    private static readonly IReadOnlyDictionary<string, JsonElement> EmptyFields =
+        new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>入力を JSON オブジェクトとして読み取る。</summary>
     /// <param name="input">Engine が解決した入力。</param>
-    /// <param name="fields">オブジェクトのフィールド。</param>
+    /// <param name="fields">オブジェクトのフィールド。失敗時は空。</param>
+    /// <returns>オブジェクトとして解釈できたとき <see langword="true"/>。</returns>
     public static bool TryReadObject(object? input, out IReadOnlyDictionary<string, JsonElement> fields)
     {
         fields = EmptyFields;
@@ -34,6 +45,10 @@ internal static class ActionInputReader
     }
 
     /// <summary>必須文字列フィールドを取得する。</summary>
+    /// <param name="fields"><see cref="TryReadObject"/> が返したフィールド。</param>
+    /// <param name="name">フィールド名。</param>
+    /// <returns>空白でない文字列。</returns>
+    /// <exception cref="ArgumentException">欠落、非文字列、または空白のとき。</exception>
     public static string RequireString(IReadOnlyDictionary<string, JsonElement> fields, string name)
     {
         if (!fields.TryGetValue(name, out var value) || value.ValueKind != JsonValueKind.String)
@@ -51,12 +66,19 @@ internal static class ActionInputReader
     }
 
     /// <summary>任意文字列フィールドを取得する。</summary>
+    /// <param name="fields"><see cref="TryReadObject"/> が返したフィールド。</param>
+    /// <param name="name">フィールド名。</param>
+    /// <returns>文字列値。欠落または非文字列のとき <see langword="null"/>。</returns>
     public static string? OptionalString(IReadOnlyDictionary<string, JsonElement> fields, string name) =>
         fields.TryGetValue(name, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString()
             : null;
 
     /// <summary>duration 文字列または数値（ミリ秒）を <see cref="TimeSpan"/> に変換する。</summary>
+    /// <param name="fields"><see cref="TryReadObject"/> が返したフィールド。</param>
+    /// <param name="name">フィールド名。既定は <c>duration</c>。</param>
+    /// <returns>解釈した期間。</returns>
+    /// <exception cref="ArgumentException">欠落、または文字列・数値以外のとき。</exception>
     public static TimeSpan ParseDuration(IReadOnlyDictionary<string, JsonElement> fields, string name = "duration")
     {
         if (!fields.TryGetValue(name, out var value))
@@ -74,6 +96,9 @@ internal static class ActionInputReader
     }
 
     /// <summary>duration 文字列を <see cref="TimeSpan"/> に変換する。</summary>
+    /// <param name="raw"><c>5s</c> / <c>500ms</c> / 単位なし秒数。</param>
+    /// <returns>解釈した期間。</returns>
+    /// <exception cref="ArgumentException">空、または解釈できない形式のとき。</exception>
     public static TimeSpan ParseDurationString(string raw)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(raw);
@@ -99,9 +124,9 @@ internal static class ActionInputReader
         throw new ArgumentException($"Invalid duration value '{raw}'.");
     }
 
-    private static readonly IReadOnlyDictionary<string, JsonElement> EmptyFields =
-        new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
-
+    /// <summary>
+    /// Engine は既に <see cref="JsonElement"/> を渡すことがある。それ以外は camelCase JSON に直列化する。
+    /// </summary>
     private static JsonElement ToJsonElement(object input) =>
         input switch
         {

@@ -1,16 +1,9 @@
-using System.Net;
-using System.Text;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Hosting;
 using Statevia.Service.Api.Application.Actions.Builtins;
-using Statevia.Infrastructure.Notification;
-using Statevia.Infrastructure.Notification.Configuration;
 using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Builtins;
 
-/// <summary>sleep / signal / publish / rest / notification / workflow Builtin の単体テスト。</summary>
+/// <summary>sleep / signal / publish / workflow Builtin の単体テスト。</summary>
 public sealed class BuiltinCapabilityStatesTests
 {
     private sealed class FakeEventProvider : IEventProvider
@@ -96,61 +89,6 @@ public sealed class BuiltinCapabilityStatesTests
         Assert.IsType<Dictionary<string, object?>>(result);
     }
 
-    /// <summary>rest は idempotencyKey ヘッダを付与する。</summary>
-    [Fact]
-    public async Task RestActionState_SendsIdempotencyKeyHeader()
-    {
-        // Arrange
-        HttpRequestMessage? captured = null;
-        var services = new ServiceCollection();
-        services.AddSingleton<IHttpClientFactory>(_ => new StubHttpClientFactory((request, _) =>
-        {
-            captured = request;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent("{}", Encoding.UTF8, "application/json"),
-            });
-        }));
-        var provider = services.BuildServiceProvider();
-        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
-        var state = new RestActionState(scopeFactory);
-        var input = new Dictionary<string, object?>
-        {
-            ["url"] = "https://example.com/hook",
-            ["method"] = "POST",
-            ["idempotencyKey"] = "key-1",
-        };
-
-        // Act
-        await state.ExecuteAsync(MakeContext(new FakeEventProvider()), input, CancellationToken.None);
-
-        // Assert
-        Assert.NotNull(captured);
-        Assert.True(captured.Headers.TryGetValues("Idempotency-Key", out var values));
-        Assert.Equal("key-1", Assert.Single(values));
-    }
-
-    /// <summary>rest は非 HTTPS URL を拒否する。</summary>
-    [Fact]
-    public async Task RestActionState_HttpUrl_Throws()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        services.AddSingleton<IHttpClientFactory>(_ => new StubHttpClientFactory((_, _) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK))));
-        var provider = services.BuildServiceProvider();
-        var state = new RestActionState(provider.GetRequiredService<IServiceScopeFactory>());
-        var input = new Dictionary<string, object?>
-        {
-            ["url"] = "http://example.com/hook",
-            ["method"] = "GET",
-        };
-
-        // Act / Assert
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            state.ExecuteAsync(MakeContext(new FakeEventProvider()), input, CancellationToken.None));
-    }
-
     /// <summary>signal は current 以外の target を拒否する。</summary>
     [Fact]
     public async Task SignalActionState_InvalidTarget_Throws()
@@ -166,111 +104,5 @@ public sealed class BuiltinCapabilityStatesTests
         // Act / Assert
         await Assert.ThrowsAsync<ArgumentException>(() =>
             state.ExecuteAsync(MakeContext(new FakeEventProvider()), input, CancellationToken.None));
-    }
-
-    /// <summary>rest は JSON body とカスタムヘッダを送信する。</summary>
-    [Fact]
-    public async Task RestActionState_SendsBodyAndHeaders()
-    {
-        // Arrange
-        HttpRequestMessage? captured = null;
-        var services = new ServiceCollection();
-        services.AddSingleton<IHttpClientFactory>(_ => new StubHttpClientFactory((request, _) =>
-        {
-            captured = request;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Created)
-            {
-                Content = new StringContent("{\"ok\":true}", Encoding.UTF8, "application/json"),
-            });
-        }));
-        var provider = services.BuildServiceProvider();
-        var state = new RestActionState(provider.GetRequiredService<IServiceScopeFactory>());
-        var input = new Dictionary<string, object?>
-        {
-            ["url"] = "https://example.com/hook",
-            ["method"] = "POST",
-            ["headers"] = new Dictionary<string, object?> { ["X-Test"] = "1" },
-            ["body"] = new Dictionary<string, object?> { ["key"] = "value" },
-        };
-
-        // Act
-        var result = await state.ExecuteAsync(MakeContext(new FakeEventProvider()), input, CancellationToken.None);
-
-        // Assert
-        Assert.NotNull(captured);
-        Assert.NotNull(captured.Content);
-        Assert.True(captured.Headers.TryGetValues("X-Test", out _));
-        var dict = Assert.IsType<Dictionary<string, object?>>(result);
-        Assert.Equal(201, dict["statusCode"]);
-    }
-
-    /// <summary>notification は Development で no-op 送信結果を返す。</summary>
-    [Fact]
-    public async Task NotificationActionState_Development_ReturnsSkippedResult()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        services.AddSingleton<IHostEnvironment>(new FakeHostEnvironment { EnvironmentName = Environments.Development });
-        services.AddLogging();
-        services.AddSingleton<ISmtpConnectionSettingsProvider>(sp =>
-            sp.GetRequiredService<SmtpConnectionSettingsProviderFactory>());
-        services.AddSingleton<EnvironmentSmtpConnectionSettingsProvider>();
-        services.AddSingleton<DatabaseSmtpConnectionSettingsProvider>();
-        services.AddSingleton<KmsSmtpConnectionSettingsProvider>();
-        services.AddSingleton<SmtpConnectionSettingsProviderFactory>();
-        services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new NotificationOptions()));
-        services.AddSingleton<DevelopmentNotificationSender>();
-        services.AddSingleton<SmtpNotificationSender>();
-        services.AddSingleton<NotificationSenderResolver>();
-
-        var provider = services.BuildServiceProvider();
-        var state = new NotificationActionState(provider.GetRequiredService<IServiceScopeFactory>());
-        var input = new Dictionary<string, object?>
-        {
-            ["channel"] = "email",
-            ["to"] = "user@example.com",
-            ["subject"] = "hello",
-            ["body"] = "world",
-        };
-
-        // Act
-        var result = await state.ExecuteAsync(MakeContext(new FakeEventProvider()), input, CancellationToken.None);
-
-        // Assert
-        var dict = Assert.IsType<Dictionary<string, object?>>(result);
-        Assert.Equal("email", dict["channel"]);
-        Assert.Equal("development-skipped", dict["messageId"]);
-    }
-
-    private sealed class StubHttpClientFactory : IHttpClientFactory
-    {
-        private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _handler;
-
-        public StubHttpClientFactory(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler) =>
-            _handler = handler;
-
-        public HttpClient CreateClient(string name) =>
-            new(new StubHttpMessageHandler(_handler)) { BaseAddress = new Uri("https://example.com") };
-    }
-
-    private sealed class StubHttpMessageHandler : HttpMessageHandler
-    {
-        private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _handler;
-
-        public StubHttpMessageHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler) =>
-            _handler = handler;
-
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken) =>
-            _handler(request, cancellationToken);
-    }
-
-    private sealed class FakeHostEnvironment : IHostEnvironment
-    {
-        public string EnvironmentName { get; set; } = Environments.Production;
-        public string ApplicationName { get; set; } = "test";
-        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
-        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 }

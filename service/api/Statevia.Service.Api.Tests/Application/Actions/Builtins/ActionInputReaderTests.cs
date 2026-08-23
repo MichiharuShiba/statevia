@@ -1,4 +1,4 @@
-using Statevia.Service.Api.Application.Actions.Builtins;
+using Statevia.Core.Actions.Abstractions.Execution;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Builtins;
 

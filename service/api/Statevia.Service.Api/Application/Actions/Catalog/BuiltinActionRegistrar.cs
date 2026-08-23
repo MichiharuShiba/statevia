@@ -11,7 +11,7 @@ namespace Statevia.Service.Api.Application.Actions.Catalog;
 /// <summary>Builtin action を Catalog へ登録する。</summary>
 internal static class BuiltinActionRegistrar
 {
-    private const string BuiltinModuleId = "statevia.builtin";
+    private const string BuiltinModuleId = "statevia.action.builtin";
     private const string BuiltinVersion = "1.0.0";
 
     /// <summary>全 Builtin を Catalog へ登録する。</summary>
@@ -31,8 +31,6 @@ internal static class BuiltinActionRegistrar
         RegisterSleep(memoryCatalog);
         RegisterSignal(memoryCatalog);
         RegisterPublish(memoryCatalog);
-        RegisterRest(memoryCatalog);
-        RegisterNotification(memoryCatalog);
         RegisterWorkflow(memoryCatalog);
     }
 
@@ -41,9 +39,7 @@ internal static class BuiltinActionRegistrar
         var actionId = WellKnownActionIds.NoOpCanonical;
         catalog.Register(
             CreateBuiltinDescriptor(actionId),
-            new ActionCatalogEntry(
-                Aliases: [WellKnownActionIds.NoOp],
-                InProcessFactory: CreateFactory(new NoOpState())),
+            new ActionCatalogEntry(InProcessFactory: CreateFactory(new NoOpState())),
             new ActionCapabilityMetadata(ActionCapabilityCategory.Transform, "No-op", IsExperimental: false),
             BuiltinActionSchemas.NoOp(actionId));
     }
@@ -76,26 +72,6 @@ internal static class BuiltinActionRegistrar
             new ActionCatalogEntry(InProcessFactory: CreateFactory(new PublishActionState())),
             new ActionCapabilityMetadata(ActionCapabilityCategory.Event, "Publish", IsExperimental: false),
             BuiltinActionSchemas.Publish(actionId));
-    }
-
-    private static void RegisterRest(InMemoryActionCatalog catalog)
-    {
-        var actionId = WellKnownActionIds.Rest;
-        catalog.Register(
-            CreateBuiltinDescriptor(actionId),
-            new ActionCatalogEntry(InProcessFactory: CreateScopedFactory<RestActionState>()),
-            new ActionCapabilityMetadata(ActionCapabilityCategory.Http, "REST", IsExperimental: false),
-            BuiltinActionSchemas.Rest(actionId));
-    }
-
-    private static void RegisterNotification(InMemoryActionCatalog catalog)
-    {
-        var actionId = WellKnownActionIds.Notify;
-        catalog.Register(
-            CreateBuiltinDescriptor(actionId),
-            new ActionCatalogEntry(InProcessFactory: CreateScopedFactory<NotificationActionState>()),
-            new ActionCapabilityMetadata(ActionCapabilityCategory.Notification, "Notification", IsExperimental: false),
-            BuiltinActionSchemas.Notify(actionId));
     }
 
     private static void RegisterWorkflow(InMemoryActionCatalog catalog)

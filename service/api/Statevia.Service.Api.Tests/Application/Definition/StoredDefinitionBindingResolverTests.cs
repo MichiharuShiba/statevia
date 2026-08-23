@@ -122,7 +122,7 @@ public sealed class StoredDefinitionBindingResolverTests
     {
         // Arrange
         var catalog = new InMemoryActionCatalog();
-        var definition = CreateDefinition(("A", ActionState("noop")));
+        var definition = CreateDefinition(("A", ActionState(WellKnownActionIds.NoOpCanonical)));
 
         // Act + Assert
         Assert.Throws<ArgumentNullException>(

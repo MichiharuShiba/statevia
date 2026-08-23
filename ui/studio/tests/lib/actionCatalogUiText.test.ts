@@ -12,28 +12,28 @@ describe("actionCatalogUiText", () => {
     expect(
       resolveActionCatalogLabel(
         uiTextJa.actionCatalog,
-        "statevia.action.builtin.rest.ui.fields.url.label",
+        "statevia.action.builtin.execution.sleep.ui.fields.duration.label",
       ),
-    ).toBe("URL");
+    ).toBe("待機時間");
     expect(
       resolveActionCatalogLabel(
         uiTextJa.actionCatalog,
-        "statevia.action.builtin.notify.ui.fields.subject.label",
+        "statevia.action.builtin.workflow.invoke.ui.fields.definitionId.label",
       ),
-    ).toBe("件名");
+    ).toBe("定義 ID");
   });
 
   it("主要 builtin action の labelKey を en ロケールで解決する", () => {
     expect(
       resolveActionCatalogLabel(
         uiTextEn.actionCatalog,
-        "statevia.action.builtin.rest.ui.fields.method.label",
+        "statevia.action.builtin.execution.sleep.ui.fields.duration.label",
       ),
-    ).toBe("HTTP method");
+    ).toBe("Duration");
     expect(
       resolveActionCatalogLabel(
         uiTextEn.actionCatalog,
-        "statevia.action.builtin.workflow.ui.fields.definitionId.label",
+        "statevia.action.builtin.workflow.invoke.ui.fields.definitionId.label",
       ),
     ).toBe("Definition ID");
   });
@@ -42,18 +42,18 @@ describe("actionCatalogUiText", () => {
     expect(
       resolveActionCatalogLabel(
         uiTextEn.actionCatalog,
-        "statevia.action.builtin.noop.ui.fields.missing.label",
+        "statevia.action.builtin.execution.noop.ui.fields.missing.label",
       ),
     ).toBeUndefined();
-    expect(actionCatalogUiTextEnOverrides["statevia.action.builtin.noop"]).toBeUndefined();
-    expect(actionCatalogUiTextJa["statevia.action.builtin.rest"]).toBeDefined();
+    expect(actionCatalogUiTextEnOverrides["statevia.action.builtin.execution.noop"]).toBeUndefined();
+    expect(actionCatalogUiTextJa["statevia.action.builtin.execution.sleep"]).toBeDefined();
   });
 
   it("labelKey に .ui.fields. が無い場合は undefined を返す", () => {
     expect(
       resolveActionCatalogLabel(
         uiTextJa.actionCatalog,
-        "statevia.action.builtin.rest.ui.labels.url",
+        "statevia.action.builtin.execution.sleep.ui.labels.duration",
       ),
     ).toBeUndefined();
   });
@@ -62,7 +62,7 @@ describe("actionCatalogUiText", () => {
     expect(
       resolveActionCatalogLabel(
         uiTextJa.actionCatalog,
-        "statevia.action.builtin.rest.ui.fields.unknown.label",
+        "statevia.action.builtin.execution.sleep.ui.fields.unknown.label",
       ),
     ).toBeUndefined();
   });

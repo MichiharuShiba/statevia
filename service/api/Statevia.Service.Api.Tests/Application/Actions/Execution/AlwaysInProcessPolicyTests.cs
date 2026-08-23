@@ -15,7 +15,7 @@ public sealed class AlwaysInProcessPolicyTests
         var sut = new AlwaysInProcessPolicy();
         var descriptor = new ActionDescriptor
         {
-            ActionId = "statevia.action.builtin.noop",
+            ActionId = "statevia.action.builtin.execution.noop",
             ModuleId = "statevia.builtin",
             Version = "1.0.0",
             TrustLevel = ActionTrustLevel.Untrusted,

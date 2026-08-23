@@ -7,7 +7,7 @@ import type { ActionSchemaIndexItem } from "@/features/definition-editor/actionS
 
 const candidates: ActionSchemaIndexItem[] = [
   {
-    actionId: "statevia.action.builtin.rest",
+    actionId: "statevia.action.reference.http.request",
     displayName: "REST",
     version: "1.0.0"
   }
@@ -15,13 +15,13 @@ const candidates: ActionSchemaIndexItem[] = [
 
 describe("isIndexedActionId", () => {
   it("index 候補に含まれる actionId のみ true を返す", () => {
-    expect(isIndexedActionId("statevia.action.builtin.rest", candidates)).toBe(true);
+    expect(isIndexedActionId("statevia.action.reference.http.request", candidates)).toBe(true);
     expect(isIndexedActionId("sleep", candidates)).toBe(false);
     expect(isIndexedActionId("noop", candidates)).toBe(false);
   });
 
   it("buildIndexedActionIdSet が actionId 集合を構築する", () => {
-    expect(buildIndexedActionIdSet(candidates).has("statevia.action.builtin.rest")).toBe(true);
+    expect(buildIndexedActionIdSet(candidates).has("statevia.action.reference.http.request")).toBe(true);
     expect(buildIndexedActionIdSet(candidates).has("sleep")).toBe(false);
   });
 });

@@ -31,7 +31,7 @@ nodes:
   - name: child.work
     type: action
     label: 作業（5 秒）
-    action: sleep
+    action: statevia.action.builtin.execution.sleep
     input:
       duration: 5s
     next: child.end

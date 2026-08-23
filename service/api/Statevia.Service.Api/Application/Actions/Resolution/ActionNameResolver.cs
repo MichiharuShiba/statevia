@@ -4,7 +4,7 @@ namespace Statevia.Service.Api.Application.Actions.Resolution;
 
 /// <summary>
 /// Compiler フェーズで action 参照を canonical ID に正規化する。
-/// Loader は未正規化の生値を保持し、本クラスが Builtin 短名 / module alias / FQCN 解決を担う。
+/// Loader は未正規化の生値を保持し、本クラスが module alias / FQCN 解決を担う（短名は受理しない）。
 /// </summary>
 internal static class ActionNameResolver
 {
@@ -58,11 +58,6 @@ internal static class ActionNameResolver
 
     private static string ResolveActionRef(string actionRef, IReadOnlyDictionary<string, ModuleImportReference> modules)
     {
-        if (WellKnownActionIds.IsBuiltinShortName(actionRef))
-        {
-            return WellKnownActionIds.ToCanonicalActionId(actionRef);
-        }
-
         var dotIndex = actionRef.IndexOf('.', StringComparison.Ordinal);
         if (dotIndex >= 0)
         {
@@ -90,6 +85,6 @@ internal static class ActionNameResolver
         }
 
         throw new ArgumentException(
-            $"Unknown action '{actionRef}': not a builtin short name, moduleAlias.actionName, or FQCN.");
+            $"Unknown action '{actionRef}': short names are not supported; use FQCN or moduleAlias.actionName.");
     }
 }

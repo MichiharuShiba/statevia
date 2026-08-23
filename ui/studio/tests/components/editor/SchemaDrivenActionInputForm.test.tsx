@@ -6,7 +6,7 @@ import { UiTextProvider } from "@/shared/i18n/uiTextContext";
 
 const restSchemaDetail: ActionSchemaDetailResponse = {
   descriptor: {
-    actionId: "statevia.action.builtin.rest",
+    actionId: "statevia.action.reference.http.request",
     version: "1.0.0",
     displayName: "REST"
   },
@@ -15,9 +15,10 @@ const restSchemaDetail: ActionSchemaDetailResponse = {
     inputSchema: {
       type: "object",
       properties: {
-        url: { type: "string", title: "url" },
+        url: { type: "string", title: "URL" },
         method: {
           type: "string",
+          title: "HTTP メソッド",
           enum: ["GET", "POST"]
         }
       },
@@ -30,11 +31,11 @@ const restSchemaDetail: ActionSchemaDetailResponse = {
     fields: {
       url: {
         widget: "url",
-        labelKey: "statevia.action.builtin.rest.ui.fields.url.label"
+        labelKey: "statevia.action.reference.http.request.ui.fields.url.label"
       },
       method: {
         widget: "select",
-        labelKey: "statevia.action.builtin.rest.ui.fields.method.label"
+        labelKey: "statevia.action.reference.http.request.ui.fields.method.label"
       }
     }
   }
@@ -47,7 +48,7 @@ function renderForm(
   return render(
     <UiTextProvider locale="ja">
       <SchemaDrivenActionInputForm
-        actionId="statevia.action.builtin.rest"
+        actionId="statevia.action.reference.http.request"
         schemaDetail={restSchemaDetail}
         value={value}
         onChange={onChange}
@@ -82,7 +83,11 @@ describe("SchemaDrivenActionInputForm", () => {
           ...restSchemaDetail.schema.inputSchema,
           properties: {
             ...restSchemaDetail.schema.inputSchema.properties,
-            timeout: { type: "integer", "x-statevia-valueKind": "literalOrPath" }
+            timeout: {
+              type: "integer",
+              title: "タイムアウト（秒）",
+              "x-statevia-valueKind": "literalOrPath"
+            }
           }
         }
       },
@@ -93,7 +98,7 @@ describe("SchemaDrivenActionInputForm", () => {
           ...restSchemaDetail.uiMetadata?.fields,
           timeout: {
             widget: "text",
-            labelKey: "statevia.action.builtin.rest.ui.fields.timeout.label"
+            labelKey: "statevia.action.reference.http.request.ui.fields.timeout.label"
           }
         }
       }
@@ -101,7 +106,7 @@ describe("SchemaDrivenActionInputForm", () => {
     render(
       <UiTextProvider locale="ja">
         <SchemaDrivenActionInputForm
-          actionId="statevia.action.builtin.rest"
+          actionId="statevia.action.reference.http.request"
           schemaDetail={schemaWithTimeout}
           value={{}}
           onChange={onChange}

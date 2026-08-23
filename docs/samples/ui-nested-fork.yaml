@@ -39,7 +39,7 @@ nodes:
   - name: nest.outer.fast
     type: action
     label: 外側・即時処理
-    action: noop
+    action: statevia.action.builtin.execution.noop
     next: nest.outer.join
 
   # --- L2 中間 ---
@@ -53,7 +53,7 @@ nodes:
   - name: nest.mid.fast
     type: action
     label: 中間・即時処理
-    action: noop
+    action: statevia.action.builtin.execution.noop
     next: nest.mid.join
 
   # --- L3 最内 ---
@@ -67,7 +67,7 @@ nodes:
   - name: nest.inner.a
     type: action
     label: 最内 A
-    action: sleep
+    action: statevia.action.builtin.execution.sleep
     input:
       duration: 1s
     next: nest.inner.join
@@ -75,7 +75,7 @@ nodes:
   - name: nest.inner.b
     type: action
     label: 最内 B
-    action: sleep
+    action: statevia.action.builtin.execution.sleep
     input:
       duration: 2s
     next: nest.inner.join
@@ -101,7 +101,7 @@ nodes:
   - name: nest.notify
     type: action
     label: 完了通知
-    action: noop
+    action: statevia.action.builtin.execution.noop
     next: nest.end
 
   - name: nest.end

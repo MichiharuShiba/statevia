@@ -1,9 +1,9 @@
 using System.Text;
 
-namespace Statevia.Service.Api.Application.Actions.Builtins;
+namespace Statevia.Reference.Http;
 
-/// <summary>rest action の HTTP レスポンスを出力辞書へ変換する。</summary>
-internal static class RestHttpResponseMapper
+/// <summary>http.request action の HTTP レスポンスを出力辞書へ変換する。</summary>
+internal static class HttpResponseMapper
 {
     private const int MaxBodyBytes = 1_048_576;
 

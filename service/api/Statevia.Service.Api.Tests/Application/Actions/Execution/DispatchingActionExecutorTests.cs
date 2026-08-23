@@ -47,7 +47,7 @@ public sealed class DispatchingActionExecutorTests
         {
             ExecutionId = "exec-1",
             StateName = "A",
-            ActionId = "statevia.action.builtin.noop",
+            ActionId = "statevia.action.builtin.execution.noop",
             TenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
         };
 
@@ -222,7 +222,7 @@ public sealed class DispatchingActionExecutorTests
         {
             ExecutionId = "exec-1",
             StateName = "A",
-            ActionId = "statevia.action.builtin.noop",
+            ActionId = "statevia.action.builtin.execution.noop",
             TenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
         };
 
@@ -266,7 +266,7 @@ public sealed class DispatchingActionExecutorTests
         {
             ExecutionId = "exec-1",
             StateName = "A",
-            ActionId = "statevia.action.builtin.noop",
+            ActionId = "statevia.action.builtin.execution.noop",
             TenantId = ActionExecutionTestSupport.DefaultTenantId.ToString("D"),
         };
 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  dotnet-sonarscanner（MSBuild 統合）向けローカルスコープ。
+  ビルド成果物パスがソース候補に混ざるケースでの post-processing 失敗を避けるため、bin/obj を除外する。
+-->
+<SonarQubeAnalysisProperties xmlns="http://www.sonarsource.com/schemas/2021/1/SonarQubeAnalysisProperties">
+  <Property Name="sonar.exclusions">**/bin/**,**/obj/**</Property>
+</SonarQubeAnalysisProperties>

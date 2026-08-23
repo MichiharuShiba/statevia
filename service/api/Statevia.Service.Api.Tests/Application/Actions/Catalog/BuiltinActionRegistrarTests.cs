@@ -8,9 +8,9 @@ namespace Statevia.Service.Api.Tests.Application.Actions.Catalog;
 /// <summary><see cref="BuiltinActionRegistrar"/> の単体テスト。</summary>
 public sealed class BuiltinActionRegistrarTests
 {
-    /// <summary>全 Builtin と noop エイリアスを Catalog へ登録する。</summary>
+    /// <summary>残す Builtin だけを Catalog へ登録し、Rest/Notify は載せない。</summary>
     [Fact]
-    public void Register_RegistersAllBuiltinsWithMetadata()
+    public void Register_RegistersRemainingBuiltinsWithoutRestOrNotify()
     {
         // Arrange
         var catalog = new InMemoryActionCatalog();
@@ -20,17 +20,18 @@ public sealed class BuiltinActionRegistrarTests
 
         // Assert
         Assert.True(catalog.Exists(WellKnownActionIds.NoOpCanonical));
-        Assert.True(catalog.Exists(WellKnownActionIds.NoOp));
         Assert.True(catalog.Exists(WellKnownActionIds.Sleep));
-        Assert.True(catalog.Exists(WellKnownActionIds.Rest));
-        Assert.True(catalog.Exists(WellKnownActionIds.Notify));
         Assert.True(catalog.Exists(WellKnownActionIds.Signal));
         Assert.True(catalog.Exists(WellKnownActionIds.Publish));
         Assert.True(catalog.Exists(WellKnownActionIds.Workflow));
-        Assert.False(catalog.Exists("delay5s"));
+        Assert.False(catalog.Exists("noop"));
+        Assert.False(catalog.Exists("statevia.action.builtin.rest"));
+        Assert.False(catalog.Exists("statevia.action.builtin.notify"));
+        Assert.False(catalog.Exists("statevia.action.reference.http.request"));
 
         Assert.True(catalog.TryGetDescriptor(WellKnownActionIds.NoOpCanonical, out var noop));
-        Assert.Equal(ActionVisibility.Builtin, noop!.Visibility);
+        Assert.Equal("statevia.action.builtin", noop!.ModuleId);
+        Assert.Equal(ActionVisibility.Builtin, noop.Visibility);
         Assert.Null(noop.OwnerTenantId);
         Assert.Equal(ActionExecutionMode.InProcess, noop.ExecutionHints.PreferredMode);
 
@@ -38,14 +39,6 @@ public sealed class BuiltinActionRegistrarTests
         Assert.Equal(ActionCapabilityCategory.Timing, sleepMetadata!.Category);
         Assert.True(catalog.TryGetCapabilityMetadata(WellKnownActionIds.Workflow, out var workflowMetadata));
         Assert.True(workflowMetadata!.IsExperimental);
-
-        Assert.True(catalog.TryGetPublication(WellKnownActionIds.Rest, out var restPublication));
-        Assert.NotNull(restPublication);
-        Assert.Equal(WellKnownActionIds.Rest, restPublication!.Descriptor.ActionId);
-        Assert.Equal("REST", restPublication.Descriptor.DisplayName);
-        Assert.True(restPublication.SchemaBundle.InputSchema.RootElement.TryGetProperty("properties", out var properties));
-        Assert.True(properties.TryGetProperty("url", out _));
-        Assert.True(properties.TryGetProperty("method", out _));
     }
 
     /// <summary>null Catalog は ArgumentNullException。</summary>

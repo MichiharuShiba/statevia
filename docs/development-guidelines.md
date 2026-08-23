@@ -158,7 +158,7 @@ dotnet build-server shutdown
 
 スクリプトは次を順に実行する。
 
-1. `dotnet sonarscanner begin`（キー `StateviaServiceApi`、除外は Engine / UI / Program / Migrations 等）
+1. `dotnet sonarscanner begin`（キー `StateviaServiceApi`、除外は Engine / UI / Program / Migrations / `modules/reference` 等）
 2. `dotnet build service/api/statevia-api.sln`
 3. `dotnet-coverage collect "dotnet test"` → `sonar/service-api-coverage.xml`
 4. `dotnet sonarscanner end`
@@ -214,6 +214,17 @@ npx --yes sonar-scanner "-Dsonar.token=$($env:SONAR_TOKEN)"
 - スキャン直後は Sonar UI の数値が遅れて反映されることがある。Quality Gate 判定は Sonar のプロジェクト画面を正とする。
 - 詳細は `sonar/README.md` も参照。
 
+### 5.3 リファレンス Module — Sonar（手動）
+
+first-party Module（`modules/reference/`）は **`StateviaModulesReference`** で解析する。API スキャンには含めない。
+
+```powershell
+dotnet build-server shutdown
+./sonar/sonar-scanner-reference.ps1
+```
+
+スクリプトは `modules/reference/statevia-reference.sln` を build / test し、プロダクションコードだけを当該キーへ送る。
+
 ---
 
 ## 6. ブランチ命名
@@ -251,6 +262,7 @@ npx --yes sonar-scanner "-Dsonar.token=$($env:SONAR_TOKEN)"
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-23 | §5.3 にリファレンス Module（`StateviaModulesReference`）の Sonar 手順を追記 |
 | 2026-08-13 | §3.1 を Execution Facade / ドメインサービス分割後の責務に合わせて更新 |
 | 2026-07-07 | §1 / §4 / §7 を Git 上の正本として自己完結化（`.cursor` パス参照を廃止） |
 | 2026-05-19 | §4.3 / §5 に UI の ESLint・`StateviaUIStudio` Sonar 手順（§5.2・`sonar-scanner-ui.ps1`）を追記 |
