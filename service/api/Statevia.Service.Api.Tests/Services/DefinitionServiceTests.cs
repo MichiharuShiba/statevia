@@ -180,7 +180,7 @@ public sealed class DefinitionServiceTests
         // Arrange
         var defGuid = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var inDb = new InMemoryTestDatabase();
-        var projectId = await SeedDefaultTenantAndProjectAsync(inDb.Options);
+        _ = await SeedDefaultTenantAndProjectAsync(inDb.Options);
         var definitionsRepo = TestRepositoryFactory.CreateDefinitionRepository();
 
         // Act
@@ -693,7 +693,11 @@ public sealed class DefinitionServiceTests
         var sut = CreateDefinitionService(inDb, display, new StubCompiler("{}"), definitionsRepo, new FixedIdGenerator(Guid.NewGuid()));
 
         // Act
-        await sut.DeleteAsync("DISP-1", CancellationToken.None);
+        var exception = await Record.ExceptionAsync(() => sut.DeleteAsync("DISP-1", CancellationToken.None));
+
+        // Assert
+        Assert.Null(exception);
+        Assert.Equal(defId, definitionsRepo.LastSoftDeletedDefinitionId);
     }
 
     /// <summary>未削除定義への restore は StateConflictException。</summary>
