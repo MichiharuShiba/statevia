@@ -9,6 +9,8 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- Persistence 行 POCO は契約 DTO。プロパティ単位 XML は Phase 3 infrastructure 抽出時に整理する。 -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- SonarScanner for .NET: SDK 形式は既定 GUID を持たない。sln 外の ProjectReference で 00000000 重複警告になるのを防ぐ。 -->
+    <ProjectGuid>{0B5C6661-7072-440C-BA5D-DAC0C7E3640A}</ProjectGuid>
   </PropertyGroup>
 
   <ItemGroup>

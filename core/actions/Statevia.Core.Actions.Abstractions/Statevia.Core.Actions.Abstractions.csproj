@@ -7,7 +7,12 @@
     <RootNamespace>Statevia.Core.Actions.Abstractions</RootNamespace>
     <AssemblyName>Statevia.Core.Actions.Abstractions</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- SonarScanner for .NET: SDK 形式は既定 GUID を持たない。sln 外の ProjectReference で 00000000 重複警告になるのを防ぐ。 -->
+    <ProjectGuid>{3CF52601-1840-46C5-9D0F-142CE6EAFE05}</ProjectGuid>
+    <!-- API スキャン以外では Sonar の protobuf を出さない（build/SonarQube.ComponentScope.props）。 -->
+    <StateviaSonarComponent>api</StateviaSonarComponent>
   </PropertyGroup>
+  <Import Project="$(MSBuildThisFileDirectory)..\..\..\build\SonarQube.ComponentScope.props" />
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />

@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- action-host スキャン以外では Sonar の protobuf を出さない。 -->
+    <StateviaSonarComponent>action-host</StateviaSonarComponent>
+  </PropertyGroup>
+  <Import Project="..\..\build\SonarQube.ComponentScope.props" />
+</Project>

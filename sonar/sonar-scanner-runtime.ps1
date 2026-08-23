@@ -7,6 +7,7 @@
   HostedService 正本と分離ホストを StateviaServiceRuntime として解析する。
   カバレッジは Api.Tests（DelayWait Scheduler 等）を service/api から収集する。
   解析対象は service/runtime に限定し、API / Engine 等と二重計上しない。
+  API sln をビルドするため、build / test に /p:StateviaSonarScope=runtime を渡し担当外プロジェクトを SonarQubeExclude する。
 
 .NOTES
   環境変数 SONAR_TOKEN を事前に設定すること。
@@ -67,14 +68,14 @@ try {
     }
 
     # Runtime / Scheduler / Worker は statevia-api.sln に含まれる。
-    dotnet build 'statevia-api.sln'
+    dotnet build 'statevia-api.sln' '/p:StateviaSonarScope=runtime'
     if ($LASTEXITCODE -ne 0) {
         Write-Error '[ERROR] build failed'
         exit 1
     }
 
     # HostedService の単体テストは Api.Tests 側にある。
-    dotnet-coverage collect 'dotnet test Statevia.Service.Api.Tests/Statevia.Service.Api.Tests.csproj --filter FullyQualifiedName~DelayWaitSchedulerHostedServiceTests|FullyQualifiedName~OptionsValidationTests|FullyQualifiedName~ExecutionWorkItemWorkerHostedServiceTests|FullyQualifiedName~ExecutionOwnershipRecoveryHostedServiceTests|FullyQualifiedName~RuntimeServiceCollectionExtensionsTests' -f xml -o "$coverageXml"
+    dotnet-coverage collect 'dotnet test Statevia.Service.Api.Tests/Statevia.Service.Api.Tests.csproj /p:StateviaSonarScope=runtime --filter FullyQualifiedName~DelayWaitSchedulerHostedServiceTests|FullyQualifiedName~OptionsValidationTests|FullyQualifiedName~ExecutionWorkItemWorkerHostedServiceTests|FullyQualifiedName~ExecutionOwnershipRecoveryHostedServiceTests|FullyQualifiedName~RuntimeServiceCollectionExtensionsTests' -f xml -o "$coverageXml"
     if ($LASTEXITCODE -ne 0) {
         Write-Error '[ERROR] test / coverage failed'
         exit 1

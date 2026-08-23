@@ -7,6 +7,7 @@
   スクリプト配置（リポジトリの sonar/）から action-host とカバレッジ出力パスを解決する。
   カレントディレクトリに依存しない。
   依存アセンブリ（engine / api / cli / ui / infrastructure）が混ざらないよう解析・カバレッジ除外を設定する。
+  依存プロジェクトの Roslyn protobuf は sonar.exclusions では消えないため、build / test に /p:StateviaSonarScope=action-host を渡し SonarQubeExclude する。
 
 .NOTES
   環境変数 SONAR_TOKEN を事前に設定すること。
@@ -16,7 +17,8 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# 依存アセンブリ・生成物・ホストエントリを除外し、Action Host 本体のカバレッジを測る。
+# 依存アセンブリ・生成物を解析から除外する。
+# Program.cs を sonar.exclusions に入れると、コンパイル済み protobuf と analysis context が食い違う。
 # Statevia.Core.Actions.Abstractions を旧パス名のまま残すと除外漏れで overall coverage が下がる。
 $sonarAnalysisExclusions = @(
     '**/service/api/**',
@@ -33,12 +35,15 @@ $sonarAnalysisExclusions = @(
     '**/Statevia.Service.Api/**',
     '**/infrastructure/**',
     '**/Migrations/**',
-    '**/Program.cs',
     '**/obj/**',
     '**/*.g.cs',
     '**/docker-compose.yml'
 ) -join ','
-$sonarCoverageExclusions = $sonarAnalysisExclusions
+# ホストエントリはカバレッジ分母から外す（解析対象には残す）。
+$sonarCoverageExclusions = @(
+    $sonarAnalysisExclusions,
+    '**/Program.cs'
+) -join ','
 
 if (-not $env:SONAR_TOKEN) {
     Write-Error '環境変数 SONAR_TOKEN が設定されていません。'
@@ -68,13 +73,14 @@ try {
         exit 1
     }
 
-    dotnet build 'statevia-action-host.sln'
+    # Engine / Abstractions / TestActionModule の protobuf を抑止する（sonar.exclusions だけでは足りない）。
+    dotnet build 'statevia-action-host.sln' '/p:StateviaSonarScope=action-host'
     if ($LASTEXITCODE -ne 0) {
         Write-Error '[ERROR] build failed'
         exit 1
     }
 
-    dotnet-coverage collect 'dotnet test' -f xml -o "$coverageXml"
+    dotnet-coverage collect 'dotnet test /p:StateviaSonarScope=action-host' -f xml -o "$coverageXml"
     if ($LASTEXITCODE -ne 0) {
         Write-Error '[ERROR] test / coverage failed'
         exit 1

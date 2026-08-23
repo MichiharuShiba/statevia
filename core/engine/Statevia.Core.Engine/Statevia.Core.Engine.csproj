@@ -11,6 +11,8 @@
     <Authors>MichiharuShiba</Authors>
     <Description>Definition-driven workflow execution engine based on state-driven FSM</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- SonarScanner for .NET: SDK 形式は既定 GUID を持たない。sln 外の ProjectReference で 00000000 重複警告になるのを防ぐ。 -->
+    <ProjectGuid>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</ProjectGuid>
   </PropertyGroup>
 
   <ItemGroup>

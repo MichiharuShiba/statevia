@@ -4,5 +4,8 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <!-- engine スキャン以外では Sonar の protobuf を出さない（build/SonarQube.ComponentScope.props）。 -->
+    <StateviaSonarComponent>engine</StateviaSonarComponent>
   </PropertyGroup>
+  <Import Project="$(MSBuildThisFileDirectory)..\..\build\SonarQube.ComponentScope.props" />
 </Project>

@@ -6,6 +6,7 @@
 .DESCRIPTION
   スクリプト配置（リポジトリの sonar/）から engine とカバレッジ出力パスを解決する。
   カレントディレクトリに依存しない。
+  build / test に /p:StateviaSonarScope=engine を渡し、担当外プロジェクトを SonarQubeExclude する。
 
 .NOTES
   環境変数 SONAR_TOKEN を事前に設定すること。
@@ -54,13 +55,13 @@ try {
         exit 1
     }
 
-    dotnet build 'statevia-engine.sln'
+    dotnet build 'statevia-engine.sln' '/p:StateviaSonarScope=engine'
     if ($LASTEXITCODE -ne 0) {
         Write-Error '[ERROR] build failed'
         exit 1
     }
 
-    dotnet-coverage collect 'dotnet test' -f xml -o "$coverageXml"
+    dotnet-coverage collect 'dotnet test /p:StateviaSonarScope=engine' -f xml -o "$coverageXml"
     if ($LASTEXITCODE -ne 0) {
         Write-Error '[ERROR] test / coverage failed'
         exit 1

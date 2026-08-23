@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    SonarScanner for .NET はプロジェクトごとに Roslyn protobuf を出力する。
+    sonar.exclusions でファイルを落としても protobuf は残るため、
+    「analysis context にファイルが無い」警告が出る。
+    コンポーネント専用スキャンでは、担当外プロジェクトを SonarQubeExclude する。
+  -->
+  <PropertyGroup Condition="'$(StateviaSonarScope)' != '' and '$(StateviaSonarComponent)' != '' and '$(StateviaSonarScope)' != '$(StateviaSonarComponent)'">
+    <SonarQubeExclude>true</SonarQubeExclude>
+  </PropertyGroup>
+</Project>

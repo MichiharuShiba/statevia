@@ -4,7 +4,10 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <!-- api スキャン以外では Sonar の protobuf を出さない。 -->
+    <StateviaSonarComponent>api</StateviaSonarComponent>
   </PropertyGroup>
 
   <Import Project="..\..\build\BannedGuidNewGuid.props" />
+  <Import Project="..\..\build\SonarQube.ComponentScope.props" />
 </Project>

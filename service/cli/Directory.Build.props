@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- cli スキャン以外では Sonar の protobuf を出さない。 -->
+    <StateviaSonarComponent>cli</StateviaSonarComponent>
+  </PropertyGroup>
+  <Import Project="..\..\build\SonarQube.ComponentScope.props" />
+</Project>

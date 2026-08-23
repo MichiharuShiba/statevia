@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <AssemblyName>PrivateCtorActionModule</AssemblyName>
     <RootNamespace>Statevia.Service.ActionHost.Tests.Fixtures.PrivateCtorActionModule</RootNamespace>
+    <!-- テスト用フィクスチャ。どのコンポーネントスキャンでも protobuf を出さない。 -->
+    <SonarQubeExclude>true</SonarQubeExclude>
   </PropertyGroup>
 
   <ItemGroup>

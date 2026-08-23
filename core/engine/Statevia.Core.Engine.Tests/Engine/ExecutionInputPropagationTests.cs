@@ -32,7 +32,7 @@ public class ExecutionInputPropagationTests
         var id = engine.Start(def, null, "workflow-seed");
 
         // Act
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         // Assert
         Assert.Equal("workflow-seed", seen);
@@ -48,7 +48,7 @@ public class ExecutionInputPropagationTests
         var seed = new Dictionary<string, object?> { ["k"] = "v" };
         var id = engine.Start(def, null, seed);
 
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         using var doc = JsonDocument.Parse(engine.ExportExecutionGraph(id));
         var nodes = doc.RootElement.GetProperty("nodes").EnumerateArray().ToList();
@@ -78,7 +78,7 @@ public class ExecutionInputPropagationTests
         var id = engine.Start(def);
 
         // Act
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         // Assert
         Assert.Equal("from-A", bInput);
@@ -104,7 +104,7 @@ public class ExecutionInputPropagationTests
         using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         Assert.Equal(2, inputs.Count);
         Assert.All(inputs, x => Assert.Equal("fork-source", x));
@@ -128,7 +128,7 @@ public class ExecutionInputPropagationTests
         var id = engine.Start(def);
 
         // Act
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         // Assert
         var dict = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(afterInput);
@@ -150,7 +150,7 @@ public class ExecutionInputPropagationTests
         using var engine = ExecutionEngineTestHarness.Create(maxParallelism: 1);
         var id = engine.Start(def);
 
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         using var doc = JsonDocument.Parse(engine.ExportExecutionGraph(id));
         var root = doc.RootElement;
@@ -211,7 +211,7 @@ public class ExecutionInputPropagationTests
         var id = engine.Start(def);
 
         // Act
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         // Assert
         Assert.Equal("mapped-value", bInput);
@@ -240,7 +240,7 @@ public class ExecutionInputPropagationTests
         var id = engine.Start(def);
 
         // Act
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         // Assert
         Assert.Equal("a@example.com", bInput);
@@ -271,7 +271,7 @@ public class ExecutionInputPropagationTests
         var id = engine.Start(def);
 
         // Act
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         // Assert
         var map = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(bInput);
@@ -303,7 +303,7 @@ public class ExecutionInputPropagationTests
         var id = engine.Start(def);
 
         // Act
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         // Assert
         var map = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(bInput);
@@ -329,7 +329,7 @@ public class ExecutionInputPropagationTests
         var id = engine.Start(def, input: new Dictionary<string, object?> { ["orderId"] = "ORD-42" });
 
         // Act
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         // Assert
         Assert.Equal("ORD-42", bInput);
@@ -364,7 +364,7 @@ public class ExecutionInputPropagationTests
         var id = engine.Start(def);
 
         // Act
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         // Assert
         Assert.Equal("fork-mapped", aInput);
@@ -390,7 +390,7 @@ public class ExecutionInputPropagationTests
         var id = engine.Start(def);
 
         // Act
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         // Assert
         Assert.Equal("out-A", afterInput);
@@ -425,7 +425,7 @@ public class ExecutionInputPropagationTests
         var id = engine.Start(def);
 
         // Act
-        await WaitUntilCompletedAsync(engine, id).ConfigureAwait(false);
+        await WaitUntilCompletedAsync(engine, id);
 
         // Assert
         var dict = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(bInput);
@@ -447,7 +447,7 @@ public class ExecutionInputPropagationTests
                 return;
             }
 
-            await Task.Delay(20).ConfigureAwait(false);
+            await Task.Delay(20);
         }
 
         Assert.Fail("Execution did not complete in time.");

@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <AssemblyName>MalformedActionModule</AssemblyName>
     <RootNamespace>Statevia.Service.ActionHost.Tests.Fixtures.MalformedActionModule</RootNamespace>
+    <!-- テスト用フィクスチャ。どのコンポーネントスキャンでも protobuf を出さない。 -->
+    <SonarQubeExclude>true</SonarQubeExclude>
   </PropertyGroup>
 
   <ItemGroup>

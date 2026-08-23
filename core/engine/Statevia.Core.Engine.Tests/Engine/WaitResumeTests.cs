@@ -12,13 +12,13 @@ public class WaitResumeTests
         // Arrange: EventProvider を作成し、WaitAsync で待機開始
         var provider = new EventProvider("wf1");
         var waitTask = provider.WaitAsync("TestEvent", CancellationToken.None);
-        await Task.Delay(50).ConfigureAwait(false);
+        await Task.Delay(50);
 
         // Act: Publish でイベント発行
         provider.Publish("TestEvent");
 
         // Assert: Wait が完了すること
-        await waitTask.ConfigureAwait(false);
+        await waitTask;
         Assert.True(waitTask.IsCompletedSuccessfully);
     }
 
@@ -32,10 +32,10 @@ public class WaitResumeTests
         var waitTask = provider.WaitAsync("TestEvent", cts.Token);
 
         // Act: トークンをキャンセル
-        await cts.CancelAsync().ConfigureAwait(false);
+        await cts.CancelAsync();
 
         // Assert: TaskCanceledException がスローされること
-        await Assert.ThrowsAsync<TaskCanceledException>(async () => await waitTask.ConfigureAwait(false)).ConfigureAwait(false);
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await waitTask);
     }
 
     /// <summary>ノードスコープ待機は Resume で指定イベント名を返し、未使用イベントの waiter を除去する。</summary>
@@ -48,19 +48,19 @@ public class WaitResumeTests
             "ApproveTask",
             ["approve", "reject"],
             CancellationToken.None);
-        await Task.Delay(50).ConfigureAwait(false);
+        await Task.Delay(50);
 
         // Act
         provider.Resume("ApproveTask", "approve");
 
         // Assert
-        var eventName = await waitTask.ConfigureAwait(false);
+        var eventName = await waitTask;
         Assert.Equal("approve", eventName);
 
         // 再 Resume しても完了済みのため no-op（二重再開しない）
         provider.Resume("ApproveTask", "reject");
         Assert.True(waitTask.IsCompletedSuccessfully);
-        Assert.Equal("approve", waitTask.Result);
+        Assert.Equal("approve", eventName);
     }
 
     /// <summary>同一イベント名でも nodeId が異なれば独立に Resume できる。</summary>
@@ -71,15 +71,15 @@ public class WaitResumeTests
         var provider = new EventProvider("wf1");
         var managerWait = provider.WaitForEventAsync("ManagerApproval", ["approve"], CancellationToken.None);
         var securityWait = provider.WaitForEventAsync("SecurityApproval", ["approve"], CancellationToken.None);
-        await Task.Delay(50).ConfigureAwait(false);
+        await Task.Delay(50);
 
         // Act
         provider.Resume("ManagerApproval", "approve");
         provider.Resume("SecurityApproval", "approve");
 
         // Assert
-        Assert.Equal("approve", await managerWait.ConfigureAwait(false));
-        Assert.Equal("approve", await securityWait.ConfigureAwait(false));
+        Assert.Equal("approve", await managerWait);
+        Assert.Equal("approve", await securityWait);
     }
 
     /// <summary>Wait 登録前の Resume は保留され、登録時に即完了する。</summary>
@@ -97,7 +97,7 @@ public class WaitResumeTests
             CancellationToken.None);
 
         // Assert
-        var eventName = await waitTask.ConfigureAwait(false);
+        var eventName = await waitTask;
         Assert.Equal("approve", eventName);
     }
 
@@ -108,7 +108,7 @@ public class WaitResumeTests
         // Arrange
         var provider = new EventProvider("wf1");
         var waitTask = provider.WaitForEventAsync("ApproveTask", ["approve"], CancellationToken.None);
-        await Task.Delay(50).ConfigureAwait(false);
+        await Task.Delay(50);
 
         // Act
         provider.Resume("ApproveTask", "reject");
@@ -116,7 +116,7 @@ public class WaitResumeTests
         // Assert
         Assert.False(waitTask.IsCompleted);
         provider.Resume("ApproveTask", "approve");
-        Assert.Equal("approve", await waitTask.ConfigureAwait(false));
+        Assert.Equal("approve", await waitTask);
     }
 
     /// <summary>同一 nodeId で二重 Wait すると InvalidOperationException になる。</summary>
@@ -129,7 +129,7 @@ public class WaitResumeTests
 
         // Act / Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            provider.WaitForEventAsync("ApproveTask", ["reject"], CancellationToken.None)).ConfigureAwait(false);
+            provider.WaitForEventAsync("ApproveTask", ["reject"], CancellationToken.None));
     }
 
     /// <summary>WaitForEventAsync 待機中に CancellationToken をキャンセルすると TaskCanceledException になる。</summary>
@@ -142,9 +142,9 @@ public class WaitResumeTests
         var waitTask = provider.WaitForEventAsync("ApproveTask", ["approve"], cts.Token);
 
         // Act
-        await cts.CancelAsync().ConfigureAwait(false);
+        await cts.CancelAsync();
 
         // Assert
-        await Assert.ThrowsAsync<TaskCanceledException>(async () => await waitTask.ConfigureAwait(false)).ConfigureAwait(false);
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await waitTask);
     }
 }
