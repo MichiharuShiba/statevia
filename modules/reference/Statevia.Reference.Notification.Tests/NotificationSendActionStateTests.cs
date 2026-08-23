@@ -60,6 +60,46 @@ public sealed class NotificationSendActionStateTests
         Assert.Equal("email", dict["channel"]);
     }
 
+    /// <summary>入力がオブジェクトでないとき失敗する。</summary>
+    [Fact]
+    public async Task ExecuteAsync_NonObjectInput_Throws()
+    {
+        // Arrange
+        var state = new NotificationSendActionState((_, _) => Task.CompletedTask);
+
+        // Act / Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            state.ExecuteAsync(CreateContext(), 42, CancellationToken.None));
+        Assert.Contains("input fields", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>channel の大文字小文字は無視する。</summary>
+    [Fact]
+    public async Task ExecuteAsync_EmailChannelIgnoreCase_InvokesSender()
+    {
+        // Arrange
+        var invoked = false;
+        var state = new NotificationSendActionState((_, _) =>
+        {
+            invoked = true;
+            return Task.CompletedTask;
+        });
+        var input = new Dictionary<string, object?>
+        {
+            ["channel"] = "Email",
+            ["to"] = "user@example.com",
+            ["subject"] = "hello",
+            ["body"] = "world",
+            ["from"] = "noreply@example.com",
+        };
+
+        // Act
+        await state.ExecuteAsync(CreateContext(), input, CancellationToken.None);
+
+        // Assert
+        Assert.True(invoked);
+    }
+
     /// <summary>Module が send Action を公開する。</summary>
     [Fact]
     public void Module_ExposesSendAction()
@@ -70,11 +110,13 @@ public sealed class NotificationSendActionStateTests
 
         // Act
         var actions = module.GetActions(services).ToArray();
+        var registration = Assert.Single(actions);
+        _ = registration.ExecutorFactory(services);
 
         // Assert
         Assert.Equal(NotificationReferenceActionIds.ModuleId, module.ModuleId);
-        Assert.Equal(NotificationReferenceActionIds.Send, Assert.Single(actions).ActionId);
-        Assert.NotNull(Assert.Single(actions).Publication);
+        Assert.Equal(NotificationReferenceActionIds.Send, registration.ActionId);
+        Assert.NotNull(registration.Publication);
     }
 
     /// <summary>csproj は Infrastructure.Notification を参照しない。</summary>

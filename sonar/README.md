@@ -118,6 +118,10 @@ $env:SONAR_TOKEN = "（トークン）"
 & .\sonar\sonar-scanner-reference.ps1
 ```
 
+`sonar.projectBaseDir` がリポジトリルートのため、Scanner for .NET の `sonar.scanner.scanAll`（既定 true）は `ui/studio` を拾ってしまう。リファレンス用スクリプトは `sonar.scanner.scanAll=false` にし、除外に `**/ui/studio/**` を明示する。
+
+`HttpRequestPublication` / `NotificationSendPublication` の JSON スキーマは Module ごとに独立して持つ定型のため、`sonar.cpd.exclusions`（`*Publication.cs`）で重複検出だけ除外する。カバレッジと issue は対象のまま。
+
 ### Service UI（手動）
 
 ```powershell

@@ -5,4 +5,6 @@
 -->
 <SonarQubeAnalysisProperties xmlns="http://www.sonarsource.com/schemas/2021/1/SonarQubeAnalysisProperties">
   <Property Name="sonar.exclusions">**/bin/**,**/obj/**</Property>
+  <!-- JSON スキーマ定型の意図的な重複は CPD 対象外。カバレッジ・issue は対象のまま。 -->
+  <Property Name="sonar.cpd.exclusions">**/*Publication.cs</Property>
 </SonarQubeAnalysisProperties>

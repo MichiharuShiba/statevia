@@ -229,7 +229,7 @@ dotnet build-server shutdown
 ./sonar/sonar-scanner-reference.ps1
 ```
 
-スクリプトは `modules/reference/statevia-reference.sln` を build / test し、プロダクションコードだけを当該キーへ送る。
+スクリプトは `modules/reference/statevia-reference.sln` を build / test し、プロダクションコードだけを当該キーへ送る。`sonar.scanner.scanAll=false` で `ui/studio` など MSBuild 対象外のファイルが CPD に混ざらないようにする。ActionPublication の JSON スキーマ定型は独立 Module 間の意図的な重複のため、`sonar.cpd.exclusions` で `*Publication.cs` を CPD 対象外にする。
 
 ---
 
@@ -268,6 +268,7 @@ dotnet build-server shutdown
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-24 | §5.3 に scanAll 無効化（UI 混入防止）と Publication JSON の CPD 除外を追記 |
 | 2026-08-23 | §5.3 にリファレンス Module（`StateviaModulesReference`）の Sonar 手順を追記 |
 | 2026-08-13 | §3.1 を Execution Facade / ドメインサービス分割後の責務に合わせて更新 |
 | 2026-07-07 | §1 / §4 / §7 を Git 上の正本として自己完結化（`.cursor` パス参照を廃止） |

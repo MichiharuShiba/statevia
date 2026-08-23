@@ -91,4 +91,43 @@ public sealed class HttpUrlValidatorTests
         Assert.Throws<ArgumentException>(() =>
             HttpUrlValidator.EnsureAllowedHttpsUrl("https://[fe80::1]/hook"));
     }
+
+    /// <summary>IPv6 site-local は拒否される。</summary>
+    [Fact]
+    public void EnsureAllowedHttpsUrl_Ipv6SiteLocal_Throws()
+    {
+        // Act / Assert
+        Assert.Throws<ArgumentException>(() =>
+            HttpUrlValidator.EnsureAllowedHttpsUrl("https://[fec0::1]/hook"));
+    }
+
+    /// <summary>IPv6 ループバックは拒否される。</summary>
+    [Fact]
+    public void EnsureAllowedHttpsUrl_Ipv6Loopback_Throws()
+    {
+        // Act / Assert
+        Assert.Throws<ArgumentException>(() =>
+            HttpUrlValidator.EnsureAllowedHttpsUrl("https://[::1]/hook"));
+    }
+
+    /// <summary>公開 IPv6 は許可される。</summary>
+    [Fact]
+    public void EnsureAllowedHttpsUrl_PublicIpv6_DoesNotThrow()
+    {
+        // Arrange / Act
+        var exception = Record.Exception(() =>
+            HttpUrlValidator.EnsureAllowedHttpsUrl("https://[2001:4860:4860::8888]/hook"));
+
+        // Assert
+        Assert.Null(exception);
+    }
+
+    /// <summary>ホストが空の HTTPS URL は拒否される。</summary>
+    [Fact]
+    public void EnsureAllowedHttpsUrl_EmptyHost_Throws()
+    {
+        // Act / Assert
+        Assert.Throws<ArgumentException>(() =>
+            HttpUrlValidator.EnsureAllowedHttpsUrl("https://"));
+    }
 }

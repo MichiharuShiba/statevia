@@ -57,6 +57,212 @@ public sealed class HttpRequestActionStateTests
             state.ExecuteAsync(CreateContext(), input, CancellationToken.None));
     }
 
+    /// <summary>入力がオブジェクトでないとき失敗する。</summary>
+    [Fact]
+    public async Task ExecuteAsync_NonObjectInput_Throws()
+    {
+        // Arrange
+        var state = new HttpRequestActionState();
+
+        // Act / Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            state.ExecuteAsync(CreateContext(), "not-an-object", CancellationToken.None));
+        Assert.Contains("input.url", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>timeout・headers・JSON body を付与しレスポンスを辞書へ写す。</summary>
+    [Fact]
+    public async Task ExecuteAsync_SendsHeadersAndBody_AndMapsResponse()
+    {
+        // Arrange
+        HttpClient? client = null;
+        HttpRequestMessage? captured = null;
+        string? capturedBody = null;
+        var state = new HttpRequestActionState(() =>
+        {
+            client = CreateClient(async (request, _) =>
+            {
+                captured = request;
+                capturedBody = request.Content is null
+                    ? null
+                    : await request.Content.ReadAsStringAsync().ConfigureAwait(false);
+                var response = new HttpResponseMessage(HttpStatusCode.Created)
+                {
+                    Content = new StringContent("{\"ok\":true}", Encoding.UTF8, "application/json"),
+                };
+                response.Headers.TryAddWithoutValidation("X-Trace", "abc");
+                return response;
+            });
+            return client;
+        });
+        var input = new Dictionary<string, object?>
+        {
+            ["url"] = "https://example.com/hook",
+            ["method"] = "POST",
+            ["timeout"] = 12,
+            ["headers"] = new Dictionary<string, object?>
+            {
+                ["X-Custom"] = "yes",
+                ["X-Skip"] = 1,
+            },
+            ["body"] = new Dictionary<string, object?> { ["name"] = "n1" },
+        };
+
+        // Act
+        var result = await state.ExecuteAsync(CreateContext(), input, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(TimeSpan.FromSeconds(12), client!.Timeout);
+        Assert.NotNull(captured);
+        Assert.True(captured.Headers.TryGetValues("X-Custom", out var customValues));
+        Assert.Equal("yes", Assert.Single(customValues));
+        Assert.False(captured.Headers.Contains("X-Skip"));
+        Assert.Contains("n1", capturedBody, StringComparison.Ordinal);
+        var dict = Assert.IsType<Dictionary<string, object?>>(result);
+        Assert.Equal(201, dict["statusCode"]);
+        Assert.Equal("{\"ok\":true}", dict["body"]);
+        var headers = Assert.IsType<Dictionary<string, object?>>(dict["headers"]);
+        Assert.True(headers.ContainsKey("X-Trace"));
+    }
+
+    /// <summary>文字列 body を送る。</summary>
+    [Fact]
+    public async Task ExecuteAsync_StringBody_SendsContent()
+    {
+        // Arrange
+        string? capturedBody = null;
+        var state = new HttpRequestActionState(() => CreateClient(async (request, _) =>
+        {
+            capturedBody = request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{}", Encoding.UTF8, "application/json"),
+            };
+        }));
+        var input = new Dictionary<string, object?>
+        {
+            ["url"] = "https://example.com/hook",
+            ["method"] = "POST",
+            ["body"] = "raw-text",
+        };
+
+        // Act
+        await state.ExecuteAsync(CreateContext(), input, CancellationToken.None);
+
+        // Assert
+        Assert.Equal("raw-text", capturedBody);
+    }
+
+    /// <summary>配列 body を JSON として送る。</summary>
+    [Fact]
+    public async Task ExecuteAsync_ArrayBody_SendsJsonArray()
+    {
+        // Arrange
+        HttpRequestMessage? captured = null;
+        string? capturedBody = null;
+        var state = new HttpRequestActionState(() => CreateClient(async (request, _) =>
+        {
+            captured = request;
+            capturedBody = request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{}", Encoding.UTF8, "application/json"),
+            };
+        }));
+        var input = new Dictionary<string, object?>
+        {
+            ["url"] = "https://example.com/hook",
+            ["method"] = "POST",
+            ["body"] = new object[] { 1, 2 },
+        };
+
+        // Act
+        await state.ExecuteAsync(CreateContext(), input, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(captured);
+        Assert.StartsWith("[", capturedBody, StringComparison.Ordinal);
+    }
+
+    /// <summary>上限を超える body は拒否される。</summary>
+    [Fact]
+    public async Task ExecuteAsync_OversizedBody_Throws()
+    {
+        // Arrange
+        var state = new HttpRequestActionState(() => CreateClient((_, _) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK))));
+        var input = new Dictionary<string, object?>
+        {
+            ["url"] = "https://example.com/hook",
+            ["method"] = "POST",
+            ["body"] = new string('a', 1_048_577),
+        };
+
+        // Act / Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            state.ExecuteAsync(CreateContext(), input, CancellationToken.None));
+        Assert.Contains("maximum allowed size", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>空白の idempotencyKey はヘッダに載せない。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhitespaceIdempotencyKey_DoesNotAddHeader()
+    {
+        // Arrange
+        HttpRequestMessage? captured = null;
+        var state = new HttpRequestActionState(() => CreateClient((request, _) =>
+        {
+            captured = request;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{}", Encoding.UTF8, "application/json"),
+            });
+        }));
+        var input = new Dictionary<string, object?>
+        {
+            ["url"] = "https://example.com/hook",
+            ["method"] = "GET",
+            ["idempotencyKey"] = "   ",
+        };
+
+        // Act
+        await state.ExecuteAsync(CreateContext(), input, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(captured);
+        Assert.False(captured.Headers.Contains("Idempotency-Key"));
+    }
+
+    /// <summary>1 MiB を超えるレスポンス body は切り詰める。</summary>
+    [Fact]
+    public async Task ExecuteAsync_OversizedResponseBody_Truncates()
+    {
+        // Arrange
+        var oversized = new string('x', 1_048_577);
+        var state = new HttpRequestActionState(() => CreateClient((_, _) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(oversized, Encoding.UTF8, "text/plain"),
+            })));
+        var input = new Dictionary<string, object?>
+        {
+            ["url"] = "https://example.com/hook",
+            ["method"] = "GET",
+        };
+
+        // Act
+        var result = await state.ExecuteAsync(CreateContext(), input, CancellationToken.None);
+
+        // Assert
+        var dict = Assert.IsType<Dictionary<string, object?>>(result);
+        var body = Assert.IsType<string>(dict["body"]);
+        Assert.Equal(1_048_576, body.Length);
+    }
+
     /// <summary>Module が request Action を公開する。</summary>
     [Fact]
     public void Module_ExposesRequestAction()
@@ -67,11 +273,13 @@ public sealed class HttpRequestActionStateTests
 
         // Act
         var actions = module.GetActions(services).ToArray();
+        var registration = Assert.Single(actions);
+        _ = registration.ExecutorFactory(services);
 
         // Assert
         Assert.Equal(HttpReferenceActionIds.ModuleId, module.ModuleId);
-        Assert.Equal(HttpReferenceActionIds.Request, Assert.Single(actions).ActionId);
-        Assert.NotNull(Assert.Single(actions).Publication);
+        Assert.Equal(HttpReferenceActionIds.Request, registration.ActionId);
+        Assert.NotNull(registration.Publication);
     }
 
     private static StateContext CreateContext() =>

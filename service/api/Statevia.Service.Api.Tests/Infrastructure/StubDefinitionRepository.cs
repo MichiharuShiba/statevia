@@ -17,6 +17,9 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
 
     public DefinitionSoftDeleteOutcome SoftDeleteOutcome { get; init; } = DefinitionSoftDeleteOutcome.Deleted;
 
+    /// <summary>最後に SoftDelete された定義 ID。未呼び出しなら null。</summary>
+    public Guid? LastSoftDeletedDefinitionId { get; private set; }
+
     /// <summary>restore 成功時に返す詳細。null のとき失敗（NotFound）。</summary>
     public DefinitionDetail? RestoreDetail { get; init; }
 
@@ -200,9 +203,9 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
     {
         _ = uow;
         _ = tenantId;
-        _ = definitionId;
         _ = deletedAt;
         _ = ct;
+        LastSoftDeletedDefinitionId = definitionId;
         return Task.FromResult(SoftDeleteOutcome);
     }
 
