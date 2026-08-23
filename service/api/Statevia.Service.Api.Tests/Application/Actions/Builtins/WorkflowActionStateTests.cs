@@ -9,9 +9,9 @@ namespace Statevia.Service.Api.Tests.Application.Actions.Builtins;
 /// <summary><see cref="WorkflowActionState"/> の入力検証と runner 委譲。</summary>
 public sealed class WorkflowActionStateTests
 {
-    /// <summary>async モードで runner 結果を辞書として返す。</summary>
+    /// <summary>runner 結果を辞書として返す。</summary>
     [Fact]
-    public async Task ExecuteAsync_AsyncMode_ReturnsRunnerResult()
+    public async Task ExecuteAsync_WhenDefinitionIdPresent_ReturnsRunnerResult()
     {
         // Arrange
         var runner = new FakeChildWorkflowRunner
@@ -22,8 +22,6 @@ public sealed class WorkflowActionStateTests
         var input = JsonSerializer.SerializeToElement(new
         {
             definitionId = "def-1",
-            mode = "async",
-            timeout = 30,
             input = new { foo = "bar" }
         });
 
@@ -36,8 +34,7 @@ public sealed class WorkflowActionStateTests
         Assert.Equal("wf-1", map["displayId"]);
         Assert.Equal("Running", map["status"]);
         Assert.Equal("def-1", runner.LastRequest!.DefinitionId);
-        Assert.Equal("async", runner.LastRequest.Mode);
-        Assert.Equal(TimeSpan.FromSeconds(30), runner.LastRequest.Timeout);
+        Assert.NotEqual(Guid.Empty, runner.LastRequest.ParentExecutionId);
     }
 
     /// <summary>入力がオブジェクトでないとき ArgumentException。</summary>
@@ -54,18 +51,19 @@ public sealed class WorkflowActionStateTests
         Assert.Contains("definitionId", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>mode が async/sync 以外なら拒否する。</summary>
+    /// <summary>親実行 ID が GUID でないときは開始しない。</summary>
     [Fact]
-    public async Task ExecuteAsync_WhenModeInvalid_Throws()
+    public async Task ExecuteAsync_WhenExecutionIdInvalid_Throws()
     {
         // Arrange
         var sut = new WorkflowActionState(BuildScopeFactory(new FakeChildWorkflowRunner()));
-        var input = JsonSerializer.SerializeToElement(new { definitionId = "d1", mode = "fire" });
+        var input = JsonSerializer.SerializeToElement(new { definitionId = "d1" });
+        var ctx = MakeContext("not-a-guid");
 
         // Act + Assert
         var ex = await Assert.ThrowsAsync<ArgumentException>(
-            () => sut.ExecuteAsync(MakeContext(), input, CancellationToken.None));
-        Assert.Contains("async or sync", ex.Message, StringComparison.OrdinalIgnoreCase);
+            () => sut.ExecuteAsync(ctx, input, CancellationToken.None));
+        Assert.Contains("parent execution id", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     private static IServiceScopeFactory BuildScopeFactory(IChildWorkflowRunner runner)
@@ -75,12 +73,12 @@ public sealed class WorkflowActionStateTests
         return services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
     }
 
-    private static StateContext MakeContext() =>
+    private static StateContext MakeContext(string? executionId = null) =>
         new()
         {
             Events = new NoopEvents(),
             Store = new NoopStore(),
-            ExecutionId = Guid.NewGuid().ToString("D"),
+            ExecutionId = executionId ?? Guid.NewGuid().ToString("D"),
             StateName = "Workflow"
         };
 

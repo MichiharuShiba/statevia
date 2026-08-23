@@ -1,0 +1,41 @@
+# =============================================================================
+# UI 動作確認用: 入れ子 workflow Action の子定義
+# -----------------------------------------------------------------------------
+# 配置: docs/samples/ui-nested-workflow-child.yaml
+# 対になる親: docs/samples/ui-nested-workflow-parent.yaml
+#
+# 確認手順:
+#   1. 本 YAML を先に保存・Publish し、発行された displayId を控える
+#   2. 親定義の開始 input に childDefinitionId としてその displayId を渡す
+#   3. 親の wait 再開手順は親 YAML のヘッダを参照
+#
+# 注意:
+#   - 子が終端しても親 wait は自動では進まない（Hosted Fork の child.completed とは別）
+#   - 自己参照禁止のため、親の definitionId にこの子以外（親自身の displayId）を渡さない
+# =============================================================================
+
+version: 1
+
+workflow:
+  id: sample.nested.workflow.child
+  name: NestedWorkflowChildSample
+  description: >
+    親の workflow Action から起動する最小の子定義。sleep のあと終端する。
+
+nodes:
+  - name: child.start
+    type: start
+    label: 開始
+    next: child.work
+
+  - name: child.work
+    type: action
+    label: 作業（5 秒）
+    action: sleep
+    input:
+      duration: 5s
+    next: child.end
+
+  - name: child.end
+    type: end
+    label: 完了

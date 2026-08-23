@@ -347,9 +347,7 @@ internal static class BuiltinActionSchemas
         var fields = new Dictionary<string, ActionFieldUiHints>
         {
             ["definitionId"] = FieldHints(actionId, "definitionId", widget: "text"),
-            ["mode"] = FieldHints(actionId, "mode", widget: "select"),
             ["input"] = FieldHints(actionId, "input", widget: "text"),
-            ["timeout"] = FieldHints(actionId, "timeout", widget: "text"),
         };
         return Create(
             actionId,
@@ -361,23 +359,13 @@ internal static class BuiltinActionSchemas
               "$id": "{{SchemaBaseUri}}/{{actionId}}/input",
               "type": "object",
               "additionalProperties": false,
-              "required": ["definitionId", "mode"],
+              "required": ["definitionId"],
               "properties": {
                 "definitionId": {
                   "type": "string",
                   "{{ValueKindKeyword}}": "{{ValueKindLiteralOrPath}}"
                 },
-                "mode": {
-                  "type": "string",
-                  "enum": ["async", "sync"],
-                  "{{ValueKindKeyword}}": "{{ValueKindLiteralOrPath}}"
-                },
                 "input": {
-                  "{{ValueKindKeyword}}": "{{ValueKindLiteralOrPath}}"
-                },
-                "timeout": {
-                  "type": "integer",
-                  "minimum": 1,
                   "{{ValueKindKeyword}}": "{{ValueKindLiteralOrPath}}"
                 }
               }
@@ -397,7 +385,7 @@ internal static class BuiltinActionSchemas
               }
             }
             """,
-            fieldOrder: ["definitionId", "mode", "input", "timeout"],
+            fieldOrder: ["definitionId", "input"],
             fields: fields);
     }
 

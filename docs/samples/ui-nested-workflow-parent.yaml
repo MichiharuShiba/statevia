@@ -1,0 +1,86 @@
+# =============================================================================
+# UI 動作確認用: 入れ子 workflow Action + wait / resume
+# -----------------------------------------------------------------------------
+# 配置: docs/samples/ui-nested-workflow-parent.yaml
+# 対になる子: docs/samples/ui-nested-workflow-child.yaml
+#
+# 確認手順（概要）:
+#   1. 子定義を保存・Publish し displayId を控える（定義名では解決しない）
+#   2. 本 YAML を保存・Publish する
+#   3. 親実行を開始する。input 例:
+#        { "childDefinitionId": "<子の displayId>", "note": "from-parent" }
+#   4. nest.start.child は子を開始した直後に完了する（status は通常 Running）
+#   5. 親は nest.wait.child で止まる。子実行は一覧で別 execution として見える
+#   6. 子が Completed になったら親 Wait を Resume する
+#        - Studio: Wait ノードを選び resumeKey = ChildCompleted
+#        - CLI: statevia exec waits <親id> で nodeId を取り、
+#          statevia exec resume <親id> --node <nodeId> --event ChildCompleted
+#      子が Failed なら resumeKey = ChildFailed
+#
+# 注意:
+#   - 子の終端は親 wait を自動再開しない。Fork の statevia.event.child.completed とは別経路
+#   - wait と action は同一ノードに併記できない
+#   - definitionId に親自身の UUID / displayId を入れると実行時に自己参照で Failed
+# =============================================================================
+
+version: 1
+
+workflow:
+  id: sample.nested.workflow.parent
+  name: NestedWorkflowParentSample
+  description: >
+    子ワークフローを非同期開始し、終端相当の判断は wait / resume で行う。
+    開始 input に子定義の displayId または UUID を childDefinitionId で渡す。
+
+nodes:
+  - name: nest.start
+    type: start
+    label: 開始
+    next: nest.start.child
+
+  - name: nest.start.child
+    type: action
+    label: 子ワークフロー開始
+    action: workflow
+    input:
+      definitionId: $.input.childDefinitionId
+      input.note: $.input.note
+    next: nest.wait.child
+    error: nest.start.failed
+
+  - name: nest.wait.child
+    type: wait
+    label: 子の終端待ち
+    events:
+      ChildCompleted: nest.after.ok
+      ChildFailed: nest.after.fail
+
+  - name: nest.after.ok
+    type: action
+    label: 子完了後
+    action: noop
+    input:
+      result: child_completed
+      childWorkflowId: $.states['nest.start.child'].output.workflowId
+    next: nest.end
+
+  - name: nest.after.fail
+    type: action
+    label: 子失敗後
+    action: noop
+    input:
+      result: child_failed
+      childWorkflowId: $.states['nest.start.child'].output.workflowId
+    next: nest.end
+
+  - name: nest.start.failed
+    type: action
+    label: 子開始失敗
+    action: noop
+    input:
+      result: start_failed
+    next: nest.end
+
+  - name: nest.end
+    type: end
+    label: 完了

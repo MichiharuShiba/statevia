@@ -53,7 +53,75 @@ internal sealed class ExecutionSecuritySnapshotFactory : IExecutionSecuritySnaps
             .GetGroupSnapshotsForPrincipalAsync(principalId, cancellationToken)
             .ConfigureAwait(false);
 
-        var authorizationContext = await _executor.ExecuteReadOnlyAsync(
+        var authorizationContext = await ResolveAuthorizationContextAsync(
+                tenantId,
+                definitionId,
+                groupSnapshots,
+                isTenantAdmin,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return new ExecutionSecuritySnapshot
+        {
+            TenantId = tenantId,
+            StartedByPrincipalId = principalId,
+            PrincipalType = PrincipalTypeLabels.ToSnapshotLabel(principal.PrincipalType),
+            EffectivePermissionKeys = effectiveKeys,
+            PermissionSetHash = permissionSetHash,
+            AuthorizationContext = authorizationContext,
+            EvaluationMode = SecurityEvaluationMode.Snapshot,
+            CapturedAt = capturedAt
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<ExecutionSecuritySnapshot> CaptureForChildWorkflowAsync(
+        ExecutionSecuritySnapshot parentSnapshot,
+        Guid tenantId,
+        Guid childDefinitionId,
+        Guid parentDefinitionId,
+        DateTime capturedAt,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(parentSnapshot);
+        if (parentSnapshot.TenantId != tenantId)
+        {
+            throw new InvalidOperationException("Parent security snapshot tenant does not match.");
+        }
+
+        var parentContext = parentSnapshot.AuthorizationContext;
+        var authorizationContext = await ResolveAuthorizationContextAsync(
+                tenantId,
+                childDefinitionId,
+                parentContext.GroupSnapshots,
+                parentContext.IsTenantAdmin,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return new ExecutionSecuritySnapshot
+        {
+            TenantId = tenantId,
+            StartedByPrincipalId = parentSnapshot.StartedByPrincipalId,
+            PrincipalType = parentSnapshot.PrincipalType,
+            EffectivePermissionKeys = parentSnapshot.EffectivePermissionKeys,
+            PermissionSetHash = parentSnapshot.PermissionSetHash,
+            AuthorizationContext = authorizationContext,
+            EvaluationMode = parentSnapshot.EvaluationMode,
+            CapturedAt = capturedAt,
+            CaptureReason = parentSnapshot.CaptureReason,
+            AncestorDefinitionIds = MergeAncestorDefinitionIds(
+                parentSnapshot.AncestorDefinitionIds,
+                parentDefinitionId)
+        };
+    }
+
+    private async Task<AuthorizationContextSnapshot> ResolveAuthorizationContextAsync(
+        Guid tenantId,
+        Guid definitionId,
+        IReadOnlyList<GroupSnapshot> groupSnapshots,
+        bool isTenantAdmin,
+        CancellationToken cancellationToken) =>
+        await _executor.ExecuteReadOnlyAsync(
             async (uow, innerCt) =>
             {
                 var projectId = await _definitions
@@ -78,17 +146,15 @@ internal sealed class ExecutionSecuritySnapshotFactory : IExecutionSecuritySnaps
             },
             cancellationToken).ConfigureAwait(false);
 
-        return new ExecutionSecuritySnapshot
-        {
-            TenantId = tenantId,
-            StartedByPrincipalId = principalId,
-            PrincipalType = PrincipalTypeLabels.ToSnapshotLabel(principal.PrincipalType),
-            EffectivePermissionKeys = effectiveKeys,
-            PermissionSetHash = permissionSetHash,
-            AuthorizationContext = authorizationContext,
-            EvaluationMode = SecurityEvaluationMode.Snapshot,
-            CapturedAt = capturedAt
-        };
+    private static Guid[] MergeAncestorDefinitionIds(
+        IReadOnlyList<Guid>? existing,
+        Guid parentDefinitionId)
+    {
+        var source = existing ?? [];
+        return source
+            .Append(parentDefinitionId)
+            .Distinct()
+            .ToArray();
     }
 
     private async Task<IReadOnlyList<string>> ResolveEffectivePermissionKeysAsync(
