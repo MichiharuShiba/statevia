@@ -8,6 +8,8 @@
     <AssemblyName>Statevia.Infrastructure.Common</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CA2007</NoWarn>
+    <!-- SonarScanner for .NET: SDK 形式は既定 GUID を持たない。sln 外の ProjectReference で 00000000 重複警告になるのを防ぐ。 -->
+    <ProjectGuid>{592DEC5E-A401-42FA-A21E-2276E5968731}</ProjectGuid>
   </PropertyGroup>
 
   <ItemGroup>

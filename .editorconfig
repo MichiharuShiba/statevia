@@ -1,10 +1,10 @@
 root = true
 
 # =============================================================================
-# engine/Statevia.Core.Engine.Tests
+# core/engine/Statevia.Core.Engine.Tests
 # =============================================================================
 
-[engine/Statevia.Core.Engine.Tests/**/*.cs]
+[core/engine/Statevia.Core.Engine.Tests/**/*.cs]
 
 # CA1515: インスタンス化されない型は internal にせよ（アセンブリ API 表面を狭める）。
 # 除外理由: xUnit は public なテストクラスを反射で検出する。internal 化すると xUnit1000 でビルド失敗する。
@@ -30,6 +30,14 @@ dotnet_diagnostic.CA2007.severity = none
 # 除外理由: テストの Assert やフィクスチャでインライン配列リテラルを使う方が読みやすい。
 #            static readonly への抽出はボイラープレートが増えるだけで実益が小さい。
 dotnet_diagnostic.CA1861.severity = none
+
+# CA1848: LoggerMessage を使え。
+# 除外理由: テスト内のユーザーログ再現は ILogger 拡張の 1 行呼び出しで十分。本番コードの LoggerMessage 方針は変えない。
+dotnet_diagnostic.CA1848.severity = none
+
+# CA1859: 具象型で戻り値・ローカルを宣言せよ。
+# 除外理由: テストヘルパーはインターフェース戻り値の方が差し替えやすい（Api.Tests と同じ）。
+dotnet_diagnostic.CA1859.severity = none
 
 # =============================================================================
 # service/cli/Statevia.Service.Cli.Tests

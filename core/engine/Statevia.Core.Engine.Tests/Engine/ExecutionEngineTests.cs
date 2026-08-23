@@ -103,7 +103,7 @@ public class ExecutionEngineTests
         var id = engine.Start(def);
 
         // Act: 実行完了を待つ
-        await Task.Delay(200).ConfigureAwait(false);
+        await Task.Delay(200);
 
         // Assert
         var snapshot = engine.GetSnapshot(id);
@@ -166,7 +166,7 @@ public class ExecutionEngineTests
         var id = engine.Start(def);
 
         // Act
-        await Task.Delay(200).ConfigureAwait(false);
+        await Task.Delay(200);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -193,7 +193,7 @@ public class ExecutionEngineTests
         // Act
         engine.Start(def);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await called.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
+        await called.Task.WaitAsync(timeout.Token);
 
         // Assert
         Assert.True(callCount >= 1);
@@ -219,7 +219,7 @@ public class ExecutionEngineTests
         // Act
         var executionId = engine.Start(def);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await calledAtJoin.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
+        await calledAtJoin.Task.WaitAsync(timeout.Token);
         var snapshot = engine.GetSnapshot(executionId);
 
         // Assert
@@ -238,7 +238,7 @@ public class ExecutionEngineTests
         var id = engine.Start(def);
 
         // Act
-        await Task.Delay(500).ConfigureAwait(false);
+        await Task.Delay(500);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -277,7 +277,7 @@ public class ExecutionEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -310,7 +310,7 @@ public class ExecutionEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -342,7 +342,7 @@ public class ExecutionEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var graphJson = engine.ExportExecutionGraph(id);
 
         // Assert
@@ -405,7 +405,7 @@ public class ExecutionEngineTests
         // Act
         var inExecutionId = engine.Start(inDefinition);
         var betweenExecutionId = engine.Start(betweenDefinition);
-        await Task.Delay(400).ConfigureAwait(false);
+        await Task.Delay(400);
         var inSnapshot = engine.GetSnapshot(inExecutionId);
         var betweenSnapshot = engine.GetSnapshot(betweenExecutionId);
 
@@ -444,7 +444,7 @@ public class ExecutionEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -479,7 +479,7 @@ public class ExecutionEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -520,7 +520,7 @@ public class ExecutionEngineTests
 
         // Act
         var id = engine.Start(def, null, input);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -562,7 +562,7 @@ public class ExecutionEngineTests
 
         // Act
         var id = engine.Start(def, null, input);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -611,7 +611,7 @@ public class ExecutionEngineTests
 
         // Act
         var id = engine.Start(def, null, startInput);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
         var graphJson = engine.ExportExecutionGraph(id);
 
@@ -664,7 +664,7 @@ public class ExecutionEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
         var graphJson = engine.ExportExecutionGraph(id);
 
@@ -693,7 +693,7 @@ public class ExecutionEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(400).ConfigureAwait(false);
+        await Task.Delay(400);
         var graphJson = engine.ExportExecutionGraph(id);
 
         // Assert
@@ -718,7 +718,7 @@ public class ExecutionEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var graphJson = engine.ExportExecutionGraph(id);
 
         // Assert
@@ -765,7 +765,7 @@ public class ExecutionEngineTests
 
         // Act
         var id = engine.Start(def);
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var graphJson = engine.ExportExecutionGraph(id);
 
         // Assert
@@ -789,7 +789,7 @@ public class ExecutionEngineTests
         var id = engine.Start(def);
 
         // Act
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert
@@ -816,7 +816,7 @@ public class ExecutionEngineTests
         var id = engine.Start(def);
 
         // Act
-        await Task.Delay(200).ConfigureAwait(false);
+        await Task.Delay(200);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert: 完了にも失敗にもせず、遷移がないのでそのまま止まる
@@ -844,7 +844,7 @@ public class ExecutionEngineTests
         var id = engine.Start(def);
 
         // Act
-        await Task.Delay(200).ConfigureAwait(false);
+        await Task.Delay(200);
         var snapshot = engine.GetSnapshot(id);
 
         // Assert

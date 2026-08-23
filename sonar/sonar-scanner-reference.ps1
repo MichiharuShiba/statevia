@@ -7,6 +7,7 @@
   スクリプト配置（リポジトリの sonar/）から modules/reference とカバレッジ出力パスを解決する。
   カレントディレクトリに依存しない。
   公式提供 Module を StateviaModulesReference として解析し、API / Engine と二重計上しない。
+  依存プロジェクトの Roslyn protobuf は sonar.exclusions では消えないため、build / test に /p:StateviaSonarScope=reference を渡し SonarQubeExclude する。
 
 .NOTES
   環境変数 SONAR_TOKEN を事前に設定すること。
@@ -59,13 +60,13 @@ try {
         exit 1
     }
 
-    dotnet build 'statevia-reference.sln'
+    dotnet build 'statevia-reference.sln' '/p:StateviaSonarScope=reference'
     if ($LASTEXITCODE -ne 0) {
         Write-Error '[ERROR] build failed'
         exit 1
     }
 
-    dotnet-coverage collect 'dotnet test' -f xml -o "$coverageXml"
+    dotnet-coverage collect 'dotnet test /p:StateviaSonarScope=reference' -f xml -o "$coverageXml"
     if ($LASTEXITCODE -ne 0) {
         Write-Error '[ERROR] test / coverage failed'
         exit 1

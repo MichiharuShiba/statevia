@@ -21,7 +21,7 @@ public sealed class ForkExpansionHandlerTests
 
         // Act
         var executionId = engine.Start(def, initialState: "A");
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(executionId);
 
         // Assert
@@ -48,8 +48,8 @@ public sealed class ForkExpansionHandlerTests
 
         var parentId = engine.Start(def);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await forked.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        await forked.Task.WaitAsync(timeout.Token);
+        await Task.Delay(50);
 
         var exported = engine.ExportCheckpoint(parentId)
             ?? throw new InvalidOperationException("checkpoint missing");
@@ -98,7 +98,7 @@ public sealed class ForkExpansionHandlerTests
                 ["A"] = "round-2-a",
                 ["B"] = "round-2-b"
             });
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(parentId);
 
         // Assert
@@ -147,8 +147,8 @@ public sealed class ForkExpansionHandlerTests
 
         var parentId = engine.Start(def);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await unloaded.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        await unloaded.Task.WaitAsync(timeout.Token);
+        await Task.Delay(50);
 
         // Act
         engine.CompletePhysicalJoin(
@@ -159,7 +159,7 @@ public sealed class ForkExpansionHandlerTests
                 ["A"] = "a-out",
                 ["B"] = "b-out"
             });
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(parentId);
 
         // Assert
@@ -183,8 +183,8 @@ public sealed class ForkExpansionHandlerTests
 
         var parentId = engine.Start(def);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await forked.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        await forked.Task.WaitAsync(timeout.Token);
+        await Task.Delay(50);
 
         // Act
         engine.CompletePhysicalJoin(
@@ -210,7 +210,7 @@ public sealed class ForkExpansionHandlerTests
                     },
                     new Dictionary<string, object?> { ["shared"] = "second" })
             ]);
-        await Task.Delay(400).ConfigureAwait(false);
+        await Task.Delay(400);
         var checkpoint = engine.ExportCheckpoint(parentId);
 
         // Assert
@@ -242,8 +242,8 @@ public sealed class ForkExpansionHandlerTests
         // Act
         var executionId = engine.Start(def);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await notified.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
-        await Task.Delay(100).ConfigureAwait(false);
+        await notified.Task.WaitAsync(timeout.Token);
+        await Task.Delay(100);
         var snapshot = engine.GetSnapshot(executionId);
 
         // Assert
@@ -268,7 +268,7 @@ public sealed class ForkExpansionHandlerTests
 
         // Act
         var executionId = engine.Start(def);
-        await Task.Delay(500).ConfigureAwait(false);
+        await Task.Delay(500);
         var snapshot = engine.GetSnapshot(executionId);
 
         // Assert
@@ -294,8 +294,8 @@ public sealed class ForkExpansionHandlerTests
 
         var childId = engine.Start(def, initialState: "InnerFork");
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await forked.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        await forked.Task.WaitAsync(timeout.Token);
+        await Task.Delay(50);
 
         // Act — 内側 Join のみ充足。外側 Join の依存（OuterFast / InnerFork）は子に無い。
         engine.CompletePhysicalJoin(
@@ -306,7 +306,7 @@ public sealed class ForkExpansionHandlerTests
                 ["InnerA"] = "a",
                 ["InnerB"] = "b"
             });
-        await Task.Delay(300).ConfigureAwait(false);
+        await Task.Delay(300);
         var snapshot = engine.GetSnapshot(childId);
 
         // Assert
@@ -335,7 +335,7 @@ public sealed class ForkExpansionHandlerTests
         // Act
         var executionId = engine.Start(def, initialState: "A");
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await completed.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
+        await completed.Task.WaitAsync(timeout.Token);
         var graph = engine.ExportExecutionGraph(executionId);
 
         // Assert

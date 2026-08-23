@@ -471,7 +471,7 @@ public sealed class ResumeWaitNodeTests
             CancellationToken ct)
         {
             var nodeId = string.IsNullOrWhiteSpace(ctx.NodeId) ? ctx.StateName : ctx.NodeId;
-            var eventName = await ctx.Events.WaitForEventAsync(nodeId, eventNames, ct).ConfigureAwait(false);
+            var eventName = await ctx.Events.WaitForEventAsync(nodeId, eventNames, ct);
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["event"] = eventName,
@@ -488,7 +488,7 @@ public sealed class ResumeWaitNodeTests
             CancellationToken ct)
         {
             var nodeId = string.IsNullOrWhiteSpace(ctx.NodeId) ? ctx.StateName : ctx.NodeId;
-            var eventName = await ctx.Events.WaitForEventAsync(nodeId, eventNames, ct).ConfigureAwait(false);
+            var eventName = await ctx.Events.WaitForEventAsync(nodeId, eventNames, ct);
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["event"] = $"  {eventName}  ",

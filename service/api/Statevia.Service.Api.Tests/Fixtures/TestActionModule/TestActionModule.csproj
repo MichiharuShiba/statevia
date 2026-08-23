@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <AssemblyName>TestActionModule</AssemblyName>
     <RootNamespace>Statevia.Service.Api.Tests.Fixtures.TestActionModule</RootNamespace>
+    <!-- テスト用フィクスチャ。どのコンポーネントスキャンでも protobuf を出さない。 -->
+    <SonarQubeExclude>true</SonarQubeExclude>
   </PropertyGroup>
 
   <ItemGroup>

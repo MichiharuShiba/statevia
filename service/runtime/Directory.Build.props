@@ -1,3 +1,8 @@
 <Project>
   <Import Project="..\..\build\BannedGuidNewGuid.props" />
+  <PropertyGroup>
+    <!-- runtime スキャン以外では Sonar の protobuf を出さない。 -->
+    <StateviaSonarComponent>runtime</StateviaSonarComponent>
+  </PropertyGroup>
+  <Import Project="..\..\build\SonarQube.ComponentScope.props" />
 </Project>

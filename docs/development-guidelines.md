@@ -102,7 +102,13 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 ### 4.4 リンター・ビルド警告・静的チェック
 
 - **C#**: `dotnet build` / `dotnet test` で出る **コンパイラエラー・Analyzer 警告**は、自分の変更に起因するものは **解消してから** PR に出す。触れていないファイルの既存警告をまとめて直すのは必須ではないが、**新規コードで警告を増やさない**こと。
-- **Service API 厳格 Analyzer**: `service/api/Directory.Build.props` で `AnalysisMode=AllEnabledByDefault` が有効。Api 配下の本番プロジェクトは **`dotnet build service/api/statevia-api.sln` で警告 0** を維持する。
+- **.NET ソリューションの警告 0**: 次の 6 sln は通常の `dotnet build` で **Warning 0** を維持する。新規のソリューション全体 `NoWarn` や `TreatWarningsAsErrors` は導入しない。意図的な抑制（テストの CA1707 / CA1515、API/ActionHost の CA2007、CLI の CA1303 等）は既存の `.editorconfig` を維持する。
+  - `core/engine/statevia-engine.sln`
+  - `infrastructure/statevia-infrastructure.sln`
+  - `modules/reference/statevia-reference.sln`
+  - `service/cli/statevia-cli.sln`
+  - `service/action-host/statevia-action-host.sln`
+  - `service/api/statevia-api.sln`（`service/api/Directory.Build.props` の `AnalysisMode=AllEnabledByDefault` を含む）
 - **Service API テスト向け抑制**: ルート `.editorconfig` に加え、`service/api/Statevia.Service.Api.Tests/.editorconfig` で xUnit 向け CA（例: CA1812）を抑制している。テストの命名・`ConfigureAwait` 方針は Engine.Tests と同趣旨。
 - **Markdown**: リポジトリ直下の **`.markdownlint.json`** に従う。編集した Markdown には例として次で確認できる。
 

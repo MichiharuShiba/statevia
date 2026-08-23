@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- reference スキャン以外では Sonar の protobuf を出さない。 -->
+    <StateviaSonarComponent>reference</StateviaSonarComponent>
+  </PropertyGroup>
+  <Import Project="..\..\build\SonarQube.ComponentScope.props" />
+</Project>

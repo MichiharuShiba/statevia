@@ -8,6 +8,8 @@
   カレントディレクトリに依存しない。
   解析・カバレッジ除外は service/api/coverage.runsettings の意図（Engine / Program / Migrations）に合わせる。
   誤ってリポジトリルート等から実行した場合に UI / engine / リファレンス Module が混ざらないよう、ui/studio・core/engine・modules/reference も除外する。
+  依存プロジェクトの Roslyn protobuf は sonar.exclusions では消えないため、build / test に /p:StateviaSonarScope=api を渡し SonarQubeExclude する。
+  Program.cs は解析対象に残し、カバレッジ分母だけ除外する。
 
 .NOTES
   環境変数 SONAR_TOKEN を事前に設定すること。
@@ -18,6 +20,7 @@ $ErrorActionPreference = 'Stop'
 
 # service/api/coverage.runsettings の Exclude / ExcludeByFile と整合
 # sonar.projectBaseDir をリポジトリルートに固定し、移動後パス（core/engine 等）でも除外が効くようにする
+# Program.cs を sonar.exclusions に入れると、コンパイル済み protobuf と analysis context が食い違う。
 $sonarAnalysisExclusions = @(
     '**/ui/studio/**',
     '**/ui/studio/**',
@@ -29,11 +32,13 @@ $sonarAnalysisExclusions = @(
     '**/modules/reference/**',
     '**/Statevia.Core.Engine/**',
     '**/Migrations/**',
-    '**/Program.cs',
     '**/Dockerfile',
     '**/*.Tests/**'
 ) -join ','
-$sonarCoverageExclusions = $sonarAnalysisExclusions
+$sonarCoverageExclusions = @(
+    $sonarAnalysisExclusions,
+    '**/Program.cs'
+) -join ','
 
 if (-not $env:SONAR_TOKEN) {
     Write-Error '環境変数 SONAR_TOKEN が設定されていません。'
@@ -64,13 +69,13 @@ try {
         exit 1
     }
 
-    dotnet build 'statevia-api.sln'
+    dotnet build 'statevia-api.sln' '/p:StateviaSonarScope=api'
     if ($LASTEXITCODE -ne 0) {
         Write-Error '[ERROR] build failed'
         exit 1
     }
 
-    dotnet-coverage collect 'dotnet test' -f xml -o "$coverageXml"
+    dotnet-coverage collect 'dotnet test /p:StateviaSonarScope=api' -f xml -o "$coverageXml"
     if ($LASTEXITCODE -ne 0) {
         Write-Error '[ERROR] test / coverage failed'
         exit 1
