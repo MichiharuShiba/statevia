@@ -33,9 +33,9 @@ describe("actionCatalogUiText", () => {
     expect(
       resolveActionCatalogLabel(
         uiTextEn.actionCatalog,
-        "statevia.action.builtin.workflow.ui.fields.mode.label",
+        "statevia.action.builtin.workflow.ui.fields.definitionId.label",
       ),
-    ).toBe("Start mode");
+    ).toBe("Definition ID");
   });
 
   it("英語上書きがない action は ja 文言を継承する", () => {

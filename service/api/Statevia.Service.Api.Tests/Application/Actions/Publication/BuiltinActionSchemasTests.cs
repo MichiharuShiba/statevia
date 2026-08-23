@@ -46,6 +46,30 @@ public sealed class BuiltinActionSchemasTests
         Assert.False(root.GetProperty("additionalProperties").GetBoolean());
     }
 
+    /// <summary>workflow input schema は definitionId のみ必須で mode / timeout を持たない。</summary>
+    [Fact]
+    public void Workflow_InputSchema_RequiresDefinitionIdOnly()
+    {
+        // Arrange
+        var publication = BuiltinActionSchemas.Workflow(WellKnownActionIds.Workflow);
+        var root = publication.SchemaBundle.InputSchema.RootElement;
+
+        // Act
+        var required = root.GetProperty("required")
+            .EnumerateArray()
+            .Select(element => element.GetString())
+            .ToArray();
+        var properties = root.GetProperty("properties");
+
+        // Assert
+        Assert.Equal(["definitionId"], required);
+        Assert.True(properties.TryGetProperty("definitionId", out _));
+        Assert.True(properties.TryGetProperty("input", out _));
+        Assert.False(properties.TryGetProperty("mode", out _));
+        Assert.False(properties.TryGetProperty("timeout", out _));
+        Assert.False(root.GetProperty("additionalProperties").GetBoolean());
+    }
+
     public static TheoryData<string, Func<string, ActionPublication>> BuiltinActionCases =>
         new()
         {

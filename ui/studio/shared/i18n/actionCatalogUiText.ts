@@ -73,9 +73,7 @@ export const actionCatalogUiTextJa: ActionCatalogUiText = {
     ui: {
       fields: {
         definitionId: { label: "定義 ID" },
-        mode: { label: "起動モード" },
         input: { label: "子ワークフロー入力" },
-        timeout: { label: "タイムアウト（秒）" },
       },
     },
   },
@@ -133,9 +131,7 @@ export const actionCatalogUiTextEnOverrides: ActionCatalogUiText = {
     ui: {
       fields: {
         definitionId: { label: "Definition ID" },
-        mode: { label: "Start mode" },
         input: { label: "Child workflow input" },
-        timeout: { label: "Timeout (seconds)" },
       },
     },
   },

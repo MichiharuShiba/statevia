@@ -1661,6 +1661,30 @@ public sealed class DefinitionCompilerServiceTests
             publication);
     }
 
+    /// <summary>入れ子 workflow の公式サンプル YAML が nodes としてコンパイルできる。</summary>
+    [Fact]
+    public void ValidateAndCompile_NestedWorkflowSampleYamls_Succeeds()
+    {
+        // Arrange
+        var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", ".."));
+        var parentPath = Path.Combine(repoRoot, "docs", "samples", "ui-nested-workflow-parent.yaml");
+        var childPath = Path.Combine(repoRoot, "docs", "samples", "ui-nested-workflow-child.yaml");
+        Assert.True(File.Exists(parentPath), parentPath);
+        Assert.True(File.Exists(childPath), childPath);
+        var svc = CreateSut();
+
+        // Act
+        var (parentCompiled, _) = svc.ValidateAndCompile("NestedWorkflowParentSample", File.ReadAllText(parentPath));
+        var (childCompiled, _) = svc.ValidateAndCompile("NestedWorkflowChildSample", File.ReadAllText(childPath));
+
+        // Assert
+        Assert.True(parentCompiled.WaitEventRouteTable["nest.wait.child"].ContainsKey("ChildCompleted"));
+        Assert.True(parentCompiled.WaitEventRouteTable["nest.wait.child"].ContainsKey("ChildFailed"));
+        Assert.Equal("nest.after.ok", parentCompiled.WaitEventRouteTable["nest.wait.child"]["ChildCompleted"].Next);
+        Assert.Contains("nest.start.child", parentCompiled.StateActionBindings.Keys);
+        Assert.Contains("child.work", childCompiled.StateActionBindings.Keys);
+    }
+
 }
 
 

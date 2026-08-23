@@ -846,16 +846,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            compiler,
-            idGen,
-            dedupService,
-            executionRepo,
-            definitionsRepo,
-            dedupRepoRepo,
-            eventStore,
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = compiler,
+                IdGenerator = idGen,
+                DedupService = dedupService,
+                Executions = executionRepo,
+                Definitions = definitionsRepo,
+                Dedup = dedupRepoRepo,
+                EventStore = eventStore,
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         using var inputDoc = JsonDocument.Parse("{\"a\":1}");
         var request = new StartExecutionRequest { DefinitionId = "def-1", Input = inputDoc.RootElement };
@@ -910,16 +913,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            compiler,
-            idGen,
-            dedupService,
-            executionRepo,
-            definitionsRepo,
-            dedupRepo,
-            eventStore,
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = compiler,
+                IdGenerator = idGen,
+                DedupService = dedupService,
+                Executions = executionRepo,
+                Definitions = definitionsRepo,
+                Dedup = dedupRepo,
+                EventStore = eventStore,
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         using var inputDoc = JsonDocument.Parse("{}");
         var request = new StartExecutionRequest { DefinitionId = "def-1", Input = inputDoc.RootElement };
@@ -993,16 +999,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            compiler,
-            idGen,
-            dedupService,
-            executionRepo,
-            definitionsRepo,
-            dedupRepo,
-            eventStore,
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = compiler,
+                IdGenerator = idGen,
+                DedupService = dedupService,
+                Executions = executionRepo,
+                Definitions = definitionsRepo,
+                Dedup = dedupRepo,
+                EventStore = eventStore,
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         using var inputDoc = JsonDocument.Parse("{\"x\":true}");
         var request = new StartExecutionRequest { DefinitionId = "def-2", Input = inputDoc.RootElement };
@@ -1086,16 +1095,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            compiler,
-            idGen,
-            dedupService,
-            executionRepo,
-            definitionsRepo,
-            dedupRepo,
-            eventStore,
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = compiler,
+                IdGenerator = idGen,
+                DedupService = dedupService,
+                Executions = executionRepo,
+                Definitions = definitionsRepo,
+                Dedup = dedupRepo,
+                EventStore = eventStore,
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         using var inputDoc = JsonDocument.Parse("{\"x\":true}");
         var request = new StartExecutionRequest { DefinitionId = "def-2", Input = inputDoc.RootElement };
@@ -1140,16 +1152,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            compiler,
-            idGen,
-            dedupService,
-            executionRepo,
-            definitionsRepo,
-            dedupRepo,
-            eventStore,
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = compiler,
+                IdGenerator = idGen,
+                DedupService = dedupService,
+                Executions = executionRepo,
+                Definitions = definitionsRepo,
+                Dedup = dedupRepo,
+                EventStore = eventStore,
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         var request = new StartExecutionRequest { DefinitionId = "missing" };
 
@@ -1158,31 +1173,225 @@ public sealed class ExecutionServiceTests
             sut.StartAsync(request, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None));
     }
 
-    private static ExecutionService MakeSut(SqliteTestDatabase sqlite, out FakeExecutionRepository executionRepo)
+    /// <summary>親 snapshot を継承し、Worker の PrincipalId null でも子実行を開始できる。</summary>
+    [Fact]
+    public async Task StartAsync_FromParentExecution_WhenPrincipalIdNull_InheritsSnapshot()
     {
-        executionRepo = new FakeExecutionRepository();
-
+        // Arrange
+        var parentExecutionId = Guid.NewGuid();
+        var parentDefinitionId = Guid.NewGuid();
+        var childDefinitionId = Guid.NewGuid();
+        var ownerPrincipalId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var keys = new[] { WellKnownPermissionKeys.ExecutionsWrite };
+        var parentSnapshot = new ExecutionSecuritySnapshot
+        {
+            TenantId = TestTenantIds.T1TenantId,
+            StartedByPrincipalId = ownerPrincipalId,
+            PrincipalType = "User",
+            EffectivePermissionKeys = keys,
+            PermissionSetHash = PermissionSetHash.Compute(keys),
+            AuthorizationContext = new AuthorizationContextSnapshot
+            {
+                ProjectId = Guid.NewGuid(),
+                ProjectRole = "admin",
+                GroupSnapshots = [],
+                IsTenantAdmin = false
+            },
+            EvaluationMode = SecurityEvaluationMode.Snapshot,
+            CapturedAt = DateTime.UtcNow
+        };
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = parentExecutionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = parentDefinitionId,
+                DefinitionVersionId = Guid.NewGuid(),
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                SecuritySnapshotJson = ExecutionSecuritySnapshotJson.Serialize(parentSnapshot)
+            }
+        };
+        var display = new FakeDisplayIdService { ResolveResultDefinition = childDefinitionId };
         var engine = new FakeExecutionEngine();
-        var display = new FakeDisplayIdService { ResolveResultExecution = Guid.NewGuid(), ResolveResultDefinition = Guid.NewGuid() };
-        var compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}"));
-        var idGen = new FixedIdGenerator(Guid.NewGuid());
-        var dedupService = new FakeCommandDedupService(null);
-        var definitionsRepo = new StubDefinitionRepository();
-        var dedupRepo = new FakeCommandDedupRepository();
-        var eventStore = new FakeEventStoreRepository();
-
-        return BuildExecutionService(
+        using var sqlite = new SqliteTestDatabase();
+        var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            compiler,
-            idGen,
-            dedupService,
-            executionRepo,
-            definitionsRepo,
-            dedupRepo,
-            eventStore,
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("child"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(childDefinitionId, TestTenantIds.T1TenantId, "child"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
+        sqlite.TenantAccessor.Set(TestTenantIds.T1Context with { PrincipalId = null });
+
+        // Act
+        var result = await sut.StartAsync(
+            new StartExecutionRequest { DefinitionId = "child-def" },
+            idempotencyKey: null,
+            new CommandRequestContext("WORKER", "/internal/workflow-action", parentExecutionId),
+            CancellationToken.None);
+
+        // Assert
+        Assert.True(engine.StartCalled);
+        Assert.Single(executionRepo.Added);
+        var childSnapshot = ExecutionSecuritySnapshotJson.TryDeserialize(
+            executionRepo.Added[0].Execution.SecuritySnapshotJson);
+        Assert.NotNull(childSnapshot);
+        Assert.Equal(ownerPrincipalId, childSnapshot.StartedByPrincipalId);
+        Assert.Contains(parentDefinitionId, childSnapshot.AncestorDefinitionIds);
+        Assert.Equal(result.ResourceId, executionRepo.Added[0].Execution.ExecutionId);
+    }
+
+    /// <summary>子定義が親と同じなら自己参照として開始しない。</summary>
+    [Fact]
+    public async Task StartAsync_FromParentExecution_WhenSelfReference_Throws()
+    {
+        // Arrange
+        var parentExecutionId = Guid.NewGuid();
+        var definitionId = Guid.NewGuid();
+        var keys = new[] { WellKnownPermissionKeys.ExecutionsWrite };
+        var parentSnapshot = new ExecutionSecuritySnapshot
+        {
+            TenantId = TestTenantIds.T1TenantId,
+            StartedByPrincipalId = Guid.NewGuid(),
+            PrincipalType = "User",
+            EffectivePermissionKeys = keys,
+            PermissionSetHash = PermissionSetHash.Compute(keys),
+            AuthorizationContext = new AuthorizationContextSnapshot
+            {
+                ProjectId = Guid.NewGuid(),
+                ProjectRole = "admin",
+                GroupSnapshots = [],
+                IsTenantAdmin = false
+            },
+            EvaluationMode = SecurityEvaluationMode.Snapshot,
+            CapturedAt = DateTime.UtcNow
+        };
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = parentExecutionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = definitionId,
+                DefinitionVersionId = Guid.NewGuid(),
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                SecuritySnapshotJson = ExecutionSecuritySnapshotJson.Serialize(parentSnapshot)
+            }
+        };
+        using var sqlite = new SqliteTestDatabase();
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = new FakeDisplayIdService { ResolveResultDefinition = definitionId },
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("same"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(definitionId, TestTenantIds.T1TenantId, "same"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
+        sqlite.TenantAccessor.Set(TestTenantIds.T1Context with { PrincipalId = null });
+
+        // Act
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.StartAsync(
+                new StartExecutionRequest { DefinitionId = "same-def" },
+                idempotencyKey: null,
+                new CommandRequestContext("WORKER", "/internal/workflow-action", parentExecutionId),
+                CancellationToken.None));
+
+        // Assert
+        Assert.Equal(Statevia.Core.Application.Services.ExecutionValidationMessages.ChildWorkflowSelfReference, ex.Message);
+        Assert.Empty(executionRepo.Added);
+    }
+
+    /// <summary>祖先定義への入れ子循環は開始しない。</summary>
+    [Fact]
+    public async Task StartAsync_FromParentExecution_WhenAncestorCycle_Throws()
+    {
+        // Arrange
+        var parentExecutionId = Guid.NewGuid();
+        var parentDefinitionId = Guid.NewGuid();
+        var ancestorDefinitionId = Guid.NewGuid();
+        var keys = new[] { WellKnownPermissionKeys.ExecutionsWrite };
+        var parentSnapshot = new ExecutionSecuritySnapshot
+        {
+            TenantId = TestTenantIds.T1TenantId,
+            StartedByPrincipalId = Guid.NewGuid(),
+            PrincipalType = "User",
+            EffectivePermissionKeys = keys,
+            PermissionSetHash = PermissionSetHash.Compute(keys),
+            AuthorizationContext = new AuthorizationContextSnapshot
+            {
+                ProjectId = Guid.NewGuid(),
+                ProjectRole = "admin",
+                GroupSnapshots = [],
+                IsTenantAdmin = false
+            },
+            EvaluationMode = SecurityEvaluationMode.Snapshot,
+            CapturedAt = DateTime.UtcNow,
+            AncestorDefinitionIds = [ancestorDefinitionId]
+        };
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = parentExecutionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = parentDefinitionId,
+                DefinitionVersionId = Guid.NewGuid(),
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                SecuritySnapshotJson = ExecutionSecuritySnapshotJson.Serialize(parentSnapshot)
+            }
+        };
+        using var sqlite = new SqliteTestDatabase();
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = new FakeDisplayIdService { ResolveResultDefinition = ancestorDefinitionId },
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("cycle"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(ancestorDefinitionId, TestTenantIds.T1TenantId, "cycle"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
+        sqlite.TenantAccessor.Set(TestTenantIds.T1Context with { PrincipalId = null });
+
+        // Act
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.StartAsync(
+                new StartExecutionRequest { DefinitionId = "ancestor-def" },
+                idempotencyKey: null,
+                new CommandRequestContext("WORKER", "/internal/workflow-action", parentExecutionId),
+                CancellationToken.None));
+
+        // Assert
+        Assert.Equal(Statevia.Core.Application.Services.ExecutionValidationMessages.ChildWorkflowSelfReference, ex.Message);
+        Assert.Empty(executionRepo.Added);
     }
 
     /// <summary>最大連番が零でも連番一の表示を返す。</summary>
@@ -1230,16 +1439,19 @@ public sealed class ExecutionServiceTests
 
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            new StubDefinitionRepository(),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository { MaxSeq = 0 },
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository { MaxSeq = 0 },
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         // Act
         var view = await sut.GetExecutionViewAtSeqAsync(idOrUuid: "display-or-uuid", atSeq: 1, CancellationToken.None);
@@ -1266,16 +1478,19 @@ public sealed class ExecutionServiceTests
         var display = new FakeDisplayIdService { ResolveResultExecution = null };
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            new StubDefinitionRepository(),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = new StubDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
@@ -1327,16 +1542,19 @@ public sealed class ExecutionServiceTests
 
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            new StubDefinitionRepository(),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository { MaxSeq = 5 },
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository { MaxSeq = 5 },
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
@@ -1388,16 +1606,19 @@ public sealed class ExecutionServiceTests
 
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            new StubDefinitionRepository(),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository { MaxSeq = 5 },
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository { MaxSeq = 5 },
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         // Act
         var view = await sut.GetExecutionViewAtSeqAsync(idOrUuid: "display-or-uuid", atSeq: 2, CancellationToken.None);
@@ -1471,16 +1692,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            new StubDefinitionRepository(),
-            new FakeCommandDedupRepository(),
-            eventStore,
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = eventStore,
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         // Act
         var res = await sut.ListEventsAsync(idOrUuid: "idOrUuid", afterSeq: 0, limit: 10, CancellationToken.None);
@@ -1572,17 +1796,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            new StubDefinitionRepository(),
-            new FakeCommandDedupRepository(),
-            eventStore,
-            new FakeEventDeliveryDedupRepository(),
-            forkChildCoordinator: coordinator);
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = eventStore,
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                ForkChildCoordinator = coordinator,
+            });
 
         // Act
         var res = await sut.ListEventsAsync("eidCompose", afterSeq: 0, limit: 10, CancellationToken.None);
@@ -1709,7 +1936,7 @@ public sealed class ExecutionServiceTests
             display: display,
             executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository(),
-            projectionQueue: projectionQueue);
+            options: new MakeSutOptions { ProjectionQueue = projectionQueue });
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -1969,17 +2196,20 @@ public sealed class ExecutionServiceTests
 
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            new StubDefinitionRepository(),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            projectionQueue);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                ProjectionUpdateQueue = projectionQueue,
+            });
 
         // Act
         await sut.AwaitLocalExecutionLoadAsync(executionId, CancellationToken.None);
@@ -2036,16 +2266,19 @@ public sealed class ExecutionServiceTests
 
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            new StubDefinitionRepository(),
-            new FakeCommandDedupRepository(),
-            eventStore,
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = eventStore,
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         // Act
         await sut.UpdateProjectionFromEngineAsync(executionId, CancellationToken.None);
@@ -2168,7 +2401,7 @@ public sealed class ExecutionServiceTests
             display: display,
             executionRepo: executionRepo,
             eventStore: new FakeEventStoreRepository(),
-            projectionQueue: projectionQueue);
+            options: new MakeSutOptions { ProjectionQueue = projectionQueue });
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -2255,7 +2488,7 @@ public sealed class ExecutionServiceTests
                 }
             },
             eventStore: new FakeEventStoreRepository(),
-            waitRepo: new FakeExecutionWaitRepository());
+            options: new MakeSutOptions { WaitRepo = new FakeExecutionWaitRepository() });
 
         // Act
         var ex = await Assert.ThrowsAsync<ApiValidationException>(() =>
@@ -2319,7 +2552,7 @@ public sealed class ExecutionServiceTests
                 }
             },
             eventStore: new FakeEventStoreRepository(),
-            waitRepo: new FakeExecutionWaitRepository());
+            options: new MakeSutOptions { WaitRepo = new FakeExecutionWaitRepository() });
 
         // Act
         var ex = await Assert.ThrowsAsync<ApiValidationException>(() =>
@@ -2383,7 +2616,7 @@ public sealed class ExecutionServiceTests
                 }
             },
             eventStore: new FakeEventStoreRepository(),
-            waitRepo: waitRepo);
+            options: new MakeSutOptions { WaitRepo = waitRepo });
 
         // Act
         await sut.PublishEventAsync(
@@ -2457,7 +2690,7 @@ public sealed class ExecutionServiceTests
                 }
             },
             eventStore: new FakeEventStoreRepository(),
-            waitRepo: waitRepo);
+            options: new MakeSutOptions { WaitRepo = waitRepo });
 
         // Act
         await sut.PublishEventAsync(
@@ -2855,16 +3088,19 @@ public sealed class ExecutionServiceTests
         var eventStore = new FakeEventStoreRepository();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            new StubDefinitionRepository(),
-            new FakeCommandDedupRepository(),
-            eventStore,
-            eventDedup);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = eventStore,
+                EventDeliveryDedup = eventDedup,
+            });
 
         // Act
         await sut.PublishEventAsync(idOrUuid: "X",
@@ -3240,16 +3476,19 @@ public sealed class ExecutionServiceTests
 
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            new StubDefinitionRepository(),
-            new FakeCommandDedupRepository(),
-            eventStore,
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = eventStore,
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         // Act
         await sut.ResumeNodeAsync(idOrUuid: "X", nodeId: nodeId, resumeKey: resumeKey, idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions"), CancellationToken.None);
@@ -3853,16 +4092,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(dedupKey),
-            executionRepo,
-            new StubDefinitionRepository(),
-            dedupRepo,
-            eventStore,
-            flakyEventDelivery);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(dedupKey),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = dedupRepo,
+                EventStore = eventStore,
+                EventDeliveryDedup = flakyEventDelivery,
+            });
 
         // Act
         await sut.PublishEventAsync(idOrUuid: "X",
@@ -3914,16 +4156,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(dedupKey),
-            executionRepo,
-            new StubDefinitionRepository(),
-            dedupRepo,
-            new FakeEventStoreRepository(),
-            flakyEventDelivery);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(dedupKey),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = dedupRepo,
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = flakyEventDelivery,
+            });
 
         // Act & Assert
         await Assert.ThrowsAsync<TaskCanceledException>(() => sut.PublishEventAsync(idOrUuid: "X",
@@ -3982,17 +4227,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(dedupKey),
-            executionRepo,
-            new StubDefinitionRepository(),
-            dedupRepo,
-            new FakeEventStoreRepository(),
-            flakyEventDelivery,
-            eventDeliveryRetryOptions: strictRetryOptions);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(dedupKey),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = dedupRepo,
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = flakyEventDelivery,
+                EventDeliveryRetryOptions = strictRetryOptions,
+            });
 
         // Act & Assert
         await Assert.ThrowsAsync<IOException>(() => sut.PublishEventAsync(
@@ -4157,8 +4405,7 @@ public sealed class ExecutionServiceTests
             new FakeExecutionEngine(),
             display,
             new FakeExecutionRepository(),
-            new FakeEventStoreRepository(),
-            projectionQueue: null);
+            new FakeEventStoreRepository());
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
@@ -4180,16 +4427,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            eventStore,
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = eventStore,
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -4278,16 +4528,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine { SnapshotToReturn = null },
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            new StubDefinitionRepository(),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine { SnapshotToReturn = null },
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         // Act
         await sut.UpdateProjectionFromEngineAsync(executionId, CancellationToken.None);
@@ -4303,24 +4556,33 @@ public sealed class ExecutionServiceTests
         FakeDisplayIdService display,
         FakeExecutionRepository executionRepo,
         FakeEventStoreRepository eventStore,
-        IExecutionProjectionUpdateQueue? projectionQueue = null,
-        FakeExecutionWaitRepository? waitRepo = null)
+        MakeSutOptions? options = null)
     {
         var sqlite = new SqliteTestDatabase();
         return BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            dedupService,
-            executionRepo,
-            new StubDefinitionRepository(),
-            dedupRepo,
-            eventStore,
-            new FakeEventDeliveryDedupRepository(),
-            projectionQueue,
-            waitRepo: waitRepo);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = dedupService,
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = dedupRepo,
+                EventStore = eventStore,
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                ProjectionUpdateQueue = options?.ProjectionQueue,
+                WaitRepo = options?.WaitRepo,
+            });
+    }
+
+    /// <summary><see cref="MakeSut"/> の任意依存。</summary>
+    private sealed class MakeSutOptions
+    {
+        public IExecutionProjectionUpdateQueue? ProjectionQueue { get; init; }
+        public FakeExecutionWaitRepository? WaitRepo { get; init; }
     }
 
     private sealed class FakeForkChildCoordinator : IForkChildExecutionCoordinator
@@ -4376,35 +4638,59 @@ public sealed class ExecutionServiceTests
             Task.FromResult<IReadOnlyList<Guid>>(DescendantIds);
     }
 
-    private static ExecutionService BuildExecutionService(
-        SqliteTestDatabase sqlite,
-        IExecutionEngine engine,
-        IDisplayIdService displayIds,
-        IDefinitionCompilerService compiler,
-        IIdGenerator idGenerator,
-        ICommandDedupService dedupService,
-        IExecutionRepository executions,
-        IDefinitionRepository definitions,
-        ICommandDedupRepository dedup,
-        IEventStoreRepository eventStore,
-        IEventDeliveryDedupRepository eventDeliveryDedup,
-        IExecutionProjectionUpdateQueue? projectionUpdateQueue = null,
-        Microsoft.Extensions.Options.IOptions<EventDeliveryRetryOptions>? eventDeliveryRetryOptions = null,
-        IExecutionMutationPersistence? mutationPersistence = null,
-        IProjectAuthorizationService? projectAuthorization = null,
-        FakeExecutionWaitRepository? waitRepo = null,
-        IForkChildExecutionCoordinator? forkChildCoordinator = null,
-        IExecutionWorkQueue? workQueue = null,
-        IExecutionCheckpointStore? checkpointStore = null,
-        ExecutionOwnershipTracker? ownershipTracker = null)
+    /// <summary><see cref="BuildExecutionService"/> へ渡すテスト用依存。</summary>
+    private sealed class ExecutionServiceTestDeps
     {
+        public required IExecutionEngine Engine { get; init; }
+        public required IDisplayIdService DisplayIds { get; init; }
+        public required IDefinitionCompilerService Compiler { get; init; }
+        public required IIdGenerator IdGenerator { get; init; }
+        public required ICommandDedupService DedupService { get; init; }
+        public required IExecutionRepository Executions { get; init; }
+        public required IDefinitionRepository Definitions { get; init; }
+        public required ICommandDedupRepository Dedup { get; init; }
+        public required IEventStoreRepository EventStore { get; init; }
+        public required IEventDeliveryDedupRepository EventDeliveryDedup { get; init; }
+        public IExecutionProjectionUpdateQueue? ProjectionUpdateQueue { get; init; }
+        public IOptions<EventDeliveryRetryOptions>? EventDeliveryRetryOptions { get; init; }
+        public IProjectAuthorizationService? ProjectAuthorization { get; init; }
+        public FakeExecutionWaitRepository? WaitRepo { get; init; }
+        public IForkChildExecutionCoordinator? ForkChildCoordinator { get; init; }
+        public IExecutionWorkQueue? WorkQueue { get; init; }
+        public IExecutionCheckpointStore? CheckpointStore { get; init; }
+        public ExecutionOwnershipTracker? OwnershipTracker { get; init; }
+    }
+
+    /// <summary>テスト用の <see cref="ExecutionService"/> を組み立てる。</summary>
+    private static ExecutionService BuildExecutionService(SqliteTestDatabase sqlite, ExecutionServiceTestDeps deps)
+    {
+        ArgumentNullException.ThrowIfNull(deps);
+        var engine = deps.Engine;
+        var displayIds = deps.DisplayIds;
+        var compiler = deps.Compiler;
+        var idGenerator = deps.IdGenerator;
+        var dedupService = deps.DedupService;
+        var executions = deps.Executions;
+        var definitions = deps.Definitions;
+        var dedup = deps.Dedup;
+        var eventStore = deps.EventStore;
+        var eventDeliveryDedup = deps.EventDeliveryDedup;
+        var projectionUpdateQueue = deps.ProjectionUpdateQueue;
+        var eventDeliveryRetryOptions = deps.EventDeliveryRetryOptions;
+        var projectAuthorization = deps.ProjectAuthorization;
+        var waitRepo = deps.WaitRepo;
+        var forkChildCoordinator = deps.ForkChildCoordinator;
+        var workQueue = deps.WorkQueue;
+        var checkpointStore = deps.CheckpointStore;
+        var ownershipTracker = deps.OwnershipTracker;
+
         if (displayIds is not IDisplayIdWriteService displayIdWrites)
             throw new InvalidOperationException("Test display id service must implement IDisplayIdWriteService.");
 
         var uowFactory = new TestCoreUnitOfWorkFactory(sqlite.Factory);
         var executor = new TestCoreTransactionExecutor(uowFactory);
         var retryOptions = eventDeliveryRetryOptions ?? DefaultEventDeliveryRetryOptions;
-        mutationPersistence ??= new ExecutionMutationPersistence(
+        var mutationPersistence = new ExecutionMutationPersistence(
             uowFactory,
             eventDeliveryDedup,
             retryOptions,
@@ -4570,17 +4856,20 @@ public sealed class ExecutionServiceTests
         var display = new FakeDisplayIdService { ResolveResultDefinition = defId };
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            TestRepositoryFactory.CreateDefinitionRepository(),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            projectAuthorization: new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator())));
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = TestRepositoryFactory.CreateDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                ProjectAuthorization = new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator())),
+            });
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
@@ -4602,17 +4891,20 @@ public sealed class ExecutionServiceTests
         var display = new FakeDisplayIdService { ResolveResultDefinition = defId };
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            TestRepositoryFactory.CreateDefinitionRepository(),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            projectAuthorization: new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator())));
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = TestRepositoryFactory.CreateDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                ProjectAuthorization = new ProjectAuthorizationService(new ProjectRepository(new DefaultIdGenerator())),
+            });
 
         // Act
         var response = await sut.StartAsync(
@@ -4651,17 +4943,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            new FakeDisplayIdService { ResolveResultExecution = executionId },
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            forkChildCoordinator: coordinator);
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = new FakeDisplayIdService { ResolveResultExecution = executionId },
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                ForkChildCoordinator = coordinator,
+            });
 
         // Act
         await sut.ResumeNodeAsync(
@@ -4713,17 +5008,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            new FakeDisplayIdService { ResolveResultExecution = executionId },
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            forkChildCoordinator: coordinator);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService { ResolveResultExecution = executionId },
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                ForkChildCoordinator = coordinator,
+            });
 
         // Act
         await sut.ResumeNodeAsync(
@@ -4782,17 +5080,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            new FakeDisplayIdService { ResolveResultExecution = executionId },
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            forkChildCoordinator: coordinator);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService { ResolveResultExecution = executionId },
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                ForkChildCoordinator = coordinator,
+            });
 
         // Act
         await sut.ResumeNodeAsync(
@@ -4881,17 +5182,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            definitionsRepo,
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            checkpointStore: checkpointStore);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = definitionsRepo,
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                CheckpointStore = checkpointStore,
+            });
 
         // Act
         await sut.RecoverExecutionAsync(
@@ -4935,17 +5239,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(dedupKey),
-            executionRepo,
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            dedupRepo,
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            workQueue: workQueue);
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(dedupKey),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = dedupRepo,
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                WorkQueue = workQueue,
+            });
 
         // Act
         await sut.CancelAsync(
@@ -4983,17 +5290,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(dedupKey),
-            new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def"),
-            dedupRepo,
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            workQueue: workQueue);
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(dedupKey),
+                Executions = new FakeExecutionRepository(),
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def"),
+                Dedup = dedupRepo,
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                WorkQueue = workQueue,
+            });
 
         using var inputDoc = JsonDocument.Parse("{}");
         var request = new StartExecutionRequest { DefinitionId = "def-q", Input = inputDoc.RootElement };
@@ -5021,17 +5331,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            checkpointStore: checkpointStore);
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                CheckpointStore = checkpointStore,
+            });
 
         // Act
         var generation = await sut.BeginOwnedSessionAsync(
@@ -5054,16 +5367,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         // Act
         var renewed = await sut.RenewOwnedSessionLeaseAsync(
@@ -5091,18 +5407,21 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            checkpointStore: checkpointStore,
-            ownershipTracker: ownership);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                CheckpointStore = checkpointStore,
+                OwnershipTracker = ownership,
+            });
 
         // Act
         await sut.PersistCheckpointKeepLoadedAsync(executionId.ToString(), CancellationToken.None);
@@ -5129,17 +5448,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            workQueue: workQueue);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                WorkQueue = workQueue,
+            });
 
         using var inputDoc = JsonDocument.Parse("{}");
         var request = new StartExecutionRequest { DefinitionId = "def-q", Input = inputDoc.RootElement };
@@ -5184,17 +5506,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            display,
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            workQueue: workQueue);
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                WorkQueue = workQueue,
+            });
 
         // Act
         await sut.CancelAsync(
@@ -5219,17 +5544,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            checkpointStore: checkpointStore);
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                CheckpointStore = checkpointStore,
+            });
 
         // Act
         var generation = await sut.BeginOwnedSessionAsync(
@@ -5266,17 +5594,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            ownershipTracker: ownership);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                OwnershipTracker = ownership,
+            });
 
         // Act
         await sut.AbandonLocalOwnedSessionAsync(executionId);
@@ -5299,17 +5630,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            checkpointStore: checkpointStore);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                CheckpointStore = checkpointStore,
+            });
 
         // Act
         await sut.PersistCheckpointKeepLoadedAsync(executionId.ToString(), CancellationToken.None);
@@ -5335,18 +5669,21 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            checkpointStore: checkpointStore,
-            ownershipTracker: ownership);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                CheckpointStore = checkpointStore,
+                OwnershipTracker = ownership,
+            });
 
         // Act
         await sut.PersistCheckpointKeepLoadedAsync(executionId.ToString(), CancellationToken.None);
@@ -5365,17 +5702,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine { CheckpointToExport = CreateMinimalCheckpoint("x") },
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            checkpointStore: checkpointStore);
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine { CheckpointToExport = CreateMinimalCheckpoint("x") },
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                CheckpointStore = checkpointStore,
+            });
 
         // Act
         await sut.PersistCheckpointKeepLoadedAsync("not-a-guid", CancellationToken.None);
@@ -5451,16 +5791,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            new FakeDisplayIdService { AllocateResultWorkflow = "WF-QS", GetDisplayIdResult = "def-disp" },
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            definitionsRepo,
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService { AllocateResultWorkflow = "WF-QS", GetDisplayIdResult = "def-disp" },
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = definitionsRepo,
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         using var inputDoc = JsonDocument.Parse("{}");
         var request = new StartExecutionRequest { DefinitionId = "def-q", Input = inputDoc.RootElement };
@@ -5496,16 +5839,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         // Act
         await sut.RecoverExecutionAsync(
@@ -5526,16 +5872,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            new FakeExecutionEngine(),
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository { ByIdResult = null },
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository { ByIdResult = null },
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         using var inputDoc = JsonDocument.Parse("{}");
 
@@ -5584,17 +5933,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(null),
-            executionRepo,
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            checkpointStore: checkpointStore);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                CheckpointStore = checkpointStore,
+            });
 
         // Act
         await sut.PersistCheckpointAndUnloadAsync(executionId, "wait-1", CancellationToken.None);
@@ -5618,17 +5970,20 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(Guid.NewGuid()),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository(),
-            checkpointStore: checkpointStore);
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                CheckpointStore = checkpointStore,
+            });
 
         // Act
         await sut.PersistCheckpointAndUnloadByEngineIdAsync("not-a-guid", "n1", CancellationToken.None);
@@ -5648,16 +6003,19 @@ public sealed class ExecutionServiceTests
         using var sqlite = new SqliteTestDatabase();
         var sut = BuildExecutionService(
             sqlite,
-            engine,
-            new FakeDisplayIdService(),
-            new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
-            new FixedIdGenerator(executionId),
-            new FakeCommandDedupService(null),
-            new FakeExecutionRepository(),
-            StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
-            new FakeCommandDedupRepository(),
-            new FakeEventStoreRepository(),
-            new FakeEventDeliveryDedupRepository());
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
 
         // Act
         await sut.PersistCheckpointAndUnloadAsync(executionId, "wait-1", CancellationToken.None);

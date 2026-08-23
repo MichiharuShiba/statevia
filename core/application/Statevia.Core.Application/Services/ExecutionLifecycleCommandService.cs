@@ -82,6 +82,7 @@ internal sealed class ExecutionLifecycleCommandService(
     /// <param name="ct">キャンセル。</param>
     /// <returns>表示 ID 付きの実行応答。</returns>
     /// <exception cref="NotFoundException">定義またはバージョンが見つからないとき。</exception>
+    /// <exception cref="InvalidOperationException">親 snapshot 欠落、または子定義が自己参照／祖先循環のとき。</exception>
     public async Task<ExecutionResponse> StartAsync(
         StartExecutionRequest request,
         string? idempotencyKey,
@@ -108,6 +109,10 @@ internal sealed class ExecutionLifecycleCommandService(
         var tenantId = tenantContext.GetRequiredTenantId();
         await authorization.EnsureCanExecuteOnDefinitionAsync(tenantId, defUuid.Value, ct).ConfigureAwait(false);
 
+        var inherited = requestContext.ParentExecutionId is { } parentExecutionId
+            ? await LoadInheritedChildStartAsync(tenantId, parentExecutionId, defUuid.Value, ct).ConfigureAwait(false)
+            : null;
+
         var versionRow = await ResolveStartDefinitionVersionAsync(tenantId, defUuid.Value, request, ct).ConfigureAwait(false);
         if (versionRow is null)
             throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
@@ -124,6 +129,7 @@ internal sealed class ExecutionLifecycleCommandService(
                     tenantId,
                     defUuid.Value,
                     versionRow,
+                    inherited,
                     ct)
                 .ConfigureAwait(false);
         }
@@ -136,7 +142,8 @@ internal sealed class ExecutionLifecycleCommandService(
                     tenantId,
                     defUuid.Value,
                     versionRow,
-                    ExecutionId: null),
+                    ExecutionId: null,
+                    Inherited: inherited),
                 ct)
             .ConfigureAwait(false);
     }
@@ -150,6 +157,7 @@ internal sealed class ExecutionLifecycleCommandService(
     /// <param name="tenantId">テナント ID。</param>
     /// <param name="definitionId">定義 UUID。</param>
     /// <param name="versionRow">採用する定義バージョン。</param>
+    /// <param name="inherited">親 snapshot 継承（workflow Action）。HTTP Start では null。</param>
     /// <param name="ct">キャンセル。</param>
     /// <returns>受理直後の実行応答（Running）。</returns>
     private async Task<ExecutionResponse> AcceptStartAndEnqueueAsync(
@@ -159,6 +167,7 @@ internal sealed class ExecutionLifecycleCommandService(
         Guid tenantId,
         Guid definitionId,
         DefinitionVersionRow versionRow,
+        InheritedChildStart? inherited,
         CancellationToken ct)
     {
         var executionId = idGenerator.NewSequentialGuid();
@@ -170,8 +179,12 @@ internal sealed class ExecutionLifecycleCommandService(
             async (uow, innerCt) =>
             {
                 var createdAt = DateTime.UtcNow;
-                var securitySnapshot = await snapshotFactory
-                    .CaptureForStartAsync(tenantId, definitionId, createdAt, innerCt)
+                var securitySnapshot = await CaptureStartSnapshotAsync(
+                        tenantId,
+                        definitionId,
+                        createdAt,
+                        inherited,
+                        innerCt)
                     .ConfigureAwait(false);
                 var securitySnapshotJson = ExecutionSecuritySnapshotJson.Serialize(securitySnapshot);
                 var displayId = await displayIdWrites
@@ -305,8 +318,12 @@ internal sealed class ExecutionLifecycleCommandService(
                     if (args.ExecutionId is null)
                     {
                         // 同一プロセス受理: セキュリティ snapshot と WorkflowStarted をここで確定する。
-                        var securitySnapshot = await snapshotFactory
-                            .CaptureForStartAsync(args.TenantId, args.DefinitionId, createdAt, innerCt)
+                        var securitySnapshot = await CaptureStartSnapshotAsync(
+                                args.TenantId,
+                                args.DefinitionId,
+                                createdAt,
+                                args.Inherited,
+                                innerCt)
                             .ConfigureAwait(false);
                         var securitySnapshotJson = ExecutionSecuritySnapshotJson.Serialize(securitySnapshot);
 
@@ -865,5 +882,72 @@ internal sealed class ExecutionLifecycleCommandService(
         Guid TenantId,
         Guid DefinitionId,
         DefinitionVersionRow VersionRow,
-        Guid? ExecutionId);
+        Guid? ExecutionId,
+        InheritedChildStart? Inherited = null);
+
+    /// <summary>workflow Action からの子開始で使う親 snapshot。</summary>
+    /// <param name="ParentSnapshot">親実行のセキュリティスナップショット。</param>
+    /// <param name="ParentDefinitionId">親実行の定義 UUID。</param>
+    private sealed record InheritedChildStart(
+        ExecutionSecuritySnapshot ParentSnapshot,
+        Guid ParentDefinitionId);
+
+    /// <summary>HTTP Start は Live Principal、子開始は親 snapshot を継承する。</summary>
+    private Task<ExecutionSecuritySnapshot> CaptureStartSnapshotAsync(
+        Guid tenantId,
+        Guid definitionId,
+        DateTime createdAt,
+        InheritedChildStart? inherited,
+        CancellationToken ct)
+    {
+        if (inherited is null)
+        {
+            return snapshotFactory.CaptureForStartAsync(tenantId, definitionId, createdAt, ct);
+        }
+
+        return snapshotFactory.CaptureForChildWorkflowAsync(
+            inherited.ParentSnapshot,
+            tenantId,
+            definitionId,
+            inherited.ParentDefinitionId,
+            createdAt,
+            ct);
+    }
+
+    /// <summary>親実行の snapshot を読み、自己参照なら失敗する。</summary>
+    /// <param name="tenantId">テナント ID。</param>
+    /// <param name="parentExecutionId">親実行 ID。</param>
+    /// <param name="childDefinitionId">子定義 UUID。</param>
+    /// <param name="ct">キャンセル。</param>
+    /// <returns>継承に使う親 snapshot と親定義 UUID。</returns>
+    /// <exception cref="NotFoundException">親実行が無い。</exception>
+    /// <exception cref="InvalidOperationException">親 snapshot 欠落または自己参照。</exception>
+    private async Task<InheritedChildStart> LoadInheritedChildStartAsync(
+        Guid tenantId,
+        Guid parentExecutionId,
+        Guid childDefinitionId,
+        CancellationToken ct)
+    {
+        var parent = await executor.ExecuteReadOnlyAsync(
+                (uow, innerCt) => executions.GetByIdAsync(uow, tenantId, parentExecutionId, innerCt),
+                ct)
+            .ConfigureAwait(false);
+        if (parent is null)
+            throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
+
+        if (string.IsNullOrWhiteSpace(parent.SecuritySnapshotJson))
+            throw new InvalidOperationException(ExecutionValidationMessages.ParentSecuritySnapshotRequired);
+
+        var parentSnapshot = ExecutionSecuritySnapshotJson.TryDeserialize(parent.SecuritySnapshotJson)
+            ?? throw new InvalidOperationException(ExecutionValidationMessages.ParentSecuritySnapshotRequired);
+
+        var ancestors = parentSnapshot.AncestorDefinitionIds ?? [];
+        if (childDefinitionId == parent.DefinitionId
+            || ancestors.Contains(childDefinitionId))
+        {
+            throw new InvalidOperationException(ExecutionValidationMessages.ChildWorkflowSelfReference);
+        }
+
+        return new InheritedChildStart(parentSnapshot, parent.DefinitionId);
+    }
 }

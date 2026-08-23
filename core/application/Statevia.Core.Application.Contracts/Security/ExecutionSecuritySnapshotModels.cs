@@ -56,4 +56,10 @@ public sealed class ExecutionSecuritySnapshot
 
     /// <summary>キャプチャ理由。初版は <c>Start</c> 固定。</summary>
     public string CaptureReason { get; init; } = "Start";
+
+    /// <summary>
+    /// 入れ子の子ワークフロー開始で積む祖先定義 UUID。HTTP Start では空。
+    /// JSON 欠落時は空配列として扱う。
+    /// </summary>
+    public IReadOnlyList<Guid> AncestorDefinitionIds { get; init; } = [];
 }

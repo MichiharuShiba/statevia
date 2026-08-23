@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.5.2 |
-| 更新日 | 2026-08-14 |
+| Version | 1.5.3 |
+| 更新日 | 2026-08-23 |
 | 関連 | [concepts/definition.md](../concepts/definition.md), [execution/wait-cancel.md](execution/wait-cancel.md), [execution/fork-join.md](execution/fork-join.md) |
 
 ---
@@ -85,7 +85,7 @@ Builtin 短名（MVP）:
 | `notify` | `statevia.action.builtin.notify` | email 通知（MVP） |
 | `signal` | `statevia.action.builtin.signal` | 実行スコープ内シグナル発行 |
 | `publish` | `statevia.action.builtin.publish` | システムトピック発行（MVP stub） |
-| `workflow` | `statevia.action.builtin.workflow` | 子ワークフロー起動（`mode: sync` は experimental） |
+| `workflow` | `statevia.action.builtin.workflow` | 子ワークフロー起動（開始直後に status を返す。終端待ちは wait / resume） |
 
 廃止:
 
@@ -198,13 +198,54 @@ states:
 
   | フィールド | 必須 | 説明 |
   | --- | --- | --- |
-  | `definitionId` | はい | 子定義 ID（display ID または UUID） |
-  | `mode` | はい | `async` または `sync` |
+  | `definitionId` | はい | 子定義 ID（display ID または UUID）。定義名は解決しない |
   | `input` | いいえ | 子ワークフロー開始 input（JSON 互換） |
-  | `timeout` | いいえ | **`mode: sync` のみ**。秒（整数）。省略時 **300**（5 分） |
 
-- **output**: `{ workflowId, displayId, status }`（async / sync 共通）
-- **制約**: 現在テナント内の定義・実行に限定。`mode: sync` は **experimental**（ポーリング 200ms）。本番推奨パスでは async を使用する
+- **output**: `{ workflowId, displayId, status }`（開始直後の status。通常は `Running`）
+- **制約**:
+  - 現在テナント内の定義・実行に限定
+  - 子開始は HTTP `POST /v1/executions` と同じ Live Principal 経路を使わない。親実行（Action を実行中の `executions` 行。Hosted Fork 枝ならその枝）の `security_snapshot_json` を継承し、子定義の project 文脈だけ再評価する
+  - 開始は常に非同期。親 Action は子の終端を待たず、開始直後の `{ workflowId, displayId, status }` を返す。子の完了待ちは **wait / resume** で行う（子終端は親 wait を自動再開しない。Hosted Fork の `statevia.event.child.completed` とは別）
+  - 子 `definitionId` が、実行中の定義または祖先定義の UUID と一致する場合は開始しない（実行時判定。定義保存では検証しない）
+
+nodes 形式の定義サンプルは [`docs/samples/ui-nested-workflow-parent.yaml`](../samples/ui-nested-workflow-parent.yaml) と [`docs/samples/ui-nested-workflow-child.yaml`](../samples/ui-nested-workflow-child.yaml)。states 形式の骨子は次のとおり。
+
+```yaml
+workflow:
+  name: NestedWorkflowParentSample
+
+states:
+  StartChild:
+    action: workflow
+    input:
+      definitionId: $.input.childDefinitionId
+    on:
+      Completed:
+        next: WaitChild
+      Failed:
+        next: StartFailed
+  WaitChild:
+    wait:
+      events:
+        ChildCompleted: AfterOk
+        ChildFailed: AfterFail
+  AfterOk:
+    on:
+      Completed:
+        next: End
+  AfterFail:
+    on:
+      Completed:
+        next: End
+  StartFailed:
+    on:
+      Completed:
+        next: End
+  End:
+    on:
+      Completed:
+        end: true
+```
 
 #### Execution Semantics（signal / publish / wait）
 

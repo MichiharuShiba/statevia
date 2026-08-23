@@ -11,14 +11,12 @@ internal interface IChildWorkflowRunner
 
 /// <summary>子ワークフロー起動リクエスト。</summary>
 /// <param name="DefinitionId">定義 ID（display または UUID）。</param>
-/// <param name="Mode">async または sync。</param>
 /// <param name="Input">開始入力（任意）。</param>
-/// <param name="Timeout">sync モードのタイムアウト（任意）。</param>
+/// <param name="ParentExecutionId">workflow Action を実行中の親実行 ID。</param>
 internal sealed record ChildWorkflowRequest(
     string DefinitionId,
-    string Mode,
     object? Input,
-    TimeSpan? Timeout);
+    Guid ParentExecutionId);
 
 /// <summary>子ワークフロー起動結果。</summary>
 /// <param name="WorkflowId">実行 UUID 文字列。</param>

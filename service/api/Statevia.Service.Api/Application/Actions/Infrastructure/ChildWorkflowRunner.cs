@@ -7,11 +7,11 @@ using Statevia.Service.Api.Contracts;
 namespace Statevia.Service.Api.Application.Actions.Infrastructure;
 
 /// <summary><see cref="IChildWorkflowRunner"/> の既定実装。</summary>
+/// <remarks>
+/// 子開始は常に非同期（開始直後の status を返す）。子の終端待ちは Wait / Resume で行う。
+/// </remarks>
 internal sealed class ChildWorkflowRunner : IChildWorkflowRunner
 {
-    private static readonly TimeSpan DefaultSyncTimeout = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan SyncPollInterval = TimeSpan.FromMilliseconds(200);
-
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ITenantContextAccessor _tenantContext;
 
@@ -30,6 +30,11 @@ internal sealed class ChildWorkflowRunner : IChildWorkflowRunner
             throw new InvalidOperationException("Tenant context is required for workflow action.");
         }
 
+        if (request.ParentExecutionId == Guid.Empty)
+        {
+            throw new ArgumentException("workflow action requires a parent execution id.");
+        }
+
         using var scope = _scopeFactory.CreateScope();
         var executionService = scope.ServiceProvider.GetRequiredService<IExecutionService>();
 
@@ -43,43 +48,15 @@ internal sealed class ChildWorkflowRunner : IChildWorkflowRunner
             .StartAsync(
                 startRequest,
                 idempotencyKey: null,
-                new CommandRequestContext("POST", "/internal/workflow-action"),
+                new CommandRequestContext("POST", "/internal/workflow-action", request.ParentExecutionId),
                 ct)
             .ConfigureAwait(false);
 
-        if (!string.Equals(request.Mode, "sync", StringComparison.OrdinalIgnoreCase))
-        {
-            return new ChildWorkflowResult(
-                started.ResourceId.ToString("D"),
-                started.DisplayId,
-                started.Status);
-        }
-
-        var timeout = request.Timeout ?? DefaultSyncTimeout;
-        var deadline = DateTime.UtcNow + timeout;
-        var current = started;
-
-        while (!IsTerminalStatus(current.Status) && DateTime.UtcNow < deadline)
-        {
-            await Task.Delay(SyncPollInterval, ct).ConfigureAwait(false);
-            current = await executionService
-                .GetExecutionResponseAsync(current.ResourceId.ToString("D"), ct)
-                .ConfigureAwait(false);
-        }
-
-        if (!IsTerminalStatus(current.Status))
-        {
-            throw new TimeoutException("workflow sync mode timed out.");
-        }
-
         return new ChildWorkflowResult(
-            current.ResourceId.ToString("D"),
-            current.DisplayId,
-            current.Status);
+            started.ResourceId.ToString("D"),
+            started.DisplayId,
+            started.Status);
     }
-
-    private static bool IsTerminalStatus(string status) =>
-        status is "Completed" or "Failed" or "Cancelled";
 
     private static JsonElement? ToJsonElement(object? input)
     {
