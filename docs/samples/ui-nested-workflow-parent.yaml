@@ -19,6 +19,9 @@
 #
 # 注意:
 #   - 子の終端は親 wait を自動再開しない。Fork の statevia.event.child.completed とは別経路
+#   - 子→親を再開する専用 Action（execution.resume 等）は無い。本サンプルの正本は人手 / HTTP Resume
+#   - wait.subscribe + POST /v1/events で相関することもできるが、公式の親子契約ではない。
+#     一致購読が複数なら 1:N になる（key の一意性は作者責務）
 #   - wait と action は同一ノードに併記できない
 #   - definitionId に親自身の UUID / displayId を入れると実行時に自己参照で Failed
 # =============================================================================

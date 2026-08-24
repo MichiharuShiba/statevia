@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.4 |
-| 更新日 | 2026-08-09 |
+| Version | 1.5 |
+| 更新日 | 2026-08-24 |
 | 関連 | [fsm.md](fsm.md), [../definition.md](../definition.md), [fork-join.md](fork-join.md), [concepts/execution-model.md](../../concepts/execution-model.md) |
 
 ---
@@ -56,6 +56,8 @@ Hosted では分岐が物理子 execution になるため、分岐上の Wait �
 `POST /v1/events` は `{ topic, key?, payload? }` を受け付けます（`topic` 必須。`event` は送らない）。照合は `execution_wait_subscriptions` で、正規化後の **topic かつ key の厳密一致**です。`key` 省略・空白は `""` です。一致した各購読の `resume_event_name` で Resume ワークを投入し、対象が 0 件でも `204 No Content` を返します。`payload` は将来の Wait 入力拡張のため受理しますが、この段階では再開値に反映しません。
 
 Wait 定義側は `wait.subscribe`（topic 必須・key 任意・next 必須）。Signal モード（`wait.events` のみ）は本 API の対象外で、execution-scoped Resume を使います。
+
+Subscribe は入れ子ワークフローの **公式な子→親 Resume ではない**。同じ topic / key を子や外部が発行すれば親 wait を進められる、という合成にすぎません。一致した購読が複数あれば **1:N** で再開します。1:1 に抑えたい場合は作者が key を十分一意にしてください。専用 Action `execution.resume` は提供しません。
 
 ## Cancel（キャンセル）
 

@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.5.3 |
-| 更新日 | 2026-08-23 |
+| Version | 1.5.4 |
+| 更新日 | 2026-08-24 |
 | 関連 | [concepts/definition.md](../concepts/definition.md), [execution/wait-cancel.md](execution/wait-cancel.md), [execution/fork-join.md](execution/fork-join.md) |
 
 ---
@@ -83,7 +83,7 @@ YAML 上の `action` 参照は syntax parse のあと、Service API Compiler（`
 | execution.sleep | `statevia.action.builtin.execution.sleep` | `input.duration` で待機 |
 | execution.signal | `statevia.action.builtin.execution.signal` | 実行スコープ内シグナル発行 |
 | event.publish | `statevia.action.builtin.event.publish` | システムトピック発行（MVP stub） |
-| workflow.invoke | `statevia.action.builtin.workflow.invoke` | 子ワークフロー起動（開始直後に status を返す。終端待ちは wait / resume） |
+| workflow.invoke | `statevia.action.builtin.workflow.invoke` | 子ワークフロー起動（開始直後に status を返す。子終端は親 wait を自動再開しない） |
 
 Builtin の Catalog `ModuleId` は `statevia.action.builtin`。旧 canonical（例: `statevia.action.builtin.sleep`）と短名は解決しない。
 
@@ -224,7 +224,7 @@ states:
 - **制約**:
   - 現在テナント内の定義・実行に限定
   - 子開始は HTTP `POST /v1/executions` と同じ Live Principal 経路を使わない。親実行（Action を実行中の `executions` 行。Hosted Fork 枝ならその枝）の `security_snapshot_json` を継承し、子定義の project 文脈だけ再評価する
-  - 開始は常に非同期。親 Action は子の終端を待たず、開始直後の `{ workflowId, displayId, status }` を返す。子の完了待ちは **wait / resume** で行う（子終端は親 wait を自動再開しない。Hosted Fork の `statevia.event.child.completed` とは別）
+  - 開始は常に非同期。親 Action は子の終端を待たず、開始直後の `{ workflowId, displayId, status }` を返す。子終端は親 wait を自動再開しない（Hosted Fork の `statevia.event.child.completed` とは別）。**子→親を再開する専用 Action（`execution.resume` 等）は無い。** Signal モード（`wait.events`）の正本は人手 / HTTP Resume。Subscribe モードなら既存の topic / key 発行で進められるが、公式の親子契約ではなく、一致購読が複数なら 1:N になり得る（抑止は作者の key 設計）
   - 子 `definitionId` が、実行中の定義または祖先定義の UUID と一致する場合は開始しない（実行時判定。定義保存では検証しない）
 
 nodes 形式の定義サンプルは [`docs/samples/ui-nested-workflow-parent.yaml`](../samples/ui-nested-workflow-parent.yaml) と [`docs/samples/ui-nested-workflow-child.yaml`](../samples/ui-nested-workflow-child.yaml)。states 形式の骨子は次のとおり。
@@ -272,7 +272,7 @@ states:
 | --- | --- | --- |
 | signal | execution-scoped | `signal` action → wait の許可イベント再開 |
 | publish | system-scoped | `publish` action（MVP stub） |
-| wait | execution-scoped（ノード単位） | `wait.events` / nodes `events`。再開は `ResumeWaitNode`（HTTP Resume） |
+| wait | execution-scoped（ノード単位） | `wait.events` は `ResumeWaitNode`（HTTP Resume）。`wait.subscribe` は `POST /v1/events`（1:N ありうる） |
 
 Phase 2（未実装）: wait ノード直下に `duration` / `signal` / `event` を排他指定する統合構文。
 
@@ -295,6 +295,7 @@ Wait は **Signal**（`events`）と **Subscribe**（`subscribe`）の二モー�
   - 集合配送用。`POST /v1/events` は topic / key のみ送り、遷移名は配信者が指定しない。
   - コンパイル時に内部イベント名 `statevia.event.subscribe.{index}` を払い出し、route table のキー → `next` に載せる。
   - `key` 省略・空白は `""` に正規化する（照合も厳密一致）。
+  - 入れ子の子から親 wait を進める **専用機能ではない**。同じ topic / key を発行すれば相関はできるが、一致した購読はすべて再開し得る。1:1 に近づけたい場合の key 一意性は作者の責務。builtin `event.publish` は MVP stub（外部 bus 未接続）。発行の正本は `POST /v1/events`。
 - **旧形式の正規化**: `wait.event: X` + `on.Completed.next: Y` は Loader が `events: { X: Y }` へ自動変換する。`wait.events` と `wait.event` の併記はエラー。
 - **公開語彙**: `events` / `subscribe` / `topic` / `key` / `next` / `allowedEvents` / `resumeKey`。`exit` / `exits` は受理しない。
 
