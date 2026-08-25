@@ -169,7 +169,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ExecutionStreamService>();
         services.AddOptions<RequestLogOptions>()
             .Configure<IHostEnvironment>(ConfigureRequestLogOptions);
-        services.AddCors();
+        services.AddOptions<CorsOptions>()
+            .Bind(configuration.GetSection(CorsOptions.SectionName));
+        AddCorsDefaultPolicy(services, configuration);
         services.AddStateviaOpenApi();
         services.AddControllers(options => options.Filters.Add<ApiExceptionFilter>())
             .AddControllersAsServices()
@@ -284,6 +286,42 @@ public static class ServiceCollectionExtensions
         return Uri.TryCreate(options.BaseUrl.Trim(), UriKind.Absolute, out var uri)
             && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
     }
+    /// <summary>
+    /// 設定されたオリジンだけを許可する既定 CORS ポリシーを登録する。未設定時は ACAO を付けない。
+    /// </summary>
+    /// <param name="services">DI コンテナ。</param>
+    /// <param name="configuration">アプリケーション設定。</param>
+    private static void AddCorsDefaultPolicy(IServiceCollection services, IConfiguration configuration)
+    {
+        var allowedOrigins = ResolveCorsAllowedOrigins(configuration);
+        services.AddCors(options =>
+        {
+            options.AddDefaultPolicy(policy =>
+            {
+                if (allowedOrigins.Length == 0)
+                {
+                    return;
+                }
+
+                policy.WithOrigins(allowedOrigins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
+        });
+    }
+
+    /// <summary>空白・末尾スラッシュを除いた許可オリジン一覧を返す。</summary>
+    private static string[] ResolveCorsAllowedOrigins(IConfiguration configuration)
+    {
+        var configured = configuration.GetSection(CorsOptions.SectionName).Get<CorsOptions>()?.AllowedOrigins
+            ?? [];
+        return configured
+            .Where(static origin => !string.IsNullOrWhiteSpace(origin))
+            .Select(static origin => origin.Trim().TrimEnd('/'))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
     private static void ConfigureRequestLogOptions(RequestLogOptions options, IHostEnvironment environment)
     {
         if (environment.IsProduction())

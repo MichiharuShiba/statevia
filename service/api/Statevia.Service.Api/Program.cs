@@ -8,10 +8,7 @@ var app = builder.Build();
 app.UseMiddleware<ContractExceptionMiddleware>();
 app.UseMiddleware<TenantContextMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
-app.UseCors(policy => policy
-    .AllowAnyOrigin()
-    .AllowAnyMethod()
-    .AllowAnyHeader());
+app.UseCors();
 
 app.UseRouting();
 app.UseMiddleware<TraceContextEnrichmentMiddleware>();
@@ -20,4 +17,4 @@ app.UseStateviaOpenApi();
 
 app.MapControllers();
 
-app.Run();
+await app.RunAsync();
