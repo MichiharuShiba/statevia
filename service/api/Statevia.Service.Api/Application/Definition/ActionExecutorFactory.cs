@@ -10,7 +10,7 @@ using Statevia.Core.Engine.Execution;
 
 namespace Statevia.Service.Api.Application.Definition;
 
-/// <summary>状態定義の wait / action に応じて <see cref="IStateExecutor"/> を解決する（引擎は状態名のみ参照）。</summary>
+/// <summary>状態定義の wait（events / subscribe）または action に応じて <see cref="IStateExecutor"/> を解決する（引擎は状態名のみ参照）。</summary>
 internal sealed class ActionExecutorFactory : IStateExecutorFactory
 {
     private readonly WorkflowDefinition _definition;
@@ -49,12 +49,7 @@ internal sealed class ActionExecutorFactory : IStateExecutorFactory
 
         if (state.Wait is not null)
         {
-            var eventNames = state.Wait.Events.Keys.ToArray();
-            if (eventNames.Length == 0)
-            {
-                throw new InvalidOperationException($"Wait state '{stateName}' has no events.");
-            }
-
+            var eventNames = ResolveWaitEventNames(stateName, state.Wait);
             return DefaultStateExecutor.Create(new WaitOnlyState(eventNames));
         }
 
@@ -76,6 +71,31 @@ internal sealed class ActionExecutorFactory : IStateExecutorFactory
             binding.ResolvedModuleVersion,
             tenantId,
             _actionExecutor);
+    }
+
+    /// <summary>
+    /// Wait が待つイベント名を解決する。Subscribe は内部 resume 名、Signal は <c>events</c> キー。
+    /// </summary>
+    /// <param name="stateName">状態名（例外メッセージ用）。</param>
+    /// <param name="wait">Wait 定義。</param>
+    /// <returns>非空のイベント名一覧。</returns>
+    /// <exception cref="InvalidOperationException">events / subscribe のどちらも空のとき。</exception>
+    private static string[] ResolveWaitEventNames(string stateName, WaitDefinition wait)
+    {
+        if (wait.Subscribe.Count > 0)
+        {
+            return wait.Subscribe
+                .Select((_, index) => WaitSubscribeEventNames.ForIndex(index))
+                .ToArray();
+        }
+
+        var eventNames = wait.Events.Keys.ToArray();
+        if (eventNames.Length == 0)
+        {
+            throw new InvalidOperationException($"Wait state '{stateName}' has no events.");
+        }
+
+        return eventNames;
     }
 
     private bool CatalogRegistrationExists(StateActionBinding binding)

@@ -14,7 +14,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
     public async Task SyncAsync_PersistsEventWaitAndCursor_FromGraphJson()
     {
         // Arrange
-        using var db = new InMemoryTestDatabase();
+        using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var cursorRepo = new ExecutionCursorRepository();
         var waitRepo = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
@@ -67,7 +67,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
     public async Task SyncAsync_PersistsMultiEventWait_FromAllowedEvents()
     {
         // Arrange
-        using var db = new InMemoryTestDatabase();
+        using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var cursorRepo = new ExecutionCursorRepository();
         var waitRepo = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
@@ -116,7 +116,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
     public async Task SyncAsync_SkipsWaitWithoutEvents_WhenSelectingCursor()
     {
         // Arrange
-        using var db = new InMemoryTestDatabase();
+        using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var executionId = Guid.NewGuid();
         await SeedExecutionAsync(db, executionId);
@@ -162,27 +162,16 @@ public sealed class ExecutionOperationalProjectionSyncTests
     public async Task SyncAsync_ClearsOperationalRows_WhenTerminal()
     {
         // Arrange
-        using var db = new InMemoryTestDatabase();
+        using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var cursorRepo = new ExecutionCursorRepository();
         var waitRepo = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
         var executionId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
+        await SeedExecutionAsync(db, executionId);
         await using (var ctx = new CoreDbContext(db.Options))
         {
-            ctx.Executions.Add(new ExecutionRow
-            {
-                ExecutionId = executionId,
-                TenantId = TestTenantIds.T1TenantId,
-                DefinitionId = Guid.NewGuid(),
-                DefinitionVersionId = Guid.NewGuid(),
-                Status = "Completed",
-                StartedAt = now,
-                UpdatedAt = now,
-                CancelRequested = false,
-                RestartLost = false
-            });
             ctx.ExecutionCursors.Add(new ExecutionCursorRow
             {
                 ExecutionId = executionId,
@@ -225,7 +214,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
     public async Task SyncAsync_DeletesMatchingWait_WhenNodeIdToClearProvided()
     {
         // Arrange
-        using var db = new InMemoryTestDatabase();
+        using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var cursorRepo = new ExecutionCursorRepository();
         var waitRepo = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
@@ -288,7 +277,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
     public async Task SyncAsync_SelectsActiveStateNode_WhenRunningTaskMatchesSnapshot()
     {
         // Arrange
-        using var db = new InMemoryTestDatabase();
+        using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var executionId = Guid.NewGuid();
         await SeedExecutionAsync(db, executionId);
@@ -333,7 +322,7 @@ public sealed class ExecutionOperationalProjectionSyncTests
     public async Task SyncAsync_SelectsLatestRunningNode_WhenSnapshotHasNoActiveStates()
     {
         // Arrange
-        using var db = new InMemoryTestDatabase();
+        using var db = new SqliteTestDatabase();
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var executionId = Guid.NewGuid();
         await SeedExecutionAsync(db, executionId);
@@ -373,15 +362,82 @@ public sealed class ExecutionOperationalProjectionSyncTests
         Assert.Equal("w-new", cursor.CurrentWorkerId);
     }
 
-    private static async Task SeedExecutionAsync(InMemoryTestDatabase db, Guid executionId)
+    /// <summary>wait.subscribe のグラフでも durable wait と購読行が残る。</summary>
+    [Fact]
+    public async Task SyncAsync_PersistsSubscribeWaitAndSubscriptions_FromGraphJson()
     {
+        // Arrange
+        using var db = new SqliteTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var executionId = Guid.NewGuid();
+        var graphJson =
+            """
+            {"nodes":[
+              {"nodeId":"wait-sub","nodeName":"Sub","nodeType":"Wait","startedAt":"2026-05-26T00:00:00Z","allowedEvents":["statevia.event.subscribe.0"],"subscriptions":[{"topic":"order.created","key":"k1","resumeEventName":"statevia.event.subscribe.0"}],"workerId":"w-sub"}
+            ]}
+            """;
+
+        await SeedExecutionAsync(db, executionId);
+
+        var request = new ExecutionOperationalProjectionSyncRequest(
+            executionId,
+            TestTenantIds.T1TenantId,
+            "Running",
+            new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["Sub"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            graphJson,
+            NodeIdToClear: null);
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        await ExecutionOperationalProjectionSync.SyncAsync(
+            uow,
+            new ExecutionCursorRepository(),
+            new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator()),
+            request,
+            new DefaultIdGenerator(),
+            CancellationToken.None);
+        await uow.SaveChangesAsync(CancellationToken.None);
+
+        // Assert
+        await using var verify = new CoreDbContext(db.Options);
+        var wait = await verify.ExecutionWaits.SingleAsync(x => x.ExecutionId == executionId);
+        Assert.Equal("wait-sub", wait.NodeId);
+        Assert.Equal(["statevia.event.subscribe.0"], wait.AllowedEvents);
+        var subscription = await verify.ExecutionWaitSubscriptions.SingleAsync(x => x.ExecutionId == executionId);
+        Assert.Equal("order.created", subscription.Topic);
+        Assert.Equal("k1", subscription.CorrelationKey);
+        var cursor = await verify.ExecutionCursors.SingleAsync(x => x.ExecutionId == executionId);
+        Assert.Equal("wait-sub", cursor.CurrentNodeId);
+    }
+
+    private static async Task SeedExecutionAsync(SqliteTestDatabase db, Guid executionId)
+    {
+        var definitionId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
         await using var ctx = new CoreDbContext(db.Options);
+        ProjectTestData.AddDefaultProject(ctx, TestTenantIds.T1TenantId, "t1", projectId);
+        DefinitionTestData.AddDefinitionWithVersion(
+            ctx,
+            TestTenantIds.T1TenantId,
+            definitionId,
+            "wf-ops-sync",
+            projectId,
+            versionId: versionId);
         ctx.Executions.Add(new ExecutionRow
         {
             ExecutionId = executionId,
             TenantId = TestTenantIds.T1TenantId,
-            DefinitionId = Guid.NewGuid(),
-            DefinitionVersionId = Guid.NewGuid(),
+            DefinitionId = definitionId,
+            DefinitionVersionId = versionId,
             Status = "Running",
             StartedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,

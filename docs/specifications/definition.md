@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.5.5 |
-| 更新日 | 2026-08-24 |
+| Version | 1.5.6 |
+| 更新日 | 2026-08-26 |
 | 関連 | [concepts/definition.md](../concepts/definition.md), [execution/wait-cancel.md](execution/wait-cancel.md), [execution/fork-join.md](execution/fork-join.md) |
 
 ---
@@ -296,6 +296,7 @@ Wait は **Signal**（`events`）と **Subscribe**（`subscribe`）の二モー�
 - **wait.subscribe**（Subscribe）: 配列。各要素は `topic`（必須）・`key`（任意）・`next`（必須）。
   - 集合配送用。`POST /v1/events` は topic / key のみ送り、遷移名は配信者が指定しない。
   - コンパイル時に内部イベント名 `statevia.event.subscribe.{index}` を払い出し、route table のキー → `next` に載せる。
+  - 同じ index の購読は compiled JSON の **`waitSubscriptions`**（topic / key / resumeEventName / next）にも載る。実行時の Wait 実行器はこの内部イベント名を待つ。古い `compiled_json` に当該キーが無くても、同一版の `source_yaml` から再構築する。
   - `key` 省略・空白は `""` に正規化する（照合も厳密一致）。
   - 入れ子の子から親 wait を進める **専用機能ではない**。同じ topic / key を発行すれば相関はできるが、一致した購読はすべて再開し得る。1:1 に近づけたい場合の key 一意性は作者の責務。発行口は `POST /v1/events` と builtin `event.publish`（同じ `IEventIngressService`）。
 - **旧形式の正規化**: `wait.event: X` + `on.Completed.next: Y` は Loader が `events: { X: Y }` へ自動変換する。`wait.events` と `wait.event` の併記はエラー。

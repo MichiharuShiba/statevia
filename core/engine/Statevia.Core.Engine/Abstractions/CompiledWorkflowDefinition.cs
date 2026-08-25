@@ -30,6 +30,7 @@ public sealed class CompiledWorkflowDefinition
 
     /// <summary>
     /// Wait 明示購読表。状態名 → subscribe エントリ一覧（空なら集合配送対象外）。
+    /// compiled JSON キーは <c>waitSubscriptions</c>。欠落時は同一版 YAML から再構築する。
     /// </summary>
     public IReadOnlyDictionary<string, IReadOnlyList<WaitSubscriptionDefinition>> WaitSubscriptions { get; init; }
         = new Dictionary<string, IReadOnlyList<WaitSubscriptionDefinition>>(StringComparer.OrdinalIgnoreCase);

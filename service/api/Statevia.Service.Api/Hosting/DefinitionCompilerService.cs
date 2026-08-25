@@ -91,6 +91,7 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
             forkTable = compiled.ForkTable,
             joinTable = compiled.JoinTable,
             waitEventRouteTable = compiled.WaitEventRouteTable,
+            waitSubscriptions = compiled.WaitSubscriptions,
             stateInputs = compiled.StateInputs,
             stateOutputs = compiled.StateOutputs,
             resolvedModules = compiled.ResolvedModules,
@@ -116,7 +117,8 @@ internal sealed class DefinitionCompilerService : IDefinitionCompilerService
             compiledJson,
             factory,
             compileBindings.ResolvedModules,
-            compileBindings.StateActionBindings);
+            compileBindings.StateActionBindings,
+            waitSubscriptions: DefinitionCompiler.CreateWaitSubscriptions(def));
     }
 
     private static WorkflowDefinition ResolveActionNames(WorkflowDefinition def) =>
