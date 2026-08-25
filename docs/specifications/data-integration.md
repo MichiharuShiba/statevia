@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.5 |
-| 更新日 | 2026-05-26 |
+| Version | 1.5.1 |
+| 更新日 | 2026-08-25 |
 | Scope | Core-Engine / Service API / UI |
 | 関連 | [concepts/durability.md](../concepts/durability.md), [api-http.md](api-http.md) |
 
@@ -21,6 +21,8 @@
 責務の背景は [Concept: 永続化](../concepts/durability.md) を参照。
 
 ---
+
+**Version 1.5.1（2026-08-25）**: `execution_cursors` は投影キューと checkpoint 永続化が重なっても PK の原子 upsert で 1 行に収束する。HTTP パスは増やさない。
 
 **Version 1.5（2026-05-26）**: ExecutionSpace 命名統一（7a〜7d）。HTTP `/v1/executions`、永続 `executions` / `execution_events`、`StartExecutionRequest.input` / `IExecutionEngine.Start(..., input)` に同期。
 
@@ -193,7 +195,7 @@ UIが依存してよいレスポンス形を固定する。
 - **「ステート完了」の定義（粒度 A）**: 実行グラフ上で **`CompleteNode` が適用された直後**を、投影更新の契機とする。対象には **通常ステートに加え、Join の合成ノード**を含める（合成ノードも常に投影スナップショットに含める）。
 - **event_store**: ノード完了のたびに **`event_store` へ新種別を追記しない**（当面）。`event_store` に載せるのは **外部送信・コマンドに紐づくイベントのみ**（§STV-414 の表）。ノード履歴の監査や reducer 連携が必要になった場合は **別途** 種別・ペイロード・トランザクション境界を定義する。
 - **Read Model の正本**: 引き続き `executions` + `execution_graph_snapshots`。ノード完了経路の投影更新は **`event_store` を伴わない**コミットであり得る。UI・SSE の正本は Read API / 投影済み JSON とする方針（§5.1、`AGENTS.md`）は変えない。
-- **`execution_cursors` / `execution_waits`（task 8）**: **実装済み**。cursor は **operational projection**（GET read-model の正本ではない）。durable wait は初版 **EventWait** のみ（Engine グラフ上 `nodeType=Wait`・未完了・`allowedEvents` または互換の `waitKey` あり）。`allowed_events` は WaitEventRouteTable 由来の許可イベント配列。`wait_kind` 列挙は **EventWait / CallbackWait / DelayWait**（将来拡張は CallbackWait / DelayWait）。`Start` / `Cancel` / `Publish` / 投影キュー（`UpdateProjectionFromEngineAsync`）と **同一 tx** で `executions` + `execution_graph_snapshots` と同期する。
+- **`execution_cursors` / `execution_waits`（task 8）**: **実装済み**。cursor は **operational projection**（GET read-model の正本ではない）。durable wait は初版 **EventWait** のみ（Engine グラフ上 `nodeType=Wait`・未完了・`allowedEvents` または互換の `waitKey` あり）。`allowed_events` は WaitEventRouteTable 由来の許可イベント配列。`wait_kind` 列挙は **EventWait / CallbackWait / DelayWait**（将来拡張は CallbackWait / DelayWait）。`Start` / `Cancel` / `Publish` / 投影キュー（`UpdateProjectionFromEngineAsync`）と **同一 tx** で `executions` + `execution_graph_snapshots` と同期する。cursor 行は投影キューと checkpoint 永続化が重なっても **PK 単位の原子 upsert**（`ON CONFLICT (execution_id)`）で 1 行に収束する。HTTP パスは増やさない。
 - **投影キューのテナント文脈**: `ExecutionProjectionUpdateQueueService` は HTTP 外のバックグラウンド処理のため、投影更新前に `executions.tenant_id` を Platform lookup（`IgnoreQueryFilters`）で解決し、`ITenantContextAccessor` にテナント境界のみを設定してから repository を呼ぶ。Principal は不要（テナント fail-closed クエリフィルタのため）。execution 行が無い場合は投影をスキップする。
 
 #### 高負荷時: API 内キュー（ドラフト）

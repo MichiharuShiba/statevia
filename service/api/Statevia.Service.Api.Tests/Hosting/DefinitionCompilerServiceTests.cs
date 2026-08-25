@@ -225,6 +225,52 @@ public sealed class DefinitionCompilerServiceTests
         Assert.Equal("End", compiled.WaitEventRouteTable["A"]["E"].Next);
     }
 
+    /// <summary>wait.subscribe は実行器と購読表を持ち、JSON 欠落時も YAML から復元する。</summary>
+    [Fact]
+    public void RestoreFromStoredVersion_WaitSubscribe_RebuildsSubscriptionsWhenJsonOmitsThem()
+    {
+        // Arrange
+        var svc = CreateSut();
+        var yaml = """
+            workflow:
+              name: W
+            states:
+              Start:
+                action: statevia.action.builtin.execution.noop
+                on:
+                  Completed:
+                    next: WaitPaid
+              WaitPaid:
+                wait:
+                  subscribe:
+                    - topic: orders.paid
+                      next: End
+                    - topic: orders.cancelled
+                      next: End
+              End:
+                action: statevia.action.builtin.execution.noop
+                on:
+                  Completed:
+                    end: true
+            """;
+        var (compiled, compiledJson) = svc.ValidateAndCompile("W", yaml);
+        var compiledJsonObject = System.Text.Json.Nodes.JsonNode.Parse(compiledJson)!.AsObject();
+        compiledJsonObject.Remove("waitSubscriptions");
+        var jsonWithoutSubscriptions = compiledJsonObject.ToJsonString();
+
+        // Act
+        var restored = svc.RestoreFromStoredVersion(yaml, jsonWithoutSubscriptions);
+
+        // Assert
+        Assert.NotNull(compiled.StateExecutorFactory.GetExecutor("WaitPaid"));
+        Assert.Contains("waitSubscriptions", compiledJson, StringComparison.Ordinal);
+        Assert.Equal("orders.paid", compiled.WaitSubscriptions["WaitPaid"][0].Topic);
+        Assert.NotNull(restored.StateExecutorFactory.GetExecutor("WaitPaid"));
+        Assert.Equal(2, restored.WaitSubscriptions["WaitPaid"].Count);
+        Assert.Equal("orders.paid", restored.WaitSubscriptions["WaitPaid"][0].Topic);
+        Assert.Equal("orders.cancelled", restored.WaitSubscriptions["WaitPaid"][1].Topic);
+    }
+
     /// <summary>
     /// action 省略状態は implicit noop（canonical FQCN）としてコンパイルできる。
     /// </summary>

@@ -82,6 +82,41 @@ public sealed class CompiledDefinitionJsonReaderTests
         Assert.Equal("1.0.0", compiled.StateActionBindings["A"].ResolvedModuleVersion);
     }
 
+    /// <summary>compiled_json の waitSubscriptions を復元する。</summary>
+    [Fact]
+    public void Read_WhenWaitSubscriptionsPresent_RestoresSubscribeTable()
+    {
+        // Arrange
+        const string json = """
+            {
+              "name": "W",
+              "initialState": "A",
+              "transitions": {},
+              "waitSubscriptions": {
+                "WaitPaid": [
+                  {
+                    "topic": "orders.paid",
+                    "key": "k1",
+                    "resumeEventName": "statevia.event.subscribe.0",
+                    "next": "End"
+                  }
+                ]
+              }
+            }
+            """;
+        var factory = new StubExecutorFactory();
+
+        // Act
+        var compiled = CompiledDefinitionJsonReader.Read(json, factory);
+
+        // Assert
+        var entry = Assert.Single(compiled.WaitSubscriptions["WaitPaid"]);
+        Assert.Equal("orders.paid", entry.Topic);
+        Assert.Equal("k1", entry.Key);
+        Assert.Equal("statevia.event.subscribe.0", entry.ResumeEventName);
+        Assert.Equal("End", entry.Next);
+    }
+
     /// <summary>無効な compiled_json は ArgumentException になる。</summary>
     [Fact]
     public void Read_InvalidJson_ThrowsArgumentException()

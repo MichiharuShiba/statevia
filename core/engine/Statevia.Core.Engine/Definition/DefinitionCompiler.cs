@@ -254,6 +254,21 @@ public sealed class DefinitionCompiler
         return result;
     }
 
+    /// <summary>
+    /// Wait.subscribe から明示購読表を構築する。
+    /// </summary>
+    /// <remarks>
+    /// compiled_json に <c>waitSubscriptions</c> が無い定義版を、同一版の YAML から復元するときに使う。
+    /// </remarks>
+    /// <param name="definition">ワークフロー定義。</param>
+    /// <returns>状態名 → 購読エントリ。Subscribe が無い状態は含まない。</returns>
+    public static IReadOnlyDictionary<string, IReadOnlyList<WaitSubscriptionDefinition>> CreateWaitSubscriptions(
+        WorkflowDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        return BuildWaitSubscriptions(definition);
+    }
+
     /// <summary>Wait.subscribe 明示購読を状態名キーで構築する。</summary>
     private static Dictionary<string, IReadOnlyList<WaitSubscriptionDefinition>> BuildWaitSubscriptions(
         WorkflowDefinition definition)

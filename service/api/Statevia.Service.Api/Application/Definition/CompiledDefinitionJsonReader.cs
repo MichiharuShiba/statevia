@@ -34,11 +34,19 @@ internal static class CompiledDefinitionJsonReader
     }
 
     /// <summary>保存済み compiled_json と factory から実行定義を復元する。</summary>
+    /// <param name="compiledJson">definition_versions.compiled_json。</param>
+    /// <param name="factory">状態実行器ファクトリ。</param>
+    /// <param name="resolvedModules">版ピン済み module 解決。省略時は JSON から復元。</param>
+    /// <param name="stateActionBindings">状態別 Action バインディング。省略時は JSON から復元。</param>
+    /// <param name="waitSubscriptions">
+    /// 明示購読表。指定時は JSON より優先する（YAML からの再構築。古い compiled_json 欠落の補完）。
+    /// </param>
     public static CompiledWorkflowDefinition Read(
         string compiledJson,
         IStateExecutorFactory factory,
         IReadOnlyDictionary<string, ResolvedModuleBinding>? resolvedModules = null,
-        IReadOnlyDictionary<string, StateActionBinding>? stateActionBindings = null)
+        IReadOnlyDictionary<string, StateActionBinding>? stateActionBindings = null,
+        IReadOnlyDictionary<string, IReadOnlyList<WaitSubscriptionDefinition>>? waitSubscriptions = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(compiledJson);
         ArgumentNullException.ThrowIfNull(factory);
@@ -56,6 +64,7 @@ internal static class CompiledDefinitionJsonReader
             ForkTable = MapStringListTable(dto.ForkTable),
             JoinTable = MapStringListTable(dto.JoinTable),
             WaitEventRouteTable = MapWaitEventRouteTable(dto.WaitEventRouteTable),
+            WaitSubscriptions = waitSubscriptions ?? MapWaitSubscriptions(dto.WaitSubscriptions),
             StateInputs = dto.StateInputs ?? [],
             StateOutputs = dto.StateOutputs ?? [],
             ResolvedModules = modules,
@@ -196,6 +205,58 @@ internal static class CompiledDefinitionJsonReader
             StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>compiled_json の waitSubscriptions を Engine 型へ写像する。</summary>
+    private static Dictionary<string, IReadOnlyList<WaitSubscriptionDefinition>> MapWaitSubscriptions(
+        Dictionary<string, List<WaitSubscriptionDto>?>? table)
+    {
+        if (table is null || table.Count == 0)
+        {
+            return new Dictionary<string, IReadOnlyList<WaitSubscriptionDefinition>>(
+                StringComparer.OrdinalIgnoreCase);
+        }
+
+        return table.ToDictionary(
+            pair => pair.Key,
+            pair => (IReadOnlyList<WaitSubscriptionDefinition>)(pair.Value ?? [])
+                .Select((entry, index) => MapWaitSubscription(pair.Key, index, entry))
+                .ToList(),
+            StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static WaitSubscriptionDefinition MapWaitSubscription(
+        string stateName,
+        int index,
+        WaitSubscriptionDto? entry)
+    {
+        if (entry is null)
+        {
+            throw new ArgumentException($"waitSubscriptions['{stateName}'][{index}] is missing.");
+        }
+
+        if (string.IsNullOrWhiteSpace(entry.Topic))
+        {
+            throw new ArgumentException($"waitSubscriptions['{stateName}'][{index}] is missing topic.");
+        }
+
+        if (string.IsNullOrWhiteSpace(entry.ResumeEventName))
+        {
+            throw new ArgumentException($"waitSubscriptions['{stateName}'][{index}] is missing resumeEventName.");
+        }
+
+        if (string.IsNullOrWhiteSpace(entry.Next))
+        {
+            throw new ArgumentException($"waitSubscriptions['{stateName}'][{index}] is missing next.");
+        }
+
+        return new WaitSubscriptionDefinition
+        {
+            Topic = entry.Topic.Trim(),
+            Key = string.IsNullOrWhiteSpace(entry.Key) ? string.Empty : entry.Key.Trim(),
+            ResumeEventName = entry.ResumeEventName.Trim(),
+            Next = entry.Next.Trim()
+        };
+    }
+
     private static TransitionTarget MapTarget(TransitionTargetDto dto) =>
         new()
         {
@@ -213,6 +274,7 @@ internal static class CompiledDefinitionJsonReader
         public Dictionary<string, List<string>?>? ForkTable { get; set; } = [];
         public Dictionary<string, List<string>?>? JoinTable { get; set; } = [];
         public Dictionary<string, Dictionary<string, WaitEventRouteDto>?>? WaitEventRouteTable { get; set; } = [];
+        public Dictionary<string, List<WaitSubscriptionDto>?>? WaitSubscriptions { get; set; } = [];
         public Dictionary<string, StateInputDefinition>? StateInputs { get; set; } = [];
         public Dictionary<string, string>? StateOutputs { get; set; } = [];
         public Dictionary<string, ResolvedModuleBindingDto>? ResolvedModules { get; set; } = [];
@@ -221,6 +283,14 @@ internal static class CompiledDefinitionJsonReader
 
     private sealed class WaitEventRouteDto
     {
+        public string Next { get; set; } = string.Empty;
+    }
+
+    private sealed class WaitSubscriptionDto
+    {
+        public string Topic { get; set; } = string.Empty;
+        public string Key { get; init; } = string.Empty;
+        public string ResumeEventName { get; set; } = string.Empty;
         public string Next { get; set; } = string.Empty;
     }
 

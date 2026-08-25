@@ -65,6 +65,37 @@ public sealed class ActionExecutorFactoryTests
         Assert.NotNull(executor);
     }
 
+    /// <summary>wait.subscribe のみの状態でも内部 resume 名で実行器を生成できる。</summary>
+    [Fact]
+    public void GetExecutor_WhenStateHasWaitSubscribe_ReturnsExecutor()
+    {
+        // Arrange
+        var def = new WorkflowDefinition
+        {
+            Name = "W",
+            States = new Dictionary<string, StateDefinition>
+            {
+                ["A"] = new StateDefinition
+                {
+                    Wait = new WaitDefinition
+                    {
+                        Subscribe =
+                        [
+                            new WaitSubscribeEntry { Topic = "orders.paid", Next = "Next" }
+                        ]
+                    },
+                },
+            },
+        };
+        var (sut, _) = CreateSut(def);
+
+        // Act
+        var executor = sut.GetExecutor("A");
+
+        // Assert
+        Assert.NotNull(executor);
+    }
+
     /// <summary>空白アクション名の状態では NoOp を実行できる。</summary>
     [Fact]
     public async Task GetExecutor_WhenStateActionWhitespace_ExecutesNoOp()

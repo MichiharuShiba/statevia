@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Concept |
-| Version | 1.5 |
-| 更新日 | 2026-08-10 |
+| Version | 1.5.1 |
+| 更新日 | 2026-08-25 |
 | 関連 | [../specifications/data-integration.md](../specifications/data-integration.md), [../specifications/execution/fork-join.md](../specifications/execution/fork-join.md) |
 
 ---
@@ -32,7 +32,7 @@ in-process の `GetSnapshot` はデバッグやコールバック経路向けで
 
 ## Wait と cursor
 
-`execution_cursors` と `execution_waits`（EventWait の durable wait）は、executions 更新と**同一トランザクション**で同期します。read-model の GET は cursor に依存せず、グラフスナップショットを正とします。
+`execution_cursors` と `execution_waits`（EventWait の durable wait）は、executions 更新と**同一トランザクション**で同期します。cursor は投影キューと checkpoint 永続化が重なっても PK の原子 upsert で 1 行に収束します。read-model の GET は cursor に依存せず、グラフスナップショットを正とします。
 
 `execution_work_items` の kind は **Start / Resume / Cancel** です（Delay 期限も `Resume` + `mode=event`）。複数の API プロセスは PostgreSQL の `FOR UPDATE SKIP LOCKED` により同一項目を同時処理しません。処理中は work item lease と checkpoint 所有 lease を heartbeat 延長します。
 
