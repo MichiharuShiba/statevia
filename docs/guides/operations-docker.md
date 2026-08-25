@@ -76,7 +76,7 @@ docker compose up -d
 
 | サービス   | 主な変数 |
 | ---------- | -------- |
-| service-api | `DATABASE_URL`（`POSTGRES_*` から組み立て）, `ASPNETCORE_URLS`, `ASPNETCORE_ENVIRONMENT`（compose では `Development`）。分離時は override で `Statevia__Runtime__EnableInProcess*=false` |
+| service-api | `DATABASE_URL`（`POSTGRES_*` から組み立て）, `ASPNETCORE_URLS`, `ASPNETCORE_ENVIRONMENT`（compose では `Development`）。分離時は override で `Statevia__Runtime__EnableInProcess*=false`。ブラウザから API へ直叩きする場合のみ `Statevia__Cors__AllowedOrigins__0`（未設定時はクロスオリジン不許可。Studio はプロキシ） |
 | postgres    | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`（`.env` / `.env.example`） |
 | action-host | `ASPNETCORE_URLS`（compose では `http://+:5001`）, `STATEVIA_MODULES_PATH`（`/app/modules`） |
 | scheduler / worker | `DATABASE_URL`（`docker-compose.split-runtime.yml`）。worker は `Statevia__ActionHost__BaseUrl` も共有 |
