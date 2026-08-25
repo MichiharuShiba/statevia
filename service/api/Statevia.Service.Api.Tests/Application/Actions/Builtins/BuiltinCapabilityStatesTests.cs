@@ -3,13 +3,12 @@ using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Builtins;
 
-/// <summary>sleep / signal / publish / workflow Builtin の単体テスト。</summary>
+/// <summary>sleep / signal Builtin の単体テスト。</summary>
 public sealed class BuiltinCapabilityStatesTests
 {
     private sealed class FakeEventProvider : IEventProvider
     {
         public string? LastSignal { get; private set; }
-        public string? LastTopic { get; private set; }
 
         public Task WaitAsync(string eventName, CancellationToken ct) => Task.CompletedTask;
 
@@ -20,7 +19,7 @@ public sealed class BuiltinCapabilityStatesTests
 
         public void Resume(string nodeId, string eventName) { }
 
-        public void PublishTopic(string topic, object? payloadSummary) => LastTopic = topic;
+        public void PublishTopic(string topic, object? payloadSummary) { }
     }
 
     private sealed class FakeStore : IReadOnlyStateStore
@@ -70,23 +69,6 @@ public sealed class BuiltinCapabilityStatesTests
 
         // Assert
         Assert.Equal("approval", events.LastSignal);
-    }
-
-    /// <summary>publish は topic dispatch を記録する。</summary>
-    [Fact]
-    public async Task PublishActionState_DispatchesTopic()
-    {
-        // Arrange
-        var events = new FakeEventProvider();
-        var state = new PublishActionState();
-        var input = new Dictionary<string, object?> { ["topic"] = "payment.completed" };
-
-        // Act
-        var result = await state.ExecuteAsync(MakeContext(events), input, CancellationToken.None);
-
-        // Assert
-        Assert.Equal("payment.completed", events.LastTopic);
-        Assert.IsType<Dictionary<string, object?>>(result);
     }
 
     /// <summary>signal は current 以外の target を拒否する。</summary>

@@ -137,15 +137,14 @@ internal sealed class ExecutionWaitRepository(
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
         ArgumentNullException.ThrowIfNull(correlationKey);
 
-        return await uow.GetDb().ExecutionWaitSubscriptions
-            .AsNoTracking()
-            .Where(subscription =>
-                subscription.Topic == topic
-                && subscription.CorrelationKey == correlationKey)
-            .OrderBy(subscription => subscription.CreatedAt)
-            .ThenBy(subscription => subscription.ExecutionId)
-            .ThenBy(subscription => subscription.NodeId)
-            .Select(subscription => new MatchingWaitSubscription(
+        var db = uow.GetDb();
+        return await (
+            from subscription in db.ExecutionWaitSubscriptions.AsNoTracking()
+            join execution in db.Executions.AsNoTracking()
+                on subscription.ExecutionId equals execution.ExecutionId
+            where subscription.Topic == topic && subscription.CorrelationKey == correlationKey
+            orderby subscription.CreatedAt, subscription.ExecutionId, subscription.NodeId
+            select new MatchingWaitSubscription(
                 subscription.ExecutionId,
                 subscription.NodeId,
                 subscription.ResumeEventName))

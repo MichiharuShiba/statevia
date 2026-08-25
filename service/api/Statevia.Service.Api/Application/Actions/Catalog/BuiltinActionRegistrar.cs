@@ -69,7 +69,7 @@ internal static class BuiltinActionRegistrar
         var actionId = WellKnownActionIds.Publish;
         catalog.Register(
             CreateBuiltinDescriptor(actionId),
-            new ActionCatalogEntry(InProcessFactory: CreateFactory(new PublishActionState())),
+            new ActionCatalogEntry(InProcessFactory: CreateScopedFactory<PublishActionState>()),
             new ActionCapabilityMetadata(ActionCapabilityCategory.Event, "Publish", IsExperimental: false),
             BuiltinActionSchemas.Publish(actionId));
     }

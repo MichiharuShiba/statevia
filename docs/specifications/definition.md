@@ -3,7 +3,7 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.5.4 |
+| Version | 1.5.5 |
 | 更新日 | 2026-08-24 |
 | 関連 | [concepts/definition.md](../concepts/definition.md), [execution/wait-cancel.md](execution/wait-cancel.md), [execution/fork-join.md](execution/fork-join.md) |
 
@@ -82,7 +82,7 @@ YAML 上の `action` 参照は syntax parse のあと、Service API Compiler（`
 | execution.noop | `statevia.action.builtin.execution.noop` | 即時完了（入力をそのまま出力）。省略時もこれ |
 | execution.sleep | `statevia.action.builtin.execution.sleep` | `input.duration` で待機 |
 | execution.signal | `statevia.action.builtin.execution.signal` | 実行スコープ内シグナル発行 |
-| event.publish | `statevia.action.builtin.event.publish` | システムトピック発行（MVP stub） |
+| event.publish | `statevia.action.builtin.event.publish` | システムトピック発行（`POST /v1/events` と同じ購読照合） |
 | workflow.invoke | `statevia.action.builtin.workflow.invoke` | 子ワークフロー起動（開始直後に status を返す。子終端は親 wait を自動再開しない） |
 
 Builtin の Catalog `ModuleId` は `statevia.action.builtin`。旧 canonical（例: `statevia.action.builtin.sleep`）と短名は解決しない。
@@ -208,8 +208,10 @@ states:
 
 #### publish（`statevia.action.builtin.event.publish`）
 
-- **input**: `{ topic, payload? }` — `topic` 必須。`payload` は任意（MVP では dispatch ログの要約のみ）
-- **output**: `{ topic, dispatched: true }` — 外部 bus には未接続（stub）
+- **input**: `{ topic, key?, payload? }` — `topic` 必須。`key` は任意（省略・空白は `""`）。`payload` は任意（この段階では Wait 再開値に反映しない）
+- **output**: `{ topic, dispatched: true }` — 一致購読が 0 件でも成功（HTTP `POST /v1/events` の 204 と同じ受理）
+- **配送**: Application の `IEventIngressService`（HTTP events と同じ照合）。`wait.subscribe` のアクティブ購読を topic / key の厳密一致で再開する。Signal モード（`wait.events`）は対象外。外部メッセージバスには接続しない
+- **制約**: 親子専用 Resume ではない。一致が複数なら 1:N。短名 `publish` は受理しない
 
 #### workflow（`statevia.action.builtin.workflow.invoke`）
 
@@ -271,7 +273,7 @@ states:
 | 概念 | スコープ | Builtin / ノード |
 | --- | --- | --- |
 | signal | execution-scoped | `signal` action → wait の許可イベント再開 |
-| publish | system-scoped | `publish` action（MVP stub） |
+| publish | system-scoped | `event.publish` → `IEventIngressService`（`POST /v1/events` と同じ） |
 | wait | execution-scoped（ノード単位） | `wait.events` は `ResumeWaitNode`（HTTP Resume）。`wait.subscribe` は `POST /v1/events`（1:N ありうる） |
 
 Phase 2（未実装）: wait ノード直下に `duration` / `signal` / `event` を排他指定する統合構文。
@@ -295,7 +297,7 @@ Wait は **Signal**（`events`）と **Subscribe**（`subscribe`）の二モー�
   - 集合配送用。`POST /v1/events` は topic / key のみ送り、遷移名は配信者が指定しない。
   - コンパイル時に内部イベント名 `statevia.event.subscribe.{index}` を払い出し、route table のキー → `next` に載せる。
   - `key` 省略・空白は `""` に正規化する（照合も厳密一致）。
-  - 入れ子の子から親 wait を進める **専用機能ではない**。同じ topic / key を発行すれば相関はできるが、一致した購読はすべて再開し得る。1:1 に近づけたい場合の key 一意性は作者の責務。builtin `event.publish` は MVP stub（外部 bus 未接続）。発行の正本は `POST /v1/events`。
+  - 入れ子の子から親 wait を進める **専用機能ではない**。同じ topic / key を発行すれば相関はできるが、一致した購読はすべて再開し得る。1:1 に近づけたい場合の key 一意性は作者の責務。発行口は `POST /v1/events` と builtin `event.publish`（同じ `IEventIngressService`）。
 - **旧形式の正規化**: `wait.event: X` + `on.Completed.next: Y` は Loader が `events: { X: Y }` へ自動変換する。`wait.events` と `wait.event` の併記はエラー。
 - **公開語彙**: `events` / `subscribe` / `topic` / `key` / `next` / `allowedEvents` / `resumeKey`。`exit` / `exits` は受理しない。
 

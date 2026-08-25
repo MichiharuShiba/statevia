@@ -69,6 +69,31 @@ public sealed class BuiltinActionSchemasTests
         Assert.False(root.GetProperty("additionalProperties").GetBoolean());
     }
 
+    /// <summary>publish input schema は topic 必須で key 任意、遷移名フィールドは置かない。</summary>
+    [Fact]
+    public void Publish_InputSchema_RequiresTopicAndOptionalKey()
+    {
+        // Arrange
+        var publication = BuiltinActionSchemas.Publish(WellKnownActionIds.Publish);
+        var root = publication.SchemaBundle.InputSchema.RootElement;
+
+        // Act
+        var required = root.GetProperty("required")
+            .EnumerateArray()
+            .Select(element => element.GetString())
+            .ToArray();
+        var properties = root.GetProperty("properties");
+
+        // Assert
+        Assert.Equal(["topic"], required);
+        Assert.True(properties.TryGetProperty("topic", out _));
+        Assert.True(properties.TryGetProperty("key", out _));
+        Assert.True(properties.TryGetProperty("payload", out _));
+        Assert.False(properties.TryGetProperty("event", out _));
+        Assert.Equal(["topic", "key", "payload"], publication.UiMetadata!.FieldOrder);
+        Assert.False(root.GetProperty("additionalProperties").GetBoolean());
+    }
+
     public static TheoryData<string, Func<string, ActionPublication>> BuiltinActionCases =>
         new()
         {
