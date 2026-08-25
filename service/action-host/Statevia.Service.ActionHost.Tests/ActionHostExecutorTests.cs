@@ -35,6 +35,30 @@ public sealed class ActionHostExecutorTests
         Assert.Equal("DeadlineExceeded", result.ErrorCode);
     }
 
+    /// <summary>builtin event.publish は Host に未登録のため成功しない（PublishTopic stub 成功を防ぐ）。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenBuiltinEventPublishIsUnknown_ReturnsUnknownAction()
+    {
+        // Arrange
+        var executor = CreateExecutor(CreateEchoRegistration("test.module.echo"));
+
+        // Act
+        var result = await executor.ExecuteAsync(
+            new ActionExecutionRequest
+            {
+                ExecutionId = "exec-publish",
+                StateName = "Publish",
+                ActionId = "statevia.action.builtin.event.publish",
+                TenantId = "00000000-0000-4000-8000-000000000001",
+            },
+            CancellationToken.None);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Equal("UnknownAction", result.ErrorCode);
+        Assert.Contains("statevia.action.builtin.event.publish", result.ErrorMessage, StringComparison.Ordinal);
+    }
+
     /// <summary>将来の deadline は CancelAfter を設定したうえで実行を完了できる。</summary>
     [Fact]
     public async Task ExecuteAsync_WhenDeadlineInFuture_CompletesSuccessfully()

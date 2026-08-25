@@ -2,6 +2,9 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
 WORKDIR /src
 
+# Abstractions.csproj が Import する（無いと MSB4019）
+COPY build/ ./build/
+
 COPY service/action-host/Statevia.Service.ActionHost/Statevia.Service.ActionHost.csproj ./service/action-host/Statevia.Service.ActionHost/
 COPY core/engine/Statevia.Core.Engine/Statevia.Core.Engine.csproj ./core/engine/Statevia.Core.Engine/
 COPY core/actions/Statevia.Core.Actions.Abstractions/Statevia.Core.Actions.Abstractions.csproj ./core/actions/Statevia.Core.Actions.Abstractions/

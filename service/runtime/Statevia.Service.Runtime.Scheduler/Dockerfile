@@ -2,6 +2,9 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
 WORKDIR /src
 
+# Abstractions.csproj が Import する（無いと MSB4019）
+COPY build/ ./build/
+
 COPY service/runtime/Statevia.Service.Runtime.Scheduler/Statevia.Service.Runtime.Scheduler.csproj ./service/runtime/Statevia.Service.Runtime.Scheduler/
 COPY service/runtime/Statevia.Runtime/Statevia.Runtime.csproj ./service/runtime/Statevia.Runtime/
 COPY core/application/Statevia.Core.Application.Contracts/Statevia.Core.Application.Contracts.csproj ./core/application/Statevia.Core.Application.Contracts/

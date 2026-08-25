@@ -160,6 +160,7 @@ internal static class BuiltinActionSchemas
         var fields = new Dictionary<string, ActionFieldUiHints>
         {
             ["topic"] = FieldHints(actionId, "topic", widget: "text"),
+            ["key"] = FieldHints(actionId, "key", widget: "text"),
             ["payload"] = FieldHints(actionId, "payload", widget: "text"),
         };
         return Create(
@@ -175,6 +176,10 @@ internal static class BuiltinActionSchemas
               "required": ["topic"],
               "properties": {
                 "topic": {
+                  "type": "string",
+                  "{{ValueKindKeyword}}": "{{ValueKindLiteralOrPath}}"
+                },
+                "key": {
                   "type": "string",
                   "{{ValueKindKeyword}}": "{{ValueKindLiteralOrPath}}"
                 },
@@ -197,7 +202,7 @@ internal static class BuiltinActionSchemas
               }
             }
             """,
-            fieldOrder: ["topic", "payload"],
+            fieldOrder: ["topic", "key", "payload"],
             fields: fields);
     }
 
