@@ -150,8 +150,22 @@ public interface IExecutionService
 
     /// <summary>
     /// ローカル Engine の Load が Wait Unload または終端になるまで待つ（Worker の 1 claim = 1 Load）。
+    /// watchdog は付けない。
     /// </summary>
     /// <param name="executionId">実行 ID。</param>
     /// <param name="ct">キャンセル。</param>
-    Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct);
+    Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct) =>
+        AwaitLocalExecutionLoadAsync(executionId, Timeout.InfiniteTimeSpan, ct);
+
+    /// <summary>
+    /// AwaitLocal に無進捗 watchdog を付ける。非 Wait Running が無い状態が
+    /// <paramref name="noProgressTimeout"/> を超えたら Unload して戻る（実行は Running のまま）。
+    /// </summary>
+    /// <param name="executionId">実行 ID。</param>
+    /// <param name="noProgressTimeout">無進捗の上限。<see cref="Timeout.InfiniteTimeSpan"/> なら watchdog しない。</param>
+    /// <param name="ct">キャンセル。</param>
+    Task AwaitLocalExecutionLoadAsync(
+        Guid executionId,
+        TimeSpan noProgressTimeout,
+        CancellationToken ct);
 }

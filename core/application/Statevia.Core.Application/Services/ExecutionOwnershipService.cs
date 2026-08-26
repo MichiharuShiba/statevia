@@ -171,10 +171,19 @@ internal sealed class ExecutionOwnershipService(
     /// ローカル Engine が終端または durable Wait まで進むのを待ち、必要なら投影・Unload する。
     /// </summary>
     /// <param name="executionId">実行 ID。</param>
+    /// <param name="noProgressTimeout">
+    /// 非 Wait Running が無い無進捗の上限。<see cref="Timeout.InfiniteTimeSpan"/> 以下なら watchdog しない。
+    /// </param>
     /// <param name="ct">キャンセル。</param>
-    public async Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct)
+    public async Task AwaitLocalExecutionLoadAsync(
+        Guid executionId,
+        TimeSpan noProgressTimeout,
+        CancellationToken ct)
     {
         var engineId = executionId.ToString();
+        var idleWatch = System.Diagnostics.Stopwatch.StartNew();
+        var watchdogEnabled = noProgressTimeout > TimeSpan.Zero
+            && noProgressTimeout != Timeout.InfiniteTimeSpan;
         while (true)
         {
             ct.ThrowIfCancellationRequested();
@@ -199,13 +208,25 @@ internal sealed class ExecutionOwnershipService(
             }
 
             var checkpoint = engine.ExportCheckpoint(engineId);
+            var runningNonWait = HasRunningNonWaitNodes(engine.ExportExecutionGraph(engineId));
             // recovery hydrate 後など、PendingWaits があるのに Unload されていない場合がある。
-            if (checkpoint is { PendingWaits.Count: > 0 }
-                && !HasRunningNonWaitNodes(engine.ExportExecutionGraph(engineId)))
+            if (checkpoint is { PendingWaits.Count: > 0 } && !runningNonWait)
             {
                 var waitNodeId = checkpoint.PendingWaits[0].NodeId;
                 await checkpoints.PersistCheckpointAndUnloadByEngineIdAsync(engineId, waitNodeId, ct)
                     .ConfigureAwait(false);
+                return;
+            }
+
+            if (runningNonWait)
+            {
+                idleWatch.Restart();
+            }
+            else if (watchdogEnabled && idleWatch.Elapsed >= noProgressTimeout)
+            {
+                await checkpoints.PersistCheckpointKeepLoadedAsync(engineId, ct).ConfigureAwait(false);
+                engine.Unload(engineId);
+                logger.NoProgressWatchdogUnloaded(executionId, idleWatch.ElapsedMilliseconds);
                 return;
             }
 

@@ -36,6 +36,7 @@ public interface IExecutionWorkQueue
     /// <param name="utcNow">現在 UTC 時刻。</param>
     /// <param name="leaseDuration">lease 有効期間。</param>
     /// <param name="limit">最大取得件数。</param>
+    /// <param name="kinds">取得する kind の許可リスト。null または空なら種別を問わない。</param>
     /// <param name="ct">キャンセル トークン。</param>
     /// <returns>取得して lease を設定した項目。</returns>
     Task<IReadOnlyList<ExecutionWorkItemRow>> ClaimAsync(
@@ -43,6 +44,7 @@ public interface IExecutionWorkQueue
         DateTime utcNow,
         TimeSpan leaseDuration,
         int limit,
+        IReadOnlyList<string>? kinds,
         CancellationToken ct);
 
     /// <summary>

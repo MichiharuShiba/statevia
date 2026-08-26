@@ -101,7 +101,14 @@ internal sealed class ExecutionService(
 
     /// <inheritdoc />
     public Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct) =>
-        ownershipSessions.AwaitLocalExecutionLoadAsync(executionId, ct);
+        AwaitLocalExecutionLoadAsync(executionId, Timeout.InfiniteTimeSpan, ct);
+
+    /// <inheritdoc />
+    public Task AwaitLocalExecutionLoadAsync(
+        Guid executionId,
+        TimeSpan noProgressTimeout,
+        CancellationToken ct) =>
+        ownershipSessions.AwaitLocalExecutionLoadAsync(executionId, noProgressTimeout, ct);
 
     /// <inheritdoc />
     public Task PublishEventAsync(

@@ -55,6 +55,7 @@ internal sealed class ExecutionWorkQueue(IDbContextFactory<CoreDbContext> dbFact
         DateTime utcNow,
         TimeSpan leaseDuration,
         int limit,
+        IReadOnlyList<string>? kinds,
         CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(leaseOwner);
@@ -67,24 +68,7 @@ internal sealed class ExecutionWorkQueue(IDbContextFactory<CoreDbContext> dbFact
             .ConfigureAwait(false);
         await using var command = db.Database.GetDbConnection().CreateCommand();
         command.Transaction = db.Database.CurrentTransaction?.GetDbTransaction();
-        command.CommandText = """
-            WITH candidates AS (
-                SELECT work_item_id
-                FROM execution_work_items
-                WHERE available_at <= @utcNow
-                  AND (lease_until IS NULL OR lease_until <= @utcNow)
-                ORDER BY available_at, created_at, work_item_id
-                FOR UPDATE SKIP LOCKED
-                LIMIT @limit
-            )
-            UPDATE execution_work_items AS item
-            SET lease_owner = @leaseOwner,
-                lease_until = @leaseUntil,
-                attempts = item.attempts + 1
-            FROM candidates
-            WHERE item.work_item_id = candidates.work_item_id
-            RETURNING item.*;
-            """;
+        command.CommandText = BuildClaimSql(command, kinds);
         AddParameter(command, "utcNow", utcNow);
         AddParameter(command, "limit", limit);
         AddParameter(command, "leaseOwner", leaseOwner);
@@ -314,6 +298,44 @@ internal sealed class ExecutionWorkQueue(IDbContextFactory<CoreDbContext> dbFact
 
         await transaction.CommitAsync(ct).ConfigureAwait(false);
         return count;
+    }
+
+    /// <summary>kind 許可リストがあるときだけ IN 句を足す。プレースホルダ名はインデックスのみ。</summary>
+    private static string BuildClaimSql(IDbCommand command, IReadOnlyList<string>? kinds)
+    {
+        var kindFilter = string.Empty;
+        if (kinds is { Count: > 0 })
+        {
+            var placeholders = new string[kinds.Count];
+            for (var i = 0; i < kinds.Count; i++)
+            {
+                var name = "kind" + i.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                placeholders[i] = "@" + name;
+                AddParameter(command, name, kinds[i]);
+            }
+
+            kindFilter = " AND kind IN (" + string.Join(", ", placeholders) + ")";
+        }
+
+        return """
+            WITH candidates AS (
+                SELECT work_item_id
+                FROM execution_work_items
+                WHERE available_at <= @utcNow
+                  AND (lease_until IS NULL OR lease_until <= @utcNow)
+            """ + kindFilter + """
+                ORDER BY available_at, created_at, work_item_id
+                FOR UPDATE SKIP LOCKED
+                LIMIT @limit
+            )
+            UPDATE execution_work_items AS item
+            SET lease_owner = @leaseOwner,
+                lease_until = @leaseUntil,
+                attempts = item.attempts + 1
+            FROM candidates
+            WHERE item.work_item_id = candidates.work_item_id
+            RETURNING item.*;
+            """;
     }
 
     /// <summary>DB コマンドへ値を安全にパラメーター追加する。</summary>

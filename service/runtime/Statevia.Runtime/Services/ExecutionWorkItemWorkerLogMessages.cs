@@ -45,4 +45,19 @@ internal static partial class ExecutionWorkItemWorkerLogMessages
         Level = LogLevel.Warning,
         Message = "Execution work item {WorkItemId} failed to end owned session.")]
     public static partial void WorkItemSessionEndFailed(this ILogger logger, Exception exception, Guid workItemId);
+
+    [LoggerMessage(
+        EventId = 3308,
+        Level = LogLevel.Information,
+        Message = "Worker interrupted locally owned execution for Cancel. ExecutionId={executionId}")]
+    public static partial void WorkerLocalCancelInterrupt(this ILogger logger, Guid executionId);
+
+    [LoggerMessage(
+        EventId = 3309,
+        Level = LogLevel.Information,
+        Message = "Worker lifecycle slots changed. ActiveLifecycleSlots={activeLifecycleSlots} MaxConcurrency={maxConcurrency}")]
+    public static partial void WorkerLifecycleSlotsChanged(
+        this ILogger logger,
+        int activeLifecycleSlots,
+        int maxConcurrency);
 }

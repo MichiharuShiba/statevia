@@ -37,6 +37,69 @@ public sealed class OptionsValidationTests
             DockerSandboxOptions.MaxDefaultTimeoutSeconds);
         Assert.Null(actionHost.BaseUrl);
         Assert.False(string.IsNullOrWhiteSpace(jwt.SigningKey));
+        var worker = provider.GetRequiredService<IOptions<WorkerRuntimeOptions>>().Value;
+        Assert.Equal(WorkerRuntimeOptions.MinMaxConcurrency, worker.MaxConcurrency);
+        Assert.Equal(WorkerRuntimeOptions.MinCancelConcurrency, worker.CancelConcurrency);
+        Assert.Equal(TimeSpan.FromMinutes(10), worker.NoProgressTimeout);
+    }
+
+    /// <summary>Worker MaxConcurrency が 0 だと Options 解決で失敗する。</summary>
+    [Fact]
+    public void WorkerRuntimeOptions_WhenMaxConcurrencyZero_Throws()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
+        {
+            ["Statevia:Runtime:Worker:MaxConcurrency"] = "0"
+        }));
+        using var provider = services.BuildServiceProvider();
+
+        // Act
+        var act = () => _ = provider.GetRequiredService<IOptions<WorkerRuntimeOptions>>().Value;
+
+        // Assert
+        var ex = Assert.Throws<OptionsValidationException>(act);
+        Assert.Contains("MaxConcurrency", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Worker MaxConcurrency が上限超過だと Options 解決で失敗する。</summary>
+    [Fact]
+    public void WorkerRuntimeOptions_WhenMaxConcurrencyAboveMax_Throws()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
+        {
+            ["Statevia:Runtime:Worker:MaxConcurrency"] = "65"
+        }));
+        using var provider = services.BuildServiceProvider();
+
+        // Act
+        var act = () => _ = provider.GetRequiredService<IOptions<WorkerRuntimeOptions>>().Value;
+
+        // Assert
+        var ex = Assert.Throws<OptionsValidationException>(act);
+        Assert.Contains("MaxConcurrency", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Worker MaxConcurrency に 4 をバインドできる。</summary>
+    [Fact]
+    public void WorkerRuntimeOptions_WhenMaxConcurrencyFour_Binds()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
+        {
+            ["Statevia:Runtime:Worker:MaxConcurrency"] = "4"
+        }));
+        using var provider = services.BuildServiceProvider();
+
+        // Act
+        var worker = provider.GetRequiredService<IOptions<WorkerRuntimeOptions>>().Value;
+
+        // Assert
+        Assert.Equal(4, worker.MaxConcurrency);
     }
 
     /// <summary>Docker DefaultTimeoutSeconds が下限未満だと Options 解決で失敗する。</summary>
@@ -335,6 +398,11 @@ public sealed class OptionsValidationTests
             d => d.ServiceType.IsGenericType
                 && d.ServiceType.GetGenericTypeDefinition() == typeof(IValidateOptions<>)
                 && d.ServiceType.GenericTypeArguments[0] == typeof(RuntimeOptions));
+        Assert.Contains(
+            services,
+            d => d.ServiceType.IsGenericType
+                && d.ServiceType.GetGenericTypeDefinition() == typeof(IValidateOptions<>)
+                && d.ServiceType.GenericTypeArguments[0] == typeof(WorkerRuntimeOptions));
     }
 
     /// <summary>Runtime フラグ Off のときプロセス内 Worker / Scheduler を登録しない。</summary>

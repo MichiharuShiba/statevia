@@ -288,6 +288,7 @@ public sealed class ForkChildExecutionCoordinatorJoinAggregationTests
             DateTime utcNow,
             TimeSpan leaseDuration,
             int limit,
+            IReadOnlyList<string>? kinds,
             CancellationToken ct) =>
             throw new NotImplementedException();
 

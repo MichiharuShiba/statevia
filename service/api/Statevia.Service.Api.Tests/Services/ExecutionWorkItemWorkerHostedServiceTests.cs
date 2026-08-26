@@ -1,12 +1,14 @@
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Statevia.Core.Application.Contracts;
 using Statevia.Core.Application.Contracts.Persistence;
 using Statevia.Core.Application.Contracts.Security;
 using Statevia.Core.Application.Contracts.Services;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Security;
+using Statevia.Runtime.Configuration;
 using Statevia.Runtime.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 
@@ -23,10 +25,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         var queue = new FakeWorkerQueue();
         await using var provider = BuildProvider(queue, new RecordingExecutionService(), new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -73,10 +72,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         var executions = new RecordingExecutionService { BeginGenerationToReturn = 3 };
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -115,10 +111,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
             executions,
             new StubPlatformDataAccess { TenantToReturn = null });
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -152,10 +145,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         var executions = new RecordingExecutionService { BeginGenerationToReturn = null };
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -192,10 +182,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         var executions = new RecordingExecutionService { BeginGenerationToReturn = 1 };
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -228,10 +215,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         var executions = new RecordingExecutionService { BeginGenerationToReturn = 1 };
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -272,10 +256,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         var executions = new RecordingExecutionService { BeginGenerationToReturn = 1 };
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -313,10 +294,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         };
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -358,10 +336,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
                     TenantLifecycle.Suspended)
             });
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -394,10 +369,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         var executions = new RecordingExecutionService { BeginGenerationToReturn = 1 };
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -434,10 +406,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         };
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(35));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -457,10 +426,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         var executions = new RecordingExecutionService();
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(400));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -504,10 +470,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         };
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -548,10 +511,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         };
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(35));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -562,9 +522,9 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         Assert.True(executions.AbandonCalls >= 1);
     }
 
-    /// <summary>未知の work item kind は Release する。</summary>
+    /// <summary>未知の work item kind は Start/Resume/Cancel の claim 対象外のため処理されない。</summary>
     [Fact]
-    public async Task ExecuteAsync_WhenKindUnknown_ReleasesWorkItem()
+    public async Task ExecuteAsync_WhenKindUnknown_DoesNotClaimOrRelease()
     {
         // Arrange
         var executionId = Guid.Parse("aaaaaaaa-1111-1111-1111-111111111111");
@@ -582,19 +542,26 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         var queue = new FakeWorkerQueue { ItemsToClaim = [item] };
         var executions = new RecordingExecutionService { BeginGenerationToReturn = 1 };
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(400));
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
-        await WaitUntilAsync(() => queue.ReleaseCallCount > 0, TimeSpan.FromSeconds(1.5));
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(250), CancellationToken.None);
+        }
+        catch (OperationCanceledException)
+        {
+            // ignore
+        }
+
         await sut.StopAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(1, queue.ReleaseCallCount);
+        Assert.Equal(0, queue.ReleaseCallCount);
+        Assert.Equal(0, queue.CompleteCallCount);
+        Assert.Equal(0, executions.BeginOwnedSessionCalls);
     }
 
     /// <summary>未知の resume mode は Release する。</summary>
@@ -621,10 +588,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         var executions = new RecordingExecutionService { BeginGenerationToReturn = 1 };
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -659,10 +623,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         var executions = new RecordingExecutionService { BeginGenerationToReturn = 1 };
         await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var sut = new ExecutionWorkItemWorkerHostedService(
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
-            new FixedIdGenerator());
+        var sut = CreateSut(provider);
 
         // Act
         await sut.StartAsync(cts.Token);
@@ -671,6 +632,181 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
 
         // Assert
         Assert.Equal(1, queue.ReleaseCallCount);
+    }
+
+    /// <summary>MaxConcurrency=2 のとき 2 件の Start が同時に AwaitLoad へ入る。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenMaxConcurrencyIsTwo_ProcessesTwoStartsInParallel()
+    {
+        // Arrange
+        var firstId = Guid.Parse("11111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var secondId = Guid.Parse("22222222-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        using var inputDoc = JsonDocument.Parse("{}");
+        var payload = JsonSerializer.Serialize(
+            new ExecutionStartWorkItemPayload(
+                firstId,
+                new StartExecutionRequest { DefinitionId = "d1", Input = inputDoc.RootElement }),
+            ExecutionWorkItemPayloadJson.Options);
+        var queue = new FakeWorkerQueue
+        {
+            ItemsToClaim =
+            [
+                new ExecutionWorkItemRow
+                {
+                    WorkItemId = Guid.Parse("11111111-0000-0000-0000-000000000001"),
+                    ExecutionId = firstId,
+                    Kind = ExecutionWorkItemKinds.Start,
+                    Payload = payload,
+                    AvailableAt = DateTime.UtcNow,
+                    Attempts = 0,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new ExecutionWorkItemRow
+                {
+                    WorkItemId = Guid.Parse("22222222-0000-0000-0000-000000000002"),
+                    ExecutionId = secondId,
+                    Kind = ExecutionWorkItemKinds.Start,
+                    Payload = payload,
+                    AvailableAt = DateTime.UtcNow,
+                    Attempts = 0,
+                    CreatedAt = DateTime.UtcNow
+                }
+            ]
+        };
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var executions = new RecordingExecutionService
+        {
+            BeginGenerationToReturn = 1,
+            AwaitLocalLoadGate = gate
+        };
+        await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        var sut = CreateSut(provider, new WorkerRuntimeOptions { MaxConcurrency = 2 });
+
+        // Act
+        await sut.StartAsync(cts.Token);
+        await WaitUntilAsync(() => executions.ConcurrentAwaitLocalLoadPeak >= 2, TimeSpan.FromSeconds(2));
+        gate.TrySetResult();
+        await WaitUntilAsync(() => queue.CompleteCallCount >= 2, TimeSpan.FromSeconds(1.5));
+        await sut.StopAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Equal(2, executions.ExecuteQueuedStartCalls);
+        Assert.True(executions.ConcurrentAwaitLocalLoadPeak >= 2);
+        Assert.Equal(2, queue.CompleteCallCount);
+        Assert.Equal(0, queue.ReleaseCallCount);
+    }
+
+    /// <summary>Start 所有中の Cancel claim は BeginOwnedSession せず process CTS をキャンセルする。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenCancelClaimedWhileStartOwned_CancelsProcessCtsWithoutSecondSession()
+    {
+        // Arrange
+        var executionId = Guid.Parse("abababab-abab-abab-abab-abababababab");
+        var startWorkItemId = Guid.Parse("cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcdcd");
+        var cancelWorkItemId = Guid.Parse("efefefef-efef-efef-efef-efefefefefef");
+        using var inputDoc = JsonDocument.Parse("{}");
+        var payload = JsonSerializer.Serialize(
+            new ExecutionStartWorkItemPayload(
+                executionId,
+                new StartExecutionRequest { DefinitionId = "d1", Input = inputDoc.RootElement }),
+            ExecutionWorkItemPayloadJson.Options);
+        var queue = new FakeWorkerQueue
+        {
+            ItemsToClaim =
+            [
+                new ExecutionWorkItemRow
+                {
+                    WorkItemId = startWorkItemId,
+                    ExecutionId = executionId,
+                    Kind = ExecutionWorkItemKinds.Start,
+                    Payload = payload,
+                    AvailableAt = DateTime.UtcNow,
+                    Attempts = 0,
+                    CreatedAt = DateTime.UtcNow
+                }
+            ]
+        };
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var executions = new RecordingExecutionService
+        {
+            BeginGenerationToReturn = 1,
+            AwaitLocalLoadGate = gate
+        };
+        await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(4));
+        var sut = CreateSut(provider);
+
+        // Act
+        await sut.StartAsync(cts.Token);
+        await WaitUntilAsync(() => executions.AwaitLocalLoadCalls >= 1, TimeSpan.FromSeconds(2));
+        queue.ItemsToClaim.Add(new ExecutionWorkItemRow
+        {
+            WorkItemId = cancelWorkItemId,
+            ExecutionId = executionId,
+            Kind = ExecutionWorkItemKinds.Cancel,
+            Payload = "{}",
+            AvailableAt = DateTime.UtcNow,
+            Attempts = 0,
+            CreatedAt = DateTime.UtcNow
+        });
+        await WaitUntilAsync(() => queue.CompleteCallCount >= 2, TimeSpan.FromSeconds(2.5));
+        await sut.StopAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Equal(1, executions.BeginOwnedSessionCalls);
+        Assert.Equal(1, executions.CancelCalls);
+        Assert.Equal(2, queue.CompleteCallCount);
+        Assert.Equal(0, queue.ReleaseCallCount);
+    }
+
+    /// <summary>AwaitLoad が無進捗相当で戻っても Complete し Release しない。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenAwaitLoadReturnsAfterNoProgress_CompletesWithoutRelease()
+    {
+        // Arrange
+        var executionId = Guid.Parse("12121212-1212-1212-1212-121212121212");
+        var workItemId = Guid.Parse("34343434-3434-3434-3434-343434343434");
+        using var inputDoc = JsonDocument.Parse("{}");
+        var payload = JsonSerializer.Serialize(
+            new ExecutionStartWorkItemPayload(
+                executionId,
+                new StartExecutionRequest { DefinitionId = "d1", Input = inputDoc.RootElement }),
+            ExecutionWorkItemPayloadJson.Options);
+        var queue = new FakeWorkerQueue
+        {
+            ItemsToClaim =
+            [
+                new ExecutionWorkItemRow
+                {
+                    WorkItemId = workItemId,
+                    ExecutionId = executionId,
+                    Kind = ExecutionWorkItemKinds.Start,
+                    Payload = payload,
+                    AvailableAt = DateTime.UtcNow,
+                    Attempts = 0,
+                    CreatedAt = DateTime.UtcNow
+                }
+            ]
+        };
+        var executions = new RecordingExecutionService
+        {
+            BeginGenerationToReturn = 1,
+            AwaitLocalLoadDelay = TimeSpan.FromMilliseconds(80)
+        };
+        await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        var sut = CreateSut(provider);
+
+        // Act
+        await sut.StartAsync(cts.Token);
+        await WaitUntilAsync(() => queue.CompleteCallCount > 0, TimeSpan.FromSeconds(2));
+        await sut.StopAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Equal(1, queue.CompleteCallCount);
+        Assert.Equal(0, queue.ReleaseCallCount);
+        Assert.Equal(0, executions.CancelCalls);
     }
 
     private static ServiceProvider BuildProvider(
@@ -685,6 +821,15 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         services.AddSingleton(executions);
         return services.BuildServiceProvider();
     }
+
+    private static ExecutionWorkItemWorkerHostedService CreateSut(
+        IServiceProvider provider,
+        WorkerRuntimeOptions? worker = null) =>
+        new(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<ExecutionWorkItemWorkerHostedService>.Instance,
+            new FixedIdGenerator(),
+            Options.Create(worker ?? new WorkerRuntimeOptions()));
 
     private static async Task WaitUntilAsync(Func<bool> predicate, TimeSpan timeout)
     {
@@ -770,9 +915,9 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
 
     private sealed class FakeWorkerQueue : IExecutionWorkQueue
     {
-        private int _claimRound;
+        private readonly HashSet<Guid> _claimed = [];
 
-        public IReadOnlyList<ExecutionWorkItemRow> ItemsToClaim { get; set; } = [];
+        public List<ExecutionWorkItemRow> ItemsToClaim { get; set; } = [];
         public int ClaimCallCount { get; private set; }
         public int CompleteCallCount { get; private set; }
         public int ReleaseCallCount { get; private set; }
@@ -800,15 +945,28 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
             DateTime utcNow,
             TimeSpan leaseDuration,
             int limit,
+            IReadOnlyList<string>? kinds,
             CancellationToken ct)
         {
+            _ = leaseOwner;
+            _ = utcNow;
+            _ = leaseDuration;
             ClaimCallCount++;
             if (ThrowOnClaim)
                 throw new InvalidOperationException("claim failed");
-            if (_claimRound++ == 0 && ItemsToClaim.Count > 0)
-                return Task.FromResult(ItemsToClaim);
 
-            return Task.FromResult<IReadOnlyList<ExecutionWorkItemRow>>([]);
+            var pending = ItemsToClaim.Where(item => !_claimed.Contains(item.WorkItemId));
+            if (kinds is { Count: > 0 })
+            {
+                pending = pending.Where(item =>
+                    kinds.Contains(item.Kind, StringComparer.Ordinal));
+            }
+
+            var batch = pending.Take(limit).ToList();
+            foreach (var item in batch)
+                _claimed.Add(item.WorkItemId);
+
+            return Task.FromResult<IReadOnlyList<ExecutionWorkItemRow>>(batch);
         }
 
         public Task CompleteAsync(Guid workItemId, string leaseOwner, CancellationToken ct)
@@ -854,11 +1012,15 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
 
     private sealed class RecordingExecutionService : IExecutionService
     {
+        private int _awaitLocalInFlight;
+
         public long? BeginGenerationToReturn { get; set; } = 1;
         public int BeginOwnedSessionCalls { get; private set; }
         public int EndOwnedSessionCalls { get; private set; }
         public int ExecuteQueuedStartCalls { get; private set; }
         public int AwaitLocalLoadCalls { get; private set; }
+        public int ConcurrentAwaitLocalLoad { get; private set; }
+        public int ConcurrentAwaitLocalLoadPeak { get; private set; }
         public int CancelCalls { get; private set; }
         public int RecoverCalls { get; private set; }
         public int ResumeCalls { get; private set; }
@@ -866,6 +1028,8 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         public Exception? CancelException { get; set; }
         public Exception? EndOwnedSessionException { get; set; }
         public TimeSpan? CancelDelay { get; set; }
+        public TimeSpan? AwaitLocalLoadDelay { get; set; }
+        public TaskCompletionSource? AwaitLocalLoadGate { get; set; }
 
         public Task<long?> BeginOwnedSessionAsync(
             Guid executionId,
@@ -897,10 +1061,29 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
             return Task.CompletedTask;
         }
 
-        public Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct)
+        public async Task AwaitLocalExecutionLoadAsync(
+            Guid executionId,
+            TimeSpan noProgressTimeout,
+            CancellationToken ct)
         {
+            _ = executionId;
+            _ = noProgressTimeout;
+            var inFlight = Interlocked.Increment(ref _awaitLocalInFlight);
+            if (inFlight > ConcurrentAwaitLocalLoadPeak)
+                ConcurrentAwaitLocalLoadPeak = inFlight;
+            ConcurrentAwaitLocalLoad = inFlight;
             AwaitLocalLoadCalls++;
-            return Task.CompletedTask;
+            try
+            {
+                if (AwaitLocalLoadGate is { } gate)
+                    await gate.Task.WaitAsync(ct);
+                if (AwaitLocalLoadDelay is { } delay)
+                    await Task.Delay(delay, ct);
+            }
+            finally
+            {
+                ConcurrentAwaitLocalLoad = Interlocked.Decrement(ref _awaitLocalInFlight);
+            }
         }
 
         public Task<ExecutionResponse> ExecuteQueuedStartAsync(

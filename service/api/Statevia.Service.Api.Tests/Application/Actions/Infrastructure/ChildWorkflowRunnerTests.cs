@@ -214,7 +214,7 @@ public sealed class ChildWorkflowRunnerTests
         public Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
         public Task AbandonLocalOwnedSessionAsync(Guid executionId) => Task.CompletedTask;
 
-        public Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct) => Task.CompletedTask;
+        public Task AwaitLocalExecutionLoadAsync(Guid executionId, TimeSpan noProgressTimeout, CancellationToken ct) => Task.CompletedTask;
         public Task PersistCheckpointAndUnloadByEngineIdAsync(string engineExecutionId, string nodeId, CancellationToken ct) => Task.CompletedTask;
 
     }
