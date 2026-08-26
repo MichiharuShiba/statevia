@@ -109,6 +109,7 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
   - `service/cli/statevia-cli.sln`
   - `service/action-host/statevia-action-host.sln`
   - `service/api/statevia-api.sln`（`service/api/Directory.Build.props` の `AnalysisMode=AllEnabledByDefault` を含む）
+- **IDE 用包括ソリューション**: リポジトリ直下の `statevia.sln` は Cursor / VS Code の IntelliSense 用。CI・Warning 0・Sonar の正本ではない。`.vscode/settings.json` の `dotnet.defaultSolution` はこのファイルを指す。品質ゲートと `dotnet test` は上記 6 sln を使う。
 - **Service API テスト向け抑制**: ルート `.editorconfig` に加え、`service/api/Statevia.Service.Api.Tests/.editorconfig` で xUnit 向け CA（例: CA1812）を抑制している。テストの命名・`ConfigureAwait` 方針は Engine.Tests と同趣旨。
 - **Markdown**: リポジトリ直下の **`.markdownlint.json`** に従う。編集した Markdown には例として次で確認できる。
 
@@ -117,7 +118,7 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
   ```
 
 - **UI（TypeScript）**: **`npm run lint`**（error 厳格）、**`npm run typecheck`**、**`npm run test:run`** を PR 前の必須チェックとする。設定は `ui/studio/eslint.config.js`（`typescript-eslint` strict、`react-hooks`、`jsx-a11y`、`jsdoc`）。
-- **SonarQube（Service API）**: プロジェクトキー **`StateviaServiceApi`**。新規コードの Quality Gate（`new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.1**。
+- **SonarQube（Service API）**: プロジェクトキー **`StateviaServiceApi`**。新規コードの Quality Gate（`new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.1**。テストプロジェクトはスキャン対象外（`excludeTestProjects` / `SonarQubeExclude`）。SonarQube for IDE も同じ範囲に揃える（[sonar/README.md](../sonar/README.md)）。
 - **SonarQube（UI Studio）**: プロジェクトキー **`StateviaUIStudio`**。全体・新規コードの Quality Gate（`coverage` / `new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.2**。
 
 ---

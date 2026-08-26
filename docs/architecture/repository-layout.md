@@ -3,9 +3,11 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Architecture |
-| Version | 2.1 |
-| 更新日 | 2026-07-26 |
+| Version | 2.2 |
+| 更新日 | 2026-08-27 |
 | 関連 | [ui-studio-structure.md](ui-studio-structure.md), [overview.md](overview.md) |
+
+**Version 2.2（2026-08-27）**: ルートに IDE 用包括 `statevia.sln` を追加。
 
 **Version 2.1（2026-07-26）**: `ui/studio` を feature-first（`app` / `features` / `shared`）に合わせてツリーを更新。
 
@@ -19,6 +21,7 @@ statevia/
 ├─ LICENSE
 ├─ .gitignore
 ├─ .editorconfig
+├─ statevia.sln                 # IDE 用包括（CI / Warning 0 / Sonar の正本ではない）
 ├─ docker-compose.yml            # postgres + service-api (C#) + ui
 ├─ .env.example                  # POSTGRES_*（.env はコミットしない）
 │
