@@ -27,7 +27,7 @@ docker compose up -d
 
 ## ランタイム分離（任意: Worker / Scheduler）
 
-既定の compose では **Worker / DelayWait Scheduler / Ownership Recovery は Service API プロセス内**で動作します（`Statevia:Runtime:EnableInProcess*` 既定 `true`）。
+既定の compose では **Worker / DelayWait Scheduler / Ownership Recovery は Service API プロセス内**で動作します（`Statevia:Runtime:EnableInProcess*` 既定 `true`）。API 内ワーカーで `MaxConcurrency` を 1 より大きくすると、実行負荷が API プロセスに乗ります。
 
 プロセスを分ける場合は、override ファイル `docker-compose.split-runtime.yml` を追加します。これだけで次の両方が同時に効きます。
 
@@ -79,7 +79,7 @@ docker compose up -d
 | service-api | `DATABASE_URL`（`POSTGRES_*` から組み立て）, `ASPNETCORE_URLS`, `ASPNETCORE_ENVIRONMENT`（compose では `Development`）。分離時は override で `Statevia__Runtime__EnableInProcess*=false`。ブラウザから API へ直叩きする場合のみ `Statevia__Cors__AllowedOrigins__0`（未設定時はクロスオリジン不許可。Studio はプロキシ） |
 | postgres    | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`（`.env` / `.env.example`） |
 | action-host | `ASPNETCORE_URLS`（compose では `http://+:5001`）, `STATEVIA_MODULES_PATH`（`/app/modules`） |
-| scheduler / worker | `DATABASE_URL`（`docker-compose.split-runtime.yml`）。worker は `Statevia__ActionHost__BaseUrl` も共有 |
+| scheduler / worker | `DATABASE_URL`（`docker-compose.split-runtime.yml`）。worker は `Statevia__ActionHost__BaseUrl` も共有。並列は `Statevia__Runtime__Worker__MaxConcurrency`（既定 1）。Cancel 独立ループは `Statevia__Runtime__Worker__CancelConcurrency`。watchdog は `Statevia__Runtime__Worker__NoProgressTimeout`（既定 `00:10:00`。長い Action は対象外）。API 内ワーカーでも同じキー |
 | ui-studio  | `SERVICE_API_INTERNAL_BASE` |
 
 詳細は `docker-compose.yml` / `docker-compose.split-runtime.yml` と `AGENTS.md` を参照してください。

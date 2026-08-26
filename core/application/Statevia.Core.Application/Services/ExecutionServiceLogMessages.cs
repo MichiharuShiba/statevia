@@ -267,4 +267,10 @@ internal static partial class ExecutionServiceLogMessages
         Level = LogLevel.Information,
         Message = "Persisted runtime checkpoint and unloaded execution after projection-sync. ExecutionId={executionId}")]
     public static partial void CheckpointUnloadedAfterProjectionSync(this ILogger logger, Guid executionId);
+
+    [LoggerMessage(
+        EventId = 3021,
+        Level = LogLevel.Error,
+        Message = "No-progress watchdog unloaded execution. ExecutionId={executionId} ElapsedMs={elapsedMs}")]
+    public static partial void NoProgressWatchdogUnloaded(this ILogger logger, Guid executionId, long elapsedMs);
 }

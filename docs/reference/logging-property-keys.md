@@ -33,7 +33,9 @@ Service API と Engine の構造化ログで、同じ概念に同じキー名を
 | パス | `Path` | API | クエリなし |
 | クエリ | `Query` / `QueryForLog` | API | マスク後 |
 | ステータス | `StatusCode` | API | - |
-| 経過時間 | `ElapsedMs` | API / Engine | ミリ秒 |
+| 経過時間 | `ElapsedMs` | API / Engine / Worker watchdog | ミリ秒 |
+| ライフサイクルスロット | `ActiveLifecycleSlots` | Worker | 使用中の Start / Resume スロット数 |
+| 同時処理上限 | `MaxConcurrency` | Worker | `Statevia:Runtime:Worker:MaxConcurrency` |
 | 例外型 | `ExceptionType` / `ErrorType` | API / Engine | - |
 | 操作主体 Principal | `ActorPrincipalId` | 管理者パスワード更新 | 監査。平文・ハッシュは出さない |
 | 操作対象ユーザー | `TargetUserId` | 管理者パスワード更新 | `users.user_id` |

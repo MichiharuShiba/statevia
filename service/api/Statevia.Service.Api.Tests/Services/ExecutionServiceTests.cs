@@ -2224,6 +2224,185 @@ public sealed class ExecutionServiceTests
         Assert.Null(engine.SnapshotToReturn);
     }
 
+    /// <summary>非 Wait が Running の間は無進捗 watchdog が Unload しない。</summary>
+    [Fact]
+    public async Task AwaitLocalExecutionLoadAsync_WhenActionRunning_DoesNotWatchdogUnload()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        using var sqlite = new SqliteTestDatabase();
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["action"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn = """{"nodes":[{"id":"a","nodeType":"Action","startedAt":"2026-01-01T00:00:00Z"}]}"""
+        };
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = new FakeExecutionRepository(),
+                Definitions = new StubDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(400));
+
+        // Act
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            sut.AwaitLocalExecutionLoadAsync(executionId, TimeSpan.FromMilliseconds(50), cts.Token));
+
+        // Assert
+        Assert.Equal(0, engine.UnloadCalls);
+        Assert.NotNull(engine.SnapshotToReturn);
+    }
+
+    /// <summary>非 Wait Running が無い無進捗が timeout を超えたら Unload し投影は Running のまま。</summary>
+    [Fact]
+    public async Task AwaitLocalExecutionLoadAsync_WhenNoProgressTimeout_UnloadsWithoutCompleting()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        using var sqlite = new SqliteTestDatabase();
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["stuck"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn = """{"nodes":[{"id":"a","nodeType":"Action"}]}"""
+        };
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = Guid.NewGuid(),
+                Status = "Running",
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository(),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
+
+        // Act
+        await sut.AwaitLocalExecutionLoadAsync(executionId, TimeSpan.FromMilliseconds(50), CancellationToken.None);
+
+        // Assert
+        Assert.True(engine.UnloadCalls >= 1);
+        Assert.Null(engine.SnapshotToReturn);
+        Assert.Empty(executionRepo.Updates);
+    }
+
+    /// <summary>watchdog Unload 後の WORKER Cancel は Engine Cancel を適用できる。</summary>
+    [Fact]
+    public async Task CancelAsync_AfterNoProgressWatchdogUnload_AppliesWorkerCancel()
+    {
+        // Arrange
+        var executionId = Guid.NewGuid();
+        using var sqlite = new SqliteTestDatabase();
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "wf",
+                ActiveStates = ["stuck"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            },
+            GraphJsonToReturn = """{"nodes":[{"id":"a","nodeType":"Action"}]}"""
+        };
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = Guid.NewGuid(),
+                DefinitionVersionId = Guid.NewGuid(),
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(
+                    Guid.NewGuid(),
+                    TestTenantIds.T1TenantId,
+                    "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
+        await sut.AwaitLocalExecutionLoadAsync(executionId, TimeSpan.FromMilliseconds(50), CancellationToken.None);
+
+        // Act
+        // watchdog 後はメモリ未ロード。WORKER Cancel は checkpoint が無ければ失敗し得るため、
+        // 再ロード可能なスナップショットを戻してから Cancel する（所有 seed 相当）。
+        engine.SnapshotToReturn = new ExecutionSnapshot
+        {
+            ExecutionId = executionId.ToString(),
+            WorkflowName = "wf",
+            ActiveStates = ["stuck"],
+            IsCompleted = false,
+            IsCancelled = false,
+            IsFailed = false
+        };
+        await sut.CancelAsync(
+            executionId.ToString("D"),
+            idempotencyKey: null,
+            new CommandRequestContext("WORKER", "/internal/execution-work-items"),
+            CancellationToken.None);
+
+        // Assert
+        Assert.True(engine.CancelCalled);
+    }
+
     /// <summary>非公開投影更新処理が実行行とスナップショットを更新する。</summary>
     [Fact]
     public async Task UpdateProjectionFromEngineAsync_PrivateMethod_UpdatesExecutionAndSnapshot()
@@ -6075,6 +6254,7 @@ public sealed class ExecutionServiceTests
             DateTime utcNow,
             TimeSpan leaseDuration,
             int limit,
+            IReadOnlyList<string>? kinds,
             CancellationToken ct) =>
             throw new NotImplementedException();
 

@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Reference |
-| Version | 1.4 |
-| 更新日 | 2026-07-20 |
+| Version | 1.5 |
+| 更新日 | 2026-08-26 |
 
 ---
 
@@ -48,6 +48,10 @@ Service API / UI / Module の主要な環境変数と `appsettings` キー。**�
 | `Auth:Jwt:AccessTokenLifetimeMinutes` | トークン有効期間（分、≥1） | 範囲外 → **起動失敗** |
 | `ExecutionProjectionQueue:*` | Projection キュー（サイズ・リトライ遅延等） | 範囲外・矛盾 → **起動失敗** |
 | `EventDelivery:Retry:*` | イベント配送リトライ | 範囲外・`MaxDelayMs < BaseDelayMs` → **起動失敗** |
+| `Statevia:Runtime:EnableInProcess*` | API 内 Worker / Scheduler / OwnershipRecovery の On/Off | 既定 On |
+| `Statevia:Runtime:Worker:MaxConcurrency` | Start / Resume のプロセス内同時件数（1〜64、既定 1） | 範囲外 → **起動失敗** |
+| `Statevia:Runtime:Worker:CancelConcurrency` | Cancel 独立ループの同時件数（1〜8、既定 1） | 範囲外 → **起動失敗** |
+| `Statevia:Runtime:Worker:NoProgressTimeout` | 非 Wait Running が無い無進捗の上限（30 秒〜24 時間、既定 10 分） | 範囲外 → **起動失敗** |
 
 検証方針（起動失敗 / 警告＋既定値 / 機能無効）の規約は [`docs/development-guidelines.md`](../development-guidelines.md) §4.1（Options 検証）を参照。
 

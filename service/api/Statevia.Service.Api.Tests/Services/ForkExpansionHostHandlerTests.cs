@@ -451,6 +451,6 @@ public sealed class ForkExpansionHostHandlerTests
             throw new NotImplementedException();
         public Task EndOwnedSessionAsync(Guid executionId, CancellationToken ct) => throw new NotImplementedException();
         public Task AbandonLocalOwnedSessionAsync(Guid executionId) => throw new NotImplementedException();
-        public Task AwaitLocalExecutionLoadAsync(Guid executionId, CancellationToken ct) => throw new NotImplementedException();
+        public Task AwaitLocalExecutionLoadAsync(Guid executionId, TimeSpan noProgressTimeout, CancellationToken ct) => throw new NotImplementedException();
     }
 }

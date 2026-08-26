@@ -392,6 +392,7 @@ public sealed class ForkChildExecutionCoordinatorExpandTests
             DateTime utcNow,
             TimeSpan leaseDuration,
             int limit,
+            IReadOnlyList<string>? kinds,
             CancellationToken ct) =>
             throw new NotImplementedException();
 

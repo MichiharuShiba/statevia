@@ -63,6 +63,21 @@ public static class RuntimeServiceCollectionExtensions
                 static _ => true,
                 "Statevia:Runtime must be bindable.")
             .ValidateOnStart();
+        services.AddOptions<WorkerRuntimeOptions>()
+            .Bind(configuration.GetSection(WorkerRuntimeOptions.SectionName))
+            .Validate(
+                static options => options.MaxConcurrency is >= WorkerRuntimeOptions.MinMaxConcurrency
+                    and <= WorkerRuntimeOptions.MaxMaxConcurrency,
+                "Statevia:Runtime:Worker:MaxConcurrency must be between 1 and 64.")
+            .Validate(
+                static options => options.CancelConcurrency is >= WorkerRuntimeOptions.MinCancelConcurrency
+                    and <= WorkerRuntimeOptions.MaxCancelConcurrency,
+                "Statevia:Runtime:Worker:CancelConcurrency must be between 1 and 8.")
+            .Validate(
+                static options => options.NoProgressTimeout >= WorkerRuntimeOptions.MinNoProgressTimeout
+                    && options.NoProgressTimeout <= WorkerRuntimeOptions.MaxNoProgressTimeout,
+                "Statevia:Runtime:Worker:NoProgressTimeout must be between 00:00:30 and 1.00:00:00.")
+            .ValidateOnStart();
         return services;
     }
 }

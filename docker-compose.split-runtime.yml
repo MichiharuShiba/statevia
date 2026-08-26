@@ -27,6 +27,9 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       Statevia__ActionHost__BaseUrl: "http://action-host:5001"
+      Statevia__Runtime__Worker__MaxConcurrency: 4
+      Statevia__Runtime__Worker__CancelConcurrency: 1
+      Statevia__Runtime__Worker__NoProgressTimeout: 00:10:00
     depends_on:
       - postgres
       - action-host
