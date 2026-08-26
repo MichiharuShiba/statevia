@@ -1,5 +1,15 @@
 <Project>
   <!--
+    テストプロジェクトは Scanner（sonar.dotnet.excludeTestProjects / **/*.Tests/**）と
+    同じ範囲に揃える。SonarQube for IDE と Scanner の両方で対象外（品質ゲートはプロダクションコード）。
+    Directory.Build.targets で評価し、csproj または Microsoft.NET.Test.Sdk が設定した
+    IsTestProject を使う（Directory.Build.props ではまだ未設定のことがある）。
+  -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <SonarQubeExclude>true</SonarQubeExclude>
+  </PropertyGroup>
+
+  <!--
     SonarQube for IDE / SonarLint が Temp 配下の .sonarqube に置く Analyzer が
     壊れたパスを参照すると CS0006 になるため、存在しない Temp 配下エントリのみ除去する。
     既存ファイルや Temp 以外の Analyzer は除去しない。

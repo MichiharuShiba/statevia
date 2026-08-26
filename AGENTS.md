@@ -33,7 +33,7 @@ PostgreSQL 16 + EF Core。UI は `/api/core/*` で Service API にプロキシ�
 
 1. **PostgreSQL** — Docker 例: `docker compose up -d postgres`、または [`docs/guides/getting-started.md`](docs/guides/getting-started.md)
 2. **マイグレーション** — `cd service/api && dotnet ef database update --project Statevia.Service.Api`
-3. **Service API** — `cd service/api && dotnet run --project Statevia.Service.Api --no-launch-profile`（`ASPNETCORE_URLS=http://0.0.0.0:8080` 推奨。`launchSettings.json` のポートに注意）
+3. **Service API** — `cd service/api && dotnet run --project Statevia.Service.Api --no-launch-profile`（`ASPNETCORE_URLS=http://0.0.0.0:8080` 推奨。`launchSettings.json` は git 管理外で、VS がランダムポートを付ける）
 4. **（任意）Scheduler / Worker 分離** — `docker compose -f docker-compose.yml -f docker-compose.split-runtime.yml up -d`（API 内 HostedService Off と scheduler/worker 起動を同時に適用。手順: [`docs/guides/operations-docker.md`](docs/guides/operations-docker.md)）
 5. **UI** — `cd ui/studio && SERVICE_API_INTERNAL_BASE=http://localhost:8080 npm run dev`
 
@@ -75,6 +75,7 @@ Sonar / Analyzer: [`docs/development-guidelines.md`](docs/development-guidelines
 
 ## 実装メモ（エージェント向け）
 
+- **IDE sln**: ルート `statevia.sln` は Cursor / VS Code の IntelliSense 用（`.vscode/settings.json` の `dotnet.defaultSolution`）。CI / テスト / Warning 0 / Sonar はコンポーネント別 6 sln。
 - **Read-model**: `GET /v1/executions` / graph は DB projection 正本（[`data-integration.md`](docs/specifications/data-integration.md)）。Hosted 物理 Fork の親 graph / events は **GET 時合成**（UI は分割非認知。[`fork-join.md`](docs/specifications/execution/fork-join.md)）
 - **IO-14**: 既定で `input` / `output` を一覧 GET に含めない。ログは `LogRedaction`（[`io-log-masking.md`](docs/specifications/platform/io-log-masking.md)）
 - **Engine 境界**: `ExecutionEngine` は `IStateExecutor` のみ。Catalog / Policy / ModuleHost は Service API 側。Hosted Fork の親子協調は Application（`execution_branches`・予約 Resume）

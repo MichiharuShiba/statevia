@@ -43,7 +43,7 @@ dotnet build-server shutdown
 - **engine / api / runtime / cli / action-host / reference**: `dotnet sonarscanner begin` → `build` → `dotnet-coverage` → `end` の順で、`sonar/*-coverage.xml` にカバレッジを出力します（XML は git 管理外）。
 - **ui**: `npm run test:coverage` で `ui/studio/coverage/lcov.info` を生成したあと、`npx sonar-scanner` で `ui/studio/sonar-project.properties` を読み込んで送信します。
 
-C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定し、Phase 0 以降のパス（`core/engine` 等）でも除外設定が効くようにしています。**テストプロジェクト**（`*.Tests`）は `sonar.dotnet.excludeTestProjects=true` で各コンポーネントの projectKey から除外します（品質ゲートの対象はプロダクションコード）。`Statevia.Runtime` は **`StateviaServiceRuntime`** で解析し、API スキャナからは `service/runtime` を除外して二重計上を避けます。first-party リファレンス Module は **`StateviaModulesReference`** で解析し、API スキャナからは `modules/reference` を除外します。
+C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定し、Phase 0 以降のパス（`core/engine` 等）でも除外設定が効くようにしています。**テストプロジェクト**（`*.Tests`）は `sonar.dotnet.excludeTestProjects=true` で各コンポーネントの projectKey から除外します（品質ゲートの対象はプロダクションコード）。IDE も同じ範囲に揃えるため、`IsTestProject=true` の csproj はルート `Directory.Build.targets` で `SonarQubeExclude=true` です。Connected Mode の除外は各プロジェクトの **Project Settings → Analysis Scope → Source File Exclusions**（Scanner の `/d:sonar.exclusions` は IDE に残らない）。スタンドアロン時は `.vscode/settings.json` の `sonarlint.analysisExcludesStandalone` を使います。`Statevia.Runtime` は **`StateviaServiceRuntime`** で解析し、API スキャナからは `service/runtime` を除外して二重計上を避けます。first-party リファレンス Module は **`StateviaModulesReference`** で解析し、API スキャナからは `modules/reference` を除外します。
 
 ### SonarQube 側の既定 URL
 
