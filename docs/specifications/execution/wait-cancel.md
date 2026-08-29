@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.5.2 |
-| 更新日 | 2026-08-26 |
+| Version | 1.5.3 |
+| 更新日 | 2026-08-27 |
 | 関連 | [fsm.md](fsm.md), [../definition.md](../definition.md), [fork-join.md](fork-join.md), [concepts/execution-model.md](../../concepts/execution-model.md) |
 
 ---
@@ -66,6 +66,9 @@ Subscribe は入れ子ワークフローの **公式な子→親 Resume では�
 - Cancelled は実行が実際に停止したときにのみ発行されます。
 - 依存状態は自動的にキャンセルされます。
 - Hosted で親を Cancel した場合、未終端の物理子へ Cancel work item をカスケードする（[fork-join.md](fork-join.md)）。
+- `POST /v1/executions/{id}/cancel` は受理のみで **204** を返す（enqueue）。新パスは無い。投影の `cancelRequested` は **受理時点**で立つ。
+- HTTP Start のあと Engine Start 前（正当な runtime checkpoint が無い）でも、Worker は hydrate せず投影を `Cancelled` にし、Cancelled 事実を発行する。残 Start work item は Complete し、後続の `engine.Start` は走らない。
+- 204 時点では Cancelled 事実を発行しない。
 
 ## 状態
 

@@ -69,6 +69,18 @@ public interface IExecutionWorkQueue
     /// <param name="ct">キャンセル トークン。</param>
     Task CompleteAsync(Guid workItemId, string leaseOwner, CancellationToken ct);
 
+    /// <summary>
+    /// 指定実行の未完了 Start work item を削除する（lease の有無を問わない）。
+    /// </summary>
+    /// <param name="uow">同一トランザクションの Unit of Work。</param>
+    /// <param name="executionId">対象実行 ID。</param>
+    /// <param name="ct">キャンセル トークン。</param>
+    /// <remarks>
+    /// 未 Start Cancel 終端と同一 UoW で呼び、残 Start の再 claim による <c>engine.Start</c> を防ぐ。
+    /// kind 語彙は変えない。
+    /// </remarks>
+    Task CompleteIncompleteStartItemsAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct);
+
     /// <summary>失敗した項目の lease を解放し、指定時刻以降へ再投入する。</summary>
     /// <param name="workItemId">ワーク項目 ID。</param>
     /// <param name="leaseOwner">lease 所有者。</param>

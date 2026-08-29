@@ -53,6 +53,69 @@ public sealed class ExecutionWorkQueueUnitOfWorkTests
         Assert.Equal(ExecutionWorkItemKinds.Start, after.Kind);
     }
 
+    /// <summary>未完了 Start は execution_id 指定で lease 無しでも削除される。</summary>
+    [Fact]
+    public async Task CompleteIncompleteStartItemsAsync_WithUnitOfWork_DeletesStartItemsOnly()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var queue = new ExecutionWorkQueue(db.Factory);
+        var executionId = Guid.NewGuid();
+        var otherExecutionId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var startItem = new ExecutionWorkItemRow
+        {
+            WorkItemId = Guid.NewGuid(),
+            ExecutionId = executionId,
+            Kind = ExecutionWorkItemKinds.Start,
+            Payload = "{}",
+            AvailableAt = now,
+            Attempts = 0,
+            CreatedAt = now
+        };
+        var cancelItem = new ExecutionWorkItemRow
+        {
+            WorkItemId = Guid.NewGuid(),
+            ExecutionId = executionId,
+            Kind = ExecutionWorkItemKinds.Cancel,
+            Payload = "{}",
+            AvailableAt = now,
+            Attempts = 0,
+            CreatedAt = now
+        };
+        var otherStart = new ExecutionWorkItemRow
+        {
+            WorkItemId = Guid.NewGuid(),
+            ExecutionId = otherExecutionId,
+            Kind = ExecutionWorkItemKinds.Start,
+            Payload = "{}",
+            AvailableAt = now,
+            Attempts = 0,
+            CreatedAt = now
+        };
+
+        await using (var seed = await uowFactory.CreateAsync())
+        {
+            await queue.EnqueueManyAsync(seed, [startItem, cancelItem, otherStart], CancellationToken.None);
+            await seed.SaveChangesAsync(CancellationToken.None);
+        }
+
+        // Act
+        await using (var uow = await uowFactory.CreateAsync())
+        {
+            await queue.CompleteIncompleteStartItemsAsync(uow, executionId, CancellationToken.None);
+            await uow.SaveChangesAsync(CancellationToken.None);
+        }
+
+        // Assert
+        await using var verify = new CoreDbContext(db.Options);
+        var remaining = await verify.ExecutionWorkItems.ToListAsync();
+        Assert.DoesNotContain(remaining, item => item.WorkItemId == startItem.WorkItemId);
+        Assert.Contains(remaining, item => item.WorkItemId == cancelItem.WorkItemId);
+        Assert.Contains(remaining, item => item.WorkItemId == otherStart.WorkItemId);
+    }
+
     /// <summary>空リストは例外なく何もしない。</summary>
     [Fact]
     public async Task EnqueueManyAsync_WithUnitOfWork_EmptyList_NoOp()

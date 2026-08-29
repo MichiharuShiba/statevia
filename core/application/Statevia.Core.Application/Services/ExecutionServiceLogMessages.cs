@@ -273,4 +273,16 @@ internal static partial class ExecutionServiceLogMessages
         Level = LogLevel.Error,
         Message = "No-progress watchdog unloaded execution. ExecutionId={executionId} ElapsedMs={elapsedMs}")]
     public static partial void NoProgressWatchdogUnloaded(this ILogger logger, Guid executionId, long elapsedMs);
+
+    [LoggerMessage(
+        EventId = 3022,
+        Level = LogLevel.Information,
+        Message = "Terminated unstarted execution as Cancelled without hydrate. ExecutionId={executionId}")]
+    public static partial void UnstartedCancelTerminated(this ILogger logger, Guid executionId);
+
+    [LoggerMessage(
+        EventId = 3023,
+        Level = LogLevel.Information,
+        Message = "Skipped queued Start because cancel was already accepted or execution is terminal. ExecutionId={executionId}")]
+    public static partial void QueuedStartSkippedAfterCancel(this ILogger logger, Guid executionId);
 }

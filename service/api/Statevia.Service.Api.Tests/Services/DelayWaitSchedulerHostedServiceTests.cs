@@ -141,6 +141,9 @@ public sealed class DelayWaitSchedulerHostedServiceTests
         public Task CompleteAsync(Guid workItemId, string leaseOwner, CancellationToken ct) =>
             throw new NotImplementedException();
 
+        public Task CompleteIncompleteStartItemsAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct) =>
+            Task.CompletedTask;
+
         public Task<bool> RenewLeaseAsync(
             Guid workItemId,
             string leaseOwner,

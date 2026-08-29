@@ -14,6 +14,7 @@ namespace Statevia.Core.Application.Services;
 /// <para><see cref="ExecutionService"/> Facade から委譲される。HTTP / Worker 契約は変更しない。</para>
 /// <para>冪等・投影は既存の <see cref="ExecutionIdempotencyService"/> / <see cref="ExecutionProjectionOrchestrator"/> を利用する。</para>
 /// <para>認可は <see cref="ExecutionAuthorizationGuard"/>、Engine hydrate は <see cref="ExecutionEngineSession"/> に委譲する。</para>
+/// <para>HTTP Cancel 受理時に <c>cancelRequested</c> を立てる。未 Start（正当な runtime checkpoint 無し）の WORKER Cancel は hydrate せず Cancelled 終端する。</para>
 /// </remarks>
 /// <param name="engine">実行エンジン。</param>
 /// <param name="displayIds">表示 ID 解決。</param>
@@ -72,6 +73,9 @@ internal sealed class ExecutionLifecycleCommandService(
 
     /// <summary>HTTP 204 No Content。</summary>
     private const int HttpStatus204NoContent = 204;
+
+    /// <summary>HTTP Start 受理時および未 Start 終端で使う空グラフ（Engine 未投影）。</summary>
+    private const string EmptyGraphJson = """{"nodes":[],"edges":[]}""";
 
     /// <summary>
     /// 実行を開始する。HTTP 受理時は work queue へ enqueue、Worker / 同期経路は同一プロセスで Engine を起動する。
@@ -173,7 +177,6 @@ internal sealed class ExecutionLifecycleCommandService(
         var executionId = idGenerator.NewSequentialGuid();
         var graphId = await displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, definitionId.ToString("D"), ct).ConfigureAwait(false)
             ?? definitionId.ToString("D");
-        const string emptyGraphJson = """{"nodes":[],"edges":[]}""";
 
         var response = await executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
@@ -207,7 +210,7 @@ internal sealed class ExecutionLifecycleCommandService(
                 var snapshotRow = new ExecutionGraphSnapshotRow
                 {
                     ExecutionId = executionId,
-                    GraphJson = emptyGraphJson,
+                    GraphJson = EmptyGraphJson,
                     UpdatedAt = createdAt
                 };
                 var accepted = new ExecutionResponse
@@ -294,6 +297,19 @@ internal sealed class ExecutionLifecycleCommandService(
         ExecuteStartInProcessArgs args,
         CancellationToken ct)
     {
+        if (args.ExecutionId is { } queuedExecutionId)
+        {
+            var latest = await executor.ExecuteReadOnlyAsync(
+                    (uow, innerCt) => executions.GetByIdAsync(uow, args.TenantId, queuedExecutionId, innerCt),
+                    ct)
+                .ConfigureAwait(false);
+            if (latest is not null && ShouldSkipQueuedStart(latest))
+            {
+                logger.QueuedStartSkippedAfterCancel(queuedExecutionId);
+                return await CreateQueuedStartSkipResponseAsync(latest, args.DefinitionId, ct).ConfigureAwait(false);
+            }
+        }
+
         var compiled = RestoreCompiledDefinitionFromVersion(args.VersionRow);
         var resolvedExecutionId = args.ExecutionId ?? idGenerator.NewSequentialGuid();
         var engineId = resolvedExecutionId.ToString();
@@ -488,6 +504,12 @@ internal sealed class ExecutionLifecycleCommandService(
         if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
+        if (ShouldSkipQueuedStart(execution))
+        {
+            logger.QueuedStartSkippedAfterCancel(executionId);
+            return await CreateQueuedStartSkipResponseAsync(execution, execution.DefinitionId, ct).ConfigureAwait(false);
+        }
+
         var versionRow = await executor.ExecuteReadOnlyAsync(
             (uow, innerCt) => definitions.GetVersionForExecutionByIdAsync(
                 uow,
@@ -622,6 +644,10 @@ internal sealed class ExecutionLifecycleCommandService(
         if (await idempotency.TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
+        if (await TryTerminateUnstartedCancelAsync(uuid.Value, execution, clientEventId, dedupKey, ct)
+            .ConfigureAwait(false))
+            return;
+
         await engineSession.EnsureEngineRuntimeLoadedForMutationAsync(uuid.Value, execution, ct).ConfigureAwait(false);
 
         var cancelApply = await engine.CancelAsync(uuid.Value.ToString(), clientEventId).ConfigureAwait(false);
@@ -733,6 +759,22 @@ internal sealed class ExecutionLifecycleCommandService(
                             ExpiresAt = now.AddHours(24)
                         },
                         innerCt).ConfigureAwait(false);
+                }
+
+                var row = await executions.GetByExecutionIdAsync(uow, executionId, innerCt).ConfigureAwait(false);
+                if (row is not null)
+                {
+                    var snapshot = await executions.GetSnapshotByExecutionIdAsync(uow, executionId, innerCt)
+                        .ConfigureAwait(false);
+                    await executions
+                        .UpdateExecutionAndSnapshotAsync(
+                            uow,
+                            executionId,
+                            row.Status,
+                            cancelRequested: true,
+                            snapshot?.GraphJson ?? EmptyGraphJson,
+                            innerCt)
+                        .ConfigureAwait(false);
                 }
 
                 await workQueue!.EnqueueAsync(
@@ -866,6 +908,175 @@ internal sealed class ExecutionLifecycleCommandService(
             },
             JsonSerializerProfiles.CamelCase);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
+    }
+
+    /// <summary>Queued Start が受理済み Cancel または終端のため engine.Start してはいけないか。</summary>
+    private static bool ShouldSkipQueuedStart(ExecutionRow execution) =>
+        execution.CancelRequested || ExecutionProjectionStatuses.IsTerminal(execution.Status);
+
+    /// <summary>Queued Start を no-op したときの現行投影応答を組み立てる。</summary>
+    private async Task<ExecutionResponse> CreateQueuedStartSkipResponseAsync(
+        ExecutionRow execution,
+        Guid definitionId,
+        CancellationToken ct)
+    {
+        var graphId = await displayIds
+            .GetDisplayIdAsync(DisplayIdResourceTypes.Definition, definitionId.ToString("D"), ct)
+            .ConfigureAwait(false)
+            ?? definitionId.ToString("D");
+        var displayId = await displayIds
+            .GetDisplayIdAsync(DisplayIdResourceTypes.Execution, execution.ExecutionId.ToString("D"), ct)
+            .ConfigureAwait(false)
+            ?? execution.ExecutionId.ToString("D");
+        return new ExecutionResponse
+        {
+            DisplayId = displayId,
+            ResourceId = execution.ExecutionId,
+            GraphId = graphId,
+            Status = execution.Status,
+            StartedAt = execution.StartedAt,
+            UpdatedAt = execution.UpdatedAt,
+            CancelRequested = execution.CancelRequested,
+            RestartLost = execution.RestartLost
+        };
+    }
+
+    /// <summary>
+    /// 未 Start（正当な runtime checkpoint が無い）なら hydrate せず Cancelled 終端する。
+    /// </summary>
+    /// <param name="executionId">対象実行 ID。</param>
+    /// <param name="execution">終端前の実行行。</param>
+    /// <param name="clientEventId">Cancelled 事実の client event ID。</param>
+    /// <param name="dedupKey">HTTP 冪等キー（WORKER では null になり得る）。</param>
+    /// <param name="ct">キャンセル。</param>
+    /// <returns>未 Start として終端したとき <see langword="true"/>。協調 Cancel へ進むときは <see langword="false"/>。</returns>
+    private async Task<bool> TryTerminateUnstartedCancelAsync(
+        Guid executionId,
+        ExecutionRow execution,
+        Guid clientEventId,
+        CommandDedupKey? dedupKey,
+        CancellationToken ct)
+    {
+        if (engine.GetSnapshot(executionId.ToString()) is not null)
+            return false;
+        if (ExecutionProjectionStatuses.IsTerminal(execution.Status))
+            return false;
+
+        var checkpointDocument = await executor.ExecuteReadOnlyAsync(
+                (uow, innerCt) => checkpointStore.GetByExecutionIdAsync(uow, executionId, innerCt),
+                ct)
+            .ConfigureAwait(false);
+        if (ExecutionEngineSession.TryParseRuntimeCheckpoint(
+                checkpointDocument?.CheckpointJson,
+                out _,
+                out _))
+            return false;
+
+        await TerminateUnstartedAsCancelledAsync(
+                executionId,
+                execution,
+                clientEventId,
+                dedupKey,
+                ct)
+            .ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>
+    /// Engine 未載荷かつ正当な runtime checkpoint が無い Cancel を hydrate せず Cancelled 終端する。
+    /// </summary>
+    /// <param name="executionId">対象実行 ID。</param>
+    /// <param name="execution">終端前の実行行。</param>
+    /// <param name="clientEventId">Cancelled 事実の client event ID。</param>
+    /// <param name="dedupKey">HTTP 冪等キー（WORKER では null になり得る）。</param>
+    /// <param name="ct">キャンセル。</param>
+    /// <remarks>
+    /// 残 Start work item を同一 UoW で Complete し、所有 seed の空 checkpoint を削除する。
+    /// HTTP 204 時点では呼ばない（Cancelled 事実は本終端時）。
+    /// </remarks>
+    private async Task TerminateUnstartedAsCancelledAsync(
+        Guid executionId,
+        ExecutionRow execution,
+        Guid clientEventId,
+        CommandDedupKey? dedupKey,
+        CancellationToken ct)
+    {
+        var cancelPayload = JsonSerializer.Serialize(
+            new { tenantId = execution.TenantId },
+            JsonSerializerProfiles.CamelCase);
+
+        await executor.ExecuteReadCommittedAsync(
+            async (uow, innerCt) =>
+            {
+                var snapshot = await executions.GetSnapshotByExecutionIdAsync(uow, executionId, innerCt)
+                    .ConfigureAwait(false);
+                var graphJson = snapshot?.GraphJson ?? EmptyGraphJson;
+
+                await executions
+                    .UpdateExecutionAndSnapshotAsync(
+                        uow,
+                        executionId,
+                        ExecutionProjectionStatuses.Cancelled,
+                        cancelRequested: true,
+                        graphJson,
+                        innerCt)
+                    .ConfigureAwait(false);
+                await projection.SyncOperationalProjectionAsync(
+                        uow,
+                        executionId,
+                        execution.TenantId,
+                        ExecutionProjectionStatuses.Cancelled,
+                        graphJson,
+                        nodeIdToClear: null,
+                        innerCt)
+                    .ConfigureAwait(false);
+                await eventStore
+                    .AppendAsync(uow, executionId, EventStoreEventType.WorkflowCancelled, cancelPayload, innerCt)
+                    .ConfigureAwait(false);
+
+                if (workQueue is not null)
+                {
+                    await workQueue.CompleteIncompleteStartItemsAsync(uow, executionId, innerCt)
+                        .ConfigureAwait(false);
+                }
+
+                await checkpointStore.DeleteAsync(uow, executionId, innerCt).ConfigureAwait(false);
+
+                if (dedupKey is { } saveKey)
+                {
+                    var now = DateTime.UtcNow;
+                    await dedup.SaveAsync(
+                        uow,
+                        new CommandDedupRow
+                        {
+                            DedupKey = saveKey.DedupKey,
+                            Endpoint = saveKey.Endpoint,
+                            IdempotencyKey = saveKey.IdempotencyKey,
+                            RequestHash = null,
+                            StatusCode = HttpStatus204NoContent,
+                            ResponseBody = null,
+                            CreatedAt = now,
+                            ExpiresAt = now.AddHours(24)
+                        },
+                        innerCt).ConfigureAwait(false);
+                }
+
+                var nowUtc = DateTime.UtcNow;
+                await eventDeliveryDedup.TryUpdateStatusAsync(
+                    uow,
+                    execution.TenantId,
+                    executionId,
+                    clientEventId,
+                    new EventDeliveryDedupStatusUpdate(
+                        EventDeliveryDedupStatuses.Applied,
+                        nowUtc,
+                        AppliedAt: nowUtc,
+                        ErrorCode: null),
+                    innerCt).ConfigureAwait(false);
+            },
+            ct).ConfigureAwait(false);
+
+        logger.UnstartedCancelTerminated(executionId);
     }
 
     /// <summary>投影ステータスが終端（Succeeded / Failed / Cancelled 等）かどうか。</summary>
