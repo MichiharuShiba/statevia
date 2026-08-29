@@ -22,7 +22,7 @@ namespace Statevia.Runtime.Services;
 /// ライフサイクル（Start / Resume）は <see cref="WorkerRuntimeOptions.MaxConcurrency"/> まで並列する。
 /// Cancel は独立ループ。処理中は work item lease と checkpoint 所有 lease を heartbeat 延長する。
 /// </para>
-/// <para>同一プロセス所有中の Cancel はローカル process CTS をキャンセルして協調停止する。</para>
+/// <para>同一プロセス所有中の Cancel は先に Engine CancelAsync を呼び、その後 process CTS を IRQ する。</para>
 /// </remarks>
 /// <param name="scopeFactory">スロットごとの DI スコープを作る。</param>
 /// <param name="logger">構造化ログ。</param>
@@ -157,7 +157,7 @@ public sealed class ExecutionWorkItemWorkerHostedService(
 
     private Task ProcessCancelSlotAsync(ExecutionWorkItemRow item, CancellationToken stoppingToken)
     {
-        if (_ownedRegistry.TryCancelLocal(item.ExecutionId))
+        if (_ownedRegistry.Contains(item.ExecutionId))
             return CompleteLocalCancelAsync(item, stoppingToken);
 
         return ProcessAsync(
@@ -169,10 +169,57 @@ public sealed class ExecutionWorkItemWorkerHostedService(
 
     private async Task CompleteLocalCancelAsync(ExecutionWorkItemRow item, CancellationToken stoppingToken)
     {
-        logger.WorkerLocalCancelInterrupt(item.ExecutionId);
         using var scope = scopeFactory.CreateScope();
-        var queue = scope.ServiceProvider.GetRequiredService<IExecutionWorkQueue>();
-        await queue.CompleteAsync(item.WorkItemId, _leaseOwner, stoppingToken).ConfigureAwait(false);
+        var scopedServices = scope.ServiceProvider;
+        var queue = scopedServices.GetRequiredService<IExecutionWorkQueue>();
+        try
+        {
+            var platformData = scopedServices.GetRequiredService<IPlatformDataAccess>();
+            var tenant = await platformData.FindExecutionTenantAsync(item.ExecutionId, stoppingToken)
+                .ConfigureAwait(false);
+            if (tenant is null || tenant.Lifecycle != TenantLifecycle.Active)
+            {
+                _ownedRegistry.TryCancelLocal(item.ExecutionId);
+                await queue.CompleteAsync(item.WorkItemId, _leaseOwner, stoppingToken).ConfigureAwait(false);
+                return;
+            }
+
+            var accessor = scopedServices.GetRequiredService<ITenantContextAccessor>();
+            using (accessor.SetContext(new TenantContextState(
+                tenant.TenantId,
+                tenant.TenantKey,
+                PrincipalId: null,
+                tenant.Lifecycle,
+                WorkerPermissions)))
+            {
+                var executions = scopedServices.GetRequiredService<IExecutionService>();
+                logger.WorkerLocalCancelApplied(item.ExecutionId);
+                await executions.CancelAsync(
+                        item.ExecutionId.ToString("D"),
+                        idempotencyKey: null,
+                        CreateWorkerCommandContext(),
+                        stoppingToken)
+                    .ConfigureAwait(false);
+            }
+
+            _ownedRegistry.TryCancelLocal(item.ExecutionId);
+            logger.WorkerLocalCancelInterrupt(item.ExecutionId);
+            await queue.CompleteAsync(item.WorkItemId, _leaseOwner, stoppingToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.WorkItemFailed(exception, item.WorkItemId);
+            await queue.ReleaseAsync(
+                    item.WorkItemId,
+                    _leaseOwner,
+                    DateTime.UtcNow.Add(RetryDelay),
+                    stoppingToken)
+                .ConfigureAwait(false);
+        }
     }
 
     private async Task ProcessAsync(

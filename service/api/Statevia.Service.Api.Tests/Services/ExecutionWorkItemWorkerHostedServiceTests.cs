@@ -697,7 +697,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         Assert.Equal(0, queue.ReleaseCallCount);
     }
 
-    /// <summary>Start 所有中の Cancel claim は BeginOwnedSession せず process CTS をキャンセルする。</summary>
+    /// <summary>Start 所有中の Cancel は Engine CancelAsync を先に呼び、その後に Cancel item を Complete する。</summary>
     [Fact]
     public async Task ExecuteAsync_WhenCancelClaimedWhileStartOwned_CancelsProcessCtsWithoutSecondSession()
     {
@@ -711,8 +711,10 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
                 executionId,
                 new StartExecutionRequest { DefinitionId = "d1", Input = inputDoc.RootElement }),
             ExecutionWorkItemPayloadJson.Options);
+        var operationLog = new List<string>();
         var queue = new FakeWorkerQueue
         {
+            OperationLog = operationLog,
             ItemsToClaim =
             [
                 new ExecutionWorkItemRow
@@ -730,6 +732,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var executions = new RecordingExecutionService
         {
+            OperationLog = operationLog,
             BeginGenerationToReturn = 1,
             AwaitLocalLoadGate = gate
         };
@@ -755,9 +758,14 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
 
         // Assert
         Assert.Equal(1, executions.BeginOwnedSessionCalls);
-        Assert.Equal(1, executions.CancelCalls);
+        Assert.True(executions.CancelCalls >= 1);
         Assert.Equal(2, queue.CompleteCallCount);
         Assert.Equal(0, queue.ReleaseCallCount);
+        var cancelIndex = operationLog.IndexOf("cancel");
+        var cancelCompleteIndex = operationLog.IndexOf($"complete:{cancelWorkItemId:D}");
+        Assert.True(cancelIndex >= 0);
+        Assert.True(cancelCompleteIndex >= 0);
+        Assert.True(cancelIndex < cancelCompleteIndex);
     }
 
     /// <summary>AwaitLoad が無進捗相当で戻っても Complete し Release しない。</summary>
@@ -918,6 +926,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         private readonly HashSet<Guid> _claimed = [];
 
         public List<ExecutionWorkItemRow> ItemsToClaim { get; set; } = [];
+        public List<string>? OperationLog { get; set; }
         public int ClaimCallCount { get; private set; }
         public int CompleteCallCount { get; private set; }
         public int ReleaseCallCount { get; private set; }
@@ -972,6 +981,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         public Task CompleteAsync(Guid workItemId, string leaseOwner, CancellationToken ct)
         {
             CompleteCallCount++;
+            OperationLog?.Add($"complete:{workItemId:D}");
             return Task.CompletedTask;
         }
 
@@ -1025,6 +1035,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         public int ConcurrentAwaitLocalLoad { get; private set; }
         public int ConcurrentAwaitLocalLoadPeak { get; private set; }
         public int CancelCalls { get; private set; }
+        public List<string>? OperationLog { get; set; }
         public int RecoverCalls { get; private set; }
         public int ResumeCalls { get; private set; }
         public int AbandonCalls { get; private set; }
@@ -1111,6 +1122,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
             CancellationToken ct)
         {
             CancelCalls++;
+            OperationLog?.Add("cancel");
             if (CancelException is { } cancelEx)
                 throw cancelEx;
             if (CancelDelay is { } delay)

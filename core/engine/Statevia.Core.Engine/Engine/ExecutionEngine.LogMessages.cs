@@ -54,5 +54,8 @@ public sealed partial class ExecutionEngine
 
         [LoggerMessage(EventId = 5014, Level = LogLevel.Warning, Message = "Node completion handler failed ExecutionId={ExecutionId}")]
         public static partial void NodeCompletedHandlerFailed(ILogger logger, Exception exception, string executionId);
+
+        [LoggerMessage(EventId = 5015, Level = LogLevel.Information, Message = "Execution cancel suppressed transition ExecutionId={ExecutionId} DefinitionName={DefinitionName} StateName={StateName} Fact={Fact}")]
+        public static partial void ExecutionCancelSuppressedTransition(ILogger logger, string executionId, string definitionName, string stateName, string fact);
     }
 }

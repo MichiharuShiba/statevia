@@ -53,6 +53,12 @@ internal static partial class ExecutionWorkItemWorkerLogMessages
     public static partial void WorkerLocalCancelInterrupt(this ILogger logger, Guid executionId);
 
     [LoggerMessage(
+        EventId = 3310,
+        Level = LogLevel.Information,
+        Message = "Worker applied Engine cancel before local IRQ. ExecutionId={executionId}")]
+    public static partial void WorkerLocalCancelApplied(this ILogger logger, Guid executionId);
+
+    [LoggerMessage(
         EventId = 3309,
         Level = LogLevel.Information,
         Message = "Worker lifecycle slots changed. ActiveLifecycleSlots={activeLifecycleSlots} MaxConcurrency={maxConcurrency}")]

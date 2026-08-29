@@ -10,7 +10,10 @@ namespace Statevia.Core.Engine.Engine;
 /// 1 つのワークフローインスタンスの実行状態を保持します。
 /// FSM、JoinTracker、ExecutionGraph、状態出力、アクティブ状態などを管理します。
 /// </summary>
-public sealed class ExecutionInstance
+/// <remarks>
+/// <para>実行中 Action にはインスタンスの Action CTS を渡す。<see cref="MarkCancelled"/> と <see cref="Dispose"/> がそのトークンをキャンセルする。</para>
+/// </remarks>
+public sealed class ExecutionInstance : IDisposable
 {
     /// <summary>ワークフローインスタンス ID。</summary>
     public required string ExecutionId { get; init; }
@@ -32,11 +35,15 @@ public sealed class ExecutionInstance
     private readonly object _lock = new();
     private readonly ConcurrentDictionary<Guid, byte> _appliedPublishClientEventIds = new();
     private readonly ConcurrentDictionary<Guid, byte> _appliedCancelClientEventIds = new();
+    private readonly CancellationTokenSource _actionCts = new();
 
     /// <summary>end 到達で完了したか。</summary>
     public bool IsCompleted { get; private set; }
     /// <summary>協調的キャンセルで停止したか。</summary>
     public bool IsCancelled { get; private set; }
+
+    /// <summary>実行中 Action に渡す協調 Cancel 用トークン。Unload 後は破棄済み。</summary>
+    internal CancellationToken ActionCancellationToken => _actionCts.Token;
     /// <summary>失敗で停止したか。</summary>
     public bool IsFailed { get; private set; }
 
@@ -106,10 +113,45 @@ public sealed class ExecutionInstance
     }
 
     /// <summary>協調的キャンセルにより停止したとマークする。</summary>
-    public void MarkCancelled() => IsCancelled = true;
+    /// <summary>協調的キャンセルにより停止したとマークし、実行中 Action の CT をキャンセルする。</summary>
+    public void MarkCancelled()
+    {
+        IsCancelled = true;
+        try
+        {
+            _actionCts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Unload 後の二重 Cancel はフラグのみ
+        }
+    }
 
     /// <summary>失敗により停止したとマークする。</summary>
     public void MarkFailed() => IsFailed = true;
+
+    /// <summary>
+    /// Unload 時に Action 用 <see cref="CancellationTokenSource"/> をキャンセルして破棄する。
+    /// </summary>
+    /// <remarks>二重呼び出しは CTS 破棄済みとして無視する。</remarks>
+    /// <summary>
+    /// Action 用 <see cref="CancellationTokenSource"/> をキャンセルして破棄する。
+    /// </summary>
+    /// <remarks>Unload / Engine Dispose から呼ぶ。二重呼び出しは CTS 破棄済みとして無視する。</remarks>
+    public void Dispose()
+    {
+        try
+        {
+            _actionCts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            return;
+        }
+
+        _actionCts.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     /// <summary>
     /// <paramref name="clientEventId"/> を Publish 冪等集合へ未登録なら登録し true。既登録なら false。

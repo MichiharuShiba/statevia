@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.5.3 |
-| 更新日 | 2026-08-27 |
+| Version | 1.5.4 |
+| 更新日 | 2026-08-29 |
 | 関連 | [fsm.md](fsm.md), [../definition.md](../definition.md), [fork-join.md](fork-join.md), [concepts/execution-model.md](../../concepts/execution-model.md) |
 
 ---
@@ -62,12 +62,16 @@ Subscribe は入れ子ワークフローの **公式な子→親 Resume では�
 ## Cancel（キャンセル）
 
 - キャンセルは協調的です。
-- エンジンは実行中の状態を強制終了しません。
+- エンジンは実行中の状態を強制終了しません（スレッド abort やプロセス kill はしない）。
+- 協調 Cancel は実行中 Action に渡した `CancellationToken` をキャンセルする。`Task.Delay(ct)` する Action は残り時間を待たずに抜ける。
+- Action が CT を無視して `Completed` で戻っても、Cancel 適用後は次ノードへ進まない。実行は `Cancelled`。
+- CT を無視する外部 I/O は戻りを待ったうえで次遷移せず `Cancelled` にする。
 - Cancelled は実行が実際に停止したときにのみ発行されます。
 - 依存状態は自動的にキャンセルされます。
 - Hosted で親を Cancel した場合、未終端の物理子へ Cancel work item をカスケードする（[fork-join.md](fork-join.md)）。
 - `POST /v1/executions/{id}/cancel` は受理のみで **204** を返す（enqueue）。新パスは無い。投影の `cancelRequested` は **受理時点**で立つ。
-- HTTP Start のあと Engine Start 前（正当な runtime checkpoint が無い）でも、Worker は hydrate せず投影を `Cancelled` にし、Cancelled 事実を発行する。残 Start work item は Complete し、後続の `engine.Start` は走らない。
+- 同一プロセスが Engine に載荷済みのとき、Worker は Engine `CancelAsync` を先に呼び、その後 AwaitLoad を IRQ する。IRQ だけでは完走させない。
+- HTTP Start のあと Engine Start 前（正当な runtime checkpoint が無い）でも、Worker は hydrate せず投影を `Cancelled` にし、Cancelled 事実を発行する。残 Start work item は Complete し、後続の `engine.Start` は走らない。未 Start 終端と実行中停止は別契約である。
 - 204 時点では Cancelled 事実を発行しない。
 
 ## 状態

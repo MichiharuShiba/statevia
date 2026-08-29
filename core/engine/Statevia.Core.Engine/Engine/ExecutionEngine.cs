@@ -369,11 +369,13 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
     public bool Unload(string executionId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(executionId);
-        if (!_instances.TryRemove(executionId, out _))
+        if (!_instances.TryRemove(executionId, out var instance))
         {
             _eventProviders.TryRemove(executionId, out _);
             return false;
         }
+
+        instance.Dispose();
 
         if (_eventProviders.TryRemove(executionId, out var eventProvider))
         {
@@ -432,7 +434,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
                     return (Fact.Failed, (object?)null);
                 }
 #pragma warning restore CA1031
-            }).ConfigureAwait(false);
+            }, instance.ActionCancellationToken).ConfigureAwait(false);
 
             if (fact is null)
             {
@@ -595,7 +597,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             }
 #pragma warning restore CA1031
             finally { instance.RemoveActiveState(stateName); }
-        }).ConfigureAwait(false);
+        }, instance.ActionCancellationToken).ConfigureAwait(false);
 
         if (fact is null)
         {
@@ -690,6 +692,16 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         var readyJoin = instance.JoinTracker.RecordFact(stateName, fact, output, nodeId);
         if (readyJoin != null)
         {
+            if (instance.IsCancelled)
+            {
+                _executionLog.LogExecutionCancelSuppressedTransition(
+                    instance.ExecutionId,
+                    instance.Definition.Name,
+                    stateName,
+                    fact);
+                return;
+            }
+
             _ = RunJoinStateAsync(instance, eventProvider, readyJoin, nodeId, EdgeType.Join);
             return;
         }
@@ -698,6 +710,16 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
             instance.MarkFailed();
             instance.MarkCancelled();
             _executionLog.LogExecutionTerminalFailure(instance.ExecutionId, instance.Definition.Name, stateName, fact);
+            return;
+        }
+
+        if (instance.IsCancelled)
+        {
+            _executionLog.LogExecutionCancelSuppressedTransition(
+                instance.ExecutionId,
+                instance.Definition.Name,
+                stateName,
+                fact);
             return;
         }
 
@@ -948,7 +970,16 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
     }
 
     /// <inheritdoc />
-    public void Dispose() => (_scheduler as IDisposable)?.Dispose();
+    public void Dispose()
+    {
+        foreach (var instance in _instances.Values)
+        {
+            instance.Dispose();
+        }
+
+        _instances.Clear();
+        (_scheduler as IDisposable)?.Dispose();
+    }
 
     /// <summary>コンパイル済み Wait 情報からグラフ用メタデータを構築する。</summary>
     private static WaitNodeGraphMetadata? BuildWaitNodeGraphMetadata(
