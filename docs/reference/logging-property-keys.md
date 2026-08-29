@@ -27,6 +27,8 @@ Service API と Engine の構造化ログで、同じ概念に同じキー名を
 | 親ワークフロー ID | `ParentExecutionId` | Fork 展開 | 物理子展開時の親 |
 | Fork ノード ID | `ForkNodeId` | Fork 展開 | 親実行グラフ上の Fork 到達インスタンス |
 | 状態名 | `StateName` | Engine | State 実行ログ・Warning |
+| 定義名 | `DefinitionName` | Engine | 実行開始・完了・Cancel 次遷移抑制 |
+| 状態事実 | `Fact` | Engine | 状態完了・Cancel 次遷移抑制 |
 | 定義 ID | `DefinitionId` | API enrich | route `{id}` 由来（display ID の場合あり） |
 | グラフ定義 ID | `GraphDefinitionId` | API enrich | route `{graphId}` |
 | HTTP メソッド | `Method` | API | - |

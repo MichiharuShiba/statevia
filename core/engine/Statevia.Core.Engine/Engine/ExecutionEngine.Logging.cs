@@ -77,6 +77,20 @@ public sealed partial class ExecutionEngine
         public void LogWarningNodeCompletedHandlerFailed(Exception exception, string executionId) =>
             SafeLog(() =>
                 ExecutionLog.NodeCompletedHandlerFailed(_logger, exception, executionId));
+
+        /// <summary>協調 Cancel 後に Completed でも次遷移しない。</summary>
+        public void LogExecutionCancelSuppressedTransition(
+            string executionId,
+            string definitionName,
+            string stateName,
+            string fact) =>
+            SafeLog(() =>
+                ExecutionLog.ExecutionCancelSuppressedTransition(
+                    _logger,
+                    executionId,
+                    definitionName,
+                    stateName,
+                    fact));
     }
 
     /// <summary>

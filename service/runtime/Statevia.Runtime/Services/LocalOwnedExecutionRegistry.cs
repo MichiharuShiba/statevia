@@ -20,6 +20,11 @@ internal sealed class LocalOwnedExecutionRegistry
     public bool TryRegister(Guid executionId, CancellationTokenSource processCts) =>
         _slots.TryAdd(executionId, new Slot(processCts));
 
+/// <summary>このプロセスが当該 execution のライフサイクルスロットを所有しているか。</summary>
+    /// <param name="executionId">実行 ID。</param>
+    /// <returns>登録済みのとき <see langword="true"/>。</returns>
+    public bool Contains(Guid executionId) => _slots.ContainsKey(executionId);
+
     /// <summary>スロット終了時に登録を外す（冪等）。</summary>
     /// <param name="executionId">実行 ID。</param>
     public void Unregister(Guid executionId) => _slots.TryRemove(executionId, out _);
