@@ -524,6 +524,13 @@ public sealed class ExecutionServiceTests
         {
             _ = uow;
             Updates.Add((executionId, status, cancelRequested, graphJson));
+            if (ByIdResult is not null && ByIdResult.ExecutionId == executionId)
+            {
+                ByIdResult.Status = status;
+                if (cancelRequested is { } flag)
+                    ByIdResult.CancelRequested = flag;
+            }
+
             await Task.Yield(); // async boundary for coverage
         }
     }
@@ -4481,14 +4488,31 @@ public sealed class ExecutionServiceTests
     }
 
     /// <summary>
-    /// エンジンにインスタンスが無く投影が Running のとき、キャンセルも同様に引数例外（HTTP 422）を投げる。
+    /// エンジン未載荷かつ checkpoint が seed `{}` の Running は、未 Start として hydrate せず Cancelled 終端する。
     /// </summary>
     [Fact]
-    public async Task CancelAsync_WhenEngineRuntimeMissing_AndExecutionRunning_ThrowsArgumentException()
+    public async Task CancelAsync_WhenEngineRuntimeMissing_AndExecutionRunning_TerminatesUnstarted()
     {
         // Arrange
         var executionId = Guid.NewGuid();
         var defId = Guid.NewGuid();
+        var eventStore = new FakeEventStoreRepository();
+        var workQueue = new CapturingWorkQueue
+        {
+            Items =
+            {
+                new ExecutionWorkItemRow
+                {
+                    WorkItemId = Guid.NewGuid(),
+                    ExecutionId = executionId,
+                    Kind = ExecutionWorkItemKinds.Start,
+                    Payload = "{}",
+                    AvailableAt = DateTime.UtcNow,
+                    Attempts = 0,
+                    CreatedAt = DateTime.UtcNow
+                }
+            }
+        };
 
         var engine = new FakeExecutionEngine();
         var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
@@ -4504,23 +4528,59 @@ public sealed class ExecutionServiceTests
                 UpdatedAt = DateTime.UtcNow,
                 CancelRequested = false,
                 RestartLost = false
+            },
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
+            {
+                ExecutionId = executionId,
+                GraphJson = """{"nodes":[],"edges":[]}""",
+                UpdatedAt = DateTime.UtcNow
             }
         };
 
-        var sut = MakeSut(
-            dedupService: new FakeCommandDedupService(null),
-            dedupRepo: new FakeCommandDedupRepository(),
-            engine: engine,
-            display: display,
-            executionRepo: executionRepo,
-            eventStore: new FakeEventStoreRepository());
+        using var sqlite = new SqliteTestDatabase();
+        var checkpointStore = new FakeExecutionCheckpointStore
+        {
+            DocumentById = new ExecutionCheckpointDocument
+            {
+                ExecutionId = executionId,
+                CheckpointJson = "{}",
+                SchemaVersion = 1,
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(defId, TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = eventStore,
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                WorkQueue = workQueue,
+                CheckpointStore = checkpointStore,
+            });
 
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.CancelAsync(idOrUuid: "X", idempotencyKey: null, new CommandRequestContext("POST", "/v1/executions/cancel"), CancellationToken.None));
+        // Act
+        await sut.CancelAsync(
+            idOrUuid: "X",
+            idempotencyKey: null,
+            new CommandRequestContext("WORKER", "/internal/execution-work-items"),
+            CancellationToken.None);
 
-        Assert.Contains("not loaded in this API process", ex.Message, StringComparison.Ordinal);
+        // Assert
         Assert.False(engine.CancelCalled);
+        Assert.Equal(0, engine.ImportCheckpointCalls);
+        Assert.Equal(ExecutionProjectionStatuses.Cancelled, executionRepo.Updates[^1].Status);
+        Assert.True(executionRepo.Updates[^1].CancelRequested);
+        Assert.Contains(eventStore.Appended, e => e.Type == EventStoreEventType.WorkflowCancelled);
+        Assert.Contains(executionId, workQueue.CompletedStartExecutionIds);
+        Assert.DoesNotContain(workQueue.Items, item => item.Kind == ExecutionWorkItemKinds.Start);
     }
 
     /// <summary>
@@ -5661,6 +5721,70 @@ public sealed class ExecutionServiceTests
         Assert.Equal(executionId, workQueue.Items[0].ExecutionId);
     }
 
+    /// <summary>
+    /// HTTP Cancel 受理で Cancel enqueue と同時に cancelRequested を立てる。
+    /// </summary>
+    [Fact]
+    public async Task CancelAsync_WithWorkQueue_SetsCancelRequestedOnAccept()
+    {
+        // Arrange
+        var executionId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+        var workQueue = new CapturingWorkQueue();
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = Guid.NewGuid(),
+                DefinitionVersionId = Guid.NewGuid(),
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false
+            },
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
+            {
+                ExecutionId = executionId,
+                GraphJson = """{"nodes":[],"edges":[]}""",
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+        using var sqlite = new SqliteTestDatabase();
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(Guid.NewGuid(), TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                WorkQueue = workQueue,
+            });
+
+        // Act
+        await sut.CancelAsync(
+            executionId.ToString("D"),
+            idempotencyKey: null,
+            new CommandRequestContext("POST", "/v1/executions/x/cancel"),
+            CancellationToken.None);
+
+        // Assert
+        Assert.Single(workQueue.Items);
+        Assert.Equal(ExecutionWorkItemKinds.Cancel, workQueue.Items[0].Kind);
+        Assert.Single(executionRepo.Updates);
+        Assert.True(executionRepo.Updates[0].CancelRequested);
+        Assert.Equal(ExecutionProjectionStatuses.Running, executionRepo.Updates[0].Status);
+        Assert.True(executionRepo.ByIdResult!.CancelRequested);
+    }
+
     /// <summary>HTTP Cancel で work queue があるとき Cancel work item を enqueue する。</summary>
     [Fact]
     public async Task CancelAsync_WithWorkQueue_EnqueuesCancelWorkItem()
@@ -5995,6 +6119,168 @@ public sealed class ExecutionServiceTests
         Assert.Equal(executionId, response.ResourceId);
     }
 
+    /// <summary>cancelRequested の Queued Start は engine.Start しない。</summary>
+    [Fact]
+    public async Task ExecuteQueuedStartAsync_WhenCancelRequested_DoesNotStartEngine()
+    {
+        // Arrange
+        var defUuid = Guid.Parse("12121212-1212-1212-1212-121212121212");
+        var versionId = Guid.Parse("13131313-1313-1313-1313-131313131313");
+        var executionId = Guid.Parse("14141414-1414-1414-1414-141414141414");
+        var now = DateTime.UtcNow;
+        var engine = new FakeExecutionEngine();
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = defUuid,
+                DefinitionVersionId = versionId,
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = now,
+                UpdatedAt = now,
+                CancelRequested = true
+            }
+        };
+
+        using var sqlite = new SqliteTestDatabase();
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService { AllocateResultWorkflow = "WF-QS-C", GetDisplayIdResult = "def-disp" },
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
+
+        using var inputDoc = JsonDocument.Parse("{}");
+        var request = new StartExecutionRequest { DefinitionId = "def-q", Input = inputDoc.RootElement };
+
+        // Act
+        var response = await sut.ExecuteQueuedStartAsync(executionId, request, CancellationToken.None);
+
+        // Assert
+        Assert.False(engine.StartCalled);
+        Assert.Equal(executionId, response.ResourceId);
+        Assert.Equal(ExecutionProjectionStatuses.Running, response.Status);
+        Assert.True(response.CancelRequested);
+    }
+
+    /// <summary>正当な runtime checkpoint がある Cancel は未 Start に落とさず hydrate する。</summary>
+    [Fact]
+    public async Task CancelAsync_WhenRuntimeCheckpointValid_HydratesAndCancels()
+    {
+        // Arrange
+        var executionId = Guid.Parse("15151515-1515-1515-1515-151515151515");
+        var defId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var checkpoint = CreateMinimalCheckpoint(executionId.ToString("D"));
+        var checkpointJson = System.Text.Json.JsonSerializer.Serialize(
+            checkpoint,
+            new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = null,
+            GraphJsonToReturn = """{"nodes":[]}"""
+        };
+        var display = new FakeDisplayIdService { ResolveResultExecution = executionId };
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = defId,
+                DefinitionVersionId = versionId,
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false
+            }
+        };
+        var checkpointStore = new FakeExecutionCheckpointStore
+        {
+            DocumentById = new ExecutionCheckpointDocument
+            {
+                ExecutionId = executionId,
+                CheckpointJson = checkpointJson,
+                SchemaVersion = ExecutionRuntimeCheckpoint.CurrentSchemaVersion,
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+
+        using var sqlite = new SqliteTestDatabase();
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = display,
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(Guid.NewGuid()),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = new StubDefinitionRepository
+                {
+                    LatestDetail = new DefinitionDetail
+                    {
+                        Definition = new DefinitionRow
+                        {
+                            DefinitionId = defId,
+                            TenantId = TestTenantIds.T1TenantId,
+                            ProjectId = Guid.NewGuid(),
+                            Slug = "def",
+                            Name = "def",
+                            LatestVersion = 1,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        },
+                        Version = new DefinitionVersionRow
+                        {
+                            DefinitionVersionId = versionId,
+                            DefinitionId = defId,
+                            Version = 1,
+                            SourceYaml = "yaml",
+                            CompiledJson = "{}",
+                            CreatedAt = DateTime.UtcNow
+                        }
+                    },
+                    VersionById = new DefinitionVersionRow
+                    {
+                        DefinitionVersionId = versionId,
+                        DefinitionId = defId,
+                        Version = 1,
+                        SourceYaml = "yaml",
+                        CompiledJson = "{}",
+                        CreatedAt = DateTime.UtcNow
+                    }
+                },
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                CheckpointStore = checkpointStore,
+            });
+
+        // Act
+        await sut.CancelAsync(
+            idOrUuid: "X",
+            idempotencyKey: null,
+            new CommandRequestContext("WORKER", "/internal/execution-work-items"),
+            CancellationToken.None);
+
+        // Assert
+        Assert.Equal(1, engine.ImportCheckpointCalls);
+        Assert.True(engine.CancelCalled);
+    }
+
     /// <summary>終端投影の Recover は Engine を触らず早期 return する。</summary>
     [Fact]
     public async Task RecoverExecutionAsync_WhenTerminal_ReturnsWithoutEngineLoad()
@@ -6227,6 +6513,7 @@ public sealed class ExecutionServiceTests
     private sealed class CapturingWorkQueue : IExecutionWorkQueue
     {
         public List<ExecutionWorkItemRow> Items { get; } = [];
+        public List<Guid> CompletedStartExecutionIds { get; } = [];
 
         public Task EnqueueAsync(ExecutionWorkItemRow item, CancellationToken ct)
         {
@@ -6260,6 +6547,13 @@ public sealed class ExecutionServiceTests
 
         public Task CompleteAsync(Guid workItemId, string leaseOwner, CancellationToken ct) =>
             Task.CompletedTask;
+
+        public Task CompleteIncompleteStartItemsAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct)
+        {
+            CompletedStartExecutionIds.Add(executionId);
+            Items.RemoveAll(item => item.ExecutionId == executionId && item.Kind == ExecutionWorkItemKinds.Start);
+            return Task.CompletedTask;
+        }
 
         public Task<bool> RenewLeaseAsync(
             Guid workItemId,

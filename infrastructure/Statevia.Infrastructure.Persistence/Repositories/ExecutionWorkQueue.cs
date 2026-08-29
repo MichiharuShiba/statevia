@@ -138,6 +138,20 @@ internal sealed class ExecutionWorkQueue(IDbContextFactory<CoreDbContext> dbFact
     }
 
     /// <inheritdoc />
+    public async Task CompleteIncompleteStartItemsAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(uow);
+        var items = await uow.GetDb().ExecutionWorkItems
+            .Where(item => item.ExecutionId == executionId && item.Kind == ExecutionWorkItemKinds.Start)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+        if (items.Count == 0)
+            return;
+
+        uow.GetDb().ExecutionWorkItems.RemoveRange(items);
+    }
+
+    /// <inheritdoc />
     public async Task ReleaseAsync(Guid workItemId, string leaseOwner, DateTime availableAt, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);

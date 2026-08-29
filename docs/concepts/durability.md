@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Concept |
-| Version | 1.5.2 |
-| 更新日 | 2026-08-26 |
+| Version | 1.5.3 |
+| 更新日 | 2026-08-27 |
 | 関連 | [../specifications/data-integration.md](../specifications/data-integration.md), [../specifications/execution/fork-join.md](../specifications/execution/fork-join.md) |
 
 ---
@@ -59,7 +59,7 @@ Hosted Fork の詳細は [fork-join.md](../specifications/execution/fork-join.md
 - Fork 展開・子 Start・親子リンクは `execution_branches` と work item で耐久化する。展開一時失敗はリトライし、上限後に親 Failed。
 - 子終端は親向け予約 Resume（`statevia.event.child.completed`）で起こし、Join を再評価する。
 - ネスト Fork も同一経路で再帰分割する。
-- 親の runtime checkpoint は上記寿命表に従う。`BeginOwnedSession` の seed `{}` は lease 用であり hydrate 正本にしない。
+- 親の runtime checkpoint は上記寿命表に従う。`BeginOwnedSession` の seed `{}` は lease 用であり hydrate 正本にしない。未 Start の Cancel はこの seed / 欠落 checkpoint を Import せず、投影を `Cancelled` にして残 Start work item を Complete する。
 - 合成読みモデルの辺規則（枝先頭のみ Fork、内側 Join→外側は Next）は [fork-join.md](../specifications/execution/fork-join.md) を正とする。
 
 ## 次に読むもの

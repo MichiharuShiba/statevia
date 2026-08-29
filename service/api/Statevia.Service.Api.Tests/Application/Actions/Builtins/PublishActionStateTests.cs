@@ -498,6 +498,9 @@ public sealed class PublishActionStateTests
         public Task CompleteAsync(Guid workItemId, string leaseOwner, CancellationToken ct) =>
             throw new NotImplementedException();
 
+        public Task CompleteIncompleteStartItemsAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct) =>
+            Task.CompletedTask;
+
         public Task ReleaseAsync(
             Guid workItemId,
             string leaseOwner,

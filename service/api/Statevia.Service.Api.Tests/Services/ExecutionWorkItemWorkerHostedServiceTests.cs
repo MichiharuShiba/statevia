@@ -975,6 +975,9 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
             return Task.CompletedTask;
         }
 
+        public Task CompleteIncompleteStartItemsAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct) =>
+            Task.CompletedTask;
+
         public Task<bool> RenewLeaseAsync(
             Guid workItemId,
             string leaseOwner,
