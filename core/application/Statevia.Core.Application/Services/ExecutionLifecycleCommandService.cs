@@ -17,6 +17,7 @@ namespace Statevia.Core.Application.Services;
 /// <para>HTTP Cancel 受理時に <c>cancelRequested</c> を立てる。未 Start（正当な runtime checkpoint 無し）の WORKER Cancel は hydrate せず Cancelled 終端する。</para>
 /// <para>HTTP Start は enqueue 前に Restore する。不能なら 422。queued Start の Restore 不能は投影 Failed にする。</para>
 /// <para>queued Start は Cancel / 終端に加え、非空 graph・正当な checkpoint・同一プロセスの Engine 載荷であれば <c>engine.Start</c> しない。</para>
+/// <para>載荷済み Resume の未分類上限は Failed にせず checkpoint を残し、観測印は既存 <c>restartLost</c> を付ける。</para>
 /// </remarks>
 /// <param name="engine">実行エンジン。</param>
 /// <param name="displayIds">表示 ID 解決。</param>
@@ -1030,6 +1031,14 @@ internal sealed class ExecutionLifecycleCommandService(
         bool HasValidCheckpoint,
         bool IsEngineHydrated);
 
+    /// <summary>未分類上限の投影更新結果。</summary>
+    private enum AttemptLimitOutcome
+    {
+        None,
+        RestartLost,
+        Failed
+    }
+
     /// <summary>
     /// 未 Start（正当な runtime checkpoint が無い）なら hydrate せず Cancelled 終端する。
     /// </summary>
@@ -1188,33 +1197,95 @@ internal sealed class ExecutionLifecycleCommandService(
 
                 var snapshot = await executions.GetSnapshotByExecutionIdAsync(uow, executionId, innerCt)
                     .ConfigureAwait(false);
-                var graphJson = snapshot?.GraphJson ?? EmptyGraphJson;
-
-                await executions
-                    .UpdateExecutionAndSnapshotAsync(
-                        uow,
-                        executionId,
-                        ExecutionProjectionStatuses.Failed,
-                        cancelRequested: execution.CancelRequested,
-                        graphJson,
-                        innerCt)
+                await ApplyUnstartedPermanentFailureAsync(uow, execution, snapshot, innerCt)
                     .ConfigureAwait(false);
-                await projection.SyncOperationalProjectionAsync(
-                        uow,
-                        executionId,
-                        execution.TenantId,
-                        ExecutionProjectionStatuses.Failed,
-                        graphJson,
-                        nodeIdToClear: null,
-                        innerCt)
-                    .ConfigureAwait(false);
-                await checkpointStore.DeleteAsync(uow, executionId, innerCt).ConfigureAwait(false);
                 return true;
             },
             ct).ConfigureAwait(false);
 
         if (marked)
             logger.UnstartedPermanentFailureMarked(executionId);
+    }
+
+    /// <summary>
+    /// 未分類例外の試行上限。載荷済みなら Failed にせず checkpoint を残し <c>restartLost</c> を付ける。
+    /// 未載荷なら <see cref="MarkUnstartedPermanentFailureAsync"/> と同じ。
+    /// </summary>
+    /// <param name="executionId">実行 ID。</param>
+    /// <param name="ct">キャンセル。</param>
+    public async Task MarkUnclassifiedAttemptLimitAsync(Guid executionId, CancellationToken ct)
+    {
+        await authorization.EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
+        var tenantId = tenantContext.GetRequiredTenantId();
+
+        var outcome = await executor.ExecuteReadCommittedAsync(
+            async (uow, innerCt) =>
+            {
+                var execution = await executions.GetByIdAsync(uow, tenantId, executionId, innerCt)
+                    .ConfigureAwait(false);
+                if (execution is null || IsTerminalExecutionProjectionStatus(execution.Status))
+                    return AttemptLimitOutcome.None;
+
+                var snapshot = await executions.GetSnapshotByExecutionIdAsync(uow, executionId, innerCt)
+                    .ConfigureAwait(false);
+                var checkpoint = await checkpointStore.GetByExecutionIdAsync(uow, executionId, innerCt)
+                    .ConfigureAwait(false);
+                var hydrated = HasNonEmptyExecutionGraph(snapshot?.GraphJson)
+                    || HasValidRuntimeCheckpoint(checkpoint?.CheckpointJson);
+                if (hydrated)
+                {
+                    await executions.MarkRestartLostAsync(uow, executionId, innerCt).ConfigureAwait(false);
+                    return AttemptLimitOutcome.RestartLost;
+                }
+
+                await ApplyUnstartedPermanentFailureAsync(uow, execution, snapshot, innerCt)
+                    .ConfigureAwait(false);
+                return AttemptLimitOutcome.Failed;
+            },
+            ct).ConfigureAwait(false);
+
+        switch (outcome)
+        {
+            case AttemptLimitOutcome.RestartLost:
+                logger.HydratedAttemptLimitKeptCheckpoint(executionId);
+                return;
+            case AttemptLimitOutcome.Failed:
+                logger.UnstartedPermanentFailureMarked(executionId);
+                return;
+            case AttemptLimitOutcome.None:
+                return;
+            default:
+                throw new InvalidOperationException($"Unsupported attempt limit outcome: {outcome}");
+        }
+    }
+
+    /// <summary>未載荷の恒久／上限失敗として Failed にし checkpoint を削除する。</summary>
+    private async Task ApplyUnstartedPermanentFailureAsync(
+        ICoreUnitOfWork uow,
+        ExecutionRow execution,
+        ExecutionGraphSnapshotRow? snapshot,
+        CancellationToken innerCt)
+    {
+        var graphJson = snapshot?.GraphJson ?? EmptyGraphJson;
+        await executions
+            .UpdateExecutionAndSnapshotAsync(
+                uow,
+                execution.ExecutionId,
+                ExecutionProjectionStatuses.Failed,
+                cancelRequested: execution.CancelRequested,
+                graphJson,
+                innerCt)
+            .ConfigureAwait(false);
+        await projection.SyncOperationalProjectionAsync(
+                uow,
+                execution.ExecutionId,
+                execution.TenantId,
+                ExecutionProjectionStatuses.Failed,
+                graphJson,
+                nodeIdToClear: null,
+                innerCt)
+            .ConfigureAwait(false);
+        await checkpointStore.DeleteAsync(uow, execution.ExecutionId, innerCt).ConfigureAwait(false);
     }
 
     /// <summary>投影ステータスが終端（Succeeded / Failed / Cancelled 等）かどうか。</summary>

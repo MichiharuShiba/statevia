@@ -533,6 +533,19 @@ public sealed class ExecutionServiceTests
 
             await Task.Yield(); // async boundary for coverage
         }
+
+        public int MarkRestartLostCalls { get; private set; }
+
+        public Task MarkRestartLostAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct)
+        {
+            _ = uow;
+            _ = ct;
+            MarkRestartLostCalls += 1;
+            if (ByIdResult is not null && ByIdResult.ExecutionId == executionId)
+                ByIdResult.RestartLost = true;
+
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeExecutionCursorRepository : IExecutionCursorRepository
@@ -556,6 +569,7 @@ public sealed class ExecutionServiceTests
         public bool RenewResult { get; set; } = true;
         public bool GenerationUpsertResult { get; set; } = true;
         public ExecutionCheckpointDocument? DocumentById { get; set; }
+        public int DeleteCalls { get; private set; }
 
         public Task UpsertAsync(
             ICoreUnitOfWork uow,
@@ -581,7 +595,14 @@ public sealed class ExecutionServiceTests
         public Task DeleteAsync(
             ICoreUnitOfWork uow,
             Guid executionId,
-            CancellationToken ct) => Task.CompletedTask;
+            CancellationToken ct)
+        {
+            _ = uow;
+            DeleteCalls += 1;
+            if (DocumentById is not null && DocumentById.ExecutionId == executionId)
+                DocumentById = null;
+            return Task.CompletedTask;
+        }
 
         public Task<long?> TryAcquireOwnershipAsync(
             ICoreUnitOfWork uow,
@@ -5832,6 +5853,90 @@ public sealed class ExecutionServiceTests
             update => update.Status == ExecutionProjectionStatuses.Failed && update.ExecutionId == executionId);
     }
 
+    /// <summary>載荷済み（非空 graph）の未分類上限は Failed にせず restartLost を付ける。</summary>
+    [Fact]
+    public async Task MarkUnclassifiedAttemptLimitAsync_WhenHydratedGraph_KeepsRunningAndSetsRestartLost()
+    {
+        // Arrange
+        var executionId = Guid.Parse("33333333-3333-3333-3333-333333333335");
+        using var sqlite = new SqliteTestDatabase();
+        var (sut, executionRepo, checkpointStore) = BuildAttemptLimitSut(
+            sqlite,
+            executionId,
+            graphJson: """{"nodes":[{"id":"n1"}],"edges":[]}""",
+            checkpoint: null);
+
+        // Act
+        await sut.MarkUnclassifiedAttemptLimitAsync(executionId, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(executionRepo.Updates);
+        Assert.Equal(1, executionRepo.MarkRestartLostCalls);
+        Assert.True(executionRepo.ByIdResult?.RestartLost);
+        Assert.Equal(ExecutionProjectionStatuses.Running, executionRepo.ByIdResult?.Status);
+        Assert.Equal(0, checkpointStore.DeleteCalls);
+    }
+
+    /// <summary>正当な checkpoint がある未分類上限は checkpoint を残し Failed にしない。</summary>
+    [Fact]
+    public async Task MarkUnclassifiedAttemptLimitAsync_WhenValidCheckpoint_KeepsCheckpointAndSetsRestartLost()
+    {
+        // Arrange
+        var executionId = Guid.Parse("33333333-3333-3333-3333-333333333336");
+        var checkpoint = CreateMinimalCheckpoint(executionId.ToString("D"));
+        var checkpointJson = System.Text.Json.JsonSerializer.Serialize(
+            checkpoint,
+            new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+        using var sqlite = new SqliteTestDatabase();
+        var (sut, executionRepo, checkpointStore) = BuildAttemptLimitSut(
+            sqlite,
+            executionId,
+            graphJson: """{"nodes":[],"edges":[]}""",
+            checkpoint: new ExecutionCheckpointDocument
+            {
+                ExecutionId = executionId,
+                CheckpointJson = checkpointJson,
+                SchemaVersion = ExecutionRuntimeCheckpoint.CurrentSchemaVersion,
+                UpdatedAt = DateTime.UtcNow
+            });
+
+        // Act
+        await sut.MarkUnclassifiedAttemptLimitAsync(executionId, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(executionRepo.Updates);
+        Assert.Equal(1, executionRepo.MarkRestartLostCalls);
+        Assert.True(executionRepo.ByIdResult?.RestartLost);
+        Assert.Equal(ExecutionProjectionStatuses.Running, executionRepo.ByIdResult?.Status);
+        Assert.Equal(0, checkpointStore.DeleteCalls);
+        Assert.NotNull(checkpointStore.DocumentById);
+    }
+
+    /// <summary>未載荷の未分類上限は sibling どおり Failed にする。</summary>
+    [Fact]
+    public async Task MarkUnclassifiedAttemptLimitAsync_WhenUnloaded_SetsFailed()
+    {
+        // Arrange
+        var executionId = Guid.Parse("33333333-3333-3333-3333-333333333337");
+        using var sqlite = new SqliteTestDatabase();
+        var (sut, executionRepo, checkpointStore) = BuildAttemptLimitSut(
+            sqlite,
+            executionId,
+            graphJson: """{"nodes":[],"edges":[]}""",
+            checkpoint: null);
+
+        // Act
+        await sut.MarkUnclassifiedAttemptLimitAsync(executionId, CancellationToken.None);
+
+        // Assert
+        Assert.Contains(
+            executionRepo.Updates,
+            update => update.Status == ExecutionProjectionStatuses.Failed && update.ExecutionId == executionId);
+        Assert.Equal(0, executionRepo.MarkRestartLostCalls);
+        Assert.False(executionRepo.ByIdResult?.RestartLost);
+        Assert.Equal(1, checkpointStore.DeleteCalls);
+    }
+
     /// <summary>
     /// HTTP Cancel 受理で Cancel enqueue と同時に cancelRequested を立てる。
     /// </summary>
@@ -6902,6 +7007,62 @@ public sealed class ExecutionServiceTests
             },
             PendingWaits = Array.Empty<CheckpointPendingWait>()
         };
+
+    /// <summary>未分類上限テスト用の Lifecycle 依存を組み立てる。</summary>
+    private static (ExecutionService Sut, FakeExecutionRepository Executions, FakeExecutionCheckpointStore Checkpoints) BuildAttemptLimitSut(
+        SqliteTestDatabase sqlite,
+        Guid executionId,
+        string? graphJson,
+        ExecutionCheckpointDocument? checkpoint)
+    {
+        var now = DateTime.UtcNow;
+        var definitionId = Guid.Parse("11111111-1111-1111-1111-111111111113");
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = definitionId,
+                DefinitionVersionId = Guid.Parse("44444444-4444-4444-4444-444444444444"),
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = now,
+                UpdatedAt = now,
+                CancelRequested = false,
+                RestartLost = false,
+                SecuritySnapshotJson = "{}"
+            },
+            SnapshotByExecutionId = graphJson is null
+                ? null
+                : new ExecutionGraphSnapshotRow
+                {
+                    ExecutionId = executionId,
+                    GraphJson = graphJson,
+                    UpdatedAt = now
+                }
+        };
+        var checkpointStore = new FakeExecutionCheckpointStore { DocumentById = checkpoint };
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(
+                    definitionId,
+                    TestTenantIds.T1TenantId,
+                    "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                CheckpointStore = checkpointStore,
+            });
+        return (sut, executionRepo, checkpointStore);
+    }
 
     private sealed class CapturingWorkQueue : IExecutionWorkQueue
     {

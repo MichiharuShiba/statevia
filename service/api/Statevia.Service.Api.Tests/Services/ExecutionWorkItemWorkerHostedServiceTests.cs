@@ -205,8 +205,9 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
     }
 
     /// <summary>未分類例外が試行上限に達した Resume は Failed と Complete する。</summary>
+    /// <summary>未分類例外が試行上限に達した Resume は Failed にせず Complete する。</summary>
     [Fact]
-    public async Task ExecuteAsync_WhenResumeReachesMaxAttempts_CompletesAndMarksFailed()
+    public async Task ExecuteAsync_WhenResumeReachesMaxAttempts_CompletesWithoutFailed()
     {
         // Arrange
         var executionId = Guid.Parse("71717171-7171-7171-7171-717171717171");
@@ -242,7 +243,51 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         // Assert
         Assert.Equal(1, queue.CompleteCallCount);
         Assert.Equal(0, queue.ReleaseCallCount);
+        Assert.Equal(0, executions.MarkUnstartedPermanentFailureCalls);
+        Assert.Equal(1, executions.MarkUnclassifiedAttemptLimitCalls);
+    }
+
+    /// <summary>Resume の恒久 Restore 失敗は載荷済みでも Failed にする。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenResumePermanentRestoreFails_MarksFailed()
+    {
+        // Arrange
+        var executionId = Guid.Parse("91919191-9191-9191-9191-919191919191");
+        var workItemId = Guid.Parse("a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1");
+        var payload = JsonSerializer.Serialize(
+            new ExecutionResumeWorkItemPayload(ExecutionResumeWorkItemModes.Recovery),
+            ExecutionWorkItemPayloadJson.Options);
+        var item = new ExecutionWorkItemRow
+        {
+            WorkItemId = workItemId,
+            ExecutionId = executionId,
+            Kind = ExecutionWorkItemKinds.Resume,
+            Payload = payload,
+            AvailableAt = DateTime.UtcNow,
+            Attempts = 1,
+            CreatedAt = DateTime.UtcNow
+        };
+        var queue = new FakeWorkerQueue { ItemsToClaim = [item] };
+        var executions = new RecordingExecutionService
+        {
+            BeginGenerationToReturn = 1,
+            RecoverException = new InvalidOperationException(
+                WorkItemFailureClassifier.StoredDefinitionVersionInvalidMessage)
+        };
+        await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var sut = CreateSut(provider);
+
+        // Act
+        await sut.StartAsync(cts.Token);
+        await WaitUntilAsync(() => queue.CompleteCallCount > 0, TimeSpan.FromSeconds(1.5));
+        await sut.StopAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Equal(1, queue.CompleteCallCount);
+        Assert.Equal(0, queue.ReleaseCallCount);
         Assert.Equal(1, executions.MarkUnstartedPermanentFailureCalls);
+        Assert.Equal(0, executions.MarkUnclassifiedAttemptLimitCalls);
     }
 
     /// <summary>所有獲得失敗は試行上限でも Release し、Failed にしない。</summary>
@@ -1291,6 +1336,7 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         public int ResumeCalls { get; private set; }
         public int AbandonCalls { get; private set; }
         public int MarkUnstartedPermanentFailureCalls { get; private set; }
+        public int MarkUnclassifiedAttemptLimitCalls { get; private set; }
         public Exception? CancelException { get; set; }
         public Exception? ExecuteQueuedStartException { get; set; }
         public bool ExecuteQueuedStartFailOnce { get; set; }
@@ -1380,6 +1426,14 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
             _ = executionId;
             _ = ct;
             MarkUnstartedPermanentFailureCalls++;
+            return Task.CompletedTask;
+        }
+
+        public Task MarkUnclassifiedAttemptLimitAsync(Guid executionId, CancellationToken ct)
+        {
+            _ = executionId;
+            _ = ct;
+            MarkUnclassifiedAttemptLimitCalls++;
             return Task.CompletedTask;
         }
 

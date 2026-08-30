@@ -103,6 +103,19 @@ internal sealed class ExecutionRepository : IExecutionRepository
         }
     }
 
+    /// <inheritdoc />
+    public async Task MarkRestartLostAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct)
+    {
+        var row = await uow.GetDb().Executions
+            .FirstOrDefaultAsync(item => item.ExecutionId == executionId, ct)
+            .ConfigureAwait(false);
+        if (row is null)
+            return;
+
+        row.RestartLost = true;
+        row.UpdatedAt = DateTime.UtcNow;
+    }
+
     private static IQueryable<ExecutionWithDisplay> QueryExecutionsWithDisplayIds(CoreDbContext db, Guid tenantId)
     {
         var displayIdsForExecution = db.DisplayIds.Where(x => x.Kind == "execution");

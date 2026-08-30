@@ -297,4 +297,10 @@ internal static partial class ExecutionServiceLogMessages
         Level = LogLevel.Error,
         Message = "Marked unstarted execution as Failed after a permanent work item failure. ExecutionId={executionId}")]
     public static partial void UnstartedPermanentFailureMarked(this ILogger logger, Guid executionId);
+
+    [LoggerMessage(
+        EventId = 3026,
+        Level = LogLevel.Warning,
+        Message = "Kept checkpoint after unclassified attempt limit on a hydrated execution. ExecutionId={executionId}")]
+    public static partial void HydratedAttemptLimitKeptCheckpoint(this ILogger logger, Guid executionId);
 }
