@@ -264,10 +264,10 @@ public sealed class ExecutionWorkItemWorkerHostedService(
                             LeaseDuration,
                             processCts.Token)
                         .ConfigureAwait(false);
-                    if (generation is null)
+                    if (WorkItemFailureClassifier.IsOwnershipAcquisitionMiss(generation))
                     {
                         logger.WorkItemOwnershipAcquireFailed(item.WorkItemId, item.ExecutionId);
-                        await queue.ReleaseAsync(
+                        await queue.ReleaseWithoutCountingAttemptAsync(
                                 item.WorkItemId,
                                 _leaseOwner,
                                 DateTime.UtcNow.Add(RetryDelay),

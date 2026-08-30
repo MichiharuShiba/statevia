@@ -89,6 +89,24 @@ public interface IExecutionWorkQueue
     Task ReleaseAsync(Guid workItemId, string leaseOwner, DateTime availableAt, CancellationToken ct);
 
     /// <summary>
+    /// 失敗した項目の lease を解放し、claim 加算した <c>attempts</c> を 1 戻す（所有 miss）。
+    /// </summary>
+    /// <param name="workItemId">ワーク項目 ID。</param>
+    /// <param name="leaseOwner">lease 所有者（不一致なら更新しない）。</param>
+    /// <param name="availableAt">再投入可能となる UTC 時刻。</param>
+    /// <param name="ct">キャンセル トークン。</param>
+    /// <remarks>
+    /// <para>Claim が <c>attempts</c> を +1 したあとに呼ぶ。lease_owner 一致時だけ加算分を戻す。</para>
+    /// <para>既定実装は <see cref="ReleaseAsync"/> と同じ（加算分を戻さない）。永続キューは上書きする。</para>
+    /// </remarks>
+    Task ReleaseWithoutCountingAttemptAsync(
+        Guid workItemId,
+        string leaseOwner,
+        DateTime availableAt,
+        CancellationToken ct) =>
+        ReleaseAsync(workItemId, leaseOwner, availableAt, ct);
+
+    /// <summary>
     /// 期限切れ所有を世代 +1・所有者なしにしたうえで、同一トランザクションで
     /// <c>Resume mode=recovery</c> を enqueue する。
     /// </summary>

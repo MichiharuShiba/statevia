@@ -274,7 +274,47 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         await sut.StopAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(1, queue.ReleaseCallCount);
+        Assert.True(queue.ReleaseWithoutCountingAttemptCallCount >= 1);
+        Assert.True(queue.ReleaseCallCount >= 1);
+        Assert.Equal(0, queue.CompleteCallCount);
+        Assert.Equal(0, executions.MarkUnstartedPermanentFailureCalls);
+    }
+
+    /// <summary>所有 miss を MaxAttempts 回繰り返しても attempts は増えず Failed にしない。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenOwnershipMissRepeatsToMaxAttempts_DoesNotIncreaseAttemptsOrFail()
+    {
+        // Arrange
+        var executionId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var workItemId = Guid.Parse("23232323-2323-2323-2323-232323232323");
+        var item = new ExecutionWorkItemRow
+        {
+            WorkItemId = workItemId,
+            ExecutionId = executionId,
+            Kind = ExecutionWorkItemKinds.Start,
+            Payload = "{}",
+            AvailableAt = DateTime.UtcNow,
+            Attempts = 0,
+            CreatedAt = DateTime.UtcNow
+        };
+        var queue = new FakeWorkerQueue
+        {
+            ItemsToClaim = [item],
+            RequeueOnReleaseWithoutCountingAttempt = true
+        };
+        var executions = new RecordingExecutionService { BeginGenerationToReturn = null };
+        await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var sut = CreateSut(provider, new WorkerRuntimeOptions { MaxAttempts = 3 });
+
+        // Act
+        await sut.StartAsync(cts.Token);
+        await WaitUntilAsync(() => queue.ReleaseWithoutCountingAttemptCallCount >= 3, TimeSpan.FromSeconds(1.5));
+        await sut.StopAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(queue.ReleaseWithoutCountingAttemptCallCount >= 3);
+        Assert.Equal(0, item.Attempts);
         Assert.Equal(0, queue.CompleteCallCount);
         Assert.Equal(0, executions.MarkUnstartedPermanentFailureCalls);
     }
@@ -1120,6 +1160,8 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         public int ClaimCallCount { get; private set; }
         public int CompleteCallCount { get; private set; }
         public int ReleaseCallCount { get; private set; }
+        public int ReleaseWithoutCountingAttemptCallCount { get; private set; }
+        public bool RequeueOnReleaseWithoutCountingAttempt { get; set; }
         public bool RenewLeaseResult { get; set; } = true;
         public bool ThrowOnClaim { get; set; }
         public Exception? RenewLeaseException { get; set; }
@@ -1163,7 +1205,10 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
 
             var batch = pending.Take(limit).ToList();
             foreach (var item in batch)
+            {
+                item.Attempts += 1;
                 _claimed.Add(item.WorkItemId);
+            }
 
             return Task.FromResult<IReadOnlyList<ExecutionWorkItemRow>>(batch);
         }
@@ -1197,6 +1242,22 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
             CancellationToken ct)
         {
             ReleaseCallCount++;
+            return Task.CompletedTask;
+        }
+
+        public Task ReleaseWithoutCountingAttemptAsync(
+            Guid workItemId,
+            string leaseOwner,
+            DateTime availableAt,
+            CancellationToken ct)
+        {
+            ReleaseWithoutCountingAttemptCallCount++;
+            ReleaseCallCount++;
+            var item = ItemsToClaim.Find(row => row.WorkItemId == workItemId);
+            if (item is not null && item.Attempts > 0)
+                item.Attempts -= 1;
+            if (RequeueOnReleaseWithoutCountingAttempt)
+                _claimed.Remove(workItemId);
             return Task.CompletedTask;
         }
 
