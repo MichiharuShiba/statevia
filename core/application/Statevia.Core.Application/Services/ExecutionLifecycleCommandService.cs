@@ -15,6 +15,7 @@ namespace Statevia.Core.Application.Services;
 /// <para>冪等・投影は既存の <see cref="ExecutionIdempotencyService"/> / <see cref="ExecutionProjectionOrchestrator"/> を利用する。</para>
 /// <para>認可は <see cref="ExecutionAuthorizationGuard"/>、Engine hydrate は <see cref="ExecutionEngineSession"/> に委譲する。</para>
 /// <para>HTTP Cancel 受理時に <c>cancelRequested</c> を立てる。未 Start（正当な runtime checkpoint 無し）の WORKER Cancel は hydrate せず Cancelled 終端する。</para>
+/// <para>HTTP Start は enqueue 前に Restore する。不能なら 422。queued Start の Restore 不能は投影 Failed にする。</para>
 /// </remarks>
 /// <param name="engine">実行エンジン。</param>
 /// <param name="displayIds">表示 ID 解決。</param>
@@ -174,6 +175,15 @@ internal sealed class ExecutionLifecycleCommandService(
         InheritedChildStart? inherited,
         CancellationToken ct)
     {
+        try
+        {
+            RestoreCompiledDefinitionFromVersion(versionRow);
+        }
+        catch (Exception ex) when (WorkItemFailureClassifier.IsPermanentRestoreFailure(ex))
+        {
+            throw new ApiValidationException(ExecutionValidationMessages.StoredDefinitionVersionInvalid, ex);
+        }
+
         var executionId = idGenerator.NewSequentialGuid();
         var graphId = await displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Definition, definitionId.ToString("D"), ct).ConfigureAwait(false)
             ?? definitionId.ToString("D");
@@ -891,7 +901,7 @@ internal sealed class ExecutionLifecycleCommandService(
         }
         catch (ArgumentException ex)
         {
-            throw new InvalidOperationException("Stored definition version is invalid.", ex);
+            throw new InvalidOperationException(ExecutionValidationMessages.StoredDefinitionVersionInvalid, ex);
         }
     }
 
@@ -1077,6 +1087,55 @@ internal sealed class ExecutionLifecycleCommandService(
             ct).ConfigureAwait(false);
 
         logger.UnstartedCancelTerminated(executionId);
+    }
+
+    /// <summary>
+    /// Engine に載せる前の恒久失敗として投影を Failed にする。すでに終端なら触らない。
+    /// </summary>
+    /// <param name="executionId">実行 ID。</param>
+    /// <param name="ct">キャンセル。</param>
+    public async Task MarkUnstartedPermanentFailureAsync(Guid executionId, CancellationToken ct)
+    {
+        await authorization.EnsureExecutionsWriteAsync(ct).ConfigureAwait(false);
+        var tenantId = tenantContext.GetRequiredTenantId();
+
+        var marked = await executor.ExecuteReadCommittedAsync(
+            async (uow, innerCt) =>
+            {
+                var execution = await executions.GetByIdAsync(uow, tenantId, executionId, innerCt)
+                    .ConfigureAwait(false);
+                if (execution is null || IsTerminalExecutionProjectionStatus(execution.Status))
+                    return false;
+
+                var snapshot = await executions.GetSnapshotByExecutionIdAsync(uow, executionId, innerCt)
+                    .ConfigureAwait(false);
+                var graphJson = snapshot?.GraphJson ?? EmptyGraphJson;
+
+                await executions
+                    .UpdateExecutionAndSnapshotAsync(
+                        uow,
+                        executionId,
+                        ExecutionProjectionStatuses.Failed,
+                        cancelRequested: execution.CancelRequested,
+                        graphJson,
+                        innerCt)
+                    .ConfigureAwait(false);
+                await projection.SyncOperationalProjectionAsync(
+                        uow,
+                        executionId,
+                        execution.TenantId,
+                        ExecutionProjectionStatuses.Failed,
+                        graphJson,
+                        nodeIdToClear: null,
+                        innerCt)
+                    .ConfigureAwait(false);
+                await checkpointStore.DeleteAsync(uow, executionId, innerCt).ConfigureAwait(false);
+                return true;
+            },
+            ct).ConfigureAwait(false);
+
+        if (marked)
+            logger.UnstartedPermanentFailureMarked(executionId);
     }
 
     /// <summary>投影ステータスが終端（Succeeded / Failed / Cancelled 等）かどうか。</summary>

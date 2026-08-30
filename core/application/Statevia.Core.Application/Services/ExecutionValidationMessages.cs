@@ -9,6 +9,9 @@ internal static class ExecutionValidationMessages
 
     public const string ExecutionNotFound = "Execution not found";
 
+    /// <summary>保存版を現行コンパイラで Restore できないときの安定メッセージ。</summary>
+    public const string StoredDefinitionVersionInvalid = "Stored definition version is invalid.";
+
     /// <summary>親実行に security snapshot が無く子開始できない。</summary>
     public const string ParentSecuritySnapshotRequired = "Parent execution security snapshot is required.";
 

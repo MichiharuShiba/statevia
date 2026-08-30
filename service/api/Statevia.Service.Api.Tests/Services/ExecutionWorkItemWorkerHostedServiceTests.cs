@@ -6,6 +6,7 @@ using Statevia.Core.Application.Contracts;
 using Statevia.Core.Application.Contracts.Persistence;
 using Statevia.Core.Application.Contracts.Security;
 using Statevia.Core.Application.Contracts.Services;
+using Statevia.Core.Application.Services;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Security;
 using Statevia.Runtime.Configuration;
@@ -156,6 +157,195 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         Assert.Equal(1, queue.ReleaseCallCount);
         Assert.Equal(0, queue.CompleteCallCount);
         Assert.Equal(0, executions.CancelCalls);
+    }
+
+    /// <summary>queued Start の Restore 不能は Failed 投影と Complete する。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenQueuedStartRestoreFails_CompletesAndMarksFailed()
+    {
+        // Arrange
+        var executionId = Guid.Parse("51515151-5151-5151-5151-515151515151");
+        var workItemId = Guid.Parse("61616161-6161-6161-6161-616161616161");
+        using var inputDoc = JsonDocument.Parse("{}");
+        var payload = JsonSerializer.Serialize(
+            new ExecutionStartWorkItemPayload(
+                executionId,
+                new StartExecutionRequest { DefinitionId = "d1", Input = inputDoc.RootElement }),
+            ExecutionWorkItemPayloadJson.Options);
+        var item = new ExecutionWorkItemRow
+        {
+            WorkItemId = workItemId,
+            ExecutionId = executionId,
+            Kind = ExecutionWorkItemKinds.Start,
+            Payload = payload,
+            AvailableAt = DateTime.UtcNow,
+            Attempts = 1,
+            CreatedAt = DateTime.UtcNow
+        };
+        var queue = new FakeWorkerQueue { ItemsToClaim = [item] };
+        var executions = new RecordingExecutionService
+        {
+            BeginGenerationToReturn = 3,
+            ExecuteQueuedStartException = new InvalidOperationException(
+                WorkItemFailureClassifier.StoredDefinitionVersionInvalidMessage)
+        };
+        await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var sut = CreateSut(provider);
+
+        // Act
+        await sut.StartAsync(cts.Token);
+        await WaitUntilAsync(() => queue.CompleteCallCount > 0, TimeSpan.FromSeconds(1.5));
+        await sut.StopAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Equal(1, queue.CompleteCallCount);
+        Assert.Equal(0, queue.ReleaseCallCount);
+        Assert.Equal(1, executions.MarkUnstartedPermanentFailureCalls);
+    }
+
+    /// <summary>未分類例外が試行上限に達した Resume は Failed と Complete する。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenResumeReachesMaxAttempts_CompletesAndMarksFailed()
+    {
+        // Arrange
+        var executionId = Guid.Parse("71717171-7171-7171-7171-717171717171");
+        var workItemId = Guid.Parse("81818181-8181-8181-8181-818181818181");
+        var payload = JsonSerializer.Serialize(
+            new ExecutionResumeWorkItemPayload(ExecutionResumeWorkItemModes.Recovery),
+            ExecutionWorkItemPayloadJson.Options);
+        var item = new ExecutionWorkItemRow
+        {
+            WorkItemId = workItemId,
+            ExecutionId = executionId,
+            Kind = ExecutionWorkItemKinds.Resume,
+            Payload = payload,
+            AvailableAt = DateTime.UtcNow,
+            Attempts = 20,
+            CreatedAt = DateTime.UtcNow
+        };
+        var queue = new FakeWorkerQueue { ItemsToClaim = [item] };
+        var executions = new RecordingExecutionService
+        {
+            BeginGenerationToReturn = 1,
+            RecoverException = new InvalidOperationException("transient host error")
+        };
+        await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var sut = CreateSut(provider, new WorkerRuntimeOptions { MaxAttempts = 20 });
+
+        // Act
+        await sut.StartAsync(cts.Token);
+        await WaitUntilAsync(() => queue.CompleteCallCount > 0, TimeSpan.FromSeconds(1.5));
+        await sut.StopAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Equal(1, queue.CompleteCallCount);
+        Assert.Equal(0, queue.ReleaseCallCount);
+        Assert.Equal(1, executions.MarkUnstartedPermanentFailureCalls);
+    }
+
+    /// <summary>所有獲得失敗は試行上限でも Release し、Failed にしない。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenOwnershipMissAtMaxAttempts_ReleasesWithoutFailed()
+    {
+        // Arrange
+        var executionId = Guid.Parse("12121212-1212-1212-1212-121212121212");
+        var workItemId = Guid.Parse("13131313-1313-1313-1313-131313131313");
+        var item = new ExecutionWorkItemRow
+        {
+            WorkItemId = workItemId,
+            ExecutionId = executionId,
+            Kind = ExecutionWorkItemKinds.Start,
+            Payload = "{}",
+            AvailableAt = DateTime.UtcNow,
+            Attempts = 20,
+            CreatedAt = DateTime.UtcNow
+        };
+        var queue = new FakeWorkerQueue { ItemsToClaim = [item] };
+        var executions = new RecordingExecutionService { BeginGenerationToReturn = null };
+        await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var sut = CreateSut(provider, new WorkerRuntimeOptions { MaxAttempts = 20 });
+
+        // Act
+        await sut.StartAsync(cts.Token);
+        await WaitUntilAsync(() => queue.ReleaseCallCount > 0, TimeSpan.FromSeconds(1.5));
+        await sut.StopAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Equal(1, queue.ReleaseCallCount);
+        Assert.Equal(0, queue.CompleteCallCount);
+        Assert.Equal(0, executions.MarkUnstartedPermanentFailureCalls);
+    }
+
+    /// <summary>不正 Start を Complete したあと、別の正常 Start が claim できる。</summary>
+    [Fact]
+    public async Task ExecuteAsync_WhenPoisonStartCompletes_NextStartIsClaimed()
+    {
+        // Arrange
+        var poisonExecutionId = Guid.Parse("14141414-1414-1414-1414-141414141414");
+        var okExecutionId = Guid.Parse("15151515-1515-1515-1515-151515151515");
+        var poisonWorkItemId = Guid.Parse("16161616-1616-1616-1616-161616161616");
+        var okWorkItemId = Guid.Parse("17171717-1717-1717-1717-171717171717");
+        using var inputDoc = JsonDocument.Parse("{}");
+        var poisonPayload = JsonSerializer.Serialize(
+            new ExecutionStartWorkItemPayload(
+                poisonExecutionId,
+                new StartExecutionRequest { DefinitionId = "bad", Input = inputDoc.RootElement }),
+            ExecutionWorkItemPayloadJson.Options);
+        var okPayload = JsonSerializer.Serialize(
+            new ExecutionStartWorkItemPayload(
+                okExecutionId,
+                new StartExecutionRequest { DefinitionId = "ok", Input = inputDoc.RootElement }),
+            ExecutionWorkItemPayloadJson.Options);
+        var queue = new FakeWorkerQueue
+        {
+            ItemsToClaim =
+            [
+                new ExecutionWorkItemRow
+                {
+                    WorkItemId = poisonWorkItemId,
+                    ExecutionId = poisonExecutionId,
+                    Kind = ExecutionWorkItemKinds.Start,
+                    Payload = poisonPayload,
+                    AvailableAt = DateTime.UtcNow,
+                    Attempts = 1,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new ExecutionWorkItemRow
+                {
+                    WorkItemId = okWorkItemId,
+                    ExecutionId = okExecutionId,
+                    Kind = ExecutionWorkItemKinds.Start,
+                    Payload = okPayload,
+                    AvailableAt = DateTime.UtcNow,
+                    Attempts = 1,
+                    CreatedAt = DateTime.UtcNow
+                }
+            ]
+        };
+        var executions = new RecordingExecutionService
+        {
+            BeginGenerationToReturn = 1,
+            ExecuteQueuedStartFailOnce = true,
+            ExecuteQueuedStartException = new InvalidOperationException(
+                WorkItemFailureClassifier.StoredDefinitionVersionInvalidMessage)
+        };
+        await using var provider = BuildProvider(queue, executions, new StubPlatformDataAccess());
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        var sut = CreateSut(provider);
+
+        // Act
+        await sut.StartAsync(cts.Token);
+        await WaitUntilAsync(() => queue.CompleteCallCount >= 2, TimeSpan.FromSeconds(2.5));
+        await sut.StopAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Equal(2, queue.CompleteCallCount);
+        Assert.Equal(0, queue.ReleaseCallCount);
+        Assert.Equal(2, executions.ExecuteQueuedStartCalls);
+        Assert.Equal(1, executions.MarkUnstartedPermanentFailureCalls);
     }
 
     /// <summary>Resume(recovery) work item は RecoverExecution を呼ぶ。</summary>
@@ -1039,7 +1229,11 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
         public int RecoverCalls { get; private set; }
         public int ResumeCalls { get; private set; }
         public int AbandonCalls { get; private set; }
+        public int MarkUnstartedPermanentFailureCalls { get; private set; }
         public Exception? CancelException { get; set; }
+        public Exception? ExecuteQueuedStartException { get; set; }
+        public bool ExecuteQueuedStartFailOnce { get; set; }
+        public Exception? RecoverException { get; set; }
         public Exception? EndOwnedSessionException { get; set; }
         public TimeSpan? CancelDelay { get; set; }
         public TimeSpan? AwaitLocalLoadDelay { get; set; }
@@ -1106,6 +1300,11 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
             CancellationToken ct)
         {
             ExecuteQueuedStartCalls++;
+            if (ExecuteQueuedStartException is { } startEx
+                && (!ExecuteQueuedStartFailOnce || ExecuteQueuedStartCalls == 1))
+            {
+                throw startEx;
+            }
             return Task.FromResult(new ExecutionResponse
             {
                 DisplayId = "d",
@@ -1113,6 +1312,14 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
                 Status = ExecutionProjectionStatuses.Running,
                 StartedAt = DateTime.UtcNow
             });
+        }
+
+        public Task MarkUnstartedPermanentFailureAsync(Guid executionId, CancellationToken ct)
+        {
+            _ = executionId;
+            _ = ct;
+            MarkUnstartedPermanentFailureCalls++;
+            return Task.CompletedTask;
         }
 
         public async Task CancelAsync(
@@ -1135,6 +1342,8 @@ public sealed class ExecutionWorkItemWorkerHostedServiceTests
             CancellationToken ct)
         {
             RecoverCalls++;
+            if (RecoverException is { } recoverEx)
+                throw recoverEx;
             return Task.CompletedTask;
         }
 

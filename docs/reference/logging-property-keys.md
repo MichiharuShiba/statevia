@@ -38,6 +38,9 @@ Service API と Engine の構造化ログで、同じ概念に同じキー名を
 | 経過時間 | `ElapsedMs` | API / Engine / Worker watchdog | ミリ秒 |
 | ライフサイクルスロット | `ActiveLifecycleSlots` | Worker | 使用中の Start / Resume スロット数 |
 | 同時処理上限 | `MaxConcurrency` | Worker | `Statevia:Runtime:Worker:MaxConcurrency` |
+| work item ID | `WorkItemId` | Worker | 恒久失敗・lease 喪失 |
+| work item 種別 | `WorkItemKind` | Worker | Start / Resume / Cancel |
+| 恒久失敗理由 | `FailureReason` | Worker | `restore_invalid` / `definition_version_missing` / `max_attempts`。YAML 全文は出さない |
 | 例外型 | `ExceptionType` / `ErrorType` | API / Engine | - |
 | 操作主体 Principal | `ActorPrincipalId` | 管理者パスワード更新 | 監査。平文・ハッシュは出さない |
 | 操作対象ユーザー | `TargetUserId` | 管理者パスワード更新 | `users.user_id` |

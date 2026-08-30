@@ -39,6 +39,10 @@ internal sealed class ExecutionService(
         lifecycle.ExecuteQueuedStartAsync(executionId, request, ct);
 
     /// <inheritdoc />
+    public Task MarkUnstartedPermanentFailureAsync(Guid executionId, CancellationToken ct) =>
+        lifecycle.MarkUnstartedPermanentFailureAsync(executionId, ct);
+
+    /// <inheritdoc />
     public Task<PagedResult<ExecutionResponse>> ListPagedAsync(
         ExecutionListPageQuery query,
         CancellationToken ct) =>

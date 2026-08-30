@@ -164,7 +164,7 @@ internal sealed class ExecutionEngineSession(
         }
         catch (ArgumentException ex)
         {
-            throw new InvalidOperationException("Stored definition version is invalid.", ex);
+            throw new InvalidOperationException(ExecutionValidationMessages.StoredDefinitionVersionInvalid, ex);
         }
     }
 }

@@ -212,11 +212,11 @@ public sealed class ExecutionWorkItemWorkerHostedService(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            logger.WorkItemFailed(exception, item.WorkItemId);
-            await queue.ReleaseAsync(
-                    item.WorkItemId,
-                    _leaseOwner,
-                    DateTime.UtcNow.Add(RetryDelay),
+            await HandleProcessFailureAsync(
+                    item,
+                    queue,
+                    executions: null,
+                    exception,
                     stoppingToken)
                 .ConfigureAwait(false);
         }
@@ -321,11 +321,11 @@ public sealed class ExecutionWorkItemWorkerHostedService(
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                logger.WorkItemFailed(exception, item.WorkItemId);
-                await queue.ReleaseAsync(
-                        item.WorkItemId,
-                        _leaseOwner,
-                        DateTime.UtcNow.Add(RetryDelay),
+                await HandleProcessFailureAsync(
+                        item,
+                        queue,
+                        executions,
+                        exception,
                         ct)
                     .ConfigureAwait(false);
             }
@@ -441,6 +441,48 @@ public sealed class ExecutionWorkItemWorkerHostedService(
         {
             // 停止時の想定経路。
         }
+    }
+
+    /// <summary>
+    /// 恒久失敗または試行上限なら Complete（Start / Resume は Failed）。それ以外は Release。
+    /// </summary>
+    private async Task HandleProcessFailureAsync(
+        ExecutionWorkItemRow item,
+        IExecutionWorkQueue queue,
+        IExecutionService? executions,
+        Exception exception,
+        CancellationToken ct)
+    {
+        var permanent = WorkItemFailureClassifier.IsPermanent(exception);
+        var atLimit = item.Attempts >= _worker.MaxAttempts;
+        if (!permanent && !atLimit)
+        {
+            logger.WorkItemFailed(exception, item.WorkItemId);
+            await queue.ReleaseAsync(
+                    item.WorkItemId,
+                    _leaseOwner,
+                    DateTime.UtcNow.Add(RetryDelay),
+                    ct)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        var isStartOrResume = item.Kind is ExecutionWorkItemKinds.Start or ExecutionWorkItemKinds.Resume;
+        if (isStartOrResume && executions is not null)
+        {
+            await executions.MarkUnstartedPermanentFailureAsync(item.ExecutionId, ct)
+                .ConfigureAwait(false);
+        }
+
+        var reason = WorkItemFailureClassifier.DescribeReason(exception)
+            ?? WorkItemFailureClassifier.ReasonMaxAttempts;
+        logger.WorkItemPermanentFailure(
+            exception,
+            item.WorkItemId,
+            item.ExecutionId,
+            item.Kind,
+            reason);
+        await queue.CompleteAsync(item.WorkItemId, _leaseOwner, ct).ConfigureAwait(false);
     }
 
     /// <summary>Worker が Engine 操作に付ける CommandRequestContext。</summary>
