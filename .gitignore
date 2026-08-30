@@ -36,7 +36,11 @@ coverage/
 .cursor/
 .cursorrules
 .claude/
-.serena/
+# Serena 作業ファイルは除外。ルートの C# 横断 project.yml だけ共有する。
+**/.serena/
+!/.serena/
+/.serena/*
+!/.serena/project.yml
 .mcp.json
 .playwright-mcp/
 
