@@ -287,6 +287,12 @@ internal static partial class ExecutionServiceLogMessages
     public static partial void QueuedStartSkippedAfterCancel(this ILogger logger, Guid executionId);
 
     [LoggerMessage(
+        EventId = 3025,
+        Level = LogLevel.Information,
+        Message = "Skipped queued Start because execution is already hydrated. ExecutionId={executionId}")]
+    public static partial void QueuedStartSkippedAlreadyHydrated(this ILogger logger, Guid executionId);
+
+    [LoggerMessage(
         EventId = 3024,
         Level = LogLevel.Error,
         Message = "Marked unstarted execution as Failed after a permanent work item failure. ExecutionId={executionId}")]

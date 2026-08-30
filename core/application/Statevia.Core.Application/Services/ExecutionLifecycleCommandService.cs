@@ -16,6 +16,7 @@ namespace Statevia.Core.Application.Services;
 /// <para>認可は <see cref="ExecutionAuthorizationGuard"/>、Engine hydrate は <see cref="ExecutionEngineSession"/> に委譲する。</para>
 /// <para>HTTP Cancel 受理時に <c>cancelRequested</c> を立てる。未 Start（正当な runtime checkpoint 無し）の WORKER Cancel は hydrate せず Cancelled 終端する。</para>
 /// <para>HTTP Start は enqueue 前に Restore する。不能なら 422。queued Start の Restore 不能は投影 Failed にする。</para>
+/// <para>queued Start は Cancel / 終端に加え、非空 graph・正当な checkpoint・同一プロセスの Engine 載荷であれば <c>engine.Start</c> しない。</para>
 /// </remarks>
 /// <param name="engine">実行エンジン。</param>
 /// <param name="displayIds">表示 ID 解決。</param>
@@ -313,10 +314,10 @@ internal sealed class ExecutionLifecycleCommandService(
                     (uow, innerCt) => executions.GetByIdAsync(uow, args.TenantId, queuedExecutionId, innerCt),
                     ct)
                 .ConfigureAwait(false);
-            if (latest is not null && ShouldSkipQueuedStart(latest))
+            if (latest is not null
+                && await TryCreateQueuedStartSkipResponseAsync(latest, args.DefinitionId, ct).ConfigureAwait(false) is { } skippedInProcess)
             {
-                logger.QueuedStartSkippedAfterCancel(queuedExecutionId);
-                return await CreateQueuedStartSkipResponseAsync(latest, args.DefinitionId, ct).ConfigureAwait(false);
+                return skippedInProcess;
             }
         }
 
@@ -493,6 +494,7 @@ internal sealed class ExecutionLifecycleCommandService(
 
     /// <summary>
     /// 受理済み実行の Start work item を同一プロセスで実行する（Worker 用）。
+    /// 載荷済み・Cancel・終端なら <c>engine.Start</c> せず現行投影を返す。
     /// </summary>
     /// <param name="executionId">受理済み実行 ID。</param>
     /// <param name="request">開始時の入力（定義解決済み行と整合）。</param>
@@ -514,11 +516,8 @@ internal sealed class ExecutionLifecycleCommandService(
         if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-        if (ShouldSkipQueuedStart(execution))
-        {
-            logger.QueuedStartSkippedAfterCancel(executionId);
-            return await CreateQueuedStartSkipResponseAsync(execution, execution.DefinitionId, ct).ConfigureAwait(false);
-        }
+        if (await TryCreateQueuedStartSkipResponseAsync(execution, execution.DefinitionId, ct).ConfigureAwait(false) is { } skipped)
+            return skipped;
 
         var versionRow = await executor.ExecuteReadOnlyAsync(
             (uow, innerCt) => definitions.GetVersionForExecutionByIdAsync(
@@ -920,9 +919,20 @@ internal sealed class ExecutionLifecycleCommandService(
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
     }
 
-    /// <summary>Queued Start が受理済み Cancel または終端のため engine.Start してはいけないか。</summary>
-    private static bool ShouldSkipQueuedStart(ExecutionRow execution) =>
-        execution.CancelRequested || ExecutionProjectionStatuses.IsTerminal(execution.Status);
+    /// <summary>
+    /// Queued Start で <c>engine.Start</c> を呼ばない条件。
+    /// Cancel / 終端に加え、非空 graph・正当な checkpoint・同一プロセス載荷を含む。
+    /// </summary>
+    private static bool ShouldSkipQueuedStart(
+        ExecutionRow execution,
+        bool hasNonEmptyGraph,
+        bool hasValidCheckpoint,
+        bool isEngineHydrated) =>
+        execution.CancelRequested
+        || ExecutionProjectionStatuses.IsTerminal(execution.Status)
+        || hasNonEmptyGraph
+        || hasValidCheckpoint
+        || isEngineHydrated;
 
     /// <summary>Queued Start を no-op したときの現行投影応答を組み立てる。</summary>
     private async Task<ExecutionResponse> CreateQueuedStartSkipResponseAsync(
@@ -950,6 +960,75 @@ internal sealed class ExecutionLifecycleCommandService(
             RestartLost = execution.RestartLost
         };
     }
+
+    /// <summary>
+    /// Queued Start を no-op するとき応答を返す。Cancel / 終端のほか、載荷済みも <c>engine.Start</c> しない。
+    /// </summary>
+    /// <param name="execution">最新の実行行。</param>
+    /// <param name="definitionId">定義 ID（graph 表示 ID 解決用）。</param>
+    /// <param name="ct">キャンセル。</param>
+    /// <returns>スキップするとき応答。起動してよいとき <see langword="null"/>。</returns>
+    private async Task<ExecutionResponse?> TryCreateQueuedStartSkipResponseAsync(
+        ExecutionRow execution,
+        Guid definitionId,
+        CancellationToken ct)
+    {
+        if (ShouldSkipQueuedStart(execution, hasNonEmptyGraph: false, hasValidCheckpoint: false, isEngineHydrated: false))
+        {
+            logger.QueuedStartSkippedAfterCancel(execution.ExecutionId);
+            return await CreateQueuedStartSkipResponseAsync(execution, definitionId, ct).ConfigureAwait(false);
+        }
+
+        var hydration = await LoadQueuedStartHydrationAsync(execution.ExecutionId, ct).ConfigureAwait(false);
+        if (!ShouldSkipQueuedStart(
+                execution,
+                hydration.HasNonEmptyGraph,
+                hydration.HasValidCheckpoint,
+                hydration.IsEngineHydrated))
+        {
+            return null;
+        }
+
+        logger.QueuedStartSkippedAlreadyHydrated(execution.ExecutionId);
+        return await CreateQueuedStartSkipResponseAsync(execution, definitionId, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// snapshot / checkpoint / 同一プロセス Engine から queued Start の載荷状態を読む。
+    /// </summary>
+    private async Task<QueuedStartHydration> LoadQueuedStartHydrationAsync(Guid executionId, CancellationToken ct)
+    {
+        var isEngineHydrated = engine.GetSnapshot(executionId.ToString()) is not null;
+        var (hasNonEmptyGraph, hasValidCheckpoint) = await executor.ExecuteReadOnlyAsync(
+                async (uow, innerCt) =>
+                {
+                    var snapshot = await executions.GetSnapshotByExecutionIdAsync(uow, executionId, innerCt)
+                        .ConfigureAwait(false);
+                    var checkpoint = await checkpointStore.GetByExecutionIdAsync(uow, executionId, innerCt)
+                        .ConfigureAwait(false);
+                    return (
+                        HasNonEmptyExecutionGraph(snapshot?.GraphJson),
+                        HasValidRuntimeCheckpoint(checkpoint?.CheckpointJson));
+                },
+                ct)
+            .ConfigureAwait(false);
+
+        return new QueuedStartHydration(hasNonEmptyGraph, hasValidCheckpoint, isEngineHydrated);
+    }
+
+    /// <summary>AcceptStart が書く空グラフ定数と欠落以外を載荷済みとみなす。</summary>
+    private static bool HasNonEmptyExecutionGraph(string? graphJson) =>
+        !string.IsNullOrWhiteSpace(graphJson)
+        && !string.Equals(graphJson, EmptyGraphJson, StringComparison.Ordinal);
+
+    /// <summary>既存の runtime checkpoint 解析と同じ「正当」判定を使う。</summary>
+    private static bool HasValidRuntimeCheckpoint(string? checkpointJson) =>
+        ExecutionEngineSession.TryParseRuntimeCheckpoint(checkpointJson, out _, out _);
+
+    private readonly record struct QueuedStartHydration(
+        bool HasNonEmptyGraph,
+        bool HasValidCheckpoint,
+        bool IsEngineHydrated);
 
     /// <summary>
     /// 未 Start（正当な runtime checkpoint が無い）なら hydrate せず Cancelled 終端する。
