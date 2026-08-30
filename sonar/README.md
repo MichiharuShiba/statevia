@@ -26,18 +26,27 @@ docker compose up -d
 
 ## 分析の実行（推奨: PowerShell スクリプト）
 
-`SONAR_TOKEN` を設定したうえで、**リポジトリのどのカレントディレクトリからでも**次のように実行できます（各スクリプトが `sonar/` の位置から `core/engine` / `service/api` / `ui/studio` 等を解決します）。
+`SONAR_TOKEN` を設定したうえで、**リポジトリのどのカレントディレクトリからでも**実行できます（各スクリプトが `sonar/` の位置から `core/engine` / `service/api` / `ui/studio` 等を解決します）。
+
+**一括実行**（未指定時は全プロジェクト。複数指定可）:
+
+```powershell
+$env:SONAR_TOKEN = "（SonarQube のトークン）"
+& .\sonar\sonar-scanner-all.ps1
+& .\sonar\sonar-scanner-all.ps1 -Projects engine,api,ui
+& .\sonar\sonar-scanner-all.ps1 engine api
+& .\sonar\sonar-scanner-all.ps1 -List
+```
+
+`-Projects` には短い名前（`engine` / `api` / `runtime` / `cli` / `action-host` / `reference` / `ui`）または SonarQube の projectKey を指定できます。先頭で `dotnet build-server shutdown` を実行します（省略は `-SkipBuildServerShutdown`）。失敗したプロジェクトは最後にまとめて報告します。
+
+**個別実行**（1 コンポーネントだけ送るとき）:
 
 ```powershell
 $env:SONAR_TOKEN = "（SonarQube のトークン）"
 dotnet build-server shutdown
 & .\sonar\sonar-scanner-engine.ps1
 & .\sonar\sonar-scanner-api.ps1
-& .\sonar\sonar-scanner-runtime.ps1
-& .\sonar\sonar-scanner-cli.ps1
-& .\sonar\sonar-scanner-action-host.ps1
-& .\sonar\sonar-scanner-reference.ps1
-& .\sonar\sonar-scanner-ui.ps1
 ```
 
 - **engine / api / runtime / cli / action-host / reference**: `dotnet sonarscanner begin` → `build` → `dotnet-coverage` → `end` の順で、`sonar/*-coverage.xml` にカバレッジを出力します（XML は git 管理外）。
@@ -164,6 +173,7 @@ Set-Location ..\..
 | ファイル | 説明 |
 | -------- | ---- |
 | `docker-compose.yaml` | ローカル SonarQube + PostgreSQL |
+| `sonar-scanner-all.ps1` | 全プロジェクト、または `-Projects` で指定した複数プロジェクトを順に分析 |
 | `sonar-scanner-engine.ps1` | Engine 向け一括分析 |
 | `sonar-scanner-api.ps1` | API 向け一括分析 |
 | `sonar-scanner-runtime.ps1` | Runtime（HostedService / Scheduler / Worker）向け一括分析 |

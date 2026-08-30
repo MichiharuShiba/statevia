@@ -77,6 +77,10 @@ public static class RuntimeServiceCollectionExtensions
                 static options => options.NoProgressTimeout >= WorkerRuntimeOptions.MinNoProgressTimeout
                     && options.NoProgressTimeout <= WorkerRuntimeOptions.MaxNoProgressTimeout,
                 "Statevia:Runtime:Worker:NoProgressTimeout must be between 00:00:30 and 1.00:00:00.")
+            .Validate(
+                static options => options.MaxAttempts is >= WorkerRuntimeOptions.MinMaxAttempts
+                    and <= WorkerRuntimeOptions.MaxMaxAttempts,
+                "Statevia:Runtime:Worker:MaxAttempts must be between 1 and 1000.")
             .ValidateOnStart();
         return services;
     }

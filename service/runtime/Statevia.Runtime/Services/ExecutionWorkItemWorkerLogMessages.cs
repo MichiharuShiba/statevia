@@ -66,4 +66,16 @@ internal static partial class ExecutionWorkItemWorkerLogMessages
         this ILogger logger,
         int activeLifecycleSlots,
         int maxConcurrency);
+
+    [LoggerMessage(
+        EventId = 3311,
+        Level = LogLevel.Error,
+        Message = "Work item permanent failure. ExecutionId={executionId} WorkItemId={workItemId} WorkItemKind={workItemKind} FailureReason={failureReason}")]
+    public static partial void WorkItemPermanentFailure(
+        this ILogger logger,
+        Exception exception,
+        Guid workItemId,
+        Guid executionId,
+        string workItemKind,
+        string failureReason);
 }

@@ -23,6 +23,15 @@ public interface IExecutionService
         CancellationToken ct);
 
     /// <summary>
+    /// Engine 載荷前の恒久失敗として投影を Failed にする。すでに終端なら status は変えない。
+    /// </summary>
+    /// <param name="executionId">実行 ID。</param>
+    /// <param name="ct">キャンセル。</param>
+    /// <returns>更新完了を表すタスク。</returns>
+    Task MarkUnstartedPermanentFailureAsync(Guid executionId, CancellationToken ct) =>
+        Task.CompletedTask;
+
+    /// <summary>
     /// ページング一覧を返す。クエリの status・definitionId・name 等で絞り込む。
     /// </summary>
     Task<PagedResult<ExecutionResponse>> ListPagedAsync(

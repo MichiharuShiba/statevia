@@ -5721,6 +5721,117 @@ public sealed class ExecutionServiceTests
         Assert.Equal(executionId, workQueue.Items[0].ExecutionId);
     }
 
+    /// <summary>HTTP Start は Restore 不能なら 422 相当で実行行と item を残さない。</summary>
+    [Fact]
+    public async Task StartAsync_WithWorkQueue_WhenRestoreFails_ThrowsWithoutPersisting()
+    {
+        // Arrange
+        var defUuid = Guid.Parse("11111111-1111-1111-1111-111111111112");
+        var executionId = Guid.Parse("22222222-2222-2222-2222-222222222223");
+        var workQueue = new CapturingWorkQueue();
+        var executionRepo = new FakeExecutionRepository();
+        using var sqlite = new SqliteTestDatabase();
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = new FakeDisplayIdService
+                {
+                    ResolveResultDefinition = defUuid,
+                    AllocateResultWorkflow = "WF-Q-422",
+                    GetDisplayIdResult = "def-disp"
+                },
+                Compiler = new StubDefinitionCompilerService(
+                    (DummyCompiledDefinition("def"), "{}"),
+                    new ArgumentException(
+                        "Unknown action 'noop': short names are not supported; use FQCN or moduleAlias.actionName.")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                WorkQueue = workQueue,
+            });
+
+        using var inputDoc = JsonDocument.Parse("{}");
+        var request = new StartExecutionRequest { DefinitionId = "def-q", Input = inputDoc.RootElement };
+
+        // Act
+        var act = () => sut.StartAsync(
+            request,
+            idempotencyKey: null,
+            new CommandRequestContext("POST", "/v1/executions"),
+            CancellationToken.None);
+
+        // Assert
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(act);
+        Assert.Equal(
+            Statevia.Core.Application.Services.ExecutionValidationMessages.StoredDefinitionVersionInvalid,
+            ex.Message);
+        Assert.Empty(executionRepo.Added);
+        Assert.Empty(workQueue.Items);
+    }
+
+    /// <summary>未 Start の恒久失敗は投影を Failed にし、既に終端なら触らない。</summary>
+    [Fact]
+    public async Task MarkUnstartedPermanentFailureAsync_WhenRunning_SetsFailed()
+    {
+        // Arrange
+        var executionId = Guid.Parse("33333333-3333-3333-3333-333333333334");
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = Guid.Parse("11111111-1111-1111-1111-111111111113"),
+                DefinitionVersionId = Guid.Parse("44444444-4444-4444-4444-444444444444"),
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CancelRequested = false,
+                RestartLost = false,
+                SecuritySnapshotJson = "{}"
+            },
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
+            {
+                ExecutionId = executionId,
+                GraphJson = "{}",
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+        using var sqlite = new SqliteTestDatabase();
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(
+                    Guid.Parse("11111111-1111-1111-1111-111111111113"),
+                    TestTenantIds.T1TenantId,
+                    "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
+
+        // Act
+        await sut.MarkUnstartedPermanentFailureAsync(executionId, CancellationToken.None);
+
+        // Assert
+        Assert.Contains(
+            executionRepo.Updates,
+            update => update.Status == ExecutionProjectionStatuses.Failed && update.ExecutionId == executionId);
+    }
+
     /// <summary>
     /// HTTP Cancel 受理で Cancel enqueue と同時に cancelRequested を立てる。
     /// </summary>

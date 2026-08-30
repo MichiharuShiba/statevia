@@ -285,4 +285,10 @@ internal static partial class ExecutionServiceLogMessages
         Level = LogLevel.Information,
         Message = "Skipped queued Start because cancel was already accepted or execution is terminal. ExecutionId={executionId}")]
     public static partial void QueuedStartSkippedAfterCancel(this ILogger logger, Guid executionId);
+
+    [LoggerMessage(
+        EventId = 3024,
+        Level = LogLevel.Error,
+        Message = "Marked unstarted execution as Failed after a permanent work item failure. ExecutionId={executionId}")]
+    public static partial void UnstartedPermanentFailureMarked(this ILogger logger, Guid executionId);
 }

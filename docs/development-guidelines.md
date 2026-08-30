@@ -131,6 +131,7 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 | Service API | `cd service/api && dotnet test statevia-api.sln` |
 | UI | `cd ui/studio && npm run lint && npm run typecheck && npm run test:run` |
 | UI（Sonar 前） | `cd ui/studio && npm run test:coverage` |
+| Sonar（一括） | `./sonar/sonar-scanner-all.ps1`（`-Projects engine,api` で複数指定可。[sonar/README.md](../sonar/README.md)） |
 
 変更した領域に対応するテストを追加または更新し、ローカルで green を確認してから共有する。UI を Sonar に送る前はカバレッジ付きテストを実行する（**§5.2**）。
 
@@ -269,6 +270,7 @@ dotnet build-server shutdown
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-30 | §5 に全コンポーネント一括 Sonar スクリプト（`sonar-scanner-all.ps1`）を追記 |
 | 2026-08-24 | §5.3 に scanAll 無効化（UI 混入防止）と Publication JSON の CPD 除外を追記 |
 | 2026-08-23 | §5.3 にリファレンス Module（`StateviaModulesReference`）の Sonar 手順を追記 |
 | 2026-08-13 | §3.1 を Execution Facade / ドメインサービス分割後の責務に合わせて更新 |

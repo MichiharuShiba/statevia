@@ -256,8 +256,9 @@ Request:
 - **再現性:** 本番運用では `definitionVersion` または `definitionVersionId` の **明示を推奨**（latest 省略は開発・探索用途）
 - `input`: 任意の JSON 値（省略可）。初期状態へ渡される
 - Engine 投入は解決した **version 行の `compiled_json`**（同一版の `source_yaml` で executor を復元）
+- HTTP 受理前に同じ Restore を行う。現行コンパイラで戻せない版（短名 Action、`name` 欠落など）は **422**。実行行・Start work item・`WorkflowStarted` を作らない
 - 永続化: `executions.definition_version_id` に開始版を必ず保存（Start は ReadCommitted 1 tx: `executions` + snapshot + `event_store` + dedup）
-- Response: 201 Created
+- Response: 201 Created（Restore できた版の enqueue。成功パスの契約は変えない）
 
 ```json
 {
@@ -268,7 +269,7 @@ Request:
 }
 ```
 
-- 定義未存在は 404。検証エラーは 400。
+- 定義未存在は 404。Restore 不能は 422。その他の検証エラーは既存の写像に従う。
 
 ### 3.2 実行一覧
 
