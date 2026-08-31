@@ -49,7 +49,7 @@ function redirectToLogin(request: NextRequest, pathname: string): NextResponse {
 }
 
 /**
- * 未ログイン・期限切れ時は `/login` へ誘導する。`SERVICE_API_AUTH_TOKEN` 設定時は開発バイパス。
+ * 未ログイン・期限切れ時は `/login` へ誘導する。Development で `SERVICE_API_AUTH_TOKEN` があるときは開発バイパス。production では無効。
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

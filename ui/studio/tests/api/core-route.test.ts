@@ -22,6 +22,7 @@ describe("api/core route GET", () => {
 
   afterEach(() => {
     process.env.SERVICE_API_INTERNAL_BASE = originalBase;
+    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
 
@@ -109,6 +110,7 @@ describe("api/core route GET", () => {
   });
 
   it("環境変数の Bearer トークンを付与する", async () => {
+    vi.stubEnv("NODE_ENV", "development");
     process.env.SERVICE_API_AUTH_TOKEN = "secret-token";
     process.env.SERVICE_API_TENANT_ID = "tenant-env";
 
@@ -121,6 +123,27 @@ describe("api/core route GET", () => {
         headers: expect.objectContaining({
           Authorization: "Bearer secret-token",
           "X-Tenant-Id": "tenant-env"
+        })
+      })
+    );
+
+    delete process.env.SERVICE_API_AUTH_TOKEN;
+    delete process.env.SERVICE_API_TENANT_ID;
+  });
+
+  it("production では環境変数の Bearer トークンを付けない", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.SERVICE_API_AUTH_TOKEN = "secret-token";
+    process.env.SERVICE_API_TENANT_ID = "tenant-env";
+
+    const req = new NextRequest("http://localhost/api/core/executions");
+    await GET(req, { params: Promise.resolve({ path: ["executions"] }) });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.not.objectContaining({
+          Authorization: "Bearer secret-token"
         })
       })
     );

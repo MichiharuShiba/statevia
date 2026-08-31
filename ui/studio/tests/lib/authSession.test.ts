@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   cookieMaxAgeSeconds,
+  hasServerDevAuthBypass,
   isAccessTokenSessionValid,
   readJwtExpiryUnixSeconds
 } from "@/shared/auth/authSession";
@@ -34,5 +35,35 @@ describe("isAccessTokenSessionValid", () => {
   it("不正なトークンは無効", () => {
     expect(isAccessTokenSessionValid("not-a-jwt")).toBe(false);
     expect(isAccessTokenSessionValid(null)).toBe(false);
+  });
+});
+
+describe("hasServerDevAuthBypass", () => {
+  const originalEnv = process.env;
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("development では SERVICE_API_AUTH_TOKEN があると true", () => {
+    // Arrange
+    process.env = { ...originalEnv, NODE_ENV: "development", SERVICE_API_AUTH_TOKEN: "dev-token" };
+
+    // Act
+    const bypass = hasServerDevAuthBypass();
+
+    // Assert
+    expect(bypass).toBe(true);
+  });
+
+  it("production では SERVICE_API_AUTH_TOKEN があっても false", () => {
+    // Arrange
+    process.env = { ...originalEnv, NODE_ENV: "production", SERVICE_API_AUTH_TOKEN: "dev-token" };
+
+    // Act
+    const bypass = hasServerDevAuthBypass();
+
+    // Assert
+    expect(bypass).toBe(false);
   });
 });
