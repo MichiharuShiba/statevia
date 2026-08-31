@@ -8,6 +8,7 @@
   カレントディレクトリに依存しない。
   解析・カバレッジ除外は service/api/coverage.runsettings の意図（Engine / Program / Migrations）に合わせる。
   誤ってリポジトリルート等から実行した場合に UI / engine / リファレンス Module が混ざらないよう、ui/studio・core/engine・modules/reference も除外する。
+  sonar.projectBaseDir がリポジトリルートのため、Scanner for .NET の scanAll（既定 true）が ui/studio を JS/TS 解析に混ぜる。scanAll はオフにする。
   依存プロジェクトの Roslyn protobuf は sonar.exclusions では消えないため、build / test に /p:StateviaSonarScope=api を渡し SonarQubeExclude する。
   Program.cs は解析対象に残し、カバレッジ分母だけ除外する。
 
@@ -22,7 +23,6 @@ $ErrorActionPreference = 'Stop'
 # sonar.projectBaseDir をリポジトリルートに固定し、移動後パス（core/engine 等）でも除外が効くようにする
 # Program.cs を sonar.exclusions に入れると、コンパイル済み protobuf と analysis context が食い違う。
 $sonarAnalysisExclusions = @(
-    '**/ui/studio/**',
     '**/ui/studio/**',
     '**/core/engine/**',
     '**/engine/**',
@@ -61,6 +61,7 @@ try {
         /d:sonar.token="$($env:SONAR_TOKEN)" `
         /d:sonar.projectBaseDir="$repoRoot" `
         /d:sonar.dotnet.excludeTestProjects=true `
+        /d:sonar.scanner.scanAll=false `
         /d:sonar.cs.vscoveragexml.reportsPaths="$coverageXml" `
         "/d:sonar.exclusions=$sonarAnalysisExclusions" `
         "/d:sonar.coverage.exclusions=$sonarCoverageExclusions"

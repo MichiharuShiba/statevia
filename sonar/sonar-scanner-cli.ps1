@@ -7,6 +7,7 @@
   スクリプト配置（リポジトリの sonar/）から cli とカバレッジ出力パスを解決する。
   カレントディレクトリに依存しない。
   依存アセンブリ（engine / api / ui / infrastructure）が混ざらないよう解析・カバレッジ除外を設定する。
+  sonar.projectBaseDir がリポジトリルートのため、Scanner for .NET の scanAll（既定 true）が ui/studio を JS/TS 解析に混ぜる。scanAll はオフにする。
   依存プロジェクトの Roslyn protobuf は sonar.exclusions では消えないため、build / test に /p:StateviaSonarScope=cli を渡し SonarQubeExclude する。
 
 .NOTES
@@ -20,7 +21,6 @@ $ErrorActionPreference = 'Stop'
 $sonarAnalysisExclusions = @(
     '**/service/api/**',
     '**/api/**',
-    '**/ui/studio/**',
     '**/ui/studio/**',
     '**/core/engine/**',
     '**/engine/**',
@@ -54,6 +54,7 @@ try {
         /d:sonar.host.url="http://localhost:9000" `
         /d:sonar.token="$($env:SONAR_TOKEN)" `
         /d:sonar.projectBaseDir="$repoRoot" `
+        /d:sonar.scanner.scanAll=false `
         /d:sonar.cs.vscoveragexml.reportsPaths="$coverageXml" `
         "/d:sonar.exclusions=$sonarAnalysisExclusions" `
         "/d:sonar.coverage.exclusions=$sonarCoverageExclusions"

@@ -7,6 +7,7 @@
   HostedService 正本と分離ホストを StateviaServiceRuntime として解析する。
   カバレッジは Api.Tests（DelayWait Scheduler 等）を service/api から収集する。
   解析対象は service/runtime に限定し、API / Engine 等と二重計上しない。
+  sonar.projectBaseDir がリポジトリルートのため、Scanner for .NET の scanAll（既定 true）が ui/studio を JS/TS 解析に混ぜる。scanAll はオフにする。
   API sln をビルドするため、build / test に /p:StateviaSonarScope=runtime を渡し担当外プロジェクトを SonarQubeExclude する。
 
 .NOTES
@@ -58,6 +59,7 @@ try {
         /d:sonar.token="$($env:SONAR_TOKEN)" `
         /d:sonar.projectBaseDir="$repoRoot" `
         /d:sonar.dotnet.excludeTestProjects=true `
+        /d:sonar.scanner.scanAll=false `
         /d:sonar.cs.vscoveragexml.reportsPaths="$coverageXml" `
         "/d:sonar.inclusions=**/service/runtime/**" `
         "/d:sonar.exclusions=$sonarAnalysisExclusions" `
