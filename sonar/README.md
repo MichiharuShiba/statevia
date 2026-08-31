@@ -15,7 +15,7 @@ C# 分析時のカバレッジ XML（`service-*-coverage.xml` / `core-engine-cov
 
 ## SonarQube サーバの起動（ローカル）
 
-`docker-compose.yaml` は **Community Edition** と PostgreSQL をポート **9000** で起動します。
+`docker-compose.yaml` は **Community Build**（`sonarqube:community`）と **PostgreSQL 17** をポート **9000** で起動します。SonarQube Community Build 26.8 以降は PostgreSQL 15〜18 が必須です。
 
 ```bash
 cd sonar
@@ -52,7 +52,7 @@ dotnet build-server shutdown
 - **engine / api / runtime / cli / action-host / reference**: `dotnet sonarscanner begin` → `build` → `dotnet-coverage` → `end` の順で、`sonar/*-coverage.xml` にカバレッジを出力します（XML は git 管理外）。
 - **ui**: `npm run test:coverage` で `ui/studio/coverage/lcov.info` を生成したあと、`npx sonar-scanner` で `ui/studio/sonar-project.properties` を読み込んで送信します。
 
-C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定し、Phase 0 以降のパス（`core/engine` 等）でも除外設定が効くようにしています。**テストプロジェクト**（`*.Tests`）は `sonar.dotnet.excludeTestProjects=true` で各コンポーネントの projectKey から除外します（品質ゲートの対象はプロダクションコード）。IDE も同じ範囲に揃えるため、`IsTestProject=true` の csproj はルート `Directory.Build.targets` で `SonarQubeExclude=true` です。Connected Mode の除外は各プロジェクトの **Project Settings → Analysis Scope → Source File Exclusions**（Scanner の `/d:sonar.exclusions` は IDE に残らない）。スタンドアロン時は `.vscode/settings.json` の `sonarlint.analysisExcludesStandalone` を使います。`Statevia.Runtime` は **`StateviaServiceRuntime`** で解析し、API スキャナからは `service/runtime` を除外して二重計上を避けます。first-party リファレンス Module は **`StateviaModulesReference`** で解析し、API スキャナからは `modules/reference` を除外します。
+C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定し、Phase 0 以降のパス（`core/engine` 等）でも除外設定が効くようにしています。**テストプロジェクト**（`*.Tests`）は `sonar.dotnet.excludeTestProjects=true` で各コンポーネントの projectKey から除外します（品質ゲートの対象はプロダクションコード）。IDE も同じ範囲に揃えるため、`IsTestProject=true` の csproj はルート `Directory.Build.targets` で `SonarQubeExclude=true` です。Connected Mode の除外は各プロジェクトの **Project Settings → Analysis Scope → Source File Exclusions**（Scanner の `/d:sonar.exclusions` は IDE に残らない）。スタンドアロン時は `.vscode/settings.json` の `sonarlint.analysisExcludesStandalone` を使います。`Statevia.Runtime` は **`StateviaServiceRuntime`** で解析し、API スキャナからは `service/runtime` を除外して二重計上を避けます。first-party リファレンス Module は **`StateviaModulesReference`** で解析し、API スキャナからは `modules/reference` を除外します。Studio（`ui/studio`）は **`StateviaUIStudio`** だけで解析します。C# 用スクリプトはすべて `sonar.scanner.scanAll=false` にし、`sonar.exclusions` だけでは止まらない JS センサの拾い上げを防ぎます。
 
 ### SonarQube 側の既定 URL
 
@@ -80,7 +80,7 @@ C# スキャナは `sonar.projectBaseDir` をリポジトリルートに固定�
 $env:SONAR_TOKEN = "（トークン）"
 $repoRoot = (Get-Location).Path
 Set-Location core\engine
-dotnet sonarscanner begin /k:"StateviaCoreEngine" /d:sonar.host.url="http://localhost:9000" /d:sonar.token="$($env:SONAR_TOKEN)" /d:sonar.projectBaseDir="$repoRoot" /d:sonar.cs.vscoveragexml.reportsPaths="$repoRoot\sonar\core-engine-coverage.xml"
+dotnet sonarscanner begin /k:"StateviaCoreEngine" /d:sonar.host.url="http://localhost:9000" /d:sonar.token="$($env:SONAR_TOKEN)" /d:sonar.projectBaseDir="$repoRoot" /d:sonar.scanner.scanAll=false /d:sonar.cs.vscoveragexml.reportsPaths="$repoRoot\sonar\core-engine-coverage.xml"
 dotnet build "statevia-engine.sln"
 dotnet-coverage collect "dotnet test" -f xml -o "$repoRoot\sonar\core-engine-coverage.xml"
 dotnet sonarscanner end /d:sonar.token="$($env:SONAR_TOKEN)"
@@ -93,12 +93,14 @@ Set-Location $repoRoot
 $env:SONAR_TOKEN = "（トークン）"
 $repoRoot = (Get-Location).Path
 Set-Location service\api
-dotnet sonarscanner begin /k:"StateviaServiceApi" /d:sonar.host.url="http://localhost:9000" /d:sonar.token="$($env:SONAR_TOKEN)" /d:sonar.projectBaseDir="$repoRoot" /d:sonar.cs.vscoveragexml.reportsPaths="$repoRoot\sonar\service-api-coverage.xml"
+dotnet sonarscanner begin /k:"StateviaServiceApi" /d:sonar.host.url="http://localhost:9000" /d:sonar.token="$($env:SONAR_TOKEN)" /d:sonar.projectBaseDir="$repoRoot" /d:sonar.scanner.scanAll=false /d:sonar.cs.vscoveragexml.reportsPaths="$repoRoot\sonar\service-api-coverage.xml"
 dotnet build "statevia-api.sln"
 dotnet-coverage collect "dotnet test" -f xml -o "$repoRoot\sonar\service-api-coverage.xml"
 dotnet sonarscanner end /d:sonar.token="$($env:SONAR_TOKEN)"
 Set-Location $repoRoot
 ```
+
+`sonar.projectBaseDir` がリポジトリルートのため、Scanner for .NET の `sonar.scanner.scanAll`（既定 true）は `ui/studio` を JS/TS 解析に混ぜる。C# 用スクリプトと手動手順はすべて `sonar.scanner.scanAll=false` にする。UI は `StateviaUIStudio` で別スキャンする。
 
 ### Runtime
 
@@ -113,7 +115,7 @@ $env:SONAR_TOKEN = "（トークン）"
 $env:SONAR_TOKEN = "（トークン）"
 $repoRoot = (Get-Location).Path
 Set-Location service\cli
-dotnet sonarscanner begin /k:"StateviaServiceCLI" /d:sonar.host.url="http://localhost:9000" /d:sonar.token="$($env:SONAR_TOKEN)" /d:sonar.projectBaseDir="$repoRoot" /d:sonar.cs.vscoveragexml.reportsPaths="$repoRoot\sonar\service-cli-coverage.xml"
+dotnet sonarscanner begin /k:"StateviaServiceCLI" /d:sonar.host.url="http://localhost:9000" /d:sonar.token="$($env:SONAR_TOKEN)" /d:sonar.projectBaseDir="$repoRoot" /d:sonar.scanner.scanAll=false /d:sonar.cs.vscoveragexml.reportsPaths="$repoRoot\sonar\service-cli-coverage.xml"
 dotnet build "statevia-cli.sln"
 dotnet-coverage collect "dotnet test" -f xml -o "$repoRoot\sonar\service-cli-coverage.xml"
 dotnet sonarscanner end /d:sonar.token="$($env:SONAR_TOKEN)"
@@ -127,7 +129,7 @@ $env:SONAR_TOKEN = "（トークン）"
 & .\sonar\sonar-scanner-reference.ps1
 ```
 
-`sonar.projectBaseDir` がリポジトリルートのため、Scanner for .NET の `sonar.scanner.scanAll`（既定 true）は `ui/studio` を拾ってしまう。リファレンス用スクリプトは `sonar.scanner.scanAll=false` にし、除外に `**/ui/studio/**` を明示する。
+`sonar.projectBaseDir` がリポジトリルートのため、Scanner for .NET の `sonar.scanner.scanAll`（既定 true）は `ui/studio` を拾ってしまう。リファレンス用スクリプトも他の C# スキャナと同様に `sonar.scanner.scanAll=false` にする。
 
 `HttpRequestPublication` / `NotificationSendPublication` の JSON スキーマは Module ごとに独立して持つ定型のため、`sonar.cpd.exclusions`（`*Publication.cs`）で重複検出だけ除外する。カバレッジと issue は対象のまま。
 

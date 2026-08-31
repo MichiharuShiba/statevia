@@ -180,6 +180,7 @@
 
 - Markdown / Spec 作業: `.cursor/skills/markdown-spec-authoring/SKILL.md`
 - コメント・ドキュメント方針: `.cursor/rules/documentation-standards.mdc`
+- 利用者向け `docs/` の読者・契約正本: `.cursor/rules/docs-user-facing.mdc`
 - 旧 `.workspace-docs` アーカイブ（参照のみ）: `.cursor/skills/workspace-docs-ops/SKILL.md`
 - SonarQube MCP 作業: `.cursor/skills/sonarqube-mcp-ops/SKILL.md`
 - Serena MCP（プロジェクト別 MCP の UI トグル切替）: `.cursor/skills/serena-mcp-project-switch/SKILL.md`

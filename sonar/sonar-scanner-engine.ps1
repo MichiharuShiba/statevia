@@ -6,6 +6,7 @@
 .DESCRIPTION
   スクリプト配置（リポジトリの sonar/）から engine とカバレッジ出力パスを解決する。
   カレントディレクトリに依存しない。
+  sonar.projectBaseDir がリポジトリルートのため、Scanner for .NET の scanAll（既定 true）が ui/studio を JS/TS 解析に混ぜる。scanAll はオフにする。
   build / test に /p:StateviaSonarScope=engine を渡し、担当外プロジェクトを SonarQubeExclude する。
 
 .NOTES
@@ -47,6 +48,7 @@ try {
         /d:sonar.token="$($env:SONAR_TOKEN)" `
         /d:sonar.projectBaseDir="$repoRoot" `
         /d:sonar.dotnet.excludeTestProjects=true `
+        /d:sonar.scanner.scanAll=false `
         /d:sonar.cs.vscoveragexml.reportsPaths="$coverageXml" `
         "/d:sonar.exclusions=$sonarAnalysisExclusions" `
         "/d:sonar.coverage.exclusions=$sonarCoverageExclusions"
