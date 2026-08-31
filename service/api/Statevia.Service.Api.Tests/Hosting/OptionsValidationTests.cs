@@ -19,9 +19,7 @@ public sealed class OptionsValidationTests
     public void AddStateviaServiceApi_DefaultOptions_ResolveSuccessfully()
     {
         // Arrange
-        var services = new ServiceCollection();
-        services.AddStateviaServiceApi(BuildValidConfiguration());
-        using var provider = services.BuildServiceProvider();
+        using var provider = CreateProvider();
 
         // Act
         var projection = provider.GetRequiredService<IOptions<ExecutionProjectionQueueOptions>>().Value;
@@ -355,12 +353,10 @@ public sealed class OptionsValidationTests
     public void JwtAuthOptions_WhenLifetimeMinutesInvalid_Throws()
     {
         // Arrange
-        var services = new ServiceCollection();
-        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
+        using var provider = CreateProvider(new Dictionary<string, string?>
         {
             ["Auth:Jwt:AccessTokenLifetimeMinutes"] = "0"
-        }));
-        using var provider = services.BuildServiceProvider();
+        });
 
         // Act
         var act = () => _ = provider.GetRequiredService<IOptions<JwtAuthOptions>>().Value;
@@ -375,12 +371,10 @@ public sealed class OptionsValidationTests
     public void JwtAuthOptions_WhenSigningKeyEmpty_Throws()
     {
         // Arrange
-        var services = new ServiceCollection();
-        services.AddStateviaServiceApi(BuildValidConfiguration(new Dictionary<string, string?>
+        using var provider = CreateProvider(new Dictionary<string, string?>
         {
             ["Auth:Jwt:SigningKey"] = ""
-        }));
-        using var provider = services.BuildServiceProvider();
+        });
 
         // Act
         var act = () => _ = provider.GetRequiredService<IOptions<JwtAuthOptions>>().Value;
@@ -388,6 +382,86 @@ public sealed class OptionsValidationTests
         // Assert
         var ex = Assert.Throws<OptionsValidationException>(act);
         Assert.Contains("SigningKey", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Development では既定 SigningKey で起動検証が成功する。</summary>
+    [Fact]
+    public void JwtAuthOptions_WhenDevelopmentAndDefaultSigningKey_Resolves()
+    {
+        // Arrange
+        using var provider = CreateProvider(environmentName: Environments.Development);
+
+        // Act
+        var jwt = provider.GetRequiredService<IOptions<JwtAuthOptions>>().Value;
+
+        // Assert
+        Assert.Equal(JwtAuthOptions.DevelopmentSigningKey, jwt.SigningKey);
+    }
+
+    /// <summary>Production / Staging では既定 SigningKey で起動検証が失敗し、メッセージに鍵値を出さない。</summary>
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public void JwtAuthOptions_WhenRestrictedEnvironmentAndDefaultSigningKey_Throws(string environmentName)
+    {
+        // Arrange
+        using var provider = CreateProvider(environmentName: environmentName);
+
+        // Act
+        var act = () => _ = provider.GetRequiredService<IOptions<JwtAuthOptions>>().Value;
+
+        // Assert
+        var ex = Assert.Throws<OptionsValidationException>(act);
+        Assert.Contains(JwtAuthOptions.RestrictedEnvironmentSigningKeyMessage, ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(JwtAuthOptions.DevelopmentSigningKey, ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Production / Staging では 32 文字未満の SigningKey で起動検証が失敗する。</summary>
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public void JwtAuthOptions_WhenRestrictedEnvironmentAndShortSigningKey_Throws(string environmentName)
+    {
+        // Arrange
+        const string shortKey = "abcdefghijklmnopqrstuvwxyz12345";
+        using var provider = CreateProvider(
+            new Dictionary<string, string?>
+            {
+                ["Auth:Jwt:SigningKey"] = shortKey
+            },
+            environmentName);
+
+        // Act
+        var act = () => _ = provider.GetRequiredService<IOptions<JwtAuthOptions>>().Value;
+
+        // Assert
+        Assert.Equal(JwtAuthOptions.MinSigningKeyLength - 1, shortKey.Length);
+        var ex = Assert.Throws<OptionsValidationException>(act);
+        Assert.Contains(JwtAuthOptions.RestrictedEnvironmentSigningKeyMessage, ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(shortKey, ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Production / Staging では既定以外かつ 32 文字以上なら成功する。</summary>
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public void JwtAuthOptions_WhenRestrictedEnvironmentAndCustomLongSigningKey_Resolves(string environmentName)
+    {
+        // Arrange
+        const string customKey = "test-signing-key-at-least-32-bytes-long!!";
+        using var provider = CreateProvider(
+            new Dictionary<string, string?>
+            {
+                ["Auth:Jwt:SigningKey"] = customKey
+            },
+            environmentName);
+
+        // Act
+        var jwt = provider.GetRequiredService<IOptions<JwtAuthOptions>>().Value;
+
+        // Assert
+        Assert.True(customKey.Length >= JwtAuthOptions.MinSigningKeyLength);
+        Assert.Equal(customKey, jwt.SigningKey);
     }
 
     /// <summary>ValidateOnStart 登録により主要 Options が起動検証対象になる。</summary>
@@ -477,6 +551,19 @@ public sealed class OptionsValidationTests
             d => d.ImplementationType == typeof(TenantBootstrapHostedService));
     }
 
+    /// <summary>
+    /// Options 解決用のプロバイダを構築する。JWT の環境別検証は <see cref="IHostEnvironment"/> に依存する。
+    /// </summary>
+    private static ServiceProvider CreateProvider(
+        IReadOnlyDictionary<string, string?>? overrides = null,
+        string environmentName = "Development")
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IHostEnvironment>(new JwtTestHostEnvironment(environmentName));
+        services.AddStateviaServiceApi(BuildValidConfiguration(overrides));
+        return services.BuildServiceProvider();
+    }
+
     private static IConfiguration BuildValidConfiguration(IReadOnlyDictionary<string, string?>? overrides = null)
     {
         var values = new Dictionary<string, string?>
@@ -503,5 +590,19 @@ public sealed class OptionsValidationTests
         }
 
         return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+    }
+
+    /// <summary>JWT Options 検証テスト用のホスト環境。</summary>
+    /// <param name="environmentName">ホスト環境名。</param>
+    private sealed class JwtTestHostEnvironment(string environmentName) : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = environmentName;
+
+        public string ApplicationName { get; set; } = "Statevia.Service.Api.Tests";
+
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } =
+            new Microsoft.Extensions.FileProviders.NullFileProvider();
     }
 }

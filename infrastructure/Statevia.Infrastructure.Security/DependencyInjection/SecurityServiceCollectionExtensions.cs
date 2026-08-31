@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Statevia.Infrastructure.Security.DependencyInjection;
 
@@ -11,6 +12,9 @@ public static class SecurityServiceCollectionExtensions
     /// </summary>
     /// <param name="services">サービスコレクション。</param>
     /// <param name="configuration">アプリケーション設定。</param>
+    /// <remarks>
+    /// Production / Staging では JWT の開発既定 SigningKey と 32 文字未満を起動時に拒否する。失敗メッセージに鍵値は出さない。
+    /// </remarks>
     public static IServiceCollection AddStateviaInfrastructureSecurity(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -22,7 +26,7 @@ public static class SecurityServiceCollectionExtensions
         services.AddSingleton<JwtTokenService>();
         services.AddSingleton<PasswordCredentialService>();
         services.AddScoped<IPlatformDataAccess, PlatformDataAccess>();
-        services.AddScoped<Statevia.Core.Application.Contracts.Security.IPrincipalDataAccess, PrincipalDataAccessAdapter>();
+        services.AddScoped<IPrincipalDataAccess, PrincipalDataAccessAdapter>();
         services.AddScoped<IApiKeyAuthenticationService, ApiKeyAuthenticationService>();
         services.AddScoped<ITenantAdminAuthorization, TenantAdminAuthorization>();
         services.AddScoped<IRuntimePermissionAuthorization, RuntimePermissionAuthorization>();
@@ -38,6 +42,11 @@ public static class SecurityServiceCollectionExtensions
             .Validate(
                 o => o.AccessTokenLifetimeMinutes >= 1,
                 "Auth:Jwt:AccessTokenLifetimeMinutes must be >= 1.")
+            .Validate<IHostEnvironment>(
+                static (options, environment) =>
+                    !JwtAuthOptions.IsRestrictedHostEnvironment(environment)
+                    || JwtAuthOptions.MeetsRestrictedEnvironmentSigningKeyPolicy(options.SigningKey),
+                JwtAuthOptions.RestrictedEnvironmentSigningKeyMessage)
             .ValidateOnStart();
 
         return services;
