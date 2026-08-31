@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Reference |
-| Version | 1.6 |
-| 更新日 | 2026-08-30 |
+| Version | 1.7 |
+| 更新日 | 2026-09-01 |
 
 ---
 
@@ -17,6 +17,16 @@ Service API / UI / Module の主要な環境変数と `appsettings` キー。**�
 | `DATABASE_URL` | Service API | PostgreSQL 接続文字列 |
 | `ASPNETCORE_URLS` | Service API | バインド URL（例: `http://0.0.0.0:8080`） |
 | `SERVICE_API_INTERNAL_BASE` | ui | UI → Service API プロキシ先 |
+
+## UI（Studio）
+
+| 名前 | 説明 |
+| --- | --- |
+| `SERVICE_API_AUTH_TOKEN` | 開発用。Cookie が無いときサーバー側プロキシが Bearer を付けるバイパス。`NODE_ENV=production` では無視する |
+| `NEXT_PUBLIC_AUTH_TOKEN` | 開発用。クライアントが `Authorization` に載せる。ブラウザに露出する。`NODE_ENV=production` では無視する |
+| `NODE_ENV` | Next.js の実行環境。`production` のとき上記 2 つの開発トークンは使わない |
+
+開発時の設定手順は [ui-auth-tenant-config.md](../guides/ui-auth-tenant-config.md)。
 
 ## 運用・デバッグ
 
@@ -44,7 +54,7 @@ Service API / UI / Module の主要な環境変数と `appsettings` キー。**�
 | `Statevia:ExecutionPolicy:Sandbox:Docker:DefaultTimeoutSeconds` | 既定タイムアウト秒（10〜3600） | 範囲外 → **起動失敗** |
 | `Statevia:ExecutionPolicy:Sandbox:Docker:GrpcPort` | コンテナ内 gRPC ポート（1024〜65535） | 範囲外 → **起動失敗** |
 | `Statevia:ExecutionPolicy:Sandbox:Docker:NetworkMode` | Docker NetworkMode（`none` 不可。空白は `bridge`＋Warning） | `none` → **起動失敗** |
-| `Auth:Jwt:SigningKey` | JWT 署名シークレット | 空 → **起動失敗** |
+| `Auth:Jwt:SigningKey` | JWT 署名シークレット | 空 → **起動失敗**。Production / Staging では開発既定値および 32 文字未満も **起動失敗**（メッセージに鍵値は出さない）。Development の開発既定値は可 |
 | `Auth:Jwt:AccessTokenLifetimeMinutes` | トークン有効期間（分、≥1） | 範囲外 → **起動失敗** |
 | `ExecutionProjectionQueue:*` | Projection キュー（サイズ・リトライ遅延等） | 範囲外・矛盾 → **起動失敗** |
 | `EventDelivery:Retry:*` | イベント配送リトライ | 範囲外・`MaxDelayMs < BaseDelayMs` → **起動失敗** |
@@ -56,6 +66,6 @@ Service API / UI / Module の主要な環境変数と `appsettings` キー。**�
 
 検証方針（起動失敗 / 警告＋既定値 / 機能無効）の規約は [`docs/development-guidelines.md`](../development-guidelines.md) §4.1（Options 検証）を参照。
 
-詳細: [AGENTS.md](../../AGENTS.md)、[actions/platform.md](../specifications/actions/platform.md)、[operations-docker.md](../guides/operations-docker.md)。
+詳細: [actions/platform.md](../specifications/actions/platform.md)、[operations-docker.md](../guides/operations-docker.md)。
 
 OpenAPI: [api-openapi.md](api-openapi.md)。

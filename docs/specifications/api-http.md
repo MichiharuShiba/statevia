@@ -3,15 +3,16 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.15 |
-| 更新日 | 2026-08-22 |
+| Version | 1.16 |
+| 更新日 | 2026-09-01 |
 | 関連 | [reference/api-openapi.md](../reference/api-openapi.md), [concepts/platform.md](../concepts/platform.md), [execution/wait-cancel.md](execution/wait-cancel.md) |
 
 ---
 
 ## Normative 要約
 
-- **MUST**: Runtime API（`/v1/definitions` / `/v1/executions`）は Principal 必須（JWT または `X-Api-Key`）+ `X-Tenant-Id`。
+- **MUST**: Runtime API（`/v1/definitions` / `/v1/executions` / `/v1/events`）は Principal 必須（JWT または `X-Api-Key`）+ `X-Tenant-Id`。
+- **MUST**: `POST /v1/events` は `executions.write` 必須。不足は **403**（`PERMISSION_DENIED`）。成功は **204**（一致 0 件でも）。
 - **MUST**: 定義版は immutable。`PUT /v1/definitions/{id}` は新版 INSERT のみ（既存版の上書き禁止）。
 - **MUST**: 実行は開始時の `definition_version_id` に固定する。
 - **MUST**: 入力検証失敗は **422**、`error.code = VALIDATION_ERROR`（[data-integration.md](data-integration.md) §7）。
@@ -23,6 +24,8 @@
 ---
 
 Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
+
+**Version 1.16（2026-09-01）**: `POST /v1/events` を契約表に追加。`executions.write` 不足は 403。queued Start の載荷済み再処理は no-op。開始済み Resume の未分類上限は `restartLost`（`Failed` にしない）。
 
 **Version 1.15（2026-08-22）**: `GET /v1/executions/{id}/waits` を追加。未完了 Wait の `nodeId` / `nodeName` / `allowedEvents` だけを返す（IO-14: `input` / `output` なし）。CLI は `exec waits`。
 
@@ -119,6 +122,7 @@ Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 | POST     | /v1/executions/{id}/cancel | キャンセル                    |
 | POST     | /v1/executions/{id}/events | イベント発行（Wait 再開の互換シム） |
 | POST     | /v1/executions/{id}/nodes/{nodeId}/resume | Wait 再開の正本（body: `resumeKey` = イベント名） |
+| POST     | /v1/events                | 集合配送（topic / key。`executions.write`） |
 
 ---
 
@@ -258,6 +262,7 @@ Request:
 - Engine 投入は解決した **version 行の `compiled_json`**（同一版の `source_yaml` で executor を復元）
 - HTTP 受理前に同じ Restore を行う。現行コンパイラで戻せない版（短名 Action、`name` 欠落など）は **422**。実行行・Start work item・`WorkflowStarted` を作らない
 - 永続化: `executions.definition_version_id` に開始版を必ず保存（Start は ReadCommitted 1 tx: `executions` + snapshot + `event_store` + dedup）
+- queued Start の再処理は、非空 graph・正当な runtime checkpoint・同一プロセスの Engine 載荷のいずれかがあれば `engine.Start` しない（Complete のみ）。空グラフかつ checkpoint なしなら Start する（[durability.md](../concepts/durability.md)）
 - Response: 201 Created（Restore できた版の enqueue。成功パスの契約は変えない）
 
 ```json
@@ -331,6 +336,7 @@ Response: 200 OK、Content-Type: application/json。`execution_graph_snapshots` 
 - Response: 200 OK。404 は未存在。
 - 現行実装は **スナップショット近似**であり、`atSeq` 時点の厳密な過去状態の完全再構成を保証するものではない（運用上の注意は UI 文言・将来の強化チケットに委ねる）。
 - **`ExecutionViewDto`** は UI の `ExecutionView` に近い camelCase。`displayId`, `resourceId`, `graphId`, `status`, `startedAt`, `updatedAt`, `cancelRequested`, `restartLost`, **`nodes`**。
+- **`restartLost`**: 開始済み Resume の未分類試行上限など、復旧可能な中断の観測印。このとき投影 `status` は `Failed` にしない。checkpoint は残す。
 - **`ExecutionViewDto.nodes[*]`**（`ExecutionViewNodeDto`）の主なフィールド:
   - **`nodeId`**: 実行グラフの **`nodeId`** と一致する識別子（試行単位の実行ノード。旧キー `executionNodeId` は用いない）。
   - **`nodeName`**: 定義上の状態名（**`nodeId` とは別**。旧キー `stateName` は用いない）。
@@ -402,6 +408,26 @@ Request（JSON）:
 - **X-Idempotency-Key**: 任意だが推奨（キャンセル・イベント発行と同様の冪等・配送抑止）。
 - Response: 204 No Content。404 は実行未存在。詳細は `docs/specifications/data-integration.md` §7。
 
+### 3.11 集合配送（Subscribe）
+
+**POST /v1/events**
+
+Request:
+
+```json
+{
+  "topic": "string",
+  "key": "string",
+  "payload": {}
+}
+```
+
+- `topic`: 必須。`key` 省略・空白は `""`。`payload` はこの段階では再開値に反映しない。
+- **必須**: Principal（JWT または `X-Api-Key`）と **`executions.write`**。不足は **403**（`PERMISSION_DENIED`）。Resume work item を積まない。
+- 照合は現在テナントの購読だけ（他テナントへ Resume は乗らない）。
+- Response: **204 No Content**（一致 0 件でも 204。成功パスは維持）。
+- 詳細は [execution/wait-cancel.md](execution/wait-cancel.md)。
+
 ---
 
 ## 4. 共通
@@ -409,7 +435,7 @@ Request（JSON）:
 ### 4.1 ヘッダ
 
 - **Content-Type**: application/json（Body がある場合）
-- **Authorization**: `Bearer <JWT>`（ログイン後）。Runtime API（`/v1/definitions` / `/v1/executions`）では Principal 必須。
+- **Authorization**: `Bearer <JWT>`（ログイン後）。Runtime API（`/v1/definitions` / `/v1/executions` / `/v1/events`）では Principal 必須。
 - **X-Api-Key**: API キー認証。`api_keys`（prefix + hash）照合で Principal を解決する。
 - **X-Tenant-Id**: 移行専用。JWT あり時は **`tenant_key` と一致必須**。不一致は **403**（`TENANT_HEADER_MISMATCH`）。Runtime API では単独指定を許可せず **401**。
 - **X-Idempotency-Key**: 任意。`POST /v1/executions` では `definitionId + input` を含むリクエストハッシュで冪等キーを分離する（同一キーでも input が異なれば別リクエスト扱い）。
@@ -484,7 +510,7 @@ Response（`GET /v1/admin/modules` の 1 件）: `moduleId`, `name`, `version`, 
 
 ### 4.1.2 Runtime API の認証要件
 
-- **保護対象**: `/v1/definitions`、`/v1/executions`、`/v1/graphs` 配下。
+- **保護対象**: `/v1/definitions`、`/v1/executions`、`/v1/events`、`/v1/graphs` 配下。
 - **必須**: `ITenantContext.PrincipalId` が解決済みであること（JWT または `X-Api-Key`）。
 - **拒否**: `X-Tenant-Id` のみ（Bearer / API キーなし）は **401**（`UNAUTHORIZED`）。
 - **除外パス**: `/v1/auth/login`、`/v1/health`、`/swagger/*`、`/scalar/*`。
@@ -498,7 +524,7 @@ Principal 解決後、サービス層で **semantic permission key** を評価�
 | GET `/v1/definitions*`、`/v1/graphs/*`、`/v1/definitions/schema/nodes`、`/v1/actions/schema*` | `definitions.read` |
 | POST/PUT `/v1/definitions` | `definitions.write` |
 | GET `/v1/executions*`（一覧・詳細・graph・waits・state・events・stream） | `executions.read` |
-| POST start / cancel / publish / resume | `executions.write` |
+| POST start / cancel / publish / resume、**`POST /v1/events`** | `executions.write` |
 
 - **JWT**: グループ権限を Live 展開（`ExpandPrincipalPermissionKeysAsync`）。`is_tenant_admin` は全 catalog key を持つ。
 - **API キー**: `effective = 展開許可 ∩ allowed_scopes` の交差結果のみ（`ITenantContext.EffectivePermissionKeys`）。
@@ -522,6 +548,7 @@ Principal 解決後、サービス層で **semantic permission key** を評価�
 | コマンド適用不可（例: Engine に実行が無い） | 422 。`ArgumentException` / `ApiValidationException` がマッピングされる（`ApiValidationException` は `details` 付き） |
 | 認証失敗・資格情報不正 | 401 。`error.code` は `UNAUTHORIZED` 等 |
 | テナント停止・ヘッダ不一致 | 403 。`TENANT_SUSPENDED` / `TENANT_ARCHIVED` / `TENANT_HEADER_MISMATCH` |
+| 権限不足 | 403 。`PERMISSION_DENIED` |
 
 ### 4.4 検証レイヤー分担
 

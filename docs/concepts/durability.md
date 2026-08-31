@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Concept |
-| Version | 1.5.4 |
-| 更新日 | 2026-08-29 |
+| Version | 1.5.5 |
+| 更新日 | 2026-09-01 |
 | 関連 | [../specifications/data-integration.md](../specifications/data-integration.md), [../specifications/execution/fork-join.md](../specifications/execution/fork-join.md) |
 
 ---
@@ -26,7 +26,7 @@ in-process の `GetSnapshot` はデバッグやコールバック経路向けで
 
 ## 開始とミューテーション
 
-**Start** は ReadCommitted の 1 トランザクションで executions・スナップショット・カーソル・wait・event_store（と必要なら command_dedup）をまとめて commit します。
+**Start** は ReadCommitted の 1 トランザクションで executions・スナップショット・カーソル・wait・event_store（と必要なら command_dedup）をまとめて commit します。HTTP が受理したあと Worker が queued Start を処理します。再 claim 時に非空 graph・正当な runtime checkpoint・同一プロセスの Engine 載荷のいずれかがあれば `engine.Start` しません（Complete のみ）。空グラフかつ checkpoint なしなら Start します。
 
 **Cancel / Publish** 等は受信記録（tx1）と Serializable リトライ付きの投影更新（tx2）に分かれる経路があります。詳細な順序とフィールドは Specification を参照してください。
 
@@ -34,7 +34,7 @@ in-process の `GetSnapshot` はデバッグやコールバック経路向けで
 
 `execution_cursors` と `execution_waits`（EventWait の durable wait）は、executions 更新と**同一トランザクション**で同期します。cursor は投影キューと checkpoint 永続化が重なっても PK の原子 upsert で 1 行に収束します。read-model の GET は cursor に依存せず、グラフスナップショットを正とします。
 
-`execution_work_items` の kind は **Start / Resume / Cancel** です（Delay 期限も `Resume` + `mode=event`）。複数の API プロセスは PostgreSQL の `FOR UPDATE SKIP LOCKED` により同一項目を同時処理しません。1 ワーカープロセスは `Statevia:Runtime:Worker:MaxConcurrency`（既定 1）まで Start / Resume を同時処理し、Cancel は独立ループです。同一プロセスが Engine に載荷済みなら Cancel は先に Engine `CancelAsync`（Action CT と次遷移抑制）を呼び、その後 AwaitLoad を IRQ します。処理中は work item lease と checkpoint 所有 lease を heartbeat 延長します。非 Wait Running が無い無進捗が `NoProgressTimeout` を超えると Unload し work item を Complete します（実行行は当面 Running）。保存版の Restore 不能など直らない失敗は Release せず Complete し、Start / Resume なら投影を `Failed` にします。未分類例外は `MaxAttempts`（既定 20）で同様に止めます。所有獲得失敗は上限に含めず Release します。投影キューは現状グローバル直列です。
+`execution_work_items` の kind は **Start / Resume / Cancel** です（Delay 期限も `Resume` + `mode=event`）。複数の API プロセスは PostgreSQL の `FOR UPDATE SKIP LOCKED` により同一項目を同時処理しません。1 ワーカープロセスは `Statevia:Runtime:Worker:MaxConcurrency`（既定 1）まで Start / Resume を同時処理し、Cancel は独立ループです。同一プロセスが Engine に載荷済みなら Cancel は先に Engine `CancelAsync`（Action CT と次遷移抑制）を呼び、その後 AwaitLoad を IRQ します。処理中は work item lease と checkpoint 所有 lease を heartbeat 延長します。非 Wait Running が無い無進捗が `NoProgressTimeout` を超えると Unload し work item を Complete します（実行行は当面 Running）。保存版の Restore 不能など直らない失敗は Release せず Complete し、未載荷の Start / Resume なら投影を `Failed` にします。未分類例外は `MaxAttempts`（既定 20）で止めます。ただし **開始済み Resume**（非空 graph または正当な runtime checkpoint）の未分類上限は投影を `Failed` にせず checkpoint を残し、既存の `restartLost` を立てます。所有獲得失敗は上限に含めず、claim で増えた `attempts` を戻して Release します。投影キューは現状グローバル直列です。
 
 実行中の所有正本は `execution_runtime_checkpoints` の `owner_worker_id` / `lease_until` / `owner_generation` です。`lease_until` は recovery 検討のトリガに過ぎず、排他は **`owner_generation` 一致更新（fencing）** で担保します。ハートビートまたは世代付き更新が失敗した Worker はローカル実行を即停止します。`ExecutionOwnershipRecoveryHostedService` は期限切れ所有を世代 +1 したうえで `Resume mode=recovery` を enqueue します（Wait イベントは消費しない）。DelayWait 期限は `DelayWaitSchedulerHostedService` が `FOR UPDATE SKIP LOCKED` で wait を排他 claim し、同一トランザクションで wait 削除と `Resume mode=event` を投入します。これらの HostedService は既定では Service API 内で動きますが、`Statevia:Runtime` で無効化し `service/runtime` の Scheduler / Worker へ分離できます。
 
