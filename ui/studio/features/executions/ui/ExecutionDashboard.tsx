@@ -626,6 +626,7 @@ function ExecutionDashboardView({
                 <div className={graphContainerClassName}>
                   <div className="flex justify-end">
                     <button
+                      type="button"
                       className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-1.5 text-xs font-semibold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]"
                       onClick={onToggleGraphFullscreen}
                     >

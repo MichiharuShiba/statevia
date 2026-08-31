@@ -47,7 +47,7 @@ internal static class StateInputEvaluator
 
         if (!string.IsNullOrWhiteSpace(spec.Path))
         {
-            var value = EvaluatePathWithDiagnostics(spec.Path!, context, spec.Path!, warningList, dedupe);
+            var value = EvaluatePathWithDiagnostics(spec.Path, context, spec.Path, warningList, dedupe);
             return new StateInputEvaluationResult { Value = value, Warnings = warningList };
         }
 

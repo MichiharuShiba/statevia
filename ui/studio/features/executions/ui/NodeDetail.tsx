@@ -117,6 +117,7 @@ function NodeDetailResumeActions({
         </label>
       )}
       <button
+        type="button"
         className="w-full rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
         disabled={!canResume || loading || effectiveResumeEvent.length === 0}
         onClick={() => onResume(effectiveResumeEvent)}

@@ -59,7 +59,7 @@ internal sealed class DefinitionService : IDefinitionService
         string compiledJson;
         try
         {
-            (_, compiledJson) = _compiler.ValidateAndCompile(request.Name!, request.Yaml!, tenantId);
+            (_, compiledJson) = _compiler.ValidateAndCompile(request.Name, request.Yaml, tenantId);
         }
         catch (ActionInputSchemaValidationException ex)
         {
@@ -102,8 +102,8 @@ internal sealed class DefinitionService : IDefinitionService
                     DefinitionId = id,
                     TenantId = tenantId,
                     ProjectId = project.ProjectId,
-                    Slug = DefinitionSlug.FromName(id, request.Name!),
-                    Name = request.Name!,
+                    Slug = DefinitionSlug.FromName(id, request.Name),
+                    Name = request.Name,
                     LatestVersion = 1,
                     CreatedAt = now,
                     UpdatedAt = now
@@ -113,7 +113,7 @@ internal sealed class DefinitionService : IDefinitionService
                     DefinitionVersionId = versionId,
                     DefinitionId = id,
                     Version = 1,
-                    SourceYaml = request.Yaml!,
+                    SourceYaml = request.Yaml,
                     CompiledJson = compiledJson,
                     CreatedAt = now
                 };
@@ -123,7 +123,7 @@ internal sealed class DefinitionService : IDefinitionService
                 {
                     DisplayId = displayId,
                     ResourceId = id,
-                    Name = request.Name!,
+                    Name = request.Name,
                     LatestVersion = 1,
                     CreatedAt = now,
                     UpdatedAt = now

@@ -35,7 +35,7 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
             return false;
         }
 
-        descriptor = registration!.Descriptor;
+        descriptor = registration.Descriptor;
         return descriptor is not null;
     }
 
@@ -52,7 +52,7 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
             return false;
         }
 
-        descriptor = registration!.Descriptor;
+        descriptor = registration.Descriptor;
         return descriptor is not null;
     }
 
@@ -257,7 +257,7 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
     {
         metadata = null;
         if (!TryResolveLogicalActionId(actionId, out var logicalActionId)
-            || !_logicalActionIdIndex.TryGetValue(logicalActionId!, out var keys)
+            || !_logicalActionIdIndex.TryGetValue(logicalActionId, out var keys)
             || keys.Count != 1)
         {
             return false;
@@ -272,7 +272,7 @@ internal sealed class InMemoryActionCatalog : IActionCatalog
     {
         publication = null;
         if (!TryResolveLogicalActionId(actionId, out var logicalActionId)
-            || !_logicalActionIdIndex.TryGetValue(logicalActionId!, out var keys)
+            || !_logicalActionIdIndex.TryGetValue(logicalActionId, out var keys)
             || keys.Count != 1)
         {
             return false;

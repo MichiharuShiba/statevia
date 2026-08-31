@@ -153,7 +153,7 @@ internal static class ExecutionViewMapper
     private static string ResolveNodeType(ExecutionNodeDto node)
     {
         if (!string.IsNullOrWhiteSpace(node.NodeType))
-            return node.NodeType!;
+            return node.NodeType;
         return "Task";
     }
 

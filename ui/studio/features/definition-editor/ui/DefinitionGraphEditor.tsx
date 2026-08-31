@@ -501,7 +501,7 @@ function resolveWaitEditMode(node: DefinitionGraphNode): WaitEditMode {
 }
 
 /** 十進・指数表記の ASCII 数値リテラル風（0x 等は含まない）。when の YAML 往復・パースで共通利用 */
-const DECIMAL_NUMERIC_STRING_PATTERN = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?$/i;
+const DECIMAL_NUMERIC_STRING_PATTERN = /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?$/i;
 
 function formatWhenValue(value: unknown): string {
   if (typeof value === "string") {

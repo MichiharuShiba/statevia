@@ -109,7 +109,7 @@ internal sealed class ExecutionLifecycleCommandService(
             return cachedStart;
         }
 
-        var defUuid = await displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, request.DefinitionId!, ct).ConfigureAwait(false);
+        var defUuid = await displayIds.ResolveAsync(DisplayIdResourceTypes.Definition, request.DefinitionId, ct).ConfigureAwait(false);
         if (defUuid is null)
             throw new NotFoundException(ExecutionValidationMessages.DefinitionNotFound);
 
@@ -177,6 +177,7 @@ internal sealed class ExecutionLifecycleCommandService(
         InheritedChildStart? inherited,
         CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(workQueue);
         try
         {
             RestoreCompiledDefinitionFromVersion(versionRow);
@@ -272,7 +273,7 @@ internal sealed class ExecutionLifecycleCommandService(
                         innerCt).ConfigureAwait(false);
                 }
 
-                await workQueue!.EnqueueAsync(
+                await workQueue.EnqueueAsync(
                     uow,
                     new ExecutionWorkItemRow
                     {
@@ -749,6 +750,7 @@ internal sealed class ExecutionLifecycleCommandService(
         CommandDedupKey? dedupKey,
         CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(workQueue);
         var now = DateTime.UtcNow;
         await executor.ExecuteReadCommittedAsync(
             async (uow, innerCt) =>
@@ -787,7 +789,7 @@ internal sealed class ExecutionLifecycleCommandService(
                         .ConfigureAwait(false);
                 }
 
-                await workQueue!.EnqueueAsync(
+                await workQueue.EnqueueAsync(
                     uow,
                     new ExecutionWorkItemRow
                     {

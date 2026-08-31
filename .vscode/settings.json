@@ -1,5 +1,5 @@
 {
-  "sonarlint.analysisExcludesStandalone": "**/*.Tests/**,**/*.test.ts,**/*.test.tsx",
+  "sonarlint.analysisExcludesStandalone": "**/*.Tests/**,**/tests/**,**/*.test.ts,**/*.test.tsx",
   "sonarlint.connectedMode.project": {
     "connectionId": "Statevia",
     "projectKey": "StateviaUIStudio"

@@ -116,4 +116,21 @@ public sealed class ModuleVersionTests
         // Act / Assert
         Assert.True(lower.CompareTo(higher) < 0);
     }
+
+    /// <summary>比較演算子は CompareTo と同じ優先順位を返す。</summary>
+    [Fact]
+    public void ComparisonOperators_MatchCompareToOrder()
+    {
+        // Arrange
+        var lower = ModuleVersion.Parse("1.2.9");
+        var higher = ModuleVersion.Parse("1.3.0");
+
+        // Act / Assert
+        Assert.True(lower < higher);
+        Assert.True(higher > lower);
+        Assert.True(lower <= higher);
+        Assert.True(higher >= lower);
+        Assert.True(lower <= ModuleVersion.Parse("1.2.9"));
+        Assert.True(higher >= ModuleVersion.Parse("1.3.0"));
+    }
 }
