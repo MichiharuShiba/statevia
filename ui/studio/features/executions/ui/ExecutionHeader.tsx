@@ -83,6 +83,7 @@ export function ExecutionHeader({
         <div className="flex flex-wrap items-center gap-2">
           {executionIdEditable && (
             <button
+              type="button"
               className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] px-3 py-2 text-sm text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] disabled:opacity-50"
               onClick={onLoad}
               disabled={loading}
@@ -92,6 +93,7 @@ export function ExecutionHeader({
           )}
           {showCancelAction && (
             <button
+              type="button"
               className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
               onClick={onCancel}
               disabled={!canCancel || loading}

@@ -119,7 +119,7 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 
 - **UI（TypeScript）**: **`npm run lint`**（error 厳格）、**`npm run typecheck`**、**`npm run test:run`** を PR 前の必須チェックとする。設定は `ui/studio/eslint.config.js`（`typescript-eslint` strict、`react-hooks`、`jsx-a11y`、`jsdoc`）。
 - **SonarQube（Service API）**: プロジェクトキー **`StateviaServiceApi`**。新規コードの Quality Gate（`new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.1**。テストプロジェクトはスキャン対象外（`excludeTestProjects` / `SonarQubeExclude`）。SonarQube for IDE も同じ範囲に揃える（[sonar/README.md](../sonar/README.md)）。
-- **SonarQube（UI Studio）**: プロジェクトキー **`StateviaUIStudio`**。全体・新規コードの Quality Gate（`coverage` / `new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.2**。
+- **SonarQube（UI Studio）**: プロジェクトキー **`StateviaUIStudio`**。全体・新規コードの Quality Gate（`coverage` / `new_coverage ≥ 80%`、`new_violations = 0` 等）を満たすこと。手順は **§5.2**。C# と同様、`tests/` はスキャン対象外（`sonar.exclusions`）。カバレッジは lcov のプロダクションパスだけを見る。
 
 ---
 
@@ -221,6 +221,7 @@ npx --yes sonar-scanner "-Dsonar.token=$($env:SONAR_TOKEN)"
 
 - HTTP 契約・プロキシ挙動は本リファクタの対象外（`docs/specifications/api-http.md` 等は変更しない）。
 - スキャン直後は Sonar UI の数値が遅れて反映されることがある。Quality Gate 判定は Sonar のプロジェクト画面を正とする。
+- `tests/` は `sonar.exclusions` でスキャン対象外にする（C# の `excludeTestProjects` と同趣旨）。カバレッジは `coverage/lcov.info` のプロダクションパスだけを使う。
 - 詳細は `sonar/README.md` も参照。
 
 ### 5.3 リファレンス Module — Sonar（手動）
@@ -271,6 +272,7 @@ dotnet build-server shutdown
 
 | 日付 | 内容 |
 |------|------|
+| 2026-09-01 | §4.3 / §5.2 に UI `tests/` のスキャン除外（`sonar.exclusions`。C# テストプロジェクト除外と同趣旨）を追記 |
 | 2026-08-31 | §5 / §5.1 に C# スキャナの `scanAll=false`（`ui/studio` 混入防止）を追記 |
 | 2026-08-30 | §5 に全コンポーネント一括 Sonar スクリプト（`sonar-scanner-all.ps1`）を追記 |
 | 2026-08-24 | §5.3 に scanAll 無効化（UI 混入防止）と Publication JSON の CPD 除外を追記 |

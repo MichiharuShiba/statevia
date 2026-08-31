@@ -157,7 +157,7 @@ internal static class PhysicalForkGraphComposer
             var nodeId = ReadString(childNode, NodeIdProperty);
             if (string.IsNullOrWhiteSpace(nodeId) || nodeById.ContainsKey(nodeId))
                 continue;
-            nodeById[nodeId] = childNode.DeepClone()!.AsObject();
+            nodeById[nodeId] = childNode.DeepClone().AsObject();
         }
     }
 
@@ -171,7 +171,7 @@ internal static class PhysicalForkGraphComposer
             var key = EdgeKey(childEdge);
             if (!edgeKeys.Add(key))
                 continue;
-            edges.Add(childEdge.DeepClone()!.AsObject());
+            edges.Add(childEdge.DeepClone().AsObject());
         }
     }
 
@@ -427,7 +427,7 @@ internal static class PhysicalForkGraphComposer
             {
                 nodes = nodeArray
                     .OfType<JsonObject>()
-                    .Select(n => n.DeepClone()!.AsObject())
+                    .Select(n => n.DeepClone().AsObject())
                     .ToList();
             }
 
@@ -435,7 +435,7 @@ internal static class PhysicalForkGraphComposer
             {
                 edges = edgeArray
                     .OfType<JsonObject>()
-                    .Select(e => e.DeepClone()!.AsObject())
+                    .Select(e => e.DeepClone().AsObject())
                     .ToList();
             }
 

@@ -33,7 +33,7 @@ export function Toast({ toast, onClose }: Readonly<ToastProps>) {
         <output className="flex-1" aria-live="polite" aria-atomic="true">
           {toast.message}
         </output>
-        <button className="text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]" onClick={onClose} aria-label={uiText.actions.closeToast}>
+        <button type="button" className="text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]" onClick={onClose} aria-label={uiText.actions.closeToast}>
           ✕
         </button>
       </div>

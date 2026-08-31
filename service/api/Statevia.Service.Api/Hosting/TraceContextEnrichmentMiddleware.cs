@@ -60,7 +60,7 @@ internal sealed class TraceContextEnrichmentMiddleware
                 context.Response.OnStarting(
                     static state =>
                     {
-                        var (ctx, m) = ((HttpContext, string))state!;
+                        var (ctx, m) = ((HttpContext, string))state;
                         ctx.Response.Headers.TraceState = m;
                         return Task.CompletedTask;
                     },

@@ -36,7 +36,7 @@ internal sealed class RequestLoggingMiddleware
             context.Response.OnStarting(
                 static state =>
                 {
-                    var (ctx, tid) = ((HttpContext, string))state!;
+                    var (ctx, tid) = ((HttpContext, string))state;
                     ctx.Response.Headers["X-Trace-Id"] = tid;
                     return Task.CompletedTask;
                 },

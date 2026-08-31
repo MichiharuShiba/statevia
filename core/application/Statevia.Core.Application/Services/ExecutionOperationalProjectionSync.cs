@@ -97,7 +97,7 @@ internal static class ExecutionOperationalProjectionSync
         {
             var activeStateSet = snapshot.ActiveStates.ToHashSet(StringComparer.Ordinal);
             var activeStateNode = runningNodes
-                .Where(n => !string.IsNullOrWhiteSpace(n.NodeName) && activeStateSet.Contains(n.NodeName!))
+                .Where(n => !string.IsNullOrWhiteSpace(n.NodeName) && activeStateSet.Contains(n.NodeName))
                 .OrderByDescending(n => n.StartedAt)
                 .FirstOrDefault();
             if (activeStateNode is not null)

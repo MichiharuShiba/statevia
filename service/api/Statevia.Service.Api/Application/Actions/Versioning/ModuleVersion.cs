@@ -163,6 +163,49 @@ internal sealed record ModuleVersion : IComparable<ModuleVersion>
         return ComparePreRelease(PreRelease, other.PreRelease);
     }
 
+    /// <summary>null を最も低い値として 2 つの版を比較する。</summary>
+    /// <param name="left">左辺。null はどの非 null より低い。</param>
+    /// <param name="right">右辺。null はどの非 null より低い。</param>
+    /// <returns>左辺が低ければ負、等しければ 0、高ければ正。</returns>
+    public static int Compare(ModuleVersion? left, ModuleVersion? right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return 0;
+        }
+
+        if (left is null)
+        {
+            return -1;
+        }
+
+        return left.CompareTo(right);
+    }
+
+    /// <summary>左辺が右辺より低いとき <see langword="true"/>。</summary>
+    /// <param name="left">左辺。</param>
+    /// <param name="right">右辺。</param>
+    /// <returns>左辺が低ければ <see langword="true"/>。</returns>
+    public static bool operator <(ModuleVersion? left, ModuleVersion? right) => Compare(left, right) < 0;
+
+    /// <summary>左辺が右辺より高いとき <see langword="true"/>。</summary>
+    /// <param name="left">左辺。</param>
+    /// <param name="right">右辺。</param>
+    /// <returns>左辺が高ければ <see langword="true"/>。</returns>
+    public static bool operator >(ModuleVersion? left, ModuleVersion? right) => Compare(left, right) > 0;
+
+    /// <summary>左辺が右辺以下のとき <see langword="true"/>。</summary>
+    /// <param name="left">左辺。</param>
+    /// <param name="right">右辺。</param>
+    /// <returns>左辺が右辺以下なら <see langword="true"/>。</returns>
+    public static bool operator <=(ModuleVersion? left, ModuleVersion? right) => Compare(left, right) <= 0;
+
+    /// <summary>左辺が右辺以上のとき <see langword="true"/>。</summary>
+    /// <param name="left">左辺。</param>
+    /// <param name="right">右辺。</param>
+    /// <returns>左辺が右辺以上なら <see langword="true"/>。</returns>
+    public static bool operator >=(ModuleVersion? left, ModuleVersion? right) => Compare(left, right) >= 0;
+
     /// <summary>pre-release の優先順位を比較する（安定版＞pre-release）。</summary>
     private static int ComparePreRelease(string? left, string? right)
     {
