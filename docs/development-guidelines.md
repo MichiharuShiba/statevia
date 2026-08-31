@@ -133,7 +133,7 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 | UI（Sonar 前） | `cd ui/studio && npm run test:coverage` |
 | Sonar（一括） | `./sonar/sonar-scanner-all.ps1`（`-Projects engine,api` で複数指定可。[sonar/README.md](../sonar/README.md)） |
 
-変更した領域に対応するテストを追加または更新し、ローカルで green を確認してから共有する。UI を Sonar に送る前はカバレッジ付きテストを実行する（**§5.2**）。
+変更した領域に対応するテストを追加または更新し、ローカルで green を確認してから共有する。UI を Sonar に送る前はカバレッジ付きテストを実行する（**§5.2**）。C# の Scanner for .NET スクリプトはすべて `sonar.scanner.scanAll=false` とし、`ui/studio` は **`StateviaUIStudio`** だけが解析する。
 
 ### 5.1 Service API — カバレッジと Sonar（手動）
 
@@ -166,7 +166,7 @@ dotnet build-server shutdown
 
 スクリプトは次を順に実行する。
 
-1. `dotnet sonarscanner begin`（キー `StateviaServiceApi`、除外は Engine / UI / Program / Migrations / `modules/reference` 等）
+1. `dotnet sonarscanner begin`（キー `StateviaServiceApi`、除外は Engine / UI / Program / Migrations / `modules/reference` 等。`sonar.scanner.scanAll=false` で `ui/studio` を JS/TS 解析に混ぜない）
 2. `dotnet build service/api/statevia-api.sln`
 3. `dotnet-coverage collect "dotnet test"` → `sonar/service-api-coverage.xml`
 4. `dotnet sonarscanner end`
@@ -174,6 +174,7 @@ dotnet build-server shutdown
 **注意**
 
 - `service/api/sonar-project.properties` は **Scanner for .NET では使わない**（設定は `begin` の `/d:` で渡す）。
+- `sonar.exclusions` だけでは `scanAll` が `ui/studio/tsconfig.json` を拾う。UI は **`StateviaUIStudio`**（§5.2）で解析する。
 - スキャン直後は Sonar UI の数値が遅れて反映されることがある。Quality Gate 判定は Sonar のプロジェクト画面を正とする。
 
 ### 5.2 UI Studio — カバレッジと Sonar（手動）
@@ -270,6 +271,7 @@ dotnet build-server shutdown
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-31 | §5 / §5.1 に C# スキャナの `scanAll=false`（`ui/studio` 混入防止）を追記 |
 | 2026-08-30 | §5 に全コンポーネント一括 Sonar スクリプト（`sonar-scanner-all.ps1`）を追記 |
 | 2026-08-24 | §5.3 に scanAll 無効化（UI 混入防止）と Publication JSON の CPD 除外を追記 |
 | 2026-08-23 | §5.3 にリファレンス Module（`StateviaModulesReference`）の Sonar 手順を追記 |
