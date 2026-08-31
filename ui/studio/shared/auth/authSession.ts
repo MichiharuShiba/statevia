@@ -32,8 +32,12 @@ export function cookieMaxAgeSeconds(expiresAtUtc: string): number {
 
 /**
  * 開発用: サーバー側プロキシが Bearer を環境変数から付与するか。
+ * @returns `SERVICE_API_AUTH_TOKEN` があり、かつ `NODE_ENV` が production でなければ true。
  */
 export function hasServerDevAuthBypass(): boolean {
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
   return Boolean(process.env.SERVICE_API_AUTH_TOKEN?.trim());
 }
 

@@ -344,7 +344,12 @@ describe("getApiConfig / getApiHeaders", () => {
 
   it("getApiConfig は NEXT_PUBLIC_TENANT_ID と NEXT_PUBLIC_AUTH_TOKEN を返す", () => {
     // Arrange
-    process.env = { ...origEnv, NEXT_PUBLIC_TENANT_ID: "t1", NEXT_PUBLIC_AUTH_TOKEN: "tok1" };
+    process.env = {
+      ...origEnv,
+      NODE_ENV: "development",
+      NEXT_PUBLIC_TENANT_ID: "t1",
+      NEXT_PUBLIC_AUTH_TOKEN: "tok1"
+    };
 
     // Act
     const result = getApiConfig();
@@ -366,13 +371,36 @@ describe("getApiConfig / getApiHeaders", () => {
 
   it("getApiHeaders は authToken があるとき Authorization Bearer を返す", () => {
     // Arrange
-    process.env = { ...origEnv, NEXT_PUBLIC_TENANT_ID: "", NEXT_PUBLIC_AUTH_TOKEN: "secret" };
+    process.env = {
+      ...origEnv,
+      NODE_ENV: "development",
+      NEXT_PUBLIC_TENANT_ID: "",
+      NEXT_PUBLIC_AUTH_TOKEN: "secret"
+    };
 
     // Act
     const result = getApiHeaders();
 
     // Assert
     expect(result).toEqual({ Authorization: "Bearer secret" });
+  });
+
+  it("production では NEXT_PUBLIC_AUTH_TOKEN を Authorization に載せない", () => {
+    // Arrange
+    process.env = {
+      ...origEnv,
+      NODE_ENV: "production",
+      NEXT_PUBLIC_TENANT_ID: "t1",
+      NEXT_PUBLIC_AUTH_TOKEN: "tok1"
+    };
+
+    // Act
+    const config = getApiConfig();
+    const headers = getApiHeaders();
+
+    // Assert
+    expect(config).toEqual({ tenantId: "t1", authToken: "" });
+    expect(headers).toEqual({ "X-Tenant-Id": "t1" });
   });
 
   it("getApiConfig は process が無い環境で空の設定を返す", () => {

@@ -23,6 +23,7 @@ namespace Statevia.Runtime.Services;
 /// Cancel は独立ループ。処理中は work item lease と checkpoint 所有 lease を heartbeat 延長する。
 /// </para>
 /// <para>同一プロセス所有中の Cancel は先に Engine CancelAsync を呼び、その後 process CTS を IRQ する。</para>
+/// <para>未分類の試行上限は <see cref="IExecutionService.MarkUnclassifiedAttemptLimitAsync"/> に任せ、恒久 Restore だけ Failed を呼ぶ。</para>
 /// </remarks>
 /// <param name="scopeFactory">スロットごとの DI スコープを作る。</param>
 /// <param name="logger">構造化ログ。</param>
@@ -264,10 +265,10 @@ public sealed class ExecutionWorkItemWorkerHostedService(
                             LeaseDuration,
                             processCts.Token)
                         .ConfigureAwait(false);
-                    if (generation is null)
+                    if (WorkItemFailureClassifier.IsOwnershipAcquisitionMiss(generation))
                     {
                         logger.WorkItemOwnershipAcquireFailed(item.WorkItemId, item.ExecutionId);
-                        await queue.ReleaseAsync(
+                        await queue.ReleaseWithoutCountingAttemptAsync(
                                 item.WorkItemId,
                                 _leaseOwner,
                                 DateTime.UtcNow.Add(RetryDelay),
@@ -470,8 +471,16 @@ public sealed class ExecutionWorkItemWorkerHostedService(
         var isStartOrResume = item.Kind is ExecutionWorkItemKinds.Start or ExecutionWorkItemKinds.Resume;
         if (isStartOrResume && executions is not null)
         {
-            await executions.MarkUnstartedPermanentFailureAsync(item.ExecutionId, ct)
-                .ConfigureAwait(false);
+            if (permanent)
+            {
+                await executions.MarkUnstartedPermanentFailureAsync(item.ExecutionId, ct)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                await executions.MarkUnclassifiedAttemptLimitAsync(item.ExecutionId, ct)
+                    .ConfigureAwait(false);
+            }
         }
 
         var reason = WorkItemFailureClassifier.DescribeReason(exception)

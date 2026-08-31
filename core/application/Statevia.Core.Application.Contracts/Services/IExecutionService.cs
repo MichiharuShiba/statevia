@@ -32,6 +32,16 @@ public interface IExecutionService
         Task.CompletedTask;
 
     /// <summary>
+    /// 未分類例外の試行上限。載荷済みなら Failed にせず checkpoint を残し <c>restartLost</c> を付ける。
+    /// 未載荷なら <see cref="MarkUnstartedPermanentFailureAsync"/> と同じ。
+    /// </summary>
+    /// <param name="executionId">実行 ID。</param>
+    /// <param name="ct">キャンセル。</param>
+    /// <returns>更新完了を表すタスク。</returns>
+    Task MarkUnclassifiedAttemptLimitAsync(Guid executionId, CancellationToken ct) =>
+        Task.CompletedTask;
+
+    /// <summary>
     /// ページング一覧を返す。クエリの status・definitionId・name 等で絞り込む。
     /// </summary>
     Task<PagedResult<ExecutionResponse>> ListPagedAsync(

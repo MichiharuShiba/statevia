@@ -52,15 +52,17 @@ public interface IExecutionWaitRepository
         CancellationToken ct);
 
     /// <summary>
-    /// 現在テナント内で topic / key に厳密一致する購読を取得する。
+    /// 指定テナント内で topic / key に厳密一致する購読を取得する。
     /// </summary>
     /// <param name="uow">同一トランザクションの Unit of Work。</param>
+    /// <param name="tenantId">照合するテナント（Query Filter に頼らない明示条件）。</param>
     /// <param name="topic">正規化済みトピック。</param>
     /// <param name="correlationKey">正規化済み key（未指定は空文字）。</param>
     /// <param name="ct">キャンセル トークン。</param>
     /// <returns>配送対象の購読一致結果。</returns>
     Task<IReadOnlyList<MatchingWaitSubscription>> ListMatchingSubscriptionsAsync(
         ICoreUnitOfWork uow,
+        Guid tenantId,
         string topic,
         string correlationKey,
         CancellationToken ct);

@@ -533,6 +533,19 @@ public sealed class ExecutionServiceTests
 
             await Task.Yield(); // async boundary for coverage
         }
+
+        public int MarkRestartLostCalls { get; private set; }
+
+        public Task MarkRestartLostAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct)
+        {
+            _ = uow;
+            _ = ct;
+            MarkRestartLostCalls += 1;
+            if (ByIdResult is not null && ByIdResult.ExecutionId == executionId)
+                ByIdResult.RestartLost = true;
+
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeExecutionCursorRepository : IExecutionCursorRepository
@@ -556,6 +569,7 @@ public sealed class ExecutionServiceTests
         public bool RenewResult { get; set; } = true;
         public bool GenerationUpsertResult { get; set; } = true;
         public ExecutionCheckpointDocument? DocumentById { get; set; }
+        public int DeleteCalls { get; private set; }
 
         public Task UpsertAsync(
             ICoreUnitOfWork uow,
@@ -581,7 +595,14 @@ public sealed class ExecutionServiceTests
         public Task DeleteAsync(
             ICoreUnitOfWork uow,
             Guid executionId,
-            CancellationToken ct) => Task.CompletedTask;
+            CancellationToken ct)
+        {
+            _ = uow;
+            DeleteCalls += 1;
+            if (DocumentById is not null && DocumentById.ExecutionId == executionId)
+                DocumentById = null;
+            return Task.CompletedTask;
+        }
 
         public Task<long?> TryAcquireOwnershipAsync(
             ICoreUnitOfWork uow,
@@ -701,6 +722,7 @@ public sealed class ExecutionServiceTests
 
         public Task<IReadOnlyList<MatchingWaitSubscription>> ListMatchingSubscriptionsAsync(
             ICoreUnitOfWork uow,
+            Guid tenantId,
             string topic,
             string correlationKey,
             CancellationToken ct) =>
@@ -5832,6 +5854,90 @@ public sealed class ExecutionServiceTests
             update => update.Status == ExecutionProjectionStatuses.Failed && update.ExecutionId == executionId);
     }
 
+    /// <summary>載荷済み（非空 graph）の未分類上限は Failed にせず restartLost を付ける。</summary>
+    [Fact]
+    public async Task MarkUnclassifiedAttemptLimitAsync_WhenHydratedGraph_KeepsRunningAndSetsRestartLost()
+    {
+        // Arrange
+        var executionId = Guid.Parse("33333333-3333-3333-3333-333333333335");
+        using var sqlite = new SqliteTestDatabase();
+        var (sut, executionRepo, checkpointStore) = BuildAttemptLimitSut(
+            sqlite,
+            executionId,
+            graphJson: """{"nodes":[{"id":"n1"}],"edges":[]}""",
+            checkpoint: null);
+
+        // Act
+        await sut.MarkUnclassifiedAttemptLimitAsync(executionId, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(executionRepo.Updates);
+        Assert.Equal(1, executionRepo.MarkRestartLostCalls);
+        Assert.True(executionRepo.ByIdResult?.RestartLost);
+        Assert.Equal(ExecutionProjectionStatuses.Running, executionRepo.ByIdResult?.Status);
+        Assert.Equal(0, checkpointStore.DeleteCalls);
+    }
+
+    /// <summary>正当な checkpoint がある未分類上限は checkpoint を残し Failed にしない。</summary>
+    [Fact]
+    public async Task MarkUnclassifiedAttemptLimitAsync_WhenValidCheckpoint_KeepsCheckpointAndSetsRestartLost()
+    {
+        // Arrange
+        var executionId = Guid.Parse("33333333-3333-3333-3333-333333333336");
+        var checkpoint = CreateMinimalCheckpoint(executionId.ToString("D"));
+        var checkpointJson = System.Text.Json.JsonSerializer.Serialize(
+            checkpoint,
+            new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+        using var sqlite = new SqliteTestDatabase();
+        var (sut, executionRepo, checkpointStore) = BuildAttemptLimitSut(
+            sqlite,
+            executionId,
+            graphJson: """{"nodes":[],"edges":[]}""",
+            checkpoint: new ExecutionCheckpointDocument
+            {
+                ExecutionId = executionId,
+                CheckpointJson = checkpointJson,
+                SchemaVersion = ExecutionRuntimeCheckpoint.CurrentSchemaVersion,
+                UpdatedAt = DateTime.UtcNow
+            });
+
+        // Act
+        await sut.MarkUnclassifiedAttemptLimitAsync(executionId, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(executionRepo.Updates);
+        Assert.Equal(1, executionRepo.MarkRestartLostCalls);
+        Assert.True(executionRepo.ByIdResult?.RestartLost);
+        Assert.Equal(ExecutionProjectionStatuses.Running, executionRepo.ByIdResult?.Status);
+        Assert.Equal(0, checkpointStore.DeleteCalls);
+        Assert.NotNull(checkpointStore.DocumentById);
+    }
+
+    /// <summary>未載荷の未分類上限は sibling どおり Failed にする。</summary>
+    [Fact]
+    public async Task MarkUnclassifiedAttemptLimitAsync_WhenUnloaded_SetsFailed()
+    {
+        // Arrange
+        var executionId = Guid.Parse("33333333-3333-3333-3333-333333333337");
+        using var sqlite = new SqliteTestDatabase();
+        var (sut, executionRepo, checkpointStore) = BuildAttemptLimitSut(
+            sqlite,
+            executionId,
+            graphJson: """{"nodes":[],"edges":[]}""",
+            checkpoint: null);
+
+        // Act
+        await sut.MarkUnclassifiedAttemptLimitAsync(executionId, CancellationToken.None);
+
+        // Assert
+        Assert.Contains(
+            executionRepo.Updates,
+            update => update.Status == ExecutionProjectionStatuses.Failed && update.ExecutionId == executionId);
+        Assert.Equal(0, executionRepo.MarkRestartLostCalls);
+        Assert.False(executionRepo.ByIdResult?.RestartLost);
+        Assert.Equal(1, checkpointStore.DeleteCalls);
+    }
+
     /// <summary>
     /// HTTP Cancel 受理で Cancel enqueue と同時に cancelRequested を立てる。
     /// </summary>
@@ -6176,18 +6282,7 @@ public sealed class ExecutionServiceTests
             VersionById = version,
             VersionByNumber = version
         };
-        var engine = new FakeExecutionEngine
-        {
-            SnapshotToReturn = new ExecutionSnapshot
-            {
-                ExecutionId = executionId.ToString(),
-                WorkflowName = "def",
-                ActiveStates = ["Initial"],
-                IsCompleted = false,
-                IsCancelled = false,
-                IsFailed = false
-            }
-        };
+        var engine = new FakeExecutionEngine();
         var executionRepo = new FakeExecutionRepository
         {
             ByIdResult = new ExecutionRow
@@ -6283,6 +6378,299 @@ public sealed class ExecutionServiceTests
         Assert.Equal(executionId, response.ResourceId);
         Assert.Equal(ExecutionProjectionStatuses.Running, response.Status);
         Assert.True(response.CancelRequested);
+    }
+
+    /// <summary>非空 graph の queued Start は engine.Start しない。</summary>
+    [Fact]
+    public async Task ExecuteQueuedStartAsync_WhenGraphIsNonEmpty_DoesNotStartEngine()
+    {
+        // Arrange
+        var defUuid = Guid.Parse("16161616-1616-1616-1616-161616161616");
+        var versionId = Guid.Parse("17171717-1717-1717-1717-171717171717");
+        var executionId = Guid.Parse("18181818-1818-1818-1818-181818181818");
+        var now = DateTime.UtcNow;
+        var engine = new FakeExecutionEngine();
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = defUuid,
+                DefinitionVersionId = versionId,
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = now,
+                UpdatedAt = now
+            },
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
+            {
+                ExecutionId = executionId,
+                GraphJson = """{"nodes":[{"id":"n1"}],"edges":[]}""",
+                UpdatedAt = now
+            }
+        };
+
+        using var sqlite = new SqliteTestDatabase();
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService { AllocateResultWorkflow = "WF-QS-G", GetDisplayIdResult = "def-disp" },
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
+
+        using var inputDoc = JsonDocument.Parse("{}");
+        var request = new StartExecutionRequest { DefinitionId = "def-q", Input = inputDoc.RootElement };
+
+        // Act
+        var response = await sut.ExecuteQueuedStartAsync(executionId, request, CancellationToken.None);
+
+        // Assert
+        Assert.False(engine.StartCalled);
+        Assert.Equal(executionId, response.ResourceId);
+        Assert.Equal(ExecutionProjectionStatuses.Running, response.Status);
+    }
+
+    /// <summary>空グラフの queued Start は engine.Start する。</summary>
+    [Fact]
+    public async Task ExecuteQueuedStartAsync_WhenGraphIsEmpty_StartsEngine()
+    {
+        // Arrange
+        var defUuid = Guid.Parse("19191919-1919-1919-1919-191919191919");
+        var versionId = Guid.Parse("1a1a1a1a-1a1a-1a1a-1a1a-1a1a1a1a1a1a");
+        var executionId = Guid.Parse("1b1b1b1b-1b1b-1b1b-1b1b-1b1b1b1b1b1b");
+        var now = DateTime.UtcNow;
+        var engine = new FakeExecutionEngine();
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = defUuid,
+                DefinitionVersionId = versionId,
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = now,
+                UpdatedAt = now
+            },
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
+            {
+                ExecutionId = executionId,
+                GraphJson = """{"nodes":[],"edges":[]}""",
+                UpdatedAt = now
+            }
+        };
+        var definitionsRepo = new StubDefinitionRepository
+        {
+            LatestDetail = new DefinitionDetail
+            {
+                Definition = new DefinitionRow
+                {
+                    DefinitionId = defUuid,
+                    TenantId = TestTenantIds.T1TenantId,
+                    ProjectId = Guid.NewGuid(),
+                    Slug = "def",
+                    Name = "def",
+                    LatestVersion = 1,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                Version = new DefinitionVersionRow
+                {
+                    DefinitionVersionId = versionId,
+                    DefinitionId = defUuid,
+                    Version = 1,
+                    SourceYaml = "yaml",
+                    CompiledJson = "{}",
+                    CreatedAt = now
+                }
+            },
+            VersionById = new DefinitionVersionRow
+            {
+                DefinitionVersionId = versionId,
+                DefinitionId = defUuid,
+                Version = 1,
+                SourceYaml = "yaml",
+                CompiledJson = "{}",
+                CreatedAt = now
+            }
+        };
+
+        using var sqlite = new SqliteTestDatabase();
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService { AllocateResultWorkflow = "WF-QS-E", GetDisplayIdResult = "def-disp" },
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = definitionsRepo,
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
+
+        using var inputDoc = JsonDocument.Parse("{}");
+        var request = new StartExecutionRequest { DefinitionId = "def-q", Input = inputDoc.RootElement };
+
+        // Act
+        var response = await sut.ExecuteQueuedStartAsync(executionId, request, CancellationToken.None);
+
+        // Assert
+        Assert.True(engine.StartCalled);
+        Assert.Equal(executionId, response.ResourceId);
+    }
+
+    /// <summary>正当な runtime checkpoint がある queued Start は engine.Start しない。</summary>
+    [Fact]
+    public async Task ExecuteQueuedStartAsync_WhenValidCheckpointExists_DoesNotStartEngine()
+    {
+        // Arrange
+        var defUuid = Guid.Parse("1c1c1c1c-1c1c-1c1c-1c1c-1c1c1c1c1c1c");
+        var versionId = Guid.Parse("1d1d1d1d-1d1d-1d1d-1d1d-1d1d1d1d1d1d");
+        var executionId = Guid.Parse("1e1e1e1e-1e1e-1e1e-1e1e-1e1e1e1e1e1e");
+        var now = DateTime.UtcNow;
+        var engine = new FakeExecutionEngine();
+        var checkpoint = CreateMinimalCheckpoint(executionId.ToString("D"));
+        var checkpointJson = System.Text.Json.JsonSerializer.Serialize(
+            checkpoint,
+            new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = defUuid,
+                DefinitionVersionId = versionId,
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = now,
+                UpdatedAt = now
+            },
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
+            {
+                ExecutionId = executionId,
+                GraphJson = """{"nodes":[],"edges":[]}""",
+                UpdatedAt = now
+            }
+        };
+
+        using var sqlite = new SqliteTestDatabase();
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService { AllocateResultWorkflow = "WF-QS-CP", GetDisplayIdResult = "def-disp" },
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                CheckpointStore = new FakeExecutionCheckpointStore
+                {
+                    DocumentById = new ExecutionCheckpointDocument
+                    {
+                        ExecutionId = executionId,
+                        CheckpointJson = checkpointJson,
+                        SchemaVersion = ExecutionRuntimeCheckpoint.CurrentSchemaVersion,
+                        UpdatedAt = now
+                    }
+                }
+            });
+
+        using var inputDoc = JsonDocument.Parse("{}");
+        var request = new StartExecutionRequest { DefinitionId = "def-q", Input = inputDoc.RootElement };
+
+        // Act
+        var response = await sut.ExecuteQueuedStartAsync(executionId, request, CancellationToken.None);
+
+        // Assert
+        Assert.False(engine.StartCalled);
+        Assert.Equal(executionId, response.ResourceId);
+    }
+
+    /// <summary>同一プロセスに Engine 載荷済みの queued Start は engine.Start しない。</summary>
+    [Fact]
+    public async Task ExecuteQueuedStartAsync_WhenEngineAlreadyHydrated_DoesNotStartEngine()
+    {
+        // Arrange
+        var defUuid = Guid.Parse("1f1f1f1f-1f1f-1f1f-1f1f-1f1f1f1f1f1f");
+        var versionId = Guid.Parse("20202020-2020-2020-2020-202020202020");
+        var executionId = Guid.Parse("21212121-2121-2121-2121-212121212121");
+        var now = DateTime.UtcNow;
+        var engine = new FakeExecutionEngine
+        {
+            SnapshotToReturn = new ExecutionSnapshot
+            {
+                ExecutionId = executionId.ToString(),
+                WorkflowName = "def",
+                ActiveStates = ["Initial"],
+                IsCompleted = false,
+                IsCancelled = false,
+                IsFailed = false
+            }
+        };
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = defUuid,
+                DefinitionVersionId = versionId,
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = now,
+                UpdatedAt = now
+            },
+            SnapshotByExecutionId = new ExecutionGraphSnapshotRow
+            {
+                ExecutionId = executionId,
+                GraphJson = """{"nodes":[],"edges":[]}""",
+                UpdatedAt = now
+            }
+        };
+
+        using var sqlite = new SqliteTestDatabase();
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = engine,
+                DisplayIds = new FakeDisplayIdService { AllocateResultWorkflow = "WF-QS-EN", GetDisplayIdResult = "def-disp" },
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(defUuid, TestTenantIds.T1TenantId, "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+            });
+
+        using var inputDoc = JsonDocument.Parse("{}");
+        var request = new StartExecutionRequest { DefinitionId = "def-q", Input = inputDoc.RootElement };
+
+        // Act
+        var response = await sut.ExecuteQueuedStartAsync(executionId, request, CancellationToken.None);
+
+        // Assert
+        Assert.False(engine.StartCalled);
+        Assert.Equal(executionId, response.ResourceId);
     }
 
     /// <summary>正当な runtime checkpoint がある Cancel は未 Start に落とさず hydrate する。</summary>
@@ -6620,6 +7008,62 @@ public sealed class ExecutionServiceTests
             },
             PendingWaits = Array.Empty<CheckpointPendingWait>()
         };
+
+    /// <summary>未分類上限テスト用の Lifecycle 依存を組み立てる。</summary>
+    private static (ExecutionService Sut, FakeExecutionRepository Executions, FakeExecutionCheckpointStore Checkpoints) BuildAttemptLimitSut(
+        SqliteTestDatabase sqlite,
+        Guid executionId,
+        string? graphJson,
+        ExecutionCheckpointDocument? checkpoint)
+    {
+        var now = DateTime.UtcNow;
+        var definitionId = Guid.Parse("11111111-1111-1111-1111-111111111113");
+        var executionRepo = new FakeExecutionRepository
+        {
+            ByIdResult = new ExecutionRow
+            {
+                ExecutionId = executionId,
+                TenantId = TestTenantIds.T1TenantId,
+                DefinitionId = definitionId,
+                DefinitionVersionId = Guid.Parse("44444444-4444-4444-4444-444444444444"),
+                Status = ExecutionProjectionStatuses.Running,
+                StartedAt = now,
+                UpdatedAt = now,
+                CancelRequested = false,
+                RestartLost = false,
+                SecuritySnapshotJson = "{}"
+            },
+            SnapshotByExecutionId = graphJson is null
+                ? null
+                : new ExecutionGraphSnapshotRow
+                {
+                    ExecutionId = executionId,
+                    GraphJson = graphJson,
+                    UpdatedAt = now
+                }
+        };
+        var checkpointStore = new FakeExecutionCheckpointStore { DocumentById = checkpoint };
+        var sut = BuildExecutionService(
+            sqlite,
+            new ExecutionServiceTestDeps
+            {
+                Engine = new FakeExecutionEngine(),
+                DisplayIds = new FakeDisplayIdService(),
+                Compiler = new StubDefinitionCompilerService((DummyCompiledDefinition("def"), "{}")),
+                IdGenerator = new FixedIdGenerator(executionId),
+                DedupService = new FakeCommandDedupService(null),
+                Executions = executionRepo,
+                Definitions = StubDefinitionRepositoryFactory.ForDefinition(
+                    definitionId,
+                    TestTenantIds.T1TenantId,
+                    "def"),
+                Dedup = new FakeCommandDedupRepository(),
+                EventStore = new FakeEventStoreRepository(),
+                EventDeliveryDedup = new FakeEventDeliveryDedupRepository(),
+                CheckpointStore = checkpointStore,
+            });
+        return (sut, executionRepo, checkpointStore);
+    }
 
     private sealed class CapturingWorkQueue : IExecutionWorkQueue
     {

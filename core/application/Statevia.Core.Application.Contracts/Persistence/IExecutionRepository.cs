@@ -28,4 +28,11 @@ public interface IExecutionRepository
         bool? cancelRequested,
         string graphJson,
         CancellationToken ct);
+
+    /// <summary>載荷済み試行上限の観測印として <c>restart_lost</c> を立てる。status は変えない。</summary>
+    /// <param name="uow">参加中のユニットオブワーク。</param>
+    /// <param name="executionId">実行 ID。</param>
+    /// <param name="ct">キャンセル。</param>
+    Task MarkRestartLostAsync(ICoreUnitOfWork uow, Guid executionId, CancellationToken ct) =>
+        Task.CompletedTask;
 }

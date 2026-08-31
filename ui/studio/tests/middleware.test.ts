@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { AUTH_COOKIE_ACCESS } from "@/shared/auth/authSession";
 import { middleware } from "../middleware";
@@ -21,6 +21,7 @@ describe("middleware", () => {
     } else {
       process.env.SERVICE_API_AUTH_TOKEN = originalAuthToken;
     }
+    vi.unstubAllEnvs();
   });
 
   it("未ログインで保護パスは /login へリダイレクトする", () => {
@@ -71,8 +72,25 @@ describe("middleware", () => {
   });
 
   it("SERVICE_API_AUTH_TOKEN 設定時は未ログインでも保護パスを通過する", () => {
+    vi.stubEnv("NODE_ENV", "development");
     process.env.SERVICE_API_AUTH_TOKEN = "dev-token";
     const res = middleware(requestWithCookie("/dashboard"));
     expect(res.status).toBe(200);
+  });
+
+  it("production では SERVICE_API_AUTH_TOKEN があっても未ログインの保護パスを通さない", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.SERVICE_API_AUTH_TOKEN = "dev-token";
+    const res = middleware(requestWithCookie("/dashboard"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/login");
+  });
+
+  it("production では Cookie なしの /api/core を通さない", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.SERVICE_API_AUTH_TOKEN = "dev-token";
+    const res = middleware(requestWithCookie("/api/core/executions"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/login");
   });
 });

@@ -8,6 +8,7 @@ namespace Statevia.Core.Application.Contracts.Services;
 /// 照合は <c>execution_wait_subscriptions</c>、再開は永続ワークキューへの Resume 投入で行う。
 /// 一致 0 件でも成功（呼び出し元は 204 等で受理を返す想定）。
 /// HTTP 入口では topic 必須、key 任意（省略時は空文字）。配信者は遷移名を指定しない。
+/// <c>executions.write</c> を要求する。テナント未解決なら 0 件（他テナントへ積まない）。
 /// </para>
 /// </remarks>
 public interface IEventIngressService

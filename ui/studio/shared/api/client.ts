@@ -1,12 +1,17 @@
 import { clearSessionAndRedirectToLogin } from "@/shared/auth/authRedirect";
 import type { ApiError } from "@/shared/api/apiError";
 
-/** クライアント側の API 用設定（認証・テナント）。NEXT_PUBLIC_* または runtime で注入。 */
+/**
+ * クライアント側の API 用設定（認証・テナント）。NEXT_PUBLIC_* または runtime で注入。
+ * @returns tenantId と authToken。`NODE_ENV === "production"` では `NEXT_PUBLIC_AUTH_TOKEN` を空にする。
+ */
 export function getApiConfig(): { tenantId: string; authToken: string } {
   if (typeof process !== "undefined" && process.env) {
+    const authToken =
+      process.env.NODE_ENV === "production" ? "" : (process.env.NEXT_PUBLIC_AUTH_TOKEN ?? "");
     return {
       tenantId: process.env.NEXT_PUBLIC_TENANT_ID ?? "",
-      authToken: process.env.NEXT_PUBLIC_AUTH_TOKEN ?? ""
+      authToken
     };
   }
   return { tenantId: "", authToken: "" };

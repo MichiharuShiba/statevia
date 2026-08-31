@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Reference |
-| Version | 1.1 |
-| 更新日 | 2026-08-15 |
+| Version | 1.2 |
+| 更新日 | 2026-09-01 |
 
 ---
 
@@ -35,11 +35,11 @@ Runtime API の **semantic permission key** の調べ物。Normative 契約は [
 | GET `/v1/definitions*`、`/v1/graphs/*`、`/v1/definitions/schema/nodes`、`/v1/actions/schema*` | `definitions.read` |
 | POST / PUT `/v1/definitions` | `definitions.write` |
 | GET `/v1/executions*`（一覧・詳細・graph・state・events・stream） | `executions.read` |
-| POST start / cancel / publish event / resume | `executions.write` |
+| POST start / cancel / publish event / resume、**`POST /v1/events`** | `executions.write` |
 | POST `/internal/modules/reload` | `modules.reload`（または `is_tenant_admin`） |
 | GET `/v1/admin/modules` | `modules.read`（または `is_tenant_admin`） |
 
-不足時: **403**、`error.code = PERMISSION_DENIED`（[error-codes.md](error-codes.md)）。
+不足時: **403**、`error.code = PERMISSION_DENIED`（[error-codes.md](error-codes.md)）。`POST /v1/events` も同じ（Principal は必須。読み取り専用では Wait を進められない）。
 
 ## 評価ルール（抜粋）
 

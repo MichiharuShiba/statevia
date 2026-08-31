@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY } from "@/shared/auth/authSession";
+import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_TENANT_KEY, hasServerDevAuthBypass } from "@/shared/auth/authSession";
 
 function base() {
   const b = process.env.SERVICE_API_INTERNAL_BASE;
@@ -36,7 +36,7 @@ function authAndTenantHeaders(req: NextRequest, pathParts: string[]): Record<str
     out["Authorization"] = `Bearer ${tokenFromCookie}`;
   } else if (authFromReq) {
     out["Authorization"] = authFromReq;
-  } else if (authFromEnv) {
+  } else if (authFromEnv && hasServerDevAuthBypass()) {
     out["Authorization"] = authFromEnv.startsWith("Bearer ") ? authFromEnv : `Bearer ${authFromEnv}`;
   }
 

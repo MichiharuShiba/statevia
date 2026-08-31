@@ -8,6 +8,7 @@ namespace Statevia.Infrastructure.Persistence.Repositories;
 /// <remarks>
 /// 単独 DbContext で即コミットする API と、呼び出し側 <see cref="ICoreUnitOfWork"/> に参加する API を提供する。
 /// Fork 子展開など原子性が必要な経路は後者を使う。
+/// 所有 miss の <see cref="ReleaseWithoutCountingAttemptAsync"/> は claim 加算分の attempts を戻す。
 /// </remarks>
 internal sealed class ExecutionWorkQueue(IDbContextFactory<CoreDbContext> dbFactory) : IExecutionWorkQueue
 {
@@ -152,11 +153,34 @@ internal sealed class ExecutionWorkQueue(IDbContextFactory<CoreDbContext> dbFact
     }
 
     /// <inheritdoc />
-    public async Task ReleaseAsync(Guid workItemId, string leaseOwner, DateTime availableAt, CancellationToken ct)
+    public Task ReleaseAsync(Guid workItemId, string leaseOwner, DateTime availableAt, CancellationToken ct) =>
+        ReleaseCoreAsync(workItemId, leaseOwner, availableAt, decrementAttempts: false, ct);
+
+    /// <summary>lease 解放の共通更新。所有 miss のときだけ attempts を 1 戻す。</summary>
+    private async Task ReleaseCoreAsync(
+        Guid workItemId,
+        string leaseOwner,
+        DateTime availableAt,
+        bool decrementAttempts,
+        CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        await db.ExecutionWorkItems
-            .Where(item => item.WorkItemId == workItemId && item.LeaseOwner == leaseOwner)
+        var query = db.ExecutionWorkItems.Where(item => item.WorkItemId == workItemId && item.LeaseOwner == leaseOwner);
+        if (decrementAttempts)
+        {
+            await query
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(item => item.LeaseOwner, (string?)null)
+                        .SetProperty(item => item.LeaseUntil, (DateTime?)null)
+                        .SetProperty(item => item.AvailableAt, availableAt)
+                        .SetProperty(item => item.Attempts, item => item.Attempts - 1),
+                    ct)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        await query
             .ExecuteUpdateAsync(
                 setters => setters
                     .SetProperty(item => item.LeaseOwner, (string?)null)
@@ -165,6 +189,14 @@ internal sealed class ExecutionWorkQueue(IDbContextFactory<CoreDbContext> dbFact
                 ct)
             .ConfigureAwait(false);
     }
+
+    /// <inheritdoc />
+    public Task ReleaseWithoutCountingAttemptAsync(
+        Guid workItemId,
+        string leaseOwner,
+        DateTime availableAt,
+        CancellationToken ct) =>
+        ReleaseCoreAsync(workItemId, leaseOwner, availableAt, decrementAttempts: true, ct);
 
     /// <inheritdoc />
     public async Task<int> EnqueueExpiredOwnershipRecoveriesAsync(

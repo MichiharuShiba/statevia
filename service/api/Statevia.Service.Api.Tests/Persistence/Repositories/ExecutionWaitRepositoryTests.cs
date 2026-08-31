@@ -298,9 +298,9 @@ public sealed class ExecutionWaitRepositoryTests
         // Act
         await using var uow = await uowFactory.CreateAsync();
         var emptyKeyMatches = await repo.ListMatchingSubscriptionsAsync(
-            uow, "orders.updated", "", CancellationToken.None);
+            uow, TestTenantIds.T1TenantId, "orders.updated", "", CancellationToken.None);
         var keyedMatches = await repo.ListMatchingSubscriptionsAsync(
-            uow, "orders.updated", "order-1", CancellationToken.None);
+            uow, TestTenantIds.T1TenantId, "orders.updated", "order-1", CancellationToken.None);
 
         // Assert
         Assert.Single(emptyKeyMatches);
@@ -331,11 +331,11 @@ public sealed class ExecutionWaitRepositoryTests
         // Act
         await using var uow = await uowFactory.CreateAsync();
         var keyedMatches = await repo.ListMatchingSubscriptionsAsync(
-            uow, "orders.updated", "order-1", CancellationToken.None);
+            uow, TestTenantIds.T1TenantId, "orders.updated", "order-1", CancellationToken.None);
         var emptyKeyMatches = await repo.ListMatchingSubscriptionsAsync(
-            uow, "orders.updated", "", CancellationToken.None);
+            uow, TestTenantIds.T1TenantId, "orders.updated", "", CancellationToken.None);
         var otherKeyMatches = await repo.ListMatchingSubscriptionsAsync(
-            uow, "orders.updated", "order-2", CancellationToken.None);
+            uow, TestTenantIds.T1TenantId, "orders.updated", "order-2", CancellationToken.None);
 
         // Assert
         Assert.Single(keyedMatches);
@@ -363,7 +363,7 @@ public sealed class ExecutionWaitRepositoryTests
         // Act
         await using var uow = await uowFactory.CreateAsync();
         var matches = await repo.ListMatchingSubscriptionsAsync(
-            uow, "inventory.received", "SKU-1", CancellationToken.None);
+            uow, TestTenantIds.T1TenantId, "inventory.received", "SKU-1", CancellationToken.None);
 
         // Assert
         Assert.Equal(2, matches.Count);
@@ -371,11 +371,65 @@ public sealed class ExecutionWaitRepositoryTests
         Assert.Contains(matches, m => m.ExecutionId == execution2 && m.NodeId == "wait-b");
     }
 
-    private static ExecutionRow CreateExecution(Guid executionId, DateTime now) =>
+    /// <summary>DisabledTenantQueryFilterOptions でも他テナントの同一 topic/key は返さない。</summary>
+    [Fact]
+    public async Task ListMatchingSubscriptionsAsync_WhenOtherTenant_DoesNotMatch()
+    {
+        // Arrange
+        using var db = new InMemoryTestDatabase();
+        var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
+        var repo = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
+        var t1Execution = Guid.NewGuid();
+        var otherExecution = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        await SeedSubscriptionAsync(
+            db, t1Execution, "t1-wait", "shared.topic", "k1", "statevia.event.subscribe.0", now);
+        await using (var ctx = new CoreDbContext(db.Options))
+        {
+            ctx.Executions.Add(CreateExecution(otherExecution, now, TestTenantIds.OtherTenantId));
+            ctx.ExecutionWaits.Add(new ExecutionWaitRow
+            {
+                ExecutionId = otherExecution,
+                NodeId = "other-wait",
+                WaitKind = ExecutionWaitKind.EventWait,
+                AllowedEvents = ["statevia.event.subscribe.0"],
+                CreatedAt = now
+            });
+            ctx.ExecutionWaitSubscriptions.Add(new ExecutionWaitSubscriptionRow
+            {
+                SubscriptionId = Guid.NewGuid(),
+                ExecutionId = otherExecution,
+                NodeId = "other-wait",
+                Topic = "shared.topic",
+                CorrelationKey = "k1",
+                ResumeEventName = "statevia.event.subscribe.0",
+                CreatedAt = now
+            });
+            await ctx.SaveChangesAsync();
+        }
+        await using (var unfiltered = new CoreDbContext(
+            db.Options,
+            NullTenantContextAccessor.Instance,
+            DisabledTenantQueryFilterOptions.Instance))
+        {
+            Assert.Equal(2, await unfiltered.Executions.CountAsync());
+        }
+
+        // Act
+        await using var uow = await uowFactory.CreateAsync();
+        var matches = await repo.ListMatchingSubscriptionsAsync(
+            uow, TestTenantIds.T1TenantId, "shared.topic", "k1", CancellationToken.None);
+
+        // Assert
+        Assert.Single(matches);
+        Assert.Equal(t1Execution, matches[0].ExecutionId);
+    }
+
+    private static ExecutionRow CreateExecution(Guid executionId, DateTime now, Guid? tenantId = null) =>
         new()
         {
             ExecutionId = executionId,
-            TenantId = TestTenantIds.T1TenantId,
+            TenantId = tenantId ?? TestTenantIds.T1TenantId,
             DefinitionId = Guid.NewGuid(),
             DefinitionVersionId = Guid.NewGuid(),
             Status = "Running",
