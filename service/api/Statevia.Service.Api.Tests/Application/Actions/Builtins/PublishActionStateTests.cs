@@ -266,7 +266,7 @@ public sealed class PublishActionStateTests
         var uowFactory = new TestCoreUnitOfWorkFactory(db.Factory);
         var transactions = new TestCoreTransactionExecutor(uowFactory);
         var waits = new ExecutionWaitRepository(db.Factory, new DefaultIdGenerator());
-        var ingress = new EventIngressService(transactions, waits, workQueue, new DefaultIdGenerator());
+        var ingress = CreateIngressService(transactions, waits, workQueue);
         return new PublishActionState(BuildScopeFactory(ingress));
     }
 
@@ -277,8 +277,24 @@ public sealed class PublishActionStateTests
         var uowFactory = new TestCoreUnitOfWorkFactory(dbFactory);
         var transactions = new TestCoreTransactionExecutor(uowFactory);
         var waits = new ExecutionWaitRepository(dbFactory, new DefaultIdGenerator());
-        var ingress = new EventIngressService(transactions, waits, workQueue, new DefaultIdGenerator());
+        var ingress = CreateIngressService(transactions, waits, workQueue);
         return new PublishActionState(BuildScopeFactory(ingress));
+    }
+
+    private static EventIngressService CreateIngressService(
+        ICoreTransactionExecutor transactions,
+        IExecutionWaitRepository waits,
+        CapturingWorkQueue workQueue)
+    {
+        var accessor = new SettableTenantContextAccessor();
+        accessor.Set(TestTenantIds.T1Context);
+        return new EventIngressService(
+            transactions,
+            waits,
+            workQueue,
+            new DefaultIdGenerator(),
+            new AllowAllRuntimePermissionAuthorization(),
+            accessor);
     }
 
     private static IServiceScopeFactory BuildScopeFactory(IEventIngressService ingress)

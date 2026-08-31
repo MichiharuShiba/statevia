@@ -722,6 +722,7 @@ public sealed class ExecutionServiceTests
 
         public Task<IReadOnlyList<MatchingWaitSubscription>> ListMatchingSubscriptionsAsync(
             ICoreUnitOfWork uow,
+            Guid tenantId,
             string topic,
             string correlationKey,
             CancellationToken ct) =>

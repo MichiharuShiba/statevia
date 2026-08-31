@@ -130,6 +130,7 @@ internal sealed class ExecutionWaitRepository(
     /// <inheritdoc />
     public async Task<IReadOnlyList<MatchingWaitSubscription>> ListMatchingSubscriptionsAsync(
         ICoreUnitOfWork uow,
+        Guid tenantId,
         string topic,
         string correlationKey,
         CancellationToken ct)
@@ -142,7 +143,9 @@ internal sealed class ExecutionWaitRepository(
             from subscription in db.ExecutionWaitSubscriptions.AsNoTracking()
             join execution in db.Executions.AsNoTracking()
                 on subscription.ExecutionId equals execution.ExecutionId
-            where subscription.Topic == topic && subscription.CorrelationKey == correlationKey
+            where subscription.Topic == topic
+                && subscription.CorrelationKey == correlationKey
+                && execution.TenantId == tenantId
             orderby subscription.CreatedAt, subscription.ExecutionId, subscription.NodeId
             select new MatchingWaitSubscription(
                 subscription.ExecutionId,
