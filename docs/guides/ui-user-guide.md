@@ -3,9 +3,11 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.6 |
-| 更新日 | 2026-08-19 |
-| 関連 | [../specifications/ui/visual.md](../specifications/ui/visual.md)、[../specifications/api-http.md](../specifications/api-http.md) §2.1.2–2.2、[../architecture/ui-studio-structure.md](../architecture/ui-studio-structure.md) |
+| Version | 1.7 |
+| 更新日 | 2026-09-01 |
+| 関連 | [../specifications/ui/visual.md](../specifications/ui/visual.md)、[../specifications/api-http.md](../specifications/api-http.md) §2.1.2–2.2 |
+
+**Version 1.7（2026-09-01）**: 品質チェックと内部構成をコントリビュータ向けと明示。SSE は Principal 必須。
 
 **Version 1.6（2026-08-19）**: 新規・更新パスワードは 8〜128 文字・空白なし（記号可。大文字小文字の混在は不要）。
 
@@ -71,9 +73,13 @@ Studio の定義一覧・詳細から Service API の catalog ライフサイク
 
 HTTP 契約の正本は [api-http.md](../specifications/api-http.md) §2.1.2–2.2。
 
-グラフのマージ規則・ノード表現の Normative 契約は [visual 仕様](../specifications/ui/visual.md)。リアルタイム更新は SSE（[push-api 仕様](../specifications/ui/push-api.md)）。
+グラフのマージ規則・ノード表現の Normative 契約は [visual 仕様](../specifications/ui/visual.md)。リアルタイム更新は SSE（[push-api 仕様](../specifications/ui/push-api.md)）。SSE も Principal 必須（未認証は 401）。Studio はプロキシ経由でセッション Cookie を付ける。
 
-## 開発時の品質チェック
+## コントリビュータ向け
+
+Studio の内部モジュール境界（薄い `app/` + `features/` + `shared/`）は [ui-studio-structure.md](../architecture/ui-studio-structure.md) を正本とする。画面追加や import 規約はそちらを参照する（本ガイドの利用者向け操作・HTTP 契約は変えない）。
+
+品質チェック:
 
 ```bash
 npm run lint
@@ -81,10 +87,7 @@ npm run typecheck
 npm run test:run
 ```
 
-Studio の内部モジュール境界（薄い `app/` + `features/` + `shared/`）は [ui-studio-structure.md](../architecture/ui-studio-structure.md) を正本とする。画面追加や import 規約はそちらを参照する（本ガイドの利用者向け操作・HTTP 契約は変えない）。
-
 ## 次に読むもの
 
 - HTTP 例: [http-request-examples.md](http-request-examples.md)
 - UI 可視化仕様: [../specifications/ui/visual.md](../specifications/ui/visual.md)
-- Studio 内部構成: [../architecture/ui-studio-structure.md](../architecture/ui-studio-structure.md)

@@ -3,13 +3,15 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.1 |
-| 更新日 | 2026-08-19 |
-| 関連 | [operations-docker.md](operations-docker.md), [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md), [api-http.md](../specifications/api-http.md) |
+| Version | 1.2 |
+| 更新日 | 2026-09-01 |
+| 関連 | [operations-docker.md](operations-docker.md), [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md), [api-http.md](../specifications/api-http.md), [samples/](../samples/) |
 
 ---
 
-Docker Compose で PostgreSQL・Service API・UI を起動し、API で定義を publish して実行するまでの最短手順。
+Docker Compose で PostgreSQL・Service API・UI を起動し、API で定義を publish して実行するまでの最短手順。定義 YAML の例は [samples/](../samples/)。
+
+**Version 1.2（2026-09-01）**: ホスト起動手順を本書に移した。
 
 ## 前提
 
@@ -63,7 +65,7 @@ docker compose up -d
 
 ## 3. 認証（Runtime API）
 
-`/v1/definitions` と `/v1/executions` は **Principal 必須**（JWT または `X-Api-Key`）+ `X-Tenant-Id`（`tenant_key`、既定 `default`）。
+`/v1/definitions` / `/v1/executions` / `/v1/events` は **Principal 必須**（JWT または `X-Api-Key`）+ `X-Tenant-Id`（`tenant_key`、既定 `default`）。
 
 **Development**（`docker compose` の既定）では API 起動時に次の管理者が自動作成される（`skip-if-exists`、マイグレーション適用後）:
 
@@ -129,5 +131,24 @@ curl -s -X POST "http://localhost:8080/v1/executions" \
 
 ## ローカル開発（Compose を使わない場合）
 
-- PostgreSQL のみ Docker、API/UI はホスト起動: [AGENTS.md](../../AGENTS.md) の Running services を参照
-- Engine ライブラリのみ: [engine-standalone-guide.md](engine-standalone-guide.md)
+PostgreSQL だけ Docker で動かし、Service API と UI をホストで起動する例:
+
+```bash
+docker compose up -d postgres
+```
+
+マイグレーションは §1 と同じ。続けて:
+
+```bash
+cd service/api
+dotnet run --project Statevia.Service.Api --no-launch-profile
+```
+
+`ASPNETCORE_URLS=http://0.0.0.0:8080` を推奨する。`launchSettings.json` は git 管理外で、開発環境がランダムポートを付けることがある。
+
+```bash
+cd ui/studio
+SERVICE_API_INTERNAL_BASE=http://localhost:8080 npm run dev
+```
+
+Scheduler / Worker をプロセス分離する場合は [operations-docker.md](operations-docker.md) の override を使う。Engine ライブラリのみ: [engine-standalone-guide.md](engine-standalone-guide.md)

@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.2.2 |
-| 更新日 | 2026-06-08 |
+| Version | 1.2.3 |
+| 更新日 | 2026-09-01 |
 | ステータス | 実装済み（`executions.security_snapshot_json`） |
 | 関連 | [security-runtime.md](security-runtime.md) |
 
@@ -22,7 +22,7 @@
 
 長時間実行・Wait / Resume / Retry では、**HTTP リクエスト時点のログイン者**だけでは権限評価を説明できない。Start 時点の Principal と許可集合を **`ExecutionSecuritySnapshot`** として固定し、**Owner 経路**の認可を **`SecurityEvaluationMode`** で切り替える。
 
-本書は E4（task 11 設計 + task 14 実装）の正本。Engine への Snapshot 注入は **将来**（§Engine 接続）。
+Engine への Snapshot 注入と permission 細分化は未実装（[sse-and-projection-extensions.md](../../future/sse-and-projection-extensions.md)）。
 
 ## 用語
 
@@ -189,16 +189,7 @@ flowchart TB
 
 > Operator 経路 → **Live**。User-B に `executions.write` なし → **403**。`evaluationMode` が Snapshot でも Operator は Live である点は仕様どおり。
 
-**Snapshot-only Operator（将来 opt-in）**
-
-> tenant ポリシーで Operator も Snapshot 評価を許す拡張は **明示 opt-in**。初版既定は Operator = Live。
-
-### Execution Operator と将来の `executions.manage`
-
-| 概念 | permission（将来） | 意味 |
-| --- | --- | --- |
-| Owner | Snapshot / Live（`evaluationMode`） | 開始者自身 |
-| Operator | `executions.manage` | 他人 execution の Resume / Cancel / Retry トリガ |
+Operator を Snapshot 評価にする opt-in、`executions.manage` への分割、Liveness Policy、Engine への Snapshot 注入は未実装（[sse-and-projection-extensions.md](../../future/sse-and-projection-extensions.md)）。
 
 ## 操作別の評価（Wait / Resume / Retry）
 
@@ -216,66 +207,19 @@ flowchart TB
 - **System Principal** + `TenantExecutionScope`。ユーザー permission の Live 再展開は **しない**。
 - 初版既定: Owner Principal **無効化後**も **Retry は継続**。tenant 境界のみ確認。
 
-#### Execution Liveness Policy（将来 · 未実装）
-
-Owner Principal **無効化後**の execution 存続は tenant ポリシーで選べるようにする余地を残す。
-
-| ポリシー | Owner 無効化 / 削除後 |
-| --- | --- |
-| **`Continue`（初版既定）** | Wait / Retry は継続。Operator が Live 権限を持てば Resume / Cancel 可能 |
-| **`Suspend`** | 新規 Retry / Resume を止め、Wait 状態を維持 |
-| **`Cancel`** | execution を自動 Cancel |
-
-評価トリガ: Owner Principal の `disabled_at` / `deleted_at` 検知、または定期ワーカー。Retry 前チェックに組み込む想定。
-
 ## 関連 permission key
 
-### 初版（実装済みカタログ）
-
 | key | 用途 |
 | --- | --- |
-| `executions.write` | Start / Resume / Cancel（移行期単一 key） |
+| `executions.write` | Start / Resume / Cancel |
 | `executions.read` | GET |
 | `definitions.read` | Start 前定義解決 |
-
-### 将来分割（合意 · 未実装）
-
-| key | 用途 |
-| --- | --- |
-| `executions.start` | Start |
-| `executions.resume` | Resume |
-| `executions.cancel` | Cancel |
-| `executions.read` | Read |
-| `executions.manage` | Operator 経路 |
-
-移行: 新 key 追加 → admin シード → Snapshot は Start 時の実 key を保存 → 移行期のみ `executions.write` を superset 受理。
-
-## Engine 接続（将来）
-
-1. Service API が Start tx で Snapshot を永続化。
-2. Cancel / Publish 前に Identity + Owner/Operator Authorization（task 8）。
-3. Engine へは executionId と domain payload のみ。
-4. 将来 action callback 用に Snapshot を読み取り専用 DTO で注入。
-
-## 未実装・後続
-
-| 項目 | 担当 |
-| --- | --- |
-| Snapshot 永続化 | task 14 ✅ |
-| Resume / Cancel Owner / Operator 認可 | task 14 ✅ |
-| コントローラ認可（global permission） | task 8 ✅ |
-| permission key 分割 | PermissionCatalog |
-| **Execution Liveness Policy** | tenant 設定 + Retry / Resume 前チェック |
-| Snapshot-only Operator opt-in | tenant ポリシー |
-| `user_profiles` 分離 | 要件9 — 任意 |
-| **概要ドキュメント** | ✅ [`security-runtime.md`](./security-runtime.md) §Execution Security Snapshot |
-| **分析・監査の検索・集計投影** | 別テーブル（本列は `text` BLOB のまま） |
 
 ## 変更履歴
 
 | Version | 日付 | 内容 |
 | --- | --- | --- |
-| 1.2.2 | 2026-06-08 | 永続化を `text` 確定、`jsonb` 非採用、分析・監査は別投影テーブル方針を明記 |
+| 1.2.3 | 2026-09-01 | 作業番号と未実装の長い将来節を外し、Future へ誘導 |
 | 1.2.1 | 2026-06-07 | 説明例の User-A / User-B 化、外部サービス名・具体シナリオ表現の除去 |
 | 1.2.0 | 2026-06-07 | `evaluationMode` = Owner 経路のみと明文化、`securityModelVersion`、`groupSnapshots`、projectRole 正規化、Execution Liveness Policy 将来節 |
 | 1.1.0 | 2026-06-07 | Owner Snapshot / Operator Live、`permissionSetHash`、permission 分割方針 |

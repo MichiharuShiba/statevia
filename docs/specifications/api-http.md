@@ -3,7 +3,7 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.16 |
+| Version | 1.17 |
 | 更新日 | 2026-09-01 |
 | 関連 | [reference/api-openapi.md](../reference/api-openapi.md), [concepts/platform.md](../concepts/platform.md), [execution/wait-cancel.md](execution/wait-cancel.md) |
 
@@ -17,13 +17,15 @@
 - **MUST**: 実行は開始時の `definition_version_id` に固定する。
 - **MUST**: 入力検証失敗は **422**、`error.code = VALIDATION_ERROR`（[data-integration.md](data-integration.md) §7）。
 - **SHOULD**: ミューテーションに `X-Idempotency-Key` を付与する。
-- **SHOULD**: Start 時の `input` / state `output` を一覧・GET で既定返却しない（IO-14）。
+- **SHOULD**: Start 時の `input` / state `output` を一覧・GET で既定返却しない（[io-log-masking.md](platform/io-log-masking.md)）。
 
 運用叙述・SSE・Read-model の注意は本書 § 以降。エンドポイントの機械可読な正本は OpenAPI（[api-openapi.md](../reference/api-openapi.md)）。
 
 ---
 
 Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
+
+**Version 1.17（2026-09-01）**: エンドポイント一覧に auth / admin / Module reload を追加。SSE は Principal 必須。`project_id` は NOT NULL。Production / Staging の JWT 既定鍵拒否を現行として書く。
 
 **Version 1.16（2026-09-01）**: `POST /v1/events` を契約表に追加。`executions.write` 不足は 403。queued Start の載荷済み再処理は no-op。開始済み Resume の未分類上限は `restartLost`（`Failed` にしない）。
 
@@ -59,7 +61,7 @@ Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 | 閲覧 UI（Development） | Scalar — 例: `http://localhost:8080/scalar/v1`（`ASPNETCORE_URLS` に依存） |
 | 本番 | OpenAPI / Scalar は **既定オフ**。Staging または `STATEVIA_ENABLE_API_DOCS=true` で有効化 |
 | export | リポジトリルートから `.\scripts\export-core-api-openapi.ps1` |
-| 本書の役割 | SSE・冪等・IO-14・Read-model 注意など、OpenAPI に載せにくい運用叙述を維持 |
+| 本書の役割 | SSE・冪等・機微 IO・Read-model 注意など、OpenAPI に載せにくい運用叙述を維持 |
 
 エンドポイント詳細は段階的に OpenAPI へ寄せる。以下 §2 以降の JSON 例は移行期の参考であり、差異がある場合は OpenAPI を優先する。
 
@@ -79,15 +81,7 @@ Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 - publish トランザクションで **`latest_version` のみ先行コミット** しない（同一 ReadCommitted tx 内で version INSERT → latest 更新）。
 - Start 時に **mutable な定義行**や **latest だけ**から `compiled_json` を取得しない（必ず解決した **version 行**の `compiled_json` を使用）。
 
-**移行期（フェーズ 1a）:** `definitions.project_id` は NULL 可。テナント境界は `definitions.tenant_id` で担保（`projects` / `project_accesses` 導入後に認可 truth を移行）。
-
-**フェーズ 1b（projects / project_accesses）:**
-
-| 対象 | 役割 |
-| --- | --- |
-| `project_accesses` + オーナーテナント | **認可 truth**（`reader` / `executor` / `publisher` / `admin`） |
-| `projects.visibility` | **discoverability ヒント**（認可には使わない） |
-| `definitions.project_id` | NOT NULL。`UNIQUE(project_id, slug)` |
+**`definitions.project_id` は NOT NULL。** 認可 truth は `project_accesses`（`reader` / `executor` / `publisher` / `admin`）。`projects.visibility` は discoverability ヒントであり、認可には使わない。`UNIQUE(project_id, slug)`。
 
 定義取得・publish・Start は `ITenantContext.TenantInternalId` と `project_accesses` で評価する。Reader 未満は 404（存在秘匿）、Reader のみが Start した場合は 403（`PROJECT_ACCESS_DENIED`）。
 
@@ -100,6 +94,12 @@ Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 | メソッド | パス                      | 説明                          |
 | -------- | ------------------------- | ----------------------------- |
 | GET      | /v1/health                | 死活                          |
+| POST     | /v1/auth/login            | パスワードログイン            |
+| GET      | /v1/auth/me               | 現在 Principal                |
+| PUT      | /v1/auth/me/password      | 本人パスワード更新            |
+| *        | /v1/admin/*               | テナント管理者 API（§4.1.3）  |
+| GET      | /v1/admin/modules         | Module load catalog           |
+| POST     | /internal/modules/reload  | Module 再 scan                |
 | POST     | /v1/definitions           | 定義登録                      |
 | PUT      | /v1/definitions/{id}      | 定義更新（displayId または UUID） |
 | DELETE   | /v1/definitions/{id}      | 定義の catalog 論理削除       |
@@ -231,7 +231,7 @@ Builtin / Module action の **input/output JSON Schema** と **UI metadata** を
 - Response: 200 OK — `descriptor` / `schema`（`inputSchema`, `outputSchema`, `schemaVersion`）/ `uiMetadata` を分離 DTO で返す
 - 404: 未登録 actionId、または publication 未登録
 
-**認可**: `definitions.read`（§4.1.2.1）。**IO-14**: レスポンスに定義 YAML の機微値は含めない（schema 契約のみ）。
+**認可**: `definitions.read`（§4.1.2.1）。レスポンスに定義 YAML の機微値は含めない（schema 契約のみ。[io-log-masking.md](platform/io-log-masking.md)）。
 
 **Compiler 連携**: 定義 publish 時、action 状態の `input` map は publication の `inputSchema` に対し検証される（422 `details` に `state`, `actionId`, `jsonPath` — 機微値は含めない）。ルートフラットに加え、ネスト `type: object` を再帰検証する（フェーズ F2）。`ship.address` ドットキーと `ship: { address: ... }` ネスト map は同等。正規化衝突は 422。
 
@@ -302,7 +302,7 @@ Request:
 Response: 200 OK、Content-Type: application/json。`execution_graph_snapshots` に保存された **ExecutionGraph と同形の JSON** を返す。404 は未存在。
 
 - JSON キー命名は **camelCase**。
-- トップレベルは **`nodes`**, **`edges`**（ExecutionGraph のシリアライズ形）。**HTTP** では `execution_graph_snapshots` の行が無い場合は **404**（`ExecutionService.GetGraphJsonAsync`）。エンジン API `ExportExecutionGraph` がメモリにインスタンスを持たないときは **`{}`** 文字列を返し得るが、それは in-process 観測用であり、Read API の正本ではない（`AGENTS.md` Read-model authority）。
+- トップレベルは **`nodes`**, **`edges`**（ExecutionGraph のシリアライズ形）。**HTTP** では `execution_graph_snapshots` の行が無い場合は **404**。エンジン API がメモリにインスタンスを持たないときは **`{}`** 文字列を返し得るが、それは in-process 観測用であり、Read API の正本ではない。
 - **`nodes[*].nodeId`**: ランタイム実行ノード ID（opaque。新規は小文字 Hex 12、既存実行は 8 桁のまま混在しうる）。**定義**の `GET /v1/graphs/{graphId}` における **`nodes[*].nodeName`（状態名ベースのキャンバスキー）および定義 YAML の `name` とは別**。詳細は `docs/specifications/execution/execution-graph.md` §4。
 - **`nodes[*].nodeName`**: 定義上の状態名（StateName と同値。旧キー `stateName` は用いない）。UI はマージ時に `nodeName` および実行エッジで対応付ける（`docs/specifications/execution/execution-graph.md` §7）。
 - **`edges[*].from` / `edges[*].to`**: いずれも **`nodes[*].nodeId`** を指す。旧キー `fromNodeId` / `toNodeId` は用いない。
@@ -312,7 +312,7 @@ Response: 200 OK、Content-Type: application/json。`execution_graph_snapshots` 
   - `resolution` は `linear` / `matched_case` / `default_fallback` / `no_transition`
 - ノードの **`input` / `output` / `attempt` / `workerId` / `waitKey` / `canceledByExecution` / `nodeType`** などの詳細は `docs/specifications/execution/execution-graph.md` §4 を正とする。
 
-**IO-14**: グラフ JSON に含まれる `input` / `output` は機微情報になり得る。一覧 `GET /v1/executions` 等では既定で返さない方針は `AGENTS.md` の Input/Output exposure policy に従う。
+グラフ JSON に含まれる `input` / `output` は機微情報になり得る。一覧 `GET /v1/executions` 等では既定で返さない。正本は [io-log-masking.md](platform/io-log-masking.md)。
 
 ### 3.4.1 未完了 Wait 一覧（再開キー）
 
@@ -325,7 +325,7 @@ Response: 200 OK、Content-Type: application/json。`execution_graph_snapshots` 
 - Hosted 物理 Fork の親 ID では `GET …/graph` と同じ合成後グラフから射影する。子実行の Wait は子の `{id}` で取る。
 - `waitKey` は応答に出さない（値は `allowedEvents` に含まれる）。
 - 正本は graph スナップショット（Hosted 親は GET 時合成後）。`execution_waits` テーブルは読まない。
-- **IO-14**: `input` / `output` は返さない。
+- `input` / `output` は返さない（[io-log-masking.md](platform/io-log-masking.md)）。
 - 権限は `executions.read`。CLI は `statevia exec waits <id>`。`exec resume --node` / `--event` の入力取得に使う。
 
 ### 3.5 状態ビュー（UI）
@@ -360,15 +360,16 @@ Response: 200 OK、Content-Type: application/json。`execution_graph_snapshots` 
 **GET /v1/executions/{id}/stream**
 
 - Response: **`200`**、`Content-Type: text/event-stream`。本文は SSE の **`data:`** 行に JSON（`type: GraphUpdated` 等）。接続維持型（サーバは約 2 秒周期で投影グラフを比較し、変化時のみ `data:` を書き込む）。
-- 認証は現行未実装。テナントは **`X-Tenant-Id`**（UI から `EventSource` でヘッダが付けられない場合は `docs/guides/ui-auth-tenant-config.md` のクエリ経由を参照）。
-- 詳細ペイロードは `docs/specifications/data-integration.md` §5.1 を正とする。
+- **必須**: Principal（JWT または `X-Api-Key`）と `X-Tenant-Id`。未認証は **401**。SSE も `/v1/executions` 配下のため Middleware の Principal 必須と同一。
+- テナントは **`X-Tenant-Id`**（UI から `EventSource` でヘッダが付けられない場合は [ui-auth-tenant-config.md](../guides/ui-auth-tenant-config.md) のクエリ経由とプロキシ Cookie）。
+- 詳細ペイロードは [data-integration.md](data-integration.md) §5.1 を正とする。
 - 404: 実行未存在。
 
 ### 3.8 キャンセル
 
 **POST /v1/executions/{id}/cancel**
 
-- **X-Idempotency-Key**: 任意だが推奨。同一キー＋同一リクエストの再送は `command_dedup` により初回と同じ結果（通常 204）を返す。キーは `event_delivery_dedup` の `client_event_id` 導出にも使われる（詳細は `docs/specifications/data-integration.md` の STV-415）。
+- **X-Idempotency-Key**: 任意だが推奨。同一キー＋同一リクエストの再送は `command_dedup` により初回と同じ結果（通常 204）を返す。キーは `event_delivery_dedup` の `client_event_id` 導出にも使われる（[data-integration.md](data-integration.md) §3.3）。
 - Response: 204 No Content。エンジンで Cancel を適用し、projection を更新。
 - Engine に当該実行が無い（例: API 再起動直後）場合は **422**（`ArgumentException`。データ連携契約のセクション7）。
 
@@ -510,10 +511,12 @@ Response（`GET /v1/admin/modules` の 1 件）: `moduleId`, `name`, `version`, 
 
 ### 4.1.2 Runtime API の認証要件
 
-- **保護対象**: `/v1/definitions`、`/v1/executions`、`/v1/events`、`/v1/graphs` 配下。
-- **必須**: `ITenantContext.PrincipalId` が解決済みであること（JWT または `X-Api-Key`）。
+- **保護対象（Middleware で Principal 必須）**: `/v1/definitions`、`/v1/executions`、`/v1/events`、`/v1/graphs`、`/v1/admin`、`/internal/modules`、`/v1/auth/me` 配下。
+- **`/v1/actions/schema*`**: Middleware の Principal 必須パスには含めない。コントローラ側の `definitions.read` で認可する。
+- **必須**: Principal が解決済みであること（JWT または `X-Api-Key`）。
 - **拒否**: `X-Tenant-Id` のみ（Bearer / API キーなし）は **401**（`UNAUTHORIZED`）。
 - **除外パス**: `/v1/auth/login`、`/v1/health`、`/swagger/*`、`/scalar/*`。
+- **JWT 署名鍵**: Production / Staging では開発既定値および 32 文字未満の `Auth:Jwt:SigningKey` で起動しない（[environment-variables.md](../reference/environment-variables.md)）。Development の開発既定値は可。ログに鍵値は出さない。
 
 ### 4.1.2.1 Runtime API の global permission 認可
 

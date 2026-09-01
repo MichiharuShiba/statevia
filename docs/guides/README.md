@@ -3,12 +3,15 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.0 |
-| 更新日 | 2026-07-07 |
+| Version | 1.1 |
+| 更新日 | 2026-09-01 |
+| 関連 | [getting-started.md](getting-started.md), [../samples/](../samples/), [../README.md](../README.md) |
 
 ---
 
-**どうやるか** を説明する手順書。利用者の第一入口。
+**どうやるか** を説明する手順書。利用者の第一入口。第一読者は API / UI / 運用の利用者と Engine ライブラリ利用者。
+
+**Version 1.1（2026-09-01）**: 定義 YAML の samples 導線を足す。
 
 ## ドキュメント
 
@@ -25,4 +28,4 @@
 | [`action-module-signing.md`](action-module-signing.md) | Module 署名の運用手順 |
 | [`ui-auth-tenant-config.md`](ui-auth-tenant-config.md) | UI / API 認証・テナント設定 |
 
-入口は [`../README.md`](../README.md) の Guides セクション。
+定義 YAML の例は [`../samples/`](../samples/)。入口は [`../README.md`](../README.md) の Guides セクション。

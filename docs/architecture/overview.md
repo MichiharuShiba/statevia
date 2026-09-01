@@ -3,13 +3,13 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Architecture |
-| Version | 2.2 |
-| 更新日 | 2026-08-13 |
+| Version | 2.3 |
+| 更新日 | 2026-09-01 |
 | 関連 | [domain-model-boundaries.md](domain-model-boundaries.md), [repository-layout.md](repository-layout.md) |
 
-Project: Statevia — 実行型ステートマシン
+Project: Statevia — Definition Driven Execution Platform
 
-**Version 2.2（2026-08-13）**: `IDefinitionRepository` を Infrastructure へ移し、project 認可を Application ユースケースへ引き上げた。
+**Version 2.3（2026-09-01）**: Service API の HTTP 面を auth / admin / events / Module reload まで列挙。
 
 **Version 2.1（2026-08-13）**: Execution ユースケースを `IExecutionService` Facade とドメインサービスへ分割した責務を反映。
 
@@ -130,8 +130,13 @@ flowchart LR
 
 ### 2.4 Service API（HTTP アダプタ / DB 所有者）
 
+- **v1/auth**: ログイン、現在 Principal、本人パスワード更新
+- **v1/admin**: テナント管理者 API（ユーザー・グループ・API キー・Module catalog）
 - **v1/definitions**: 定義の登録・publish・一覧・取得
-- **v1/executions**: 実行開始・一覧・取得・グラフ取得・キャンセル・イベント発行
+- **v1/executions**: 実行開始・一覧・取得・グラフ・Wait 一覧・キャンセル・Resume・SSE
+- **v1/events**: durable Wait への集合配送（`executions.write`。不足は 403）
+- **v1/actions/schema**: Action schema（コントローラ認可。Middleware の Principal 必須パスには含めない）
+- **POST /internal/modules/reload**: Module 再 scan
 - **v1/health**: 死活
 - Composition Root: 全層の DI 登録
 - Engine は同一プロセスで呼び出しのみ（RPC/HTTP はなし）

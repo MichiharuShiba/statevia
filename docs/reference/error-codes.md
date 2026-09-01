@@ -3,12 +3,15 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Reference |
-| Version | 1.0 |
-| 更新日 | 2026-07-08 |
+| Version | 1.1 |
+| 更新日 | 2026-09-01 |
+| 関連 | [api-http.md](../specifications/api-http.md), [data-integration.md](../specifications/data-integration.md) |
 
 ---
 
 Service API が返す `error.code` の**調べ物**一覧。Normative 契約は [api-http.md](../specifications/api-http.md) §4.3、[data-integration.md](../specifications/data-integration.md) §7 を正とする。
+
+**Version 1.1（2026-09-01）**: 実装に無い `COMMAND_REJECTED` を外し、`STATE_CONFLICT` を載せる。
 
 実装の写像は主に `ApiExceptionFilter` / `ApiErrorResult` / `TenantContextMiddleware` / 各 Service。
 
@@ -25,7 +28,7 @@ Service API が返す `error.code` の**調べ物**一覧。Normative 契約は 
 ```
 
 - `details` は 422 の定義検証・ModelState 等で `{ "field", "message" }[]` またはオブジェクト。
-- 機微値（action input/output 等）は IO-14 に従い `details` / ログに含めない。
+- 機微値（action input/output 等）は [io-log-masking.md](../specifications/platform/io-log-masking.md) に従い `details` / ログに含めない。
 
 ## 一覧（HTTP ステータス順）
 
@@ -59,8 +62,7 @@ Service API が返す `error.code` の**調べ物**一覧。Normative 契約は 
 | `error.code` | 典型状況 | 備考 |
 | --- | --- | --- |
 | `IDEMPOTENCY_KEY_CONFLICT` | 同一 `X-Idempotency-Key` で本文が異なる | `POST /v1/executions` のみ |
-
-状態競合（例: cancel 後 resume）の 409 と `COMMAND_REJECTED` 例は [data-integration.md](../specifications/data-integration.md) §7（実装コードは未固定の場合あり）。
+| `STATE_CONFLICT` | 状態競合（例: 未削除定義の復元） | catalog restore |
 
 ### 422 Unprocessable Entity
 
