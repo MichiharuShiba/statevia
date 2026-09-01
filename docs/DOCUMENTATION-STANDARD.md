@@ -3,12 +3,18 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | 参照（執筆者向け） |
-| Version | 1.1 |
-| 更新日 | 2026-07-21 |
+| Version | 1.2 |
+| 更新日 | 2026-09-01 |
 
 ---
 
 本文書は **Markdown の書き方** の正本である。知識体系・索引・学習導線は [`README.md`](README.md) を参照すること。
+
+**Version 1.2（2026-09-01）**: 第一読者を利用者・ライブラリ利用者と明示する。`AGENTS.md` を正本にしない。samples 導線を書く。
+
+**第一読者**は API / UI / 運用の利用者と Engine ライブラリ利用者である。Cursor エージェントとコントリビュータは第一読者ではない。`AGENTS.md` はエージェント向け索引であり、利用者向け本文の正本にしない。
+
+コントリビュータ文書（[`development-guidelines.md`](development-guidelines.md)、[`reference/logging-property-keys.md`](reference/logging-property-keys.md)、[`architecture/ui-studio-structure.md`](architecture/ui-studio-structure.md)、[`architecture/domain-model-boundaries.md`](architecture/domain-model-boundaries.md)）は `docs/` に残してよい。Quick Start の必須ステップにしない。冒頭で読者を明示する。
 
 ## メタブロック
 
@@ -76,6 +82,8 @@ npx markdownlint-cli2 "docs/<変更したファイルパス>"
 
 - `docs/` 内の相互リンクは相対パスを用いる
 - **禁止:** `docs/` から `.spec/`（および `.spec/archive/workspace-docs/` 等の内部作業用フォルダ）へリンクしない
-  - 理由: `docs/` は利用者・実装者向けの正本。作業中の Spec / 下書きは公開契約に混ぜない
+  - 理由: `docs/` は利用者・ライブラリ利用者向けの正本。作業中の Spec / 下書きは公開契約に混ぜない
   - 完了した契約・説明は `docs/` 側へ昇格してから参照する
   - `.spec/` → `docs/` の参照は可（実装後の正本への誘導）
+- **禁止:** 利用者向け本文から `AGENTS.md` を正本として指すこと。逆方向（`AGENTS.md` → `docs/`）は可
+- 定義 YAML の例は [`samples/`](samples/) に置く。サンプル本文の改訂は本書の対象外

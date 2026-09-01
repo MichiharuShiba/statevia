@@ -3,18 +3,20 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.3 |
-| 更新日 | 2026-08-22 |
+| Version | 1.4 |
+| 更新日 | 2026-09-01 |
 | 関連 | [getting-started.md](getting-started.md), [../specifications/api-http.md](../specifications/api-http.md) |
 
 ---
 
 Service API（`http://localhost:8080`）への代表的な HTTP 呼び出し例。契約の正本は [api-http 仕様](../specifications/api-http.md) です。
 
+**Version 1.4（2026-09-01）**: `X-Api-Key` を現行として書く。JWT 例は残す。
+
 ## 前提
 
 - `X-Tenant-Id: default`（または運用中の `tenant_key`）
-- Runtime API には `Authorization: Bearer <token>` または `X-Api-Key`（将来）
+- Runtime API には `Authorization: Bearer <token>` または `X-Api-Key` と `X-Tenant-Id`
 - ミューテーションには `X-Idempotency-Key` を付与（推奨）
 
 トークン取得は [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md) を参照。定義・実行の運用コアは CLI の `statevia def` / `statevia exec` からも呼べます（手順は [cli-reference.md](cli-reference.md)）。
@@ -118,6 +120,20 @@ curl -s -X POST http://localhost:8080/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"tenantKey":"default","username":"admin","password":"admin123"}'
 ```
+
+応答の `accessToken` を `Authorization: Bearer <token>` に使う。
+
+## API キー
+
+スコープ付き API キーはテナント管理者が発行する。Runtime API では JWT の代わりに `X-Api-Key` と `X-Tenant-Id` を付ける。
+
+```bash
+curl -s "http://localhost:8080/v1/definitions/$DEF_ID" \
+  -H "X-Tenant-Id: default" \
+  -H "X-Api-Key: <plain-key>"
+```
+
+発行手順は [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md) と [api-http.md](../specifications/api-http.md) §4.1.3。
 
 ## 次に読むもの
 

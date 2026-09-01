@@ -3,11 +3,13 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Concept |
-| Version | 1.1 |
-| 更新日 | 2026-08-13 |
+| Version | 1.2 |
+| 更新日 | 2026-09-01 |
 | 関連 | [../specifications/platform/](../specifications/platform/) |
 
 ---
+
+**Version 1.2（2026-09-01）**: Runtime API は認証必須。機微 IO は io-log-masking を正本とする。
 
 **Version 1.1（2026-08-13）**: Application 層を Execution Facade とドメインサービスとして記述。
 
@@ -31,10 +33,9 @@ Statevia プラットフォームは **Service API** を境界として、認証
 
 - **Runtime Security Boundary**: 信頼レベルと実行モードの関係
 - **Execution Security Snapshot**: 実行時に記録するセキュリティ文脈
-- **IO ログマスキング**: `input` / `output` 等の機密をログから守る（IO-14）
-- **監査・再現性**: 将来の監査テーブルとイベントの関係
+- **IO ログマスキング**: `input` / `output` 等の機密をログから守る（[io-log-masking.md](../specifications/platform/io-log-masking.md)）
 
-HTTP エラー形式・SSE・冪等キーは API 仕様に、永続フィールドの意味はデータ連携契約に記載します。
+HTTP エラー形式・SSE・冪等キーは API 仕様に、永続フィールドの意味はデータ連携契約に記載します。Runtime API は JWT または `X-Api-Key` と `X-Tenant-Id` が必須です。
 
 ## 次に読むもの
 

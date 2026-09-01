@@ -11,13 +11,15 @@
 
 Studio（Next.js）から Service API へ認証・テナントを渡す設定。Runtime API は JWT または `X-Api-Key` と `X-Tenant-Id` が必須です。
 
+**Version 1.1（2026-09-01）**: SSE も Principal 必須（未認証は 401）。
+
 ---
 
 ## 1. 概要
 
 - **REST**: UI が `/api/core/*` にリクエストする際、セッション Cookie または（開発時のみ）環境変数から認証・テナントヘッダを付与する。
 - **中継**: Next.js の `/api/core/[...path]` が Service API へ転送する。
-- **Push（SSE）**: `EventSource` はヘッダを送れないため、テナントはクエリ `?tenantId=...` で渡し、route が `X-Tenant-Id` に変換して転送する。
+- **Push（SSE）**: `GET /v1/executions/{id}/stream` も Principal 必須。`EventSource` はヘッダを送れないため、同一オリジンのプロキシが Cookie の JWT を付ける。テナントはクエリ `?tenantId=...` で渡し、route が `X-Tenant-Id` に変換して転送する。未認証は 401。
 
 ---
 

@@ -2,18 +2,22 @@
 
 **Statevia** は **Definition Driven Execution Platform** です。定義（Definition）を起点に実行・拡張・運用を行います。
 
+第一読者は **API / UI / 運用の利用者**と **Engine ライブラリ利用者**です。Cursor エージェントとコントリビュータは第一読者ではありません。
+
 ---
 
 ## Documentation Principles
 
-1. ドキュメントは利用者の理解を助けるために存在する。
+1. ドキュメントは利用者の理解を助けるために存在する。第一読者は API / UI / 運用の利用者と Engine ライブラリ利用者である。
 2. 必要になるまで新しいカテゴリやディレクトリは増やさない。
 3. ファイル数より理解しやすさを優先する。
 4. 実装構造ではなく概念構造を優先する。
 5. 知識体系は将来進化してよい。
 6. `docs/` ルート直下の md は **README / DOCUMENTATION-STANDARD / development-guidelines** の 3 本に集約する。
 
-執筆ルール（メタデータ・MUST/SHOULD 等）は [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD.md)。コントリビュータ向け共通ルールは [`development-guidelines.md`](development-guidelines.md)。
+執筆ルール（メタデータ・MUST/SHOULD 等）は [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD.md)。
+
+コントリビュータ向けのコーディング規約は [`development-guidelines.md`](development-guidelines.md) に残す。Quick Start の必須ステップではない。
 
 ---
 
@@ -22,6 +26,8 @@
 最短でスタックを起動し、1 回実行する:
 
 → **[guides/getting-started.md](guides/getting-started.md)**
+
+定義 YAML の例: **[samples/](samples/)**
 
 ---
 
@@ -60,13 +66,14 @@ Guide のあと、なぜそうなっているかを理解する。
 | 内容 | ドキュメント |
 | --- | --- |
 | DB スキーマ | [database-schema.md](reference/database-schema.md) |
-| ログキー | [logging-property-keys.md](reference/logging-property-keys.md) |
 | OpenAPI / Scalar | [api-openapi.md](reference/api-openapi.md) |
 | 環境変数（抜粋） | [environment-variables.md](reference/environment-variables.md) |
 | HTTP エラーコード | [error-codes.md](reference/error-codes.md) |
 | Permission keys | [permission-keys.md](reference/permission-keys.md) |
 
 一覧: [reference/README.md](reference/README.md)
+
+ログキー命名はコントリビュータ向けに [logging-property-keys.md](reference/logging-property-keys.md) を残す。
 
 ---
 
@@ -93,11 +100,11 @@ Guide のあと、なぜそうなっているかを理解する。
 | ドキュメント | 内容 |
 | --- | --- |
 | [overview.md](architecture/overview.md) | レイヤー・全体図 |
-| [domain-model-boundaries.md](architecture/domain-model-boundaries.md) | 境界・正本の所在 |
 | [repository-layout.md](architecture/repository-layout.md) | リポジトリ構成 |
-| [ui-studio-structure.md](architecture/ui-studio-structure.md) | Studio 内部構成（feature-first） |
 
 一覧: [architecture/README.md](architecture/README.md)
+
+ドメイン境界と Studio 内部構成はコントリビュータ向けに [domain-model-boundaries.md](architecture/domain-model-boundaries.md)、[ui-studio-structure.md](architecture/ui-studio-structure.md) を残す。
 
 ---
 
@@ -117,6 +124,7 @@ Guide のあと、なぜそうなっているかを理解する。
 | --- | --- |
 | [product-roadmap.md](future/product-roadmap.md) | 能力成熟度（ある／部分／ない）と Near / Mid / Long |
 | [platform-architecture.md](future/platform-architecture.md) | プラットフォーム構成（将来構想） |
+| [sse-and-projection-extensions.md](future/sse-and-projection-extensions.md) | 未実装の Push 種別と投影キューの拡張案 |
 
 一覧: [future/README.md](future/README.md)
 

@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.5.6 |
-| 更新日 | 2026-08-26 |
+| Version | 1.5.7 |
+| 更新日 | 2026-09-01 |
 | 関連 | [concepts/definition.md](../concepts/definition.md), [execution/wait-cancel.md](execution/wait-cancel.md), [execution/fork-join.md](execution/fork-join.md) |
 
 ---
@@ -23,6 +23,8 @@
 - **禁止**: 公開 DSL / HTTP / UI に `exit` / `exits` 語彙を出さない（`events` / `allowedEvents` / `resumeKey` を使う）。
 
 背景・動機は [Concept: 定義](../concepts/definition.md) を参照。
+
+**Version 1.5.7（2026-09-01）**: TrustLevel と実行モードを現行 Policy に合わせる。
 
 ---
 
@@ -112,7 +114,7 @@ states:
 
 解決に失敗した参照（短名・未登録 module alias・一段のみの未知 alias・Catalog 未登録 ID）はコンパイルエラー（HTTP 422）となる。
 
-**TrustLevel と実行モード（Service API Policy）:** Catalog の `ActionDescriptor.TrustLevel` と実行環境（`ASPNETCORE_ENVIRONMENT` / `Statevia:ExecutionPolicy:DeploymentProfile`）から `ConfigurableExecutionPolicy` が最終 `ActionExecutionMode` を決定する。Builtin は `Trusted`（InProcess）。filesystem Module は既定 `Community`（本番は OutOfProcess 想定 — Phase 3 Action Host まで実行は `UnsupportedExecutionMode`）。Policy は TrustLevel 下限を緩和できない。
+**TrustLevel と実行モード:** Catalog の TrustLevel と実行環境（`ASPNETCORE_ENVIRONMENT` / `Statevia:ExecutionPolicy:DeploymentProfile`）から実効モードを決める。Builtin（Trusted）は InProcess。Verified は Development では InProcess、それ以外は OutOfProcess。Signed / Community は OutOfProcess。Untrusted は DeploymentProfile が `saas-shared` のとき Container、それ以外は OutOfProcess。OutOfProcess は Action Host（`Statevia:ActionHost:BaseUrl`）へ送る。未設定のときは失敗する（安全側）。Policy は TrustLevel 下限を緩和できない。詳細は [action-host.md](../guides/action-host.md)。
 
 ### 1.1.2 Action パラメータと `input` キー
 
@@ -159,7 +161,7 @@ states:
 
 ### 1.1.4 Builtin / リファレンス action の input / output（MVP）
 
-各 Builtin の `input` は §1.1.2 の action パラメータとして状態 YAML の `input:` に記述する。`output` は状態完了時に Engine が次状態へ渡す候補 input の元になる（§1.6）。**IO-14**: rest レスポンス body、notify 本文、子 workflow の input 等はログ・一覧 GET に載せない方針とする。
+各 Builtin の `input` は §1.1.2 の action パラメータとして状態 YAML の `input:` に記述する。`output` は状態完了時に Engine が次状態へ渡す候補 input の元になる（§1.6）。rest レスポンス body、notify 本文、子 workflow の input 等はログ・一覧 GET に載せない（[io-log-masking.md](platform/io-log-masking.md)）。
 
 #### noop（`statevia.action.builtin.execution.noop`）
 

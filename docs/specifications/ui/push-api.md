@@ -3,20 +3,23 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.2 |
-| 更新日 | 2026-05-26 |
-| 関連 | [data-integration.md](../data-integration.md), [api-http.md](../api-http.md) |
+| Version | 1.3 |
+| 更新日 | 2026-09-01 |
+| 関連 | [data-integration.md](../data-integration.md), [api-http.md](../api-http.md), [../guides/ui-auth-tenant-config.md](../../guides/ui-auth-tenant-config.md) |
 
 ---
 
 ## Normative 要約
 
 - **MUST**: リアルタイム配信は **SSE** のみ（`GET /v1/executions/{id}/stream`）。WebSocket は未実装。
+- **MUST**: SSE は Principal 必須（JWT または `X-Api-Key`）+ `X-Tenant-Id`。未認証は **401**。
 - **MUST**: UI は状態を直接書き換えず、操作は REST Command API 経由とする。
 - **MUST**: Push ペイロードは ExecutionGraph / 実行状態の read-model に整合すること。
 - **SHOULD**: UI は同一オリジン `/api/core/*` プロキシ経由で Service API に接続する。
 
 ---
+
+**Version 1.3（2026-09-01）**: SSE は Principal 必須。テナントは現行必須。未送出 Push 種別を現行本文から外す。
 
 ## 1. 基本方針
 
@@ -29,17 +32,13 @@
 
 ## 2. 認証・テナント
 
-### 2.1 ヘッダ
-
 ```txt
-
 Authorization: Bearer <token>
-X-Tenant-Id: <tenant-id>
+X-Tenant-Id: <tenant_key>
+```
 
-````
-
-- テナント ID は将来的な SaaS 展開を考慮して必須
-- UI は複数テナントを扱える設計を前提とする
+- Runtime API と同じく Principal と `X-Tenant-Id` が必須である。
+- ブラウザの `EventSource` はヘッダを送れない。Studio は同一オリジンのプロキシが Cookie の JWT を付け、テナントは `?tenantId=` から `X-Tenant-Id` に変換する（[ui-auth-tenant-config.md](../../guides/ui-auth-tenant-config.md)）。
 
 ---
 
@@ -47,10 +46,10 @@ X-Tenant-Id: <tenant-id>
 
 ### GET /v1/executions/{id}
 
-実行（ワークフロー）の Read Model を取得する。`{id}` は **display_id** または **resource_id（UUID）**。
+実行の Read Model を取得する。`{id}` は **display_id** または **resource_id（UUID）**。
 
 - 完全な ExecutionGraph JSON が必要な場合は **`GET /v1/executions/{id}/graph`** を併用する。
-- UI からは `/api/core/executions/{id}` 等にプロキシしてもよい（`docs/specifications/api-http.md` §5）。
+- UI からは `/api/core/executions/{id}` 等にプロキシしてもよい（[api-http.md](../api-http.md) §5）。
 
 #### Response（例: 一覧と同一の `ExecutionResponse` 形）
 
@@ -70,26 +69,23 @@ X-Tenant-Id: <tenant-id>
 
 ## 4. Push 更新（SSE）
 
-### 接続エンドポイント（Service API）
-
 ```txt
 GET /v1/executions/{id}/stream
 ```
 
 - **Server-Sent Events (SSE)** のみ（`Content-Type: text/event-stream`）。**WebSocket は未実装**。
+- Principal 必須。未認証は **401**。
 - サーバは投影グラフを約 2 秒周期で比較し、変化時に `data:` 行を 1 件書き込む（長接続）。
-- **テナント**: `X-Tenant-Id`（`EventSource` でヘッダを付けられない場合は `docs/guides/ui-auth-tenant-config.md` の `?tenantId=` 経由）。
-- ペイロード形式は §5.1 および `docs/specifications/data-integration.md` §5.1.1 を参照。
+- **テナント**: `X-Tenant-Id`（`EventSource` では [ui-auth-tenant-config.md](../../guides/ui-auth-tenant-config.md) の `?tenantId=` 経由）。
+- ペイロード形式は §5 および [data-integration.md](../data-integration.md) §5.1.1 を参照。
 
 ---
 
 ## 5. Push イベント種別
 
-**現行 Service API の SSE が送出するのは §5.1 `GraphUpdated` のみ**（§5.2 以降は将来拡張・別チャネル用の論理例として残す）。
+現行 Service API の SSE が送出するのは **`GraphUpdated` のみ**。他種別は未実装（[sse-and-projection-extensions.md](../../future/sse-and-projection-extensions.md)）。
 
 ### 5.1 GraphUpdated
-
-ExecutionGraph の差分更新（現行 Service API が SSE で送出する形に準拠）。
 
 ```json
 {
@@ -102,101 +98,18 @@ ExecutionGraph の差分更新（現行 Service API が SSE で送出する形�
 ```
 
 - `executionId`: ワークフローの **display_id**。
-- `patch.nodes`: 実装では **ノード ID → パッチオブジェクト** のマップになることが多い（配列形式の例は論理説明用）。
+- `patch.nodes`: 実装では **ノード ID → パッチオブジェクト** のマップになることが多い。
 - 現行実装の JSON に **`at` は含まれない**（時刻が必要ならクライアント側で受信時刻を付与するか、`GET /v1/executions/{id}` を再取得する）。
 
 ---
 
-### 5.2 ExecutionStatusChanged
+## 6. UI 操作（Command）
 
-Execution 全体の状態変更
+UI は状態を直接変更しない。操作は [api-http.md](../api-http.md) の Command API に従う。
 
-```json
-{
-  "type": "ExecutionStatusChanged",
-  "executionId": "exec-123",
-  "from": "Running",
-  "to": "Cancelled",
-  "reason": "UserRequest",
-  "at": "2026-02-18T01:20:05Z"
-}
-```
-
----
-
-### 5.3 NodeCancelled
-
-ノード単位のキャンセル通知
-
-```json
-{
-  "type": "NodeCancelled",
-  "executionId": "exec-123",
-  "nodeId": "TaskC",
-  "cancel": {
-    "reason": "ParentCancelled",
-    "cause": {
-      "message": "Fork scope cancelled",
-      "at": "2026-02-18T01:20:05Z"
-    }
-  }
-}
-```
-
----
-
-### 5.4 NodeFailed
-
-```json
-{
-  "type": "NodeFailed",
-  "executionId": "exec-123",
-  "nodeId": "TaskA",
-  "error": {
-    "message": "Unhandled exception",
-    "at": "2026-02-18T01:20:02Z"
-  }
-}
-```
-
----
-
-## 6. UI 操作 API（操作は Pull / Command）
-
-UI は状態を直接変更しない。
-操作は Command API として分離する。
-
-### 6.1 Resume
-
-```txt
-POST /api/v1/executions/{executionId}/resume
-```
-
-```json
-{
-  "event": "OrderConfirmed",
-  "payload": {
-    "orderId": "12345"
-  }
-}
-```
-
----
-
-### 6.2 Cancel
-
-```txt
-POST /api/v1/executions/{executionId}/cancel
-```
-
-```json
-{
-  "reason": "UserRequest",
-  "cause": {
-    "message": "Stopped by admin"
-  }
-}
-```
+- キャンセル: `POST /v1/executions/{id}/cancel`
+- Wait 再開: `POST /v1/executions/{id}/nodes/{nodeId}/resume`
+- 集合配送: `POST /v1/events`
 
 ---
 
@@ -215,16 +128,8 @@ POST /api/v1/executions/{executionId}/cancel
 
 ---
 
-## 9. セキュリティ設計指針
+## 9. セキュリティ
 
 - UI からの操作はすべて認可チェック対象
 - テナント ID はすべての API で検証される
-- ExecutionGraph の Payload は redactionPolicy に従いマスクされる
-
----
-
-## 10. 将来的な拡張
-
-- GraphUpdated の JSON Patch 対応
-- 複数 Execution のストリーム購読
-- UI 側フィルタリング（Failed のみ購読など）
+- ExecutionGraph の Payload はログマスキング方針に従いマスクされる（[io-log-masking.md](../platform/io-log-masking.md)）

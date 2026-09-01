@@ -1,6 +1,17 @@
-# 運用: Docker Compose（フェーズ 4.5）
+# 運用: Docker Compose
 
-リポジトリ直下の `docker-compose.yml` で **PostgreSQL 16**・**Service API（C#）**・**UI（Next.js）** を起動できます。
+| 項目 | 値 |
+| --- | --- |
+| 種別 | Guide |
+| Version | 1.1 |
+| 更新日 | 2026-09-01 |
+| 関連 | [getting-started.md](getting-started.md), [action-host.md](action-host.md), [environment-variables.md](../reference/environment-variables.md) |
+
+---
+
+リポジトリ直下の `docker-compose.yml` で **PostgreSQL 16**・**Service API（C#）**・**UI（Next.js）**・**Action Host** を起動できます。
+
+**Version 1.1（2026-09-01）**: compose の Action Host 接続を現行として書く。作業番号を外す。
 
 ## 前提
 
@@ -22,7 +33,7 @@ docker compose up -d
 
 - **PostgreSQL**: `localhost:5432`（ユーザー/DB: `statevia` / `statevia`）
 - **Service API**: `http://localhost:8080`（`DATABASE_URL` は compose 内で `POSTGRES_*` から組み立て。ホストからの `ef` は `.env` または手元の URL）
-- **Action Host**（gRPC）: `http://localhost:5001`（`STATEVIA_MODULES_PATH=/app/modules`。task 14 以降 Service API から OutOfProcess 実行に利用）
+- **Action Host**（gRPC）: `http://localhost:5001`。compose は `Statevia__ActionHost__BaseUrl=http://action-host:5001` を Service API / Worker に渡す。OutOfProcess 実行に使う。
 - **UI**: `http://localhost:3000`（`SERVICE_API_INTERNAL_BASE=http://service-api:8080`）
 
 ## ランタイム分離（任意: Worker / Scheduler）
@@ -82,13 +93,13 @@ docker compose up -d
 | scheduler / worker | `DATABASE_URL`（`docker-compose.split-runtime.yml`）。worker は `Statevia__ActionHost__BaseUrl` も共有。並列は `Statevia__Runtime__Worker__MaxConcurrency`（既定 1）。Cancel 独立ループは `Statevia__Runtime__Worker__CancelConcurrency`。watchdog は `Statevia__Runtime__Worker__NoProgressTimeout`（既定 `00:10:00`。長い Action は対象外）。API 内ワーカーでも同じキー |
 | ui-studio  | `SERVICE_API_INTERNAL_BASE` |
 
-詳細は `docker-compose.yml` / `docker-compose.split-runtime.yml` と `AGENTS.md` を参照してください。
+詳細は `docker-compose.yml` / `docker-compose.split-runtime.yml` と [environment-variables.md](../reference/environment-variables.md) を参照してください。
 
 ## Action Module（plugins）
 
 Service API は起動時に **modules ルート**（`STATEVIA_MODULES_PATH` または `Statevia:Modules:Path`、未設定時は `{ContentRoot}/modules`）を **テナント別**（`{modulesRoot}/{tenantKey}/{module}/`）に scan して Action Module を load する。更新・削除の反映は **再起動**または **明示 reload** が必要（add-only watcher は新規追加のみ）。
 
-**Action Host**（`docker compose` の `action-host` サービス）は同じ `./modules` ボリュームをマウントし、**別プロセス**で Module を ALC load して gRPC 実行する。現時点では Service API の InProcess 経路が既定で、OutOfProcess 連携（task 14）は未接続。
+**Action Host**（`docker compose` の `action-host` サービス）は同じ `./modules` ボリュームをマウントし、**別プロセス**で Module を ALC load して gRPC 実行する。Service API は `Statevia:ActionHost:BaseUrl`（compose では `http://action-host:5001`）で接続する。未設定のとき、OutOfProcess が必要な実行は失敗する（安全側）。手順は [action-host.md](action-host.md)。
 
 ### 配置（CLI）
 
