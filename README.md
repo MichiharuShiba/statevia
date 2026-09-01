@@ -30,7 +30,7 @@ Fork / Join、Wait、協調的キャンセルなど、非同期・並列の業�
 **前提:** Docker / Docker Compose。初回の DB 作成には **.NET 8 SDK**（ホストから `dotnet ef`）。以下の curl 例には **`jq`**。
 
 ```bash
-git clone https://github.com/MichiharuShiba/statevia.git
+git clone https://github.com/statevia/statevia.git
 cd statevia
 cp .env.example .env          # 初回のみ
 
