@@ -4,7 +4,7 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace Statevia.Service.Api.Application.Definition;
 
-/// <summary>ルート YAML の判別（U10: nodes 配列 vs states）。Engine は nodes を解釈しない。</summary>
+/// <summary>ルート YAML の判別（nodes 配列 vs states）。Engine は nodes を解釈しない。</summary>
 internal enum WorkflowDefinitionYamlFormatKind
 {
     /// <summary>従来の states 形式（または nodes キーなし）。</summary>

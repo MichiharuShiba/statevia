@@ -2,7 +2,7 @@ using Statevia.Service.Api.Hosting;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 
-/// <summary>STV-403: 応答 tracestate マージの単体テスト。</summary>
+/// <summary>応答 tracestate マージの単体テスト。</summary>
 public sealed class TracestateHelperTests
 {
     [Fact]

@@ -1,6 +1,6 @@
 namespace Statevia.Core.Application.Contracts.Persistence;
 
-/// <summary>event_store テーブル（イベントソース専用・U2 案 A）。</summary>
+/// <summary>event_store テーブル（イベントソース専用）。</summary>
 public class EventStoreRow
 {
     public Guid EventId { get; set; }

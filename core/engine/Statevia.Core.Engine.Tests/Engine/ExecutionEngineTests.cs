@@ -319,7 +319,7 @@ public class ExecutionEngineTests
         Assert.Equal("Fallback", selectedState);
     }
 
-    /// <summary>条件遷移の診断が実行グラフ JSON の該当ノードに含まれることを検証する（T6 可観測性）。</summary>
+    /// <summary>条件遷移の診断が実行グラフ JSON の該当ノードに含まれることを検証する（条件遷移の診断を graph に含める）。</summary>
     [Fact]
     public async Task Start_ConditionalTransition_ExportsRoutingDiagnosticsOnGraph()
     {

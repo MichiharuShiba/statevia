@@ -12,7 +12,7 @@ public static class LogRedaction
     private static readonly string[] CredentialSubstringsInNames =
         ["password", "token", "secret"];
 
-    /// <summary>既知の機微キー（IO-14 / STV-408）。</summary>
+    /// <summary>既知の機微キー（機微 IO 方針）。</summary>
     private static readonly string[] SensitiveKeys =
     [
         ..CredentialSubstringsInNames,

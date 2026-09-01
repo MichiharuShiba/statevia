@@ -468,7 +468,7 @@ public sealed class DefinitionCompilerServiceTests
         Assert.NotNull(restored.StateExecutorFactory.GetExecutor("A"));
     }
 
-    /// <summary>保存済み bindings を再解決せず復元する（D1 決定論的実行）。</summary>
+    /// <summary>保存済み bindings を再解決せず復元する。</summary>
     [Fact]
     public void RestoreFromStoredVersion_UsesStoredBindingsWithoutReResolving()
     {
@@ -597,7 +597,7 @@ public sealed class DefinitionCompilerServiceTests
         Assert.Contains("Level 2 validation failed", ex.Message, StringComparison.Ordinal);
     }
 
-    /// <summary>Wait events 経由で Join を供給する定義はコンパイルできる（E1）。</summary>
+    /// <summary>Wait events 経由で Join を供給する定義はコンパイルできる。</summary>
     [Fact]
     public void ValidateAndCompile_WaitEventsFeedJoin_Succeeds()
     {
@@ -1138,7 +1138,7 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
-    /// コンパイル結果 JSON に conditionalTransitions と stateInputs が含まれる（T6 デバッグ返却）。
+    /// コンパイル結果 JSON に conditionalTransitions と stateInputs が含まれる（条件遷移の診断を graph に含める）。
     /// </summary>
     [Fact]
     public void ValidateAndCompile_CompiledJson_IncludesConditionalTransitionsAndStateInputs()
@@ -1263,7 +1263,7 @@ public sealed class DefinitionCompilerServiceTests
     }
 
     /// <summary>
-    /// nodes 配列と states オブジェクトの併存は U10 に従い ArgumentException。
+    /// nodes 配列と states オブジェクトの併存は nodes と states の判別に従い ArgumentException。
     /// </summary>
     [Fact]
     public void ValidateAndCompile_NodesAndStatesBoth_ThrowsArgumentException()
@@ -1523,7 +1523,7 @@ public sealed class DefinitionCompilerServiceTests
         Assert.NotNull(compiled);
     }
 
-    /// <summary>ネスト schema にドットキー input を指定すると compile 成功する（要件2 No.6）。</summary>
+    /// <summary>ネスト schema にドットキー input を指定すると compile 成功する。</summary>
     [Fact]
     public void ValidateAndCompile_NestedInputWithDottedKeys_Succeeds()
     {
@@ -1551,7 +1551,7 @@ public sealed class DefinitionCompilerServiceTests
         Assert.NotNull(compiled.StateExecutorFactory.GetExecutor("Ship"));
     }
 
-    /// <summary>ネスト schema にネスト map input を指定すると compile 成功する（要件2 No.7）。</summary>
+    /// <summary>ネスト schema にネスト map input を指定すると compile 成功する。</summary>
     [Fact]
     public void ValidateAndCompile_NestedInputWithNestedMap_Succeeds()
     {
@@ -1581,7 +1581,7 @@ public sealed class DefinitionCompilerServiceTests
         Assert.NotNull(compiled.StateExecutorFactory.GetExecutor("Ship"));
     }
 
-    /// <summary>ネスト必須欠落は階層 jsonPath で schema 検証失敗する（要件2 No.8）。</summary>
+    /// <summary>ネスト必須欠落は階層 jsonPath で schema 検証失敗する。</summary>
     [Fact]
     public void ValidateAndCompile_NestedRequiredMissing_ThrowsSchemaValidationException()
     {
@@ -1608,7 +1608,7 @@ public sealed class DefinitionCompilerServiceTests
         Assert.Contains(ex.Errors, error => error.JsonPath == "$.input.ship.address");
     }
 
-    /// <summary>オブジェクトリテラルとドットキー子の競合は schema 検証で失敗する（要件2 No.9）。</summary>
+    /// <summary>オブジェクトリテラルとドットキー子の競合は schema 検証で失敗する。</summary>
     [Fact]
     public void ValidateAndCompile_NestedInputNormalizationConflict_ThrowsSchemaValidationException()
     {

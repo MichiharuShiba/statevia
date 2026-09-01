@@ -7,7 +7,7 @@ namespace Statevia.Core.Application.Services;
 /// Engine Fork 展開イベントを <see cref="IForkChildExecutionCoordinator"/> に接続する。
 /// </summary>
 /// <remarks>
-/// <para>成功時は親を checkpoint 保存のうえ Unload し、Join 待ち中はメモリに常駐させない（D2-B）。</para>
+/// <para>成功時は親を checkpoint 保存のうえ Unload し、Join 待ち中はメモリに常駐させない。</para>
 /// </remarks>
 public sealed class ForkExpansionHostHandler(
     ICoreTransactionExecutor executor,
@@ -75,7 +75,7 @@ public sealed class ForkExpansionHostHandler(
         if (!result.Succeeded)
             logger.ForkExpansionFailedParentMarkedFailed(parentExecutionId, evt.SourceNodeId);
 
-        // 成功時も Join 待ちで Engine に常駐させない（D2-B）。失敗時は Coordinator が親 Failed 済み。
+        // 成功時も Join 待ちで Engine に常駐させない。失敗時は Coordinator が親 Failed 済み。
         await executionService
             .PersistCheckpointAndUnloadByEngineIdAsync(evt.ExecutionId, evt.SourceNodeId, ct)
             .ConfigureAwait(false);

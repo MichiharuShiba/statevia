@@ -235,7 +235,7 @@ internal sealed class ExecutionQueryService(
 
         var displayId = await displayIds.GetDisplayIdAsync(DisplayIdResourceTypes.Execution, idOrUuid, ct).ConfigureAwait(false)
             ?? execution.ExecutionId.ToString("D");
-        // D6 / D6.1: GraphUpdated patch は合成グラフ由来。
+        // GET 時の論理 graph / イベント合成: GraphUpdated patch は合成グラフ由来。
         var graphJson = await GetGraphJsonAsync(idOrUuid, ct).ConfigureAwait(false);
         var patchNodes = ExecutionViewMapper.MapGraphPatchNodes(graphJson);
 
@@ -251,7 +251,7 @@ internal sealed class ExecutionQueryService(
     }
 
     /// <summary>
-    /// 親＋再帰子孫の event_store 行を読み取り合成用に集める（D6.1）。
+    /// 親＋再帰子孫の event_store 行を読み取り合成用に集める（GET 時のイベント合成）。
     /// </summary>
     private async Task<IReadOnlyList<PhysicalForkEventTimelineComposer.SourceRow>> LoadEventStoreRowsForTimelineAsync(
         Guid rootExecutionId,

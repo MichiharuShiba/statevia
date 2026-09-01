@@ -11,7 +11,7 @@ using System.Text.Json.Nodes;
 
 namespace Statevia.Service.Api.Tests.Services;
 
-/// <summary>ComposeReadModelGraphJsonAsync の永続連携（タスク 7）。</summary>
+/// <summary>ComposeReadModelGraphJsonAsync の永続連携。</summary>
 public sealed class ForkChildExecutionCoordinatorGraphComposeTests
 {
     /// <summary>親 GET 合成で子の workerId が親 graph 上に現れる。</summary>
@@ -75,7 +75,7 @@ public sealed class ForkChildExecutionCoordinatorGraphComposeTests
                 && e["type"]!.GetValue<int>() == 1);
     }
 
-    /// <summary>直下の子 execution ID を列挙する（D6.1）。</summary>
+    /// <summary>直下の子 execution ID を列挙する。</summary>
     [Fact]
     public async Task ListDescendantExecutionIdsAsync_ReturnsDirectChild()
     {

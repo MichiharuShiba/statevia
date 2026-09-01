@@ -1,7 +1,7 @@
 namespace Statevia.Core.Application.Contracts.Services;
 
 /// <summary>
-/// Hosted Runtime が Fork を物理子 execution に展開するときの試行上限（D9）。
+/// Hosted Runtime が Fork を物理子 execution に展開するときの試行上限（展開リトライ）。
 /// </summary>
 /// <remarks>
 /// <para>設定セクション例: <c>Statevia:Runtime:ForkChildExpansion</c>。</para>

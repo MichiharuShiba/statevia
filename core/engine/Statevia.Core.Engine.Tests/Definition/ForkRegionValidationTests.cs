@@ -21,7 +21,7 @@ public class ForkRegionValidationTests
         Assert.True(result.IsValid, string.Join("; ", result.Errors));
     }
 
-    /// <summary>枝先頭 Wait の events 経由で Join に着く定義は供給として合法（E1）。</summary>
+    /// <summary>枝先頭 Wait の events 経由で Join に着く定義は供給として合法。</summary>
     [Fact]
     public void Validate_WaitEventsFeedJoin_Passes()
     {
@@ -47,7 +47,7 @@ public class ForkRegionValidationTests
         Assert.True(result.IsValid, string.Join("; ", result.Errors));
     }
 
-    /// <summary>領域外から枝先頭へ入る遷移は Ingress で拒否する（A1/C1）。</summary>
+    /// <summary>領域外から枝先頭へ入る遷移は Ingress で拒否する。</summary>
     [Fact]
     public void Validate_IngressFromOutside_Fails()
     {
@@ -75,7 +75,7 @@ public class ForkRegionValidationTests
         Assert.Contains(result.Issues, i => i.RuleId == "ForkRegion.BranchHeadExtraEntry");
     }
 
-    /// <summary>枝内から Join 以外へ出る遷移は Egress で拒否する（A2）。</summary>
+    /// <summary>枝内から Join 以外へ出る遷移は Egress で拒否する。</summary>
     [Fact]
     public void Validate_EgressWithoutJoin_Fails()
     {
@@ -101,7 +101,7 @@ public class ForkRegionValidationTests
         Assert.Contains(result.Issues, i => i.RuleId == "ForkRegion.EgressWithoutJoin");
     }
 
-    /// <summary>兄弟枝が Join 前に中間ノードを共有する定義は CrossBranch で拒否する（A3）。</summary>
+    /// <summary>兄弟枝が Join 前に中間ノードを共有する定義は CrossBranch で拒否する。</summary>
     [Fact]
     public void Validate_SiblingBodyOverlap_Fails()
     {
@@ -128,7 +128,7 @@ public class ForkRegionValidationTests
         Assert.Contains(result.Issues, i => i.RuleId == "ForkRegion.CrossBranch");
     }
 
-    /// <summary>Join 後の Again で同一 Fork に戻る循環は合法（D2）。</summary>
+    /// <summary>Join 後の Again で同一 Fork に戻る循環は合法。</summary>
     [Fact]
     public void Validate_CyclicReentryAfterJoin_Passes()
     {
@@ -155,7 +155,7 @@ public class ForkRegionValidationTests
         Assert.True(result.IsValid, string.Join("; ", result.Errors));
     }
 
-    /// <summary>error が枝内で Join に戻る定義は合法（D10-A）。</summary>
+    /// <summary>error が枝内で Join に戻る定義は合法。</summary>
     [Fact]
     public void Validate_ErrorHandlerInsideBranch_Passes()
     {
@@ -188,7 +188,7 @@ public class ForkRegionValidationTests
         Assert.True(result.IsValid, string.Join("; ", result.Errors));
     }
 
-    /// <summary>error が領域外へ出る定義は Egress で拒否する（D10-A / D10-C 相当）。</summary>
+    /// <summary>error が領域外へ出る定義は Egress で拒否する（Failed は Join 供給に数えない。領域外 Failed は拒否）。</summary>
     [Fact]
     public void Validate_ErrorToOutside_Fails()
     {
@@ -221,7 +221,7 @@ public class ForkRegionValidationTests
         Assert.Contains(result.Issues, i => i.RuleId == "ForkRegion.EgressWithoutJoin");
     }
 
-    /// <summary>Completed 辺が無く Failed だけ Join する枝は供給なし（D10-B 相当 / B1）。</summary>
+    /// <summary>Completed 辺が無く Failed だけ Join する枝は供給なし。</summary>
     [Fact]
     public void Validate_ErrorOnlySupply_FailsJoinNotFed()
     {
@@ -253,7 +253,7 @@ public class ForkRegionValidationTests
         Assert.Contains(result.Issues, i => i.RuleId == "ForkRegion.JoinNotFed");
     }
 
-    /// <summary>Wait の一方が Join・他方が領域外なら供給は立つが領域外 events は拒否する（D8）。</summary>
+    /// <summary>Wait の一方が Join・他方が領域外なら供給は立つが領域外 events は拒否する。</summary>
     [Fact]
     public void Validate_PartialWaitEventsOutside_FailsWaitTarget()
     {
@@ -313,7 +313,7 @@ public class ForkRegionValidationTests
         Assert.True(result.IsValid, string.Join("; ", result.Errors));
     }
 
-    /// <summary>枝先頭 action の先に内側 Fork があるネストは合法（D3）。</summary>
+    /// <summary>枝先頭 action の先に内側 Fork があるネストは合法。</summary>
     [Fact]
     public void Validate_InnerForkAfterMidAction_Passes()
     {
@@ -343,7 +343,7 @@ public class ForkRegionValidationTests
         Assert.True(result.IsValid, string.Join("; ", result.Errors));
     }
 
-    /// <summary>条件遷移（cases/default）経由の Join 供給は合法（D9）。</summary>
+    /// <summary>条件遷移（cases/default）経由の Join 供給は合法。</summary>
     [Fact]
     public void Validate_ConditionalEdgesFeedJoin_Passes()
     {
@@ -385,7 +385,7 @@ public class ForkRegionValidationTests
         Assert.True(result.IsValid, string.Join("; ", result.Errors));
     }
 
-    /// <summary>内側枝から外側兄弟への Failed 辺は NestedCross で拒否する（A4）。</summary>
+    /// <summary>内側枝から外側兄弟への Failed 辺は NestedCross で拒否する。</summary>
     [Fact]
     public void Validate_InnerFailedToOuterSibling_FailsNestedCross()
     {
@@ -693,7 +693,7 @@ public class ForkRegionValidationTests
         Assert.Contains(result.Issues, i => i.RuleId == "ForkRegion.SiblingStateRef");
     }
 
-    /// <summary>対応 Join が無い Fork は MissingJoin で拒否する（C3）。</summary>
+    /// <summary>対応 Join が無い Fork は MissingJoin で拒否する。</summary>
     [Fact]
     public void Validate_UnpairedFork_FailsMissingJoin()
     {

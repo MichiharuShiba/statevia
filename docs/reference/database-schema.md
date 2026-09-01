@@ -13,7 +13,7 @@ Project: 実行型ステートマシン
 
 **Version 1.16（2026-08-06）**: `execution_branches` 追加（Hosted Fork 物理子の親子リンク正本。`fork_node_id` は実行ノード ID、`join_state` / `branch_state` は定義の状態名空間）。
 
-**Version 1.7（2026-05-27）**: task 8 — `execution_cursors` / `execution_waits` 追加（operational projection / EventWait durable wait）。
+**Version 1.7（2026-05-27）**: `execution_cursors` / `execution_waits` 追加（operational projection / EventWait durable wait）。
 
 **Version 1.15（2026-08-03）**: `execution_runtime_checkpoints` に所有・fencing 列（`owner_worker_id` / `lease_until` / `owner_generation`）。`execution_work_items.kind` を Start / Resume / Cancel に統一（TimerFire 廃止。Delay は Resume event）。
 

@@ -26,7 +26,7 @@ Markdown 執筆ルールは [`DOCUMENTATION-STANDARD.md`](DOCUMENTATION-STANDARD
 - **依頼された範囲に集中する。** 無関係なリファクタ・ファイルの掃除・ドキュメントの拡大は行わない。
 - **周辺コードのスタイルに合わせる。** 命名、型の置き方、コメント量、import／using の並びを既存に揃える。
 - **契約を壊さない。** API のステータスコード・エラー JSON 形・ヘッダ（`X-Tenant-Id`, `X-Idempotency-Key`）は `docs/` の契約に従う。
-- **機微データの露出に注意する。** 一覧／GET で Start 時の `input` や state `output` を広げる変更は、IO-14（`AGENTS.md`）と整合させる。
+- **機微データの露出に注意する。** 一覧／GET で Start 時の `input` や state `output` を広げる変更は、機微 IO 方針（`AGENTS.md`）と整合させる。
 
 ---
 
@@ -253,8 +253,8 @@ dotnet build-server shutdown
 
 - 説明部は **英語の kebab-case**（小文字・単語はハイフン）。**ASCII** に限定する。
 - **1 ブランチ 1 目的**。大きい変更はトピックを分け、必要なら `feature/foo-part-b` のように連番や段階名を付ける。
-- **チケット・Issue 番号**を付ける場合は末尾に付与してよい: `feature/io-api-input-STV-402`（任意）。
-- **長期エピック**で接頭辞を揃える場合は `feature/<エピック>-<要約>` とする（例: `feature/io-c-api-workflow-start-input`）。`.spec/specs/` のタスク表と揃えてもよい。
+- **チケット・Issue 番号**を付ける場合は末尾に付与してよい: `feature/io-api-input-idempotency`（任意）。
+- **長期エピック**で接頭辞を揃える場合は `feature/<エピック>-<要約>` とする（例: `feature/io-c-api-workflow-start-input`）。
 
 **保護ブランチ**（`main` など）へ直接 push せず、PR 経由でマージする。
 

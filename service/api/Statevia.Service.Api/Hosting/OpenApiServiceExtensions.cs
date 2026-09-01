@@ -31,7 +31,7 @@ internal static class OpenApiServiceExtensions
                 Title = "Statevia Service API",
                 Version = "v1",
                 Description =
-                    "Service API HTTP 契約。運用・SSE・冪等・IO-14 等の叙述は docs/specifications/api-http.md を参照。"
+                    "Service API HTTP 契約。運用・SSE・冪等・機微 IO 方針等の叙述は docs/specifications/api-http.md を参照。"
             });
 
             var xmlPath = Path.Combine(

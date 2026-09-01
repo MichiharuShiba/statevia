@@ -75,7 +75,7 @@ internal static class ExecutionViewMapper
     /// <param name="graphJson"><see cref="IExecutionService.GetGraphJsonAsync"/> と同じグラフ JSON。</param>
     /// <returns>WAITING かつ NodeType が Wait の要素。順序は <c>nodes</c> 配列順。0 件でも空の <see cref="ExecutionWaitsResponse"/>。</returns>
     /// <remarks>
-    /// IO-14: <c>input</c> / <c>output</c> は載せない。<c>allowedEvents</c> が null のときは空配列にする。
+    /// 機微 IO 方針: <c>input</c> / <c>output</c> は載せない。<c>allowedEvents</c> が null のときは空配列にする。
     /// </remarks>
     public static ExecutionWaitsResponse MapActiveWaits(string graphJson)
     {

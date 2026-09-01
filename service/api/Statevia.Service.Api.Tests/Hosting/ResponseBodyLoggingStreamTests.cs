@@ -3,7 +3,7 @@ using Statevia.Service.Api.Hosting;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 
-/// <summary>STV-403: レスポンス本文キャプチャ用ストリームの単体テスト。</summary>
+/// <summary>レスポンス本文キャプチャ用ストリームの単体テスト。</summary>
 public sealed class ResponseBodyLoggingStreamTests
 {
     [Fact]

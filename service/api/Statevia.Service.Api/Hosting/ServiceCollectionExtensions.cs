@@ -247,7 +247,7 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
     }
 
-    /// <summary>Fork 物理子展開リトライ Options（D9）。</summary>
+    /// <summary>Fork 物理子展開リトライ Options。</summary>
     private static void AddForkChildExpansionOptions(IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<ForkChildExpansionOptions>()

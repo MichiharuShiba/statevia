@@ -389,7 +389,7 @@ public sealed class NodesWorkflowDefinitionLoaderTests
         Assert.True(definition.States["join1"].On!.ContainsKey(Fact.Joined));
     }
 
-    /// <summary>枝先頭 Wait の events 経由で Join に着く定義は Load できる（E1）。</summary>
+    /// <summary>枝先頭 Wait の events 経由で Join に着く定義は Load できる。</summary>
     [Fact]
     public void Load_WaitEventsFeedJoin_BuildsJoinAll()
     {

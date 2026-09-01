@@ -52,7 +52,7 @@ public class PublishEventRequest
     public string Name { get; set; } = "";
 }
 
-/// <summary>ワークフロー一覧・単票の JSON 応答形（U4）。</summary>
+/// <summary>ワークフロー一覧・単票の JSON 応答形。</summary>
 public class ExecutionResponse
 {
     /// <summary>表示用ワークフロー ID。</summary>
@@ -164,7 +164,7 @@ public sealed class ExecutionViewNodeDto
 /// </summary>
 /// <remarks>
 /// <para><c>GET /v1/executions/{id}/waits</c> の本文。正本は graph スナップショット射影。</para>
-/// <para>IO-14: <c>input</c> / <c>output</c> は含めない。</para>
+/// <para>機微 IO 方針: <c>input</c> / <c>output</c> は含めない。</para>
 /// </remarks>
 public sealed class ExecutionWaitsResponse
 {

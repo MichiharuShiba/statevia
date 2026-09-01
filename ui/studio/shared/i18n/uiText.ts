@@ -248,8 +248,8 @@ export type MappingEntry = {
 };
 
 /**
- * design.md の Confirmed Mapping Table と1:1で対応するトレーサビリティ用一覧。
- * T2 実装時に、各 source がどのキーへマッピングされるかの確認に利用する。
+ * Confirmed Mapping Table と 1:1 で対応する i18n 対応表。
+ * 各 source がどのキーへマッピングされるかの確認に利用する。
  */
 export const confirmedMappingTable: MappingEntry[] = [
   { source: "Workflow", target: uiText.entities.execution, note: "実行インスタンスの画面表示は execution 語彙で統一（定義 DSL の workflow: とは別）" },

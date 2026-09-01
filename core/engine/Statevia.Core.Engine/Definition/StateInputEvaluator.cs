@@ -19,7 +19,7 @@ internal sealed class StateInputEvaluationResult
 /// <remarks>
 /// <para>
 /// <c>input</c> 未定義時は候補 input（直前 output / Join 辞書など）をそのまま返す。
-/// パス解決にレガシー rawInput フォールバックは持たない（execution-context Phase 1）。
+/// パス解決にレガシー rawInput フォールバックは持たない。
 /// </para>
 /// </remarks>
 internal static class StateInputEvaluator

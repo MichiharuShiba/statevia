@@ -22,7 +22,7 @@ internal enum ControlEdgeKind
 /// <param name="Kind">辺の種別。</param>
 internal readonly record struct ControlEdge(string From, string To, ControlEdgeKind Kind)
 {
-    /// <summary>Join 供給の経路に含めるか（D10-A: Failed は含めない）。</summary>
+    /// <summary>Join 供給の経路に含めるか（Failed は Join 供給に数えない）。</summary>
     public bool CountsAsSupply => Kind is not ControlEdgeKind.Failed;
 }
 

@@ -4,7 +4,7 @@ using Statevia.Core.Application.Services;
 
 namespace Statevia.Service.Api.Tests.Services;
 
-/// <summary>物理子イベントタイムライン合成（D6.1）。</summary>
+/// <summary>物理子イベントタイムライン合成。</summary>
 public sealed class PhysicalForkEventTimelineComposerTests
 {
     /// <summary>子孫の WorkflowStarted を落とし、親と子の EventPublished を合成通番で返す。</summary>

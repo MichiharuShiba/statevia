@@ -4,7 +4,7 @@ import { e2eWaitWorkflowYaml } from "./fixtures/e2eWaitWorkflowYaml";
 import { uiText } from "@/shared/i18n/uiText";
 
 /**
- * Service API 実体 + Next プロキシ経由の UI E2E（STV-401/402 の UI 側）。
+ * Service API 実体 + Next プロキシ経由の UI E2E。
  *
  * 事前: Service API を起動し、マイグレーション済み DB を用意する。
  * 実行例:
@@ -20,7 +20,7 @@ test.describe("Service API + UI (real)", () => {
   // Reason: SERVICE_API_E2E_URL 未設定時は実体 Service API が無いため、環境ゲートでスイートをスキップする。
   test.skip(!apiBase, "SERVICE_API_E2E_URL が未設定のためスキップ");
 
-  test("STV-401: Load → Cancel で Cancelled かつ成功トースト", async ({ page, request }) => {
+  test("Load → Cancel で Cancelled かつ成功トースト", async ({ page, request }) => {
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const defName = `e2e-ui-wait-${suffix}`;
     const yaml = e2eWaitWorkflowYaml(defName);
@@ -56,7 +56,7 @@ test.describe("Service API + UI (real)", () => {
     await executionPage.waitForExecutionStatus("Cancelled", { timeout: 30_000 });
   });
 
-  test("STV-402: Cancel が 409 のときトーストに 409 が含まれる", async ({ page, request }) => {
+  test("Cancel が 409 のときトーストに 409 が含まれる", async ({ page, request }) => {
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const defName = `e2e-ui-409-${suffix}`;
     const yaml = e2eWaitWorkflowYaml(defName);

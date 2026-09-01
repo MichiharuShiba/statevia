@@ -168,7 +168,7 @@ internal class CoreDbContext : DbContext, ICoreDatabase
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // display_ids (U3): カラムはスネークケース
+        // display_ids: カラムはスネークケース
         modelBuilder.Entity<DisplayIdRow>(e =>
         {
             e.ToTable("display_ids");
@@ -268,7 +268,7 @@ internal class CoreDbContext : DbContext, ICoreDatabase
             e.Property(x => x.SecuritySnapshotJson).HasColumnName(Columns.SecuritySnapshotJson);
         });
 
-        // event_store (U2): カラムはスネークケース
+        // event_store: カラムはスネークケース
         modelBuilder.Entity<EventStoreRow>(e =>
         {
             e.ToTable("event_store");

@@ -5,7 +5,7 @@ using Statevia.Service.Api.Hosting;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 
-/// <summary>STV-403: ルート後ドメイン ID enrich の単体テスト。</summary>
+/// <summary>ルート後ドメイン ID enrich の単体テスト。</summary>
 public sealed class TraceContextEnrichmentMiddlewareTests
 {
     /// <summary>TraceId が Items に無いときは enrich ログを出さない。</summary>

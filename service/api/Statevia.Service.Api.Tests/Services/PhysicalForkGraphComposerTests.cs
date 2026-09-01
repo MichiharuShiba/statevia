@@ -4,7 +4,7 @@ using Statevia.Core.Engine.ExecutionGraphs;
 
 namespace Statevia.Service.Api.Tests.Services;
 
-/// <summary>親 graph の論理 Fork/Join 合成（タスク 7 / D6）。</summary>
+/// <summary>親 graph の論理 Fork/Join 合成。</summary>
 public sealed class PhysicalForkGraphComposerTests
 {
     /// <summary>子ノードを親へ載せ、Fork 辺と workerId を引き継ぐ。</summary>

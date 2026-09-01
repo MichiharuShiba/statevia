@@ -17,7 +17,7 @@ namespace Statevia.Service.Api.Tests.Services;
 /// </summary>
 public sealed class ForkChildExecutionCoordinatorNestAndRecoveryTests
 {
-    /// <summary>展開の一時失敗後、リトライで子と Start が作成される（D9）。</summary>
+    /// <summary>展開の一時失敗後、リトライで子と Start が作成される。</summary>
     [Fact]
     public async Task ExpandForkAsync_WhenTransientFailure_RetriesAndSucceeds()
     {
@@ -85,7 +85,7 @@ public sealed class ForkChildExecutionCoordinatorNestAndRecoveryTests
         Assert.Empty(workQueue.Items);
     }
 
-    /// <summary>ネスト: 内側 Join 充足のあと外側 Join も充足できる（D4 基本経路）。</summary>
+    /// <summary>ネスト: 内側 Join 充足のあと外側 Join も充足できる。</summary>
     [Fact]
     public async Task NestedFork_InnerThenOuterJoin_BothSatisfied()
     {
@@ -145,7 +145,7 @@ public sealed class ForkChildExecutionCoordinatorNestAndRecoveryTests
         Assert.True(outerEval.CandidateInputs.ContainsKey("InnerFork"));
     }
 
-    /// <summary>子孫列挙は孫まで再帰する（ネスト D4 / D6.1）。</summary>
+    /// <summary>子孫列挙は孫まで再帰する。</summary>
     [Fact]
     public async Task ListDescendantExecutionIdsAsync_ReturnsNestedGrandchild()
     {

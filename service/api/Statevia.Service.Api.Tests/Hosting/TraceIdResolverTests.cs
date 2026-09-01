@@ -3,7 +3,7 @@ using Statevia.Service.Api.Hosting;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 
-/// <summary>STV-403: ログ用 trace ID 解決の単体テスト。</summary>
+/// <summary>ログ用 trace ID 解決の単体テスト。</summary>
 public sealed class TraceIdResolverTests
 {
     [Fact]

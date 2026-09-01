@@ -29,7 +29,7 @@ Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 
 **Version 1.16（2026-09-01）**: `POST /v1/events` を契約表に追加。`executions.write` 不足は 403。queued Start の載荷済み再処理は no-op。開始済み Resume の未分類上限は `restartLost`（`Failed` にしない）。
 
-**Version 1.15（2026-08-22）**: `GET /v1/executions/{id}/waits` を追加。未完了 Wait の `nodeId` / `nodeName` / `allowedEvents` だけを返す（IO-14: `input` / `output` なし）。CLI は `exec waits`。
+**Version 1.15（2026-08-22）**: `GET /v1/executions/{id}/waits` を追加。未完了 Wait の `nodeId` / `nodeName` / `allowedEvents` だけを返す（機微 IO 方針: `input` / `output` なし）。CLI は `exec waits`。
 
 **Version 1.14（2026-08-19）**: 新規・更新パスワードは 8〜128 文字・空白なし（記号可。大文字小文字の混在は必須にしない）。ログイン時の現行パスワードには適用しない。
 

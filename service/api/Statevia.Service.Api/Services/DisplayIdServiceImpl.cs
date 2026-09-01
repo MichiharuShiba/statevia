@@ -5,7 +5,7 @@ using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Service.Api.Services;
 
-/// <summary>表示用 ID の実装。62 文字種・10 桁・衝突時再生成（U3）。</summary>
+/// <summary>表示用 ID の実装。62 文字種・10 桁・衝突時再生成。</summary>
 internal sealed class DisplayIdServiceImpl : IDisplayIdService, IDisplayIdWriteService
 {
     private static readonly char[] Chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();

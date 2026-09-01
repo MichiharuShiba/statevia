@@ -15,7 +15,7 @@
 - **MUST**: 実行グラフの `edges[*].from` / `to` は**実行ノード ID**（`nodes[*].nodeId`）を指す（定義 YAML の `name` / Graph Def の `nodeName` とは別）。
 - **MUST**: HTTP GET graph の正本は DB projection と整合させる（in-process export はデバッグ用途）。
 - **MUST**: Hosted で物理 Fork がある親の `GET …/graph` は、永続生グラフを **GET 時に論理 Fork/Join へ合成**して返す（UI は分割非認知。[fork-join.md](fork-join.md)）。
-- **SHOULD**: `input` / `output` を外部ログへ載せる前に IO-14 に従いマスキングする。
+- **SHOULD**: `input` / `output` を外部ログへ載せる前に機微 IO 方針に従いマスキングする。
 
 ---
 
@@ -114,7 +114,7 @@
 補足:
 
 - `conditionRouting` は条件遷移を評価したノードで設定される。線形遷移のみでは `null` になり得る。
-- `output` / `input` は状態実装・スケジュール経路の値をそのまま保持するため、JSON 型は固定されない。外部ログへ載せる際は IO-14（`docs/specifications/api-http.md` / `AGENTS.md`）に従いマスキング・サイズ制御を行う。
+- `output` / `input` は状態実装・スケジュール経路の値をそのまま保持するため、JSON 型は固定されない。外部ログへ載せる際は機微 IO 方針（`docs/specifications/platform/io-log-masking.md` / `docs/specifications/api-http.md`）に従いマスキング・サイズ制御を行う。
 
 ---
 
