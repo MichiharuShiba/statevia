@@ -10,7 +10,7 @@ using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Services;
 
-/// <summary>親 Cancel カスケードと分岐 Wait の子配送解決（タスク 6）。</summary>
+/// <summary>親 Cancel カスケードと分岐 Wait の子配送解決。</summary>
 public sealed class ForkChildExecutionCoordinatorCancelAndDeliveryTests
 {
     /// <summary>親 Cancel カスケードで Running 子だけに Cancel work item を enqueue する。</summary>

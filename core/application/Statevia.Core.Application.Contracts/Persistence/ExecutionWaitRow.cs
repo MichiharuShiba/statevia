@@ -26,7 +26,7 @@ public enum ExecutionWaitKind
 /// </para>
 /// <para>
 /// 物理子終端の親向け Resume は <see cref="ChildCompleted"/> を用いる。
-/// Engine の Wait Resume には振らず、Host が Join 再評価する（D3）。
+/// Engine の Wait Resume には振らず、Host が Join 再評価する。
 /// </para>
 /// </remarks>
 public static class ExecutionWaitEventNames

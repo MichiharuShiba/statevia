@@ -58,7 +58,7 @@ public sealed partial class ExecutionEngine
             SafeLog(() =>
                 ExecutionLog.ExecutionTerminalFailure(_logger, executionId, definitionName, stateName, fact));
 
-        /// <summary>state input のフォールバック等、継続可能だが入力品質に注意が必要な状況（STV-405）。</summary>
+        /// <summary>state input のフォールバック等、継続可能だが入力品質に注意が必要な状況（入力評価警告）。</summary>
         public void LogWarningInputEvaluation(string executionId, string stateName, string inputKey, string reason) =>
             SafeLog(() =>
                 ExecutionLog.InputEvaluationWarning(_logger, executionId, stateName, inputKey, reason));
@@ -68,7 +68,7 @@ public sealed partial class ExecutionEngine
             SafeLog(() =>
                 ExecutionLog.ConditionPathResolutionWarning(_logger, executionId, stateName, fact, path, reason));
 
-        /// <summary>FSM に次遷移がなく終端でもない停滞（STV-405）。</summary>
+        /// <summary>FSM に次遷移がなく終端でもない停滞（遷移なし警告）。</summary>
         public void LogWarningNoTransition(string executionId, string stateName, string fact) =>
             SafeLog(() =>
                 ExecutionLog.NoTransition(_logger, executionId, stateName, fact));
@@ -127,7 +127,7 @@ public sealed partial class ExecutionEngine
         }
     }
 
-    /// <summary>ログ プロバイダが例外を投げても実行遷移を壊さない（STV-404 Requirement 2b）。</summary>
+    /// <summary>ログ プロバイダが例外を投げても実行遷移を壊さない（ログ失敗を遷移に伝播させない）。</summary>
 #pragma warning disable CA1031 // あらゆるログ実装からの例外を握りつぶす仕様
     private static void SafeLog(Action action)
     {

@@ -60,7 +60,7 @@ public enum ForkJoinEvaluationKind
 /// <summary>
 /// Join 充足時に親 Context へ投影する子 1 件分の Context 断片。
 /// </summary>
-/// <remarks>リスト順が適用順。同一キーは後勝ち（D5）。</remarks>
+/// <remarks>リスト順が適用順。同一キーは後勝ち。</remarks>
 /// <param name="States">子の完了済み State エントリ（nodeName → `{ output: … }`）。</param>
 /// <param name="Vars">子終端時点の vars オブジェクト。</param>
 public sealed record ForkJoinChildContextMerge(
@@ -102,10 +102,10 @@ public sealed record ForkWaitDeliveryTarget(
 /// Hosted Runtime 向けに Fork を親＋子 execution へ展開する。
 /// </summary>
 /// <remarks>
-/// <para>子行作成・security snapshot 継承・Start enqueue・展開リトライ（D9）を担う。</para>
-/// <para>子終端信号・Join 再評価（D2-B / D3）と、充足時の親 Context（states / vars）マージ材料（D5）を担う。</para>
-/// <para>親 Cancel の未終端子カスケードと、分岐 Wait の配送先解決（要件4）も担う。</para>
-/// <para>親 graph 読み取り時の論理 Fork/Join 合成（D6）と、イベント合成用の子孫列挙（D6.1）も担う。</para>
+/// <para>子行作成・security snapshot 継承・Start enqueue・展開リトライを担う。</para>
+/// <para>子終端は Join 再評価へ振り、充足時の親 Context（states / vars）マージ材料を担う。Join 待ち中の親は Unload する。マージは後勝ち。</para>
+/// <para>親 Cancel の未終端子カスケードと、分岐 Wait の子 execution への配送も担う。</para>
+/// <para>親 graph 読み取り時の論理 Fork/Join 合成と、イベント合成用の子孫列挙も担う。</para>
 /// <para>input 写像は Engine 側で行い、本コーディネータは写像済み input を受け取る。</para>
 /// </remarks>
 public interface IForkChildExecutionCoordinator
@@ -189,7 +189,7 @@ public interface IForkChildExecutionCoordinator
         CancellationToken ct);
 
     /// <summary>
-    /// 親の読み取り用 graph JSON を、直下（再帰）の物理子グラフと合成する（D6・GET 時）。
+    /// 親の読み取り用 graph JSON を、直下（再帰）の物理子グラフと合成する（GET 時の論理 graph 合成）。
     /// </summary>
     /// <param name="executionId">対象 execution（親または中間親）。</param>
     /// <param name="baseGraphJson">当該 execution の永続 graph JSON。</param>
@@ -201,7 +201,7 @@ public interface IForkChildExecutionCoordinator
         CancellationToken ct);
 
     /// <summary>
-    /// 直下（再帰）の物理子 execution ID を列挙する（D6.1・イベント合成用）。
+    /// 直下（再帰）の物理子 execution ID を列挙する（GET 時のイベント合成用）。
     /// </summary>
     /// <param name="parentExecutionId">ルート（または中間親）execution。</param>
     /// <param name="ct">キャンセル トークン。</param>

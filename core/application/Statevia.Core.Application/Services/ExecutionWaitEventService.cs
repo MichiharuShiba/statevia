@@ -105,7 +105,7 @@ internal sealed class ExecutionWaitEventService(
         if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-        // 親 ID への PublishEvent も子 Wait へ振り替える（要件4）。
+        // 親 ID への PublishEvent も子 Wait へ振り替える（分岐 Wait の配送先は子 execution）。
         if (await TryRedirectPublishEventToChildWaitAsync(
                 uuid.Value,
                 eventName,
@@ -326,7 +326,7 @@ internal sealed class ExecutionWaitEventService(
         if (execution is null)
             throw new NotFoundException(ExecutionValidationMessages.ExecutionNotFound);
 
-        // 親 ID へ届いた分岐 Wait は子 execution へ振り替える（要件4）。
+        // 親 ID へ届いた分岐 Wait は子 execution へ振り替える（分岐 Wait の配送先は子 execution）。
         if (await TryRedirectResumeToChildWaitAsync(
                 uuid.Value,
                 nodeId,
@@ -347,7 +347,7 @@ internal sealed class ExecutionWaitEventService(
         if (await idempotency.TryBeginEventDeliveryOrAbortIfAlreadyAppliedAsync(uuid.Value, clientEventId, ct).ConfigureAwait(false))
             return;
 
-        // 物理子終端の予約イベントは Wait Resume ではなく Join 再評価へ振る（D3）。
+        // 物理子終端の予約イベントは Wait Resume ではなく Join 再評価へ振る。
         if (string.Equals(eventName, ExecutionWaitEventNames.ChildCompleted, StringComparison.Ordinal))
         {
             await forkJoin.HandleChildCompletedResumeAsync(uuid.Value, execution, nodeId, ct).ConfigureAwait(false);

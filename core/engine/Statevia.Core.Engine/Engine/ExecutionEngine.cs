@@ -23,7 +23,7 @@ namespace Statevia.Core.Engine.Engine;
 /// </para>
 /// <para>
 /// 例外を広く捕捉する <c>#pragma warning disable CA1031</c> 付きの try/catch は、複数実行インスタンスへのイベントブロードキャストで
-/// 失敗を集約するため、状態実行失敗をグラフへ記録するため、およびログ実装の失敗を遷移へ伝播させない（STV-404）ためである。
+/// 失敗を集約するため、状態実行失敗をグラフへ記録するため、およびログ実装の失敗を遷移へ伝播させないためである。
 /// </para>
 /// </remarks>
 public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
@@ -679,7 +679,7 @@ public sealed partial class ExecutionEngine : IExecutionEngine, IDisposable
         {
             await handler(executionId).ConfigureAwait(false);
         }
-#pragma warning disable CA1031 // 外部ハンドラの失敗は遷移へ伝播させずログのみ（STV-404 のベストエフォート通知）
+#pragma warning disable CA1031 // 外部ハンドラの失敗は遷移へ伝播させずログのみ（ログ失敗を遷移に伝播させないベストエフォート通知）
         catch (Exception exception)
         {
             _executionLog.LogWarningNodeCompletedHandlerFailed(exception, executionId);

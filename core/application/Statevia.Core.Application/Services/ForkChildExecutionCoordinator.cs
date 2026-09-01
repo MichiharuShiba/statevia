@@ -11,10 +11,10 @@ namespace Statevia.Core.Application.Services;
 /// Hosted Runtime の Fork を親＋子 execution に展開する。
 /// </summary>
 /// <remarks>
-/// <para>子作成・execution_branches・Start enqueue を同一 ReadCommitted で行い、一時失敗は Options に従い再試行する（D9）。</para>
+/// <para>子作成・execution_branches・Start enqueue を同一 ReadCommitted で行い、一時失敗は Options に従い再試行する（展開リトライ）。</para>
 /// <para>上限超過時は作成済みの未終端子へ Cancel を enqueue し、親を Failed にする。</para>
-/// <para>親 Cancel カスケードと分岐 Wait の子配送解決（要件4）も担う。</para>
-/// <para>親 graph 読み取り時の論理 Fork/Join 合成（D6）と、イベント合成用の子孫列挙（D6.1）も担う。</para>
+/// <para>親 Cancel カスケードと分岐 Wait の子配送解決も担う。</para>
+/// <para>親 graph 読み取り時の論理 Fork/Join 合成と、イベント合成用の子孫列挙も担う。</para>
 /// </remarks>
 /// <param name="executor">トランザクション実行。</param>
 /// <param name="executions">executions 永続化。</param>
@@ -68,7 +68,7 @@ public sealed class ForkChildExecutionCoordinator(
                 var childIds = await TryExpandOnceAsync(request, joinState, ct).ConfigureAwait(false);
                 return new ForkExpansionResult(Succeeded: true, childIds, joinState);
             }
-#pragma warning disable CA1031 // 展開一時失敗は D9 どおり再試行し、上限後に親 Failed へ倒す
+#pragma warning disable CA1031 // 展開一時失敗は展開リトライどおり再試行し、上限後に親 Failed へ倒す
             catch (Exception ex) when (ex is not ForkJoinResolutionException and not OperationCanceledException)
 #pragma warning restore CA1031
             {

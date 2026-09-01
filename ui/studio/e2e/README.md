@@ -21,7 +21,7 @@ npx playwright install
 
 通常のスペック（`smoke.spec.ts` / `execution.spec.ts` など）はブラウザ側で API をモックしているため、**Service API の起動は不要**です。
 
-### Service API 実体を使うオプション E2E（STV-401 / STV-402）
+### Service API 実体を使うオプション E2E
 
 事前に **PostgreSQL と Service API**（例: `http://localhost:8080`）を起動し、マイグレーション済みであることを前提とします。
 

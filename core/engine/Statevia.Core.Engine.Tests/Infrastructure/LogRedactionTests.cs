@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Infrastructure;
 
-/// <summary>STV-408: 共通ログマスキングの単体テスト。</summary>
+/// <summary>共通ログマスキングの単体テスト。</summary>
 public sealed class LogRedactionTests
 {
     /// <summary>ネストした機微キーがマスクされることを検証する。</summary>

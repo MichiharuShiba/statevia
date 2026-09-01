@@ -11,7 +11,7 @@ using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Services;
 
-/// <summary>子終端信号と Join 再評価（タスク 4）。</summary>
+/// <summary>子終端信号と Join 再評価。</summary>
 public sealed class ForkChildExecutionCoordinatorJoinAggregationTests
 {
     /// <summary>子終端で branch status を更新し親へ ChildCompleted Resume を enqueue する。</summary>

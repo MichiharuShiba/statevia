@@ -49,7 +49,7 @@ internal sealed class ExecutionForkJoinCoordinator(
     }
 
     /// <summary>
-    /// 物理子終端の予約 Resume を受け、親の Join を再評価する（D2-B / D3）。
+    /// 物理子終端の予約 Resume を受け、親の Join を再評価する。Join 待ち中の親は Unload する。
     /// </summary>
     /// <param name="parentExecutionId">親 execution。</param>
     /// <param name="execution">親の投影行。</param>
@@ -207,7 +207,7 @@ internal sealed class ExecutionForkJoinCoordinator(
         }
     }
 
-    /// <summary>Join 失敗／キャンセルを親投影へ伝播する（残子 Cancel はタスク 6）。</summary>
+    /// <summary>Join 失敗／キャンセルを親投影へ伝播する（残子 Cancel は親 Cancel カスケードと分岐 Wait の子配送）。</summary>
     private async Task FailParentFromJoinAsync(
         Guid parentExecutionId,
         string forkNodeId,

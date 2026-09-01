@@ -74,7 +74,7 @@ public sealed partial class ExecutionEngineLoggingTests
         Assert.DoesNotContain(joinCompletes, e => e.Message.Contains("ElapsedMs", StringComparison.Ordinal));
     }
 
-    /// <summary>state input の path が raw に存在しないとき Input evaluation warning が出ることを検証する（STV-405）。</summary>
+    /// <summary>state input の path が raw に存在しないとき Input evaluation warning が出ることを検証する（入力評価警告）。</summary>
     [Fact]
     public async Task Logging_StateInputPathSegmentMissing_EmitsWarning()
     {
@@ -119,7 +119,7 @@ public sealed partial class ExecutionEngineLoggingTests
                 e.Message.Contains("StateName=B", StringComparison.Ordinal));
     }
 
-    /// <summary>FSM に Completed 遷移が無く停止するとき No transition の Warning が出ることを検証する（STV-405）。</summary>
+    /// <summary>FSM に Completed 遷移が無く停止するとき No transition の Warning が出ることを検証する（遷移なし警告）。</summary>
     [Fact]
     public async Task Logging_NoFsmTransitionStall_EmitsWarning()
     {
@@ -157,7 +157,7 @@ public sealed partial class ExecutionEngineLoggingTests
                 e.Message.Contains("Fact=Completed", StringComparison.Ordinal));
     }
 
-    /// <summary>ログ実装が例外を投げても実行完走が継続することを検証する（STV-404 SafeLog）。</summary>
+    /// <summary>ログ実装が例外を投げても実行完走が継続することを検証する（ログ失敗を遷移に伝播させない）。</summary>
     [Fact]
     public async Task Logging_ThrowingLogger_DoesNotFailExecution()
     {
@@ -177,7 +177,7 @@ public sealed partial class ExecutionEngineLoggingTests
         Assert.True(snapshot.IsCompleted);
     }
 
-    /// <summary>ctx.Logger のログに ExecutionId/StateName の文脈が自動付与されることを検証する（STV-406）。</summary>
+    /// <summary>ctx.Logger のログに ExecutionId/StateName の文脈が自動付与されることを検証する（ログに ExecutionId / StateName を付与）。</summary>
     [Fact]
     public async Task Logging_StateContextLogger_ContainsExecutionAndStateScope()
     {

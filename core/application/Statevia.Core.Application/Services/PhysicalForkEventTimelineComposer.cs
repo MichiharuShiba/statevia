@@ -4,7 +4,7 @@ using Statevia.Core.Application.Contracts.Services;
 namespace Statevia.Core.Application.Services;
 
 /// <summary>
-/// 親と物理子の <c>event_store</c> 行を、論理 1 実行のタイムラインへ合成する（D6.1・GET 時）。
+/// 親と物理子の <c>event_store</c> 行を、論理 1 実行のタイムラインへ合成する（GET 時のイベント合成）。
 /// </summary>
 /// <remarks>
 /// <para>永続は変更しない。応答 <c>seq</c> は合成通番。</para>

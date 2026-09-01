@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { e2eWaitWorkflowYaml } from "./fixtures/e2eWaitWorkflowYaml";
 
 /**
- * Service API を直接叩くオプション E2E（STV-401/402）。
+ * Service API を直接叩くオプション E2E。
  * 実行例:
  *   SERVICE_API_E2E_URL=http://localhost:8080 npx playwright test e2e/core-api-real.spec.ts
  */
@@ -51,7 +51,7 @@ test.describe("Service API (direct)", () => {
     expect(res.status()).toBe(200);
   });
 
-  test("STV-401: 実行開始 → Cancel → Cancelled", async ({ request }) => {
+  test("実行開始 → Cancel → Cancelled", async ({ request }) => {
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const defName = `e2e-wait-${suffix}`;
     const yaml = e2eWaitWorkflowYaml(defName);
@@ -80,7 +80,7 @@ test.describe("Service API (direct)", () => {
     await waitForExecutionStatus(request, execution.displayId, "Cancelled", 15_000);
   });
 
-  test("STV-402: 同一 X-Idempotency-Key + 同一ボディの再送は同一実行を返す", async ({ request }) => {
+  test("同一 X-Idempotency-Key + 同一ボディの再送は同一実行を返す", async ({ request }) => {
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const defName = `e2e-idem-${suffix}`;
     const yaml = e2eWaitWorkflowYaml(defName);
@@ -113,7 +113,7 @@ test.describe("Service API (direct)", () => {
     expect(execution2.resourceId).toBe(execution1.resourceId);
   });
 
-  test("STV-402: 同一 X-Idempotency-Key でボディが異なると 409", async ({ request }) => {
+  test("同一 X-Idempotency-Key でボディが異なると 409", async ({ request }) => {
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const defNameA = `e2e-idem-a-${suffix}`;
     const defNameB = `e2e-idem-b-${suffix}`;

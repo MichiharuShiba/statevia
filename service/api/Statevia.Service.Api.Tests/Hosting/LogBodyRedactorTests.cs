@@ -2,7 +2,7 @@ using Statevia.Service.Api.Hosting;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 
-/// <summary>STV-403: ログ用本文マスクの単体テスト。</summary>
+/// <summary>ログ用本文マスクの単体テスト。</summary>
 public sealed class LogBodyRedactorTests
 {
     [Fact]

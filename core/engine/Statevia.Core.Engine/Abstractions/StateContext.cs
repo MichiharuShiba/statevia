@@ -29,7 +29,7 @@ public sealed class StateContext
 
     /// <summary>
     /// ユーザー定義 State から利用できるロガー。
-    /// 出力オブジェクトや Start <c>input</c> の生値を直接記録しないこと（IO-14）。
+    /// 出力オブジェクトや Start <c>input</c> の生値を直接記録しないこと（機微 IO 方針）。
     /// </summary>
     public ILogger Logger { get; init; } = NullLogger.Instance;
 }

@@ -8,7 +8,7 @@ using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 
-/// <summary>STV-403: リクエスト開始/完了ログと X-Trace-Id 方針の単体テスト。</summary>
+/// <summary>リクエスト開始/完了ログと X-Trace-Id 方針の単体テスト。</summary>
 public sealed class RequestLoggingMiddlewareTests
 {
     [Fact]

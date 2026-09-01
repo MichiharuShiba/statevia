@@ -42,7 +42,7 @@ public class ExecutionsController : ControllerBase
         _displayIds = displayIds;
     }
 
-    /// <summary>POST /v1/executions — definitionId で定義を取得し、Engine.Start を呼ぶ。display_id と resource_id を返す（U4）。</summary>
+    /// <summary>POST /v1/executions — definitionId で定義を取得し、Engine.Start を呼ぶ。display_id と resource_id を返す。</summary>
     [HttpPost]
     [ProducesResponseType(typeof(ExecutionResponse), StatusCodes.Status201Created)]
     public async Task<ActionResult<ExecutionResponse>> Create(
@@ -60,8 +60,8 @@ public class ExecutionsController : ControllerBase
     }
 
     /// <summary>
-    /// GET /v1/executions — ページング一覧（U4）。<c>limit</c> は必須。
-    /// <c>?limit=&amp;offset=&amp;status=&amp;definitionId=&amp;name=&amp;sortBy=&amp;sortOrder=</c> で <see cref="PagedResult{T}"/>（O1/O2）。
+    /// GET /v1/executions — ページング一覧。<c>limit</c> は必須。
+    /// <c>?limit=&amp;offset=&amp;status=&amp;definitionId=&amp;name=&amp;sortBy=&amp;sortOrder=</c> で <see cref="PagedResult{T}"/>。
     /// <c>definitionId</c> は定義の display / UUID。 <c>name</c> は execution の <c>displayId</c> 部分一致、または execution の UUID 完全一致で絞り込み。
     /// </summary>
     [HttpGet]
@@ -120,7 +120,7 @@ public class ExecutionsController : ControllerBase
     /// <summary>
     /// GET /v1/executions/{id}/waits — 未完了 Wait の再開キー。正本は graph スナップショット。X-Tenant-Id でスコープ。
     /// </summary>
-    /// <remarks>IO-14: <c>input</c> / <c>output</c> は返さない。権限は既存 executions GET と同じ <c>executions.read</c>。</remarks>
+    /// <remarks>機微 IO 方針: <c>input</c> / <c>output</c> は返さない。権限は既存 executions GET と同じ <c>executions.read</c>。</remarks>
     [HttpGet("{id}/waits")]
     [ProducesResponseType(typeof(ExecutionWaitsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

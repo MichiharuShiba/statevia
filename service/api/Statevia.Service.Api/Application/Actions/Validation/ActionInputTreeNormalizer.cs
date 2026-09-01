@@ -72,7 +72,7 @@ internal static class ActionInputTreeNormalizer
             new(null, children);
     }
 
-    /// <summary>正規化エラー（jsonPath とメッセージ）。機微値は含めない（IO-14）。</summary>
+    /// <summary>正規化エラー（jsonPath とメッセージ）。機微値は含めない（機微 IO 方針）。</summary>
     /// <param name="JsonPath">階層 jsonPath（例: <c>$.input.ship</c>）。</param>
     /// <param name="Message">エラーメッセージ。</param>
     internal readonly record struct NormalizationError(string JsonPath, string Message);
@@ -241,7 +241,7 @@ internal static class ActionInputTreeNormalizer
     /// <list type="bullet">
     /// <item><description>キー未存在 → そのまま挿入</description></item>
     /// <item><description>両方オブジェクト → 子辞書を再帰マージ（ネスト map とドットキーの併用を許容）</description></item>
-    /// <item><description>リーフとオブジェクト、またはリーフ同士の重複 → 衝突（要件2 No.9）</description></item>
+    /// <item><description>リーフとオブジェクト、またはリーフ同士の重複 → 衝突</description></item>
     /// </list>
     /// </remarks>
     private static void MergeTopLevelKey(

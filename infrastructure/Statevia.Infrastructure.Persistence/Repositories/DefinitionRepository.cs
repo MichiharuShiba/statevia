@@ -5,7 +5,7 @@ namespace Statevia.Infrastructure.Persistence.Repositories;
 /// <summary>definitions / definition_versions の EF 永続化。project 認可は行わない。</summary>
 /// <remarks>
 /// <para>呼び出し元（Application / Graph ユースケース）が <see cref="IProjectAuthorizationService"/> でゲートする。</para>
-/// <para>一覧のみ <see cref="ProjectAccessQueries"/> で Reader 以上の project 可視性を DB 側に残す（D2-A）。</para>
+/// <para>一覧のみ <see cref="ProjectAccessQueries"/> で Reader 以上の project 可視性を DB 側に残す。</para>
 /// <para>単体取得は definitionId / versionId で引き、呼び出し元 tenant の行一致では絞らない（project 共有）。</para>
 /// </remarks>
 internal sealed class DefinitionRepository : IDefinitionRepository

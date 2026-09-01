@@ -46,7 +46,7 @@ public class DefinitionsController : ControllerBase
     }
 
     /// <summary>
-    /// GET /v1/definitions — ページング一覧（U4）。<c>limit</c> は必須。
+    /// GET /v1/definitions — ページング一覧。<c>limit</c> は必須。
     /// <c>?limit=&amp;offset=&amp;name=&amp;sortBy=&amp;sortOrder=</c> で <see cref="PagedResult{T}"/>（name は部分一致）。
     /// </summary>
     [HttpGet]
@@ -68,7 +68,7 @@ public class DefinitionsController : ControllerBase
         return Ok(paged);
     }
 
-    /// <summary>GET /v1/definitions/{id} — 表示用 ID または UUID で取得（U4）。</summary>
+    /// <summary>GET /v1/definitions/{id} — 表示用 ID または UUID で取得。</summary>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(DefinitionResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<DefinitionResponse>> Get(

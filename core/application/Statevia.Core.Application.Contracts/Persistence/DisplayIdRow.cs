@@ -1,6 +1,6 @@
 namespace Statevia.Core.Application.Contracts.Persistence;
 
-/// <summary>表示用 ID とリソース UUID の対応（U3: display_ids テーブル）。</summary>
+/// <summary>表示用 ID とリソース UUID の対応（display_ids テーブル）。</summary>
 public class DisplayIdRow
 {
     public required string Kind { get; set; }

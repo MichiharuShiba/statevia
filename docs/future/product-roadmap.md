@@ -80,7 +80,7 @@ flowchart LR
 
 | 状態 | 内容 | ギャップ / 備考 |
 | --- | --- | --- |
-| **ある** | 構造化ログ（`[LoggerMessage]`）、相関 ID（`traceparent` / `X-Trace-Id`）、IO-14 マスキング、`GET /v1/health`、Docker / split-runtime ガイド、実行ダッシュボード＋ SSE | [logging-property-keys.md](../reference/logging-property-keys.md)、[io-log-masking.md](../specifications/platform/io-log-masking.md)、[operations-docker.md](../guides/operations-docker.md)、[push-api.md](../specifications/ui/push-api.md) |
+| **ある** | 構造化ログ（`[LoggerMessage]`）、相関 ID（`traceparent` / `X-Trace-Id`）、機微 IO 方針（ログマスキング）、`GET /v1/health`、Docker / split-runtime ガイド、実行ダッシュボード＋ SSE | [logging-property-keys.md](../reference/logging-property-keys.md)、[io-log-masking.md](../specifications/platform/io-log-masking.md)、[operations-docker.md](../guides/operations-docker.md)、[push-api.md](../specifications/ui/push-api.md) |
 | **部分** | 死活のみのヘルス、容量・負荷の公開指針 | readiness / 依存チェックなし。容量 Reference・負荷試験ガイドは未整備 |
 | **ない** | Prometheus / OpenTelemetry メトリクス・分散トレース、アラート / SLO、正式な負荷試験ガイド | [data-integration.md](../specifications/data-integration.md) はメトリクスを将来対応と記載 |
 

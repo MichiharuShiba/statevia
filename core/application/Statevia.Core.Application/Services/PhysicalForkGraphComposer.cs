@@ -7,7 +7,7 @@ using Statevia.Core.Engine.ExecutionGraphs;
 namespace Statevia.Core.Application.Services;
 
 /// <summary>
-/// 親実行グラフと物理子グラフを、論理 Fork/Join に見えるよう合成する（D6・GET 時）。
+/// 親実行グラフと物理子グラフを、論理 Fork/Join に見えるよう合成する（GET 時の論理 graph 合成）。
 /// </summary>
 /// <remarks>
 /// <para>永続スナップショットは変更しない。読み取り専用の合成 JSON を返す。</para>

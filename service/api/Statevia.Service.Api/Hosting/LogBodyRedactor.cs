@@ -3,7 +3,7 @@ using Statevia.Core.Engine.Infrastructure.Logging;
 namespace Statevia.Service.Api.Hosting;
 
 /// <summary>
-/// ログ用スナップショットの簡易マスキング（STV-408 前の妥協実装）。
+/// ログ用スナップショットの簡易マスキング（共通ログマスキング導入前の妥協実装）。
 /// </summary>
 internal static class LogBodyRedactor
 {

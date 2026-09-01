@@ -25,7 +25,7 @@ internal sealed class ForkRegionSnapshotRule : IValidationRule
     }
 }
 
-/// <summary>A1: 領域外から枝 Body への侵入。</summary>
+/// <summary>領域外から枝 Body への侵入。</summary>
 internal sealed class ForkRegionIngressRule : IValidationRule
 {
     /// <inheritdoc />
@@ -61,7 +61,7 @@ internal sealed class ForkRegionIngressRule : IValidationRule
     }
 }
 
-/// <summary>A2 / D10-A: Join 経由なしの領域外脱出（Failed 辺を含む）。</summary>
+/// <summary>Join 経由なしの領域外脱出（Failed 辺を含む。Failed は Join 供給に数えない）。</summary>
 internal sealed class ForkRegionEgressRule : IValidationRule
 {
     /// <inheritdoc />
@@ -98,7 +98,7 @@ internal sealed class ForkRegionEgressRule : IValidationRule
     }
 }
 
-/// <summary>A3: 他枝 Body 横断（同一 Fork 兄弟を含む）。</summary>
+/// <summary>他枝 Body 横断（同一 Fork 兄弟を含む）。</summary>
 internal sealed class ForkRegionCrossBranchRule : IValidationRule
 {
     /// <inheritdoc />
@@ -149,7 +149,7 @@ internal sealed class ForkRegionCrossBranchRule : IValidationRule
     }
 }
 
-/// <summary>A4: 内側 Body と外側の別枝との横断。</summary>
+/// <summary>内側 Body と外側の別枝との横断。</summary>
 internal sealed class ForkRegionNestedCrossRule : IValidationRule
 {
     /// <inheritdoc />
@@ -245,7 +245,7 @@ internal sealed class ForkRegionNestedCrossRule : IValidationRule
     }
 }
 
-/// <summary>B1: Join-all が供給経路を持たない。</summary>
+/// <summary>Join-all が供給経路を持たない。</summary>
 internal sealed class ForkRegionJoinNotFedRule : IValidationRule
 {
     /// <inheritdoc />
@@ -286,7 +286,7 @@ internal sealed class ForkRegionJoinNotFedRule : IValidationRule
     }
 }
 
-/// <summary>B2: 非入れ子の複数 Fork が同一 Join を供給する。</summary>
+/// <summary>非入れ子の複数 Fork が同一 Join を供給する。</summary>
 internal sealed class ForkRegionAmbiguousJoinRule : IValidationRule
 {
     /// <inheritdoc />
@@ -318,7 +318,7 @@ internal sealed class ForkRegionAmbiguousJoinRule : IValidationRule
     }
 }
 
-/// <summary>C1: 枝先頭への Fork 以外の入口。</summary>
+/// <summary>枝先頭への Fork 以外の入口。</summary>
 internal sealed class ForkRegionBranchEntryRule : IValidationRule
 {
     /// <inheritdoc />
@@ -356,7 +356,7 @@ internal sealed class ForkRegionBranchEntryRule : IValidationRule
         snap.Incoming.TryGetValue(head, out var incoming) ? incoming : [];
 }
 
-/// <summary>C3: 対応 Join が無い Fork。</summary>
+/// <summary>対応 Join が無い Fork。</summary>
 internal sealed class ForkRegionMissingJoinRule : IValidationRule
 {
     /// <inheritdoc />
@@ -388,7 +388,7 @@ internal sealed class ForkRegionMissingJoinRule : IValidationRule
     }
 }
 
-/// <summary>禁止パターン D1: Join 前の他枝 <c>$.states</c> リテラル。</summary>
+/// <summary>Join 前の他枝 <c>$.states</c> リテラル。</summary>
 internal sealed class ForkRegionSiblingStateRefRule : IValidationRule
 {
     /// <inheritdoc />
@@ -428,7 +428,7 @@ internal sealed class ForkRegionSiblingStateRefRule : IValidationRule
     }
 }
 
-/// <summary>禁止パターン D2: 枝内 Wait の遷移先が領域外または他枝。</summary>
+/// <summary>枝内 Wait の遷移先が領域外または他枝。</summary>
 internal sealed class ForkRegionWaitTargetRule : IValidationRule
 {
     /// <inheritdoc />

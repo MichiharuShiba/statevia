@@ -1,6 +1,6 @@
 namespace Statevia.Core.Application.Contracts.Services;
 
-/// <summary>表示用 ID（10 桁・62 文字種）の UUID 解決（U3）。</summary>
+/// <summary>表示用 ID（10 桁・62 文字種）の UUID 解決。</summary>
 public interface IDisplayIdService
 {
     /// <summary>表示用 ID または UUID 文字列から UUID を解決する。見つからなければ null。</summary>

@@ -16,7 +16,7 @@ type ForkJoinLightPair = {
 };
 
 /**
- * Studio 向けの安い Fork 領域チェック（A1 / A2 / 禁止パターン D2）。
+ * Studio 向けの安い Fork 領域チェック（領域外からの侵入 / Join 以外への脱出 / 枝内 Wait の領域外／他枝遷移）。
  *
  * @param byName - 正規化名 → ノード。
  * @param messages - 指摘の蓄積先。
