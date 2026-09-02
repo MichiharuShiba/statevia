@@ -16,7 +16,7 @@ public sealed class HttpRequestActionStateTests
     {
         // Arrange
         HttpRequestMessage? captured = null;
-        var state = new HttpRequestActionState(() => CreateClient((request, _) =>
+        var state = CreateActionState(() => CreateClient((request, _) =>
         {
             captured = request;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -78,7 +78,7 @@ public sealed class HttpRequestActionStateTests
         HttpClient? client = null;
         HttpRequestMessage? captured = null;
         string? capturedBody = null;
-        var state = new HttpRequestActionState(() =>
+        var state = CreateActionState(() =>
         {
             client = CreateClient(async (request, _) =>
             {
@@ -131,7 +131,7 @@ public sealed class HttpRequestActionStateTests
     {
         // Arrange
         string? capturedBody = null;
-        var state = new HttpRequestActionState(() => CreateClient(async (request, _) =>
+        var state = CreateActionState(() => CreateClient(async (request, _) =>
         {
             capturedBody = request.Content is null
                 ? null
@@ -162,7 +162,7 @@ public sealed class HttpRequestActionStateTests
         // Arrange
         HttpRequestMessage? captured = null;
         string? capturedBody = null;
-        var state = new HttpRequestActionState(() => CreateClient(async (request, _) =>
+        var state = CreateActionState(() => CreateClient(async (request, _) =>
         {
             captured = request;
             capturedBody = request.Content is null
@@ -193,7 +193,7 @@ public sealed class HttpRequestActionStateTests
     public async Task ExecuteAsync_OversizedBody_Throws()
     {
         // Arrange
-        var state = new HttpRequestActionState(() => CreateClient((_, _) =>
+        var state = CreateActionState(() => CreateClient((_, _) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK))));
         var input = new Dictionary<string, object?>
         {
@@ -214,7 +214,7 @@ public sealed class HttpRequestActionStateTests
     {
         // Arrange
         HttpRequestMessage? captured = null;
-        var state = new HttpRequestActionState(() => CreateClient((request, _) =>
+        var state = CreateActionState(() => CreateClient((request, _) =>
         {
             captured = request;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -243,7 +243,7 @@ public sealed class HttpRequestActionStateTests
     {
         // Arrange
         var oversized = new string('x', 1_048_577);
-        var state = new HttpRequestActionState(() => CreateClient((_, _) =>
+        var state = CreateActionState(() => CreateClient((_, _) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(oversized, Encoding.UTF8, "text/plain"),
@@ -298,6 +298,10 @@ public sealed class HttpRequestActionStateTests
         {
             BaseAddress = new Uri("https://example.com"),
         };
+
+    private static HttpRequestActionState CreateActionState(Func<HttpClient> httpClientFactory) =>
+        new(httpClientFactory, static (_, _) =>
+            Task.FromResult(new[] { IPAddress.Parse("93.184.216.34") }));
 
     private sealed class StubHttpMessageHandler(
         Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler) : HttpMessageHandler

@@ -21,11 +21,34 @@ internal static class ActionHostGrpcInvoker
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(request);
 
+        return await InvokeAsync(
+            (rpcRequest, deadline, ct) => client
+                .ExecuteActionAsync(rpcRequest, deadline: deadline, cancellationToken: ct)
+                .ResponseAsync,
+            request,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>gRPC deadline の決定と例外写像をテスト可能にする。</summary>
+    /// <param name="execute">RPC 実行。</param>
+    /// <param name="request">Platform 実行リクエスト。</param>
+    /// <param name="cancellationToken">キャンセル。</param>
+    /// <returns>実行結果。</returns>
+    internal static async Task<ActionExecutionResult> InvokeAsync(
+        Func<ActionExecutionRpcRequest, DateTime?, CancellationToken, Task<ActionExecutionRpcResponse>> execute,
+        ActionExecutionRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(execute);
+        ArgumentNullException.ThrowIfNull(request);
+
         try
         {
             var rpcRequest = ActionExecutionContractMapper.ToRpcRequest(request);
-            var rpcResponse = await client
-                .ExecuteActionAsync(rpcRequest, cancellationToken: cancellationToken)
+            var rpcResponse = await execute(
+                    rpcRequest,
+                    request.Deadline?.UtcDateTime,
+                    cancellationToken)
                 .ConfigureAwait(false);
 
             return ActionExecutionContractMapper.FromRpcResponse(rpcResponse);

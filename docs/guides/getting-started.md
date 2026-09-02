@@ -3,13 +3,15 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.2 |
-| 更新日 | 2026-09-01 |
+| Version | 1.3 |
+| 更新日 | 2026-09-02 |
 | 関連 | [operations-docker.md](operations-docker.md), [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md), [api-http.md](../specifications/api-http.md), [samples/](../samples/) |
 
 ---
 
 Docker Compose で PostgreSQL・Service API・UI を起動し、API で定義を publish して実行するまでの最短手順。定義 YAML の例は [samples/](../samples/)。
+
+**Version 1.3（2026-09-02）**: ログイン失敗ロックと `/v1/actions` の Principal 必須を追記。
 
 **Version 1.2（2026-09-01）**: ホスト起動手順を本書に移した。
 
@@ -65,7 +67,7 @@ docker compose up -d
 
 ## 3. 認証（Runtime API）
 
-`/v1/definitions` / `/v1/executions` / `/v1/events` は **Principal 必須**（JWT または `X-Api-Key`）+ `X-Tenant-Id`（`tenant_key`、既定 `default`）。
+`/v1/definitions` / `/v1/executions` / `/v1/events` / `/v1/actions` は **Principal 必須**（JWT または `X-Api-Key`）+ `X-Tenant-Id`（`tenant_key`、既定 `default`）。
 
 **Development**（`docker compose` の既定）では API 起動時に次の管理者が自動作成される（`skip-if-exists`、マイグレーション適用後）:
 
@@ -81,7 +83,7 @@ curl -s -X POST http://localhost:8080/v1/auth/login \
   -d '{"tenantKey":"default","username":"admin","password":"admin123"}'
 ```
 
-応答の `accessToken` を `Authorization: Bearer <token>` に設定する。本番・追加テナントの手動作成は [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md) を参照。
+応答の `accessToken` を `Authorization: Bearer <token>` に設定する。実在するユーザーで 15 分以内に失敗が 10 回に達すると 15 分間ログインできない（401 の文言は資格情報不正と同じ）。本番・追加テナントの手動作成は [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md) を参照。
 
 ## 4. 定義の登録（初回）
 

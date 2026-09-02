@@ -298,6 +298,64 @@ public sealed class TenantContextMiddlewareTests
         Assert.Equal("UNAUTHORIZED", ex.Code);
     }
 
+    /// <summary>/v1/actions も Principal 必須。</summary>
+    [Fact]
+    public async Task InvokeAsync_HeaderOnlyOnActionsPath_ThrowsUnauthorized()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
+        var accessor = new SettableTenantContextAccessor();
+        var nextInvoked = false;
+
+        var middleware = new TenantContextMiddleware(_ =>
+        {
+            nextInvoked = true;
+            return Task.CompletedTask;
+        }, jwt);
+
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/v1/actions/schema";
+        context.Request.Headers[TenantRequestHeaders.HeaderName] = "default";
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<UnauthorizedException>(() =>
+            middleware.InvokeAsync(context, accessor, platform));
+        Assert.False(nextInvoked);
+        Assert.Equal("UNAUTHORIZED", ex.Code);
+    }
+
+    /// <summary>JWT 付きなら /v1/actions/schema を通過する。</summary>
+    [Fact]
+    public async Task InvokeAsync_ValidJwtOnActionsPath_InvokesNext()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
+        var principalId = Guid.NewGuid();
+        var (token, _) = jwt.IssueAccessToken(TestTenantIds.DefaultTenantId, "default", principalId);
+        var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
+        var accessor = new SettableTenantContextAccessor();
+        var nextInvoked = false;
+
+        var middleware = new TenantContextMiddleware(_ =>
+        {
+            nextInvoked = true;
+            return Task.CompletedTask;
+        }, jwt);
+
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/v1/actions/schema";
+        context.Request.Headers.Authorization = $"Bearer {token}";
+
+        // Act
+        await middleware.InvokeAsync(context, accessor, platform);
+
+        // Assert
+        Assert.True(nextInvoked);
+    }
+
     private static void AttachApiKeyAuthenticationService(
         HttpContext context,
         IApiKeyAuthenticationService apiKeyAuthenticationService)
