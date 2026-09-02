@@ -3,13 +3,15 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.1 |
-| 更新日 | 2026-09-01 |
+| Version | 1.2 |
+| 更新日 | 2026-09-03 |
 | 関連 | [getting-started.md](getting-started.md), [action-host.md](action-host.md), [environment-variables.md](../reference/environment-variables.md) |
 
 ---
 
 リポジトリ直下の `docker-compose.yml` で **PostgreSQL 16**・**Service API（C#）**・**UI（Next.js）**・**Action Host** を起動できます。
+
+**Version 1.2（2026-09-03）**: 専用 Worker は JWT 署名鍵を要求しない。split-runtime のローカル compose は `DOTNET_ENVIRONMENT=Development`。
 
 **Version 1.1（2026-09-01）**: compose の Action Host 接続を現行として書く。作業番号を外す。
 
@@ -79,7 +81,7 @@ docker compose up -d
 - compose のサービス名を変更したあと `port is already allocated` や `Found orphan containers` が出る → 旧コンテナ（例: `statevia-core-api-1`, `statevia-ui-1`）がポートを占有している。`docker compose up -d --remove-orphans` で orphan を削除するか、`docker compose down --remove-orphans` のあと再起動する
 - マイグレーション未適用で API が失敗する → `database update` を実行してから `service-api` を再起動
 - UI から API に届かない → compose では `ui-studio` → `service-api` は内部 DNS 名。ブラウザからは UI のプロキシ（`/api/core/...`）経由でアクセス
-- Service API が起動直後に落ちる（`OptionsValidationException`）→ `Statevia:ExecutionPolicy:Sandbox:Docker:*` の範囲外値や `Auth:Jwt:*` の不正を確認。キー名と制約はログに出る（値は出ない）。許容範囲は [environment-variables.md](../reference/environment-variables.md)
+- Service API が起動直後に落ちる（`OptionsValidationException`）→ `Statevia:ExecutionPolicy:Sandbox:Docker:*` の範囲外値や `Auth:Jwt:*` の不正を確認。キー名と制約はログに出る（値は出ない）。許容範囲は [environment-variables.md](../reference/environment-variables.md)。専用 Worker は `Auth:Jwt:*` を検証しない
 - 同上で `EventDelivery:Retry:*` も確認 → とくに `MaxDelayMs < BaseDelayMs` は以前黙認されていた誤設定でも **起動失敗**になる
 - Container 実行だけ失敗し API は起動する → `Docker:Image` 未設定は起動時検証の対象外（実行時 `SandboxRuntimeUnavailable`）。Image を設定する
 
@@ -90,7 +92,7 @@ docker compose up -d
 | service-api | `DATABASE_URL`（`POSTGRES_*` から組み立て）, `ASPNETCORE_URLS`, `ASPNETCORE_ENVIRONMENT`（compose では `Development`）。分離時は override で `Statevia__Runtime__EnableInProcess*=false`。ブラウザから API へ直叩きする場合のみ `Statevia__Cors__AllowedOrigins__0`（未設定時はクロスオリジン不許可。Studio はプロキシ） |
 | postgres    | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`（`.env` / `.env.example`） |
 | action-host | `ASPNETCORE_URLS`（compose では `http://+:5001`）, `STATEVIA_MODULES_PATH`（`/app/modules`） |
-| scheduler / worker | `DATABASE_URL`（`docker-compose.split-runtime.yml`）。worker は `Statevia__ActionHost__BaseUrl` も共有。並列は `Statevia__Runtime__Worker__MaxConcurrency`（既定 1）。Cancel 独立ループは `Statevia__Runtime__Worker__CancelConcurrency`。watchdog は `Statevia__Runtime__Worker__NoProgressTimeout`（既定 `00:10:00`。長い Action は対象外）。API 内ワーカーでも同じキー |
+| scheduler / worker | `DATABASE_URL`（`docker-compose.split-runtime.yml`）。ローカル compose は `DOTNET_ENVIRONMENT=Development`（Generic Host。ASP.NET イメージ既定の Production を上書き）。worker は `Statevia__ActionHost__BaseUrl` も共有。JWT 署名鍵は不要。並列は `Statevia__Runtime__Worker__MaxConcurrency`（既定 1）。Cancel 独立ループは `Statevia__Runtime__Worker__CancelConcurrency`。watchdog は `Statevia__Runtime__Worker__NoProgressTimeout`（既定 `00:10:00`。長い Action は対象外）。API 内ワーカーでも同じキー |
 | ui-studio  | `SERVICE_API_INTERNAL_BASE` |
 
 詳細は `docker-compose.yml` / `docker-compose.split-runtime.yml` と [environment-variables.md](../reference/environment-variables.md) を参照してください。

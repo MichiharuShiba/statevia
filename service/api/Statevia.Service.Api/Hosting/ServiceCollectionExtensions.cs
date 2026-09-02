@@ -56,6 +56,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <remarks>
     /// プロセス内 Scheduler / OwnershipRecovery は Off、Worker HostedService は On に固定する。
+    /// JWT 発行と SigningKey の起動検証は登録しない（HTTP API 専用）。
     /// </remarks>
     public static IServiceCollection AddStateviaWorkerHost(
         this IServiceCollection services, IConfiguration configuration)
@@ -77,7 +78,7 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Persistence / Engine / Actions / Runtime HostedService など実行系 DI を登録する。
     /// </summary>
-    /// <remarks>HTTP コントローラ・CORS・OpenAPI・テナント管理 API 向けサービスは含まない。</remarks>
+    /// <remarks>HTTP コントローラ・CORS・OpenAPI・テナント管理・JWT 発行は含まない。</remarks>
     public static IServiceCollection AddStateviaExecutionRuntime(
         this IServiceCollection services, IConfiguration configuration)
     {
@@ -161,6 +162,7 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+        services.AddStateviaJwtAuth(configuration);
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<LoginFailureLockStore>();
         services.AddSingleton<ILoginFailureLockStore>(sp => sp.GetRequiredService<LoginFailureLockStore>());

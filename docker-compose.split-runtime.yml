@@ -16,6 +16,9 @@ services:
       context: .
       dockerfile: service/runtime/Statevia.Service.Runtime.Scheduler/Dockerfile
     environment:
+      # Generic Host は DOTNET_ENVIRONMENT。ランタイムイメージ既定 Production をローカルでは API と同じ Development に揃える。
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Development
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
     depends_on:
       - postgres
@@ -25,6 +28,8 @@ services:
       context: .
       dockerfile: service/runtime/Statevia.Service.Runtime.Worker/Dockerfile
     environment:
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Development
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       Statevia__ActionHost__BaseUrl: "http://action-host:5001"
       Statevia__Runtime__Worker__MaxConcurrency: 4

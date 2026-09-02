@@ -549,6 +549,39 @@ public sealed class OptionsValidationTests
         Assert.DoesNotContain(
             services,
             d => d.ImplementationType == typeof(TenantBootstrapHostedService));
+        Assert.DoesNotContain(
+            services,
+            d => d.ServiceType == typeof(Statevia.Infrastructure.Security.JwtTokenService));
+        Assert.DoesNotContain(
+            services,
+            d => d.ServiceType.IsGenericType
+                && d.ServiceType.GetGenericTypeDefinition() == typeof(IValidateOptions<>)
+                && d.ServiceType.GenericTypeArguments[0] == typeof(JwtAuthOptions));
+    }
+
+    /// <summary>
+    /// 専用 Worker は Production でも開発既定 JWT 鍵で起動検証しない（ASP.NET イメージ既定が Production）。
+    /// </summary>
+    [Fact]
+    public void AddStateviaWorkerHost_WhenProductionAndDefaultSigningKey_StartupValidationSucceeds()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddSingleton<IHostEnvironment>(new JwtTestHostEnvironment(Environments.Production));
+        services.AddStateviaWorkerHost(BuildValidConfiguration());
+        using var provider = services.BuildServiceProvider();
+
+        // Act
+        var act = () =>
+        {
+            foreach (var validator in provider.GetServices<IStartupValidator>())
+                validator.Validate();
+        };
+
+        // Assert
+        var exception = Record.Exception(act);
+        Assert.Null(exception);
+        Assert.Null(provider.GetService<Statevia.Infrastructure.Security.JwtTokenService>());
     }
 
     /// <summary>

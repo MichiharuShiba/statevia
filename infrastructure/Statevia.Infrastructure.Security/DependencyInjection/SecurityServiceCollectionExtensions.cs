@@ -8,12 +8,13 @@ namespace Statevia.Infrastructure.Security.DependencyInjection;
 public static class SecurityServiceCollectionExtensions
 {
     /// <summary>
-    /// JWT、テナント文脈、Platform データアクセス、認可ポート実装を登録する。
+    /// テナント文脈、Platform データアクセス、認可ポート実装を登録する。
     /// </summary>
     /// <param name="services">サービスコレクション。</param>
     /// <param name="configuration">アプリケーション設定。</param>
     /// <remarks>
-    /// Production / Staging では JWT の開発既定 SigningKey と 32 文字未満を起動時に拒否する。失敗メッセージに鍵値は出さない。
+    /// JWT 発行と SigningKey の起動検証は含まない。HTTP API は <see cref="AddStateviaJwtAuth"/> を別途登録する。
+    /// 専用 Worker は JWT を発行しないため、本メソッドだけを使う。
     /// </remarks>
     public static IServiceCollection AddStateviaInfrastructureSecurity(
         this IServiceCollection services,
@@ -23,7 +24,6 @@ public static class SecurityServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
-        services.AddSingleton<JwtTokenService>();
         services.AddSingleton<PasswordCredentialService>();
         services.AddScoped<IPlatformDataAccess, PlatformDataAccess>();
         services.AddScoped<IPrincipalDataAccess, PrincipalDataAccessAdapter>();
@@ -34,6 +34,25 @@ public static class SecurityServiceCollectionExtensions
         services.AddScoped<IExecutionMutationAuthorization, ExecutionMutationAuthorization>();
         services.AddScoped<TenantAdminBootstrap>();
 
+        return services;
+    }
+
+    /// <summary>
+    /// JWT 発行サービスと SigningKey の起動時検証を登録する。
+    /// </summary>
+    /// <param name="services">サービスコレクション。</param>
+    /// <param name="configuration">アプリケーション設定。</param>
+    /// <remarks>
+    /// Service API（HTTP）専用。Production / Staging では開発既定 SigningKey と 32 文字未満を拒否する。失敗メッセージに鍵値は出さない。
+    /// </remarks>
+    public static IServiceCollection AddStateviaJwtAuth(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        services.AddSingleton<JwtTokenService>();
         services.AddOptions<JwtAuthOptions>()
             .Bind(configuration.GetSection(JwtAuthOptions.SectionName))
             .Validate(

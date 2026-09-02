@@ -3,7 +3,7 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.19 |
+| Version | 1.20 |
 | 更新日 | 2026-09-03 |
 | 関連 | [reference/api-openapi.md](../reference/api-openapi.md), [concepts/platform.md](../concepts/platform.md), [execution/wait-cancel.md](execution/wait-cancel.md) |
 
@@ -25,6 +25,8 @@
 
 Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 
+**Version 1.20（2026-09-03）**: JWT 署名鍵の起動検証は Service API のみ。専用 Worker / Scheduler は対象外。
+
 **Version 1.19（2026-09-03）**: ログイン失敗ロックを PostgreSQL 共有表へ移す。5 回 / 15 分窓 / 15 分ロック。期限切れは定期削除。未知のユーザーはカウントしない。
 
 **Version 1.18（2026-09-02）**: `/v1/actions` を Middleware の Principal 必須に含める。実在ユーザーのログイン失敗はテナント＋ユーザー単位で 10 回 / 15 分窓、15 分ロック（プロセス内メモリ、保持 4096 件）。未知のユーザーはカウントしない。
@@ -32,8 +34,6 @@ Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 **Version 1.17（2026-09-01）**: エンドポイント一覧に auth / admin / Module reload を追加。SSE は Principal 必須。`project_id` は NOT NULL。Production / Staging の JWT 既定鍵拒否を現行として書く。
 
 **Version 1.16（2026-09-01）**: `POST /v1/events` を契約表に追加。`executions.write` 不足は 403。queued Start の載荷済み再処理は no-op。開始済み Resume の未分類上限は `restartLost`（`Failed` にしない）。
-
-**Version 1.15（2026-08-22）**: `GET /v1/executions/{id}/waits` を追加。未完了 Wait の `nodeId` / `nodeName` / `allowedEvents` だけを返す（機微 IO 方針: `input` / `output` なし）。CLI は `exec waits`。
 
 **Version 1.14（2026-08-19）**: 新規・更新パスワードは 8〜128 文字・空白なし（記号可。大文字小文字の混在は必須にしない）。ログイン時の現行パスワードには適用しない。
 
@@ -521,7 +521,7 @@ Response（`GET /v1/admin/modules` の 1 件）: `moduleId`, `name`, `version`, 
 - **必須**: Principal が解決済みであること（JWT または `X-Api-Key`）。
 - **拒否**: `X-Tenant-Id` のみ（Bearer / API キーなし）は **401**（`UNAUTHORIZED`）。
 - **除外パス**: `/v1/auth/login`、`/v1/health`、`/swagger/*`、`/scalar/*`。
-- **JWT 署名鍵**: Production / Staging では開発既定値および 32 文字未満の `Auth:Jwt:SigningKey` で起動しない（[environment-variables.md](../reference/environment-variables.md)）。Development の開発既定値は可。ログに鍵値は出さない。
+- **JWT 署名鍵**: Service API のみ。Production / Staging では開発既定値および 32 文字未満の `Auth:Jwt:SigningKey` で起動しない（[environment-variables.md](../reference/environment-variables.md)）。Development の開発既定値は可。ログに鍵値は出さない。専用 Worker / Scheduler は JWT を発行せず、この検証の対象外。
 
 ### 4.1.2.1 Runtime API の global permission 認可
 
