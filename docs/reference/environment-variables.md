@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Reference |
-| Version | 1.7 |
-| 更新日 | 2026-09-01 |
+| Version | 1.8 |
+| 更新日 | 2026-09-03 |
 
 ---
 
@@ -54,7 +54,7 @@ Service API / UI / Module の主要な環境変数と `appsettings` キー。**�
 | `Statevia:ExecutionPolicy:Sandbox:Docker:DefaultTimeoutSeconds` | 既定タイムアウト秒（10〜3600） | 範囲外 → **起動失敗** |
 | `Statevia:ExecutionPolicy:Sandbox:Docker:GrpcPort` | コンテナ内 gRPC ポート（1024〜65535） | 範囲外 → **起動失敗** |
 | `Statevia:ExecutionPolicy:Sandbox:Docker:NetworkMode` | Docker NetworkMode（`none` 不可。空白は `bridge`＋Warning） | `none` → **起動失敗** |
-| `Auth:Jwt:SigningKey` | JWT 署名シークレット | 空 → **起動失敗**。Production / Staging では開発既定値および 32 文字未満も **起動失敗**（メッセージに鍵値は出さない）。Development の開発既定値は可 |
+| `Auth:Jwt:SigningKey` | JWT 署名シークレット（**Service API のみ**。専用 Worker / Scheduler は読まない） | 空 → **起動失敗**。Production / Staging では開発既定値および 32 文字未満も **起動失敗**（メッセージに鍵値は出さない）。Development の開発既定値は可 |
 | `Auth:Jwt:AccessTokenLifetimeMinutes` | トークン有効期間（分、≥1） | 範囲外 → **起動失敗** |
 | `ExecutionProjectionQueue:*` | Projection キュー（サイズ・リトライ遅延等） | 範囲外・矛盾 → **起動失敗** |
 | `EventDelivery:Retry:*` | イベント配送リトライ | 範囲外・`MaxDelayMs < BaseDelayMs` → **起動失敗** |
