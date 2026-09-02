@@ -44,6 +44,8 @@ Service API と Engine の構造化ログで、同じ概念に同じキー名を
 | 例外型 | `ExceptionType` / `ErrorType` | API / Engine | - |
 | 操作主体 Principal | `ActorPrincipalId` | 管理者パスワード更新 | 監査。平文・ハッシュは出さない |
 | 操作対象ユーザー | `TargetUserId` | 管理者パスワード更新 | `users.user_id` |
+| テナントキー | `TenantKey` | ログイン失敗ロック | JWT 前の外部キー。パスワードは出さない |
+| ユーザー名 | `Username` | ログイン失敗ロック | ロック主体。パスワード・ハッシュは出さない |
 
 ## Engine
 

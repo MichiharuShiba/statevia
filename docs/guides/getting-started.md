@@ -3,13 +3,15 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.3 |
-| 更新日 | 2026-09-02 |
+| Version | 1.4 |
+| 更新日 | 2026-09-03 |
 | 関連 | [operations-docker.md](operations-docker.md), [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md), [api-http.md](../specifications/api-http.md), [samples/](../samples/) |
 
 ---
 
 Docker Compose で PostgreSQL・Service API・UI を起動し、API で定義を publish して実行するまでの最短手順。定義 YAML の例は [samples/](../samples/)。
+
+**Version 1.4（2026-09-03）**: ログイン失敗ロックを 5 回 / 15 分窓 / 15 分ロック（PostgreSQL 共有）に更新。
 
 **Version 1.3（2026-09-02）**: ログイン失敗ロックと `/v1/actions` の Principal 必須を追記。
 
@@ -83,7 +85,7 @@ curl -s -X POST http://localhost:8080/v1/auth/login \
   -d '{"tenantKey":"default","username":"admin","password":"admin123"}'
 ```
 
-応答の `accessToken` を `Authorization: Bearer <token>` に設定する。実在するユーザーで 15 分以内に失敗が 10 回に達すると 15 分間ログインできない（401 の文言は資格情報不正と同じ）。本番・追加テナントの手動作成は [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md) を参照。
+応答の `accessToken` を `Authorization: Bearer <token>` に設定する。実在するユーザーで 15 分以内に失敗が 5 回に達すると 15 分間ログインできない（401 の文言は資格情報不正と同じ。回数は PostgreSQL で共有し、再起動後も残る）。本番・追加テナントの手動作成は [operations-tenant-bootstrap.md](operations-tenant-bootstrap.md) を参照。
 
 ## 4. 定義の登録（初回）
 

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging.Abstractions;
+
 using Statevia.Service.Api.Contracts.Auth;
 using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Services;
@@ -37,7 +39,11 @@ public sealed class TenantAdminBootstrapTests
             new PlatformDataAccess(database.Factory, new DefaultIdGenerator()),
             CreateJwt(),
             new PasswordCredentialService(),
-            new InMemoryLoginFailureLockStore(TimeProvider.System));
+            new LoginFailureLockStore(
+                database.Factory,
+                TimeProvider.System,
+                new DefaultIdGenerator(),
+                NullLogger<LoginFailureLockStore>.Instance));
         var login = await auth.LoginAsync(
             new LoginRequest
             {
