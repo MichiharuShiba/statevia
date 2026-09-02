@@ -1,7 +1,9 @@
 # スキーマ定義
 
-Version: 1.20
+Version: 1.21
 Project: 実行型ステートマシン
+
+**Version 1.21（2026-09-02）**: `login_failure_locks` / `login_failure_attempts` を追加（ログイン失敗ロック。JWT 前の tenant_key 点取得。QueryFilter なし）。
 
 **Version 1.20（2026-08-18）**: `users.username` を varchar(64)（英数字・ハイフン・アンダースコア・ドット）、`users.email` を varchar(256) に制限。
 
@@ -51,7 +53,7 @@ Service API（C#）の EF Core マイグレーションで管理する PostgreSQ
 | 識別子 | 型 | 用途 |
 | --- | --- | --- |
 | `tenants.tenant_id` | uuid | 内部 FK・JWT クレーム `tenant_id`・セキュリティ系テーブルの `tenant_id` FK |
-| `tenant_key` | varchar(64) | SDK / CLI / `X-Tenant-Id`（HTTP 契約。DB 永続化には使わない） |
+| `tenant_key` | varchar(64) | SDK / CLI / `X-Tenant-Id`（HTTP 契約）。実行系 FK には使わない。ログイン失敗ロックは JWT 前のためこのキーで点取得する |
 
 実行系テーブル（`definitions` / `executions` / `execution_cursors` / `event_delivery_dedup` / レガシー `workflow_definitions`）の `tenant_id` は **`uuid` + FK → `tenants.tenant_id`**（マイグレーション `ExecutionTenantIdUuidFk`）。
 
@@ -89,6 +91,8 @@ Service API（C#）の EF Core マイグレーションで管理する PostgreSQ
 | user_group_members | Platform | ユーザーとグループの所属 |
 | service_accounts | Platform | サービスアカウント（Principal への subtype 行） |
 | api_keys | Platform | API キー（平文は保存せず prefix + hash） |
+| login_failure_locks | Platform | ログイン失敗ロック（テナントキー＋ユーザー名。`locked_until` が null なら未ロック） |
+| login_failure_attempts | Platform | 窓内のログイン失敗時刻（親行は `login_failure_locks`。CASCADE DELETE） |
 
 ### 1.1 truth / projection（定義・実行）
 
@@ -112,6 +116,7 @@ Service API（C#）の EF Core マイグレーションで管理する PostgreSQ
 | 実行系 `tenant_id` uuid | **`tenants.tenant_id` FK**（HasQueryFilter は内部 UUID で fail-closed） |
 | セキュリティ系 `tenant_id` uuid | **`tenants.tenant_id` 参照**（HasQueryFilter は内部 UUID で一致） |
 | `IgnoreQueryFilters()` | **`IPlatformDataAccess`（Platform 専用層）のみ**許容 |
+| `login_failure_locks` / `login_failure_attempts` | ログイン失敗ロック。JWT 前の `tenant_key` 点取得。**HasQueryFilter なし** |
 
 ---
 
@@ -540,6 +545,31 @@ API キー。**平文キーは保存しない**。lookup 用に `key_prefix` と
 
 **インデックス:** `(tenant_id, key_prefix)`
 
+### 2.23 login_failure_locks
+
+公開ログインの失敗ロック。キーは JWT 前のテナントキー＋ユーザー名。未知主体の行は作らない。`users` への FK は置かない。`tenants.tenant_key` への FK は置かない（ログインキーとの一致を優先）。
+
+| カラム | 型 | 制約 | 説明 |
+| --- | --- | --- | --- |
+| tenant_key | varchar(64) | PK, NOT NULL | ログイン要求のテナントキー |
+| username | varchar(64) | PK, NOT NULL | ログイン要求のユーザー名（1〜64。既存契約） |
+| locked_until | timestamptz | NULL | ロック期限。null なら未ロック |
+
+**インデックス:** `(locked_until)`
+
+### 2.24 login_failure_attempts
+
+窓内の失敗時刻。親は `login_failure_locks`。親削除で CASCADE DELETE。
+
+| カラム | 型 | 制約 | 説明 |
+| --- | --- | --- | --- |
+| attempt_id | uuid | PK, NOT NULL | 失敗行 ID |
+| tenant_key | varchar(64) | FK → login_failure_locks, NOT NULL | 親のテナントキー |
+| username | varchar(64) | FK → login_failure_locks, NOT NULL | 親のユーザー名 |
+| failed_at | timestamptz | NOT NULL | 失敗時刻 |
+
+**インデックス:** `(tenant_key, username, failed_at)`
+
 ---
 
 ## 3. ER 図
@@ -651,6 +681,8 @@ erDiagram
   tenants ||--o{ groups : "tenant_id"
   tenants ||--o{ service_accounts : "tenant_id"
   tenants ||--o{ api_keys : "tenant_id"
+  tenants ||--o{ login_failure_locks : "tenant_key"
+  login_failure_locks ||--o{ login_failure_attempts : "subject"
   principals ||--o| user_principals : "principal_id"
   users ||--o| user_principals : "user_id"
   users ||--o{ user_group_members : "user_id"
@@ -744,9 +776,22 @@ erDiagram
     timestamptz expires_at
     timestamptz created_at
   }
+
+  login_failure_locks {
+    string tenant_key PK
+    string username PK
+    timestamptz locked_until
+  }
+
+  login_failure_attempts {
+    uuid attempt_id PK
+    string tenant_key FK
+    string username FK
+    timestamptz failed_at
+  }
 ```
 
-- **tenants.tenant_key** は外部向け不変キー。実行系 `tenant_id` varchar は移行期 **同値**で運用する。
+- **tenants.tenant_key** は外部向け不変キー。実行系 FK は `tenants.tenant_id`。ログイン失敗ロックは JWT 前のため `tenant_key` で点取得する（`tenants` への DB FK は置かない）。
 - **principals** は User / ServiceAccount / System の共通親行。**論理削除**は `deleted_at` / `is_active` で表現する。
 - **user_principals** は User 型 Principal との 1:1 対応。
 - **group_permissions.permission_key** → **permission_definitions.permission_key**（グローバル権限辞書）。

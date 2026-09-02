@@ -119,3 +119,22 @@ internal sealed class ApiKeyRow
     public DateTime? LastUsedAt { get; set; }
     public DateTime CreatedAt { get; set; }
 }
+
+/// <summary><c>login_failure_locks</c> 行。テナントキー＋ユーザー名のロック期限。</summary>
+/// <remarks>JWT 前の点取得用。HasQueryFilter は載せない。未知主体の行は作らない。</remarks>
+internal sealed class LoginFailureLockRow
+{
+    public string TenantKey { get; set; } = "";
+    public string Username { get; set; } = "";
+    /// <summary>ロック期限。null なら未ロック。</summary>
+    public DateTime? LockedUntil { get; set; }
+}
+
+/// <summary><c>login_failure_attempts</c> 行。窓内の失敗時刻。</summary>
+internal sealed class LoginFailureAttemptRow
+{
+    public Guid AttemptId { get; set; }
+    public string TenantKey { get; set; } = "";
+    public string Username { get; set; } = "";
+    public DateTime FailedAt { get; set; }
+}

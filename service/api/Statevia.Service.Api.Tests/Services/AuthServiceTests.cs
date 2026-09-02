@@ -1,10 +1,11 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-
-using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Contracts.Auth;
-using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 using Statevia.Service.Api.Tests.Infrastructure.Security;
@@ -24,7 +25,7 @@ public sealed class AuthServiceTests
             platform,
             jwt,
             new PasswordCredentialService(),
-            lockStore ?? new InMemoryLoginFailureLockStore(TimeProvider.System));
+            lockStore ?? CreateLockStore(database));
     }
 
     /// <summary>正しい資格情報で JWT が発行される。</summary>
@@ -92,7 +93,7 @@ public sealed class AuthServiceTests
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var store = new InMemoryLoginFailureLockStore(TimeProvider.System);
+        var store = CreateLockStore(database);
         var auth = CreateAuthService(database, store);
 
         // Act
@@ -104,7 +105,8 @@ public sealed class AuthServiceTests
         }, CancellationToken.None));
 
         // Assert
-        Assert.Equal(0, store.TrackedCount);
+        await using var db = database.Factory.CreateDbContext();
+        Assert.Equal(0, await db.LoginFailureLocks.CountAsync(row => row.Username == "missing"));
         Assert.False(store.IsLocked("default", "missing"));
     }
 
@@ -320,7 +322,7 @@ public sealed class AuthServiceTests
             Password = "wrong"
         };
 
-        for (var attempt = 0; attempt < InMemoryLoginFailureLockStore.MaxFailedAttempts; attempt++)
+        for (var attempt = 0; attempt < LoginFailureLockStore.MaxFailedAttempts; attempt++)
         {
             await Assert.ThrowsAsync<UnauthorizedException>(() =>
                 auth.LoginAsync(wrong, CancellationToken.None));
@@ -371,5 +373,132 @@ public sealed class AuthServiceTests
         // Assert
         Assert.False(string.IsNullOrWhiteSpace(first.AccessToken));
         Assert.False(string.IsNullOrWhiteSpace(second.AccessToken));
+    }
+
+    /// <summary>同一 DB へ失敗を分散しても、合計が閾値に達したら全呼び出し元でロックする。</summary>
+    [Fact]
+    public async Task LoginAsync_FailuresSplitAcrossTwoCallers_LocksOnce()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        await SecurityTestSeed.SeedUserAsync(database, "admin@example.com", "password123");
+        var callerA = CreateAuthService(database, CreateLockStore(database));
+        var callerB = CreateAuthService(database, CreateLockStore(database));
+        var wrong = new LoginRequest
+        {
+            TenantKey = "default",
+            Username = "admin",
+            Password = "wrong"
+        };
+        var correct = new LoginRequest
+        {
+            TenantKey = "default",
+            Username = "admin",
+            Password = "password123"
+        };
+        var firstCallerFailures = LoginFailureLockStore.MaxFailedAttempts - 2;
+
+        // Act
+        for (var attempt = 0; attempt < firstCallerFailures; attempt++)
+        {
+            await Assert.ThrowsAsync<UnauthorizedException>(() =>
+                callerA.LoginAsync(wrong, CancellationToken.None));
+        }
+
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            await Assert.ThrowsAsync<UnauthorizedException>(() =>
+                callerB.LoginAsync(wrong, CancellationToken.None));
+        }
+
+        var lockedOnA = await Assert.ThrowsAsync<UnauthorizedException>(() =>
+            callerA.LoginAsync(correct, CancellationToken.None));
+        var lockedOnB = await Assert.ThrowsAsync<UnauthorizedException>(() =>
+            callerB.LoginAsync(correct, CancellationToken.None));
+
+        // Assert
+        Assert.Equal("UNAUTHORIZED", lockedOnA.Code);
+        Assert.Equal("UNAUTHORIZED", lockedOnB.Code);
+    }
+
+    /// <summary>成功ログインで失敗ロックと attempts 行が DELETE される。</summary>
+    [Fact]
+    public async Task LoginAsync_Success_DeletesLockAndAttemptRows()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        await SecurityTestSeed.SeedUserAsync(database, "admin@example.com", "password123");
+        var auth = CreateAuthService(database);
+        await Assert.ThrowsAsync<UnauthorizedException>(() =>
+            auth.LoginAsync(new LoginRequest
+            {
+                TenantKey = "default",
+                Username = "admin",
+                Password = "wrong"
+            }, CancellationToken.None));
+
+        // Act
+        await auth.LoginAsync(new LoginRequest
+        {
+            TenantKey = "default",
+            Username = "admin",
+            Password = "password123"
+        }, CancellationToken.None);
+
+        // Assert
+        await using var db = database.Factory.CreateDbContext();
+        Assert.Equal(0, await db.LoginFailureLocks.CountAsync(row => row.Username == "admin"));
+        Assert.Equal(0, await db.LoginFailureAttempts.CountAsync(row => row.Username == "admin"));
+    }
+
+    /// <summary>IsLocked の読み取り失敗は 401 にせず、フィルターで 5xx になる。</summary>
+    [Fact]
+    public async Task LoginAsync_IsLockedFailure_MapsToInternalServerError()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        await SecurityTestSeed.SeedUserAsync(database, "admin@example.com", "password123");
+        var auth = CreateAuthService(database, new ThrowingIsLockedStore());
+        var filter = new ApiExceptionFilter(NullLogger<ApiExceptionFilter>.Instance);
+        var actionContext = new ActionContext(
+            new DefaultHttpContext(),
+            new Microsoft.AspNetCore.Routing.RouteData(),
+            new Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor());
+
+        // Act
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            auth.LoginAsync(new LoginRequest
+            {
+                TenantKey = "default",
+                Username = "admin",
+                Password = "password123"
+            }, CancellationToken.None));
+        var exceptionContext = new ExceptionContext(actionContext, []) { Exception = thrown };
+        filter.OnException(exceptionContext);
+
+        // Assert
+        Assert.True(exceptionContext.ExceptionHandled);
+        var result = Assert.IsType<ObjectResult>(exceptionContext.Result);
+        Assert.Equal(StatusCodes.Status500InternalServerError, result.StatusCode);
+    }
+
+    private static LoginFailureLockStore CreateLockStore(SqliteTestDatabase database) =>
+        new(
+            database.Factory,
+            TimeProvider.System,
+            new DefaultIdGenerator(),
+            NullLogger<LoginFailureLockStore>.Instance);
+
+    /// <summary>IsLocked が失敗したときの 5xx 写像を検証する。</summary>
+    private sealed class ThrowingIsLockedStore : ILoginFailureLockStore
+    {
+        public bool IsLocked(string tenantKey, string username) =>
+            throw new InvalidOperationException("lock store unavailable");
+
+        public void RecordFailure(string tenantKey, string username) =>
+            throw new NotSupportedException();
+
+        public void Reset(string tenantKey, string username) =>
+            throw new NotSupportedException();
     }
 }

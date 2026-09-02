@@ -64,7 +64,7 @@ internal sealed class AuthService : IAuthService
             .FindLoginCredentialAsync(request.TenantKey, request.Username, cancellationToken)
             .ConfigureAwait(false);
 
-        // 未知のテナント／ユーザーはロック対象にしない（ランダムキーでのメモリ肥大を避ける）。
+        // 未知のテナント／ユーザーはロック対象にしない（ランダムキーでの表肥大を避ける）。
         if (lookup is null)
             throw new UnauthorizedException(InvalidCredentialsMessage, UnauthorizedCode);
 

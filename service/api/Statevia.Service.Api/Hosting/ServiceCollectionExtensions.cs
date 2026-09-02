@@ -162,7 +162,9 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
         services.AddSingleton(TimeProvider.System);
-        services.AddSingleton<ILoginFailureLockStore, InMemoryLoginFailureLockStore>();
+        services.AddSingleton<LoginFailureLockStore>();
+        services.AddSingleton<ILoginFailureLockStore>(sp => sp.GetRequiredService<LoginFailureLockStore>());
+        services.AddHostedService<LoginFailureLockPurgeHostedService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITenantAdministrationService, TenantAdministrationService>();
         services.AddOptions<DevAdminBootstrapOptions>()

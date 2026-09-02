@@ -116,6 +116,9 @@ internal class CoreDbContext : DbContext, ICoreDatabase
         public const string OutputJson = "output_json";
         public const string StatesJson = "states_json";
         public const string VarsJson = "vars_json";
+        public const string AttemptId = "attempt_id";
+        public const string LockedUntil = "locked_until";
+        public const string FailedAt = "failed_at";
     }
 
     private static class ColumnTypes
@@ -165,6 +168,11 @@ internal class CoreDbContext : DbContext, ICoreDatabase
     public DbSet<ApiKeyRow> ApiKeys => Set<ApiKeyRow>();
     public DbSet<ProjectRow> Projects => Set<ProjectRow>();
     public DbSet<ProjectAccessRow> ProjectAccesses => Set<ProjectAccessRow>();
+    /// <summary>ログイン失敗ロック行。</summary>
+    public DbSet<LoginFailureLockRow> LoginFailureLocks => Set<LoginFailureLockRow>();
+
+    /// <summary>ログイン失敗時刻行。</summary>
+    public DbSet<LoginFailureAttemptRow> LoginFailureAttempts => Set<LoginFailureAttemptRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -745,6 +753,31 @@ internal class CoreDbContext : DbContext, ICoreDatabase
             e.HasOne<TenantRow>()
                 .WithMany()
                 .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<LoginFailureLockRow>(e =>
+        {
+            e.ToTable("login_failure_locks");
+            e.HasKey(x => new { x.TenantKey, x.Username });
+            e.Property(x => x.TenantKey).HasMaxLength(64).HasColumnName(Columns.TenantKey);
+            e.Property(x => x.Username).HasMaxLength(UsernameConstraints.MaxLength).HasColumnName(Columns.Username);
+            e.Property(x => x.LockedUntil).HasColumnName(Columns.LockedUntil);
+            e.HasIndex(x => x.LockedUntil);
+        });
+
+        modelBuilder.Entity<LoginFailureAttemptRow>(e =>
+        {
+            e.ToTable("login_failure_attempts");
+            e.HasKey(x => x.AttemptId);
+            e.Property(x => x.AttemptId).HasColumnName(Columns.AttemptId);
+            e.Property(x => x.TenantKey).HasMaxLength(64).HasColumnName(Columns.TenantKey);
+            e.Property(x => x.Username).HasMaxLength(UsernameConstraints.MaxLength).HasColumnName(Columns.Username);
+            e.Property(x => x.FailedAt).HasColumnName(Columns.FailedAt);
+            e.HasIndex(x => new { x.TenantKey, x.Username, x.FailedAt });
+            e.HasOne<LoginFailureLockRow>()
+                .WithMany()
+                .HasForeignKey(x => new { x.TenantKey, x.Username })
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }
