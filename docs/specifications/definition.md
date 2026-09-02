@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.5.7 |
-| 更新日 | 2026-09-01 |
+| Version | 1.5.8 |
+| 更新日 | 2026-09-02 |
 | 関連 | [concepts/definition.md](../concepts/definition.md), [execution/wait-cancel.md](execution/wait-cancel.md), [execution/fork-join.md](execution/fork-join.md) |
 
 ---
@@ -23,6 +23,8 @@
 - **禁止**: 公開 DSL / HTTP / UI に `exit` / `exits` 語彙を出さない（`events` / `allowedEvents` / `resumeKey` を使う）。
 
 背景・動機は [Concept: 定義](../concepts/definition.md) を参照。
+
+**Version 1.5.8（2026-09-02）**: `http.request` の URL はホスト名の DNS 解決後 IP も拒否する。
 
 **Version 1.5.7（2026-09-01）**: TrustLevel と実行モードを現行 Policy に合わせる。
 
@@ -179,7 +181,7 @@ states:
 
   | フィールド | 必須 | 説明 |
   | --- | --- | --- |
-  | `url` | はい | **HTTPS** の絶対 URL。SSRF 防止のため loopback / プライベート IP / `localhost` 等は拒否 |
+  | `url` | はい | **HTTPS** の絶対 URL。SSRF 防止のため loopback / プライベート IP / `localhost` 等に加え、ホスト名の DNS 解決後アドレスも拒否。失敗・タイムアウト（2 秒）も拒否 |
   | `method` | はい | HTTP メソッド（例: `GET`, `POST`） |
   | `headers` | いいえ | 文字列値の map → リクエストヘッダ |
   | `body` | いいえ | 文字列または JSON オブジェクト/配列。上限 **1 MiB** |

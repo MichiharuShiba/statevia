@@ -14,11 +14,17 @@ namespace Statevia.Service.Api.Tests.Services;
 /// <summary><see cref="AuthService"/> の認証フロー。</summary>
 public sealed class AuthServiceTests
 {
-    private static AuthService CreateAuthService(SqliteTestDatabase database)
+    private static AuthService CreateAuthService(
+        SqliteTestDatabase database,
+        ILoginFailureLockStore? lockStore = null)
     {
         var jwt = new JwtTokenService(Options.Create(new JwtAuthOptions()));
         var platform = new PlatformDataAccess(database.Factory, new DefaultIdGenerator());
-        return new AuthService(platform, jwt, new PasswordCredentialService());
+        return new AuthService(
+            platform,
+            jwt,
+            new PasswordCredentialService(),
+            lockStore ?? new InMemoryLoginFailureLockStore(TimeProvider.System));
     }
 
     /// <summary>正しい資格情報で JWT が発行される。</summary>
@@ -80,21 +86,26 @@ public sealed class AuthServiceTests
         }, CancellationToken.None));
     }
 
-    /// <summary>存在しないユーザーは 401。</summary>
+    /// <summary>存在しないユーザーは 401 で、失敗カウントを増やさない。</summary>
     [Fact]
-    public async Task LoginAsync_UnknownUser_ThrowsUnauthorized()
+    public async Task LoginAsync_UnknownUser_ThrowsUnauthorizedWithoutRecording()
     {
         // Arrange
         using var database = new SqliteTestDatabase();
-        var auth = CreateAuthService(database);
+        var store = new InMemoryLoginFailureLockStore(TimeProvider.System);
+        var auth = CreateAuthService(database, store);
 
-        // Act & Assert
+        // Act
         await Assert.ThrowsAsync<UnauthorizedException>(() => auth.LoginAsync(new LoginRequest
         {
             TenantKey = "default",
             Username = "missing",
             Password = "password123"
         }, CancellationToken.None));
+
+        // Assert
+        Assert.Equal(0, store.TrackedCount);
+        Assert.False(store.IsLocked("default", "missing"));
     }
 
     /// <summary>停止テナントは 403。</summary>
@@ -292,5 +303,73 @@ public sealed class AuthServiceTests
                     NewPassword = "nextpass01"
                 },
                 CancellationToken.None));
+    }
+
+    /// <summary>失敗が閾値に達すると正しいパスワードでも 401 になる。</summary>
+    [Fact]
+    public async Task LoginAsync_TooManyFailures_LocksEvenWithCorrectPassword()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        await SecurityTestSeed.SeedUserAsync(database, "admin@example.com", "password123");
+        var auth = CreateAuthService(database);
+        var wrong = new LoginRequest
+        {
+            TenantKey = "default",
+            Username = "admin",
+            Password = "wrong"
+        };
+
+        for (var attempt = 0; attempt < InMemoryLoginFailureLockStore.MaxFailedAttempts; attempt++)
+        {
+            await Assert.ThrowsAsync<UnauthorizedException>(() =>
+                auth.LoginAsync(wrong, CancellationToken.None));
+        }
+
+        // Act
+        var locked = await Assert.ThrowsAsync<UnauthorizedException>(() =>
+            auth.LoginAsync(new LoginRequest
+            {
+                TenantKey = "default",
+                Username = "admin",
+                Password = "password123"
+            }, CancellationToken.None));
+
+        // Assert
+        Assert.Equal("UNAUTHORIZED", locked.Code);
+    }
+
+    /// <summary>成功ログインのあと再度ログインできる。</summary>
+    [Fact]
+    public async Task LoginAsync_Success_ResetsFailureCount()
+    {
+        // Arrange
+        using var database = new SqliteTestDatabase();
+        await SecurityTestSeed.SeedUserAsync(database, "admin@example.com", "password123");
+        var auth = CreateAuthService(database);
+        var wrong = new LoginRequest
+        {
+            TenantKey = "default",
+            Username = "admin",
+            Password = "wrong"
+        };
+        var correct = new LoginRequest
+        {
+            TenantKey = "default",
+            Username = "admin",
+            Password = "password123"
+        };
+        await Assert.ThrowsAsync<UnauthorizedException>(() =>
+            auth.LoginAsync(wrong, CancellationToken.None));
+
+        // Act
+        var first = await auth.LoginAsync(correct, CancellationToken.None);
+        await Assert.ThrowsAsync<UnauthorizedException>(() =>
+            auth.LoginAsync(wrong, CancellationToken.None));
+        var second = await auth.LoginAsync(correct, CancellationToken.None);
+
+        // Assert
+        Assert.False(string.IsNullOrWhiteSpace(first.AccessToken));
+        Assert.False(string.IsNullOrWhiteSpace(second.AccessToken));
     }
 }

@@ -3,15 +3,15 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.17 |
-| 更新日 | 2026-09-01 |
+| Version | 1.18 |
+| 更新日 | 2026-09-02 |
 | 関連 | [reference/api-openapi.md](../reference/api-openapi.md), [concepts/platform.md](../concepts/platform.md), [execution/wait-cancel.md](execution/wait-cancel.md) |
 
 ---
 
 ## Normative 要約
 
-- **MUST**: Runtime API（`/v1/definitions` / `/v1/executions` / `/v1/events`）は Principal 必須（JWT または `X-Api-Key`）+ `X-Tenant-Id`。
+- **MUST**: Runtime API（`/v1/definitions` / `/v1/executions` / `/v1/events` / `/v1/actions`）は Principal 必須（JWT または `X-Api-Key`）+ `X-Tenant-Id`。
 - **MUST**: `POST /v1/events` は `executions.write` 必須。不足は **403**（`PERMISSION_DENIED`）。成功は **204**（一致 0 件でも）。
 - **MUST**: 定義版は immutable。`PUT /v1/definitions/{id}` は新版 INSERT のみ（既存版の上書き禁止）。
 - **MUST**: 実行は開始時の `definition_version_id` に固定する。
@@ -24,6 +24,8 @@
 ---
 
 Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
+
+**Version 1.18（2026-09-02）**: `/v1/actions` を Middleware の Principal 必須に含める。実在ユーザーのログイン失敗はテナント＋ユーザー単位で 10 回 / 15 分窓、15 分ロック（プロセス内メモリ、保持 4096 件）。未知のユーザーはカウントしない。
 
 **Version 1.17（2026-09-01）**: エンドポイント一覧に auth / admin / Module reload を追加。SSE は Principal 必須。`project_id` は NOT NULL。Production / Staging の JWT 既定鍵拒否を現行として書く。
 
@@ -231,7 +233,7 @@ Builtin / Module action の **input/output JSON Schema** と **UI metadata** を
 - Response: 200 OK — `descriptor` / `schema`（`inputSchema`, `outputSchema`, `schemaVersion`）/ `uiMetadata` を分離 DTO で返す
 - 404: 未登録 actionId、または publication 未登録
 
-**認可**: `definitions.read`（§4.1.2.1）。レスポンスに定義 YAML の機微値は含めない（schema 契約のみ。[io-log-masking.md](platform/io-log-masking.md)）。
+**認可**: Principal 必須（未認証は **401**）。加えて `definitions.read`（§4.1.2.1）。レスポンスに定義 YAML の機微値は含めない（schema 契約のみ。[io-log-masking.md](platform/io-log-masking.md)）。
 
 **Compiler 連携**: 定義 publish 時、action 状態の `input` map は publication の `inputSchema` に対し検証される（422 `details` に `state`, `actionId`, `jsonPath` — 機微値は含めない）。ルートフラットに加え、ネスト `type: object` を再帰検証する（フェーズ F2）。`ship.address` ドットキーと `ship: { address: ... }` ネスト map は同等。正規化衝突は 422。
 
@@ -436,7 +438,7 @@ Request:
 ### 4.1 ヘッダ
 
 - **Content-Type**: application/json（Body がある場合）
-- **Authorization**: `Bearer <JWT>`（ログイン後）。Runtime API（`/v1/definitions` / `/v1/executions` / `/v1/events`）では Principal 必須。
+- **Authorization**: `Bearer <JWT>`（ログイン後）。Runtime API（`/v1/definitions` / `/v1/executions` / `/v1/events` / `/v1/actions`）では Principal 必須。
 - **X-Api-Key**: API キー認証。`api_keys`（prefix + hash）照合で Principal を解決する。
 - **X-Tenant-Id**: 移行専用。JWT あり時は **`tenant_key` と一致必須**。不一致は **403**（`TENANT_HEADER_MISMATCH`）。Runtime API では単独指定を許可せず **401**。
 - **X-Idempotency-Key**: 任意。`POST /v1/executions` では `definitionId + input` を含むリクエストハッシュで冪等キーを分離する（同一キーでも input が異なれば別リクエスト扱い）。
@@ -456,8 +458,9 @@ Request:
 ```
 
 - Response: 200 OK、`{ "accessToken", "expiresAt", "tenantId", "tenantKey", "principalId" }`
-- 失敗: 401（資格情報不正）、403（テナント停止）。`username` は 1〜64 文字。英数字で始まり終わり、途中のみハイフン・アンダースコア・ドット可。違反は 422。
+- 失敗: 401（資格情報不正またはロック中）、403（テナント停止）。`username` は 1〜64 文字。英数字で始まり終わり、途中のみハイフン・アンダースコア・ドット可。違反は 422。
 - ログインの `password` は非空白のみ（既存ハッシュ互換。新規・更新時の 8〜128 文字ポリシーは適用しない）
+- 同一 `tenantKey` + `username` で、**実在するユーザー**の失敗が 15 分以内に **10 回**に達すると **15 分間**ロックする。ロック中も応答は同じ 401。存在しないユーザーはカウントしない。カウンタはプロセス内メモリ（再起動・複数 API インスタンスでは分かれる。保持は 4096 件上限）
 
 **GET /v1/auth/me**
 
@@ -511,8 +514,7 @@ Response（`GET /v1/admin/modules` の 1 件）: `moduleId`, `name`, `version`, 
 
 ### 4.1.2 Runtime API の認証要件
 
-- **保護対象（Middleware で Principal 必須）**: `/v1/definitions`、`/v1/executions`、`/v1/events`、`/v1/graphs`、`/v1/admin`、`/internal/modules`、`/v1/auth/me` 配下。
-- **`/v1/actions/schema*`**: Middleware の Principal 必須パスには含めない。コントローラ側の `definitions.read` で認可する。
+- **保護対象（Middleware で Principal 必須）**: `/v1/definitions`、`/v1/executions`、`/v1/events`、`/v1/graphs`、`/v1/actions`、`/v1/admin`、`/internal/modules`、`/v1/auth/me` 配下。
 - **必須**: Principal が解決済みであること（JWT または `X-Api-Key`）。
 - **拒否**: `X-Tenant-Id` のみ（Bearer / API キーなし）は **401**（`UNAUTHORIZED`）。
 - **除外パス**: `/v1/auth/login`、`/v1/health`、`/swagger/*`、`/scalar/*`。

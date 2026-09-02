@@ -31,16 +31,23 @@ internal sealed class AuthService : IAuthService
     private readonly IPlatformDataAccess _platformDataAccess;
     private readonly JwtTokenService _jwtTokenService;
     private readonly PasswordCredentialService _passwordCredentialService;
+    private readonly ILoginFailureLockStore _loginFailureLockStore;
 
     /// <summary>新しいインスタンスを初期化する。</summary>
+    /// <param name="platformDataAccess">テナントとユーザーの参照。</param>
+    /// <param name="jwtTokenService">JWT 発行。</param>
+    /// <param name="passwordCredentialService">パスワード照合。</param>
+    /// <param name="loginFailureLockStore">失敗回数ロック。</param>
     public AuthService(
         IPlatformDataAccess platformDataAccess,
         JwtTokenService jwtTokenService,
-        PasswordCredentialService passwordCredentialService)
+        PasswordCredentialService passwordCredentialService,
+        ILoginFailureLockStore loginFailureLockStore)
     {
         _platformDataAccess = platformDataAccess;
         _jwtTokenService = jwtTokenService;
         _passwordCredentialService = passwordCredentialService;
+        _loginFailureLockStore = loginFailureLockStore;
     }
 
     /// <inheritdoc />
@@ -48,17 +55,28 @@ internal sealed class AuthService : IAuthService
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        var tenantKey = request.TenantKey;
+        var username = request.Username;
+        if (_loginFailureLockStore.IsLocked(tenantKey, username))
+            throw new UnauthorizedException(InvalidCredentialsMessage, UnauthorizedCode);
+
         var lookup = await _platformDataAccess
             .FindLoginCredentialAsync(request.TenantKey, request.Username, cancellationToken)
             .ConfigureAwait(false);
 
+        // 未知のテナント／ユーザーはロック対象にしない（ランダムキーでのメモリ肥大を避ける）。
         if (lookup is null)
             throw new UnauthorizedException(InvalidCredentialsMessage, UnauthorizedCode);
 
         EnsureTenantActive(lookup.Tenant.Lifecycle);
 
         if (!_passwordCredentialService.VerifyPassword(request.Password, lookup.User.PasswordHash))
+        {
+            _loginFailureLockStore.RecordFailure(tenantKey, username);
             throw new UnauthorizedException(InvalidCredentialsMessage, UnauthorizedCode);
+        }
+
+        _loginFailureLockStore.Reset(tenantKey, username);
 
         var (token, expiresAt) = _jwtTokenService.IssueAccessToken(
             lookup.Tenant.TenantId,

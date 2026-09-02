@@ -161,6 +161,8 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<ILoginFailureLockStore, InMemoryLoginFailureLockStore>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITenantAdministrationService, TenantAdministrationService>();
         services.AddOptions<DevAdminBootstrapOptions>()

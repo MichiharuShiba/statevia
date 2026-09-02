@@ -3,14 +3,16 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.2 |
-| 更新日 | 2026-07-19 |
+| Version | 1.3 |
+| 更新日 | 2026-09-02 |
 | Scope | Service API / ModuleHost / Action 実行 |
 | 関連 | [module-zip-layout.md](module-zip-layout.md), [../../concepts/actions.md](../../concepts/actions.md) |
 
 ---
 
 Action Module の発見・登録・可視性・実行ポリシー・dispatch の Normative 概要。実装は `core/actions/Statevia.Core.Actions.Abstractions` と Service API の composition root にある。
+
+**Version 1.3（2026-09-02）**: OutOfProcess の gRPC deadline と `http.request` の解決後 IP 検査を現行として書く。
 
 ## Normative 要約
 
@@ -59,12 +61,14 @@ Policy が返しうるモード（実装状況はバージョンにより異な�
 | モード | 概要 |
 | --- | --- |
 | InProcess | Service API プロセス内 ALC |
-| OutOfProcess | Action Host（gRPC）。`Statevia:ActionHost:BaseUrl` 必須 |
+| OutOfProcess | Action Host（gRPC）。`Statevia:ActionHost:BaseUrl` 必須。実行要求に Deadline があるときだけ gRPC deadline を付ける。無いときは CancellationToken のみ |
 | Container | `ContainerProvider=docker` 時、短命 Action Host コンテナ（gRPC）。`Sandbox:Docker:Image` 等。未構成は `SandboxRuntimeNotConfigured` / `SandboxRuntimeUnavailable` |
 | Wasm | ランタイム未実装（正式リリース対象外）。未構成は `SandboxRuntimeNotConfigured` |
 | Remote | 未登録時は UnsupportedExecutionMode |
 
 テナントスコープの下限は `Statevia:ExecutionPolicy:Tenants:{tenantId}:MinimumMode` で設定可能。base より緩い指定は無視する。
+
+リファレンス Action `http.request` の URL は **HTTPS 絶対 URL** のみ。リテラルの loopback / プライベート IP / `localhost` 等に加え、ホスト名は都度 DNS 解決し、返った A/AAAA に拒否対象が 1 つでもあれば失敗する。解決失敗・タイムアウト（2 秒）も拒否する。結果はキャッシュしない。
 
 ### 4.1 Sandbox / Docker ホスト上限（v1）
 

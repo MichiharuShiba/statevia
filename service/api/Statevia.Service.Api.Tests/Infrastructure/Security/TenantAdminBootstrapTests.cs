@@ -36,7 +36,8 @@ public sealed class TenantAdminBootstrapTests
         var auth = new AuthService(
             new PlatformDataAccess(database.Factory, new DefaultIdGenerator()),
             CreateJwt(),
-            new PasswordCredentialService());
+            new PasswordCredentialService(),
+            new InMemoryLoginFailureLockStore(TimeProvider.System));
         var login = await auth.LoginAsync(
             new LoginRequest
             {
