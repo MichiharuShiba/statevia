@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Reference |
-| Version | 1.2 |
-| 更新日 | 2026-09-01 |
+| Version | 1.3 |
+| 更新日 | 2026-09-03 |
 
 ---
 
@@ -33,7 +33,7 @@ Runtime API の **semantic permission key** の調べ物。Normative 契約は [
 | 操作（概要） | 必要な permission key |
 | --- | --- |
 | GET `/v1/definitions*`、`/v1/graphs/*`、`/v1/definitions/schema/nodes`、`/v1/actions/schema*` | `definitions.read` |
-| POST / PUT `/v1/definitions` | `definitions.write` |
+| POST / PUT `/v1/definitions`、`POST /v1/definitions/validate` | `definitions.write` |
 | GET `/v1/executions*`（一覧・詳細・graph・state・events・stream） | `executions.read` |
 | POST start / cancel / publish event / resume、**`POST /v1/events`** | `executions.write` |
 | POST `/internal/modules/reload` | `modules.reload`（または `is_tenant_admin`） |

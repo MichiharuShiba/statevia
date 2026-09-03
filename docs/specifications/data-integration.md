@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.6 |
-| 更新日 | 2026-09-01 |
+| Version | 1.7 |
+| 更新日 | 2026-09-03 |
 | Scope | Core-Engine / Service API / UI |
 | 関連 | [concepts/durability.md](../concepts/durability.md), [api-http.md](api-http.md) |
 
@@ -21,6 +21,8 @@
 責務の背景は [Concept: 永続化](../concepts/durability.md) を参照。
 
 ---
+
+**Version 1.7（2026-09-03）**: 定義検証 `POST /v1/definitions/validate` の 422 details は create / publish と同形。catalog は増やさない。
 
 **Version 1.6（2026-09-01）**: `COMMAND_REJECTED` と `X-Correlation-Id` を現行契約から外す。冪等は `StatusCode` / `ResponseBody`。SSE は現行。未実装 Push は Future へ。
 
@@ -296,7 +298,7 @@ Service API は Execution Read Model 全体ではなく、グラフスナップ�
 
 UI は 409 を「操作できない理由」として表示できる。応答形は [error-codes.md](../reference/error-codes.md)。実装に無い `error.code` は使わない。
 
-Definition 登録（`POST /v1/definitions`）および更新（`PUT /v1/definitions/{id}`）の 422 では、`error.details` に `field` / `message` を含む構造化診断を返し、UI は `name` と `yaml` の表示位置を分離できる。  
+Definition 登録（`POST /v1/definitions`）、更新（`PUT /v1/definitions/{id}`）、検証（`POST /v1/definitions/validate`）の 422 では、`error.details` に `field` / `message` を含む構造化診断を返し、UI は `name` と `yaml` の表示位置を分離できる。検証は catalog を増やさない。  
 同様に、実行開始時の `input`（JSON）・イベント名入力などの入力不正も 422 details で返せる前提とし、UI はフィールド優先で表示する。
 
 ```json

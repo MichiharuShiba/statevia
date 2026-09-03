@@ -41,6 +41,7 @@ public sealed class OpenApiDocumentTests : IClassFixture<StateviaApiWebApplicati
         Assert.True(root.TryGetProperty("paths", out var paths));
         AssertRequiredPath(paths, "/v1/health");
         AssertRequiredPath(paths, "/v1/definitions");
+        AssertRequiredPath(paths, "/v1/definitions/validate");
         AssertRequiredPath(paths, "/v1/executions");
         AssertRequiredPath(paths, "/v1/executions/{id}/stream");
 

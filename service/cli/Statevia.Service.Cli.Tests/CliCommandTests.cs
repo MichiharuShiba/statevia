@@ -59,29 +59,6 @@ public sealed class CliCommandTests : IDisposable
         }
     }
 
-    /// <summary>definition validate が有効 YAML で成功する。</summary>
-    [Fact]
-    public async Task DefinitionValidate_ValidYaml_ReturnsSuccess()
-    {
-        // Arrange
-        var yamlPath = await WriteTempYamlAsync(
-            """
-            workflow:
-              name: cli-test
-            states:
-              start:
-                on:
-                  Completed:
-                    end: true
-            """);
-
-        // Act
-        var exitCode = await Program.Main(["def", "validate", yamlPath]);
-
-        // Assert
-        Assert.Equal(0, exitCode);
-    }
-
     /// <summary>definition validate は存在しないファイルで失敗する。</summary>
     [Fact]
     public async Task DefinitionValidate_MissingFile_ReturnsFailure()
@@ -92,43 +69,6 @@ public sealed class CliCommandTests : IDisposable
             "validate",
             Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.yaml"),
         ]);
-
-        // Assert
-        Assert.Equal(1, exitCode);
-    }
-
-    /// <summary>definition validate は不正 YAML で失敗する。</summary>
-    [Fact]
-    public async Task DefinitionValidate_InvalidYaml_ReturnsFailure()
-    {
-        // Arrange
-        var yamlPath = await WriteTempYamlAsync("::::not-yaml::::");
-
-        // Act
-        var exitCode = await Program.Main(["def", "validate", yamlPath]);
-
-        // Assert
-        Assert.Equal(1, exitCode);
-    }
-
-    /// <summary>definition validate は検証エラーで失敗する。</summary>
-    [Fact]
-    public async Task DefinitionValidate_ValidationErrors_ReturnsFailure()
-    {
-        // Arrange
-        var yamlPath = await WriteTempYamlAsync(
-            """
-            workflow:
-              name: cli-test
-            states:
-              start:
-                on:
-                  Completed:
-                    next: missing
-            """);
-
-        // Act
-        var exitCode = await Program.Main(["def", "validate", yamlPath]);
 
         // Assert
         Assert.Equal(1, exitCode);
@@ -1099,7 +1039,7 @@ public sealed class CliCommandTests : IDisposable
         Assert.Equal(1, exitCode);
     }
 
-    /// <summary>definition validate は空ファイルで失敗する。</summary>
+    /// <summary>definition validate は空ファイルでも API へ向かうが、認証が無く失敗する。</summary>
     [Fact]
     public async Task DefinitionValidate_EmptyFile_ReturnsFailure()
     {

@@ -24,7 +24,8 @@ public sealed class DefinitionServiceTests
         IDefinitionRepository definitionsRepo,
         IIdGenerator idGen,
         IProjectAuthorizationService? projectAuth = null,
-        ITenantContextAccessor? tenantAccessor = null)
+        ITenantContextAccessor? tenantAccessor = null,
+        IRuntimePermissionAuthorization? runtimeAuth = null)
     {
         var executor = new TestCoreTransactionExecutor(new TestCoreUnitOfWorkFactory(inDb.Factory));
         var projectRepo = new ProjectRepository(new DefaultIdGenerator());
@@ -35,7 +36,7 @@ public sealed class DefinitionServiceTests
             projectRepo,
             projectAuth ?? new AllowAllProjectAuthorizationService(),
             tenantAccessor ?? new FixedTenantContextAccessor(TestTenantIds.DefaultContext),
-            new AllowAllRuntimePermissionAuthorization(),
+            runtimeAuth ?? new AllowAllRuntimePermissionAuthorization(),
             idGen,
             executor);
     }
@@ -74,17 +75,26 @@ public sealed class DefinitionServiceTests
     private sealed class StubCompiler : IDefinitionCompilerService
     {
         private readonly string _compiledJson;
-        public StubCompiler(string compiledJson) => _compiledJson = compiledJson;
+        private readonly string? _compiledNameOverride;
+
+        public int CallCount { get; private set; }
+
+        public StubCompiler(string compiledJson, string? compiledNameOverride = null)
+        {
+            _compiledJson = compiledJson;
+            _compiledNameOverride = compiledNameOverride;
+        }
+
         public (Statevia.Core.Engine.Abstractions.CompiledWorkflowDefinition Compiled, string CompiledJson) ValidateAndCompile(
             string name,
             string yaml,
             Guid? tenantId = null)
         {
-            // DefinitionService は compiled オブジェクトを使わず、CompiledJson だけを保存する。
+            CallCount++;
             var dummyFactory = new DummyExecutorFactory();
             return (new Statevia.Core.Engine.Abstractions.CompiledWorkflowDefinition
             {
-                Name = name,
+                Name = _compiledNameOverride ?? name,
                 Transitions = new Dictionary<string, IReadOnlyDictionary<string, Statevia.Core.Engine.Abstractions.TransitionTarget>>(),
                 ForkTable = new Dictionary<string, IReadOnlyList<string>>(),
                 JoinTable = new Dictionary<string, IReadOnlyList<string>>(),
@@ -763,6 +773,146 @@ public sealed class DefinitionServiceTests
         Assert.Equal("DISP-1", response.DisplayId);
         Assert.Equal("def", response.Name);
         Assert.Null(response.DeletedAt);
+    }
+
+    /// <summary>検証成功時は catalog へ保存せず、コンパイラだけを呼ぶ。</summary>
+    [Fact]
+    public async Task ValidateAsync_WhenCompilerSucceeds_DoesNotCallRepository()
+    {
+        // Arrange
+        using var inDb = new InMemoryTestDatabase();
+        var definitionsRepo = new StubDefinitionRepository();
+        var compiler = new StubCompiler("{}");
+        var sut = CreateDefinitionService(
+            inDb,
+            new StubDisplayIdService(),
+            compiler,
+            definitionsRepo,
+            new FixedIdGenerator(Guid.NewGuid()));
+        var request = new ValidateDefinitionRequest { Name = "from-request", Yaml = "workflow:\n  name: from-yaml" };
+
+        // Act
+        var response = await sut.ValidateAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.True(response.Valid);
+        Assert.Equal("from-request", response.Name);
+        Assert.Equal(1, compiler.CallCount);
+        Assert.Equal(0, definitionsRepo.AddWithInitialVersionCallCount);
+    }
+
+    /// <summary>リクエスト名が空ならコンパイル結果の名前を実効名にする。</summary>
+    [Fact]
+    public async Task ValidateAsync_WhenRequestNameOmitted_UsesCompiledName()
+    {
+        // Arrange
+        using var inDb = new InMemoryTestDatabase();
+        var compiler = new StubCompiler("{}", compiledNameOverride: "from-yaml");
+        var sut = CreateDefinitionService(
+            inDb,
+            new StubDisplayIdService(),
+            compiler,
+            new StubDefinitionRepository(),
+            new FixedIdGenerator(Guid.NewGuid()));
+
+        // Act
+        var response = await sut.ValidateAsync(
+            new ValidateDefinitionRequest { Yaml = "workflow:\n  name: from-yaml" },
+            CancellationToken.None);
+
+        // Assert
+        Assert.True(response.Valid);
+        Assert.Equal("from-yaml", response.Name);
+    }
+
+    /// <summary>リクエスト名とコンパイル名が両方空なら 422。</summary>
+    [Fact]
+    public async Task ValidateAsync_WhenEffectiveNameEmpty_ThrowsApiValidationException()
+    {
+        // Arrange
+        using var inDb = new InMemoryTestDatabase();
+        var compiler = new StubCompiler("{}", compiledNameOverride: "  ");
+        var sut = CreateDefinitionService(
+            inDb,
+            new StubDisplayIdService(),
+            compiler,
+            new StubDefinitionRepository(),
+            new FixedIdGenerator(Guid.NewGuid()));
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() =>
+            sut.ValidateAsync(new ValidateDefinitionRequest { Yaml = "workflow: {}" }, CancellationToken.None));
+
+        // Assert
+        Assert.Equal(DefinitionValidationMessages.ValidationFailed, ex.Message);
+        var detailsJson = System.Text.Json.JsonSerializer.Serialize(ex.Details);
+        Assert.Contains("\"field\":\"name\"", detailsJson, StringComparison.Ordinal);
+    }
+
+    /// <summary>検証のコンパイル失敗は create と同じ 422 写像にする。</summary>
+    [Fact]
+    public async Task ValidateAsync_WhenCompilerThrowsDefinitionValidationException_IncludesRuleCode()
+    {
+        // Arrange
+        using var inDb = new InMemoryTestDatabase();
+        var compiler = new ThrowingCompiler(new DefinitionValidationException(
+            new ValidationResult(
+            [
+                new ValidationIssue("ForkRegion.EgressWithoutJoin", "egress", "Left")
+            ])));
+        var sut = CreateDefinitionService(
+            inDb,
+            new StubDisplayIdService(),
+            compiler,
+            new StubDefinitionRepository(),
+            new FixedIdGenerator(Guid.NewGuid()));
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ApiValidationException>(() =>
+            sut.ValidateAsync(
+                new ValidateDefinitionRequest { Name = "def", Yaml = "workflow:\n  name: A2" },
+                CancellationToken.None));
+
+        // Assert
+        Assert.Equal(DefinitionValidationMessages.ValidationFailed, ex.Message);
+        var detailsJson = System.Text.Json.JsonSerializer.Serialize(ex.Details);
+        Assert.Contains("ForkRegion.EgressWithoutJoin", detailsJson, StringComparison.Ordinal);
+    }
+
+    /// <summary>definitions.write が無いと検証は Forbidden になる。</summary>
+    [Fact]
+    public async Task ValidateAsync_WhenWritePermissionDenied_ThrowsForbiddenException()
+    {
+        // Arrange
+        using var inDb = new InMemoryTestDatabase();
+        var compiler = new StubCompiler("{}");
+        var sut = CreateDefinitionService(
+            inDb,
+            new StubDisplayIdService(),
+            compiler,
+            new StubDefinitionRepository(),
+            new FixedIdGenerator(Guid.NewGuid()),
+            runtimeAuth: new DenyingRuntimePermissionAuthorization());
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ForbiddenException>(() =>
+            sut.ValidateAsync(
+                new ValidateDefinitionRequest { Name = "def", Yaml = "workflow:\n  name: def" },
+                CancellationToken.None));
+
+        // Assert
+        Assert.Equal("PERMISSION_DENIED", ex.Code);
+        Assert.Equal(0, compiler.CallCount);
+    }
+
+    private sealed class DenyingRuntimePermissionAuthorization : IRuntimePermissionAuthorization
+    {
+        public Task EnsurePermissionAsync(string permissionKey, CancellationToken cancellationToken)
+        {
+            _ = permissionKey;
+            _ = cancellationToken;
+            throw new ForbiddenException("Insufficient permission.", "PERMISSION_DENIED");
+        }
     }
 }
 

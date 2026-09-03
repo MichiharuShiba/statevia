@@ -18,6 +18,30 @@ public sealed class CreateDefinitionRequest
     public string Yaml { get; set; } = "";
 }
 
+/// <summary>永続化しない定義検証リクエスト。</summary>
+public sealed class ValidateDefinitionRequest
+{
+    /// <summary>任意の定義名。省略時は YAML のコンパイル結果名を使う。</summary>
+    public string? Name { get; set; }
+
+    /// <summary>定義ソース YAML。</summary>
+    [Required(ErrorMessage = "Definition YAML is required.")]
+    [NotWhitespace(ErrorMessage = "Definition YAML is required.")]
+    public string Yaml { get; set; } = "";
+}
+
+/// <summary>永続化しない定義検証の成功応答。</summary>
+public sealed class ValidateDefinitionResponse
+{
+    /// <summary>検証成功。失敗は 422 のため常に <see langword="true"/>。</summary>
+    [JsonPropertyName("valid")]
+    public bool Valid { get; set; }
+
+    /// <summary>実効定義名（リクエスト <c>name</c> 優先、なければコンパイル結果）。</summary>
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+}
+
 /// <summary>定義の更新リクエスト。</summary>
 public sealed class UpdateDefinitionRequest
 {

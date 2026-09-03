@@ -33,6 +33,17 @@ public class DefinitionsController : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = created.DisplayId }, created);
     }
 
+    /// <summary>POST /v1/definitions/validate — 定義 YAML を検証する。catalog へは保存しない。</summary>
+    [HttpPost("validate")]
+    [ProducesResponseType(typeof(ValidateDefinitionResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ValidateDefinitionResponse>> Validate(
+        [FromBody] ValidateDefinitionRequest request,
+        CancellationToken ct = default)
+    {
+        var result = await _definitions.ValidateAsync(request, ct).ConfigureAwait(false);
+        return Ok(result);
+    }
+
     /// <summary>PUT /v1/definitions/{id} — 定義を更新。name + yaml を受け取り、検証・コンパイルして保存。</summary>
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(DefinitionResponse), StatusCodes.Status200OK)]
