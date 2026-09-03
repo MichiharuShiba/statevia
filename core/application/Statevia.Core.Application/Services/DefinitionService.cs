@@ -4,10 +4,11 @@ using Statevia.Core.Engine.Definition.Validation;
 
 namespace Statevia.Core.Application.Services;
 
-/// <summary>ワークフロー定義の登録・更新・一覧・取得。</summary>
+/// <summary>ワークフロー定義の登録・更新・一覧・取得・検証。</summary>
 /// <remarks>
 /// <para>Runtime 権限に加え、project ロールは <see cref="IProjectAuthorizationService"/> で明示する。</para>
 /// <para>一覧の project 可視性は Repository の DB フィルタ（Reader）に委譲する。</para>
+/// <para><see cref="ValidateAsync"/> は catalog へ保存せず、create / publish と同じコンパイル写像だけを使う。</para>
 /// </remarks>
 internal sealed class DefinitionService : IDefinitionService
 {
@@ -56,32 +57,7 @@ internal sealed class DefinitionService : IDefinitionService
         ArgumentNullException.ThrowIfNull(request);
 
         var tenantId = _tenantContext.GetRequiredTenantId();
-        string compiledJson;
-        try
-        {
-            (_, compiledJson) = _compiler.ValidateAndCompile(request.Name, request.Yaml, tenantId);
-        }
-        catch (ActionInputSchemaValidationException ex)
-        {
-            throw new ApiValidationException(
-                DefinitionValidationMessages.ValidationFailed,
-                MapActionInputValidationDetails(ex),
-                ex);
-        }
-        catch (DefinitionValidationException ex)
-        {
-            throw new ApiValidationException(
-                DefinitionValidationMessages.ValidationFailed,
-                MapDefinitionValidationDetails(ex),
-                ex);
-        }
-        catch (ArgumentException ex)
-        {
-            throw new ApiValidationException(DefinitionValidationMessages.ValidationFailed, new[]
-            {
-                new { message = ex.Message, field = "yaml" }
-            }, ex);
-        }
+        var compiledJson = CompileOrThrow(request.Name, request.Yaml, tenantId).CompiledJson;
         var id = _idGenerator.NewSequentialGuid();
         var versionId = _idGenerator.NewSequentialGuid();
 
@@ -130,6 +106,34 @@ internal sealed class DefinitionService : IDefinitionService
                 };
             },
             ct).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<ValidateDefinitionResponse> ValidateAsync(
+        ValidateDefinitionRequest request,
+        CancellationToken ct)
+    {
+        await EnsureDefinitionsWriteAsync(ct).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(request);
+
+        var tenantId = _tenantContext.GetRequiredTenantId();
+        var requestName = string.IsNullOrWhiteSpace(request.Name) ? string.Empty : request.Name.Trim();
+        var compiledName = CompileOrThrow(requestName, request.Yaml, tenantId).CompiledName;
+        var effectiveName = requestName.Length > 0
+            ? requestName
+            : compiledName.Trim();
+        if (effectiveName.Length == 0)
+        {
+            throw new ApiValidationException(
+                DefinitionValidationMessages.ValidationFailed,
+                new[] { new { message = "Definition name is required.", field = "name" } });
+        }
+
+        return new ValidateDefinitionResponse
+        {
+            Valid = true,
+            Name = effectiveName
+        };
     }
 
     public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(
@@ -207,32 +211,7 @@ internal sealed class DefinitionService : IDefinitionService
             throw new NotFoundException(DefinitionValidationMessages.NotFound);
 
         var tenantId = _tenantContext.GetRequiredTenantId();
-        string compiledJson;
-        try
-        {
-            (_, compiledJson) = _compiler.ValidateAndCompile(request.Name, request.Yaml, tenantId);
-        }
-        catch (ActionInputSchemaValidationException ex)
-        {
-            throw new ApiValidationException(
-                DefinitionValidationMessages.ValidationFailed,
-                MapActionInputValidationDetails(ex),
-                ex);
-        }
-        catch (DefinitionValidationException ex)
-        {
-            throw new ApiValidationException(
-                DefinitionValidationMessages.ValidationFailed,
-                MapDefinitionValidationDetails(ex),
-                ex);
-        }
-        catch (ArgumentException ex)
-        {
-            throw new ApiValidationException(DefinitionValidationMessages.ValidationFailed, new[]
-            {
-                new { message = ex.Message, field = "yaml" }
-            }, ex);
-        }
+        var compiledJson = CompileOrThrow(request.Name, request.Yaml, tenantId).CompiledJson;
         var newVersionId = _idGenerator.NewSequentialGuid();
 
         return await _executor.ExecuteReadCommittedAsync(
@@ -408,6 +387,42 @@ internal sealed class DefinitionService : IDefinitionService
 
     private Task EnsureDefinitionsWriteAsync(CancellationToken ct) =>
         _runtimeAuth.EnsurePermissionAsync(RuntimePermissionRequirements.DefinitionsWrite, ct);
+
+    /// <summary>create / publish / validate 共通のコンパイルと 422 写像。</summary>
+    /// <param name="name">コンパイラへ渡す定義名。未指定は空文字。</param>
+    /// <param name="yaml">定義 YAML。</param>
+    /// <param name="tenantId">テナント ID。</param>
+    /// <returns>コンパイル結果の名前と JSON。</returns>
+    /// <exception cref="ApiValidationException">コンパイルまたはスキーマ検証の失敗。</exception>
+    private (string CompiledName, string CompiledJson) CompileOrThrow(string name, string yaml, Guid tenantId)
+    {
+        try
+        {
+            var (compiled, compiledJson) = _compiler.ValidateAndCompile(name, yaml, tenantId);
+            return (compiled.Name, compiledJson);
+        }
+        catch (ActionInputSchemaValidationException ex)
+        {
+            throw new ApiValidationException(
+                DefinitionValidationMessages.ValidationFailed,
+                MapActionInputValidationDetails(ex),
+                ex);
+        }
+        catch (DefinitionValidationException ex)
+        {
+            throw new ApiValidationException(
+                DefinitionValidationMessages.ValidationFailed,
+                MapDefinitionValidationDetails(ex),
+                ex);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new ApiValidationException(DefinitionValidationMessages.ValidationFailed, new[]
+            {
+                new { message = ex.Message, field = "yaml" }
+            }, ex);
+        }
+    }
 
     private static object[] MapActionInputValidationDetails(ActionInputSchemaValidationException ex) =>
         ex.Errors

@@ -282,4 +282,208 @@ public sealed class CliDefCommandTests : IDisposable
         Assert.Equal(1, exitCode);
         Assert.Contains("auth login", stderr, StringComparison.Ordinal);
     }
+
+    /// <summary>validate のヘルプに API フラグがあり、idempotency は無い。</summary>
+    [Fact]
+    public async Task DefValidate_Help_ListsApiFlagsWithoutIdempotency()
+    {
+        // Act
+        var (exitCode, stdout, _) = await CliCommandTestSupport.RunAsync("def", "validate", "--help");
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("--api-base", stdout, StringComparison.Ordinal);
+        Assert.Contains("--tenant", stdout, StringComparison.Ordinal);
+        Assert.Contains("--api-key", stdout, StringComparison.Ordinal);
+        Assert.Contains("--name", stdout, StringComparison.Ordinal);
+        Assert.DoesNotContain("idempotency", stdout, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>validate は認証が無いと login 案内で失敗する。</summary>
+    [Fact]
+    public async Task DefValidate_WithoutAuth_ReturnsFailureWithLoginHint()
+    {
+        // Arrange
+        var yamlPath = await CliCommandTestSupport.WriteTempYamlAsync(CliCommandTestSupport.ValidYaml);
+
+        // Act
+        var (exitCode, _, stderr) = await CliCommandTestSupport.RunAsync(
+            "def",
+            "validate",
+            yamlPath,
+            "--api-base",
+            "http://127.0.0.1:8080",
+            "--tenant",
+            "acme-corp");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("auth login", stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("Validation: OK", stderr, StringComparison.Ordinal);
+    }
+
+    /// <summary>validate はファイル欠損時に API を呼ばず失敗する。</summary>
+    [Fact]
+    public async Task DefValidate_MissingFile_ReturnsFailureWithoutCallingApi()
+    {
+        // Arrange
+        CliCommandTestSupport.SaveValidCredentials();
+        var missingPath = Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.yaml");
+
+        // Act
+        var (exitCode, _, stderr) = await CliCommandTestSupport.RunAsync(
+            "def",
+            "validate",
+            missingPath,
+            "--api-base",
+            "http://127.0.0.1:1",
+            "--tenant",
+            "acme-corp");
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("File not found", stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("Unable to connect", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("connection", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>validate の 200 は API JSON を stdout に出す。</summary>
+    [Fact]
+    public async Task DefValidate_Success_WritesJsonToStdout()
+    {
+        // Arrange
+        CliCommandTestSupport.SaveValidCredentials();
+        var yamlPath = await CliCommandTestSupport.WriteTempYamlAsync(CliCommandTestSupport.ValidYaml);
+        var port = CliCommandTestSupport.GetFreeTcpPort();
+        using var listener = new HttpListener();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+        var listenerTask = CliCommandTestSupport.RespondOnceAsync(
+            listener,
+            HttpStatusCode.OK,
+            """{"valid":true,"name":"cli-test"}""");
+
+        // Act
+        var (exitCode, stdout, _) = await CliCommandTestSupport.RunAsync(
+            "def",
+            "validate",
+            yamlPath,
+            "--api-base",
+            $"http://127.0.0.1:{port}",
+            "--tenant",
+            "acme-corp");
+        var captured = await listenerTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Equal("POST", captured.Method);
+        Assert.Equal("/v1/definitions/validate", captured.Path);
+        Assert.Contains("\"yaml\":", captured.Body, StringComparison.Ordinal);
+        Assert.Contains("workflow:", captured.Body, StringComparison.Ordinal);
+        Assert.Contains("\"valid\": true", stdout, StringComparison.Ordinal);
+        Assert.DoesNotContain("Validation: OK", stdout, StringComparison.Ordinal);
+        Assert.Null(captured.IdempotencyKey);
+    }
+
+    /// <summary>validate の 422 はエラー JSON を stderr に出す。</summary>
+    [Fact]
+    public async Task DefValidate_Unprocessable_WritesErrorToStderr()
+    {
+        // Arrange
+        CliCommandTestSupport.SaveValidCredentials();
+        var yamlPath = await CliCommandTestSupport.WriteTempYamlAsync("::::not-yaml::::");
+        var port = CliCommandTestSupport.GetFreeTcpPort();
+        using var listener = new HttpListener();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+        var listenerTask = CliCommandTestSupport.RespondOnceAsync(
+            listener,
+            HttpStatusCode.UnprocessableEntity,
+            """{"error":{"code":"VALIDATION_ERROR","message":"Definition validation failed."}}""");
+
+        // Act
+        var (exitCode, stdout, stderr) = await CliCommandTestSupport.RunAsync(
+            "def",
+            "validate",
+            yamlPath,
+            "--api-base",
+            $"http://127.0.0.1:{port}",
+            "--tenant",
+            "acme-corp");
+        await listenerTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("VALIDATION_ERROR", stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("valid", stdout, StringComparison.Ordinal);
+    }
+
+    /// <summary>nodes YAML のボディに yaml が載る。</summary>
+    [Fact]
+    public async Task DefValidate_NodesYaml_SendsYamlInBody()
+    {
+        // Arrange
+        CliCommandTestSupport.SaveValidCredentials();
+        var yamlPath = await CliCommandTestSupport.WriteTempYamlAsync(CliCommandTestSupport.ValidNodesYaml);
+        var port = CliCommandTestSupport.GetFreeTcpPort();
+        using var listener = new HttpListener();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+        var listenerTask = CliCommandTestSupport.RespondOnceAsync(
+            listener,
+            HttpStatusCode.OK,
+            """{"valid":true,"name":"Minimal"}""");
+
+        // Act
+        var (exitCode, _, _) = await CliCommandTestSupport.RunAsync(
+            "def",
+            "validate",
+            yamlPath,
+            "--api-base",
+            $"http://127.0.0.1:{port}",
+            "--tenant",
+            "acme-corp");
+        var captured = await listenerTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("\"yaml\":", captured.Body, StringComparison.Ordinal);
+        Assert.Contains("nodes:", captured.Body, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"name\":\"Minimal\"", captured.Body, StringComparison.Ordinal);
+    }
+
+    /// <summary>--name は検証ボディの name に載る。</summary>
+    [Fact]
+    public async Task DefValidate_NameFlag_SendsNameInBody()
+    {
+        // Arrange
+        CliCommandTestSupport.SaveValidCredentials();
+        var yamlPath = await CliCommandTestSupport.WriteTempYamlAsync(CliCommandTestSupport.ValidYaml);
+        var port = CliCommandTestSupport.GetFreeTcpPort();
+        using var listener = new HttpListener();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+        var listenerTask = CliCommandTestSupport.RespondOnceAsync(
+            listener,
+            HttpStatusCode.OK,
+            """{"valid":true,"name":"flag-name"}""");
+
+        // Act
+        var (exitCode, _, _) = await CliCommandTestSupport.RunAsync(
+            "def",
+            "validate",
+            yamlPath,
+            "--name",
+            "flag-name",
+            "--api-base",
+            $"http://127.0.0.1:{port}",
+            "--tenant",
+            "acme-corp");
+        var captured = await listenerTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("\"name\":\"flag-name\"", captured.Body, StringComparison.Ordinal);
+        Assert.Contains("\"yaml\":", captured.Body, StringComparison.Ordinal);
+    }
 }

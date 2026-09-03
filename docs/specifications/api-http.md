@@ -3,7 +3,7 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Specification |
-| Version | 1.20 |
+| Version | 1.21 |
 | 更新日 | 2026-09-03 |
 | 関連 | [reference/api-openapi.md](../reference/api-openapi.md), [concepts/platform.md](../concepts/platform.md), [execution/wait-cancel.md](execution/wait-cancel.md) |
 
@@ -24,6 +24,8 @@
 ---
 
 Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
+
+**Version 1.21（2026-09-03）**: `POST /v1/definitions/validate` を追加。catalog へ保存しない dry-run。権限は `definitions.write`。成功は 200（`valid` / `name`）。冪等ヘッダは使わない。
 
 **Version 1.20（2026-09-03）**: JWT 署名鍵の起動検証は Service API のみ。専用 Worker / Scheduler は対象外。
 
@@ -105,6 +107,7 @@ Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 | GET      | /v1/admin/modules         | Module load catalog           |
 | POST     | /internal/modules/reload  | Module 再 scan                |
 | POST     | /v1/definitions           | 定義登録                      |
+| POST     | /v1/definitions/validate  | 定義検証（永続化しない）      |
 | PUT      | /v1/definitions/{id}      | 定義更新（displayId または UUID） |
 | DELETE   | /v1/definitions/{id}      | 定義の catalog 論理削除       |
 | POST     | /v1/definitions/{id}/restore | 削除済み定義の復元         |
@@ -137,6 +140,17 @@ Service API（C#、`service/api/`）の HTTP 契約。実装に準拠。
 **POST /v1/definitions** — リクエスト / 応答スキーマは OpenAPI の `CreateDefinitionRequest` / `DefinitionResponse`（`201 Created`）を参照。
 
 - `name` / `yaml` 必須。検証・コンパイルして **初版（version=1）** を `definition_versions` に保存し、`definitions` 行を作成。新規行では `updatedAt` は `createdAt` と同一。`latestVersion` は `1`。不正時は 422（`error.details` に field/message を含む）。
+
+### 2.1.0 定義検証（dry-run）
+
+**POST /v1/definitions/validate** — リクエストは OpenAPI の `ValidateDefinitionRequest`（`yaml` 必須、`name` 任意）。応答は `ValidateDefinitionResponse`（**200 OK**）。
+
+- create / publish と同じ `ValidateAndCompile`（states / nodes）。`definitions` / `definition_versions` は増やさない。プロジェクト行も作らない。
+- 権限は **`definitions.write`**。認証なしは **401**、権限不足は **403**（`PERMISSION_DENIED`）。
+- 成功: `{ "valid": true, "name": "<実効名>" }`。compiled JSON は返さない。
+- 実効名はリクエスト `name`（非空白）優先。省略時はコンパイル結果の `Name`。両方空なら **422**（`field: name`）。
+- 構文・構造・到達不能・未登録 Action・input schema 違反は **422**（`VALIDATION_ERROR`）。`error.details` は create / publish と同形。
+- `X-Idempotency-Key` は使わない（永続化しない）。
 
 ### 2.1.1 定義 publish（版追加）
 
@@ -530,7 +544,7 @@ Principal 解決後、サービス層で **semantic permission key** を評価�
 | 操作 | permission key |
 | --- | --- |
 | GET `/v1/definitions*`、`/v1/graphs/*`、`/v1/definitions/schema/nodes`、`/v1/actions/schema*` | `definitions.read` |
-| POST/PUT `/v1/definitions` | `definitions.write` |
+| POST/PUT `/v1/definitions`、`POST /v1/definitions/validate` | `definitions.write` |
 | GET `/v1/executions*`（一覧・詳細・graph・waits・state・events・stream） | `executions.read` |
 | POST start / cancel / publish / resume、**`POST /v1/events`** | `executions.write` |
 

@@ -584,6 +584,88 @@
         }
       }
     },
+    "/v1/admin/users/{userId}/password": {
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "PUT /v1/admin/users/{userId}/password — パスワード上書き。",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminUserPasswordRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminUserPasswordRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminUserPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/groups": {
       "get": {
         "tags": [
@@ -1502,6 +1584,79 @@
         }
       }
     },
+    "/v1/auth/me/password": {
+      "put": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "PUT /v1/auth/me/password — 本人パスワード更新。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeOwnPasswordRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeOwnPasswordRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeOwnPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/definitions": {
       "post": {
         "tags": [
@@ -1595,7 +1750,7 @@
         "tags": [
           "Definitions"
         ],
-        "summary": "GET /v1/definitions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&name=&sortBy=&sortOrder=` で Statevia.Core.Application.Contracts.PagedResult`1（name は部分一致）。",
+        "summary": "GET /v1/definitions — ページング一覧。`limit` は必須。\r\n`?limit=&offset=&name=&sortBy=&sortOrder=` で Statevia.Core.Application.Contracts.PagedResult`1（name は部分一致）。",
         "parameters": [
           {
             "name": "limit",
@@ -1680,6 +1835,96 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DefinitionResponsePagedResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/definitions/validate": {
+      "post": {
+        "tags": [
+          "Definitions"
+        ],
+        "summary": "POST /v1/definitions/validate — 定義 YAML を検証する。catalog へは保存しない。",
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateDefinitionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateDefinitionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateDefinitionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateDefinitionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateDefinitionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateDefinitionResponse"
                 }
               }
             }
@@ -1818,7 +2063,7 @@
         "tags": [
           "Definitions"
         ],
-        "summary": "GET /v1/definitions/{id} — 表示用 ID または UUID で取得（U4）。",
+        "summary": "GET /v1/definitions/{id} — 表示用 ID または UUID で取得。",
         "parameters": [
           {
             "name": "id",
@@ -2181,7 +2426,7 @@
         "tags": [
           "Executions"
         ],
-        "summary": "POST /v1/executions — definitionId で定義を取得し、Engine.Start を呼ぶ。display_id と resource_id を返す（U4）。",
+        "summary": "POST /v1/executions — definitionId で定義を取得し、Engine.Start を呼ぶ。display_id と resource_id を返す。",
         "parameters": [
           {
             "name": "X-Idempotency-Key",
@@ -2294,7 +2539,7 @@
         "tags": [
           "Executions"
         ],
-        "summary": "GET /v1/executions — ページング一覧（U4）。`limit` は必須。\r\n`?limit=&offset=&status=&definitionId=&name=&sortBy=&sortOrder=` で Statevia.Core.Application.Contracts.PagedResult`1（O1/O2）。\r\n`definitionId` は定義の display / UUID。 `name` は execution の `displayId` 部分一致、または execution の UUID 完全一致で絞り込み。",
+        "summary": "GET /v1/executions — ページング一覧。`limit` は必須。\r\n`?limit=&offset=&status=&definitionId=&name=&sortBy=&sortOrder=` で Statevia.Core.Application.Contracts.PagedResult`1。\r\n`definitionId` は定義の display / UUID。 `name` は execution の `displayId` 部分一致、または execution の UUID 完全一致で絞り込み。",
         "parameters": [
           {
             "name": "limit",
@@ -2546,6 +2791,96 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/executions/{id}/waits": {
+      "get": {
+        "tags": [
+          "Executions"
+        ],
+        "summary": "GET /v1/executions/{id}/waits — 未完了 Wait の再開キー。正本は graph スナップショット。X-Tenant-Id でスコープ。",
+        "description": "機微 IO 方針: `input` / `output` は返さない。権限は既存 executions GET と同じ `executions.read`。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "description": "テナント ID。未指定時は \"default\"。",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionWaitsResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionWaitsResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionWaitsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -3810,6 +4145,29 @@
         "additionalProperties": false,
         "description": "認証済み Principal 情報。"
       },
+      "ChangeOwnPasswordRequest": {
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "minLength": 1,
+            "type": "string",
+            "description": "現行の平文パスワード。"
+          },
+          "newPassword": {
+            "maxLength": 128,
+            "minLength": 8,
+            "pattern": "^\\S+$",
+            "type": "string",
+            "description": "新しい平文パスワード（8〜128 文字、空白なし。記号可）。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "本人によるパスワード更新要求。"
+      },
       "CreateAdminApiKeyRequest": {
         "required": [
           "allowedScopes",
@@ -3875,9 +4233,11 @@
             "nullable": true
           },
           "password": {
-            "minLength": 1,
+            "maxLength": 128,
+            "minLength": 8,
+            "pattern": "^\\S+$",
             "type": "string",
-            "description": "平文パスワード。"
+            "description": "平文パスワード（8〜128 文字、空白なし。記号可）。"
           },
           "displayName": {
             "type": "string",
@@ -4276,6 +4636,40 @@
         },
         "additionalProperties": false
       },
+      "ExecutionWaitItemDto": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "nodeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "allowedEvents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ExecutionWaitsResponse": {
+        "type": "object",
+        "properties": {
+          "waits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutionWaitItemDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "GraphDefinitionResponse": {
         "type": "object",
         "properties": {
@@ -4643,6 +5037,23 @@
         },
         "additionalProperties": false
       },
+      "UpdateAdminUserPasswordRequest": {
+        "required": [
+          "newPassword"
+        ],
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "maxLength": 128,
+            "minLength": 8,
+            "pattern": "^\\S+$",
+            "type": "string",
+            "description": "新しい平文パスワード（8〜128 文字、空白なし。記号可）。"
+          }
+        },
+        "additionalProperties": false,
+        "description": "管理者によるパスワード上書き要求。"
+      },
       "UpdateAdminUserRequest": {
         "type": "object",
         "properties": {
@@ -4674,6 +5085,36 @@
           "yaml": {
             "minLength": 1,
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ValidateDefinitionRequest": {
+        "required": [
+          "yaml"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "yaml": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ValidateDefinitionResponse": {
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

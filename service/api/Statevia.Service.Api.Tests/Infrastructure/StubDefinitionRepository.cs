@@ -15,6 +15,9 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
 
     public Exception? AddWithInitialVersionException { get; set; }
 
+    /// <summary><see cref="AddWithInitialVersionAsync"/> の呼び出し回数。</summary>
+    public int AddWithInitialVersionCallCount { get; private set; }
+
     public DefinitionSoftDeleteOutcome SoftDeleteOutcome { get; init; } = DefinitionSoftDeleteOutcome.Deleted;
 
     /// <summary>最後に SoftDelete された定義 ID。未呼び出しなら null。</summary>
@@ -152,6 +155,7 @@ internal sealed class StubDefinitionRepository : IDefinitionRepository
         _ = definition;
         _ = version;
         _ = ct;
+        AddWithInitialVersionCallCount++;
         if (AddWithInitialVersionException is not null)
             throw AddWithInitialVersionException;
 

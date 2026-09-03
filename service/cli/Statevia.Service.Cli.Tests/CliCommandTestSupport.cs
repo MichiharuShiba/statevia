@@ -95,6 +95,20 @@ internal static class CliCommandTestSupport
                 end: true
         """;
 
+    /// <summary>合法な最小 nodes YAML。</summary>
+    internal const string ValidNodesYaml =
+        """
+        version: 1
+        workflow:
+          name: Minimal
+        nodes:
+          - name: start
+            type: start
+            next: endNode
+          - name: endNode
+            type: end
+        """;
+
     /// <summary>stdout / stderr をキャプチャして <see cref="Program.Main"/> を実行する。</summary>
     /// <param name="args">CLI 引数。</param>
     /// <returns>終了コードと標準出力・標準エラー。</returns>

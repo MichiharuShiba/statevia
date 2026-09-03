@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.1 |
-| 更新日 | 2026-08-20 |
+| Version | 1.2 |
+| 更新日 | 2026-09-03 |
 | 関連 | [../../core/engine/samples/hello-statevia/README.md](../../core/engine/samples/hello-statevia/README.md) |
 
 ---
@@ -20,16 +20,11 @@ dotnet run
 
 `hello.yaml` に定義があり、コンソール上でワークフローが進行します。永続化・認証・Action Module は含みません。
 
-## 定義の検証（CLI）
+## 定義の検証
 
-ホストに API を立てずに YAML の構文・セマンティクスを確認する:
+`statevia def validate` は Service API の `POST /v1/definitions/validate` を呼びます。ホストなしのオフライン検証ではありません。手順は [cli-reference.md](cli-reference.md) を参照してください。
 
-```bash
-cd service/cli
-dotnet run --project Statevia.Service.Cli -- def validate path/to/workflow.yaml
-```
-
-成功時はワークフロー名と状態一覧を出力します。詳細は [cli-reference.md](cli-reference.md)。
+Engine 単体でロードと実行を確認するには、上の hello-statevia か、次の Engine テストを使います。
 
 ## Engine テストの実行
 

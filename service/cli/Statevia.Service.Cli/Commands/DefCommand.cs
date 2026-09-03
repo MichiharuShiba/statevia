@@ -1,6 +1,5 @@
 using System.CommandLine;
 using Statevia.Core.Engine.Definition;
-using Statevia.Core.Engine.Definition.Validation;
 using Statevia.Service.Cli.Infrastructure;
 
 namespace Statevia.Service.Cli.Commands;
@@ -15,7 +14,7 @@ public static class DefCommand
     /// <returns>親 <c>def</c>。</returns>
     public static Command Create()
     {
-        var command = new Command("def", "Definition catalog and local validation");
+        var command = new Command("def", "Definition catalog and API validation");
         command.AddCommand(CreateValidate());
         command.AddCommand(CreateCreate());
         command.AddCommand(CreatePublish());
@@ -29,11 +28,25 @@ public static class DefCommand
     private static Command CreateValidate()
     {
         var yamlArgument = new Argument<FileInfo>("yaml-file", "Workflow definition YAML file");
-        var validate = new Command("validate", "Validate a workflow definition YAML file")
+        var nameOption = CreateNameOption();
+        var apiBaseOption = CliRuntimeCommandSupport.CreateApiBaseOption();
+        var tenantOption = CliRuntimeCommandSupport.CreateTenantOption();
+        var apiKeyOption = CliRuntimeCommandSupport.CreateApiKeyOption();
+        var validate = new Command("validate", "Validate a workflow definition (POST /v1/definitions/validate)")
         {
             yamlArgument,
+            nameOption,
+            apiBaseOption,
+            tenantOption,
+            apiKeyOption,
         };
-        validate.SetHandler(ValidateAsync, yamlArgument);
+        var binder = new CliValueBinder<ValidateArgs>(ctx => new ValidateArgs(
+            ctx.ParseResult.GetValueForArgument(yamlArgument),
+            ctx.ParseResult.GetValueForOption(nameOption),
+            ctx.ParseResult.GetValueForOption(apiBaseOption),
+            ctx.ParseResult.GetValueForOption(tenantOption),
+            ctx.ParseResult.GetValueForOption(apiKeyOption)));
+        validate.SetHandler(ValidateAsync, binder);
         return validate;
     }
 
@@ -212,40 +225,50 @@ public static class DefCommand
     private static Option<string?> CreateNameOption() =>
         new("--name", "Definition name. Overrides the workflow name in YAML when both are set");
 
-    private static async Task<int> ValidateAsync(FileInfo yamlFile)
+    private static async Task<int> ValidateAsync(ValidateArgs args)
     {
-        if (!yamlFile.Exists)
-        {
-            await Console.Error.WriteLineAsync($"File not found: {yamlFile.FullName}").ConfigureAwait(false);
+        var yaml = await TryReadYamlFileAsync(args.File).ConfigureAwait(false);
+        if (yaml is null)
             return 1;
-        }
 
-        var loader = new StateWorkflowDefinitionLoader();
-        var content = await File.ReadAllTextAsync(yamlFile.FullName).ConfigureAwait(false);
+        var session = await CliRuntimeCommandSupport
+            .TryCreateSessionAsync(args.ApiBase, args.Tenant, args.ApiKey, idempotencyKey: null)
+            .ConfigureAwait(false);
+        if (session is null)
+            return 1;
+
+        var name = string.IsNullOrWhiteSpace(args.Name) ? null : args.Name.Trim();
+        return await CliRuntimeCommandSupport
+            .SendAndWriteAsync(
+                session,
+                new CliApiSendRequest(
+                    HttpMethod.Post,
+                    "v1/definitions/validate",
+                    Body: new ValidateBody(yaml, name)))
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>YAML ファイルを読む。欠損・I/O 失敗は API を呼ばず null。</summary>
+    /// <param name="file">検証対象ファイル。</param>
+    /// <returns>ファイル内容。失敗時は null。</returns>
+    private static async Task<string?> TryReadYamlFileAsync(FileInfo? file)
+    {
+        if (file is null || !file.Exists)
+        {
+            await Console.Error
+                .WriteLineAsync(file is null ? "yaml-file is required." : $"File not found: {file.FullName}")
+                .ConfigureAwait(false);
+            return null;
+        }
 
         try
         {
-            var definition = loader.Load(content);
-            await Console.Out.WriteLineAsync($"Loaded workflow: {definition.Name}").ConfigureAwait(false);
-            await Console.Out.WriteLineAsync($"States: {string.Join(", ", definition.States.Keys)}").ConfigureAwait(false);
-
-            var result = DefinitionValidator.Validate(definition);
-            if (!result.IsValid)
-            {
-                await Console.Error.WriteLineAsync("Validation failed:").ConfigureAwait(false);
-                foreach (var error in result.Errors)
-                    await Console.Error.WriteLineAsync("  - " + error).ConfigureAwait(false);
-
-                return 1;
-            }
-
-            await Console.Out.WriteLineAsync("Validation: OK").ConfigureAwait(false);
-            return 0;
+            return await File.ReadAllTextAsync(file.FullName).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is IOException or ArgumentException or InvalidOperationException)
+        catch (IOException ex)
         {
             await Console.Error.WriteLineAsync($"Error: {ex.Message}").ConfigureAwait(false);
-            return 1;
+            return null;
         }
     }
 
@@ -424,6 +447,13 @@ public static class DefCommand
         }
     }
 
+    private sealed record ValidateArgs(
+        FileInfo File,
+        string? Name,
+        string? ApiBase,
+        string? Tenant,
+        string? ApiKey);
+
     private sealed record CreateArgs(
         FileInfo? File,
         string? Name,
@@ -460,4 +490,6 @@ public static class DefCommand
         string? IdempotencyKey);
 
     private sealed record CreateOrPublishBody(string Name, string Yaml);
+
+    private sealed record ValidateBody(string Yaml, string? Name);
 }

@@ -3,13 +3,15 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.4 |
-| 更新日 | 2026-09-01 |
+| Version | 1.5 |
+| 更新日 | 2026-09-03 |
 | 関連 | [getting-started.md](getting-started.md), [../specifications/api-http.md](../specifications/api-http.md) |
 
 ---
 
 Service API（`http://localhost:8080`）への代表的な HTTP 呼び出し例。契約の正本は [api-http 仕様](../specifications/api-http.md) です。
+
+**Version 1.5（2026-09-03）**: `POST /v1/definitions/validate` の dry-run 例を追加。
 
 **Version 1.4（2026-09-01）**: `X-Api-Key` を現行として書く。JWT 例は残す。
 
@@ -25,6 +27,19 @@ Service API（`http://localhost:8080`）への代表的な HTTP 呼び出し例�
 
 ```bash
 curl -s http://localhost:8080/v1/health
+```
+
+## 定義の検証（永続化しない）
+
+`POST /v1/definitions/validate` — `yaml` 必須、`name` 任意。catalog には保存しない。成功は `{ "valid": true, "name": "..." }`。不正は 422。`X-Idempotency-Key` は不要。
+
+```bash
+curl -s -X POST "http://localhost:8080/v1/definitions/validate" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: default" \
+  -H "Authorization: Bearer <token>" \
+  -d "$(jq -n --rawfile yaml docs/samples/ui-customer-order-parallel.yaml \
+    '{yaml:$yaml}')"
 ```
 
 ## 定義の初回登録

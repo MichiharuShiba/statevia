@@ -12,6 +12,7 @@ public sealed class DefinitionsControllerTests
         public Exception? ExceptionToThrow { get; set; }
 
         public DefinitionResponse CreateResult { get; set; } = new DefinitionResponse();
+        public ValidateDefinitionResponse ValidateResult { get; set; } = new() { Valid = true, Name = "n" };
         public PagedResult<DefinitionResponse> ListPagedResult { get; set; } = new() { Items = [], TotalCount = 0, Offset = 0, Limit = 0, HasMore = false };
         public DefinitionResponse GetResult { get; set; } = new DefinitionResponse();
         public DefinitionResponse UpdateResult { get; set; } = new DefinitionResponse();
@@ -21,6 +22,13 @@ public sealed class DefinitionsControllerTests
             await Task.Yield(); // async boundary for coverage
             if (ExceptionToThrow is { } ex) throw ex;
             return CreateResult;
+        }
+
+        public async Task<ValidateDefinitionResponse> ValidateAsync(ValidateDefinitionRequest request, CancellationToken ct)
+        {
+            await Task.Yield();
+            if (ExceptionToThrow is { } ex) throw ex;
+            return ValidateResult;
         }
 
         public async Task<PagedResult<DefinitionResponse>> ListPagedAsync(DefinitionListPageQuery query, CancellationToken ct)
@@ -88,6 +96,36 @@ public sealed class DefinitionsControllerTests
         var created = Assert.IsType<CreatedAtActionResult>(res.Result);
         Assert.Equal(nameof(controller.Get), created.ActionName);
         Assert.Equal("DEF-1", created.RouteValues!["id"]);
+    }
+
+    /// <summary>検証は 201 ではなく 200 を返す。</summary>
+    [Fact]
+    public async Task Validate_ReturnsOk()
+    {
+        // Arrange
+        var http = new DefaultHttpContext();
+        http.Request.Method = "POST";
+        http.Request.Path = "/v1/definitions/validate";
+        var fake = new FakeDefinitionService
+        {
+            ValidateResult = new ValidateDefinitionResponse { Valid = true, Name = "checked" }
+        };
+        var controller = new DefinitionsController(fake)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http }
+        };
+
+        // Act
+        var res = await controller.Validate(
+            new ValidateDefinitionRequest { Yaml = "workflow:\n  name: checked" },
+            ct: CancellationToken.None);
+
+        // Assert
+        var ok = Assert.IsType<OkObjectResult>(res.Result);
+        var body = Assert.IsType<ValidateDefinitionResponse>(ok.Value);
+        Assert.True(body.Valid);
+        Assert.Equal("checked", body.Name);
+        Assert.NotEqual(StatusCodes.Status201Created, ok.StatusCode ?? StatusCodes.Status200OK);
     }
 
     /// <summary>

@@ -3,8 +3,8 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.10 |
-| 更新日 | 2026-08-22 |
+| Version | 1.11 |
+| 更新日 | 2026-09-03 |
 | 関連 | [../../service/cli/Statevia.Service.Cli/](../../service/cli/Statevia.Service.Cli/) |
 
 ---
@@ -63,17 +63,20 @@ CLI の非秘密設定・JWT・API キーは **`{UserProfile}/.statevia`** に�
 
 ## `def validate`
 
-ワークフロー定義 YAML を Engine Loader で読み込み、検証します。API は呼びません。
+ワークフロー定義 YAML を `POST /v1/definitions/validate` で検証します。catalog には保存しません。states / nodes とも create / publish と同じ受理規則です。API 不通時に Engine へ落とす経路はありません。
 
 ```bash
 statevia def validate path/to/workflow.yaml
+statevia def validate path/to/workflow.yaml --name override-name
 ```
 
-| 引数 | 説明 |
+| 引数 / フラグ | 説明 |
 | --- | --- |
-| `yaml-file` | 検証対象の YAML ファイル |
+| `yaml-file` | 検証対象の YAML ファイル（位置引数） |
+| `--name` | 任意。ボディの `name`。省略時は YAML から API が実効名を決める |
+| `--api-base` / `--tenant` / `--api-key` | 他の `def` サブコマンドと同じ（フラグ > 環境変数 > ホーム） |
 
-終了コード `0` で成功。構文・セマンティクスエラーは stderr に出力されます。親コマンドは **`def` のみ**です（`definition` エイリアスはありません）。
+`--idempotency-key` はありません。成功時は API JSON（`valid` / `name`）を stdout へ。422 などのエラー JSON は stderr。人間向けの「Validation: OK」や状態一覧は出しません。認証が無いときは非ゼロで `auth login` を案内します。親コマンドは **`def` のみ**です（`definition` エイリアスはありません）。
 
 ## `def`（定義 catalog）
 
@@ -94,6 +97,7 @@ statevia def restore <id>
 
 | サブコマンド | HTTP |
 | --- | --- |
+| `validate <yaml-file> [--name]` | `POST /v1/definitions/validate` |
 | `create --file [--name]` | `POST /v1/definitions` |
 | `publish <id> --file [--name]` | `PUT /v1/definitions/{id}`（版追加） |
 | `list` | `GET /v1/definitions`（`--limit` 既定 50、`--offset` 既定 0） |
@@ -101,7 +105,7 @@ statevia def restore <id>
 | `delete <id>` | `DELETE /v1/definitions/{id}` |
 | `restore <id>` | `POST /v1/definitions/{id}/restore` |
 
-`list` の任意フィルタ: `--name` / `--sort-by` / `--sort-order` / `--include-deleted`。ミューテーションには任意 `--idempotency-key`（未指定時は自動生成しない）。成功時は API JSON を stdout へ（204 は空）。graph / SSE は対象外です。パスの `id` は 1 セグメントだけを許し、`/` や `..` は拒否します。
+`list` の任意フィルタ: `--name` / `--sort-by` / `--sort-order` / `--include-deleted`。`create` / `publish` / `delete` / `restore` には任意 `--idempotency-key`（未指定時は自動生成しない）。`validate` には付けない。成功時は API JSON を stdout へ（204 は空）。graph / SSE は対象外です。パスの `id` は 1 セグメントだけを許し、`/` や `..` は拒否します。
 
 ## `exec`（実行）
 

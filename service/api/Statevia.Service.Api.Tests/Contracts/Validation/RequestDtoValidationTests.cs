@@ -22,6 +22,21 @@ public sealed class RequestDtoValidationTests
         Assert.Contains(results, r => r.MemberNames.Contains(nameof(CreateDefinitionRequest.Name)));
     }
 
+    /// <summary>定義検証で空白 yaml は検証失敗する。name 省略は許可する。</summary>
+    [Fact]
+    public void ValidateDefinitionRequest_WhenYamlWhitespace_FailsValidation()
+    {
+        // Arrange
+        var request = new ValidateDefinitionRequest { Yaml = " " };
+
+        // Act
+        var results = Validate(request);
+
+        // Assert
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(ValidateDefinitionRequest.Yaml)));
+        Assert.DoesNotContain(results, r => r.MemberNames.Contains(nameof(ValidateDefinitionRequest.Name)));
+    }
+
     /// <summary>ログイン空入力は検証失敗する。</summary>
     [Fact]
     public void LoginRequest_WhenFieldsEmpty_FailsValidation()
