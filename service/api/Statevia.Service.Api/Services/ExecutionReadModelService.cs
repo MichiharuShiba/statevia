@@ -1,8 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Core.Application.Contracts;
-using Statevia.Core.Application.Contracts.Persistence;
-using Statevia.Core.Application.Contracts.Security;
-using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Infrastructure;
 using Statevia.Core.Engine.FSM;
 using Statevia.Infrastructure.Persistence;

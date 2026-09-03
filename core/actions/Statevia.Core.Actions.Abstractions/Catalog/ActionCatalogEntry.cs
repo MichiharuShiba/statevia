@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Core.Actions.Abstractions.Catalog;

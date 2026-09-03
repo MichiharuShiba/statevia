@@ -1,5 +1,5 @@
-using System.CommandLine;
 using Statevia.Service.Cli.Infrastructure;
+using System.CommandLine;
 
 namespace Statevia.Service.Cli.Commands;
 

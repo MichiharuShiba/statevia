@@ -1,6 +1,5 @@
 using Statevia.Core.Actions.Abstractions.Catalog;
 using Statevia.Core.Engine.Definition;
-using Statevia.Service.Api.Application.Actions;
 
 namespace Statevia.Service.Api.Application.Actions.Versioning;
 

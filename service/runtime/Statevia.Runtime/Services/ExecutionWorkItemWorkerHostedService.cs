@@ -1,16 +1,15 @@
-using System.Collections.Concurrent;
-using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Statevia.Core.Application.Contracts;
 using Statevia.Core.Application.Contracts.Persistence;
 using Statevia.Core.Application.Contracts.Security;
 using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Services;
 using Statevia.Infrastructure.Security;
 using Statevia.Runtime.Configuration;
+using System.Collections.Concurrent;
+using System.Text.Json;
 
 namespace Statevia.Runtime.Services;
 

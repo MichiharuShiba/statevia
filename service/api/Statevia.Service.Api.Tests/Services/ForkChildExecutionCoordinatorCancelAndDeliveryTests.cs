@@ -1,8 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Statevia.Core.Application.Contracts.Persistence;
-using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Services;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Persistence.Repositories;

@@ -1,6 +1,3 @@
-using Statevia.Service.Api.Contracts;
-using Statevia.Infrastructure.Security;
-
 namespace Statevia.Service.Api.Tests.Infrastructure.Security;
 
 /// <summary><see cref="ModuleManagementAuthorization"/> の単体テスト。</summary>

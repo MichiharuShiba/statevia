@@ -1,17 +1,13 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-
-using Statevia.Service.Api.Configuration;
-using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Hosting;
-using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Tests.Infrastructure;
 using Statevia.Service.Api.Tests.Infrastructure.Security;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 

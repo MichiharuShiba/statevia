@@ -1,7 +1,7 @@
-using System.Net;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Statevia.Service.Api.Tests.OpenApi;
+using System.Net;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 

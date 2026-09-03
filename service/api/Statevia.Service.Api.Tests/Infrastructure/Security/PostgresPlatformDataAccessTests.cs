@@ -1,11 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Statevia.Core.Application.Services;
-using Statevia.Infrastructure.Security;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Persistence.Repositories;
-using Statevia.Service.Api.Tests.Infrastructure;
-using Statevia.Service.Api.Tests.Infrastructure.Security;
 
 namespace Statevia.Service.Api.Tests.Infrastructure.Security;
 

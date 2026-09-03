@@ -1,5 +1,4 @@
 using System.IO.Compression;
-using Statevia.Infrastructure.Modules;
 
 namespace Statevia.Infrastructure.Modules.Tests;
 

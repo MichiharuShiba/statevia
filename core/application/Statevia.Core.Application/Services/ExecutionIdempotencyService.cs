@@ -1,9 +1,9 @@
-using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Statevia.Core.Application.Configuration;
 using Statevia.Core.Application.Infrastructure;
+using System.Diagnostics;
 
 namespace Statevia.Core.Application.Services;
 

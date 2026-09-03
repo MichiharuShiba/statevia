@@ -1,7 +1,6 @@
-using System.Net.Mail;
 using Microsoft.Extensions.DependencyInjection;
 using Statevia.Core.Engine.Abstractions;
-using Statevia.Reference.Notification;
+using System.Net.Mail;
 
 namespace Statevia.Reference.Notification.Tests;
 

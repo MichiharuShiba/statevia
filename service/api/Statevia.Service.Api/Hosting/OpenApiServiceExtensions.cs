@@ -1,10 +1,8 @@
-using System.Reflection;
-using System.Text.Json;
-using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
-using Swashbuckle.AspNetCore.SwaggerGen;
 using Statevia.Service.Api.Hosting.OpenApi;
+using System.Reflection;
+using System.Text.Json;
 
 namespace Statevia.Service.Api.Hosting;
 

@@ -1,7 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Statevia.Core.Application.Contracts.Persistence;
-using Statevia.Core.Application.Contracts.Security;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Persistence.DependencyInjection;
 

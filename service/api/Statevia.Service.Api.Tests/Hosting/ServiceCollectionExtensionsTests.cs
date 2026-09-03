@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -6,10 +5,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Statevia.Service.Api.Abstractions.Services;
-using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Hosting;
+using System.Text.Json;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 

@@ -1,10 +1,8 @@
-using System.Data;
 using Microsoft.Extensions.Logging.Abstractions;
-using Statevia.Core.Application.Contracts.Persistence;
-using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Services;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
+using System.Data;
 
 namespace Statevia.Service.Api.Tests.Services;
 

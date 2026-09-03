@@ -2,12 +2,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Statevia.Infrastructure.Security.Configuration;
+using Statevia.Runtime.Configuration;
+using Statevia.Runtime.Services;
 using Statevia.Service.Api.Application.Actions.Execution;
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Hosting;
-using Statevia.Runtime.Configuration;
-using Statevia.Runtime.Services;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 

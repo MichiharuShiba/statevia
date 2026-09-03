@@ -1,7 +1,5 @@
-using System.Security.Claims;
-
-using Statevia.Service.Api.Contracts;
 using Statevia.Infrastructure.Security;
+using System.Security.Claims;
 
 namespace Statevia.Service.Api.Hosting;
 

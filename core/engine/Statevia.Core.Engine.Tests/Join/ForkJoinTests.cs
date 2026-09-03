@@ -1,6 +1,4 @@
-using System.Linq;
 using Statevia.Core.Engine.Abstractions;
-using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.FSM;
 using Statevia.Core.Engine.Join;
 using Xunit;

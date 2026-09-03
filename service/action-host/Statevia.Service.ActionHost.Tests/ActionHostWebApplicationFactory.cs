@@ -1,7 +1,6 @@
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Statevia.Service.ActionHost;
 using Statevia.Infrastructure.Modules;
 
 namespace Statevia.Service.ActionHost.Tests;

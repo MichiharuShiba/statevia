@@ -1,7 +1,6 @@
-using Statevia.Service.Api.Abstractions.Services;
+using Statevia.Core.Application.Services;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Persistence.Repositories;
-using Statevia.Core.Application.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Services;

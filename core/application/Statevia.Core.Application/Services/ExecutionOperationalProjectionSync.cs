@@ -1,9 +1,6 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using Statevia.Core.Application.Contracts.Persistence;
-using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Infrastructure;
 using Statevia.Core.Engine.Abstractions;
+using System.Text.Json.Serialization;
 
 namespace Statevia.Core.Application.Services;
 

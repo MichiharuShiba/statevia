@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Logging.Abstractions;
-using Statevia.Service.Api.Application.Actions;
 using Statevia.Service.Api.Application.Actions.Versioning;
 using Statevia.Service.Api.Contracts;
 

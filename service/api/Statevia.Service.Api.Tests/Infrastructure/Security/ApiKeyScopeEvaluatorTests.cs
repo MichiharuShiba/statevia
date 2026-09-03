@@ -1,5 +1,3 @@
-using Statevia.Infrastructure.Security;
-
 namespace Statevia.Service.Api.Tests.Infrastructure.Security;
 
 /// <summary><see cref="ApiKeyScopeEvaluator"/> の検証。</summary>

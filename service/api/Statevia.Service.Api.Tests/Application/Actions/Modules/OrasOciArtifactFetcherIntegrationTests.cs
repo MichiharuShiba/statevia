@@ -1,4 +1,3 @@
-using System.Text;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -7,6 +6,7 @@ using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
 using Statevia.Infrastructure.Modules;
+using System.Text;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Modules;
 

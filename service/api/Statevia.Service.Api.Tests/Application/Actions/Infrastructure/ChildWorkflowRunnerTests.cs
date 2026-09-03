@@ -1,9 +1,6 @@
-using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Statevia.Core.Application.Contracts;
-using Statevia.Core.Application.Contracts.Services;
 using Statevia.Service.Api.Application.Actions.Infrastructure;
-using Statevia.Service.Api.Contracts;
+using System.Text.Json;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Infrastructure;
 

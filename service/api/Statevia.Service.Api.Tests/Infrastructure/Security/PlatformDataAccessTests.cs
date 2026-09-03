@@ -1,9 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 
-using Statevia.Infrastructure.Security;
-using Statevia.Infrastructure.Persistence;
-using Statevia.Service.Api.Tests.Infrastructure;
-
 namespace Statevia.Service.Api.Tests.Infrastructure.Security;
 
 /// <summary><see cref="PlatformDataAccess"/> の Platform 専用 lookup。</summary>

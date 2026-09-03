@@ -1,6 +1,6 @@
+using Statevia.Core.Engine.Definition;
 using Statevia.Service.Api.Application.Actions;
 using Statevia.Service.Api.Application.Actions.Resolution;
-using Statevia.Core.Engine.Definition;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Resolution;
 

@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
 using Statevia.Core.Application.Contracts.Services;
-using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Infrastructure.Security;
 

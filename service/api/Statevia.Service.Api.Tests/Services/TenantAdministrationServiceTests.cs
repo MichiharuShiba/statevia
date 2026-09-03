@@ -1,10 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-
-using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Contracts.Admin;
-using Statevia.Infrastructure.Persistence;
-using Statevia.Infrastructure.Security;
 using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
 using Statevia.Service.Api.Tests.Infrastructure.Security;

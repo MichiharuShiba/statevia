@@ -1,7 +1,5 @@
-using System.Text;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Text;
 
 namespace Statevia.Service.Api.Hosting;
 

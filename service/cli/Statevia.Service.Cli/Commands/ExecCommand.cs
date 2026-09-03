@@ -1,6 +1,6 @@
+using Statevia.Service.Cli.Infrastructure;
 using System.CommandLine;
 using System.Text.Json;
-using Statevia.Service.Cli.Infrastructure;
 
 namespace Statevia.Service.Cli.Commands;
 

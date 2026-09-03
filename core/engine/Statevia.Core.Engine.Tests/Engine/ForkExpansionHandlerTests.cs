@@ -1,6 +1,5 @@
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
-using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Execution;
 using Statevia.Core.Engine.Join;
 using Xunit;

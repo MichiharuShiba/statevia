@@ -1,5 +1,3 @@
-using Statevia.Infrastructure.Persistence;
-
 namespace Statevia.Infrastructure.Security;
 
 /// <summary>Principal の Identity（Live）検証。</summary>

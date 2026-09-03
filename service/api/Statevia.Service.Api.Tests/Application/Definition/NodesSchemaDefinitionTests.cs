@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Statevia.Service.Api.Application.Definition;
+using System.Text.Json;
 
 namespace Statevia.Service.Api.Tests.Application.Definition;
 

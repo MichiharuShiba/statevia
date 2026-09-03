@@ -1,9 +1,8 @@
+using Microsoft.Extensions.Options;
+using Statevia.Core.Actions.Abstractions.Catalog;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Statevia.Core.Actions.Abstractions.Catalog;
 
 namespace Statevia.Infrastructure.Modules;
 

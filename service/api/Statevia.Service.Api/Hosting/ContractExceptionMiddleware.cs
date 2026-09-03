@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Statevia.Service.Api.Contracts;
+using System.Text.Json;
 
 namespace Statevia.Service.Api.Hosting;
 

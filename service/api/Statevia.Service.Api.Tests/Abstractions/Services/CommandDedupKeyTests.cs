@@ -1,5 +1,3 @@
-using Statevia.Core.Application.Contracts.Services;
-
 namespace Statevia.Service.Api.Tests.Abstractions.Services;
 
 /// <summary><see cref="CommandDedupKey"/> の等値・ハッシュのテスト。</summary>

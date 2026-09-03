@@ -1,7 +1,7 @@
-using System.Net.Sockets;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using Microsoft.Extensions.Options;
+using System.Net.Sockets;
 
 namespace Statevia.Service.Api.Application.Actions.Execution;
 

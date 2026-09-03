@@ -5,8 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Statevia.Infrastructure.Modules;
-using Statevia.Service.Api.Hosting;
-using Statevia.Infrastructure.Security;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Tests.Infrastructure;
 using Statevia.Service.Api.Tests.Infrastructure.Security;

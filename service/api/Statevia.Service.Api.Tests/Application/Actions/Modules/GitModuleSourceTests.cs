@@ -1,11 +1,11 @@
-using System.IO.Compression;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Infrastructure.Modules;
+using Statevia.Service.Api.Application.Actions.Catalog;
+using System.IO.Compression;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Modules;
 

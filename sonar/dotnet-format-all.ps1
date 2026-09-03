@@ -1,11 +1,13 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  リポジトリ内の全 .NET ソリューションに `dotnet format` を適用する。
+  リポジトリ内の全 .NET ソリューションに、インデント・空白・不要な using のクリーンアップを適用する。
 
 .DESCRIPTION
   スクリプト配置（リポジトリの sonar/）から各 sln のパスを解決する。
   カレントディレクトリに依存しない。
+  `whitespace` と `style --diagnostics IDE0005 IDE0065` を順に実行し、
+  インデント・空白・不要な using の削除、using 配置の整理に限定する。
 
   対象:
   - core/engine/statevia-engine.sln
@@ -90,17 +92,34 @@ foreach ($target in $targets) {
     Write-Host ""
     Write-Host "=== $($target.Name) ($($target.RelativePath)) ===" -ForegroundColor Cyan
 
-    $formatArgs = @(
-        'format',
-        $solutionPath,
-        '--verbosity', $Verbosity
+    $formatCommands = @(
+        @{
+            Name = 'whitespace'
+            Args = @('format', 'whitespace', $solutionPath, '--verbosity', $Verbosity)
+        }
+        @{
+            Name = 'using-cleanup'
+            Args = @('format', 'style', $solutionPath, '--diagnostics', 'IDE0005', 'IDE0065', '--severity', 'info', '--verbosity', $Verbosity)
+        }
     )
+
     if ($VerifyNoChanges) {
-        $formatArgs += '--verify-no-changes'
+        foreach ($formatCommand in $formatCommands) {
+            $formatCommand.Args += '--verify-no-changes'
+        }
     }
 
-    & dotnet @formatArgs
-    if ($LASTEXITCODE -ne 0) {
+    $targetFailed = $false
+    foreach ($formatCommand in $formatCommands) {
+        Write-Host ("--- {0}" -f $formatCommand.Name) -ForegroundColor DarkCyan
+        & dotnet @($formatCommand.Args)
+        if ($LASTEXITCODE -ne 0) {
+            $targetFailed = $true
+            break
+        }
+    }
+
+    if ($targetFailed) {
         $failed.Add($target.Name)
     }
 }

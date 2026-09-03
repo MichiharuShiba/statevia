@@ -1,9 +1,8 @@
 using Microsoft.Extensions.Options;
-using Statevia.Core.Application.Contracts.Security;
-using Statevia.Service.Api.Abstractions.Services;
-using Statevia.Service.Api.Contracts.Admin;
 using Statevia.Infrastructure.Modules;
 using Statevia.Infrastructure.Security;
+using Statevia.Service.Api.Abstractions.Services;
+using Statevia.Service.Api.Contracts.Admin;
 
 namespace Statevia.Service.Api.Application.Actions.Modules;
 

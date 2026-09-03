@@ -1,9 +1,6 @@
+using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Text;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Statevia.Core.Application.Contracts.Services;
 
 namespace Statevia.Service.Api.Hosting;
 

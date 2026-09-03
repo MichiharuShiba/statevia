@@ -1,5 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-
 namespace Statevia.Core.Actions.Abstractions.Modules;
 
 /// <summary>Action Module（DLL）側の最小公開契約。</summary>

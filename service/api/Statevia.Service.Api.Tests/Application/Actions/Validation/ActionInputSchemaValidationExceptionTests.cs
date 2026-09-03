@@ -1,5 +1,3 @@
-using Statevia.Service.Api.Application.Actions.Validation;
-
 namespace Statevia.Service.Api.Tests.Application.Actions.Validation;
 
 /// <summary><see cref="ActionInputSchemaValidationException"/> のメッセージ構築と標準コンストラクター。</summary>

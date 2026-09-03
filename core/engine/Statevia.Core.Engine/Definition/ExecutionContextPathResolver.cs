@@ -1,4 +1,3 @@
-using System.Linq;
 using Statevia.Core.Engine.Engine;
 
 namespace Statevia.Core.Engine.Definition;

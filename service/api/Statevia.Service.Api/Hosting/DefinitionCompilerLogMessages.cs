@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace Statevia.Service.Api.Hosting;
 
 /// <summary><see cref="DefinitionCompilerService"/> 用のログ（<see cref="LoggerMessageAttribute"/>）。</summary>

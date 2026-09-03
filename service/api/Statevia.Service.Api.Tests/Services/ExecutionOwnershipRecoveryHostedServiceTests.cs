@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Statevia.Core.Application.Contracts.Persistence;
 using Statevia.Runtime.Services;
 
 namespace Statevia.Service.Api.Tests.Services;

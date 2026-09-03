@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Statevia.Core.Application.Infrastructure;
+using System.Text.Json;
 
 namespace Statevia.Service.Api.Tests.Infrastructure;
 

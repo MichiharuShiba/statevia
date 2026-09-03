@@ -1,11 +1,8 @@
-using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
-using Statevia.Core.Application.Contracts;
-using Statevia.Core.Application.Contracts.Persistence;
-using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Contracts.Validation;
 using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Services;
+using System.ComponentModel.DataAnnotations;
 
 namespace Statevia.Service.Api.Controllers;
 

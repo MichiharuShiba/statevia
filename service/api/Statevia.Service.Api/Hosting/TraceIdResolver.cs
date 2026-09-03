@@ -1,6 +1,3 @@
-using Microsoft.AspNetCore.Http;
-using Statevia.Core.Application.Contracts.Services;
-
 namespace Statevia.Service.Api.Hosting;
 
 /// <summary>

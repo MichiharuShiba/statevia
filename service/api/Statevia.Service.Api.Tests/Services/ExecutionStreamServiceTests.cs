@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Http;
-using Statevia.Core.Application.Contracts.Services;
-using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Services;
 
 namespace Statevia.Service.Api.Tests.Services;

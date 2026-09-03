@@ -1,7 +1,6 @@
-using System.Globalization;
-
 using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Engine;
+using System.Globalization;
 using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Engine;

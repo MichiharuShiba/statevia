@@ -1,10 +1,7 @@
-using Statevia.Service.Api.Abstractions.Services;
-
-using Statevia.Service.Api.Contracts;
+using Microsoft.EntityFrameworkCore;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 
 namespace Statevia.Service.Api.Tests.Services;
 

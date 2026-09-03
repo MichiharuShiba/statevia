@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace Statevia.Service.ActionHost.Modules;
 
 /// <summary>modules ルートから entry DLL を列挙する（load は行わない）。</summary>
