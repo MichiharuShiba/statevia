@@ -1,7 +1,7 @@
+using Statevia.Service.Cli.Infrastructure;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using Statevia.Service.Cli.Infrastructure;
 using Xunit;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]

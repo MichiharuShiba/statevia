@@ -1,12 +1,8 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Statevia.Service.Api.Abstractions.Services;
-
-using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Contracts.Admin;
-using Statevia.Infrastructure.Security;
 using Statevia.Infrastructure.Persistence;
+using Statevia.Infrastructure.Security;
+using Statevia.Service.Api.Contracts.Admin;
+using System.Text.Json;
 
 namespace Statevia.Service.Api.Services;
 

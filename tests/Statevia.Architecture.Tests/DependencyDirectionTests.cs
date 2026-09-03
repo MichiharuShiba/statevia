@@ -1,5 +1,5 @@
-using System.Reflection;
 using NetArchTest.Rules;
+using System.Reflection;
 using Xunit;
 
 namespace Statevia.Architecture.Tests;

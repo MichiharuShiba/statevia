@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Configuration;
-using Statevia.Infrastructure.Common;
 using Statevia.Service.Api.Bootstrap;
 
 namespace Statevia.Service.Api.Tests.Bootstrap;

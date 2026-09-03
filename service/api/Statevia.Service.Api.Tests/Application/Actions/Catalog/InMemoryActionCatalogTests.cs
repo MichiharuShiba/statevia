@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Statevia.Core.Actions.Abstractions.Catalog;
-using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Execution;
+using Statevia.Service.Api.Application.Actions.Catalog;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Catalog;
 

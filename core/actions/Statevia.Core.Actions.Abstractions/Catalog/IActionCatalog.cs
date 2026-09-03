@@ -1,5 +1,5 @@
-using System.Diagnostics.CodeAnalysis;
 using Statevia.Core.Actions.Abstractions.Publication;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Statevia.Core.Actions.Abstractions.Catalog;
 

@@ -1,7 +1,6 @@
-using System.Text.Json;
 using Statevia.Core.Actions.Abstractions.Execution;
-using Statevia.Infrastructure.Actions.Grpc;
 using Statevia.Infrastructure.Actions.Grpc.Contracts;
+using System.Text.Json;
 
 namespace Statevia.Infrastructure.Actions.Grpc.Tests;
 

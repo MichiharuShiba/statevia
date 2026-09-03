@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Infrastructure.Security;
 

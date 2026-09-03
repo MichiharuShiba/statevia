@@ -1,6 +1,5 @@
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
-using Statevia.Service.Api.Hosting;
 
 namespace Statevia.Service.Api.Hosting.OpenApi;
 

@@ -1,6 +1,3 @@
-using Statevia.Core.Application.Contracts.Persistence;
-using Statevia.Core.Application.Contracts.Services;
-
 namespace Statevia.Core.Application.Services;
 
 /// <summary>

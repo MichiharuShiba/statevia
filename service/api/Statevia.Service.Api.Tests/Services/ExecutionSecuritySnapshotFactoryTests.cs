@@ -1,9 +1,4 @@
-
-using Statevia.Service.Api.Contracts;
-using Statevia.Core.Application.Contracts;
-using Statevia.Core.Application.Contracts.Security;
 using Statevia.Core.Application.Services;
-using Statevia.Infrastructure.Security;
 using Statevia.Infrastructure.Persistence.Repositories;
 using Statevia.Service.Api.Tests.Infrastructure;
 using Statevia.Service.Api.Tests.Infrastructure.Security;

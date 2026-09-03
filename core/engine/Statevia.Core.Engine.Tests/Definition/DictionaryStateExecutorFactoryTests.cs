@@ -1,7 +1,5 @@
-using System.Collections.Generic;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
-using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Execution;
 using Xunit;
 

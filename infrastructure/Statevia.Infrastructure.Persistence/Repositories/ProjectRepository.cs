@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Statevia.Core.Application.Contracts.Services;
 
 namespace Statevia.Infrastructure.Persistence.Repositories;
 

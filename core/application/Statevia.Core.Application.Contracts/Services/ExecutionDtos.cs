@@ -1,7 +1,7 @@
+using Statevia.Core.Application.Contracts.Validation;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Statevia.Core.Application.Contracts.Validation;
 
 namespace Statevia.Core.Application.Contracts.Services;
 

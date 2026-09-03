@@ -1,6 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-
-using Statevia.Service.Api.Contracts;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Tests.Infrastructure;
 

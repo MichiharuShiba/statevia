@@ -1,8 +1,8 @@
+using Statevia.Service.Cli.Infrastructure;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using Statevia.Service.Cli.Infrastructure;
 using Xunit;
 
 namespace Statevia.Service.Cli.Tests;

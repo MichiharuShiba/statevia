@@ -1,8 +1,8 @@
 using Statevia.Core.Actions.Abstractions.Catalog;
+using Statevia.Core.Engine.Definition;
 using Statevia.Service.Api.Application.Actions;
 using Statevia.Service.Api.Application.Actions.Catalog;
 using Statevia.Service.Api.Application.Actions.Versioning;
-using Statevia.Core.Engine.Definition;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Versioning;
 

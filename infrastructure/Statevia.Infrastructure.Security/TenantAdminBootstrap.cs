@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 
 using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Contracts.Validation;
-using Statevia.Infrastructure.Persistence;
 
 namespace Statevia.Infrastructure.Security;
 

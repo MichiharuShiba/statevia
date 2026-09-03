@@ -1,5 +1,5 @@
-using System.ComponentModel.DataAnnotations;
 using Statevia.Service.Api.Contracts.Admin;
+using System.ComponentModel.DataAnnotations;
 
 namespace Statevia.Service.Api.Tests.Contracts.Admin;
 

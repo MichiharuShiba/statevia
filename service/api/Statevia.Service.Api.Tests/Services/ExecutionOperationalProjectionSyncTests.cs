@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Application.Services;
+using Statevia.Core.Engine.Abstractions;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Persistence.Repositories;
 using Statevia.Service.Api.Tests.Infrastructure;
-using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Service.Api.Tests.Services;
 

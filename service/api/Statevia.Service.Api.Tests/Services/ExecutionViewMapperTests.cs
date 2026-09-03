@@ -1,7 +1,5 @@
-using System.Text.Json;
-using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Services;
-using Xunit;
+using System.Text.Json;
 
 namespace Statevia.Service.Api.Tests.Services;
 

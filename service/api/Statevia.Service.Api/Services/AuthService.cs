@@ -1,7 +1,5 @@
-
-using Statevia.Service.Api.Contracts;
-using Statevia.Service.Api.Contracts.Auth;
 using Statevia.Infrastructure.Security;
+using Statevia.Service.Api.Contracts.Auth;
 
 namespace Statevia.Service.Api.Services;
 

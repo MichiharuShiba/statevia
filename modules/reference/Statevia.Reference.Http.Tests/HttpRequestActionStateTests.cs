@@ -1,9 +1,8 @@
-using System.Net;
-using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Statevia.Core.Engine.Abstractions;
-using Statevia.Reference.Http;
+using System.Net;
+using System.Text;
 
 namespace Statevia.Reference.Http.Tests;
 

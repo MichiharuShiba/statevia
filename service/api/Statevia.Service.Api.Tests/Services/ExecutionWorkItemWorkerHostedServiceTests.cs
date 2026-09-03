@@ -1,17 +1,12 @@
-using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Statevia.Core.Application.Contracts;
-using Statevia.Core.Application.Contracts.Persistence;
-using Statevia.Core.Application.Contracts.Security;
-using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Services;
 using Statevia.Infrastructure.Persistence;
-using Statevia.Infrastructure.Security;
 using Statevia.Runtime.Configuration;
 using Statevia.Runtime.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
+using System.Text.Json;
 
 namespace Statevia.Service.Api.Tests.Services;
 

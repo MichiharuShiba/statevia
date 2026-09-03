@@ -1,7 +1,7 @@
+using Statevia.Service.Api.Contracts.Auth;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Statevia.Service.Api.Contracts.Auth;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 

@@ -1,5 +1,3 @@
-using Statevia.Service.Api.Contracts;
-
 namespace Statevia.Service.Api.Tests.Contracts;
 
 /// <summary>API 契約例外のコンストラクタ網羅テスト。</summary>

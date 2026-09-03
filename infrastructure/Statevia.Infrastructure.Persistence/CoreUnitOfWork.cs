@@ -1,7 +1,6 @@
-using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Statevia.Core.Application.Contracts.Persistence;
+using System.Data;
 
 namespace Statevia.Infrastructure.Persistence;
 

@@ -1,8 +1,8 @@
-using System.Reflection;
 using Microsoft.Extensions.Options;
 using Statevia.Infrastructure.Modules;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Security;
+using System.Reflection;
 
 namespace Statevia.Service.Api.Hosting;
 

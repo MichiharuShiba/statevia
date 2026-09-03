@@ -1,11 +1,10 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Statevia.Infrastructure.Persistence;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Statevia.Infrastructure.Persistence;
-using Statevia.Service.Api.Tests.Infrastructure.Security;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 

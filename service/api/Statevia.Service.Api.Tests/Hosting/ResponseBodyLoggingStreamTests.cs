@@ -1,5 +1,5 @@
-using System.Text;
 using Statevia.Service.Api.Hosting;
+using System.Text;
 
 namespace Statevia.Service.Api.Tests.Hosting;
 

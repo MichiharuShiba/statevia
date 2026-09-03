@@ -1,7 +1,6 @@
-using Statevia.Service.Api.Application.Definition;
-using Statevia.Core.Engine.Definition;
 using Statevia.Core.Engine.Definition.Validation;
 using Statevia.Core.Engine.FSM;
+using Statevia.Service.Api.Application.Definition;
 
 namespace Statevia.Service.Api.Tests.Application.Definition;
 

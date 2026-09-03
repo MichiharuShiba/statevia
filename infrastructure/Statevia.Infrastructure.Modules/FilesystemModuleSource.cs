@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace Statevia.Infrastructure.Modules;
 
 /// <summary>ローカル filesystem から Action Module を発見する（load は行わない）。</summary>

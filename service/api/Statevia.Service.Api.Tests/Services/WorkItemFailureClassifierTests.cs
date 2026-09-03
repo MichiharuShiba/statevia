@@ -1,4 +1,3 @@
-using Statevia.Core.Application.Contracts;
 using Statevia.Core.Application.Services;
 
 namespace Statevia.Service.Api.Tests.Services;

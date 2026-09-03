@@ -1,5 +1,5 @@
-using System.ComponentModel.DataAnnotations;
 using Statevia.Core.Application.Contracts.Validation;
+using System.ComponentModel.DataAnnotations;
 
 namespace Statevia.Service.Api.Contracts.Auth;
 

@@ -2,8 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Statevia.Core.Application.Contracts.Services;
 using Statevia.Infrastructure.Common;
-using Statevia.Infrastructure.Security;
 using Statevia.Infrastructure.Persistence;
+using Statevia.Infrastructure.Security;
 
 namespace Statevia.Service.Api.Bootstrap;
 

@@ -1,5 +1,3 @@
-using Statevia.Core.Application.Contracts.Security;
-
 namespace Statevia.Infrastructure.Security;
 
 /// <summary>

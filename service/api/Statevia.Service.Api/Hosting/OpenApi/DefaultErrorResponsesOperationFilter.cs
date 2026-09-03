@@ -1,7 +1,7 @@
-using System.Globalization;
 using Microsoft.OpenApi.Models;
-using Swashbuckle.AspNetCore.SwaggerGen;
 using Statevia.Service.Api.Contracts;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Globalization;
 
 namespace Statevia.Service.Api.Hosting.OpenApi;
 

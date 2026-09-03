@@ -1,16 +1,13 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Statevia.Core.Application.Contracts.Services;
+using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Hosting;
-using Statevia.Infrastructure.Common;
-using Statevia.Infrastructure.Security;
-using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Hosting;

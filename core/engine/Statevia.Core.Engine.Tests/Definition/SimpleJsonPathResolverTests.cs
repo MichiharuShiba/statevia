@@ -1,6 +1,6 @@
+using Statevia.Core.Engine.Definition;
 using System.Collections;
 using System.Text.Json;
-using Statevia.Core.Engine.Definition;
 using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Definition;

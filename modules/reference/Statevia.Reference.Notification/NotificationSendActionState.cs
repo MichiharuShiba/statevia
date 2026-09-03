@@ -1,6 +1,6 @@
-using System.Net.Mail;
 using Statevia.Core.Actions.Abstractions.Execution;
 using Statevia.Core.Engine.Abstractions;
+using System.Net.Mail;
 
 namespace Statevia.Reference.Notification;
 

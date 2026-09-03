@@ -1,5 +1,3 @@
-using Statevia.Infrastructure.Security;
-
 namespace Statevia.Service.Api.Tests.Infrastructure;
 
 /// <summary>ユニットテスト用 — Runtime permission 認可を常に許可する。</summary>

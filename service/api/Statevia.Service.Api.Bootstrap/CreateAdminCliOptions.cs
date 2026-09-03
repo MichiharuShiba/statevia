@@ -1,5 +1,3 @@
-using Statevia.Service.Api.Hosting;
-
 namespace Statevia.Service.Api.Bootstrap;
 
 /// <summary>create-admin コマンドの引数。</summary>

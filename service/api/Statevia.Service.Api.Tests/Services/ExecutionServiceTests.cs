@@ -1,23 +1,16 @@
-using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using Statevia.Core.Application.Configuration;
-using Statevia.Core.Application.Contracts;
-using Statevia.Core.Application.Contracts.Persistence;
-using Statevia.Core.Application.Contracts.Security;
-using Statevia.Core.Application.Contracts.Services;
-using Statevia.Core.Application.Infrastructure;
 using Statevia.Core.Application.Services;
+using Statevia.Core.Engine.Abstractions;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Persistence.Repositories;
-using Statevia.Service.Api.Contracts;
 using Statevia.Service.Api.Hosting;
-using Statevia.Service.Api.Services;
-using Statevia.Core.Engine.Abstractions;
 using Statevia.Service.Api.Tests.Infrastructure;
+using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace Statevia.Service.Api.Tests.Services;

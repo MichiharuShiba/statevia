@@ -1,5 +1,3 @@
-using Statevia.Core.Application.Infrastructure;
-
 namespace Statevia.Core.Application.Services;
 
 /// <summary>

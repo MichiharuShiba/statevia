@@ -1,8 +1,4 @@
-using Statevia.Core.Application.Contracts.Persistence;
-using Statevia.Core.Application.Contracts.Security;
-using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Services;
-using Statevia.Infrastructure.Persistence;
 using Statevia.Service.Api.Tests.Infrastructure;
 
 namespace Statevia.Service.Api.Tests.Services;

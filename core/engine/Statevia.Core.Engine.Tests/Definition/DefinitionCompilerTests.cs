@@ -1,6 +1,5 @@
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
-using Statevia.Core.Engine.Execution;
 using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Definition;

@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Options;
-using Statevia.Infrastructure.Notification;
 using Statevia.Infrastructure.Notification.Configuration;
 
 namespace Statevia.Service.Api.Tests.Application.Actions.Infrastructure;

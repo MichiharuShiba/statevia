@@ -1,15 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Statevia.Core.Application.Contracts.Services;
-using Statevia.Service.Api.Configuration;
-using Statevia.Service.Api.Contracts;
-using Statevia.Infrastructure.Security;
+using Statevia.Core.Engine.Abstractions;
 using Statevia.Infrastructure.Persistence;
+using Statevia.Service.Api.Configuration;
 using Statevia.Service.Api.Services;
 using Statevia.Service.Api.Tests.Infrastructure;
-using Statevia.Core.Engine.Abstractions;
-using Statevia.Core.Engine.Definition;
 
 namespace Statevia.Service.Api.Tests.Services;
 

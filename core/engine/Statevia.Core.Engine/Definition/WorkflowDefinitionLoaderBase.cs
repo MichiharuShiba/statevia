@@ -1,8 +1,7 @@
+using Statevia.Core.Engine.Abstractions;
 using System.Collections;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
-
-using Statevia.Core.Engine.Abstractions;
 
 namespace Statevia.Core.Engine.Definition;
 

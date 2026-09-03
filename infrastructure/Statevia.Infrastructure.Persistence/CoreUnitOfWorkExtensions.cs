@@ -1,5 +1,3 @@
-using Statevia.Core.Application.Contracts.Persistence;
-
 namespace Statevia.Infrastructure.Persistence;
 
 /// <summary><see cref="ICoreUnitOfWork"/> から EF Core 実装を取得する。</summary>

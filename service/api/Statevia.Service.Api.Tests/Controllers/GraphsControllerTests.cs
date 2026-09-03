@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Statevia.Core.Application.Contracts.Services;
 using Statevia.Core.Application.Contracts.Validation;
 using Statevia.Service.Api.Controllers;
 

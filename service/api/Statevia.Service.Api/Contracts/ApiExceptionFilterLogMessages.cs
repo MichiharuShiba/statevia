@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace Statevia.Service.Api.Contracts;
 
 /// <summary>

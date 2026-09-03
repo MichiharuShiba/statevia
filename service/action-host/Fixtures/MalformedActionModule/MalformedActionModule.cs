@@ -1,7 +1,6 @@
-using Microsoft.Extensions.DependencyInjection;
+using Statevia.Core.Actions.Abstractions.Modules;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Execution;
-using Statevia.Core.Actions.Abstractions.Modules;
 
 namespace Statevia.Service.ActionHost.Tests.Fixtures.MalformedActionModule;
 

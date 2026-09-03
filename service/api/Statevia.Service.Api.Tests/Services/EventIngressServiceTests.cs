@@ -1,11 +1,9 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Statevia.Core.Application.Contracts.Persistence;
-using Statevia.Core.Application.Contracts.Security;
 using Statevia.Core.Application.Services;
 using Statevia.Infrastructure.Persistence;
 using Statevia.Infrastructure.Persistence.Repositories;
 using Statevia.Service.Api.Tests.Infrastructure;
+using System.Text.Json;
 
 namespace Statevia.Service.Api.Tests.Services;
 

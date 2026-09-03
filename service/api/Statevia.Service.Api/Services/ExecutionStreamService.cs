@@ -1,12 +1,7 @@
-using System;
+using Statevia.Core.Application.Infrastructure;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Linq;
-using Microsoft.AspNetCore.Http;
-using Statevia.Core.Application.Contracts.Services;
-using Statevia.Core.Application.Infrastructure;
-using Statevia.Core.Application.Services;
 
 namespace Statevia.Service.Api.Services;
 

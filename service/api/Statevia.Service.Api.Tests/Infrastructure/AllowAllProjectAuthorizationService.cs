@@ -1,5 +1,3 @@
-using Statevia.Service.Api.Abstractions.Services;
-
 namespace Statevia.Service.Api.Tests.Infrastructure;
 
 /// <summary>ユニットテスト用 — project 認可を常に許可する。</summary>

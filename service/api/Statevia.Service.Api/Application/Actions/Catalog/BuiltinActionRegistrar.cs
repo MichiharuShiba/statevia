@@ -1,10 +1,9 @@
-using Microsoft.Extensions.DependencyInjection;
 using Statevia.Core.Actions.Abstractions.Catalog;
 using Statevia.Core.Actions.Abstractions.Execution;
-using Statevia.Service.Api.Application.Actions.Builtins;
-using Statevia.Service.Api.Application.Actions.Publication;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Execution;
+using Statevia.Service.Api.Application.Actions.Builtins;
+using Statevia.Service.Api.Application.Actions.Publication;
 
 namespace Statevia.Service.Api.Application.Actions.Catalog;
 

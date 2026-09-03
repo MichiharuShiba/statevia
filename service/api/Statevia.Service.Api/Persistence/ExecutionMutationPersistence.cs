@@ -1,12 +1,11 @@
-using System.Data;
-using System.Data.Common;
-using System.Runtime.ExceptionServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Statevia.Core.Application.Configuration;
 using Statevia.Core.Application.Infrastructure;
-using Statevia.Core.Application.Services;
 using Statevia.Service.Api.Hosting;
+using System.Data;
+using System.Data.Common;
+using System.Runtime.ExceptionServices;
 
 namespace Statevia.Service.Api.Persistence;
 

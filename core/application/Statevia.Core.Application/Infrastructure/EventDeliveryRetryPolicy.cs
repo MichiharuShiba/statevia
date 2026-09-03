@@ -1,7 +1,7 @@
-using System.Diagnostics;
-using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Statevia.Core.Application.Configuration;
+using System.Diagnostics;
+using System.Reflection;
 
 namespace Statevia.Core.Application.Infrastructure;
 

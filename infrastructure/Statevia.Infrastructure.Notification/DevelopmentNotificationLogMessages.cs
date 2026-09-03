@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace Statevia.Infrastructure.Notification;
 
 /// <summary><see cref="DevelopmentNotificationSender"/> 用のログ（<see cref="LoggerMessageAttribute"/>）。</summary>

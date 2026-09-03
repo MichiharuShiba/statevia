@@ -1,12 +1,7 @@
-using System;
-using System.Linq;
-using System.Text.Json;
-using System.Threading;
-using System.Collections.Generic;
 using Statevia.Core.Engine.Abstractions;
 using Statevia.Core.Engine.Definition;
-using Statevia.Core.Engine.Engine;
 using Statevia.Core.Engine.Execution;
+using System.Text.Json;
 using Xunit;
 
 namespace Statevia.Core.Engine.Tests.Engine;
