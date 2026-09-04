@@ -33,7 +33,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         CancellationToken ct)
     {
         _ = tenantId;
-        return await uow.GetDb().Definitions
+        return await DefinitionsIgnoringTenantFilter(uow, tracked: true)
             .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.DeletedAt == null, ct)
             .ConfigureAwait(false);
     }
@@ -61,7 +61,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         if (version is null)
             return null;
 
-        var definitionExists = await uow.GetDb().Definitions.AsNoTracking()
+        var definitionExists = await DefinitionsIgnoringTenantFilter(uow, tracked: false)
             .AnyAsync(x => x.DefinitionId == version.DefinitionId, ct)
             .ConfigureAwait(false);
         return definitionExists ? version : null;
@@ -84,7 +84,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         CancellationToken ct)
     {
         _ = tenantId;
-        return uow.GetDb().Definitions.AsNoTracking()
+        return DefinitionsIgnoringTenantFilter(uow, tracked: false)
             .FirstOrDefaultAsync(x => x.DefinitionId == definitionId && x.DeletedAt != null, ct);
     }
 
@@ -96,7 +96,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         CancellationToken ct)
     {
         _ = tenantId;
-        return await uow.GetDb().Definitions.AsNoTracking()
+        return await DefinitionsIgnoringTenantFilter(uow, tracked: false)
             .Where(x => x.DefinitionId == definitionId && x.DeletedAt == null)
             .Select(x => (Guid?)x.ProjectId)
             .FirstOrDefaultAsync(ct)
@@ -238,7 +238,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         string slug,
         Guid excludingDefinitionId,
         CancellationToken ct) =>
-        uow.GetDb().Definitions.AsNoTracking()
+        DefinitionsIgnoringTenantFilter(uow, tracked: false)
             .AnyAsync(
                 x => x.ProjectId == projectId
                      && x.Slug == slug
@@ -255,9 +255,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         CancellationToken ct)
     {
         _ = tenantId;
-        var query = tracked
-            ? uow.GetDb().Definitions.AsQueryable()
-            : uow.GetDb().Definitions.AsNoTracking();
+        var query = DefinitionsIgnoringTenantFilter(uow, tracked);
 
         if (activeOnly)
             query = WhereActive(query);
@@ -288,7 +286,7 @@ internal sealed class DefinitionRepository : IDefinitionRepository
         CancellationToken ct)
     {
         _ = tenantId;
-        var definitionQuery = uow.GetDb().Definitions.AsNoTracking()
+        var definitionQuery = DefinitionsIgnoringTenantFilter(uow, tracked: false)
             .Where(x => x.DefinitionId == definitionId);
         if (activeParentOnly)
             definitionQuery = WhereActive(definitionQuery);
@@ -308,6 +306,19 @@ internal sealed class DefinitionRepository : IDefinitionRepository
 
     private static IQueryable<DefinitionRow> WhereActive(IQueryable<DefinitionRow> query) =>
         query.Where(x => x.DeletedAt == null);
+
+    /// <summary>
+    /// 定義 ID による単体取得ではテナント行フィルタを外す。
+    /// </summary>
+    /// <remarks>
+    /// 共有 project の定義はオーナーテナントの <c>tenant_id</c> を持つ。呼び出し元テナントの
+    /// グローバルフィルタだと行が見えず、その後の project_access 評価に到達できない。
+    /// </remarks>
+    private static IQueryable<DefinitionRow> DefinitionsIgnoringTenantFilter(ICoreUnitOfWork uow, bool tracked)
+    {
+        var query = uow.GetDb().Definitions.IgnoreQueryFilters();
+        return tracked ? query : query.AsNoTracking();
+    }
 
     private static IQueryable<DefinitionWithDisplay> QueryDefinitionsWithDisplayIds(
         CoreDbContext db,

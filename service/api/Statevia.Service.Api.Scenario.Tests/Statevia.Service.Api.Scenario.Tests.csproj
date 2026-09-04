@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- CA2007: ASP.NET Core テストホストでは SynchronizationContext が掛からないためノイズ。 -->
+    <!-- CA1707: xUnit のテストメソッド名にアンダースコアを使う慣例のため。 -->
+    <!-- CA1515: テストアセンブリ内の型は xUnit / Collection 公開のため public を維持する。 -->
+    <!-- CA1711: CollectionDefinition の型名が Collection で終わるのは xUnit 慣例。 -->
+    <!-- CA1031: Docker 未起動時は任意例外を Skip に落とす設計のため。 -->
+    <NoWarn>$(NoWarn);CA2007;CA1707;CA1515;CA1711;CA1031</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="8.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.17" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.12.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.10" />
+    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.61" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Statevia.Core.Application.Contracts.Security" />
+    <Using Include="Statevia.Core.Application.Contracts.Persistence" />
+    <Using Include="Statevia.Infrastructure.Persistence" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Statevia.Service.Api\Statevia.Service.Api.csproj" />
+    <ProjectReference Include="..\Statevia.Service.Api.Bootstrap\Statevia.Service.Api.Bootstrap.csproj" />
+    <ProjectReference Include="..\..\..\core\application\Statevia.Core.Application.Contracts\Statevia.Core.Application.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\infrastructure\Statevia.Infrastructure.Persistence\Statevia.Infrastructure.Persistence.csproj" />
+    <ProjectReference Include="..\..\..\infrastructure\Statevia.Infrastructure.Security\Statevia.Infrastructure.Security.csproj" />
+  </ItemGroup>
+
+</Project>

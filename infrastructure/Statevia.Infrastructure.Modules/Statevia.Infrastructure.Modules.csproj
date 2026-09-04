@@ -22,6 +22,7 @@
     <InternalsVisibleTo Include="Statevia.Service.Api" />
     <InternalsVisibleTo Include="Statevia.Service.Api.Tests" />
     <InternalsVisibleTo Include="Statevia.Service.Api.Bootstrap" />
+    <InternalsVisibleTo Include="Statevia.Service.Api.Scenario.Tests" />
   </ItemGroup>
 
   <ItemGroup>

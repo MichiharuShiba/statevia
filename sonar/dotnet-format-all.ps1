@@ -9,12 +9,13 @@
   `whitespace` と `style --diagnostics IDE0005 IDE0065` を順に実行し、
   インデント・空白・不要な using の削除、using 配置の整理に限定する。
 
-  対象:
+  対象（コンポーネント別 6 sln。IDE 用 `statevia.sln` は含めない）:
   - core/engine/statevia-engine.sln
   - service/api/statevia-api.sln
   - service/action-host/statevia-action-host.sln
   - service/cli/statevia-cli.sln
   - infrastructure/statevia-infrastructure.sln
+  - modules/reference/statevia-reference.sln
 
 .PARAMETER VerifyNoChanges
   書式変更が発生しないことを検証する（`dotnet format --verify-no-changes`）。
@@ -24,7 +25,7 @@
   `dotnet format` の詳細レベル（quiet / minimal / normal / detailed / diagnostic）。
 
 .PARAMETER Solution
-  対象 sln の識別子（`engine` / `api` / `action-host` / `cli` / `infrastructure`）、
+  対象 sln の識別子（`engine` / `api` / `action-host` / `cli` / `infrastructure` / `reference`）、
   相対パス、またはファイル名（例: statevia-api.sln）。未指定時は全ソリューション。
 
 .EXAMPLE
@@ -55,6 +56,7 @@ $allSolutions = @(
     @{ Name = 'action-host'; RelativePath = 'service\action-host\statevia-action-host.sln' }
     @{ Name = 'cli'; RelativePath = 'service\cli\statevia-cli.sln' }
     @{ Name = 'infrastructure'; RelativePath = 'infrastructure\statevia-infrastructure.sln' }
+    @{ Name = 'reference'; RelativePath = 'modules\reference\statevia-reference.sln' }
 )
 
 $targets = if ([string]::IsNullOrWhiteSpace($Solution)) {
