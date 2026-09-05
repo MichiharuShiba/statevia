@@ -3,10 +3,12 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Reference |
-| Version | 1.8 |
-| 更新日 | 2026-09-03 |
+| Version | 1.9 |
+| 更新日 | 2026-09-05 |
 
 ---
+
+**Version 1.9（2026-09-05）**: EF Core の SQL 本文ログは Development のみ。本番は Warning。
 
 Service API / UI / Module の主要な環境変数と `appsettings` キー。**調べ物**用。Normative 契約は各 Specification を正とする。
 
@@ -34,6 +36,8 @@ Service API / UI / Module の主要な環境変数と `appsettings` キー。**�
 | --- | --- |
 | `STATEVIA_ENABLE_API_DOCS` | 本番で OpenAPI / Scalar を有効化 |
 | `STATEVIA_LOG_HTTP_BODIES` | HTTP 本文ログ（機密に注意） |
+| `Logging:LogLevel:Microsoft.EntityFrameworkCore` | 既定 `Warning`。EF の SQL 本文は出さない。失敗したコマンドは Error のまま |
+| `Logging:LogLevel:Microsoft.EntityFrameworkCore.Database.Command` | Development のみ `Information`（SQL 本文）。本番で一時確認するときは `Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command=Information`。遅いクエリは PostgreSQL 側で分析する |
 | `STATEVIA_MODULES_PATH` | Action Module ルート（未設定時は設定ファイル） |
 
 ## Action / 実行ポリシー（appsettings）
