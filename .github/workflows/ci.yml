@@ -28,3 +28,51 @@ jobs:
         uses: lycheeverse/lychee-action@v2
         with:
           args: --config .lychee.toml --no-progress 'docs/**/*.md'
+
+  format-check:
+    name: C# format check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Verify C# format
+        shell: pwsh
+        run: ./sonar/dotnet-format-all.ps1 -VerifyNoChanges -Verbosity minimal
+
+  ui-lint-typecheck:
+    name: UI lint and typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui/studio
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/studio/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  markdown-lint:
+    name: Markdown lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # .spec/specs などは gitignore。checkout 上は templates / steering のみ。
+      - name: Lint docs and spec markdown
+        run: npx --yes markdownlint-cli2 "docs/**/*.md" ".spec/**/*.md"

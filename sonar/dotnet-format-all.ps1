@@ -51,12 +51,12 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
 $allSolutions = @(
-    @{ Name = 'engine'; RelativePath = 'core\engine\statevia-engine.sln' }
-    @{ Name = 'api'; RelativePath = 'service\api\statevia-api.sln' }
-    @{ Name = 'action-host'; RelativePath = 'service\action-host\statevia-action-host.sln' }
-    @{ Name = 'cli'; RelativePath = 'service\cli\statevia-cli.sln' }
-    @{ Name = 'infrastructure'; RelativePath = 'infrastructure\statevia-infrastructure.sln' }
-    @{ Name = 'reference'; RelativePath = 'modules\reference\statevia-reference.sln' }
+    @{ Name = 'engine'; RelativePath = 'core/engine/statevia-engine.sln' }
+    @{ Name = 'api'; RelativePath = 'service/api/statevia-api.sln' }
+    @{ Name = 'action-host'; RelativePath = 'service/action-host/statevia-action-host.sln' }
+    @{ Name = 'cli'; RelativePath = 'service/cli/statevia-cli.sln' }
+    @{ Name = 'infrastructure'; RelativePath = 'infrastructure/statevia-infrastructure.sln' }
+    @{ Name = 'reference'; RelativePath = 'modules/reference/statevia-reference.sln' }
 )
 
 $targets = if ([string]::IsNullOrWhiteSpace($Solution)) {
@@ -85,7 +85,8 @@ if ($VerifyNoChanges) {
 $failed = [System.Collections.Generic.List[string]]::new()
 
 foreach ($target in $targets) {
-    $solutionPath = Join-Path $repoRoot $target.RelativePath
+    $relativePath = $target.RelativePath -replace '[\\/]', [System.IO.Path]::DirectorySeparatorChar
+    $solutionPath = Join-Path $repoRoot $relativePath
     if (-not (Test-Path -LiteralPath $solutionPath -PathType Leaf)) {
         $failed.Add("$($target.Name): not found ($solutionPath)")
         continue
