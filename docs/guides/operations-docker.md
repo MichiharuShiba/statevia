@@ -3,13 +3,15 @@
 | 項目 | 値 |
 | --- | --- |
 | 種別 | Guide |
-| Version | 1.2 |
-| 更新日 | 2026-09-03 |
+| Version | 1.3 |
+| 更新日 | 2026-09-05 |
 | 関連 | [getting-started.md](getting-started.md), [action-host.md](action-host.md), [environment-variables.md](../reference/environment-variables.md) |
 
 ---
 
 リポジトリ直下の `docker-compose.yml` で **PostgreSQL 16**・**Service API（C#）**・**UI（Next.js）**・**Action Host** を起動できます。
+
+**Version 1.3（2026-09-05）**: Production では EF Core の SQL 本文ログを出さない（Development の compose では出る）。
 
 **Version 1.2（2026-09-03）**: 専用 Worker は JWT 署名鍵を要求しない。split-runtime のローカル compose は `DOTNET_ENVIRONMENT=Development`。
 
@@ -74,7 +76,7 @@ docker compose up -d
 - Scalar UI: `http://localhost:8080/scalar/v1`
 - OpenAPI JSON: `http://localhost:8080/swagger/v1/swagger.json`
 
-**本番向けに service-api イメージだけ**を Production で動かす場合は、上記は **既定で無効**です。意図的に有効化する場合は `STATEVIA_ENABLE_API_DOCS=true` を設定してください（API 構造の露出に注意）。
+**本番向けに service-api イメージだけ**を Production で動かす場合は、上記は **既定で無効**です。意図的に有効化する場合は `STATEVIA_ENABLE_API_DOCS=true` を設定してください（API 構造の露出に注意）。同じ Production では EF Core の SQL 本文も既定で出ません。一時確認は `Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command=Information`。遅いクエリは PostgreSQL 側で分析します。
 
 ## トラブルシュート
 
